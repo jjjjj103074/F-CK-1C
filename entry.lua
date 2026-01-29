@@ -14,7 +14,7 @@ declare_plugin(self_ID,
     -- =================系統識別信息=================
     fileMenuName     = _("F-CK-1C"),     -- 檔案選單名稱: 在DCS檔案選單中顯示的名稱 [本地化字串]
     update_id        = "F-CK-1C_Mod",            -- 更新識別符: 用於自動更新檢查的唯一ID [字串]
-    version          = "v0.0.0",               -- 模組版本號: 遵循語義化版本控制 [版本字串]
+    version          = "v0.0.1",               -- 模組版本號: 遵循語義化版本控制 [版本字串]
     state            = "installed",            -- 模組狀態: "installed"=已安裝, "beta"=測試版 [狀態字串]
     info             = _("F-CK-1C multirole fighter module. Contains aircraft configuration, liveries and mission samples for testing and AI use."), -- 模組描述: 詳細說明模組功能和特色 [本地化字串]
 
