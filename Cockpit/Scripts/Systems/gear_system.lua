@@ -2,7 +2,7 @@ local dev = GetSelf() -- 獲取當前設備指標
 
 dofile(LockOn_Options.script_path .. "argument.lua")
 
--- 設定更新頻率 (每秒 50 次，保證流暢)
+-- 設定更新頻率
 local update_rate = 0.01
 make_default_activity(update_rate)
 
