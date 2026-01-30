@@ -21,4 +21,13 @@
 -- -- 4. 載入基本指示器 (可選，防止報錯)
 -- indicators = {}
 
-dofile(LockOn_Options.common_script_path.."KNEEBOARD/declare_kneeboard_device_left.lua")
+-- dofile(LockOn_Options.common_script_path .. "KNEEBOARD/declare_kneeboard_device_left.lua")
+dofile(LockOn_Options.script_path .. "devices.lua")
+
+creators = {}
+
+creators[devices.Gear] = {
+    "avLuaDevice",
+    LockOn_Options.script_path .. "Systems/gear_system.lua",
+
+}
