@@ -1,6 +1,6 @@
-local cscripts = folder .. "../../../Cockpit/Scripts/"
+-- local cscripts = folder .. "../../../Cockpit/Scripts/"
 -- dofile(cscripts.."devices.lua")
-dofile(cscripts .. "command_defs.lua")
+-- dofile(cscripts .. "command_defs.lua")
 
 
 -- 載入 DCS 通用鍵盤設定 (包含視角、系統選單等)
