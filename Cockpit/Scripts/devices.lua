@@ -7,3 +7,4 @@ end
 devices = {}
 
 devices["Gear"] = counter()
+devices["Actuators"] = counter()

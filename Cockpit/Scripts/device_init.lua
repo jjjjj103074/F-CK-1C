@@ -31,3 +31,8 @@ creators[devices.Gear] = {
     LockOn_Options.script_path .. "Systems/gear_system.lua",
 
 }
+
+creators[devices.Actuators] = {
+    "avLuaDevice",
+    LockOn_Options.script_path .. "Systems/actuators_system.lua",
+}
