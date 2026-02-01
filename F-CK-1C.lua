@@ -125,13 +125,11 @@ local F_CK_1C = {
     Categories = { "{78EFB7A2-FD52-4b57-A6A6-3BF0E1D6555F}", "Interceptor" },
 
     -- ===================== 操控/機組資訊區 (Crew & Cockpit) =====================
-    -- 若為 AI-only，可把 HumanCockpit 設為 false 以避免引擎嘗試載入 cockpit resource
     -- 操控/機組（分類：F-16/A-4E 風格）
-    HumanCockpit = false, -- AI-only 建議 false  [AI]
-    -- TODO: 如需啟用玩家座艙，需創建 Cockpit 資料夾
-    -- HumanCockpitPath = current_mod_path .. '/Cockpit/', -- [DISABLED - HumanCockpit=false時不需要]
+    HumanCockpit = true,                                -- 啟用玩家座艙（必須為 true 才能處理玩家輸入）
+    HumanCockpitPath = current_mod_path .. '/Cockpit/', -- 座艙腳本路徑
 
-    crew_size = 1, -- 機組人數（AI 會依此分配任務） [AI]
+    crew_size = 1,                                      -- 機組人數（AI 會依此分配任務） [AI]
     crew_members = {
         [1] = {
             ejection_seat_name = 17, -- 使用DCS通用彈射座椅ID (參考A-4E)
@@ -139,7 +137,7 @@ local F_CK_1C = {
             -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 需要在模型中定義此名稱
             -- canopy_pos = {3.2, 0.674, 0}, -- 座艙罩位置
             pos = { 3.2, 0.27, 0 }, -- 駕駛座在機體座標的 (x, y, z)，單位：公尺 (m)
-            g_suit = 1.02         -- G-suit 補償係數（unitless，通常 1.0 = 無補償）
+            g_suit = 1.02           -- G-suit 補償係數（unitless，通常 1.0 = 無補償）
         }
     },
 
@@ -154,10 +152,10 @@ local F_CK_1C = {
     CAS_min = 23.15, -- 最低校正空速 (Calibrated Airspeed)，AI 最低飛行速度 (m/s) [AI] | △(參考 A-4E-C，稍微降低)
 
     -- 幾何尺寸（公尺）
-    length = 14.48,                     -- 機身總長 (m) | ✓(維基百科)
-    height = 4.7,                       -- 機高 (m) | ✓(維基百科)
-    wing_area = 24.26,                  -- 翼面積 (m^2) | ✓(維基百科)
-    wing_span = 8.53,                   -- 翼展 (m) | ✓(維基百科)
+    length = 14.48,                       -- 機身總長 (m) | ✓(維基百科)
+    height = 4.7,                         -- 機高 (m) | ✓(維基百科)
+    wing_area = 24.26,                    -- 翼面積 (m^2) | ✓(維基百科)
+    wing_span = 8.53,                     -- 翼展 (m) | ✓(維基百科)
     wing_tip_pos = { -2.64, 0.05, 4.39 }, -- 翼尖相對座標 (x,y,z) (m) | ✓(自製模型)
 
     -- 飛行性能
@@ -315,7 +313,7 @@ local F_CK_1C = {
         aircraft_task(AFAC),
         aircraft_task(AntishipStrike),
         aircraft_task(Reconnaissance),
-    },                             -- end of Tasks
+    },                                -- end of Tasks
     DefaultTask = aircraft_task(CAP), -- | △(參考F16C)
 
     -- ===================== 損傷 (Damage) - AI/遊戲邏輯重要 =====================
@@ -393,7 +391,7 @@ local F_CK_1C = {
                 [19] = { 2.5, 0.039, 0.033, 0.25, 4.5, 0.7, 9, 0.4 },
                 [20] = { 3.9, 0.035, 0.033, 0.35, 6, 0.7, 9, 0.4 },
             }, -- end of table_data
-        }, -- end of aerodynamics
+        },     -- end of aerodynamics
         engine =
         {
             type              = "TurboFan",
@@ -433,7 +431,7 @@ local F_CK_1C = {
                 [16] = { 2.35, 43000, 224000 },
                 [17] = { 3.9, 25000, 120636.4 },
             }, -- end of table_data
-        }, -- end of engine
+        },     -- end of engine
     },
 
     -- ===================== 燈光、效果、網路同步等 (Visual & Net) =====================

@@ -18,8 +18,6 @@ actuators["rudder"] = Actuator:new(
     { 85, -85 }
 )
 
-
-
 function update_actuators()
     for _, act in pairs(actuators) do
         act:update()
