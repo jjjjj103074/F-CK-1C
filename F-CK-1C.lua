@@ -152,11 +152,11 @@ local F_CK_1C = {
     CAS_min = 23.15, -- 最低校正空速 (Calibrated Airspeed)，AI 最低飛行速度 (m/s) [AI] | △(參考 A-4E-C，稍微降低)
 
     -- 幾何尺寸（公尺）
-    length = 14.48,                       -- 機身總長 (m) | ✓(維基百科)
-    height = 4.7,                         -- 機高 (m) | ✓(維基百科)
-    wing_area = 24.26,                    -- 翼面積 (m^2) | ✓(維基百科)
-    wing_span = 8.53,                     -- 翼展 (m) | ✓(維基百科)
-    wing_tip_pos = { -2.64, 0.05, 4.39 }, -- 翼尖相對座標 (x,y,z) (m) | ✓(自製模型)
+    length = 14.48,                         -- 機身總長 (m) | ✓(維基百科)
+    height = 4.7,                           -- 機高 (m) | ✓(維基百科)
+    wing_area = 24.26,                      -- 翼面積 (m^2) | ✓(維基百科)
+    wing_span = 8.53,                       -- 翼展 (m) | ✓(維基百科)
+    wing_tip_pos = { -2.3, 0.0006, 4.396 }, -- 翼尖相對座標 (x,y,z) (m) | ✓(自製模型)
 
     -- 飛行性能
     V_opt = 220,             -- 最適巡航速度 (m/s) | △(參考 F-16C模組)
@@ -188,18 +188,18 @@ local F_CK_1C = {
     -- tanker_type = 1, -- 空中加油機分類（整數，DCS 定義）
 
     -- ===================== 起落架區 (Landing Gear) =====================
-    tand_gear_max = 0.724,                        -- 前輪轉向最大弧度 (rad) | △(模型估算)
-    nose_gear_pos = { 3.776, -1.71, 0 },          -- 前輪位置 (x,y,z) (m) | ✓(模型)
-    nose_gear_amortizer_direct_stroke = 0.0,      -- 減震器伸展量 (m) | ✓(模型)
-    nose_gear_amortizer_reversal_stroke = 0,      -- 減震器收縮量 (m) | ✓(模型)
-    nose_gear_amortizer_normal_weight_stroke = 0, -- 常重位置位移 (m) | ✓(模型)
-    nose_gear_wheel_diameter = 0.346,             -- 前輪直徑 (m) | ✓(模型)
+    tand_gear_max = 0.761,                                    -- 前輪轉向最大弧度 (rad) | △(模型估算)
+    nose_gear_pos = { 4.12, -1.912, 0 },                      -- 前輪位置 (x,y,z) (m) | ✓(模型)
+    nose_gear_amortizer_direct_stroke = 0.0,                  -- 減震器伸展量 (m) | ✓(模型)
+    nose_gear_amortizer_reversal_stroke = 1.712 - 1.912,      -- 減震器收縮量 (m) | ✓(模型)
+    nose_gear_amortizer_normal_weight_stroke = 1.812 - 1.912, -- 常重位置位移 (m) | ✓(模型)
+    nose_gear_wheel_diameter = 0.4572,                        -- 前輪直徑 (m) | ✓(模型)
 
-    main_gear_pos = { -1.55, -1.705, 0.809 },     -- 主輪位置 (x,y,z) (m) | ✓(模型)
-    main_gear_amortizer_direct_stroke = 0.0,      -- 主輪減震伸展量 (m) | ✓(模型)
-    main_gear_amortizer_reversal_stroke = 0,      -- 主輪減震收縮量 (m) | ✓(模型)
-    main_gear_amortizer_normal_weight_stroke = 0, -- 主輪正常負重位移 (m) | ✓(模型)
-    main_gear_wheel_diameter = 0.524,             -- 主輪直徑 (m) | ✓(模型)
+    main_gear_pos = { -1.185, -1.913, 0.7905 },               -- 主輪位置 (x,y,z) (m) | ✓(模型)
+    main_gear_amortizer_direct_stroke = 0,                    -- 主輪減震伸展量 (m) | ✓(模型)
+    main_gear_amortizer_reversal_stroke = 1.727 - 1.913,      -- 主輪減震收縮量 (m) | ✓(模型)
+    main_gear_amortizer_normal_weight_stroke = 1.796 - 1.913, -- 主輪正常負重位移 (m) | ✓(模型)
+    main_gear_wheel_diameter = 0.6096,                        -- 主輪直徑 (m) | ✓(模型)
 
     -- nose_gear_door_close_after_retract = false,
     -- main_gear_door_close_after_retract = false,
@@ -208,7 +208,7 @@ local F_CK_1C = {
     engines_count = 2, -- 引擎數量（整數）
     engines_nozzles = {
         [1] = {
-            pos = { -4.578, 0.1418, 0.4452 },                -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
+            pos = { -6.118, 0.0918, 0.4452 },                -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
             elevation = 0,                                   -- 噴嘴仰角 (度)  | ✓(模型)
             diameter = 0.64,                                 -- 噴嘴直徑 (m)  | ✓(模型)
             exhaust_length_ab = 3.5,                         -- 加力噴焰視覺長度 (m) | △(模型估算)
@@ -220,7 +220,7 @@ local F_CK_1C = {
             afterburner_effect_texture = "afterburner_f-16c" -- 加力噴焰效果紋理 | △(用F16C的)
         },
         [2] = {
-            pos = { -4.578, 0.1418, -0.4452 },               -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
+            pos = { -6.118, 0.0918, -0.4452 },               -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
             elevation = 0,                                   -- 噴嘴仰角 (度)  | ✓(模型)
             diameter = 0.64,                                 -- 噴嘴直徑 (m)  | ✓(模型)
             exhaust_length_ab = 3.5,                         -- 加力噴焰視覺長度 (m) | △(模型估算)
