@@ -125,13 +125,11 @@ local F_CK_1C = {
     Categories = { "{78EFB7A2-FD52-4b57-A6A6-3BF0E1D6555F}", "Interceptor" },
 
     -- ===================== 操控/機組資訊區 (Crew & Cockpit) =====================
-    -- 若為 AI-only，可把 HumanCockpit 設為 false 以避免引擎嘗試載入 cockpit resource
     -- 操控/機組（分類：F-16/A-4E 風格）
-    HumanCockpit = false, -- AI-only 建議 false  [AI]
-    -- TODO: 如需啟用玩家座艙，需創建 Cockpit 資料夾
-    -- HumanCockpitPath = current_mod_path .. '/Cockpit/', -- [DISABLED - HumanCockpit=false時不需要]
+    HumanCockpit = true,                                -- 啟用玩家座艙（必須為 true 才能處理玩家輸入）
+    HumanCockpitPath = current_mod_path .. '/Cockpit/', -- 座艙腳本路徑
 
-    crew_size = 1, -- 機組人數（AI 會依此分配任務） [AI]
+    crew_size = 1,                                      -- 機組人數（AI 會依此分配任務） [AI]
     crew_members = {
         [1] = {
             ejection_seat_name = 17, -- 使用DCS通用彈射座椅ID (參考A-4E)

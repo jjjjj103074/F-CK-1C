@@ -59,7 +59,9 @@ declare_plugin(self_ID,
     })
 
 mount_vfs_model_path(current_mod_path .. "/Shapes")
+mount_vfs_model_path(current_mod_path .. "/Cockpit/Shapes")
 mount_vfs_liveries_path(current_mod_path .. "/Liveries")
+mount_vfs_liveries_path(current_mod_path .. "/Cockpit/Liveries")
 mount_vfs_texture_path(current_mod_path .. "/Textures")
 mount_vfs_texture_path(current_mod_path .. "/Textures/F-CK-1C")
 -- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50")
@@ -68,5 +70,7 @@ mount_vfs_texture_path(current_mod_path .. "/Textures/F-CK-1C")
 -- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_Pilot")
 -- ---------------------------------------------------------
 dofile(current_mod_path .. '/F-CK-1C.lua')
+
+make_flyable('F-CK-1C', current_mod_path .. "/Cockpit/Scripts/", --[[{self_ID, 'Su-25T'}--]] nil, current_mod_path..'/comm.lua')
 -- ---------------------------------------------------------
 plugin_done()
