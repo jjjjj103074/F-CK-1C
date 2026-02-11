@@ -1,5 +1,7 @@
-dofile(LockOn_Options.script_path .. "devices.lua") -- 取得設備編號定義
-
+-- 取得設備編號定義
+dofile(LockOn_Options.script_path .. "devices.lua")
+-- 定義材質
+dofile(LockOn_Options.script_path .. "materials.lua")
 
 -- MainPanel = {
 --     "ccMainPanel",
@@ -38,6 +40,6 @@ indicators = {}
 
 -- 控制指示器
 indicators[#indicators + 1] = {
-    "ccIndicator",
+    "ccControlsIndicatorBase",
     LockOn_Options.script_path .. "ControlsIndicator/ControlsIndicator.lua",
 }
