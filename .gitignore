@@ -1,0 +1,55 @@
+# F-CK-1C / EFM 專案 .gitignore
+
+# Windows / Editor
+Thumbs.db
+Desktop.ini
+.vscode/
+
+# Visual Studio（IDE 暫存）
+.vs/
+*.suo
+*.wsuo
+*.user
+*.vcxproj.user
+*.VC.db
+*.VC.opendb
+
+# Visual Studio / MSVC 建置輸出
+**/[Dd]ebug/
+**/[Rr]elease/
+**/[Xx]64/
+**/[Xx]86/
+**/*.obj
+**/*.pdb
+**/*.ipdb
+**/*.iobj
+**/*.pch
+**/*.exp
+**/*.lib
+**/*.ilk
+**/*.tlog
+**/*.lastbuildstate
+**/*.log
+
+# Template 專案內的建置複製輸出
+DCS-Basic-EFM-Template-main/bin/
+
+# 暫存 / 備份檔
+*.tmp
+*.bak
+temp/
+cache/
+backup/
+
+# 本地備份資料夾（如需提交請註解掉）
+baseline_original/
+
+# 若 LIST/API_KEY.txt 是個人敏感金鑰，取消下一行註解
+LIST/API_KEY.txt
+
+# ----------------------------
+# EFM 需求：DCS 執行時需要 bin/BasicEFM_template.dll
+# 因此保留此檔案追蹤，其餘 bin 內容忽略
+# ----------------------------
+bin/*
+!bin/BasicEFM_template.dll
