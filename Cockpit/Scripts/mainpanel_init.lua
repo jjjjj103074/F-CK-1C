@@ -1,5 +1,6 @@
--- shape_name = "default"  -- 註解掉的話會自動調用su25T的駕駛艙模型
--- livery = "default"
+-- 定義這是一個儀表板（即使是簡單的外部視角也需要這個）
+shape_name = "default"
+livery = "default"
 
 is_3d = false -- 暫時使用 2D 模式（外部視角）
 

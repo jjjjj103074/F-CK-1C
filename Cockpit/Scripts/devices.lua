@@ -6,5 +6,6 @@ end
 -------DEVICE ID-------
 devices = {}
 
-devices["GEAR"] = counter()
-devices["ACTUATORS"] = counter()
+devices["Gear"] = counter()
+devices["Actuators"] = counter()
+devices["CMS"] = counter()
