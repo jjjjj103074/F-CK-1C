@@ -50,6 +50,11 @@ LIST/API_KEY.txt
 # 本地建置或打包用資料夾
 dist/
 
+# 大型資源
+Shapes
+Textures
+Liveries
+
 # ----------------------------
 # EFM 需求：DCS 執行時需要 bin/BasicEFM_template.dll
 # 因此保留此檔案追蹤，其餘 bin 內容忽略
