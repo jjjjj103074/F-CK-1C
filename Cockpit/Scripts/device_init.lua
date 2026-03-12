@@ -1,45 +1,26 @@
--- 取得設備編號定義
+attributes = {
+    "cockpit_game_interface",
+    "check_simplification",
+}
+
+layout = {
+    { 0.0, 0.0 },
+    {
+        cockpit_local_point = { 3.2, 0.6, 0.0 },
+    },
+}
+
 dofile(LockOn_Options.script_path .. "devices.lua")
--- 定義材質
-dofile(LockOn_Options.script_path .. "materials.lua")
 
--- MainPanel = {
---     "ccMainPanel",
---     LockOn_Options.script_path .. "mainpanel_init.lua",
---     {
---         --{"INTERCOM", devices.INTERCOM},
---         --{"UHF_Radio", devices.UHF_RADIO},
---         --{"OxygenSystem", devices.TEMP3},
---         --{"avSimpleElectricSystem", devices.ELECTRIC_SYSTEM}, -- DCS.log: ERROR   COCKPITBASE: devices_keeper::link_all: unable to find link target 'avSimpleElectricSystem' for device 'MAIN_PANEL'
---         --{"LightSystem", devices.TEMP1},
---         --[[
---     {
---     devices.INTERCOM, -- DCS.log: ERROR   COCKPITBASE: devices_keeper::link_all: unable to find link target '28' for device 'MAIN_PANEL'
---     devices.UHF_RADIO,
---     devices.ELECTRIC_SYSTEM,
---     },
--- --]]
---     },
--- }
-
--- ---------------------------------------------------------
--- 設備
--- ---------------------------------------------------------
 creators = {}
+local cms_device_id = devices and devices.CMS
+if cms_device_id == nil then
+    cms_device_id = 2
+end
 
--- 測試用設備
-creators[devices.GEAR] = {
+creators[cms_device_id] = {
     "avLuaDevice",
-    LockOn_Options.script_path .. "Systems/gear_system.lua",
+    LockOn_Options.script_path .. "Systems/cms_system.lua",
 }
 
--- ---------------------------------------------------------
--- 指示器
--- ---------------------------------------------------------
-indicators = {}
-
--- 控制指示器
-indicators[#indicators + 1] = {
-    "ccControlsIndicatorBase",
-    LockOn_Options.script_path .. "ControlsIndicator/ControlsIndicator.lua",
-}
+need_to_be_closed = true

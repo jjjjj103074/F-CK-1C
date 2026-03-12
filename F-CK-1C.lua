@@ -1,30 +1,31 @@
 -- F-CK-1C.lua
--- 以 F-16C 範本為參考，建立 F-CK-1C 機體設定範本
--- 本檔案目的：提供完整但可修改的機體欄位 (可用於 AI/伺服器測試)
--- 註：某些 helper（pylon, gun_mount, makeAirplaneCanopyGeometry 等）與常數
--- (WSTYPE_PLACEHOLDER, MODULATION_AM 等) 由 DCS 執行環境提供，載入時需在 mod 環境下執行。
+-- ??F-16C ?哨?謓?蝞?????梁?? F-CK-1C ????桀???哨?謓?
+-- ?蟡??ｇ?謆???????堆?桅??賣?????????(?????AI/?∠捂???質??
+-- ?桅陷???? helper?ylon, gun_mount, makeAirplaneCanopyGeometry ????抵???
+-- (WSTYPE_PLACEHOLDER, MODULATION_AM ?? ??DCS ????????????鈭?????mod ?????貔?蜃?
 
 
--- ===================== 基本說明區 (Identification) =====================
--- Name / DisplayName / shape_table_data 必要用於引擎辨識與載入
+-- ===================== ?蝞賃秧?方??? (Identification) =====================
+-- Name / DisplayName / shape_table_data ?對???踐????憸脣??????
 local F_CK_1C = {
-    -- 機種內部識別名稱
+    -- ??頠??賊?謢塚????
     Name = 'F-CK-1C',
-    -- 顯示名稱（可本地化）
+    -- ?輯??????????秘?謖?
     DisplayName = _('F-CK-1C'),
 
     Rate = 40, -- RewardPoint in Multiplayer
 
     Shape = "F-CK-1C",
-    -- shape_table_data: 告訴引擎要載入的 3D 模型與毀損模型
+    -- shape_table_data: ???????秋撫??鈭? 3D ??????????
     shape_table_data = { {
-        file = "f-ck-1c", -- 3D 模型檔名（需放在 Shapes 資料夾）
+        name = "F-CK-1C",
+        file = "F-CK-1C", -- 3D ???澗???????祗 Shapes ???剜??
         username = "F-CK-1C",
         index = WSTYPE_PLACEHOLDER,
-        life = 20,                 -- 機體生命值（耐久/HP，整數，數值越高越難被摧毀）
-        vis = 3,                   -- 可見性等級（LOD/視覺等級，整數）
+        life = 20,                 -- ????賹??瞏????/HP???鞈??閰阬瞏??此?????????
+        vis = 3,                   -- ???????姿?LOD/?秋▼甇餉??????鞈?
         desrt = 'Fighter-2-crush', -- Name of destroyed object file name Alphajet-destr. This is a placeholder.
-        fire = { 300, 2 },         -- 火焰效果設定：{持續時間秒, 強度}（秒, unitless）
+        fire = { 300, 2 },         -- ???????桀???爸?蹓??蹇??? ??瞍瓠???, unitless??
         classname = "lLandPlane",
         positioning = "BYNORMAL"
     },
@@ -35,7 +36,7 @@ local F_CK_1C = {
         -- }
     },
 
-    -- 國家
+    -- ??F
     Countries = {
         "Abkhazia",
         "Algeria",
@@ -116,190 +117,207 @@ local F_CK_1C = {
         "Yemen"
     },
 
-    -- UI 與分類
-    -- UI 顯示相關（可選，影響選單顯示） [OPTIONAL]
+    -- UI ?????
+    -- UI ?輯???鞈?????鞈??嗆╰貔?閰制??輯??批??[OPTIONAL]
     Picture = "F-CK-1C.png", -- [OPTIONAL]
     mapclasskey = "P0091000024",
     WorldID = WSTYPE_PLACEHOLDER,
     attribute = { wsType_Air, wsType_Airplane, wsType_Fighter, WSTYPE_PLACEHOLDER, "Multirole fighters", "Refuelable" },
     Categories = { "{78EFB7A2-FD52-4b57-A6A6-3BF0E1D6555F}", "Interceptor" },
 
-    -- ===================== 操控/機組資訊區 (Crew & Cockpit) =====================
-    -- 操控/機組（分類：F-16/A-4E 風格）
-    HumanCockpit = true,                                -- 啟用玩家座艙（必須為 true 才能處理玩家輸入）
-    HumanCockpitPath = current_mod_path .. '/Cockpit/', -- 座艙腳本路徑
+    -- ===================== ???/??????? (Crew & Cockpit) =====================
+    -- ???/???????遴筑?F-16/A-4E ?詨赯萄??
+    HumanCockpit = true,                                -- ?賹????冽??????冪 true ?????????岳?臬??
+    HumanCockpitPath = current_mod_path .. '/Cockpit/', -- ?冽???殉秧??
 
-    crew_size = 1,                                      -- 機組人數（AI 會依此分配任務） [AI]
+    crew_size = 1,                                      -- ????剔捂?脣?? ??????????謕? [AI]
     crew_members = {
         [1] = {
-            ejection_seat_name = 17, -- 使用DCS通用彈射座椅ID (參考A-4E)
-            -- pilot_name 不是必須欄位
-            -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 需要在模型中定義此名稱
-            -- canopy_pos = {3.2, 0.674, 0}, -- 座艙罩位置
-            pos = { 3.2, 0.27, 0 }, -- 駕駛座在機體座標的 (x, y, z)，單位：公尺 (m)
-            g_suit = 1.02           -- G-suit 補償係數（unitless，通常 1.0 = 無補償）
+            ejection_seat_name = 17, -- ?輯撒?CS?謍船??塚???冽?ID (??蜃蹇?4E)
+            -- pilot_name ??謢?對????
+            -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: ???秋撒謓剔???????Ｘ?餈???
+            -- canopy_pos = {3.2, 0.674, 0}, -- ?冽??菜????
+            pos = { 3.2, 0.27, 0 }, -- ???冽謓剔?賹??冽???(x, y, z)?謘????? (m)
+            g_suit = 1.02           -- G-suit ?高??踐??脣??罩itless??謍啗? 1.0 = ????賹?
         }
     },
 
-    -- ===================== 性能參數區 (Mass, Geometry, Performance) =====================
-    -- 質量（千克）與燃油
-    M_empty = 6492,    -- 空機重量 (kg) | ✓(維基百科)
-    M_nominal = 9072,  -- 作戰或典型質量 (kg) | ✓(維基百科)
-    M_max = 12530,     -- 最大起飛重量 (kg) | ✓(維基百科)
-    M_fuel_max = 2111, -- 最大內部燃油質量 (kg) | ✓(維基百科)
+    -- ===================== ??荔???塗?? (Mass, Geometry, Performance) =====================
+    -- ?????????????
+    M_empty = 6492,    -- ?捂???? (kg) | ???砍?貔???)
+    M_nominal = 9072,  -- ?遴鬥??謘潘?????(kg) | ???砍?貔???)
+    M_max = 12530,     -- ???剜蝯脫?謜???(kg) | ???砍?貔???)
+    M_fuel_max = 2111, -- ???剜?????砥???(kg) | ???砍?貔???)
 
-    -- 以下為 AI 相關性能參數（標註為 [AI]），部分取自 A-4E 範例
-    CAS_min = 23.15, -- 最低校正空速 (Calibrated Airspeed)，AI 最低飛行速度 (m/s) [AI] | △(參考 A-4E-C，稍微降低)
+    -- ?鼎???AI ?鞈???荔???塗????桅?蹌?[AI]??????謘選 A-4E ?哨??
+    CAS_min = 23.15, -- ???遴?赯??敺??(Calibrated Airspeed)?I ???遴???蛛?賹撞 (m/s) [AI] | ????蜃?A-4E-C???箸????
 
-    -- 幾何尺寸（公尺）
-    length = 14.48,                         -- 機身總長 (m) | ✓(維基百科)
-    height = 4.7,                           -- 機高 (m) | ✓(維基百科)
-    wing_area = 24.26,                      -- 翼面積 (m^2) | ✓(維基百科)
-    wing_span = 8.53,                       -- 翼展 (m) | ✓(維基百科)
-    wing_tip_pos = { -2.3, 0.0006, 4.396 }, -- 翼尖相對座標 (x,y,z) (m) | ✓(自製模型)
+    -- ?????蝡???飭?
+    length = 14.48,                         -- ??瞉鞈∵ (m) | ???砍?貔???)
+    height = 4.7,                           -- ??? (m) | ???砍?貔???)
+    wing_area = 24.26,                      -- ?扳蔭豰??(m^2) | ???砍?貔???)
+    wing_span = 8.53,                       -- ?扳?? (m) | ???砍?貔???)
+    wing_tip_pos = { -2.3, 0.0006, 4.396 }, -- ?扳???閰??冽? (x,y,z) (m) | ????憲???)
 
-    -- 飛行性能
-    V_opt = 220,             -- 最適巡航速度 (m/s) | △(參考 F-16C模組)
-    V_take_off = 75,         -- 起飛速度 (m/s) | △(通靈)
-    V_land = 65,             -- 著陸速度 (m/s) | △(通靈)
-    V_max_sea_level = 369.4, -- 海平面最大持續速度 (m/s) | ✓(維基百科)
-    V_max_h = 612.5,         -- 高空最大速度 (m/s) | ✓(維基百科)
-    Mach_max = 1.8,          -- 最大馬赫數 (Mach) | ✓(維基百科)
-    Vy_max = 238.7,          -- 最大爬升率 (m/s) | △(Gemini 3 Pro AI 計算)
-    Ny_min = -3,             -- 最小瞬時容許過載 (-G) | ✓(維基百科)
-    Ny_max = 9,              -- 最大瞬時容許過載 (+G) | ✓(維基百科)
-    bank_angle_max = 60,     -- 最大滾轉/橫滾角度 (度) | △(參考F-16C模組與A-4E-C模組)
-    range = 2200,            -- 航程 (公里) [AI] | ✓(維基百科)
+    -- ?????荔?
+    V_opt = 220,             -- ???????溘賹撞 (m/s) | ????蜃?F-16C???)
+    V_take_off = 75,         -- ???賹撞 (m/s) | ???謍?)
+    V_land = 65,             -- ?謅谷?賹撞 (m/s) | ???謍?)
+    V_max_sea_level = 369.4, -- ????嚗??剜??伐?賹撞 (m/s) | ???砍?貔???)
+    V_max_h = 612.5,         -- ?次敺???剜??賹撞 (m/s) | ???砍?貔???)
+    Mach_max = 1.8,          -- ???剜??園??伍 (Mach) | ???砍?貔???)
+    Vy_max = 238.7,          -- ???剜????? (m/s) | ??Gemini 3 Pro AI ?殷??)
+    Ny_min = -3,             -- ???豱?蹇??格╰???(-G) | ???砍?貔???)
+    Ny_max = 9,              -- ???剜?豱?蹇??格╰???(+G) | ???砍?貔???)
+    bank_angle_max = 60,     -- ???剜???仿??恃?瞍?(?? | ????蜃蹇?16C??????4E-C???)
+    range = 2200,            -- ??? (?蟡?) [AI] | ???砍?貔???)
 
-    -- 推力
-    thrust_sum_max = 5506.47, -- 常規最大推力 (通常單位為 kgf 或 N，依專案慣例) | ✓(維基百科)
-    thrust_sum_ab = 8524.83,  -- 加力時最大推力 (kgf 或 N) | ✓(維基百科)
-    has_afterburner = true,   -- 是否配備加力燃燒器（布林） | ✓(維基百科)
+    -- ???
+    thrust_sum_max = 5506.47, -- ???????剜???(?謍啗??獢???kgf ??N????????) | ???砍?貔???)
+    thrust_sum_ab = 8524.83,  -- ?蹎??蹇??剜???(kgf ??N) | ???砍?貔???)
+    has_afterburner = true,   -- ??秋?????蹎????????????| ???砍?貔???)
 
-    -- 阻力/雷達/紅外
-    RCS = 3.6,                   -- 雷達散射截面 (m^2) | △(介於F-16C模組與A-4E-C模組之間)
-    radar_can_see_ground = true, -- 雷達是否能偵測地面/海面目標（布林） | ✓(我們都有反艦導彈了)
-    detection_range_max = 150,   -- 感測或雷達最大探測距離 (km) | △(AN/APG-67維基百科)
-    IR_emission_coeff = 0.73,    -- 紅外發射係數（常態，無單位） | △(參考FA-18模組)
-    IR_emission_coeff_ab = 4.0,  -- 紅外發射係數（加力時，無單位） | △(參考FA-18模組)
+    -- ?擗?/???/??
+    RCS = 3.6,                   -- ????????畸? (m^2) | ????謘-16C??????4E-C?????)
+    radar_can_see_ground = true, -- ?????秋??鞈ｆ???謓???豰???????謅? | ????威?荔?????銵??塚??)
+    detection_range_max = 150,   -- ?賹?謖謆????剜??蟡???(km) | ??AN/APG-67?砍?貔???)
+    IR_emission_coeff = 0.73,    -- ???瞉??踐??脣????????軋??選? | ????蜃蹇睪-18???)
+    IR_emission_coeff_ab = 4.0,  -- ???瞉??踐??脣????謜????獢???| ????蜃蹇睪-18???)
 
-    -- 空中加油
-    -- air_refuel_receptacle_pos = {-0.051, 0.911, 0.0}, -- 空中加油接收器位置 (x,y,z) (m)
-    -- tanker_type = 1, -- 空中加油機分類（整數，DCS 定義）
+    -- ????蹎?
+    -- air_refuel_receptacle_pos = {-0.051, 0.911, 0.0}, -- ????蹎??鈭止??????(x,y,z) (m)
+    -- tanker_type = 1, -- ????蹎?????遴筑??皝?CS ?堊垓???
 
-    -- ===================== 起落架區 (Landing Gear) =====================
-    tand_gear_max = 0.761,                                    -- 前輪轉向最大弧度 (rad) | △(模型估算)
-    nose_gear_pos = { 4.12, -1.912, 0 },                      -- 前輪位置 (x,y,z) (m) | ✓(模型)
-    nose_gear_amortizer_direct_stroke = 0.0,                  -- 減震器伸展量 (m) | ✓(模型)
-    nose_gear_amortizer_reversal_stroke = 1.712 - 1.912,      -- 減震器收縮量 (m) | ✓(模型)
-    nose_gear_amortizer_normal_weight_stroke = 1.812 - 1.912, -- 常重位置位移 (m) | ✓(模型)
-    nose_gear_wheel_diameter = 0.4572,                        -- 前輪直徑 (m) | ✓(模型)
+    -- ===================== ?????? (Landing Gear) =====================
+    tand_gear_max = 0.761,                                    -- ????改????剜?急?(rad) | ?????∪??)
+    nose_gear_pos = { 4.12, -1.912, 0 },                      -- ????選???(x,y,z) (m) | ????)
+    nose_gear_amortizer_direct_stroke = 0.0,                  -- ?????嗆??? (m) | ????)
+    nose_gear_amortizer_reversal_stroke = 1.712 - 1.912,      -- ?????踐??格?? (m) | ????)
+    nose_gear_amortizer_normal_weight_stroke = 1.812 - 1.912, -- ?????選??剝?? (m) | ????)
+    nose_gear_wheel_diameter = 0.4572,                        -- ????皜? (m) | ????)
 
-    main_gear_pos = { -1.185, -1.913, 0.7905 },               -- 主輪位置 (x,y,z) (m) | ✓(模型)
-    main_gear_amortizer_direct_stroke = 0,                    -- 主輪減震伸展量 (m) | ✓(模型)
-    main_gear_amortizer_reversal_stroke = 1.727 - 1.913,      -- 主輪減震收縮量 (m) | ✓(模型)
-    main_gear_amortizer_normal_weight_stroke = 1.796 - 1.913, -- 主輪正常負重位移 (m) | ✓(模型)
-    main_gear_wheel_diameter = 0.6096,                        -- 主輪直徑 (m) | ✓(模型)
+    main_gear_pos = { -1.185, -1.913, 0.7905 },               -- ???? (x,y,z) (m) | ????)
+    main_gear_amortizer_direct_stroke = 0,                    -- ????謜??∟岳???(m) | ????)
+    main_gear_amortizer_reversal_stroke = 1.727 - 1.913,      -- ????謜???亥??(m) | ????)
+    main_gear_amortizer_normal_weight_stroke = 1.796 - 1.913, -- ???????蹎??選?摰?(m) | ????)
+    main_gear_wheel_diameter = 0.6096,                        -- ????皜? (m) | ????)
 
     -- nose_gear_door_close_after_retract = false,
     -- main_gear_door_close_after_retract = false,
 
-    -- ===================== 引擎區 (Engine) =====================
-    engines_count = 2, -- 引擎數量（整數）
+    -- ===================== ????? (Engine) =====================
+    engines_count = 2, -- ????鞈?????鞈?
     engines_nozzles = {
         [1] = {
-            pos = { -6.118, 0.0918, 0.4452 },                -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
-            elevation = 0,                                   -- 噴嘴仰角 (度)  | ✓(模型)
-            diameter = 0.64,                                 -- 噴嘴直徑 (m)  | ✓(模型)
-            exhaust_length_ab = 3.5,                         -- 加力噴焰視覺長度 (m) | △(模型估算)
-            exhaust_length_ab_K = 0.77,                      -- 加力視覺縮放係數（無單位）| △(這個數字比較考看)
-            smokiness_level = 0.05,                          -- 噴口冒煙程度（0-1 無單位） | △(參考F-16C模組與FA-18模組)
-            afterburner_circles_count = 6,                   -- 加力環的數量（整數） | △(照片)
-            -- afterburner_circles_pos = {0.2, 0.8}, -- 加力環位置比例（相對座標或比例值） | △(不知道填甚麼)
-            afterburner_circles_scale = 1.0,                 -- 加力環縮放係數（無單位） | △(參考F16C)
-            afterburner_effect_texture = "afterburner_f-16c" -- 加力噴焰效果紋理 | △(用F16C的)
+            pos = { -6.118, 0.0918, 0.4452 },                -- ?皜賃??閰?????冽? (x,y,z) (m) | ????)
+            elevation = 0,                                   -- ?皜賃???? (??  | ????)
+            diameter = 0.64,                                 -- ?皜賃??皜? (m)  | ????)
+            exhaust_length_ab = 3.5,                         -- ?蹎??皜∴??秋▼甇??撞 (m) | ?????∪??)
+            exhaust_length_ab_K = 0.77,                      -- ?蹎??秋▼甇餉?澗??踐??脣????獢??? ???謕??殉??????)
+            smokiness_level = 0.05,                          -- ?皜賃?????瞍脣??-1 ??軋??選? | ????蜃蹇?16C?????括-18???)
+            afterburner_circles_count = 6,                   -- ?蹎?????鞈?????鞈? | ?????)
+            -- afterburner_circles_pos = {0.2, 0.8}, -- ?蹎?????菜????閰??冽??謘????瞏? | ????貔??乒?謍渡?)
+            afterburner_circles_scale = 1.0,                 -- ?蹎???????鞈???軋??選? | ????蜃蹇?6C)
+            afterburner_effect_texture = "afterburner_f-16c" -- ?蹎??皜∴??????? | ???瘝?6C??
         },
         [2] = {
-            pos = { -6.118, 0.0918, -0.4452 },               -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
-            elevation = 0,                                   -- 噴嘴仰角 (度)  | ✓(模型)
-            diameter = 0.64,                                 -- 噴嘴直徑 (m)  | ✓(模型)
-            exhaust_length_ab = 3.5,                         -- 加力噴焰視覺長度 (m) | △(模型估算)
-            exhaust_length_ab_K = 0.77,                      -- 加力視覺縮放係數（無單位）| △(這個數字比較考看)
-            smokiness_level = 0.05,                          -- 噴口冒煙程度（0-1 無單位） | △(參考F-16C模組與FA-18模組)
-            afterburner_circles_count = 6,                   -- 加力環的數量（整數） | △(照片)
-            -- afterburner_circles_pos = {0.2, 0.8}, -- 加力環位置比例（相對座標或比例值） | △(不知道填甚麼)
-            afterburner_circles_scale = 1.0,                 -- 加力環縮放係數（無單位） | △(參考F16C)
-            afterburner_effect_texture = "afterburner_f-16c" -- 加力噴焰效果紋理 | △(用F16C的)
+            pos = { -6.118, 0.0918, -0.4452 },               -- ?皜賃??閰?????冽? (x,y,z) (m) | ????)
+            elevation = 0,                                   -- ?皜賃???? (??  | ????)
+            diameter = 0.64,                                 -- ?皜賃??皜? (m)  | ????)
+            exhaust_length_ab = 3.5,                         -- ?蹎??皜∴??秋▼甇??撞 (m) | ?????∪??)
+            exhaust_length_ab_K = 0.77,                      -- ?蹎??秋▼甇餉?澗??踐??脣????獢??? ???謕??殉??????)
+            smokiness_level = 0.05,                          -- ?皜賃?????瞍脣??-1 ??軋??選? | ????蜃蹇?16C?????括-18???)
+            afterburner_circles_count = 6,                   -- ?蹎?????鞈?????鞈? | ?????)
+            -- afterburner_circles_pos = {0.2, 0.8}, -- ?蹎?????菜????閰??冽??謘????瞏? | ????貔??乒?謍渡?)
+            afterburner_circles_scale = 1.0,                 -- ?蹎???????鞈???軋??選? | ????蜃蹇?6C)
+            afterburner_effect_texture = "afterburner_f-16c" -- ?蹎??皜∴??????? | ???瘝?6C??
         }
     },
 
-    -- ===================== 武裝區 (Guns & Pylons) =====================
-    -- 武裝區（分類說明）
-    -- - 參考 F-16 的程式化 pylon 定義方式，適合大量武裝選項與共用清單。此處保留簡化版。
-    -- - 若要 AI 能正確掛載任務武器，Pylons 與 ammo_type/Stores 應完整，否則 AI 可能不會在任務中使用武裝。 [AI]
-    -- 這裡採程式化定義，參考 F-16C 的 pylon 整理；可視需求縮減或展平為單純 CLSID 清單
-    -- 以下範例保留基本 Gun 與示意 Pylons（若不需要武裝可把 Pylons 設為 {} 或只保留 <CLEAN>）
-    -- TODO: 需自定義機砲函數或使用DCS內建機砲定義
-    -- Guns = {gun_mount("M_61", {
-    --     mixes = {{1}, {2}, {3}},
-    --     count = 510
-    -- }, {
-    --     supply_position = {0.4, 0.55, 0.0},
-    --     effects = {gatling_effect(351, 6), fire_effect(350), smoke_effect()}
-    -- })},
-    Guns = {},             -- [DISABLED - M_61機砲需自定義或驗證，暫時禁用避免載入錯誤]
-    ammo_type_default = 1, -- 機砲彈藥類型預設索引（整數，對應 ammo_type 列表）
-    ammo_type = { _("HEI-T High Explosive Incendiary-Tracer"), _("HEI High Explosive Incendiary"), _("AP Armor Piercing") },
+    -- ===================== ?正??? (Guns & Pylons) =====================
+    -- ?正???????遴筆????
+    -- - ??蜃?F-16 ????? pylon ?堊垓??摮??蹍?????脤???蹓????璇??謘?蹇縐????謕??謘???
+    -- - ?鈭? AI ?鞈?縣??捂????謕????Pylons ??ammo_type/Stores ????皝??銵? AI ??迎??????園??謕??輯撒??镼???[AI]
+    -- ?謕???????堊垓??????F-16C ??pylon ?皜????駁謖????祉?謜?????蝞???CLSID ?謘?
+    -- ?鼎??哨???踐???蝞賃秧 Gun ??怠??Pylons???????秋撮??豲??Pylons ?桀?蹌?{} ?謘澗?踐?? <CLEAN>??
+    -- M61A2 (using M_61 gun descriptor for compatibility in current mod environment)
+    Guns = {
+        gun_mount("M_61",
+        {
+            mixes = {
+                {1},        -- XM242 HEI-T
+                {2},        -- M56 HEI
+                {3},        -- M53 API
+                {4, 5},     -- M55 + M220 TP
+                {6},        -- PGU-28/B SAPHEI
+                {7, 8},     -- PGU-27/B TP with tracers
+            },
+            count = 523
+        },
+        {
+            supply_position = {0.4, 0.55, 0.0},
+            muzzle_pos = {3.85, 0.56, 2.02},
+            ejector_pos = {2.95, 0.42, 2.00},
+            effects = {gatling_effect(351, 6), fire_effect(350), smoke_effect()},
+        })
+    },
+    ammo_type_default = 5,
+    ammo_type = {
+        _("HEI-T High Explosive Incendiary-Tracer"),
+        _("HEI High Explosive Incendiary"),
+        _("AP Armor Piercing"),
+        _("TP Target Practice-Tracer"),
+        _("SAPHEI High Explosive Armor Piercing PGU"),
+        _("TP Target Practice-Tracer PGU"),
+    },
 
-    -- Pylons 範例（精簡版） [OPTIONAL]
-    -- TODO: 需要在 F-CK-1C.edm 模型中定義 Pylon1, Pylon5 等連接器
-    -- Pylons = { -- 每個 pylon 使用 pylon(index, ... ) helper
+    -- Pylons ?哨????蝘餉????[OPTIONAL]
+    -- TODO: ???秋撒謓?F-CK-1C.edm ???????Pylon1, Pylon5 ??????
+    -- Pylons = { -- ?伍??pylon ?輯撒??pylon(index, ... ) helper
     -- pylon(1, 0, -2.2, 0.002, -4.739,
     -- {
     --     arg = 308,
     --     arg_value = 0,
     --     use_full_connector_position = true,
-    --     connector = "Pylon1" -- 模型中需定義此連接器
+    --     connector = "Pylon1" -- ??????堊垓???氐????
     -- }, {
-    --     { CLSID = "<CLEAN>", arg_value = 1 }, -- 空掛載點
+    --     { CLSID = "<CLEAN>", arg_value = 1 }, -- ?捂???
     -- }),
     -- pylon(5, 0, -0.704, -1.173, 0.0, {
     --     arg = 312,
     --     arg_value = 0,
     --     use_full_connector_position = true,
-    --     connector = "Pylon5", -- 模型中需定義此連接器
+    --     connector = "Pylon5", -- ??????堊垓???氐????
     --     mass = 78.9
     -- }, {
     --     { CLSID = "<CLEAN>", arg_value = 1 },
     -- }),
     -- },
-    Pylons = {}, -- [DISABLED - 模型連接器未定義，暫時禁用避免載入錯誤]
+    Pylons = {}, -- [DISABLED - ???????踐秤?堊垓???魂甽?蹇???賃?????隞選??支?
 
-    -- ===================== Countermeasures / Sensors 區 =====================
+    -- ===================== Countermeasures / Sensors ?? =====================
     passivCounterm = {
-        CMDS_Edit = true,        -- 是否允許在界面編輯 CMDS（布林）
-        SingleChargeTotal = 120, -- 總彈藥量（chaff + flare 總和）(整數)
+        CMDS_Edit = true,        -- ??秋??蹓曇?????嚗寞???CMDS????謅?
+        SingleChargeTotal = 180, -- ?株郭??隞??haff + flare ?株郭????皝)
         chaff = {
-            default = 60,
+            default = 90,
             increment = 30,
             chargeSz = 1
-        }, -- chaff: 預設數量、增量、單次釋放數
+        }, -- chaff: ??澈?鞈??蹓???純蹓魂?????察
         flare = {
-            default = 60,
+            default = 90,
             increment = 30,
             chargeSz = 1
-        } -- flare: 預設數量、增量、單次釋放數
-    },    --干擾措施投放設定 | △(參考F16C)
-
+        } -- flare: ??澈?鞈??蹓???純蹓魂?????察
+    },    --??????????桀?? | ????蜃蹇?6C)
     Sensors = {
-        RADAR = "AN/APG-67V", -- | ✓(維基百科)
-        RWR = "Abstract RWR"  -- | △(參考F16C)
-    },                        --雷達/電子戰設定
+        RWR = "Abstract RWR"
+    },                        --???/?擗???澈??
 
 
-    EPLRS = true, --Enhanced Position Location Reporting System（增強型位置定位回報系統） | ✓(基本概念)
+    EPLRS = true, --Enhanced Position Location Reporting System???????選??剜謍??豯止鼓??蝯??| ???蝞賃秧????
 
-    -- ===================== 任務與分類 (AI Tasks) =====================
+    -- ===================== ????????(AI Tasks) =====================
     Tasks = {
         aircraft_task(CAP),
         aircraft_task(Escort),
@@ -314,12 +332,12 @@ local F_CK_1C = {
         aircraft_task(AntishipStrike),
         aircraft_task(Reconnaissance),
     },                                -- end of Tasks
-    DefaultTask = aircraft_task(CAP), -- | △(參考F16C)
+    DefaultTask = aircraft_task(CAP), -- | ????蜃蹇?6C)
 
-    -- ===================== 損傷 (Damage) - AI/遊戲邏輯重要 =====================
-    -- Damage 定義告訴模擬器各區塊被擊中時的行為與臨界傷害，對 AI 生存與傷害判定影響甚大。 [AI]
+    -- ===================== ??儐 (Damage) - AI/?????湔??? =====================
+    -- Damage ?堊垓????????????????輯??蹇??蛛蹌??穿??綜儐?啣????AI ?賹???拆儐?啣?謍啗?頛??剜??[AI]
 
-    Damage = verbose_to_dmg_properties({ -- 傷害分區配置（mapping 名稱->args/critical_damage）| ✖(暫時沒有)
+    Damage = verbose_to_dmg_properties({ -- ????????apping ???->args/critical_damage?? ????????)
         -- ["NOSE_CENTER"] = {
         --     args = {146},
         --     critical_damage = 3
@@ -345,17 +363,17 @@ local F_CK_1C = {
         -- }
     }),
 
-    -- TODO: 需要創建碎片模型 F-CK-1C_oblomok_wing_R.edm 和 F-CK-1C_oblomok_wing_L.edm
+    -- TODO: ???秋撒?單蝞???芾???F-CK-1C_oblomok_wing_R.edm ??F-CK-1C_oblomok_wing_L.edm
     -- DamageParts = {
     --     [1] = "F-CK-1C_oblomok_wing_R",
     --     [2] = "F-CK-1C_oblomok_wing_L"
     -- },
-    -- 暫時禁用以避免引擎嘗試載入不存在的模型
-    -- DamageParts = {}, -- 空陣列可能也會有問題，完全省略此欄位
+    -- ????啾播??隞遴????????啗正??銋??殉朱謓?????
+    -- DamageParts = {}, -- ?硃謒?謅?鞈?????????????鈭方縐???
 
-    -- ===================== 飛行模型 (SFM_Data) - 簡化版 =====================
-    -- 注意：完整 SFM_Data 很敏感，如要穩定飛行建議複製或微調現成機種數值
-    SFM_Data = { -- |  △(複製於 F-16C)
+    -- ===================== ????? (SFM_Data) - ?芬???=====================
+    -- ???城???SFM_Data ?綽???賹???????????梁???畋?謘澆??方撒????????
+    SFM_Data = { -- |  ???湛???F-16C)
         aerodynamics =
         {
             Cy0 = 0,
@@ -434,8 +452,8 @@ local F_CK_1C = {
         },     -- end of engine
     },
 
-    -- ===================== 燈光、效果、網路同步等 (Visual & Net) =====================
-    lights_data = { -- | ✖(暫時沒有燈光)
+    -- ===================== ????蹓??謚阬蹓賡???漲? (Visual & Net) =====================
+    lights_data = { -- | ???????????)
         typename = "collection",
         lights = {
             -- [WOLALIGHT_STROBES] = {
@@ -449,16 +467,16 @@ local F_CK_1C = {
         }
     },
 
-    net_animation = { -- | ✖(暫時沒有網路同步)
+    net_animation = { -- | ?????????祈璆??駁?)
 
     },
 
-    -- 煙霧/火焰位置 (Fires Position)
-    -- 格式：[編號] = {x, y, z}
-    -- 座標軸：x 向右、y 向上、z 向前
-    -- 複製於 A-4E-C.lua
+    -- ?謕祝/????選???(Fires Position)
+    -- ?瞉????箏?] = {x, y, z}
+    -- ?冽????x ??恃?蹍?????蹍????
+    -- ?湛???A-4E-C.lua
     fires_pos =
-    { -- | ✖(暫時沒有)
+    { -- | ????????)
         -- [1] =     {-0.232,    1.262,    0},     -- Fuselage
         -- [2] =     {-0.2,    -0.5,    0.84},     -- wing (inner?) right, WING_R_IN
         -- [3] =     {-0.75,    -0.5,    -0.8},    -- wing (inner?) left, WING_L_IN
@@ -477,43 +495,43 @@ local F_CK_1C = {
     --     file = current_mod_path .. "/Effects/F-CK-1C_overwingVapor.lua"
     -- }},
 
-    -- chaff_flare_dispenser = {
-    --     [1] = {
-    --         dir = {0, -1, 0},
-    --         pos = {-3.65, -0.5, -0.93}
-    --     },
-    --     [2] = {
-    --         dir = {0, -1, 0},
-    --         pos = {-3.91, -0.5, -0.93}
-    --     }
-    -- },
+    chaff_flare_dispenser = {
+        [1] = {
+            dir = {0, -1, 0},
+            pos = {-3.78, -0.45, -0.78} -- Left side of speedbrake
+        },
+        [2] = {
+            dir = {0, -1, 0},
+            pos = {-3.78, -0.45, 0.78} -- Right side of speedbrake
+        }
+    },
 
-    -- 以下為從 A-4E 參考來的可選欄位，對 AI 或伺服器測試常有用：
-    -- 若不需要可刪除或註解。
-    -- stores_number = 9, -- 掛載點數量 (整數，供 AI/配置介面參考)
-    -- average_fuel_consumption = 0.86, -- 平均油耗 (TSFC 或專案約定單位，unitless)
-    -- is_tanker = false, -- 是否為加油機 (布林)
-    -- launch_bar_connected_arg_value = 0.87, -- 發射吊架連接顯示參數 (arg value，用於載具 UI)
-    -- sounderName = "Aircraft/Planes/F-CK-1C", -- 聲音資源路徑/名稱（字串，非必需但常見）
-    -- -- 機艙視角限制 (AI 使用或視角約束)
+    -- ?鼎??蝞? A-4E ??蜃?????鞊??選???AI ?謘餅?????撗急鞊????
+    -- ?銋????秋撒???畸??謘輸?????
+    -- stores_number = 9, -- ?謜??綜等???(?皝?? AI/???豰??蜃?
+    -- average_fuel_consumption = 0.86, -- ???砥??(TSFC ?謘??ｇ???堊城謘??unitless)
+    -- is_tanker = false, -- ??秋??蝞???? (???)
+    -- launch_bar_connected_arg_value = 0.87, -- ?瞉???斯??????塗 (arg value???瞏???UI)
+    -- sounderName = "Aircraft/Planes/F-CK-1C", -- ??止?????/??????????豯????選????
+    -- -- ????秋▼???? (AI ?輯撒??謘??恃????
     -- CanopyGeometry = {
     --     elevation = {-50.0, 90.0}
     -- },
-    -- -- 通訊設定（常用常數 MODULATION_AM 由環境提供）
+    -- -- ?謍??桀???????貉???MODULATION_AM ?璇??????
     -- HumanRadio = {
     --     modulation = MODULATION_AM
     -- },
-    -- panelRadio = {}, -- 面板/無線電設定佔位 (可填具體表格)
-    -- -- 跑道分類/起降分類 (可由地圖/AI 使用)
+    -- panelRadio = {}, -- ?嚗賃瓷/????擗澈?堊垢???(??砂????萄赯?
+    -- -- ?????/????? (??????/AI ?輯撒??
     -- LandRWCategories = {},
     -- TakeOffRWCategories = {},
-    -- -- Failures 與簡單的 Countermeasures / ECM 入口
+    -- -- Failures ??恍??獢? Countermeasures / ECM ?鈭
     -- Failures = {},
     -- Countermeasures = {
     --     ECM = "AN/ALQ-126"
-    -- }, -- 簡單 ECM 欄位參考（字串）
+    -- }, -- ?芬謘?ECM ?????蜃???殉??∪??
 
-    -- -- ===================== 其他可選屬性（UI、玩家專屬） =====================
+    -- -- ===================== ?????恃??????UI?蹓踐??啣???忽? =====================
     -- AddPropAircraft = {{
     --     id = "HelmetMountedDevice",
     --     control = 'comboList',
@@ -537,12 +555,13 @@ local F_CK_1C = {
     --     arg = 509
     -- }}
 
-    -- 如需 datalink，填寫 connectDatalinks / datalinks
-    -- 本機版本未包含 datalinks，先註解以避免載入錯誤；若要啟用，請把下面兩行取消註解並確保檔案存在。
+    -- ??? datalink??菜??connectDatalinks / datalinks
+    -- ?蟡???秧?????datalinks???桅??暸?隞遴?????隞選??斗食??鈭??賹???????嚗瘀?蛛??剁????蝞??澗???殉朱謓??
     -- connectDatalinks = {"Link16"},
     -- datalinks = { Link16 = "CoreMods\\aircraft\\F-CK-1C\\Datalinks\\Link16.lua" }
 
 }
 
--- 註：add_aircraft 為 DCS 提供之函數，用於註冊機體
+-- ?桅陷?add_aircraft ??DCS ???????鞈???踐??桅?????
 add_aircraft(F_CK_1C)
+
