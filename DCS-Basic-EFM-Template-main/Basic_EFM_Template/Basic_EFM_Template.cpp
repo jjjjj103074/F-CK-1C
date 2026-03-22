@@ -1926,7 +1926,7 @@ double ed_fm_get_param(unsigned index)
 			return true;
 
 		case ED_FM_FC3_STICK_PITCH:
-			return limit(pitch_input/2, -1.0, 1.0);
+			return limit(pitch_input, -1.0, 1.0);
 
 		case ED_FM_FC3_STICK_ROLL:
 			return limit(roll_input, -1.0, 1.0);
