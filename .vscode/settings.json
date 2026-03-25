@@ -1,3 +1,6 @@
 {
-  "Lua.diagnostics.enable": false
+  "Lua.diagnostics.enable": false,
+  "Lua.format.defaultConfig": {
+    "max_line_length": "2000"
+  }
 }

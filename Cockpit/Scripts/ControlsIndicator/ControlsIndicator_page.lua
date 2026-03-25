@@ -163,10 +163,8 @@ trimmer10.parent_element = pitch_scale.name
 
 
 -- PEDALS ---------------------------------------------------------------------
-local rudder_scale = add_line("rudder_scale", { -size_x, -(size_y_negative + rudder_shift) }, size_x * 2, nil, nil,
-	base.name)
-local rudder_index = add_line("rudder_index", { 0, -(size_y_negative + rudder_shift * 2) }, rudder_shift * 2, nil, nil,
-	base.name, { { "rudder", size_x }, { "rotate", math.rad(90) } })
+local rudder_scale = add_line("rudder_scale", { -size_x, -(size_y_negative + rudder_shift) }, size_x * 2, nil, nil, base.name)
+local rudder_index = add_line("rudder_index", { 0, -(size_y_negative + rudder_shift * 2) }, rudder_shift * 2, nil, nil, base.name, { { "rudder", size_x }, { "rotate", math.rad(90) } })
 
 
 -- THROTTLE SCALE -------------------------------------------------------------
