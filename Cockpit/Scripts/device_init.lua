@@ -11,6 +11,7 @@ layout = {
 }
 
 dofile(LockOn_Options.script_path .. "devices.lua")
+dofile(LockOn_Options.script_path .. "materials.lua")
 
 creators = {}
 local cms_device_id = devices and devices.CMS
@@ -22,5 +23,8 @@ creators[cms_device_id] = {
     "avLuaDevice",
     LockOn_Options.script_path .. "Systems/cms_system.lua",
 }
+
+indicators = {}
+indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "ControlsIndicator/ControlsIndicator.lua" }
 
 need_to_be_closed = true
