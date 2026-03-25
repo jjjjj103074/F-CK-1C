@@ -27,61 +27,61 @@ local FCK1C_VERSION_HISTORY = {
 
 declare_plugin(self_ID,
     {
-        -- =================?蝞賃秧????賤蹓?================
-        image         = "F-CK-1C.png",                -- ????謘???刻麾: ?輯???瘙S????????嗉??????[?澗?????]
-        installed     = true,                         -- ?堆???????? true=??????? false=?蹎??????? [????憟?
-        dirName       = current_mod_path,             -- ????獢???: DCS????????????荔?赯?獢??? [?殉??⊿???]
-        displayName   = _("F-CK-1C Module"),          -- ?輯?????: ??踝???橫???嚗蝞??????? [??秘?謘??楞
-        developerName = _("F-CK-1C Development Team"), -- ??赤????? ?????赤?謢??謘撢????? [??秘?謘??楞
+        -- ================= 基本模組資訊 =================
+        image         = "F-CK-1C.png",                  -- 模組預覽圖片
+        installed     = true,                           -- 是否啟用此模組
+        dirName       = current_mod_path,               -- 模組根目錄
+        displayName   = _("F-CK-1C Module"),            -- UI 顯示名稱
+        developerName = _("F-CK-1C Development Team"),  -- 開發團隊名稱
 
-        -- =================??蝯?謢塚??賤蹓?================
-        fileMenuName  = _("F-CK-1C"),                                                                                                                -- ?澗???閰制????: ?瘙S?澗???閰制???嚗蝞???? [??秘?謘??楞
-        update_id     = "F-CK-1C_Mod",                                                                                                               -- ?皝??朱??? ??踐?????皝??潘撓貔????ID [?殉??（
-        version       = FCK1C_BUILD_VERSION,                                                                                                                    -- ?????秧?? ????止策??謘??蟡???[??秧?殉??（
-        state         = "installed",                                                                                                                 -- ??????? "installed"=???? "beta"=??撗??[??????楞
+        -- ================= 更新與描述資訊 =================
+        fileMenuName  = _("F-CK-1C"),                                                                -- DCS 選單中的名稱
+        update_id     = "F-CK-1C_Mod",                                                               -- 更新系統使用的模組 ID
+        version       = FCK1C_BUILD_VERSION,                                                         -- 模組版本號
+        state         = "installed",                                                                 -- 模組狀態: installed / beta
         info          = _(
-        "F-CK-1C multirole fighter module. Contains aircraft configuration, liveries and mission samples for testing and AI use."),                  -- ?????渲: ?啣??阡??????賹???潘??[??秘?謘??楞
+        "F-CK-1C multirole fighter module. Contains aircraft configuration, liveries and mission samples for testing and AI use."), -- 模組說明文字
         
         binaries = { 'BasicEFM_template.dll', },
 
-        -- =================?秋▼甇餅謘???=================
+        -- ================= 外觀塗裝 =================
         Skins         = {
             {
-                name = _("F-CK-1C Skins"), -- ?叟▼?????? ?輯??????威?鞊???橫??????[??秘?謘??楞
-                dir  = "Theme"             -- ?叟▼????獢?: ?殉朵?謘??鞈??澗??????謕? [?閰???]
+                name = _("F-CK-1C Skins"), -- 塗裝分類名稱
+                dir  = "Theme"             -- 塗裝資料夾
             },
         },
 
-        -- =================????????================
+        -- ================= 任務內容 =================
         Missions      = {
             {
-                name  = _("F-CK-1C Training"), -- ???????? ?輯????園??謕?????嚗???? [??秘?謘??楞
-                dir   = "Missions",           -- ????澗???獢?: ?殉朵??miz????澗??????謕? [?閰???]
-                CLSID = "{F-CK-1C missions}", -- ????遴竣??謢塚??? ??踐???????????ID [CLSID?殉??（
+                name  = _("F-CK-1C Training"), -- 任務分類名稱
+                dir   = "Missions",            -- 任務 .miz 所在資料夾
+                CLSID = "{F-CK-1C missions}",  -- 任務分類識別 ID
             },
         },
 
-        -- =================????殉死???=================
+        -- ================= Logbook 類別 =================
         LogBook       = {
             {
-                name = _("F-CK-1C Operations"), -- ?殉死??芾號??遴竣??? ????蛛????????遴等???[??秘?謘??楞
-                type = "F-CK-1C_Mod",           -- ?殉死??遴竣?: ??踐??舀０???潛??鞎??遴竣???? [?遴竣??殉??（
+                name = _("F-CK-1C Operations"), -- 飛行紀錄分類名稱
+                type = "F-CK-1C_Mod",           -- 飛行紀錄類型 ID
             },
         },
 
-        -- =================?鞈?????橫?=================
+        -- ================= 模組設定頁 =================
         Options       = {
             {
-                name   = _("F-CK-1C Settings"), -- ?桀???閰制????: ?輯????賃?????嚗???? [??秘?謘??楞
-                nameId = "F-CK-1C",           -- ?桀???朱??? ????踐??朱????荔??ID [ID?殉??（
-                dir    = "Options",           -- ?桀???澗???獢?: ?殉朵?????橫??澗??????謕? [?閰???]
-                CLSID  = "{F-CK-1C options}"  -- ?桀???遴竣??謢塚??? ??踐??桀?????????ID [CLSID?殉??（
+                name   = _("F-CK-1C Settings"), -- 設定頁顯示名稱
+                nameId = "F-CK-1C",             -- 設定頁名稱 ID
+                dir    = "Options",             -- 設定頁資料夾
+                CLSID  = "{F-CK-1C options}"    -- 設定頁識別 ID
             },
         },
 
-        -- =================?岳?舫????=================
+        -- ================= 輸入設定檔 =================
         InputProfiles = {
-            ["F-CK-1C"] = current_mod_path .. '/Input/F-CK-1C/', -- ?岳????澗?璆? ???/?謘賤???澗??????皜脫???[?荒????]
+            ["F-CK-1C"] = current_mod_path .. '/Input/F-CK-1C/', -- 搖桿、鍵盤等輸入設定檔路徑
         },
     })
 
@@ -105,7 +105,7 @@ dofile(current_mod_path .. '/F-CK-1C.lua')
 -- "baseline" = original non-EFM path (known good for collision)
 -- "efm_min"  = EFM without FM/config.lua
 -- "efm_full" = EFM with FM/config.lua
-local EFM_MODE = "efm_full"
+local EFM_MODE = "efm_min"
 log_info("FCK1C: entry.lua loaded, version=" .. tostring(FCK1C_BUILD_VERSION) .. ", date=" .. tostring(FCK1C_BUILD_DATE) .. ", EFM_MODE=" .. tostring(EFM_MODE))
 
 local cfg_path = current_mod_path .. "/FM/config.lua"
@@ -136,8 +136,27 @@ else
         nil,
         current_mod_path .. "/comm.lua"
     )
-    dofile(current_mod_path .. "/Views.lua")
-    make_view_settings("F-CK-1C", ViewSettings, SnapViews)
+    local view_loaded = false
+    local view_candidates = {
+        current_mod_path .. "/Views.lua",
+        current_mod_path .. "/baseline_original/F-CK-1C/Views.lua"
+    }
+    for _, view_path in ipairs(view_candidates) do
+        local ok, err = pcall(dofile, view_path)
+        if ok then
+            view_loaded = true
+            log_info("FCK1C: loaded view config: " .. tostring(view_path))
+            break
+        else
+            log_info("FCK1C: view config not loaded from " .. tostring(view_path) .. " (" .. tostring(err) .. ")")
+        end
+    end
+
+    if view_loaded and ViewSettings and SnapViews then
+        make_view_settings("F-CK-1C", ViewSettings, SnapViews)
+    else
+        log_error("FCK1C: view settings missing, skip make_view_settings in baseline mode")
+    end
 end
 
 plugin_done()
