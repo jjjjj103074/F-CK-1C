@@ -273,17 +273,78 @@ local F_CK_1C = {
 
 
     Pylons = {
-        pylon(1, 0, 0, -1, 2,
+        -- Right tip
+        pylon(1, 0, -1, 0, 4.39,
             {
-                use_full_connector_position = true, connector = "Pylon1", arg = 308, arg_value = 1,
+                use_full_connector_position = true, connector = "Pylon1", DisplayName = _("1")
             },
             {
-                { CLSID = "<CLEAN>",  arg_value = -1 },  -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 0.2 }, -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 0.2 }, -- CATM-9M
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
             },
             1
-        )
+        ),
+        -- Right outer
+        pylon(2, 0, -0.5, -0.5, 3,
+            {
+                use_full_connector_position = true, connector = "Pylon2", DisplayName = _("2"), arg = 308, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            2
+        ),
+        -- Right inner
+        pylon(3, 0, -0.4, -0.3, 2,
+            {
+                use_full_connector_position = true, connector = "Pylon3", DisplayName = _("3"), arg = 309, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            3
+        ),
+        -- Left inner
+        pylon(4, 0, -0.4, -0.3, -2,
+            {
+                use_full_connector_position = true, connector = "Pylon7", DisplayName = _("7"), arg = 311, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            7
+        ),
+        -- Left outer
+        pylon(5, 0, -0.5, -0.5, -3,
+            {
+                use_full_connector_position = true, connector = "Pylon8", DisplayName = _("8"), arg = 312, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            8
+        ),
+        -- Left tip
+        pylon(6, 0, -1, 0, -4.39,
+            {
+                use_full_connector_position = true, connector = "Pylon9", DisplayName = _("9")
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            9
+        ),
     },
 
     -- ===================== 反制系統與感測器 =====================
