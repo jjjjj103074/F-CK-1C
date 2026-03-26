@@ -271,30 +271,19 @@ local F_CK_1C = {
         _("TP Target Practice-Tracer PGU"),
     },
 
-    -- 掛點定義 [OPTIONAL]
-    -- TODO: 確認 F-CK-1C.edm 內是否已有 Pylon1、Pylon5 等 connector。
-    -- Pylons = { -- 使用 DCS 的 pylon(index, ...) helper
-    -- pylon(1, 0, -2.2, 0.002, -4.739,
-    -- {
-    --     arg = 308,
-    --     arg_value = 0,
-    --     use_full_connector_position = true,
-    --     connector = "Pylon1" -- 對應模型內的掛點 connector 名稱
-    -- }, {
-    --     { CLSID = "<CLEAN>", arg_value = 1 }, -- 無掛載狀態
-    -- }),
-    -- pylon(5, 0, -0.704, -1.173, 0.0, {
-    --     arg = 312,
-    --     arg_value = 0,
-    --     use_full_connector_position = true,
-    --     connector = "Pylon5", -- 對應模型內的掛點 connector 名稱
-    --     mass = 78.9
-    -- }, {
-    --     { CLSID = "<CLEAN>", arg_value = 1 },
-    -- }),
-    -- },
-    Pylons = {
 
+    Pylons = {
+        pylon(1, 0, 0, -1, 2,
+            {
+                use_full_connector_position = true, connector = "Pylon1", arg = 308, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 },  -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 0.2 }, -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 0.2 }, -- CATM-9M
+            },
+            1
+        )
     },
 
     -- ===================== 反制系統與感測器 =====================
