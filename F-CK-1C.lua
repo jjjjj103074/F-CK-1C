@@ -274,7 +274,7 @@ local F_CK_1C = {
 
     Pylons = {
         -- Right tip
-        pylon(1, 0, -1, 0, 4.39,
+        pylon(1, 0, -1.109, 0.0015, 4.6,
             {
                 use_full_connector_position = true, connector = "Pylon1", DisplayName = _("1")
             },
@@ -286,7 +286,7 @@ local F_CK_1C = {
             1
         ),
         -- Right outer
-        pylon(2, 0, -0.5, -0.5, 3,
+        pylon(2, 0, -0.5744, -0.465, 2.972,
             {
                 use_full_connector_position = true, connector = "Pylon2", DisplayName = _("2"), arg = 308, arg_value = 1,
             },
@@ -298,7 +298,7 @@ local F_CK_1C = {
             2
         ),
         -- Right inner
-        pylon(3, 0, -0.4, -0.3, 2,
+        pylon(3, 0, -0.2861, -0.48, 2.05,
             {
                 use_full_connector_position = true, connector = "Pylon3", DisplayName = _("3"), arg = 309, arg_value = 1,
             },
@@ -309,8 +309,19 @@ local F_CK_1C = {
             },
             3
         ),
+        pylon(4, 0, -0.7202, -0.8726, 0,
+            {
+                use_full_connector_position = true, connector = "Pylon4", DisplayName = _("4"), arg = 310, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            4
+        ),
         -- Left inner
-        pylon(4, 0, -0.4, -0.3, -2,
+        pylon(5, 0, -0.2861, -0.48, -2.05,
             {
                 use_full_connector_position = true, connector = "Pylon7", DisplayName = _("7"), arg = 311, arg_value = 1,
             },
@@ -322,7 +333,7 @@ local F_CK_1C = {
             7
         ),
         -- Left outer
-        pylon(5, 0, -0.5, -0.5, -3,
+        pylon(6, 0, -0.5744, -0.465, -2.972,
             {
                 use_full_connector_position = true, connector = "Pylon8", DisplayName = _("8"), arg = 312, arg_value = 1,
             },
@@ -334,7 +345,7 @@ local F_CK_1C = {
             8
         ),
         -- Left tip
-        pylon(6, 0, -1, 0, -4.39,
+        pylon(7, 0, -1.109, 0.0015, -4.6,
             {
                 use_full_connector_position = true, connector = "Pylon9", DisplayName = _("9")
             },
