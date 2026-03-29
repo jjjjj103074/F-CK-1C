@@ -243,23 +243,23 @@ local F_CK_1C = {
     -- M61A2 (using M_61 gun descriptor for compatibility in current mod environment)
     Guns = {
         gun_mount("M_61",
-        {
-            mixes = {
-                {1},        -- XM242 HEI-T
-                {2},        -- M56 HEI
-                {3},        -- M53 API
-                {4, 5},     -- M55 + M220 TP
-                {6},        -- PGU-28/B SAPHEI
-                {7, 8},     -- PGU-27/B TP with tracers
+            {
+                mixes = {
+                    { 1 },    -- XM242 HEI-T
+                    { 2 },    -- M56 HEI
+                    { 3 },    -- M53 API
+                    { 4, 5 }, -- M55 + M220 TP
+                    { 6 },    -- PGU-28/B SAPHEI
+                    { 7, 8 }, -- PGU-27/B TP with tracers
+                },
+                count = 523
             },
-            count = 523
-        },
-        {
-            supply_position = {0.4, 0.55, 0.0},
-            muzzle_pos = {3.85, 0.56, 2.02},
-            ejector_pos = {2.95, 0.42, 2.00},
-            effects = {gatling_effect(351, 6), fire_effect(350), smoke_effect()},
-        })
+            {
+                supply_position = { 0.4, 0.55, 0.0 },
+                muzzle_pos = { 3.85, 0.56, 2.02 },
+                ejector_pos = { 2.95, 0.42, 2.00 },
+                effects = { gatling_effect(351, 6), fire_effect(350), smoke_effect() },
+            })
     },
     ammo_type_default = 5,
     ammo_type = {
@@ -313,7 +313,7 @@ local F_CK_1C = {
 
     Sensors = {
         RWR = "Abstract RWR"
-    },                        -- 感測器設定
+    }, -- 感測器設定
 
 
     EPLRS = true, -- 啟用 EPLRS / 資料鏈定位能力
@@ -339,23 +339,23 @@ local F_CK_1C = {
     -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
     Damage = verbose_to_dmg_properties({
-        ["Blap"]     = {critical_damage = 3},
-        ["body"]     = {critical_damage = 10},
-        ["Brap"]     = {critical_damage = 3},
-        ["F W"]      = {critical_damage = 4},
-        ["FGG"]      = {critical_damage = 3},
-        ["Flap"]     = {critical_damage = 2},
-        ["Flap.001"] = {critical_damage = 2},
-        ["LBW"]      = {critical_damage = 4},
-        ["LC"]       = {critical_damage = 4},
-        ["LGG"]      = {critical_damage = 3},
-        ["M wing"]   = {critical_damage = 5},
-        ["M wing.001"]= {critical_damage = 5},
-        ["RBW"]      = {critical_damage = 4},
-        ["RC"]       = {critical_damage = 4},
-        ["RGG"]      = {critical_damage = 3},
-        ["Tail"]     = {critical_damage = 6},
-        ["Wayt"]     = {critical_damage = 3},
+        ["Blap"]       = { critical_damage = 3 },
+        ["body"]       = { critical_damage = 10 },
+        ["Brap"]       = { critical_damage = 3 },
+        ["F W"]        = { critical_damage = 4 },
+        ["FGG"]        = { critical_damage = 3 },
+        ["Flap"]       = { critical_damage = 2 },
+        ["Flap.001"]   = { critical_damage = 2 },
+        ["LBW"]        = { critical_damage = 4 },
+        ["LC"]         = { critical_damage = 4 },
+        ["LGG"]        = { critical_damage = 3 },
+        ["M wing"]     = { critical_damage = 5 },
+        ["M wing.001"] = { critical_damage = 5 },
+        ["RBW"]        = { critical_damage = 4 },
+        ["RC"]         = { critical_damage = 4 },
+        ["RGG"]        = { critical_damage = 3 },
+        ["Tail"]       = { critical_damage = 6 },
+        ["Wayt"]       = { critical_damage = 3 },
     }),
 
     -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
@@ -451,14 +451,14 @@ local F_CK_1C = {
     lights_data = { -- 燈光集合
         typename = "collection",
         lights = {
-            -- [WOLALIGHT_STROBES] = {
-            --     typename = "collection",
-            --     lights = {}
-            -- },
-            -- [WOLALIGHT_LANDING_LIGHTS] = {
-            --     typename = "collection",
-            --     lights = {}
-            -- }
+            -- NAVLIGHTS
+            [1] = {
+                typename = "collection",
+                lights = { { typename = "argumentlight", argument = 553 }, -- red
+                    { typename = "argumentlight", argument = 554 },        -- green
+                    { typename = "argumentlight", argument = 555 },        -- white
+                },
+            },
         }
     },
 
@@ -492,12 +492,12 @@ local F_CK_1C = {
 
     chaff_flare_dispenser = {
         [1] = {
-            dir = {0, -1, 0},
-            pos = {-3.78, -0.45, -0.78} -- Left side of speedbrake
+            dir = { 0, -1, 0 },
+            pos = { -3.78, -0.45, -0.78 } -- Left side of speedbrake
         },
         [2] = {
-            dir = {0, -1, 0},
-            pos = {-3.78, -0.45, 0.78} -- Right side of speedbrake
+            dir = { 0, -1, 0 },
+            pos = { -3.78, -0.45, 0.78 } -- Right side of speedbrake
         }
     },
 
@@ -559,4 +559,3 @@ local F_CK_1C = {
 
 -- 將此機體註冊到 DCS
 add_aircraft(F_CK_1C)
-
