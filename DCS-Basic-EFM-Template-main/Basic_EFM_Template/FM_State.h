@@ -26,7 +26,7 @@ struct FMState {
     // ground struct
     double agl = 0.0;        // m  altitude above ground
     double vz_agl = 0.0;     // m/s 垂直速度（定義：向上為正 或 向下為正要固定）
-    double gear_pos = 0.0;   // 0~1
+    double gear_pos = 1.0;   // 0~1
     bool   on_ground = false;
 
     // // （可選）三輪接觸用

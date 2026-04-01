@@ -5,6 +5,7 @@
 #include "Utility.h"
 #include <Math.h>
 #include <stdio.h>
+#include <cstdio>
 #include <string>
 #include "Inputs.h"
 #include "include/Cockpit/CockpitAPI_Declare.h" // Provides param handle interfacing for use in lua
@@ -12,12 +13,13 @@
 #include "FM_data.h"
 
 // F-CK-1C EFM version metadata
-static const char* FCK1C_EFM_VERSION = "v0.1.2-dev";
-static const char* FCK1C_EFM_VERSION_DATE = "2026-03-06";
+static const char* FCK1C_EFM_VERSION = "v0.1.3-april-fools";
+static const char* FCK1C_EFM_VERSION_DATE = "2026-04-01";
 // Version iteration (summary):
 // v0.1.0     - Initial module load and base structure.
 // v0.1.1     - EFM integration and diagnostic mode switch.
 // v0.1.2-dev - Version metadata and iteration tracking.
+// v0.1.3-april-fools - April Fools build with experimental ground-contact tuning.
 
 namespace FM 
 {
@@ -146,6 +148,7 @@ double	suspension_compression[3] = { 0.0, 0.0, 0.0 };
 double	suspension_force_mag[3] = { 0.0, 0.0, 0.0 };
 bool	suspension_wow[3] = { false, false, false };
 bool	suspension_feedback_valid[3] = { false, false, false };
+double	fallback_ground_force = 0.0;
 
 // Pitch
 double	pitch = 0; // Pitch angle in radians
@@ -386,6 +389,18 @@ EDPARAM interface;
 
 using namespace FM;
 
+void add_local_force(const Vec3 & Force, const Vec3 & Force_pos);
+static void dbg_susp(const char* msg);
+
+static const Vec3 kFallbackGearPoints[3] = {
+	Vec3(4.12, -1.912, 0.0),
+	Vec3(-1.185, -1.913, -0.7905),
+	Vec3(-1.185, -1.913, 0.7905)
+};
+
+static const double kFallbackWheelRadius[3] = { 0.2286, 0.3048, 0.3048 };
+static int kFallbackLogDecimation = 0;
+
 static inline bool has_suspension_feedback()
 {
 	return suspension_feedback_valid[0] || suspension_feedback_valid[1] || suspension_feedback_valid[2];
@@ -394,6 +409,42 @@ static inline bool has_suspension_feedback()
 static inline bool any_wow()
 {
 	return suspension_wow[0] || suspension_wow[1] || suspension_wow[2];
+}
+
+static inline double apply_fallback_ground_forces()
+{
+	if (gear_pos <= 0.5)
+	{
+		return 0.0;
+	}
+
+	const double target_center_agl = 2.22;
+	const double engage_margin = 0.35;
+	const double compression = (target_center_agl + engage_margin) - altitude_AGL;
+	if (compression <= 0.0)
+	{
+		return 0.0;
+	}
+
+	const double spring_factor = 30000.0;
+	const double damping_factor = 9000.0;
+	const double downward_speed = limit(-velocity_world.y, 0.0, 30.0);
+	double total_force = (compression * spring_factor) + (downward_speed * damping_factor);
+	total_force = limit(total_force, 0.0, 70000.0);
+	if (total_force <= 0.0)
+	{
+		return 0.0;
+	}
+
+	const double nose_force = total_force * 0.11;
+	const double left_main_force = total_force * 0.445;
+	const double right_main_force = total_force * 0.445;
+
+	add_local_force(Vec3(0, nose_force, 0), kFallbackGearPoints[0]);
+	add_local_force(Vec3(0, left_main_force, 0), kFallbackGearPoints[1]);
+	add_local_force(Vec3(0, right_main_force, 0), kFallbackGearPoints[2]);
+
+	return total_force;
 }
 
 static void reset_suspension_feedback_state()
@@ -1053,6 +1104,7 @@ void ed_fm_add_global_force(double & x,double &y,double &z,double & pos_x,double
 {
 
 }
+		fallback_ground_force = 0.0;
 
 void ed_fm_add_global_moment(double & x,double &y,double &z)
 {
@@ -1396,9 +1448,38 @@ void ed_fm_simulate(double dt)
 		add_local_force(Vec3(0, 0, -rudder_command * (1e5 + q * 0.1)), Vec3(center_of_mass.x - 0.2, center_of_mass.y, 0));
 	};
 
+	fallback_ground_force = 0.0;
+	if (has_suspension_feedback() && any_wow() == false)
+	{
+		fallback_ground_force = apply_fallback_ground_forces();
+		if (fallback_ground_force > 0.0)
+		{
+			const double pitch_ground_damping = -pitch_rate * limit(fallback_ground_force * 0.30, 0.0, 25000.0);
+			add_local_moment(Vec3(0, 0, pitch_ground_damping));
+		}
+	}
+
+	if (++kFallbackLogDecimation >= 20)
+	{
+		char ground_buf[256];
+		snprintf(
+			ground_buf, sizeof(ground_buf),
+			"fallback agl=%.3f vy=%.3f gear=%.2f fg=%.1f pitch=%.2f roll=%.2f wow=%d",
+			altitude_AGL,
+			velocity_world.y,
+			gear_pos,
+			fallback_ground_force,
+			pitch * rad_to_deg,
+			roll * rad_to_deg,
+			any_wow() ? 1 : 0
+		);
+		dbg_susp(ground_buf);
+		kFallbackLogDecimation = 0;
+	}
+
 	// Logic for determining if the aircraft is on the ground.
 	// Use suspension feedback (WoW) instead of AGL thresholds.
-	on_ground = (gear_pos > 0.5) && has_suspension_feedback() && any_wow();
+	on_ground = ((gear_pos > 0.5) && has_suspension_feedback() && any_wow()) || (fallback_ground_force > 1000.0);
 
 	// Cockpit shaking intensity
 	shake_amplitude = 0; // Starts at zero every frame
@@ -2086,10 +2167,21 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 	}
 }
 
+// ed_fm_suspension_feedback will be defined below with debug logging.
+
+static void dbg_susp(const char* msg)
+{
+	FILE* f = fopen("C:\\Users\\Ragdoll\\Saved Games\\DCS\\Logs\\fck1c_susp_dbg.txt", "a");
+	if (!f) return;
+	fprintf(f, "%s\n", msg);
+	fclose(f);
+}
+
 void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 {
 	if (idx < 0 || idx >= 3 || info == nullptr)
 	{
+		dbg_susp("suspension_feedback: invalid idx or null info");
 		return;
 	}
 
@@ -2101,8 +2193,19 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 	const double fz = info->acting_force[2];
 	suspension_force_mag[idx] = sqrt(fx * fx + fy * fy + fz * fz);
 
-	// Minimal WoW heuristic: either strut compression or non-trivial contact force.
 	suspension_wow[idx] = (suspension_compression[idx] > 1e-4) || (suspension_force_mag[idx] > 50.0);
+
+	char buf[512];
+	snprintf(
+		buf, sizeof(buf),
+		"idx=%d comp=%.6f force=(%.3f, %.3f, %.3f) mag=%.3f wow=%d",
+		idx,
+		suspension_compression[idx],
+		fx, fy, fz,
+		suspension_force_mag[idx],
+		suspension_wow[idx] ? 1 : 0
+	);
+	dbg_susp(buf);
 }
 
 // What should be reset when the aircraft is repaired?
@@ -2338,7 +2441,7 @@ size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 		written = sprintf_s(
 			buffer,
 			maxlen,
-			"VER:%s DATE:%s ASL:%.1f AGL:%.2f Z:%.1f GEAR:%.2f WOW:%d MODE:%s ST:%s EN:%d RE:%s HOLD:%d HG:%.2f STK:[%.2f %.2f %.2f] CMD:[%.1f %.1f %.1f] HCMD:[%.1f %.1f] LIM:[A%d R%d S%d AW%d]",
+			"VER:%s DATE:%s ASL:%.1f AGL:%.2f Z:%.1f GEAR:%.2f WOW:%d FG:%.0f MODE:%s ST:%s EN:%d RE:%s HOLD:%d HG:%.2f STK:[%.2f %.2f %.2f] CMD:[%.1f %.1f %.1f] HCMD:[%.1f %.1f] LIM:[A%d R%d S%d AW%d]",
 			FCK1C_EFM_VERSION,
 			FCK1C_EFM_VERSION_DATE,
 			altitude_ASL,
@@ -2346,6 +2449,7 @@ size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 			position_world_z,
 			gear_pos,
 			wow_any,
+			fallback_ground_force,
 			fbw_mode_name(),
 			fbw_state_name(),
 			fbw_hold_enter_reason,
@@ -2371,7 +2475,7 @@ size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 		written = sprintf_s(
 			buffer,
 			maxlen,
-			"VER:%s DATE:%s MODE:%s ST:%s EN:%d RE:%s CATB:%.2f OG:%d WOW:%d%d%d VALID:%d ASL:%.1f AGL:%.2f Z:%.1f GEAR:%.2f "
+			"VER:%s DATE:%s MODE:%s ST:%s EN:%d RE:%s CATB:%.2f OG:%d WOW:%d%d%d VALID:%d ASL:%.1f AGL:%.2f Z:%.1f GEAR:%.2f FG:%.0f "
 			"ATT:[%.2f %.2f]/[%.2f %.2f] RATE:[%.2f %.2f %.2f]/[%.2f %.2f %.2f] "
 			"AERO:[%.1f %.1f %.1f %.2f %.0f]/[%.1f %.1f %.1f %.2f %.0f] "
 			"STK:[%.2f %.2f %.2f]/[%.2f %.2f %.2f] CMD_R:[%.1f %.1f %.1f] CMD_H:[%.1f %.1f] CMD:[%.1f %.1f %.1f] "
@@ -2392,6 +2496,7 @@ size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 			altitude_AGL,
 			position_world_z,
 			gear_pos,
+			fallback_ground_force,
 			deg(fbw_phi_raw), deg(fbw_theta_raw),
 			deg(fbw_phi_f), deg(fbw_theta_f),
 			deg(fbw_p_raw), deg(fbw_q_raw), deg(fbw_r_raw),
