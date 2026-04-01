@@ -514,14 +514,14 @@ local F_CK_1C = {
     lights_data = { -- 燈光集合
         typename = "collection",
         lights = {
-            -- [WOLALIGHT_STROBES] = {
-            --     typename = "collection",
-            --     lights = {}
-            -- },
-            -- [WOLALIGHT_LANDING_LIGHTS] = {
-            --     typename = "collection",
-            --     lights = {}
-            -- }
+            -- NAVLIGHTS
+            [1] = {
+                typename = "collection",
+                lights = { { typename = "argumentlight", argument = 553 }, -- red
+                    { typename = "argumentlight", argument = 554 },        -- green
+                    { typename = "argumentlight", argument = 555 },        -- white
+                },
+            },
         }
     },
 
