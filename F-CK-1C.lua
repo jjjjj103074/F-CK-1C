@@ -1,30 +1,31 @@
 -- F-CK-1C.lua
--- 以 F-16C 範本為參考，建立 F-CK-1C 機體設定範本
--- 本檔案目的：提供完整但可修改的機體欄位 (可用於 AI/伺服器測試)
--- 註：某些 helper（pylon, gun_mount, makeAirplaneCanopyGeometry 等）與常數
--- (WSTYPE_PLACEHOLDER, MODULATION_AM 等) 由 DCS 執行環境提供，載入時需在 mod 環境下執行。
+-- 以 F-16C 為基礎調整的 F-CK-1C 初版 SFM 定義。
+-- 目前以可載入、可飛行、可供 AI 使用為優先，數值仍會持續修正。
+-- 檔案內使用 DCS 既有 helper，例如 pylon、gun_mount、makeAirplaneCanopyGeometry。
+-- 若某些常數尚未在目前環境定義，需依 DCS 版本或其他模組補齊。
 
 
--- ===================== 基本說明區 (Identification) =====================
--- Name / DisplayName / shape_table_data 必要用於引擎辨識與載入
+-- ===================== 基本識別資料 (Identification) =====================
+-- Name / DisplayName / shape_table_data 會對應到 DCS 的單位與模型註冊資料。
 local F_CK_1C = {
-    -- 機種內部識別名稱
+    -- 內部單位名稱
     Name = 'F-CK-1C',
-    -- 顯示名稱（可本地化）
+    -- UI 顯示名稱
     DisplayName = _('F-CK-1C'),
 
     Rate = 40, -- RewardPoint in Multiplayer
 
     Shape = "F-CK-1C",
-    -- shape_table_data: 告訴引擎要載入的 3D 模型與毀損模型
+    -- shape_table_data: 將單位名稱綁定到 3D 模型與損毀模型設定。
     shape_table_data = { {
-        file = "f-ck-1c", -- 3D 模型檔名（需放在 Shapes 資料夾）
+        name = "F-CK-1C",
+        file = "F-CK-1C", -- 3D 模型檔名，對應 Shapes 資料夾
         username = "F-CK-1C",
         index = WSTYPE_PLACEHOLDER,
-        life = 20,                 -- 機體生命值（耐久/HP，整數，數值越高越難被摧毀）
-        vis = 3,                   -- 可見性等級（LOD/視覺等級，整數）
+        life = 20,                 -- 單位生命值 / 耐久度
+        vis = 3,                   -- 可見度等級，影響 LOD 與目視辨識
         desrt = 'Fighter-2-crush', -- Name of destroyed object file name Alphajet-destr. This is a placeholder.
-        fire = { 300, 2 },         -- 火焰效果設定：{持續時間秒, 強度}（秒, unitless）
+        fire = { 300, 2 },         -- 受損起火效果參數
         classname = "lLandPlane",
         positioning = "BYNORMAL"
     },
@@ -35,7 +36,7 @@ local F_CK_1C = {
         -- }
     },
 
-    -- 國家
+    -- 可用國家
     Countries = {
         "Abkhazia",
         "Algeria",
@@ -117,189 +118,207 @@ local F_CK_1C = {
     },
 
     -- UI 與分類
-    -- UI 顯示相關（可選，影響選單顯示） [OPTIONAL]
+    -- 這些欄位控制任務編輯器與選單中的顯示方式。
     Picture = "F-CK-1C.png", -- [OPTIONAL]
     mapclasskey = "P0091000024",
     WorldID = WSTYPE_PLACEHOLDER,
     attribute = { wsType_Air, wsType_Airplane, wsType_Fighter, WSTYPE_PLACEHOLDER, "Multirole fighters", "Refuelable" },
     Categories = { "{78EFB7A2-FD52-4b57-A6A6-3BF0E1D6555F}", "Interceptor" },
 
-    -- ===================== 操控/機組資訊區 (Crew & Cockpit) =====================
-    -- 操控/機組（分類：F-16/A-4E 風格）
-    HumanCockpit = true,                                -- 啟用玩家座艙（必須為 true 才能處理玩家輸入）
+    -- ===================== 座艙與組員 (Crew & Cockpit) =====================
+    -- 先沿用既有座艙結構，之後再依實機需求細化。
+    HumanCockpit = true,                                -- 允許玩家進入座艙飛行
     HumanCockpitPath = current_mod_path .. '/Cockpit/', -- 座艙腳本路徑
 
-    crew_size = 1,                                      -- 機組人數（AI 會依此分配任務） [AI]
+    crew_size = 1,                                      -- 機組員數量
     crew_members = {
         [1] = {
-            ejection_seat_name = 17, -- 使用DCS通用彈射座椅ID (參考A-4E)
-            -- pilot_name 不是必須欄位
-            -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 需要在模型中定義此名稱
-            -- canopy_pos = {3.2, 0.674, 0}, -- 座艙罩位置
-            pos = { 3.2, 0.27, 0 }, -- 駕駛座在機體座標的 (x, y, z)，單位：公尺 (m)
-            g_suit = 1.02           -- G-suit 補償係數（unitless，通常 1.0 = 無補償）
+            ejection_seat_name = 17, -- DCS 內建彈射椅 ID，暫沿用既有設定
+            -- pilot_name 可於後續補上專用飛行員模型名稱
+            -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 補上可拋棄艙罩模型名稱
+            -- canopy_pos = {3.2, 0.674, 0}, -- 艙罩參考位置
+            pos = { 3.2, 0.27, 0 }, -- 飛行員座位位置 (x, y, z)，單位公尺
+            g_suit = 1.02           -- G-suit 係數，1.0 為標準值
         }
     },
 
-    -- ===================== 性能參數區 (Mass, Geometry, Performance) =====================
-    -- 質量（千克）與燃油
-    M_empty = 6492,    -- 空機重量 (kg) | ✓(維基百科)
-    M_nominal = 9072,  -- 作戰或典型質量 (kg) | ✓(維基百科)
-    M_max = 12530,     -- 最大起飛重量 (kg) | ✓(維基百科)
-    M_fuel_max = 2111, -- 最大內部燃油質量 (kg) | ✓(維基百科)
+    -- ===================== 重量、幾何與性能 (Mass, Geometry, Performance) =====================
+    -- 幾何、重量與性能數值。
+    M_empty = 6492,    -- 空重 (kg)
+    M_nominal = 9072,  -- 典型作戰重量 (kg)
+    M_max = 12530,     -- 最大起飛重量 (kg)
+    M_fuel_max = 2111, -- 最大內載燃油 (kg)
 
-    -- 以下為 AI 相關性能參數（標註為 [AI]），部分取自 A-4E 範例
-    CAS_min = 23.15, -- 最低校正空速 (Calibrated Airspeed)，AI 最低飛行速度 (m/s) [AI] | △(參考 A-4E-C，稍微降低)
+    -- AI 使用的最低校正空速，暫參考 A-4E-C 類型設定。
+    CAS_min = 23.15, -- 最低校正空速 (m/s) [AI]
 
-    -- 幾何尺寸（公尺）
-    length = 14.48,                         -- 機身總長 (m) | ✓(維基百科)
-    height = 4.7,                           -- 機高 (m) | ✓(維基百科)
-    wing_area = 24.26,                      -- 翼面積 (m^2) | ✓(維基百科)
-    wing_span = 8.53,                       -- 翼展 (m) | ✓(維基百科)
-    wing_tip_pos = { -2.3, 0.0006, 4.396 }, -- 翼尖相對座標 (x,y,z) (m) | ✓(自製模型)
+    -- 外形尺寸
+    length = 14.48,                         -- 機長 (m)
+    height = 4.7,                           -- 機高 (m)
+    wing_area = 24.26,                      -- 翼面積 (m^2)
+    wing_span = 8.53,                       -- 翼展 (m)
+    wing_tip_pos = { -2.3, 0.0006, 4.396 }, -- 翼尖參考位置 (x, y, z)，單位公尺
 
-    -- 飛行性能
-    V_opt = 220,             -- 最適巡航速度 (m/s) | △(參考 F-16C模組)
-    V_take_off = 75,         -- 起飛速度 (m/s) | △(通靈)
-    V_land = 65,             -- 著陸速度 (m/s) | △(通靈)
-    V_max_sea_level = 369.4, -- 海平面最大持續速度 (m/s) | ✓(維基百科)
-    V_max_h = 612.5,         -- 高空最大速度 (m/s) | ✓(維基百科)
-    Mach_max = 1.8,          -- 最大馬赫數 (Mach) | ✓(維基百科)
-    Vy_max = 238.7,          -- 最大爬升率 (m/s) | △(Gemini 3 Pro AI 計算)
-    Ny_min = -3,             -- 最小瞬時容許過載 (-G) | ✓(維基百科)
-    Ny_max = 9,              -- 最大瞬時容許過載 (+G) | ✓(維基百科)
-    bank_angle_max = 60,     -- 最大滾轉/橫滾角度 (度) | △(參考F-16C模組與A-4E-C模組)
-    range = 2200,            -- 航程 (公里) [AI] | ✓(維基百科)
+    -- 速度與飛行包線
+    V_opt = 220,             -- 最佳巡航速度 (m/s)
+    V_take_off = 75,         -- 起飛速度 (m/s)
+    V_land = 65,             -- 著陸速度 (m/s)
+    V_max_sea_level = 369.4, -- 海平面最大速度 (m/s)
+    V_max_h = 612.5,         -- 高空最大速度 (m/s)
+    Mach_max = 1.8,          -- 最大馬赫數
+    Vy_max = 238.7,          -- 最大爬升率 (m/s)
+    Ny_min = -3,             -- 最小過載限制 (-G)
+    Ny_max = 9,              -- 最大過載限制 (+G)
+    bank_angle_max = 60,     -- 最大持續傾斜角 (deg)
+    range = 2200,            -- 航程 (km) [AI]
 
     -- 推力
-    thrust_sum_max = 5506.47, -- 常規最大推力 (通常單位為 kgf 或 N，依專案慣例) | ✓(維基百科)
-    thrust_sum_ab = 8524.83,  -- 加力時最大推力 (kgf 或 N) | ✓(維基百科)
-    has_afterburner = true,   -- 是否配備加力燃燒器（布林） | ✓(維基百科)
+    thrust_sum_max = 5506.47, -- 軍用推力總和
+    thrust_sum_ab = 8524.83,  -- 後燃器推力總和
+    has_afterburner = true,   -- 具備後燃器
 
-    -- 阻力/雷達/紅外
-    RCS = 3.6,                   -- 雷達散射截面 (m^2) | △(介於F-16C模組與A-4E-C模組之間)
-    radar_can_see_ground = true, -- 雷達是否能偵測地面/海面目標（布林） | ✓(我們都有反艦導彈了)
-    detection_range_max = 150,   -- 感測或雷達最大探測距離 (km) | △(AN/APG-67維基百科)
-    IR_emission_coeff = 0.73,    -- 紅外發射係數（常態，無單位） | △(參考FA-18模組)
-    IR_emission_coeff_ab = 4.0,  -- 紅外發射係數（加力時，無單位） | △(參考FA-18模組)
+    -- 雷達與紅外特徵
+    RCS = 3.6,                   -- 雷達截面積估計值 (m^2)
+    radar_can_see_ground = true, -- 雷達可進行對地探測
+    detection_range_max = 150,   -- 最大偵測距離 (km)
+    IR_emission_coeff = 0.73,    -- 軍用推力紅外特徵係數
+    IR_emission_coeff_ab = 4.0,  -- 後燃器紅外特徵係數
 
-    -- 空中加油
-    -- air_refuel_receptacle_pos = {-0.051, 0.911, 0.0}, -- 空中加油接收器位置 (x,y,z) (m)
-    -- tanker_type = 1, -- 空中加油機分類（整數，DCS 定義）
+    -- 空中加油相關
+    -- air_refuel_receptacle_pos = {-0.051, 0.911, 0.0}, -- 受油口位置 (x, y, z)，單位公尺
+    -- tanker_type = 1, -- 若要充當加油機，可在此指定類型
 
-    -- ===================== 起落架區 (Landing Gear) =====================
-    tand_gear_max = 0.761,                                    -- 前輪轉向最大弧度 (rad) | △(模型估算)
-    nose_gear_pos = { 4.12, -1.912, 0 },                      -- 前輪位置 (x,y,z) (m) | ✓(模型)
-    nose_gear_amortizer_direct_stroke = 0.0,                  -- 減震器伸展量 (m) | ✓(模型)
-    nose_gear_amortizer_reversal_stroke = 1.712 - 1.912,      -- 減震器收縮量 (m) | ✓(模型)
-    nose_gear_amortizer_normal_weight_stroke = 1.812 - 1.912, -- 常重位置位移 (m) | ✓(模型)
-    nose_gear_wheel_diameter = 0.4572,                        -- 前輪直徑 (m) | ✓(模型)
+    -- ===================== 起落架 (Landing Gear) =====================
+    tand_gear_max = 0.761,                                    -- 起落架可承受的最大俯仰角參考值 (rad)
+    nose_gear_pos = { 4.12, -1.912, 0 },                      -- 前輪位置 (x, y, z) (m)
+    nose_gear_amortizer_direct_stroke = 0.0,                  -- 前輪減震器壓縮行程 (m)
+    nose_gear_amortizer_reversal_stroke = 1.712 - 1.912,      -- 前輪減震器回彈行程 (m)
+    nose_gear_amortizer_normal_weight_stroke = 1.812 - 1.912, -- 前輪在正常重量下的壓縮量 (m)
+    nose_gear_wheel_diameter = 0.4572,                        -- 前輪輪徑 (m)
 
-    main_gear_pos = { -1.185, -1.913, 0.7905 },               -- 主輪位置 (x,y,z) (m) | ✓(模型)
-    main_gear_amortizer_direct_stroke = 0,                    -- 主輪減震伸展量 (m) | ✓(模型)
-    main_gear_amortizer_reversal_stroke = 1.727 - 1.913,      -- 主輪減震收縮量 (m) | ✓(模型)
-    main_gear_amortizer_normal_weight_stroke = 1.796 - 1.913, -- 主輪正常負重位移 (m) | ✓(模型)
-    main_gear_wheel_diameter = 0.6096,                        -- 主輪直徑 (m) | ✓(模型)
+    main_gear_pos = { -1.185, -1.913, 0.7905 },               -- 主輪位置 (x, y, z) (m)
+    main_gear_amortizer_direct_stroke = 0,                    -- 主輪減震器壓縮行程 (m)
+    main_gear_amortizer_reversal_stroke = 1.727 - 1.913,      -- 主輪減震器回彈行程 (m)
+    main_gear_amortizer_normal_weight_stroke = 1.796 - 1.913, -- 主輪在正常重量下的壓縮量 (m)
+    main_gear_wheel_diameter = 0.6096,                        -- 主輪輪徑 (m)
 
     -- nose_gear_door_close_after_retract = false,
     -- main_gear_door_close_after_retract = false,
 
-    -- ===================== 引擎區 (Engine) =====================
-    engines_count = 2, -- 引擎數量（整數）
+    -- ===================== 發動機 (Engine) =====================
+    engines_count = 2, -- 發動機數量
     engines_nozzles = {
         [1] = {
-            pos = { -6.118, 0.0918, 0.4452 },                -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
-            elevation = 0,                                   -- 噴嘴仰角 (度)  | ✓(模型)
-            diameter = 0.64,                                 -- 噴嘴直徑 (m)  | ✓(模型)
-            exhaust_length_ab = 3.5,                         -- 加力噴焰視覺長度 (m) | △(模型估算)
-            exhaust_length_ab_K = 0.77,                      -- 加力視覺縮放係數（無單位）| △(這個數字比較考看)
-            smokiness_level = 0.05,                          -- 噴口冒煙程度（0-1 無單位） | △(參考F-16C模組與FA-18模組)
-            afterburner_circles_count = 6,                   -- 加力環的數量（整數） | △(照片)
-            -- afterburner_circles_pos = {0.2, 0.8}, -- 加力環位置比例（相對座標或比例值） | △(不知道填甚麼)
-            afterburner_circles_scale = 1.0,                 -- 加力環縮放係數（無單位） | △(參考F16C)
-            afterburner_effect_texture = "afterburner_f-16c" -- 加力噴焰效果紋理 | △(用F16C的)
+            pos = { -6.118, 0.0918, 0.4452 },                -- 噴口位置 (x, y, z) (m)
+            elevation = 0,                                   -- 噴口仰角 (deg)
+            diameter = 0.64,                                 -- 噴口直徑 (m)
+            exhaust_length_ab = 3.5,                         -- 後燃尾焰長度 (m)
+            exhaust_length_ab_K = 0.77,                      -- 後燃尾焰視覺縮放係數
+            smokiness_level = 0.05,                          -- 燃燒煙霧等級
+            afterburner_circles_count = 6,                   -- 後燃圓環效果數量
+            -- afterburner_circles_pos = {0.2, 0.8}, -- 後燃圓環在噴口內的相對位置
+            afterburner_circles_scale = 1.0,                 -- 後燃圓環尺寸縮放
+            afterburner_effect_texture = "afterburner_f-16c" -- 後燃效果貼圖
         },
         [2] = {
-            pos = { -6.118, 0.0918, -0.4452 },               -- 噴嘴相對機體座標 (x,y,z) (m) | ✓(模型)
-            elevation = 0,                                   -- 噴嘴仰角 (度)  | ✓(模型)
-            diameter = 0.64,                                 -- 噴嘴直徑 (m)  | ✓(模型)
-            exhaust_length_ab = 3.5,                         -- 加力噴焰視覺長度 (m) | △(模型估算)
-            exhaust_length_ab_K = 0.77,                      -- 加力視覺縮放係數（無單位）| △(這個數字比較考看)
-            smokiness_level = 0.05,                          -- 噴口冒煙程度（0-1 無單位） | △(參考F-16C模組與FA-18模組)
-            afterburner_circles_count = 6,                   -- 加力環的數量（整數） | △(照片)
-            -- afterburner_circles_pos = {0.2, 0.8}, -- 加力環位置比例（相對座標或比例值） | △(不知道填甚麼)
-            afterburner_circles_scale = 1.0,                 -- 加力環縮放係數（無單位） | △(參考F16C)
-            afterburner_effect_texture = "afterburner_f-16c" -- 加力噴焰效果紋理 | △(用F16C的)
+            pos = { -6.118, 0.0918, -0.4452 },               -- 噴口位置 (x, y, z) (m)
+            elevation = 0,                                   -- 噴口仰角 (deg)
+            diameter = 0.64,                                 -- 噴口直徑 (m)
+            exhaust_length_ab = 3.5,                         -- 後燃尾焰長度 (m)
+            exhaust_length_ab_K = 0.77,                      -- 後燃尾焰視覺縮放係數
+            smokiness_level = 0.05,                          -- 燃燒煙霧等級
+            afterburner_circles_count = 6,                   -- 後燃圓環效果數量
+            -- afterburner_circles_pos = {0.2, 0.8}, -- 後燃圓環在噴口內的相對位置
+            afterburner_circles_scale = 1.0,                 -- 後燃圓環尺寸縮放
+            afterburner_effect_texture = "afterburner_f-16c" -- 後燃效果貼圖
         }
     },
 
-    -- ===================== 武裝區 (Guns & Pylons) =====================
-    -- 武裝區（分類說明）
-    -- - 參考 F-16 的程式化 pylon 定義方式，適合大量武裝選項與共用清單。此處保留簡化版。
-    -- - 若要 AI 能正確掛載任務武器，Pylons 與 ammo_type/Stores 應完整，否則 AI 可能不會在任務中使用武裝。 [AI]
-    -- 這裡採程式化定義，參考 F-16C 的 pylon 整理；可視需求縮減或展平為單純 CLSID 清單
-    -- 以下範例保留基本 Gun 與示意 Pylons（若不需要武裝可把 Pylons 設為 {} 或只保留 <CLEAN>）
-    -- TODO: 需自定義機砲函數或使用DCS內建機砲定義
-    -- Guns = {gun_mount("M_61", {
-    --     mixes = {{1}, {2}, {3}},
-    --     count = 510
-    -- }, {
-    --     supply_position = {0.4, 0.55, 0.0},
-    --     effects = {gatling_effect(351, 6), fire_effect(350), smoke_effect()}
-    -- })},
-    Guns = {},             -- [DISABLED - M_61機砲需自定義或驗證，暫時禁用避免載入錯誤]
-    ammo_type_default = 1, -- 機砲彈藥類型預設索引（整數，對應 ammo_type 列表）
-    ammo_type = { _("HEI-T High Explosive Incendiary-Tracer"), _("HEI High Explosive Incendiary"), _("AP Armor Piercing") },
+    -- ===================== 機砲與掛點 (Guns & Pylons) =====================
+    -- 機砲與掛點先以 DCS 既有資料結構占位。
+    -- - 參考 F-16 / A-4E 的寫法，但目前先不啟用外掛點，避免模型 connector 錯誤。
+    -- - AI 對掛載資料較敏感，之後若開啟 Pylons 需同步補齊 ammo_type / Stores。
+    -- - 若模型內已有 Pylon1、Pylon5 等 connector，可再逐步啟用對應 CLSID。
+    -- 目前保留機砲，掛點維持空表以避免 connector 不完整造成載入問題。
+    -- M61A2 (using M_61 gun descriptor for compatibility in current mod environment)
+    Guns = {
+        gun_mount("M_61",
+        {
+            mixes = {
+                {1},        -- XM242 HEI-T
+                {2},        -- M56 HEI
+                {3},        -- M53 API
+                {4, 5},     -- M55 + M220 TP
+                {6},        -- PGU-28/B SAPHEI
+                {7, 8},     -- PGU-27/B TP with tracers
+            },
+            count = 523
+        },
+        {
+            supply_position = {0.4, 0.55, 0.0},
+            muzzle_pos = {3.85, 0.56, 2.02},
+            ejector_pos = {2.95, 0.42, 2.00},
+            effects = {gatling_effect(351, 6), fire_effect(350), smoke_effect()},
+        })
+    },
+    ammo_type_default = 5,
+    ammo_type = {
+        _("HEI-T High Explosive Incendiary-Tracer"),
+        _("HEI High Explosive Incendiary"),
+        _("AP Armor Piercing"),
+        _("TP Target Practice-Tracer"),
+        _("SAPHEI High Explosive Armor Piercing PGU"),
+        _("TP Target Practice-Tracer PGU"),
+    },
 
-    -- Pylons 範例（精簡版） [OPTIONAL]
-    -- TODO: 需要在 F-CK-1C.edm 模型中定義 Pylon1, Pylon5 等連接器
-    -- Pylons = { -- 每個 pylon 使用 pylon(index, ... ) helper
+    -- 掛點定義 [OPTIONAL]
+    -- TODO: 確認 F-CK-1C.edm 內是否已有 Pylon1、Pylon5 等 connector。
+    -- Pylons = { -- 使用 DCS 的 pylon(index, ...) helper
     -- pylon(1, 0, -2.2, 0.002, -4.739,
     -- {
     --     arg = 308,
     --     arg_value = 0,
     --     use_full_connector_position = true,
-    --     connector = "Pylon1" -- 模型中需定義此連接器
+    --     connector = "Pylon1" -- 對應模型內的掛點 connector 名稱
     -- }, {
-    --     { CLSID = "<CLEAN>", arg_value = 1 }, -- 空掛載點
+    --     { CLSID = "<CLEAN>", arg_value = 1 }, -- 無掛載狀態
     -- }),
     -- pylon(5, 0, -0.704, -1.173, 0.0, {
     --     arg = 312,
     --     arg_value = 0,
     --     use_full_connector_position = true,
-    --     connector = "Pylon5", -- 模型中需定義此連接器
+    --     connector = "Pylon5", -- 對應模型內的掛點 connector 名稱
     --     mass = 78.9
     -- }, {
     --     { CLSID = "<CLEAN>", arg_value = 1 },
     -- }),
     -- },
-    Pylons = {}, -- [DISABLED - 模型連接器未定義，暫時禁用避免載入錯誤]
+    Pylons = {}, -- [DISABLED - 模型掛點尚未確認完成，先避免載入錯誤]
 
-    -- ===================== Countermeasures / Sensors 區 =====================
+    -- ===================== 反制系統與感測器 =====================
     passivCounterm = {
-        CMDS_Edit = true,        -- 是否允許在界面編輯 CMDS（布林）
-        SingleChargeTotal = 120, -- 總彈藥量（chaff + flare 總和）(整數)
+        CMDS_Edit = true,        -- 允許在任務中編輯 CMDS 配置
+        SingleChargeTotal = 180, -- 箔條與熱焰彈總數
         chaff = {
-            default = 60,
+            default = 90,
             increment = 30,
             chargeSz = 1
-        }, -- chaff: 預設數量、增量、單次釋放數
+        }, -- chaff: 箔條配置
         flare = {
-            default = 60,
+            default = 90,
             increment = 30,
             chargeSz = 1
-        } -- flare: 預設數量、增量、單次釋放數
-    },    --干擾措施投放設定 | △(參考F16C)
+        } -- flare: 熱焰彈配置
+    },    -- 參考 F-16C 的基本配比
 
     Sensors = {
-        RADAR = "AN/APG-67V", -- | ✓(維基百科)
-        RWR = "Abstract RWR"  -- | △(參考F16C)
-    },                        --雷達/電子戰設定
+        RWR = "Abstract RWR"
+    },                        -- 感測器設定
 
 
-    EPLRS = true, --Enhanced Position Location Reporting System（增強型位置定位回報系統） | ✓(基本概念)
+    EPLRS = true, -- 啟用 EPLRS / 資料鏈定位能力
 
-    -- ===================== 任務與分類 (AI Tasks) =====================
+    -- ===================== AI 任務 (AI Tasks) =====================
     Tasks = {
         aircraft_task(CAP),
         aircraft_task(Escort),
@@ -314,48 +333,42 @@ local F_CK_1C = {
         aircraft_task(AntishipStrike),
         aircraft_task(Reconnaissance),
     },                                -- end of Tasks
-    DefaultTask = aircraft_task(CAP), -- | △(參考F16C)
+    DefaultTask = aircraft_task(CAP), -- 預設 AI 任務
 
-    -- ===================== 損傷 (Damage) - AI/遊戲邏輯重要 =====================
-    -- Damage 定義告訴模擬器各區塊被擊中時的行為與臨界傷害，對 AI 生存與傷害判定影響甚大。 [AI]
+    -- ===================== 損傷 (Damage) =====================
+    -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
-    Damage = verbose_to_dmg_properties({ -- 傷害分區配置（mapping 名稱->args/critical_damage）| ✖(暫時沒有)
-        -- ["NOSE_CENTER"] = {
-        --     args = {146},
-        --     critical_damage = 3
-        -- },
-        -- ["COCKPIT"] = {
-        --     args = {65},
-        --     critical_damage = 6
-        -- },
-        -- ["WING_L_IN"] = {
-        --     args = {225},
-        --     critical_damage = 5
-        -- },
-        -- ["WING_R_IN"] = {
-        --     args = {215},
-        --     critical_damage = 5
-        -- },
-        -- ["ENGINE_C"] = {
-        --     args = {160},
-        --     critical_damage = 2
-        -- },
-        -- ["HOOK"] = {
-        --     critical_damage = 2
-        -- }
+    Damage = verbose_to_dmg_properties({
+        ["Blap"]     = {critical_damage = 3},
+        ["body"]     = {critical_damage = 10},
+        ["Brap"]     = {critical_damage = 3},
+        ["F W"]      = {critical_damage = 4},
+        ["FGG"]      = {critical_damage = 3},
+        ["Flap"]     = {critical_damage = 2},
+        ["Flap.001"] = {critical_damage = 2},
+        ["LBW"]      = {critical_damage = 4},
+        ["LC"]       = {critical_damage = 4},
+        ["LGG"]      = {critical_damage = 3},
+        ["M wing"]   = {critical_damage = 5},
+        ["M wing.001"]= {critical_damage = 5},
+        ["RBW"]      = {critical_damage = 4},
+        ["RC"]       = {critical_damage = 4},
+        ["RGG"]      = {critical_damage = 3},
+        ["Tail"]     = {critical_damage = 6},
+        ["Wayt"]     = {critical_damage = 3},
     }),
 
-    -- TODO: 需要創建碎片模型 F-CK-1C_oblomok_wing_R.edm 和 F-CK-1C_oblomok_wing_L.edm
+    -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
     -- DamageParts = {
     --     [1] = "F-CK-1C_oblomok_wing_R",
     --     [2] = "F-CK-1C_oblomok_wing_L"
     -- },
-    -- 暫時禁用以避免引擎嘗試載入不存在的模型
-    -- DamageParts = {}, -- 空陣列可能也會有問題，完全省略此欄位
+    -- 若暫時沒有殘骸模型，可先保持註解狀態。
+    -- DamageParts = {}, -- 無殘骸模型時可維持空表
 
-    -- ===================== 飛行模型 (SFM_Data) - 簡化版 =====================
-    -- 注意：完整 SFM_Data 很敏感，如要穩定飛行建議複製或微調現成機種數值
-    SFM_Data = { -- |  △(複製於 F-16C)
+    -- ===================== 簡化飛行模型 (SFM_Data) =====================
+    -- SFM_Data 先沿用接近 F-16C 的數值型態，後續再依 EFM / SFM 需求調整。
+    SFM_Data = { -- 目前主要提供 AI 與基礎飛行行為
         aerodynamics =
         {
             Cy0 = 0,
@@ -434,8 +447,8 @@ local F_CK_1C = {
         },     -- end of engine
     },
 
-    -- ===================== 燈光、效果、網路同步等 (Visual & Net) =====================
-    lights_data = { -- | ✖(暫時沒有燈光)
+    -- ===================== 視覺與網路 (Visual & Net) =====================
+    lights_data = { -- 燈光集合
         typename = "collection",
         lights = {
             -- [WOLALIGHT_STROBES] = {
@@ -449,16 +462,16 @@ local F_CK_1C = {
         }
     },
 
-    net_animation = { -- | ✖(暫時沒有網路同步)
+    net_animation = { -- 網路同步動畫參數
 
     },
 
-    -- 煙霧/火焰位置 (Fires Position)
-    -- 格式：[編號] = {x, y, z}
-    -- 座標軸：x 向右、y 向上、z 向前
-    -- 複製於 A-4E-C.lua
+    -- 起火與煙霧效果位置 (Fires Position)
+    -- 每個項目格式: [index] = {x, y, z}
+    -- x 為前後、y 為上下、z 為左右方向
+    -- 位置可參考 A-4E-C.lua 的配置方式
     fires_pos =
-    { -- | ✖(暫時沒有)
+    { -- 預留火焰 / 煙霧發生點
         -- [1] =     {-0.232,    1.262,    0},     -- Fuselage
         -- [2] =     {-0.2,    -0.5,    0.84},     -- wing (inner?) right, WING_R_IN
         -- [3] =     {-0.75,    -0.5,    -0.8},    -- wing (inner?) left, WING_L_IN
@@ -469,7 +482,7 @@ local F_CK_1C = {
         -- [8] =     {-5.6,    0.185,    0},       -- High Altitude Contrails
         -- [9] =     {-5.5,    0.2,    0},         -- left engine
         -- [10] =     {-7.728,    0.039,    0.5},  -- Right Engine? {0.304,    -0.748,    0.442},
-        -- [11] =     {-7.728,    0.039,    -0.5}, -- ?
+        -- [11] =     {-7.728,    0.039,    -0.5}, -- Left Engine?
     },
 
     -- effects_presets = {{
@@ -477,43 +490,43 @@ local F_CK_1C = {
     --     file = current_mod_path .. "/Effects/F-CK-1C_overwingVapor.lua"
     -- }},
 
-    -- chaff_flare_dispenser = {
-    --     [1] = {
-    --         dir = {0, -1, 0},
-    --         pos = {-3.65, -0.5, -0.93}
-    --     },
-    --     [2] = {
-    --         dir = {0, -1, 0},
-    --         pos = {-3.91, -0.5, -0.93}
-    --     }
-    -- },
+    chaff_flare_dispenser = {
+        [1] = {
+            dir = {0, -1, 0},
+            pos = {-3.78, -0.45, -0.78} -- Left side of speedbrake
+        },
+        [2] = {
+            dir = {0, -1, 0},
+            pos = {-3.78, -0.45, 0.78} -- Right side of speedbrake
+        }
+    },
 
-    -- 以下為從 A-4E 參考來的可選欄位，對 AI 或伺服器測試常有用：
-    -- 若不需要可刪除或註解。
-    -- stores_number = 9, -- 掛載點數量 (整數，供 AI/配置介面參考)
-    -- average_fuel_consumption = 0.86, -- 平均油耗 (TSFC 或專案約定單位，unitless)
-    -- is_tanker = false, -- 是否為加油機 (布林)
-    -- launch_bar_connected_arg_value = 0.87, -- 發射吊架連接顯示參數 (arg value，用於載具 UI)
-    -- sounderName = "Aircraft/Planes/F-CK-1C", -- 聲音資源路徑/名稱（字串，非必需但常見）
-    -- -- 機艙視角限制 (AI 使用或視角約束)
+    -- 以下欄位多參考 A-4E 的可選設定，目前先保留註解。
+    -- 後續若要補完整 AI / 無線電 / 航艦操作能力，可再逐項開啟。
+    -- stores_number = 9, -- 掛載站位總數
+    -- average_fuel_consumption = 0.86, -- 平均燃油消耗係數
+    -- is_tanker = false, -- 是否為空中加油機
+    -- launch_bar_connected_arg_value = 0.87, -- 航艦彈射桿動畫參數
+    -- sounderName = "Aircraft/Planes/F-CK-1C", -- 音效資源路徑
+    -- -- 艙罩運動限制 (AI / 動畫用)
     -- CanopyGeometry = {
     --     elevation = {-50.0, 90.0}
     -- },
-    -- -- 通訊設定（常用常數 MODULATION_AM 由環境提供）
+    -- -- 無線電調變設定，通常戰鬥機使用 AM
     -- HumanRadio = {
     --     modulation = MODULATION_AM
     -- },
-    -- panelRadio = {}, -- 面板/無線電設定佔位 (可填具體表格)
-    -- -- 跑道分類/起降分類 (可由地圖/AI 使用)
+    -- panelRadio = {}, -- 座艙面板無線電定義
+    -- -- 跑道分類限制 (玩家 / AI 起降用)
     -- LandRWCategories = {},
     -- TakeOffRWCategories = {},
-    -- -- Failures 與簡單的 Countermeasures / ECM 入口
+    -- -- Failures / Countermeasures / ECM 可於後續補齊
     -- Failures = {},
     -- Countermeasures = {
     --     ECM = "AN/ALQ-126"
-    -- }, -- 簡單 ECM 欄位參考（字串）
+    -- }, -- ECM 範例設定
 
-    -- -- ===================== 其他可選屬性（UI、玩家專屬） =====================
+    -- -- ===================== 額外 UI 屬性 =====================
     -- AddPropAircraft = {{
     --     id = "HelmetMountedDevice",
     --     control = 'comboList',
@@ -537,12 +550,13 @@ local F_CK_1C = {
     --     arg = 509
     -- }}
 
-    -- 如需 datalink，填寫 connectDatalinks / datalinks
-    -- 本機版本未包含 datalinks，先註解以避免載入錯誤；若要啟用，請把下面兩行取消註解並確保檔案存在。
+    -- 若之後要加入 datalink，可使用 connectDatalinks / datalinks。
+    -- 目前版本先不啟用，避免引用不存在的腳本或資料表。
     -- connectDatalinks = {"Link16"},
     -- datalinks = { Link16 = "CoreMods\\aircraft\\F-CK-1C\\Datalinks\\Link16.lua" }
 
 }
 
--- 註：add_aircraft 為 DCS 提供之函數，用於註冊機體
+-- 將此機體註冊到 DCS
 add_aircraft(F_CK_1C)
+
