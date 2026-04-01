@@ -243,23 +243,23 @@ local F_CK_1C = {
     -- M61A2 (using M_61 gun descriptor for compatibility in current mod environment)
     Guns = {
         gun_mount("M_61",
-        {
-            mixes = {
-                {1},        -- XM242 HEI-T
-                {2},        -- M56 HEI
-                {3},        -- M53 API
-                {4, 5},     -- M55 + M220 TP
-                {6},        -- PGU-28/B SAPHEI
-                {7, 8},     -- PGU-27/B TP with tracers
+            {
+                mixes = {
+                    { 1 },    -- XM242 HEI-T
+                    { 2 },    -- M56 HEI
+                    { 3 },    -- M53 API
+                    { 4, 5 }, -- M55 + M220 TP
+                    { 6 },    -- PGU-28/B SAPHEI
+                    { 7, 8 }, -- PGU-27/B TP with tracers
+                },
+                count = 523
             },
-            count = 523
-        },
-        {
-            supply_position = {0.4, 0.55, 0.0},
-            muzzle_pos = {3.85, 0.56, 2.02},
-            ejector_pos = {2.95, 0.42, 2.00},
-            effects = {gatling_effect(351, 6), fire_effect(350), smoke_effect()},
-        })
+            {
+                supply_position = { 0.4, 0.55, 0.0 },
+                muzzle_pos = { 3.85, 0.56, 2.02 },
+                ejector_pos = { 2.95, 0.42, 2.00 },
+                effects = { gatling_effect(351, 6), fire_effect(350), smoke_effect() },
+            })
     },
     ammo_type_default = 5,
     ammo_type = {
@@ -271,29 +271,92 @@ local F_CK_1C = {
         _("TP Target Practice-Tracer PGU"),
     },
 
-    -- 掛點定義 [OPTIONAL]
-    -- TODO: 確認 F-CK-1C.edm 內是否已有 Pylon1、Pylon5 等 connector。
-    -- Pylons = { -- 使用 DCS 的 pylon(index, ...) helper
-    -- pylon(1, 0, -2.2, 0.002, -4.739,
-    -- {
-    --     arg = 308,
-    --     arg_value = 0,
-    --     use_full_connector_position = true,
-    --     connector = "Pylon1" -- 對應模型內的掛點 connector 名稱
-    -- }, {
-    --     { CLSID = "<CLEAN>", arg_value = 1 }, -- 無掛載狀態
-    -- }),
-    -- pylon(5, 0, -0.704, -1.173, 0.0, {
-    --     arg = 312,
-    --     arg_value = 0,
-    --     use_full_connector_position = true,
-    --     connector = "Pylon5", -- 對應模型內的掛點 connector 名稱
-    --     mass = 78.9
-    -- }, {
-    --     { CLSID = "<CLEAN>", arg_value = 1 },
-    -- }),
-    -- },
-    Pylons = {}, -- [DISABLED - 模型掛點尚未確認完成，先避免載入錯誤]
+
+    Pylons = {
+        -- Right tip
+        pylon(1, 0, -1.109, 0.0015, 4.6,
+            {
+                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("1")
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            1
+        ),
+        -- Right outer
+        pylon(2, 0, -0.5744, -0.465, 2.972,
+            {
+                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("2"), arg = 308, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            2
+        ),
+        -- Right inner
+        pylon(3, 0, -0.2861, -0.48, 2.05,
+            {
+                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("3"), arg = 309, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            3
+        ),
+        pylon(4, 0, -0.7202, -0.8726, 0,
+            {
+                use_full_connector_position = true, connector = "PylonM", DisplayName = _("4"), arg = 310, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            4
+        ),
+        -- Left inner
+        pylon(5, 0, -0.2861, -0.48, -2.05,
+            {
+                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("7"), arg = 311, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            7
+        ),
+        -- Left outer
+        pylon(6, 0, -0.5744, -0.465, -2.972,
+            {
+                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("8"), arg = 312, arg_value = 1,
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            8
+        ),
+        -- Left tip
+        pylon(7, 0, -1.109, 0.0015, -4.6,
+            {
+                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("9")
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            9
+        ),
+    },
 
     -- ===================== 反制系統與感測器 =====================
     passivCounterm = {
@@ -313,7 +376,7 @@ local F_CK_1C = {
 
     Sensors = {
         RWR = "Abstract RWR"
-    },                        -- 感測器設定
+    }, -- 感測器設定
 
 
     EPLRS = true, -- 啟用 EPLRS / 資料鏈定位能力
@@ -339,23 +402,23 @@ local F_CK_1C = {
     -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
     Damage = verbose_to_dmg_properties({
-        ["Blap"]     = {critical_damage = 3},
-        ["body"]     = {critical_damage = 10},
-        ["Brap"]     = {critical_damage = 3},
-        ["F W"]      = {critical_damage = 4},
-        ["FGG"]      = {critical_damage = 3},
-        ["Flap"]     = {critical_damage = 2},
-        ["Flap.001"] = {critical_damage = 2},
-        ["LBW"]      = {critical_damage = 4},
-        ["LC"]       = {critical_damage = 4},
-        ["LGG"]      = {critical_damage = 3},
-        ["M wing"]   = {critical_damage = 5},
-        ["M wing.001"]= {critical_damage = 5},
-        ["RBW"]      = {critical_damage = 4},
-        ["RC"]       = {critical_damage = 4},
-        ["RGG"]      = {critical_damage = 3},
-        ["Tail"]     = {critical_damage = 6},
-        ["Wayt"]     = {critical_damage = 3},
+        ["Blap"]       = { critical_damage = 3 },
+        ["body"]       = { critical_damage = 10 },
+        ["Brap"]       = { critical_damage = 3 },
+        ["F W"]        = { critical_damage = 4 },
+        ["FGG"]        = { critical_damage = 3 },
+        ["Flap"]       = { critical_damage = 2 },
+        ["Flap.001"]   = { critical_damage = 2 },
+        ["LBW"]        = { critical_damage = 4 },
+        ["LC"]         = { critical_damage = 4 },
+        ["LGG"]        = { critical_damage = 3 },
+        ["M wing"]     = { critical_damage = 5 },
+        ["M wing.001"] = { critical_damage = 5 },
+        ["RBW"]        = { critical_damage = 4 },
+        ["RC"]         = { critical_damage = 4 },
+        ["RGG"]        = { critical_damage = 3 },
+        ["Tail"]       = { critical_damage = 6 },
+        ["Wayt"]       = { critical_damage = 3 },
     }),
 
     -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
@@ -492,12 +555,12 @@ local F_CK_1C = {
 
     chaff_flare_dispenser = {
         [1] = {
-            dir = {0, -1, 0},
-            pos = {-3.78, -0.45, -0.78} -- Left side of speedbrake
+            dir = { 0, -1, 0 },
+            pos = { -3.78, -0.45, -0.78 } -- Left side of speedbrake
         },
         [2] = {
-            dir = {0, -1, 0},
-            pos = {-3.78, -0.45, 0.78} -- Right side of speedbrake
+            dir = { 0, -1, 0 },
+            pos = { -3.78, -0.45, 0.78 } -- Right side of speedbrake
         }
     },
 
@@ -559,4 +622,3 @@ local F_CK_1C = {
 
 -- 將此機體註冊到 DCS
 add_aircraft(F_CK_1C)
-
