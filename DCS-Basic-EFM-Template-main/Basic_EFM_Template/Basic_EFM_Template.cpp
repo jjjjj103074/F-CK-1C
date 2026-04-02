@@ -28,6 +28,7 @@ Vec3	common_moment;
 Vec3    center_of_mass;
 Vec3	wind;
 Vec3	velocity_world;
+Vec3	velocity_body;
 Vec3	airspeed;
 
 double	const	pi = 3.1415926535897932384626433832795;
@@ -118,6 +119,7 @@ bool	gear_switch = false;
 double	gear_pos = 0;
 double	wheel_brake = 0; 
 int	carrier_pos = 0;
+double	current_mass = 9000.0;
 
 double  internal_fuel = 0; // Amount of fuel in the aircraft (Kg)
 double	external_fuel = 0; // Amount of fuel in external stations (Kg)
@@ -418,19 +420,30 @@ static inline double apply_fallback_ground_forces()
 		return 0.0;
 	}
 
-	const double target_center_agl = 2.22;
-	const double engage_margin = 0.35;
-	const double compression = (target_center_agl + engage_margin) - altitude_AGL;
-	if (compression <= 0.0)
+	const double pitch_deg = fabs(pitch * rad_to_deg);
+	const double roll_deg = fabs(roll * rad_to_deg);
+	const double pitch_scale = limit(1.0 - (pitch_deg / 55.0), 0.25, 1.0);
+	const double roll_scale = limit(1.0 - (roll_deg / 70.0), 0.25, 1.0);
+	const double attitude_scale = pitch_scale * roll_scale;
+
+	const double target_center_agl = 5.20;
+	const double engage_start_agl = 5.60;
+	if (altitude_AGL >= engage_start_agl)
 	{
 		return 0.0;
 	}
 
-	const double spring_factor = 30000.0;
-	const double damping_factor = 9000.0;
+	const double compression = target_center_agl - altitude_AGL;
+	const double preload_ratio = limit((engage_start_agl - altitude_AGL) / (engage_start_agl - target_center_agl), 0.0, 1.0);
+	const double weight_force = limit(current_mass, 4000.0, 16000.0) * 9.81;
+	const double spring_factor = 16000.0;
+	const double hard_stop_factor = 70000.0;
+	const double damping_factor = 6000.0;
 	const double downward_speed = limit(-velocity_world.y, 0.0, 30.0);
-	double total_force = (compression * spring_factor) + (downward_speed * damping_factor);
-	total_force = limit(total_force, 0.0, 70000.0);
+	const double spring_force = limit(compression, 0.0, 2.0) * spring_factor;
+	const double hard_stop_force = limit(compression - 0.20, 0.0, 2.0) * hard_stop_factor;
+	double total_force = ((weight_force * preload_ratio) + spring_force + hard_stop_force + (downward_speed * damping_factor)) * attitude_scale;
+	total_force = limit(total_force, 0.0, weight_force * 1.35);
 	if (total_force <= 0.0)
 	{
 		return 0.0;
@@ -1452,11 +1465,6 @@ void ed_fm_simulate(double dt)
 	if (has_suspension_feedback() && any_wow() == false)
 	{
 		fallback_ground_force = apply_fallback_ground_forces();
-		if (fallback_ground_force > 0.0)
-		{
-			const double pitch_ground_damping = -pitch_rate * limit(fallback_ground_force * 0.30, 0.0, 25000.0);
-			add_local_moment(Vec3(0, 0, pitch_ground_damping));
-		}
 	}
 
 	if (++kFallbackLogDecimation >= 20)
@@ -1464,10 +1472,11 @@ void ed_fm_simulate(double dt)
 		char ground_buf[256];
 		snprintf(
 			ground_buf, sizeof(ground_buf),
-			"fallback agl=%.3f vy=%.3f gear=%.2f fg=%.1f pitch=%.2f roll=%.2f wow=%d",
+			"fallback agl=%.3f vy=%.3f gear=%.2f mass=%.1f fg=%.1f pitch=%.2f roll=%.2f wow=%d",
 			altitude_AGL,
 			velocity_world.y,
 			gear_pos,
+			current_mass,
 			fallback_ground_force,
 			pitch * rad_to_deg,
 			roll * rad_to_deg,
@@ -1547,6 +1556,7 @@ void ed_fm_set_current_mass_state (double mass,
 									double moment_of_inertia_x, double moment_of_inertia_y, double moment_of_inertia_z
 									)
 {
+	current_mass = mass;
 	center_of_mass.x  = center_of_mass_x;
 	center_of_mass.y  = center_of_mass_y;
 	center_of_mass.z  = center_of_mass_z;
@@ -1581,6 +1591,10 @@ void ed_fm_set_current_state_body_axis(double ax, double ay, double az,//linear 
 	double common_angle_of_slide   //AoS radians
 	)
 {
+	velocity_body.x = vx;
+	velocity_body.y = vy;
+	velocity_body.z = vz;
+
 	aoa = common_angle_of_attack;
 	alpha = common_angle_of_attack * rad_to_deg;
 
