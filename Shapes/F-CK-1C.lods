@@ -1,0 +1,9 @@
+model = 
+{
+    lods = {
+        {"F-CK-1C.edm", 1000.0};
+        {"F-CK-1C_1000-5000.edm", 5000.0};
+        {"F-CK-1C_5000-10000.edm", 10000.0};
+    };
+    collision_shell = "idf_hitbox.edm";
+}
