@@ -7,6 +7,63 @@
 
 -- ===================== 基本識別資料 (Identification) =====================
 -- Name / DisplayName / shape_table_data 會對應到 DCS 的單位與模型註冊資料。
+local AIM9M_CLSID = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}"
+local AIM9M_ON_ADAPTER_CLSID = "{AIM-9M-ON-ADAPTER}"
+local MK82_CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}"
+local MK82_SNAKEYE_CLSID = "{Mk82SNAKEYE}"
+local TER_MK82_CLSID = "{TER_9A_3*MK-82}"
+local TER_MK82_SNAKEYE_CLSID = "{TER_9A_3*MK-82_Snakeye}"
+local F16_WING_TANK_CLSID = "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}"
+local F16_CENTER_TANK_CLSID = "{8A0BE8AE-58D4-4572-9263-3144C0D06364}"
+
+local function get_wingtip_weapons(launcher_connector)
+    return {
+        {
+            CLSID = AIM9M_ON_ADAPTER_CLSID,
+            arg_value = 0.5,
+            attach_point_position = { 0.35, 0.00, 0.00 },
+        },
+    }
+end
+
+local function get_outer_pylon_weapons()
+    local weapons = {
+        { CLSID = AIM9M_ON_ADAPTER_CLSID, arg_value = 0.5 },
+        { CLSID = MK82_CLSID },
+        { CLSID = MK82_SNAKEYE_CLSID },
+        { CLSID = "<CLEAN>", arg_value = 1 },
+    }
+    return weapons
+end
+
+local function get_inner_pylon_weapons(allow_triple_rack)
+    local weapons = {
+        { CLSID = AIM9M_ON_ADAPTER_CLSID, arg_value = 0.5 },
+        { CLSID = MK82_CLSID },
+        { CLSID = MK82_SNAKEYE_CLSID },
+        { CLSID = F16_WING_TANK_CLSID, arg_value = 0.3 },
+    }
+
+    if allow_triple_rack then
+        weapons[#weapons + 1] = { CLSID = TER_MK82_CLSID }
+        weapons[#weapons + 1] = { CLSID = TER_MK82_SNAKEYE_CLSID }
+    end
+
+    weapons[#weapons + 1] = { CLSID = "<CLEAN>", arg_value = 1 }
+    return weapons
+end
+
+local function get_centerline_weapons()
+    return {
+        { CLSID = F16_CENTER_TANK_CLSID, arg_value = 0.3 },
+        { CLSID = MK82_CLSID },
+        { CLSID = MK82_SNAKEYE_CLSID },
+        { CLSID = TER_MK82_CLSID },
+        { CLSID = TER_MK82_SNAKEYE_CLSID },
+        { CLSID = "<CLEAN>", arg_value = 1 },
+    }
+end
+
 local F_CK_1C = {
     -- 內部單位名稱
     Name = 'F-CK-1C',
@@ -293,9 +350,73 @@ local F_CK_1C = {
     --     { CLSID = "<CLEAN>", arg_value = 1 },
     -- }),
     -- },
-    Pylons = {}, -- [DISABLED - 模型掛點尚未確認完成，先避免載入錯誤]
-
     -- ===================== 反制系統與感測器 =====================
+    Pylons = {
+        pylon(1, 0, -1.85, 0.00, 4.74,
+        {
+            arg = 314,
+            arg_value = -1.0,
+            DisplayName = "1",
+            use_full_connector_position = true,
+            connector = "launcher_aim9_R"
+        },
+        get_wingtip_weapons("launcher_aim9_R")),
+        pylon(2, 0, -1.55, -0.32, 2.90,
+        {
+            arg = 313,
+            arg_value = 0,
+            DisplayName = "2",
+            use_full_connector_position = true,
+            connector = "drop_pylon_R2"
+        },
+        get_outer_pylon_weapons()),
+        pylon(3, 0, -1.15, -0.30, 2.05,
+        {
+            arg = 312,
+            arg_value = 0,
+            DisplayName = "3",
+            use_full_connector_position = true,
+            connector = "drop_pylon_R1"
+        },
+        get_inner_pylon_weapons(true)),
+        pylon(4, 0, -0.70, -1.05, 0.00,
+        {
+            arg = 311,
+            arg_value = 0,
+            DisplayName = "4",
+            use_full_connector_position = true,
+            connector = "drop_pylon_M"
+        },
+        get_centerline_weapons()),
+        pylon(5, 0, -1.15, -0.30, -2.05,
+        {
+            arg = 310,
+            arg_value = 0,
+            DisplayName = "5",
+            use_full_connector_position = true,
+            connector = "drop_pylon_L1"
+        },
+        get_inner_pylon_weapons(true)),
+        pylon(6, 0, -1.55, -0.32, -2.90,
+        {
+            arg = 309,
+            arg_value = 0,
+            DisplayName = "6",
+            use_full_connector_position = true,
+            connector = "drop_pylon_L2"
+        },
+        get_outer_pylon_weapons()),
+        pylon(7, 0, -1.85, 0.00, -4.74,
+        {
+            arg = 308,
+            arg_value = -1.0,
+            DisplayName = "7",
+            use_full_connector_position = true,
+            connector = "launcher_aim9_L"
+        },
+        get_wingtip_weapons("launcher_aim9_L")),
+    },
+
     passivCounterm = {
         CMDS_Edit = true,        -- 允許在任務中編輯 CMDS 配置
         SingleChargeTotal = 180, -- 箔條與熱焰彈總數
