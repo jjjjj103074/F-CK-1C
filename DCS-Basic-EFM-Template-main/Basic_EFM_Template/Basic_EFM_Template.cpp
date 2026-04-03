@@ -112,6 +112,7 @@ double	afterburner_core_rpm = 0.94;      // Core RPM readout while in AB
 double	afterburner_core_drop_time = 0.80; // Seconds for core RPM transition between mil and AB
 double	left_afterburner_ratio = 0.0;    // 0..1
 double	right_afterburner_ratio = 0.0;   // 0..1
+bool	fbw_g_limiter_override = false;
 
 // Lift and drag devices
 bool	airbrake_switch = false;
@@ -119,11 +120,14 @@ double	airbrake_pos = 0;
 double	flaps_pos = 0;
 bool	flaps_switch = false;
 double	slats_pos = 0;
+bool	nose_turn_enabled = false;
 
 // Landing gear
 bool	gear_switch = false;
 double	gear_pos = 0;
 double	wheel_brake = 0; 
+double	wheel_brake_left = 0;
+double	wheel_brake_right = 0;
 int	carrier_pos = 0;
 double	current_mass = 9000.0;
 
@@ -443,6 +447,15 @@ static inline double normalize_throttle_axis(double raw_value)
 		normalized = 1.0 - normalized;
 	}
 	return limit(normalized, 0.0, 1.0);
+}
+
+static inline double normalize_brake_axis(double raw_value)
+{
+	if (raw_value < 0.0)
+	{
+		return limit((raw_value + 1.0) * 0.5, 0.0, 1.0);
+	}
+	return limit(raw_value, 0.0, 1.0);
 }
 
 static inline double resolve_pilot_throttle_cmd(double axis_cmd, double keyboard_cmd, bool use_axis)
@@ -1721,6 +1734,9 @@ void ed_fm_set_command (int command, float value)
 			fbw_mode_target = FBW_CAT3;
 		}
 		break;
+	case FBWGLimiterOverride:
+		fbw_g_limiter_override = (value > 0.5f);
+		break;
 
 	//	Engine and throttle commands
 
@@ -1826,7 +1842,16 @@ void ed_fm_set_command (int command, float value)
 		break;
 	case AirBrakesOff:
 		airbrake_switch = false;
+		break;
 	case AirBrakesOn:
+		airbrake_switch = true;
+		break;
+	case AirBrakesAuto:
+		break;
+	case AirBrakesUp:
+		airbrake_switch = false;
+		break;
+	case AirBrakesDown:
 		airbrake_switch = true;
 		break;
 
@@ -1837,8 +1862,17 @@ void ed_fm_set_command (int command, float value)
 			flaps_switch = false;
 		break;
 	case flapsDown:
-		flaps_switch = false;
+		flaps_switch = true;
+		break;
 	case flapsUp:
+		flaps_switch = false;
+		break;
+	case FlapsAuto:
+		break;
+	case FlapsUpCmd:
+		flaps_switch = false;
+		break;
+	case FlapsDownCmd:
 		flaps_switch = true;
 		break;
 
@@ -1854,12 +1888,52 @@ void ed_fm_set_command (int command, float value)
 	case gearUp:
 		gear_switch = false;
 		break;
+	case GearAuto:
+		break;
+	case GearHandleUp:
+		gear_switch = false;
+		break;
+	case GearHandleDown:
+		gear_switch = true;
+		break;
+	case NoseTurnToggle:
+		if (value > 0.5f)
+		{
+			nose_turn_enabled = !nose_turn_enabled;
+		}
+		break;
+	case NoseTurnUp:
+		nose_turn_enabled = false;
+		break;
+	case NoseTurnAuto:
+		nose_turn_enabled = false;
+		break;
+	case NoseTurnDown:
+		nose_turn_enabled = true;
+		break;
+	case WheelBrakeAxis:
+		wheel_brake = normalize_brake_axis(value);
+		wheel_brake_left = wheel_brake;
+		wheel_brake_right = wheel_brake;
+		break;
+	case WheelBrakeAxisLeft:
+		wheel_brake_left = normalize_brake_axis(value);
+		wheel_brake = (wheel_brake_left + wheel_brake_right) * 0.5;
+		break;
+	case WheelBrakeAxisRight:
+		wheel_brake_right = normalize_brake_axis(value);
+		wheel_brake = (wheel_brake_left + wheel_brake_right) * 0.5;
+		break;
 
 	case WheelBrakeOn:
 		wheel_brake = 1;
+		wheel_brake_left = 1;
+		wheel_brake_right = 1;
 		break;
 	case WheelBrakeOff:
 		wheel_brake = 0;
+		wheel_brake_left = 0;
+		wheel_brake_right = 0;
 		break;
 
 	}
@@ -2017,13 +2091,19 @@ double ed_fm_get_param(unsigned index)
 	switch (index)
 	{
 		case ED_FM_SUSPENSION_0_WHEEL_YAW: // Nose wheel steering
-			return limit(yaw_input, -1.0, 1.0) * 0.75;
+		{
+			const bool wow = has_suspension_feedback() && any_wow();
+			const bool nws_valid = wow && (gear_pos > 0.5);
+			const double nws_gain = (nose_turn_enabled && (V_scalar < 70.0)) ? 0.75 : 0.0;
+			return nws_valid ? (limit(yaw_input, -1.0, 1.0) * nws_gain) : 0.0;
+		}
 
 		case ED_FM_SUSPENSION_0_RELATIVE_BRAKE_MOMENT:
 			return 1e-4;
 		case ED_FM_SUSPENSION_1_RELATIVE_BRAKE_MOMENT:
+			return 1e-4 + (5 * wheel_brake_left);
 		case ED_FM_SUSPENSION_2_RELATIVE_BRAKE_MOMENT:
-			return 1e-4 + (5 * wheel_brake);
+			return 1e-4 + (5 * wheel_brake_right);
 
 		case ED_FM_ANTI_SKID_ENABLE:
 			return true;

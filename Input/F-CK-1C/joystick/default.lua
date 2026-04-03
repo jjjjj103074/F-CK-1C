@@ -5,14 +5,12 @@ dofile(cscripts .. "command_defs.lua")
 
 join(res.axisCommands,
     {
-        { combos = defaultDeviceAssignmentFor("pitch"),       action = 2001, name = _('Pitch Axis'),                category = { _('Flight Control') } },
-        { combos = defaultDeviceAssignmentFor("roll"),        action = 2002, name = _('Roll Axis'),                 category = { _('Flight Control') } },
-        { combos = defaultDeviceAssignmentFor("rudder"),      action = 2003, name = _('Yaw Axis'),                  category = { _('Flight Control') } },
-
-        { combos = defaultDeviceAssignmentFor("thrust"),      action = 2004, name = _('Throttle Axis - Both'),      category = { _('Throttle Quadrant'), _('Flight Control') } },
-        { combos = defaultDeviceAssignmentFor("thrust_left"), action = 2005, name = _('Throttle Axis - Left'),      category = { _('Throttle Quadrant'), _('Flight Control') } },
-        { combos = defaultDeviceAssignmentFor("thrust_right"),action = 2006, name = _('Throttle Axis - Right'),     category = { _('Throttle Quadrant'), _('Flight Control') } },
-
+        { combos = defaultDeviceAssignmentFor("pitch"),             action = 2001, name = _('Pitch Axis'),                category = { _('Flight Control') } },
+        { combos = defaultDeviceAssignmentFor("roll"),              action = 2002, name = _('Roll Axis'),                 category = { _('Flight Control') } },
+        { combos = defaultDeviceAssignmentFor("rudder"),            action = 2003, name = _('Yaw Axis'),                  category = { _('Flight Control') } },
+        { combos = defaultDeviceAssignmentFor("thrust"),            action = 2004, name = _('Throttle Axis - Both'),      category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = defaultDeviceAssignmentFor("thrust_left"),       action = 2005, name = _('Throttle Axis - Left'),      category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = defaultDeviceAssignmentFor("thrust_right"),      action = 2006, name = _('Throttle Axis - Right'),     category = { _('Throttle Quadrant'), _('Flight Control') } },
         { combos = defaultDeviceAssignmentFor("wheel_brake"),       action = 3023, name = _('Wheel Brake Axis - Both'), category = { _('Systems') } },
         { combos = defaultDeviceAssignmentFor("wheel_brake_left"),  action = 3024, name = _('Wheel Brake Axis - Left'), category = { _('Systems') } },
         { combos = defaultDeviceAssignmentFor("wheel_brake_right"), action = 3025, name = _('Wheel Brake Axis - Right'),category = { _('Systems') } },
@@ -42,21 +40,19 @@ join(res.keyCommands,
         { down = 3009, name = _('FBW CAT - CAT III'),  category = { _('Flight Control') } },
         { down = 3026, up = 3026, value_down = 1.0, value_up = 0.0, name = _('FBW G-Limiter Override (Hold)'), category = { _('Flight Control') } },
 
-        { down = 3016, name = _('Speedbrake - Close'),            category = { _('Throttle Panel'), _('Flight Control') } },
-        { down = 3010, name = _('Speedbrake - Hold'),             category = { _('Throttle Panel'), _('Flight Control') } },
-        { down = 3017, name = _('Speedbrake - Extend'),           category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = 3016, name = _('Speedbrake 3-Pos - Close'),      category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = 3010, name = _('Speedbrake 3-Pos - Hold'),       category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = 3017, name = _('Speedbrake 3-Pos - Extend'),     category = { _('Throttle Panel'), _('Flight Control') } },
 
-        { down = 3018, name = _('LG Handle - UP'),                category = { _('Left Auxiliary Console') } },
-        { down = 3019, name = _('LG Handle - DOWN'),              category = { _('Left Auxiliary Console') } },
+        { down = 3018, name = _('LG Handle 3-Pos - UP'),          category = { _('Left Auxiliary Console') } },
+        { down = 3019, name = _('LG Handle 3-Pos - DOWN'),        category = { _('Left Auxiliary Console') } },
 
-        { down = 3020, name = _('Flap Handle - UP'),              category = { _('Throttle Panel'), _('Flight Control') } },
-        { down = 3012, name = _('Flap Handle - AUTO'),            category = { _('Throttle Panel'), _('Flight Control') } },
-        { down = 3021, name = _('Flap Handle - DOWN'),            category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = 3020, name = _('Flap 3-Pos - UP'),               category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = 3012, name = _('Flap 3-Pos - AUTO'),             category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = 3021, name = _('Flap 3-Pos - DOWN'),             category = { _('Throttle Panel'), _('Flight Control') } },
 
         { down = 3022, name = _('Nose Wheel Steering - Toggle'),  category = { _('Systems') } },
 
-        { down = 74,   name = _('Wheel Brake - ON'),              category = { _('Systems') } },
-        { down = 75,   name = _('Wheel Brake - OFF'),             category = { _('Systems') } },
     }
 )
 
