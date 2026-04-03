@@ -16,8 +16,8 @@ join(res.keyCommands,
 
         { combos = defaultDeviceAssignmentFor("thrust_up"),         pressed = iCommandThrottleIncrease,            up = iCommandThrottleStop,                  name = _('Throttle Smoothly - Increase'),                                   category = { _('Throttle Quadrant'), _('Flight Control') } },
         { combos = defaultDeviceAssignmentFor("thrust_down"),       pressed = iCommandThrottleDecrease,            up = iCommandThrottleStop,                  name = _('Throttle Smoothly - Decrease'),                                   category = { _('Throttle Quadrant'), _('Flight Control') } },
-        { combos = { { key = 'PageUp' } },                          down = iCommandPlaneAUTIncreaseRegime,         name = _('Throttle Step - Increase'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
-        { combos = { { key = 'PageDown' } },                        down = iCommandPlaneAUTDecreaseRegime,         name = _('Throttle Step - Decrease'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = { { key = 'PageUp' } },                          down = iCommandThrottleIncrease,               name = _('Throttle Step - Increase'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = { { key = 'PageDown' } },                        down = iCommandThrottleDecrease,               name = _('Throttle Step - Decrease'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
 
         { combos = defaultDeviceAssignmentFor("wheel_brake"),       down = iCommandPlaneWheelBrakeOn,              up = iCommandPlaneWheelBrakeOff,            name = _('Wheel Brake - ON/OFF'),                                           category = { _('Systems') } },
         { combos = { { key = 'W', reformers = { 'LCtrl' } } },      down = iCommandPlaneWheelBrakeLeftOn,          up = iCommandPlaneWheelBrakeLeftOff,        name = _('Wheel Brake Left - ON/OFF'),                                      category = { _('Systems') } },

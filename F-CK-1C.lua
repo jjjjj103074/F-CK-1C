@@ -137,7 +137,7 @@ local F_CK_1C = {
             -- pilot_name 可於後續補上專用飛行員模型名稱
             -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 補上可拋棄艙罩模型名稱
             -- canopy_pos = {3.2, 0.674, 0}, -- 艙罩參考位置
-            pos = { 3.2, 0.27, 0 }, -- 飛行員座位位置 (x, y, z)，單位公尺
+            pos = { 3.28, -0.08, 0 }, -- 飛行員座位位置 (x, y, z)，單位公尺
             g_suit = 1.02           -- G-suit 係數，1.0 為標準值
         }
     },
@@ -338,25 +338,9 @@ local F_CK_1C = {
     -- ===================== 損傷 (Damage) =====================
     -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
-    Damage = verbose_to_dmg_properties({
-        ["Blap"]     = {critical_damage = 3},
-        ["body"]     = {critical_damage = 10},
-        ["Brap"]     = {critical_damage = 3},
-        ["F W"]      = {critical_damage = 4},
-        ["FGG"]      = {critical_damage = 3},
-        ["Flap"]     = {critical_damage = 2},
-        ["Flap.001"] = {critical_damage = 2},
-        ["LBW"]      = {critical_damage = 4},
-        ["LC"]       = {critical_damage = 4},
-        ["LGG"]      = {critical_damage = 3},
-        ["M wing"]   = {critical_damage = 5},
-        ["M wing.001"]= {critical_damage = 5},
-        ["RBW"]      = {critical_damage = 4},
-        ["RC"]       = {critical_damage = 4},
-        ["RGG"]      = {critical_damage = 3},
-        ["Tail"]     = {critical_damage = 6},
-        ["Wayt"]     = {critical_damage = 3},
-    }),
+    -- Keep the damage table minimal until EDM damage cells are mapped correctly.
+    -- The previous named-cell mapping triggered DCS "Corrupt damage model" errors.
+    Damage = {},
 
     -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
     -- DamageParts = {

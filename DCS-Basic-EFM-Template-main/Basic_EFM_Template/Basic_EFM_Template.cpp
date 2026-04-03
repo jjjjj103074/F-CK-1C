@@ -91,6 +91,12 @@ double	right_throttle_output = 0;
 double	right_engine_power_readout = 0;
 double	right_thrust_force = 0;
 bool	throttle_axis_inverted = true; // true = axis forward -> larger throttle
+double	throttle_axis_cmd_left = 0.0;
+double	throttle_axis_cmd_right = 0.0;
+double	throttle_keyboard_cmd_left = 0.0;
+double	throttle_keyboard_cmd_right = 0.0;
+bool	throttle_use_axis_left = false;
+bool	throttle_use_axis_right = false;
 double	pilot_throttle_cmd_left = 0.0;
 double	pilot_throttle_cmd_right = 0.0;
 double	fbw_throttle_cmd_left = 0.0;   // Hook for future FBW/autothrottle
@@ -415,49 +421,7 @@ static inline bool any_wow()
 
 static inline double apply_fallback_ground_forces()
 {
-	if (gear_pos <= 0.5)
-	{
-		return 0.0;
-	}
-
-	const double pitch_deg = fabs(pitch * rad_to_deg);
-	const double roll_deg = fabs(roll * rad_to_deg);
-	const double pitch_scale = limit(1.0 - (pitch_deg / 55.0), 0.25, 1.0);
-	const double roll_scale = limit(1.0 - (roll_deg / 70.0), 0.25, 1.0);
-	const double attitude_scale = pitch_scale * roll_scale;
-
-	const double target_center_agl = 5.20;
-	const double engage_start_agl = 5.60;
-	if (altitude_AGL >= engage_start_agl)
-	{
-		return 0.0;
-	}
-
-	const double compression = target_center_agl - altitude_AGL;
-	const double preload_ratio = limit((engage_start_agl - altitude_AGL) / (engage_start_agl - target_center_agl), 0.0, 1.0);
-	const double weight_force = limit(current_mass, 4000.0, 16000.0) * 9.81;
-	const double spring_factor = 16000.0;
-	const double hard_stop_factor = 70000.0;
-	const double damping_factor = 6000.0;
-	const double downward_speed = limit(-velocity_world.y, 0.0, 30.0);
-	const double spring_force = limit(compression, 0.0, 2.0) * spring_factor;
-	const double hard_stop_force = limit(compression - 0.20, 0.0, 2.0) * hard_stop_factor;
-	double total_force = ((weight_force * preload_ratio) + spring_force + hard_stop_force + (downward_speed * damping_factor)) * attitude_scale;
-	total_force = limit(total_force, 0.0, weight_force * 1.35);
-	if (total_force <= 0.0)
-	{
-		return 0.0;
-	}
-
-	const double nose_force = total_force * 0.11;
-	const double left_main_force = total_force * 0.445;
-	const double right_main_force = total_force * 0.445;
-
-	add_local_force(Vec3(0, nose_force, 0), kFallbackGearPoints[0]);
-	add_local_force(Vec3(0, left_main_force, 0), kFallbackGearPoints[1]);
-	add_local_force(Vec3(0, right_main_force, 0), kFallbackGearPoints[2]);
-
-	return total_force;
+	return 0.0;
 }
 
 static void reset_suspension_feedback_state()
@@ -481,6 +445,16 @@ static inline double normalize_throttle_axis(double raw_value)
 	return limit(normalized, 0.0, 1.0);
 }
 
+static inline double resolve_pilot_throttle_cmd(double axis_cmd, double keyboard_cmd, bool use_axis)
+{
+	return limit(use_axis ? axis_cmd : keyboard_cmd, 0.0, 1.0);
+}
+
+static inline double resolve_keyboard_throttle_base(double axis_cmd, double keyboard_cmd, bool use_axis)
+{
+	return limit(use_axis ? axis_cmd : keyboard_cmd, 0.0, 1.0);
+}
+
 static inline double compose_engine_throttle_cmd(double pilot_cmd, double fbw_cmd)
 {
 	const double pilot = limit(pilot_cmd, 0.0, 1.0);
@@ -497,6 +471,9 @@ static inline double compose_engine_throttle_cmd(double pilot_cmd, double fbw_cm
 
 static inline void update_engine_throttle_inputs_from_interface()
 {
+	pilot_throttle_cmd_left = resolve_pilot_throttle_cmd(throttle_axis_cmd_left, throttle_keyboard_cmd_left, throttle_use_axis_left);
+	pilot_throttle_cmd_right = resolve_pilot_throttle_cmd(throttle_axis_cmd_right, throttle_keyboard_cmd_right, throttle_use_axis_right);
+
 	engine_throttle_cmd_left = compose_engine_throttle_cmd(pilot_throttle_cmd_left, fbw_throttle_cmd_left);
 	engine_throttle_cmd_right = compose_engine_throttle_cmd(pilot_throttle_cmd_right, fbw_throttle_cmd_right);
 
@@ -1462,10 +1439,7 @@ void ed_fm_simulate(double dt)
 	};
 
 	fallback_ground_force = 0.0;
-	if (has_suspension_feedback() && any_wow() == false)
-	{
-		fallback_ground_force = apply_fallback_ground_forces();
-	}
+	fallback_ground_force = apply_fallback_ground_forces();
 
 	if (++kFallbackLogDecimation >= 20)
 	{
@@ -1488,7 +1462,7 @@ void ed_fm_simulate(double dt)
 
 	// Logic for determining if the aircraft is on the ground.
 	// Use suspension feedback (WoW) instead of AGL thresholds.
-	on_ground = ((gear_pos > 0.5) && has_suspension_feedback() && any_wow()) || (fallback_ground_force > 1000.0);
+	on_ground = ((gear_pos > 0.5) && has_suspension_feedback() && any_wow());
 
 	// Cockpit shaking intensity
 	shake_amplitude = 0; // Starts at zero every frame
@@ -1773,40 +1747,73 @@ void ed_fm_set_command (int command, float value)
 		break;
 
 	case ThrottleAxis://iCommandPlaneThrustCommon
-		pilot_throttle_cmd_left = normalize_throttle_axis(value);
-		pilot_throttle_cmd_right = normalize_throttle_axis(value);
+		{
+			const double normalized = normalize_throttle_axis(value);
+			if (fabs(normalized - throttle_axis_cmd_left) > 1e-4)
+			{
+				throttle_use_axis_left = true;
+			}
+			if (fabs(normalized - throttle_axis_cmd_right) > 1e-4)
+			{
+				throttle_use_axis_right = true;
+			}
+			throttle_axis_cmd_left = normalized;
+			throttle_axis_cmd_right = normalized;
+		}
 		break;
 	case ThrottleAxisLeft:
-		pilot_throttle_cmd_left = normalize_throttle_axis(value);
+		{
+			const double normalized = normalize_throttle_axis(value);
+			if (fabs(normalized - throttle_axis_cmd_left) > 1e-4)
+			{
+				throttle_use_axis_left = true;
+			}
+			throttle_axis_cmd_left = normalized;
+		}
 		break;
 	case ThrottleAxisRight:
-		pilot_throttle_cmd_right = normalize_throttle_axis(value);
+		{
+			const double normalized = normalize_throttle_axis(value);
+			if (fabs(normalized - throttle_axis_cmd_right) > 1e-4)
+			{
+				throttle_use_axis_right = true;
+			}
+			throttle_axis_cmd_right = normalized;
+		}
 		break;
 
 	case ThrottleIncrease: // Both engines
-		pilot_throttle_cmd_left = limit(pilot_throttle_cmd_left + 0.0075, 0.0, 1.0);
-		pilot_throttle_cmd_right = limit(pilot_throttle_cmd_right + 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_left = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_left, throttle_keyboard_cmd_left, throttle_use_axis_left) + 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_right = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_right, throttle_keyboard_cmd_right, throttle_use_axis_right) + 0.0075, 0.0, 1.0);
+		throttle_use_axis_left = false;
+		throttle_use_axis_right = false;
 		break;
 	case ThrottleLeftUp:
-		pilot_throttle_cmd_left = limit(pilot_throttle_cmd_left + 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_left = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_left, throttle_keyboard_cmd_left, throttle_use_axis_left) + 0.0075, 0.0, 1.0);
+		throttle_use_axis_left = false;
 		break;
 	case ThrottleRightUp:
-		pilot_throttle_cmd_right = limit(pilot_throttle_cmd_right + 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_right = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_right, throttle_keyboard_cmd_right, throttle_use_axis_right) + 0.0075, 0.0, 1.0);
+		throttle_use_axis_right = false;
 		break;
 
 	case ThrottleDecrease: // Both engines
-		pilot_throttle_cmd_left = limit(pilot_throttle_cmd_left - 0.0075, 0.0, 1.0);
-		pilot_throttle_cmd_right = limit(pilot_throttle_cmd_right - 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_left = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_left, throttle_keyboard_cmd_left, throttle_use_axis_left) - 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_right = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_right, throttle_keyboard_cmd_right, throttle_use_axis_right) - 0.0075, 0.0, 1.0);
+		throttle_use_axis_left = false;
+		throttle_use_axis_right = false;
 		break;
 	case ThrottleLeftDown:
-		pilot_throttle_cmd_left = limit(pilot_throttle_cmd_left - 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_left = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_left, throttle_keyboard_cmd_left, throttle_use_axis_left) - 0.0075, 0.0, 1.0);
+		throttle_use_axis_left = false;
 		break;
 	case ThrottleRightDown:
-		pilot_throttle_cmd_right = limit(pilot_throttle_cmd_right - 0.0075, 0.0, 1.0);
+		throttle_keyboard_cmd_right = limit(resolve_keyboard_throttle_base(throttle_axis_cmd_right, throttle_keyboard_cmd_right, throttle_use_axis_right) - 0.0075, 0.0, 1.0);
+		throttle_use_axis_right = false;
 		break;
 	case ThrottleStop:
-		pilot_throttle_cmd_left = 0.0;
-		pilot_throttle_cmd_right = 0.0;
+		// Release of keyboard throttle commands should stop the stepping action,
+		// not snap the commanded throttle back to idle.
 		break;
 
 	// Other commands
@@ -1967,13 +1974,14 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[28].f = (float)limit(left_afterburner_ratio, 0, 1);
 	drawargs[29].f = (float)limit(right_afterburner_ratio, 0, 1);
 
-	// Flaps
+	// Practical model mapping based on in-sim verification:
+	// 9/10 behave like the trailing-edge flaps, while 126-129 behave like leading-edge slot/slat pieces.
 	drawargs[9].f = (float)limit(flaps_pos, 0, 1);
 	drawargs[10].f = (float)limit(flaps_pos, 0, 1);
-	drawargs[126].f = (float)limit(flaps_pos, 0, 1); // Right inner
-	drawargs[127].f = (float)limit(flaps_pos, 0, 1); // Right outer
-	drawargs[128].f = (float)limit(flaps_pos, 0, 1); // Left inner
-	drawargs[129].f = (float)limit(flaps_pos, 0, 1); // Left outer
+	drawargs[126].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
+	drawargs[127].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
+	drawargs[128].f = (float)limit(slats_pos, 0, 1); // Left leading-edge section
+	drawargs[129].f = (float)limit(slats_pos, 0, 1); // Left leading-edge section
 
 	// Slats
 	drawargs[13].f = (float)limit(slats_pos, 0, 1);
@@ -2287,12 +2295,18 @@ void ed_fm_cold_start()
 
 	// Engines off
 	left_engine_switch = false;
+	throttle_axis_cmd_left = 0.0;
+	throttle_keyboard_cmd_left = 0.0;
+	throttle_use_axis_left = false;
 	pilot_throttle_cmd_left = 0.0;
 	left_throttle_input = 0.0;
 	left_throttle_output = 0.0;
 	left_engine_power_readout = 0.0;
 
 	right_engine_switch = false;
+	throttle_axis_cmd_right = 0.0;
+	throttle_keyboard_cmd_right = 0.0;
+	throttle_use_axis_right = false;
 	pilot_throttle_cmd_right = 0.0;
 	right_throttle_input = 0.0;
 	right_throttle_output = 0.0;
@@ -2317,12 +2331,18 @@ void ed_fm_hot_start()
 
 	// Engines on at idle/minimum throttle
 	left_engine_switch = true;
+	throttle_axis_cmd_left = 0.0;
+	throttle_keyboard_cmd_left = 0.0;
+	throttle_use_axis_left = false;
 	pilot_throttle_cmd_left = 0.0;
 	left_throttle_input = 0.0;
 	left_throttle_output = 0.5;
 	left_engine_power_readout = 0.5;
 
 	right_engine_switch = true;
+	throttle_axis_cmd_right = 0.0;
+	throttle_keyboard_cmd_right = 0.0;
+	throttle_use_axis_right = false;
 	pilot_throttle_cmd_right = 0.0;
 	right_throttle_input = 0.0;
 	right_throttle_output = 0.5;
@@ -2343,12 +2363,18 @@ void ed_fm_hot_start_in_air()
 
 	//Engines on at 50% throttle
 	left_engine_switch = true;
+	throttle_axis_cmd_left = 0.5;
+	throttle_keyboard_cmd_left = 0.5;
+	throttle_use_axis_left = false;
 	pilot_throttle_cmd_left = 0.5;
 	left_throttle_input = 0.5;
 	left_throttle_output = 0.5;
 	left_engine_power_readout = 0.5;
 
 	right_engine_switch = true;
+	throttle_axis_cmd_right = 0.5;
+	throttle_keyboard_cmd_right = 0.5;
+	throttle_use_axis_right = false;
 	pilot_throttle_cmd_right = 0.5;
 	right_throttle_input = 0.5;
 	right_throttle_output = 0.5;
@@ -2377,6 +2403,12 @@ void ed_fm_release()
 	yaw_trim = 0;
 	rudder_command = 0;
 
+	throttle_axis_cmd_left = 0.0;
+	throttle_axis_cmd_right = 0.0;
+	throttle_keyboard_cmd_left = 0.0;
+	throttle_keyboard_cmd_right = 0.0;
+	throttle_use_axis_left = false;
+	throttle_use_axis_right = false;
 	pilot_throttle_cmd_left = 0.0;
 	pilot_throttle_cmd_right = 0.0;
 	fbw_throttle_cmd_left = 0.0;
