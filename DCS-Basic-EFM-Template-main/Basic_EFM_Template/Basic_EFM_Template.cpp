@@ -1935,6 +1935,22 @@ void ed_fm_set_command (int command, float value)
 		wheel_brake_left = 0;
 		wheel_brake_right = 0;
 		break;
+	case WheelBrakeLeftOn:
+		wheel_brake_left = 1;
+		wheel_brake = (wheel_brake_left + wheel_brake_right) * 0.5;
+		break;
+	case WheelBrakeLeftOff:
+		wheel_brake_left = 0;
+		wheel_brake = (wheel_brake_left + wheel_brake_right) * 0.5;
+		break;
+	case WheelBrakeRightOn:
+		wheel_brake_right = 1;
+		wheel_brake = (wheel_brake_left + wheel_brake_right) * 0.5;
+		break;
+	case WheelBrakeRightOff:
+		wheel_brake_right = 0;
+		wheel_brake = (wheel_brake_left + wheel_brake_right) * 0.5;
+		break;
 
 	}
 

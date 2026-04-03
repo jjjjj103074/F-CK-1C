@@ -1,4 +1,4 @@
-﻿# F-CK-1C Blender / DCS API 命名對照
+# F-CK-1C Blender / DCS API 命名對照
 
 這份文件整理目前專案裡「必須和 Blender 匯出名稱一致」的部分，方便回頭改模型、hitbox、材質或碰撞殼時對照。
 

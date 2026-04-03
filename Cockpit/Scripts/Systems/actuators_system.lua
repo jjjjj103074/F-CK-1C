@@ -17,6 +17,12 @@ actuators["rudder"] = Actuator:new(
     function() return sensor_data:getRudderPosition() end,
     { 85, -85 }
 )
+actuators["rudder_left"] = Actuator:new(
+    "angle_of_draw_left_rudder",
+    { -1, 1 },
+    function() return sensor_data:getRudderPosition() end,
+    { 85, -85 }
+)
 
 function update_actuators()
     for _, act in pairs(actuators) do

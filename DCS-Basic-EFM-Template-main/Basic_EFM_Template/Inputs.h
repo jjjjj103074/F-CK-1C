@@ -57,6 +57,10 @@ enum InputCommands
 	gearDown = 431,
 	WheelBrakeOn = 74,
 	WheelBrakeOff = 75,
+	WheelBrakeLeftOn = 961,
+	WheelBrakeLeftOff = 962,
+	WheelBrakeRightOn = 963,
+	WheelBrakeRightOff = 964,
 
 	// Air brake commands
 	AirBrakes = 73,

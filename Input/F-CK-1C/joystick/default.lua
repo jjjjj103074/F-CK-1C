@@ -19,6 +19,24 @@ join(res.axisCommands,
 
 join(res.keyCommands,
     {
+        { down = iCommandPlaneGear, name = _('LG Handle - UP/DN'), category = { _('Left Auxiliary Console') } },
+        { down = iCommandPlaneGearUp, name = _('LG Handle - UP'), category = { _('Left Auxiliary Console') } },
+        { down = iCommandPlaneGearDown, name = _('LG Handle - DN'), category = { _('Left Auxiliary Console') } },
+
+        { down = iCommandPlaneFlaps, name = _('Flap Handle - UP/DOWN'), category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = iCommandPlaneFlapsOn, name = _('Flap Handle - DOWN'), category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = iCommandPlaneFlapsOff, name = _('Flap Handle - UP'), category = { _('Throttle Panel'), _('Flight Control') } },
+
+        { down = iCommandPlaneAirBrake, name = _('Speedbrake Switch - OPEN/CLOSE'), category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = iCommandPlaneAirBrakeOn, up = iCommandPlaneAirBrakeOff, name = _('Speedbrake Switch - OPEN else CLOSE'), category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = iCommandPlaneAirBrakeOff, up = iCommandPlaneAirBrakeOn, name = _('Speedbrake Switch - CLOSE else OPEN'), category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = iCommandPlaneAirBrakeOn, name = _('Speedbrake Switch - OPEN'), category = { _('Throttle Panel'), _('Flight Control') } },
+        { down = iCommandPlaneAirBrakeOff, name = _('Speedbrake Switch - CLOSE'), category = { _('Throttle Panel'), _('Flight Control') } },
+
+        { down = iCommandPlaneWheelBrakeOn, up = iCommandPlaneWheelBrakeOff, name = _('Wheel Brake - ON/OFF'), category = { _('Systems') } },
+        { down = iCommandPlaneWheelBrakeLeftOn, up = iCommandPlaneWheelBrakeLeftOff, name = _('Wheel Brake Left - ON/OFF'), category = { _('Systems') } },
+        { down = iCommandPlaneWheelBrakeRightOn, up = iCommandPlaneWheelBrakeRightOff, name = _('Wheel Brake Right - ON/OFF'), category = { _('Systems') } },
+
         { down = device_commands.TriggerFirstStage, up = device_commands.TriggerFirstStage, cockpit_device_id = devices.CMS, value_down = 1.0, value_up = 0.0, name = _('HOTAS Trigger - First Stage (Hold, Reserved)'), category = { _('Weapons') } },
         { down = device_commands.TriggerSecondStage, up = device_commands.TriggerSecondStage, cockpit_device_id = devices.CMS, value_down = 1.0, value_up = 0.0, name = _('HOTAS Trigger - Second Stage (Gun Fire)'), category = { _('Weapons') } },
 
