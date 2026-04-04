@@ -458,7 +458,7 @@ local F_CK_1C = {
         -- Center Back
         pylon(6, 0, 0, 0, 0,
             {
-                use_full_connector_position = true, connector = "PylonM.001", DisplayName = _("MB"),
+                use_full_connector_position = true, connector = "PylonB", DisplayName = _("MB"),
             },
             CenterlineFB,
             6
