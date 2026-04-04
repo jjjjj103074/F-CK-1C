@@ -320,8 +320,33 @@ local F_CK_1C = {
             },
             4
         ),
+        -- Center Frount
+        pylon(5, 0, 0, 0, 0,
+            {
+                use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"),
+            },
+            {
+                { CLSID = "<CLEAN>",        arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}",       arg_value = 1 }, -- AIM-9L
+                { CLSID = "CATM-9M",        arg_value = 1 }, -- CATM-9M
+                { CLSID = "{BELLY AIM-7F}", arg_value = 1 }
+            },
+            5
+        ),
+        -- Center Back
+        pylon(6, 0, 0, 0, 0,
+            {
+                use_full_connector_position = true, connector = "PylonM.001", DisplayName = _("MB"),
+            },
+            {
+                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+            },
+            6
+        ),
         -- Left inner
-        pylon(5, 0, -0.2861, -0.48, -2.05,
+        pylon(7, 0, -0.2861, -0.48, -2.05,
             {
                 use_full_connector_position = true, connector = "PylonL1", DisplayName = _("7"), arg = 311, arg_value = 1,
             },
@@ -333,7 +358,7 @@ local F_CK_1C = {
             7
         ),
         -- Left outer
-        pylon(6, 0, -0.5744, -0.465, -2.972,
+        pylon(8, 0, -0.5744, -0.465, -2.972,
             {
                 use_full_connector_position = true, connector = "PylonL2", DisplayName = _("8"), arg = 312, arg_value = 1,
             },
@@ -345,7 +370,7 @@ local F_CK_1C = {
             8
         ),
         -- Left tip
-        pylon(7, 0, -1.109, 0.0015, -4.6,
+        pylon(9, 0, -1.109, 0.0015, -4.6,
             {
                 use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("9")
             },
