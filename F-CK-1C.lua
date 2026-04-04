@@ -4,6 +4,26 @@
 -- 檔案內使用 DCS 既有 helper，例如 pylon、gun_mount、makeAirplaneCanopyGeometry。
 -- 若某些常數尚未在目前環境定義，需依 DCS 版本或其他模組補齊。
 
+-- ===================== 常數 (Constants) =====================
+
+-- 掛架站位 ID（對應 pylon() 呼叫的站位編號）
+local STATION_RT = 1 -- Right Tip
+local STATION_RO = 2 -- Right Outer
+local STATION_RI = 3 -- Right Inner
+local STATION_MM = 4 -- Center Main
+local STATION_MF = 5 -- Center Front
+local STATION_MB = 6 -- Center Back
+local STATION_LI = 7 -- Left Inner
+local STATION_LO = 8 -- Left Outer
+local STATION_LT = 9 -- Left Tip
+
+-- 動畫 Arg 編號（對應模型骨架動畫通道）
+local ARG_PYLON_RO = 308 -- Right Outer  pylon deploy animation
+local ARG_PYLON_RI = 309 -- Right Inner  pylon deploy animation
+local ARG_PYLON_MM = 310 -- Center Main  pylon deploy animation
+local ARG_PYLON_LI = 311 -- Left Inner   pylon deploy animation
+local ARG_PYLON_LO = 312 -- Left Outer   pylon deploy animation
+
 -- ===================== 公具函式 =====================
 
 --- 建立掛架武器清單（資料驅動）。
@@ -135,14 +155,14 @@ Inner = setLoadout("normal", {},
 )
 
 -- 機腹中心掛架
-CenterlineM = setLoadout("normal", { 5, 6 },
+CenterlineM = setLoadout("normal", { STATION_MF, STATION_MB },
     WPN_BOMB_Dumb,
     WPN_TANK_Standard,
     WPN_POD_Targeting
 )
 
 -- 機腹前後掛架
-CenterlineFB = setLoadout("diameter", { 4 },
+CenterlineFB = setLoadout("diameter", { STATION_MM },
     WPN_AAM_Light,
     WPN_AAM_Med
 )
@@ -416,7 +436,7 @@ local F_CK_1C = {
 
     Pylons = {
         -- Right tip
-        pylon(1, 0, -1.109, 0.0015, 4.6,
+        pylon(STATION_RT, 0, -1.109, 0.0015, 4.6,
             {
                 use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("RT")
             },
@@ -424,31 +444,31 @@ local F_CK_1C = {
             1
         ),
         -- Right outer
-        pylon(2, 0, -0.5744, -0.465, 2.972,
+        pylon(STATION_RO, 0, -0.5744, -0.465, 2.972,
             {
-                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("RO"), arg = 308, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("RO"), arg = ARG_PYLON_RO, arg_value = 1,
             },
             Outer,
             2
         ),
         -- Right inner
-        pylon(3, 0, -0.2861, -0.48, 2.05,
+        pylon(STATION_RI, 0, -0.2861, -0.48, 2.05,
             {
-                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("RI"), arg = 309, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("RI"), arg = ARG_PYLON_RI, arg_value = 1,
             },
             Inner,
             3
         ),
         -- Center
-        pylon(4, 0, -0.7202, -0.8726, 0,
+        pylon(STATION_MM, 0, -0.7202, -0.8726, 0,
             {
-                use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = 310, arg_value = -1,
+                use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = ARG_PYLON_MM, arg_value = -1,
             },
             CenterlineM,
             4
         ),
-        -- Center Frount
-        pylon(5, 0, 0, 0, 0,
+        -- Center Front
+        pylon(STATION_MF, 0, 0, 0, 0,
             {
                 use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"),
             },
@@ -456,7 +476,7 @@ local F_CK_1C = {
             5
         ),
         -- Center Back
-        pylon(6, 0, 0, 0, 0,
+        pylon(STATION_MB, 0, 0, 0, 0,
             {
                 use_full_connector_position = true, connector = "PylonB", DisplayName = _("MB"),
             },
@@ -464,23 +484,23 @@ local F_CK_1C = {
             6
         ),
         -- Left inner
-        pylon(7, 0, -0.2861, -0.48, -2.05,
+        pylon(STATION_LI, 0, -0.2861, -0.48, -2.05,
             {
-                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("LI"), arg = 311, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("LI"), arg = ARG_PYLON_LI, arg_value = 1,
             },
             Inner,
             7
         ),
         -- Left outer
-        pylon(8, 0, -0.5744, -0.465, -2.972,
+        pylon(STATION_LO, 0, -0.5744, -0.465, -2.972,
             {
-                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("LO"), arg = 312, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("LO"), arg = ARG_PYLON_LO, arg_value = 1,
             },
             Outer,
             8
         ),
         -- Left tip
-        pylon(9, 0, -1.109, 0.0015, -4.6,
+        pylon(STATION_LT, 0, -1.109, 0.0015, -4.6,
             {
                 use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("LT")
             },
