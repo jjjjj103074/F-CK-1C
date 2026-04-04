@@ -118,7 +118,13 @@ bool	fbw_g_limiter_override = false;
 bool	airbrake_switch = false;
 double	airbrake_pos = 0;
 double	flaps_pos = 0;
-bool	flaps_switch = false;
+enum FlapMode
+{
+	FLAP_MODE_UP = 0,
+	FLAP_MODE_AUTO = 1,
+	FLAP_MODE_DOWN = 2,
+};
+int		flap_mode = FLAP_MODE_UP;
 double	slats_pos = 0;
 bool	nose_turn_enabled = false;
 
@@ -385,6 +391,21 @@ double	fbw_kp_r = 0.65;
 double	fbw_ki_r = 0.25;
 double	fbw_aw_gain = 1.20;
 double	fbw_int_limit = 1.20;
+double	fbw_outer_aw_gain = 1.10;
+double	fbw_outer_int_limit = rad(75.0);
+double	fbw_alpha_trim_tau = 1.20;
+double	fbw_nz_trim_tau = 1.60;
+double	fbw_nz_filter_tau = 0.26;
+double	fbw_pitch_ref_tau = 0.10;
+double	fbw_pitch_ref_rate_deg_s = 90.0;
+double	fbw_region_low_kts = 220.0;
+double	fbw_region_high_kts = 380.0;
+double	fbw_region_approach_kts = 240.0;
+double	fbw_region_min_kts = 110.0;
+double	fbw_region_alpha1_deg = 12.0;
+double	fbw_region_alpha2_deg = 18.0;
+double	fbw_alpha_cmd_per_stick_deg = 10.0;
+double	fbw_q_cmd_land_max_deg = 35.0;
 
 double	fbw_ail_limit_deg = 22.0;
 double	fbw_ele_limit_deg = 25.0;
@@ -469,6 +490,26 @@ double	fbw_beta_f = 0.0;
 double	fbw_qbar_f = 0.0;
 double	fbw_ias_f = 0.0;
 double	fbw_mach_f = 0.0;
+double	fbw_nz_raw = 1.0;
+double	fbw_nz_f = 1.0;
+double	fbw_alpha_trim_deg = 0.0;
+double	fbw_nz_trim_g = 1.0;
+double	fbw_alpha_outer_int = 0.0;
+double	fbw_nz_outer_int = 0.0;
+double	fbw_w_alpha = 1.0;
+double	fbw_w_nz = 0.0;
+double	fbw_w_q = 0.0;
+double	fbw_alpha_cmd_deg = 0.0;
+double	fbw_alpha_cmd_lim_deg = 0.0;
+double	fbw_nz_cmd = 1.0;
+double	fbw_nz_cmd_lim = 1.0;
+double	fbw_q_cmd_direct = 0.0;
+double	fbw_q_ref_alpha = 0.0;
+double	fbw_q_ref_nz = 0.0;
+double	fbw_q_ref_q = 0.0;
+double	fbw_q_ref_blended = 0.0;
+double	fbw_q_ref_filtered = 0.0;
+bool	fbw_g_limit_active = false;
 
 double	fbw_ail_cmd_pre = 0.0;
 double	fbw_ail_cmd_sat = 0.0;
@@ -608,6 +649,58 @@ static inline double fbw_wrap_pi(double angle)
 		angle += 2.0 * pi;
 	}
 	return angle;
+}
+
+static inline double fbw_soft_limit_symmetric(double command, double limit_value)
+{
+	if (limit_value <= 1e-6)
+	{
+		return 0.0;
+	}
+	return limit_value * tanh(command / limit_value);
+}
+
+static inline double fbw_soft_limit_asymmetric(double command, double pos_limit, double neg_limit)
+{
+	if (command >= 0.0)
+	{
+		return fbw_soft_limit_symmetric(command, pos_limit);
+	}
+	return -fbw_soft_limit_symmetric(-command, neg_limit);
+}
+
+static inline double fbw_smoothstep01(double t)
+{
+	t = limit(t, 0.0, 1.0);
+	return t * t * (3.0 - 2.0 * t);
+}
+
+static inline double fbw_soft_clip_positive(double value, double soft_limit, double hard_limit)
+{
+	if (value <= soft_limit)
+	{
+		return value;
+	}
+	if (value >= hard_limit)
+	{
+		return hard_limit;
+	}
+	const double t = fbw_smoothstep01((value - soft_limit) / (hard_limit - soft_limit));
+	return soft_limit + (hard_limit - soft_limit) * t;
+}
+
+static inline double fbw_soft_clip_negative(double value, double soft_limit, double hard_limit)
+{
+	if (value >= soft_limit)
+	{
+		return value;
+	}
+	if (value <= hard_limit)
+	{
+		return hard_limit;
+	}
+	const double t = fbw_smoothstep01((soft_limit - value) / (soft_limit - hard_limit));
+	return soft_limit - (soft_limit - hard_limit) * t;
 }
 
 static inline FBWCatParams fbw_blend_cat_params(const FBWCatParams& cat1, const FBWCatParams& cat3, double t)
@@ -757,11 +850,31 @@ static void reset_fbw_state()
 	fbw_r_err = 0.0;
 	fbw_phi_err = 0.0;
 	fbw_theta_err = 0.0;
+	fbw_nz_raw = g;
+	fbw_nz_f = g;
+	fbw_alpha_trim_deg = alpha;
+	fbw_nz_trim_g = g;
+	fbw_alpha_outer_int = 0.0;
+	fbw_nz_outer_int = 0.0;
+	fbw_w_alpha = 1.0;
+	fbw_w_nz = 0.0;
+	fbw_w_q = 0.0;
+	fbw_alpha_cmd_deg = alpha;
+	fbw_alpha_cmd_lim_deg = alpha;
+	fbw_nz_cmd = g;
+	fbw_nz_cmd_lim = g;
+	fbw_q_cmd_direct = 0.0;
+	fbw_q_ref_alpha = 0.0;
+	fbw_q_ref_nz = 0.0;
+	fbw_q_ref_q = 0.0;
+	fbw_q_ref_blended = 0.0;
+	fbw_q_ref_filtered = 0.0;
 
 	fbw_aoa_limit_active = false;
 	fbw_rate_limit_active = false;
 	fbw_actuator_sat = false;
 	fbw_anti_windup_active = false;
+	fbw_g_limit_active = false;
 	fbw_actuator_sat_timer = 0.0;
 }
 
@@ -981,10 +1094,32 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 	}
 
 	const FBWGainScheduleValues gs = fbw_eval_gain_schedule(fbw_qbar_f);
+	fbw_nz_raw = g;
+	fbw_nz_f = fbw_first_order(fbw_nz_f, fbw_nz_raw, fbw_nz_filter_tau, dt);
 
 	fbw_p_cmd_rate = fbw_stick_roll_shaped * cat.p_cmd_max * gs.cmd_gain;
-	fbw_q_cmd_rate = fbw_stick_pitch_shaped * cat.q_cmd_max * gs.cmd_gain;
 	fbw_r_cmd_rate = fbw_stick_yaw_shaped * cat.r_cmd_max * gs.cmd_gain;
+
+	const bool pitch_stick_in_deadband = fabs(fbw_stick_pitch_raw) <= cat.deadband;
+	if (wow || pitch_stick_in_deadband)
+	{
+		fbw_alpha_trim_deg = fbw_first_order(fbw_alpha_trim_deg, fbw_alpha_f, fbw_alpha_trim_tau, dt);
+		fbw_nz_trim_g = fbw_first_order(fbw_nz_trim_g, fbw_nz_f, fbw_nz_trim_tau, dt);
+	}
+
+	const double gear_weight = (gear_pos > 0.5) ? 1.0 : 0.0;
+	const double approach_t = limit((fbw_region_approach_kts - fbw_ias_f) / (fbw_region_approach_kts - fbw_region_min_kts), 0.0, 1.0);
+	const double high_speed_t = limit((fbw_ias_f - fbw_region_low_kts) / (fbw_region_high_kts - fbw_region_low_kts), 0.0, 1.0);
+	const double alpha_region_t = limit((fabs(fbw_alpha_f) - fbw_region_alpha1_deg) / (fbw_region_alpha2_deg - fbw_region_alpha1_deg), 0.0, 1.0);
+
+	fbw_w_q = gear_weight * fbw_blend_value(0.35, 1.0, approach_t);
+	fbw_w_nz = high_speed_t * (1.0 - fbw_w_q);
+	fbw_w_alpha = 1.0 - fbw_w_nz - fbw_w_q;
+	fbw_w_alpha = max(fbw_w_alpha, alpha_region_t);
+	const double pitch_weight_sum = max(fbw_w_alpha + fbw_w_nz + fbw_w_q, 1e-6);
+	fbw_w_alpha /= pitch_weight_sum;
+	fbw_w_nz /= pitch_weight_sum;
+	fbw_w_q /= pitch_weight_sum;
 
 	fbw_phi_err = 0.0;
 	fbw_theta_err = 0.0;
@@ -1009,20 +1144,73 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 	const double alpha_abs = fabs(fbw_alpha_f);
 	const double alpha_soft = limit(cat.aoa_soft_deg, 0.1, alpha_limit_deg);
 	const double alpha_hard = limit(cat.aoa_hard_deg, alpha_soft + 0.1, alpha_limit_deg + 5.0);
-	double aoa_scale = 1.0;
-	if (alpha_abs > alpha_soft)
+	const double alpha_cmd_range = fbw_blend_value(fbw_alpha_cmd_per_stick_deg, fbw_alpha_cmd_per_stick_deg * 0.65, high_speed_t);
+	fbw_alpha_cmd_deg = fbw_alpha_trim_deg + fbw_stick_pitch_shaped * alpha_cmd_range;
+	fbw_alpha_cmd_lim_deg = fbw_soft_limit_symmetric(fbw_alpha_cmd_deg, alpha_soft);
+
+	const double nz_pos_limit = fbw_g_limiter_override ? (cat.g_hard + 2.0) : cat.g_hard;
+	const double nz_neg_limit = 2.5;
+	const double nz_pos_soft = min(cat.g_soft, nz_pos_limit - 0.25);
+	const double nz_neg_hard = -nz_neg_limit;
+	const double nz_neg_soft = -max(1.0, nz_neg_limit * 0.65);
+	if (fbw_stick_pitch_shaped >= 0.0)
 	{
-		const double t = limit((alpha_abs - alpha_soft) / (alpha_hard - alpha_soft), 0.0, 1.0);
-		aoa_scale = 1.0 - t;
+		fbw_nz_cmd = 1.0 + fbw_stick_pitch_shaped * (nz_pos_limit - 1.0);
 	}
-	double g_scale = 1.0;
-	if (g > cat.g_soft)
+	else
 	{
-		const double t = limit((g - cat.g_soft) / (cat.g_hard - cat.g_soft), 0.0, 1.0);
-		g_scale = 1.0 - t;
+		fbw_nz_cmd = 1.0 + fbw_stick_pitch_shaped * (1.0 + nz_neg_limit);
 	}
-	const double limiter_scale = limit(aoa_scale * g_scale, 0.0, 1.0);
-	fbw_aoa_limit_active = limiter_scale < 0.999;
+	fbw_nz_cmd_lim = fbw_nz_cmd;
+	if (fbw_nz_cmd_lim > nz_pos_soft)
+	{
+		fbw_nz_cmd_lim = fbw_soft_clip_positive(fbw_nz_cmd_lim, nz_pos_soft, nz_pos_limit);
+	}
+	if (fbw_nz_cmd_lim < nz_neg_soft)
+	{
+		fbw_nz_cmd_lim = fbw_soft_clip_negative(fbw_nz_cmd_lim, nz_neg_soft, nz_neg_hard);
+	}
+
+	const double q_outer_limit = cat.q_rate_limit * gs.limiter_gain;
+	const double kp_alpha_outer = fbw_blend_value(2.4, 1.7, fbw_mode_blend) * gs.cmd_gain;
+	const double ki_alpha_outer = fbw_blend_value(1.05, 0.60, fbw_mode_blend) * gs.hold_gain;
+	double nz_limit_gain_scale = 1.0;
+	if (fbw_stick_pitch_shaped > 0.0)
+	{
+		const double t = limit((fbw_nz_f - nz_pos_soft) / max(nz_pos_limit - nz_pos_soft, 0.1), 0.0, 1.0);
+		nz_limit_gain_scale = fbw_blend_value(1.0, 0.35, t);
+	}
+	const double kp_nz_outer = fbw_blend_value(0.34, 0.24, fbw_mode_blend) * gs.cmd_gain * nz_limit_gain_scale;
+	const double ki_nz_outer = fbw_blend_value(0.11, 0.06, fbw_mode_blend) * gs.hold_gain * nz_limit_gain_scale;
+	const double alpha_err_rad = rad(fbw_alpha_cmd_lim_deg - fbw_alpha_f);
+	const double nz_err = fbw_nz_cmd_lim - fbw_nz_f;
+	const double q_ref_alpha_raw = kp_alpha_outer * alpha_err_rad + fbw_alpha_outer_int;
+	const double q_ref_nz_raw = kp_nz_outer * nz_err + fbw_nz_outer_int;
+	fbw_q_ref_alpha = limit(q_ref_alpha_raw, -q_outer_limit, q_outer_limit);
+	fbw_q_ref_nz = limit(q_ref_nz_raw, -q_outer_limit, q_outer_limit);
+	fbw_alpha_outer_int += (ki_alpha_outer * alpha_err_rad + fbw_outer_aw_gain * (fbw_q_ref_alpha - q_ref_alpha_raw)) * dt;
+	fbw_nz_outer_int += (ki_nz_outer * nz_err + fbw_outer_aw_gain * (fbw_q_ref_nz - q_ref_nz_raw)) * dt;
+	fbw_alpha_outer_int = limit(fbw_alpha_outer_int, -fbw_outer_int_limit, fbw_outer_int_limit);
+	fbw_nz_outer_int = limit(fbw_nz_outer_int, -fbw_outer_int_limit, fbw_outer_int_limit);
+	if (fbw_w_alpha < 0.05)
+	{
+		fbw_alpha_outer_int = fbw_first_order(fbw_alpha_outer_int, 0.0, 0.35, dt);
+	}
+	if (fbw_w_nz < 0.05)
+	{
+		fbw_nz_outer_int = fbw_first_order(fbw_nz_outer_int, 0.0, 0.35, dt);
+	}
+
+	fbw_q_cmd_direct = fbw_stick_pitch_shaped * rad(fbw_q_cmd_land_max_deg) * gs.cmd_gain;
+	fbw_q_ref_q = fbw_q_cmd_direct;
+	fbw_q_ref_blended = fbw_w_alpha * fbw_q_ref_alpha + fbw_w_nz * fbw_q_ref_nz + fbw_w_q * fbw_q_ref_q;
+	const double q_ref_prev = fbw_q_ref_filtered;
+	fbw_q_ref_filtered = fbw_first_order(fbw_q_ref_filtered, fbw_q_ref_blended, fbw_pitch_ref_tau, dt);
+	const double q_ref_step = rad(fbw_pitch_ref_rate_deg_s) * dt;
+	fbw_q_ref_filtered = limit(fbw_q_ref_filtered, q_ref_prev - q_ref_step, q_ref_prev + q_ref_step);
+	fbw_q_cmd_rate = limit(fbw_q_ref_filtered, -q_outer_limit, q_outer_limit);
+	fbw_aoa_limit_active = fabs(fbw_alpha_cmd_deg - fbw_alpha_cmd_lim_deg) > 0.05;
+	fbw_g_limit_active = fabs(fbw_nz_cmd - fbw_nz_cmd_lim) > 0.02;
 
 	const bool degrade_aoa = (alpha_abs > cat.alpha_hold_degrade_deg) || (alpha_abs > (alpha_limit_deg * 0.95));
 	const bool degrade_qbar = fbw_qbar_f < cat.qbar_min_hold;
@@ -1057,7 +1245,7 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 	else
 	{
 		fbw_p_cmd = fbw_p_cmd_rate;
-		fbw_q_cmd = fbw_q_cmd_rate * limiter_scale;
+		fbw_q_cmd = fbw_q_cmd_rate;
 	}
 
 	const double beta_rad = fbw_beta_f / rad_to_deg;
@@ -1260,7 +1448,29 @@ void ed_fm_simulate(double dt)
 	// Actuator animation function for the moving parts
 	gear_pos = limit(actuator(gear_pos, gear_switch, -0.001, 0.001), 0, 1); // Landing gear (all 3)
 	airbrake_pos = limit(actuator(airbrake_pos, airbrake_switch, -0.003, 0.004), 0, 1); // Air brakes
-	flaps_pos = limit(actuator(flaps_pos, flaps_switch, -0.002, 0.002), 0, 1); // Flaps
+
+	double flap_target = 0.0;
+	if (flap_mode == FLAP_MODE_DOWN)
+	{
+		flap_target = 1.0;
+	}
+	else if (flap_mode == FLAP_MODE_AUTO)
+	{
+		const double ias_kts = V_scalar * 1.943844;
+		if (gear_pos > 0.5 || ias_kts <= 240.0)
+		{
+			flap_target = 1.0;
+		}
+		else if (ias_kts >= 450.0)
+		{
+			flap_target = 0.0;
+		}
+		else
+		{
+			flap_target = 1.0 - ((ias_kts - 240.0) / (450.0 - 240.0));
+		}
+	}
+	flaps_pos = limit(actuator(flaps_pos, flap_target, -0.002, 0.002), 0, 1); // Flaps
 	slats_pos = limit(actuator(slats_pos, (alpha - 6.0) / 12.0, -0.003, 0.003), 0, 1); // Slats, starts moving at 6 degrees alpha
 
 #pragma region AERODYNAMICS
@@ -1949,24 +2159,25 @@ void ed_fm_set_command (int command, float value)
 		break;
 
 	case flapsToggle: //toggle
-		if (flaps_switch == false)
-			flaps_switch = true;
-		else if (flaps_switch == true)
-			flaps_switch = false;
+		if (flap_mode == FLAP_MODE_DOWN)
+			flap_mode = FLAP_MODE_UP;
+		else
+			flap_mode = FLAP_MODE_DOWN;
 		break;
 	case flapsDown:
-		flaps_switch = true;
+		flap_mode = FLAP_MODE_DOWN;
 		break;
 	case flapsUp:
-		flaps_switch = false;
+		flap_mode = FLAP_MODE_UP;
 		break;
 	case FlapsAuto:
+		flap_mode = FLAP_MODE_AUTO;
 		break;
 	case FlapsUpCmd:
-		flaps_switch = false;
+		flap_mode = FLAP_MODE_UP;
 		break;
 	case FlapsDownCmd:
-		flaps_switch = true;
+		flap_mode = FLAP_MODE_DOWN;
 		break;
 
 	case gearToggle:
@@ -2140,9 +2351,10 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[15].f = (float)limit(elevator_command, -1, 1);
 	drawargs[16].f = (float)limit(elevator_command, -1, 1);
 
-	// Ailerons
-	drawargs[11].f = (float)limit(aileron_command, -1, 1);
-	drawargs[12].f = (float)limit(-aileron_command, -1, 1);
+	// Flaperons: flap extension sets the baseline droop, and roll input can only drive them upward from that baseline.
+	const double flaperon_base = -limit(flaps_pos, 0.0, 1.0);
+	drawargs[11].f = (float)limit(flaperon_base + limit(aileron_command, 0.0, 1.0), -1, 1);   // Right flaperon
+	drawargs[12].f = (float)limit(flaperon_base + limit(-aileron_command, 0.0, 1.0), -1, 1);  // Left flaperon
 
 	// Rudder(s)
 	drawargs[17].f = (float)limit(rudder_command, -1, 1);
@@ -2162,7 +2374,7 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[90].f = (float)limit(left_nozzle_aperture, 0, 1);
 
 	// Practical model mapping based on in-sim verification:
-	// 9/10 behave like the trailing-edge flaps, while 126-129 behave like leading-edge slot/slat pieces.
+	// 9/10 behave like the leading-edge slot pieces, while 11/12 are the flaperons.
 	drawargs[9].f = (float)limit(flaps_pos, 0, 1);
 	drawargs[10].f = (float)limit(flaps_pos, 0, 1);
 	drawargs[126].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
@@ -2521,7 +2733,7 @@ void ed_fm_hot_start()
 	carrier_pos = 0;
 
 	// Flaps down
-	flaps_switch = true;
+	flap_mode = FLAP_MODE_DOWN;
 	flaps_pos = 1;
 
 	// Engines on at idle/minimum throttle
