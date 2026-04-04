@@ -197,6 +197,94 @@ double fm_clock = 0;
 
 // Has the simulation passed frame 1?
 bool sim_inititalised = false;
+double left_nozzle_aperture = 0.80;
+double right_nozzle_aperture = 0.80;
+
+static double remap_range(double value, double in_min, double in_max, double out_min, double out_max)
+{
+	if (in_max <= in_min)
+	{
+		return out_max;
+	}
+
+	const double normalized = limit((value - in_min) / (in_max - in_min), 0.0, 1.0);
+	return out_min + (out_max - out_min) * normalized;
+}
+
+static double estimate_nozzle_aperture_target(double throttle_input, double engine_power_readout, double afterburner_ratio, bool engine_on)
+{
+	if (!engine_on)
+	{
+		return 0.80;
+	}
+
+	const double limited_power = limit(engine_power_readout, 0.0, 1.0);
+	const double limited_throttle = limit(throttle_input, 0.0, 1.0);
+	const double limited_ab = limit(afterburner_ratio, 0.0, 1.0);
+
+	// Engine start / idle: bring the animation toward about 0.4 instead of staying fully open.
+	if (limited_power < 0.50)
+	{
+		return remap_range(limited_power, 0.0, 0.50, 0.80, 0.40);
+	}
+
+	// Dry-power schedule in the model's actual animation space:
+	// idle ~0.40, then progressively closes to 0.00 at max military power.
+	if (limited_ab <= 0.0)
+	{
+		const double dry_ratio = limit(limited_throttle / afterburner_detent, 0.0, 1.0);
+
+		if (dry_ratio <= 0.15)
+		{
+			return remap_range(dry_ratio, 0.0, 0.15, 0.40, 0.30);
+		}
+		if (dry_ratio <= 0.45)
+		{
+			return remap_range(dry_ratio, 0.15, 0.45, 0.30, 0.18);
+		}
+		if (dry_ratio <= 0.75)
+		{
+			return remap_range(dry_ratio, 0.45, 0.75, 0.18, 0.08);
+		}
+
+		return remap_range(dry_ratio, 0.75, 1.0, 0.08, 0.00);
+	}
+
+	// Afterburner opens back up from military power, but starts gently.
+	if (limited_ab <= 0.25)
+	{
+		return remap_range(limited_ab, 0.0, 0.25, 0.00, 0.18);
+	}
+	if (limited_ab <= 0.60)
+	{
+		return remap_range(limited_ab, 0.25, 0.60, 0.18, 0.55);
+	}
+
+	return remap_range(limited_ab, 0.60, 1.0, 0.55, 1.0);
+}
+
+static double update_nozzle_aperture(double current, double target, double engine_power_readout, double afterburner_ratio, bool engine_on, double dt)
+{
+	double aperture_rate = 0.50;
+
+	// About one second from engine-start spool toward idle geometry.
+	if (!engine_on || engine_power_readout < 0.50)
+	{
+		aperture_rate = 0.40;
+	}
+	// Slow the opening surge when entering AB so it follows the engine more naturally.
+	else if (afterburner_ratio > 0.0 && target > current)
+	{
+		aperture_rate = 0.45;
+	}
+	// Let closure toward military power stay deliberate rather than snappy.
+	else if (target < current)
+	{
+		aperture_rate = 0.35;
+	}
+
+	return actuator(current, target, -aperture_rate * dt, aperture_rate * dt);
+}
 
 enum FBWCatMode
 {
@@ -1378,6 +1466,11 @@ void ed_fm_simulate(double dt)
 		right_afterburner_ratio = limit((right_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
 	}
 
+	const double left_nozzle_target = estimate_nozzle_aperture_target(left_throttle_input, left_engine_power_readout, left_afterburner_ratio, left_engine_switch);
+	const double right_nozzle_target = estimate_nozzle_aperture_target(right_throttle_input, right_engine_power_readout, right_afterburner_ratio, right_engine_switch);
+	left_nozzle_aperture = update_nozzle_aperture(left_nozzle_aperture, left_nozzle_target, left_engine_power_readout, left_afterburner_ratio, left_engine_switch, dt);
+	right_nozzle_aperture = update_nozzle_aperture(right_nozzle_aperture, right_nozzle_target, right_engine_power_readout, right_afterburner_ratio, right_engine_switch, dt);
+
 	double left_dry_force = left_throttle_output * max_dry_thrust * engine_alt_effect * left_engine_integrity * 0.5;
 	double right_dry_force = right_throttle_output * max_dry_thrust * engine_alt_effect * right_engine_integrity * 0.5;
 	double left_ab_extra = left_afterburner_ratio * (max_ab_thrust - max_dry_thrust) * engine_alt_effect * left_engine_integrity * 0.5;
@@ -2064,6 +2157,10 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[28].f = (float)limit(left_afterburner_ratio, 0, 1);
 	drawargs[29].f = (float)limit(right_afterburner_ratio, 0, 1);
 
+	// Nozzle aperture: MV2-confirmed mapping is 89 = right engine, 90 = left engine.
+	drawargs[89].f = (float)limit(right_nozzle_aperture, 0, 1);
+	drawargs[90].f = (float)limit(left_nozzle_aperture, 0, 1);
+
 	// Practical model mapping based on in-sim verification:
 	// 9/10 behave like the trailing-edge flaps, while 126-129 behave like leading-edge slot/slat pieces.
 	drawargs[9].f = (float)limit(flaps_pos, 0, 1);
@@ -2088,7 +2185,7 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 
 	28 and 29 are left and right afterburners
 
-	89 and 90 are left and right engine nozzle apertures
+	89 and 90 are engine nozzle apertures (this module uses 89 = right, 90 = left)
 
 	40 and 41 are helicopter rotors
 
@@ -2398,6 +2495,7 @@ void ed_fm_cold_start()
 	left_throttle_input = 0.0;
 	left_throttle_output = 0.0;
 	left_engine_power_readout = 0.0;
+	left_nozzle_aperture = 0.80;
 
 	right_engine_switch = false;
 	throttle_axis_cmd_right = 0.0;
@@ -2407,6 +2505,7 @@ void ed_fm_cold_start()
 	right_throttle_input = 0.0;
 	right_throttle_output = 0.0;
 	right_engine_power_readout = 0.0;
+	right_nozzle_aperture = 0.80;
 }
 
 // What should be set on a hot start on the ground?
@@ -2434,6 +2533,7 @@ void ed_fm_hot_start()
 	left_throttle_input = 0.0;
 	left_throttle_output = 0.5;
 	left_engine_power_readout = 0.5;
+	left_nozzle_aperture = estimate_nozzle_aperture_target(left_throttle_input, left_engine_power_readout, 0.0, left_engine_switch);
 
 	right_engine_switch = true;
 	throttle_axis_cmd_right = 0.0;
@@ -2443,6 +2543,7 @@ void ed_fm_hot_start()
 	right_throttle_input = 0.0;
 	right_throttle_output = 0.5;
 	right_engine_power_readout = 0.5; 
+	right_nozzle_aperture = estimate_nozzle_aperture_target(right_throttle_input, right_engine_power_readout, 0.0, right_engine_switch);
 }
 
 // What should be set on a hot start in the air?
@@ -2466,6 +2567,7 @@ void ed_fm_hot_start_in_air()
 	left_throttle_input = 0.5;
 	left_throttle_output = 0.5;
 	left_engine_power_readout = 0.5;
+	left_nozzle_aperture = estimate_nozzle_aperture_target(left_throttle_input, left_engine_power_readout, 0.0, left_engine_switch);
 
 	right_engine_switch = true;
 	throttle_axis_cmd_right = 0.5;
@@ -2475,6 +2577,7 @@ void ed_fm_hot_start_in_air()
 	right_throttle_input = 0.5;
 	right_throttle_output = 0.5;
 	right_engine_power_readout = 0.5;
+	right_nozzle_aperture = estimate_nozzle_aperture_target(right_throttle_input, right_engine_power_readout, 0.0, right_engine_switch);
 }
 
 // What should be reset on mission exit?
@@ -2515,6 +2618,8 @@ void ed_fm_release()
 	engine_throttle_cmd_right = 0.0;
 	left_afterburner_ratio = 0.0;
 	right_afterburner_ratio = 0.0;
+	left_nozzle_aperture = 0.80;
+	right_nozzle_aperture = 0.80;
 
 	// Repair
 	ed_fm_repair();
