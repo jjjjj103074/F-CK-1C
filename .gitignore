@@ -51,9 +51,9 @@ LIST/API_KEY.txt
 dist/
 
 # 大型資源
-Shapes
-Textures
-Liveries
+# Shapes
+# Textures
+# Liveries
 
 # ----------------------------
 # EFM 需求：DCS 執行時需要 bin/BasicEFM_template.dll

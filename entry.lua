@@ -12,17 +12,19 @@ local function log_error(msg)
 end
 
 -- F-CK-1C module version metadata
-local FCK1C_BUILD_VERSION = "v0.1.2-dev"
-local FCK1C_BUILD_DATE = "2026-03-06"
+local FCK1C_BUILD_VERSION = "v0.1.3-april-fools"
+local FCK1C_BUILD_DATE = "2026-04-01"
 local FCK1C_CHANGELOG = {
+    "April Fools build: experimental ground-contact tuning",
     "Added EFM mode switch: baseline / efm_min / efm_full",
     "Integrated EFM DLL path and FM config handoff",
     "Added local design/progress report with version iteration section"
 }
 local FCK1C_VERSION_HISTORY = {
-    { version = "v0.1.0",     note = "Initial module load and base structure" },
-    { version = "v0.1.1",     note = "EFM integration and diagnostic EFM mode switch" },
-    { version = "v0.1.2-dev", note = "Version metadata and iteration tracking" }
+    { version = "v0.1.0", note = "Initial module load and base structure" },
+    { version = "v0.1.1", note = "EFM integration and diagnostic EFM mode switch" },
+    { version = "v0.1.2-dev", note = "Version metadata and iteration tracking" },
+    { version = "v0.1.3-april-fools", note = "April Fools build with experimental ground-contact tuning" }
 }
 
 declare_plugin(self_ID,
@@ -48,7 +50,7 @@ declare_plugin(self_ID,
         Skins         = {
             {
                 name = _("F-CK-1C Skins"), -- 塗裝分類名稱
-                dir  = "Theme"             -- 塗裝資料夾
+                dir  = "Liveries"          -- 塗裝資料夾
             },
         },
 
@@ -93,7 +95,7 @@ mount_vfs_model_path(current_mod_path .. "/Cockpit/Shapes")
 mount_vfs_liveries_path(current_mod_path .. "/Liveries")
 mount_vfs_liveries_path(current_mod_path .. "/Cockpit/Liveries")
 mount_vfs_texture_path(current_mod_path .. "/Textures")
-mount_vfs_texture_path(current_mod_path .. "/Textures/F-CK-1C")
+mount_vfs_texture_path(current_mod_path .. "/Textures/F-CK-1C.zip")
 -- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50")
 -- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50_HAF")
 -- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50_IAF")
@@ -105,9 +107,8 @@ dofile(current_mod_path .. '/F-CK-1C.lua')
 -- "baseline" = original non-EFM path (known good for collision)
 -- "efm_min"  = EFM without FM/config.lua
 -- "efm_full" = EFM with FM/config.lua
-local EFM_MODE = "efm_min"
-log_info("FCK1C: entry.lua loaded, version=" ..
-tostring(FCK1C_BUILD_VERSION) .. ", date=" .. tostring(FCK1C_BUILD_DATE) .. ", EFM_MODE=" .. tostring(EFM_MODE))
+local EFM_MODE = "efm_full"
+log_info("FCK1C: entry.lua loaded, version=" .. tostring(FCK1C_BUILD_VERSION) .. ", date=" .. tostring(FCK1C_BUILD_DATE) .. ", EFM_MODE=" .. tostring(EFM_MODE))
 
 local cfg_path = current_mod_path .. "/FM/config.lua"
 if EFM_MODE == "efm_min" or EFM_MODE == "efm_full" then
