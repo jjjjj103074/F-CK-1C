@@ -64,8 +64,11 @@ end
 -- 輕型空對空
 WPN_AAM_Light = {
     _isAAM = true,
-    { CLSID = "{AIM-9L}", diameter = 127 }, -- AIM-9L
-    { CLSID = "CATM-9M",  diameter = 127 }, -- CATM-9M
+    { CLSID = "{AIM-9L}",      diameter = 127 }, -- AIM-9L
+    { CLSID = "{AIM-9P3}",     diameter = 127 }, -- AIM-9P3
+    { CLSID = "{AIM-9P5}",     diameter = 127 }, -- AIM-9P5
+    { CLSID = "CATM-9M",       diameter = 127 }, -- CATM-9M
+    { CLSID = "{AIS_ASQ_T50}", diameter = 127 }, -- ACMI pod
 }
 
 -- 中型空對空
@@ -82,7 +85,11 @@ WPN_AGM_Smart = {
 
 -- 無導引炸彈
 WPN_BOMB_Dumb = {
-
+    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}" }, -- Mk-82
+    { CLSID = "{Mk82SNAKEYE}" },                          -- Mk-82 SNAKEYE
+    { CLSID = "{BRU33_2X_MK-82}" },                       -- BRU-33 2*Mk-82
+    { CLSID = "{BRU33_2X_MK-82_Snakeye}" },               -- BRU-33 2*Mk-82SE
+    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}" }, -- Mk-84
 }
 
 -- 標定莢艙
@@ -93,6 +100,7 @@ WPN_POD_Targeting = {
 -- 標準副油箱
 WPN_TANK_Standard = {
     { CLSID = "{EFEC8201-B922-11d7-9897-000476191836}" }, -- F18 800加侖副油箱
+    { CLSID = "{0395076D-2F77-4420-9D33-087A4398130B}" }, -- 275 gal drop tank
 }
 
 -- ---------- 掛載點配置 ----------
@@ -105,19 +113,24 @@ Tip = setLoadout("none", {},
 -- 機翼外側
 Outer = setLoadout("normal", {},
     WPN_AAM_Light,
-    WPN_AAM_Med
+    WPN_AAM_Med,
+    WPN_BOMB_Dumb
 )
 
 -- 機翼內側
 Inner = setLoadout("normal", {},
     WPN_AAM_Light,
     WPN_AAM_Med,
-    WPN_TANK_Standard
+    WPN_BOMB_Dumb,
+    WPN_TANK_Standard,
+    WPN_POD_Targeting
 )
 
 -- 機腹中心掛架
 CenterlineM = setLoadout("normal", { 5, 6 },
-    WPN_TANK_Standard
+    WPN_BOMB_Dumb,
+    WPN_TANK_Standard,
+    WPN_POD_Targeting
 )
 
 -- 機腹前後掛架
