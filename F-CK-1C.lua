@@ -276,7 +276,7 @@ local F_CK_1C = {
         -- Right tip
         pylon(1, 0, -1.109, 0.0015, 4.6,
             {
-                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("1")
+                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("RT")
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
@@ -288,7 +288,7 @@ local F_CK_1C = {
         -- Right outer
         pylon(2, 0, -0.5744, -0.465, 2.972,
             {
-                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("2"), arg = 308, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("RO"), arg = 308, arg_value = 1,
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
@@ -300,7 +300,7 @@ local F_CK_1C = {
         -- Right inner
         pylon(3, 0, -0.2861, -0.48, 2.05,
             {
-                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("3"), arg = 309, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("RI"), arg = 309, arg_value = 1,
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
@@ -309,9 +309,10 @@ local F_CK_1C = {
             },
             3
         ),
+        -- Center
         pylon(4, 0, -0.7202, -0.8726, 0,
             {
-                use_full_connector_position = true, connector = "PylonM", DisplayName = _("4"), arg = 310, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = 310, arg_value = 1,
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
@@ -348,7 +349,7 @@ local F_CK_1C = {
         -- Left inner
         pylon(7, 0, -0.2861, -0.48, -2.05,
             {
-                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("7"), arg = 311, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("LI"), arg = 311, arg_value = 1,
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
@@ -360,7 +361,7 @@ local F_CK_1C = {
         -- Left outer
         pylon(8, 0, -0.5744, -0.465, -2.972,
             {
-                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("8"), arg = 312, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("LO"), arg = 312, arg_value = 1,
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
@@ -372,7 +373,7 @@ local F_CK_1C = {
         -- Left tip
         pylon(9, 0, -1.109, 0.0015, -4.6,
             {
-                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("9")
+                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("LT")
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
