@@ -9,3 +9,5 @@ devices = {}
 devices["Gear"] = counter()
 devices["Actuators"] = counter()
 devices["CMS"] = counter()
+devices["WEAPON_SYSTEM"] = counter()
+devices["HMCS"] = counter()

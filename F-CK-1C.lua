@@ -257,8 +257,9 @@ local F_CK_1C = {
             },
             {
                 supply_position = { 0.4, 0.55, 0.0 },
-                muzzle_pos = { 3.85, 0.56, 2.02 },
-                ejector_pos = { 2.95, 0.42, 2.00 },
+                muzzle_pos = { 0.0, 0.0, 0.0 },
+                muzzle_pos_connector = "gun",
+                ejector_pos = { 2.15, 0.04, -0.70 },
                 effects = { gatling_effect(351, 6), fire_effect(350), smoke_effect() },
             })
     },
@@ -558,11 +559,11 @@ local F_CK_1C = {
     chaff_flare_dispenser = {
         [1] = {
             dir = { 0, -1, 0 },
-            pos = { -3.78, -0.45, -0.78 } -- Left side of speedbrake
+            pos = { -4.75, -0.95, -1.10 } -- Left dispenser, simplified to a native-style downward release
         },
         [2] = {
             dir = { 0, -1, 0 },
-            pos = { -3.78, -0.45, 0.78 } -- Right side of speedbrake
+            pos = { -4.75, -0.95, 1.10 } -- Right dispenser, mirrored to match the left side
         }
     },
 

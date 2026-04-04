@@ -19,7 +19,10 @@ local CMD_DOGFIGHT_SWITCH = device_commands.DogfightSwitch
 
 local ICMD_PLANE_FIRE = 84
 local ICMD_PLANE_FIRE_OFF = 85
+local ICMD_PLANE_DROP_SNAR_ONCE = 176
+local ICMD_PLANE_DROP_SNAR_ONCE_OFF = 536
 local ICMD_PLANE_DROP_FLARE_ONCE = 357
+local ICMD_PLANE_DROP_CHAFF_ONCE = 358
 local ICMD_PLANE_MODE_BORE = 108
 local ICMD_PLANE_MODE_CANNON = 113
 
@@ -28,8 +31,12 @@ local MASTER_SIM = 1
 local MASTER_ON = 2
 
 local cms_program_active = false
-local cms_program_remaining = 0
+local cms_program_name = "idle"
+local cms_program_steps_remaining = 0
 local cms_program_timer = 0.0
+local cms_program_interval = 1.0
+local cms_program_flare_per_step = 0
+local cms_program_chaff_per_step = 0
 local master_arm_mode = MASTER_ON
 local dogfight_active = false
 local trigger_second_latched = false
@@ -37,9 +44,26 @@ local trigger_release_pending = false
 local trigger_hold_timer = 0.0
 local trigger_min_hold_time = 0.08
 local cms_connected = true
+local cms_pair_release_pending = 0
+local cms_pair_release_latched = false
+local cms_pair_release_hold_timer = 0.0
+local cms_pair_release_hold_time = 0.04
+local cms_pair_release_gap_timer = 0.0
+local cms_pair_release_gap_time = 0.12
 local debug_state_period = 0.20
 local debug_state_timer = 0.0
 local debug_state_last_line = ""
+local stores_release_allowed
+local cms_release_allowed
+local hmcs_gun_firing = get_param_handle("HMCS_GUN_FIRING")
+
+local function push_hmcs_gun_state()
+    if trigger_second_latched and master_arm_mode == MASTER_ON then
+        hmcs_gun_firing:set(1)
+        return
+    end
+    hmcs_gun_firing:set(0)
+end
 
 local function dlog(msg)
     if log ~= nil and log.info ~= nil then
@@ -79,7 +103,7 @@ local function log_gate_snapshot(tag)
     local cms_ok = (cms_connected and stores_ok)
     local reason = fire_gate_reason()
     local line = string.format(
-        "DBG[%s] master=%s stores=%d cms=%d dogfight=%d trig=%d relpend=%d hold=%.2f cmsprog=%d cmsrem=%d reason=%s",
+        "DBG[%s] master=%s stores=%d cms=%d dogfight=%d trig=%d relpend=%d hold=%.2f cmsprog=%d mode=%s cmsrem=%d reason=%s",
         tostring(tag),
         master_mode_name(),
         bool_to_num(stores_ok),
@@ -89,7 +113,8 @@ local function log_gate_snapshot(tag)
         bool_to_num(trigger_release_pending),
         trigger_hold_timer,
         bool_to_num(cms_program_active),
-        cms_program_remaining,
+        tostring(cms_program_name),
+        cms_program_steps_remaining,
         reason
     )
 
@@ -129,6 +154,136 @@ local function flare_once()
     end
 end
 
+local function chaff_once()
+    if dispatch_action ~= nil then
+        dlog("dispatch chaff once")
+        local ok = dispatch_action(nil, ICMD_PLANE_DROP_CHAFF_ONCE)
+        if ok ~= nil then
+            dlog("dispatch chaff result=" .. tostring(ok))
+        end
+    end
+end
+
+local function pair_release_off()
+    if not cms_pair_release_latched then
+        return
+    end
+
+    if dispatch_action ~= nil then
+        dlog("dispatch cm release OFF")
+        local ok = dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE_OFF)
+        if ok ~= nil then
+            dlog("dispatch cm release OFF result=" .. tostring(ok))
+        end
+    end
+
+    cms_pair_release_latched = false
+    cms_pair_release_hold_timer = 0.0
+end
+
+local function clear_pair_release_queue(reason_tag)
+    if cms_pair_release_latched or cms_pair_release_pending > 0 then
+        dlog(
+            "clear cm release queue -> "
+                .. tostring(reason_tag)
+                .. " pending="
+                .. tostring(cms_pair_release_pending)
+        )
+    end
+
+    pair_release_off()
+    cms_pair_release_pending = 0
+    cms_pair_release_gap_timer = 0.0
+end
+
+local function queue_pair_release(count)
+    if count == nil or count <= 0 then
+        return
+    end
+
+    cms_pair_release_pending = cms_pair_release_pending + count
+    dlog("queue cm release x" .. tostring(count) .. " pending=" .. tostring(cms_pair_release_pending))
+end
+
+local function release_countermeasures(flare_count, chaff_count)
+    if flare_count == nil then
+        flare_count = 0
+    end
+    if chaff_count == nil then
+        chaff_count = 0
+    end
+
+    if flare_count <= 0 and chaff_count <= 0 then
+        return
+    end
+
+    if not cms_release_allowed() then
+        dlog("countermeasure release blocked by arm/cms state")
+        return
+    end
+
+    local paired_release_count = math.min(flare_count, chaff_count)
+    if paired_release_count > 0 then
+        queue_pair_release(paired_release_count)
+        flare_count = flare_count - paired_release_count
+        chaff_count = chaff_count - paired_release_count
+    end
+
+    local i = 0
+    while i < flare_count do
+        flare_once()
+        i = i + 1
+    end
+
+    i = 0
+    while i < chaff_count do
+        chaff_once()
+        i = i + 1
+    end
+end
+
+local function stop_cms_program(reason_tag)
+    if cms_program_active then
+        dlog("cms program stop -> " .. tostring(reason_tag))
+    end
+    cms_program_active = false
+    cms_program_name = "idle"
+    cms_program_steps_remaining = 0
+    cms_program_timer = 0.0
+    cms_program_interval = 1.0
+    cms_program_flare_per_step = 0
+    cms_program_chaff_per_step = 0
+    log_gate_snapshot(reason_tag)
+end
+
+local function abort_cms_program(reason_tag)
+    stop_cms_program(reason_tag)
+    clear_pair_release_queue(reason_tag)
+end
+
+local function start_cms_program(name, steps, interval, flare_per_step, chaff_per_step, immediate_release)
+    if not cms_release_allowed() then
+        dlog("cms program " .. tostring(name) .. " blocked by arm/cms state")
+        log_gate_snapshot("cms_" .. tostring(name) .. "_block")
+        return
+    end
+
+    cms_program_active = true
+    cms_program_name = tostring(name)
+    cms_program_steps_remaining = steps
+    cms_program_timer = 0.0
+    cms_program_interval = interval
+    cms_program_flare_per_step = flare_per_step
+    cms_program_chaff_per_step = chaff_per_step
+
+    if immediate_release and cms_program_steps_remaining > 0 then
+        release_countermeasures(cms_program_flare_per_step, cms_program_chaff_per_step)
+        cms_program_steps_remaining = cms_program_steps_remaining - 1
+    end
+
+    log_gate_snapshot("cms_" .. tostring(name) .. "_start")
+end
+
 dev:listen_command(CMD_TRIGGER_FIRST_STAGE)
 dev:listen_command(CMD_CMS_FORWARD)
 dev:listen_command(CMD_CMS_AFT)
@@ -141,16 +296,17 @@ dev:listen_command(CMD_MASTER_ARM_OFF)
 dev:listen_command(CMD_MASTER_ARM_SIM)
 dev:listen_command(CMD_DOGFIGHT_SWITCH)
 
-local function stores_release_allowed()
+stores_release_allowed = function()
     return master_arm_mode == MASTER_ON
 end
 
-local function cms_release_allowed()
+cms_release_allowed = function()
     return cms_connected and stores_release_allowed()
 end
 
 function post_initialize()
     dlog("loaded; CMS connected=" .. tostring(cms_connected) .. ", master=" .. tostring(master_arm_mode))
+    push_hmcs_gun_state()
     log_gate_snapshot("init")
 end
 
@@ -165,12 +321,14 @@ function SetCommand(command, value)
                 trigger_second_latched = true
                 trigger_release_pending = false
                 trigger_hold_timer = trigger_min_hold_time
+                push_hmcs_gun_state()
             else
                 -- SIM/OFF: receive signal, but do not fire.
                 dlog("trigger blocked by master arm mode=" .. tostring(master_arm_mode))
                 trigger_second_latched = false
                 trigger_release_pending = false
                 trigger_hold_timer = 0.0
+                push_hmcs_gun_state()
             end
         else
             log_gate_snapshot("trigger_up")
@@ -179,6 +337,7 @@ function SetCommand(command, value)
                     fire_off()
                     trigger_second_latched = false
                     trigger_release_pending = false
+                    push_hmcs_gun_state()
                 else
                     trigger_release_pending = true
                 end
@@ -206,7 +365,9 @@ function SetCommand(command, value)
             trigger_second_latched = false
             trigger_release_pending = false
             trigger_hold_timer = 0.0
+            push_hmcs_gun_state()
         end
+        abort_cms_program("master_off_abort")
         log_gate_snapshot("master_off")
         return
     end
@@ -219,7 +380,9 @@ function SetCommand(command, value)
             trigger_second_latched = false
             trigger_release_pending = false
             trigger_hold_timer = 0.0
+            push_hmcs_gun_state()
         end
+        abort_cms_program("master_sim_abort")
         log_gate_snapshot("master_sim")
         return
     end
@@ -238,32 +401,26 @@ function SetCommand(command, value)
     end
 
     if command == CMD_CMS_FORWARD then
-        if not cms_release_allowed() then
-            dlog("cms forward blocked by arm/cms state")
-            log_gate_snapshot("cms_forward_block")
-            return
-        end
-        cms_program_active = true
-        cms_program_remaining = 10
-        cms_program_timer = 0.0
-        flare_once()
-        cms_program_remaining = cms_program_remaining - 1
-        log_gate_snapshot("cms_forward_start")
+        start_cms_program("forward", 10, 1.0, 1, 1, true)
         return
     end
 
     if command == CMD_CMS_LEFT then
-        if cms_release_allowed() then
-            flare_once()
-            log_gate_snapshot("cms_left")
-        else
-            dlog("cms left blocked by arm/cms state")
-            log_gate_snapshot("cms_left_block")
-        end
+        start_cms_program("left", 2, 0.12, 1, 1, true)
         return
     end
 
-    if command == CMD_CMS_AFT or command == CMD_CMS_RIGHT or command == CMD_CMS_PRESS then
+    if command == CMD_CMS_AFT then
+        start_cms_program("aft", 7, 0.5, 0, 1, true)
+        return
+    end
+
+    if command == CMD_CMS_RIGHT then
+        abort_cms_program("cms_right_abort")
+        return
+    end
+
+    if command == CMD_CMS_PRESS then
         return
     end
 end
@@ -286,7 +443,43 @@ function update()
         fire_off()
         trigger_second_latched = false
         trigger_release_pending = false
+        push_hmcs_gun_state()
         log_gate_snapshot("trigger_release")
+    end
+
+    push_hmcs_gun_state()
+
+    if cms_pair_release_latched then
+        cms_pair_release_hold_timer = cms_pair_release_hold_timer - update_rate
+        if cms_pair_release_hold_timer <= 0.0 then
+            pair_release_off()
+            cms_pair_release_pending = cms_pair_release_pending - 1
+            if cms_pair_release_pending < 0 then
+                cms_pair_release_pending = 0
+            end
+            cms_pair_release_gap_timer = cms_pair_release_gap_time
+        end
+    elseif cms_pair_release_pending > 0 then
+        if cms_pair_release_gap_timer > 0.0 then
+            cms_pair_release_gap_timer = cms_pair_release_gap_timer - update_rate
+            if cms_pair_release_gap_timer < 0.0 then
+                cms_pair_release_gap_timer = 0.0
+            end
+        elseif cms_release_allowed() then
+            if dispatch_action ~= nil then
+                dlog("dispatch cm release ON")
+                local ok = dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE)
+                if ok ~= nil then
+                    dlog("dispatch cm release ON result=" .. tostring(ok))
+                end
+                cms_pair_release_latched = true
+                cms_pair_release_hold_timer = cms_pair_release_hold_time
+            else
+                clear_pair_release_queue("dispatch_nil")
+            end
+        else
+            clear_pair_release_queue("cms_pair_block")
+        end
     end
 
     if dogfight_active and master_arm_mode ~= MASTER_ON then
@@ -298,21 +491,21 @@ function update()
         return
     end
 
-    if cms_program_remaining <= 0 then
-        cms_program_active = false
-        cms_program_timer = 0.0
-        log_gate_snapshot("cms_done")
+    if cms_program_steps_remaining <= 0 then
+        stop_cms_program("cms_done")
         return
     end
 
     cms_program_timer = cms_program_timer + update_rate
-    if cms_program_timer >= 1.0 then
-        cms_program_timer = cms_program_timer - 1.0
+    if cms_program_timer >= cms_program_interval then
+        cms_program_timer = cms_program_timer - cms_program_interval
         if cms_release_allowed() then
-            flare_once()
+            release_countermeasures(cms_program_flare_per_step, cms_program_chaff_per_step)
+            cms_program_steps_remaining = cms_program_steps_remaining - 1
             log_gate_snapshot("cms_prog_drop")
+        else
+            abort_cms_program("cms_prog_block")
         end
-        cms_program_remaining = cms_program_remaining - 1
     end
 end
 

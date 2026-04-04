@@ -363,13 +363,13 @@ struct FBWGainScheduleValues
 };
 
 FBWCatParams fbw_cat1 = {
-	0.04, 0.22, 2.8, 2.2, rad(55.0), rad(35.0), 14.5, 2500.0, 0.35, 0.85, 0.65, 0.08, 7.0, 0.20,
-	rad(190.0), rad(120.0), rad(80.0), 13.0, 18.0, 6.5, 8.5, rad(220.0), rad(140.0), rad(95.0), 0.90, 0.60
+	0.03, 0.18, 2.8, 2.2, rad(55.0), rad(42.0), 15.5, 2500.0, 0.35, 0.85, 0.65, 0.05, 9.5, 0.10,
+	rad(190.0), rad(145.0), rad(80.0), 15.0, 21.0, 7.0, 8.8, rad(220.0), rad(170.0), rad(95.0), 0.90, 0.60
 };
 
 FBWCatParams fbw_cat3 = {
-	0.06, 0.32, 2.0, 1.6, rad(40.0), rad(25.0), 12.0, 4000.0, 0.22, 0.70, 0.40, 0.16, 4.0, 0.35,
-	rad(140.0), rad(90.0), rad(60.0), 11.0, 15.5, 5.8, 7.2, rad(170.0), rad(110.0), rad(75.0), 1.10, 0.80
+	0.05, 0.26, 2.0, 1.6, rad(40.0), rad(30.0), 13.5, 4000.0, 0.22, 0.70, 0.40, 0.10, 5.5, 0.20,
+	rad(140.0), rad(110.0), rad(60.0), 12.5, 17.5, 6.2, 7.6, rad(170.0), rad(130.0), rad(75.0), 1.10, 0.80
 };
 
 FBWGainSchedulePoint fbw_gain_schedule[] = {
@@ -385,8 +385,8 @@ double	fbw_qbar_filter_tau = 0.18;
 
 double	fbw_kp_p = 0.55;
 double	fbw_ki_p = 0.35;
-double	fbw_kp_q = 0.70;
-double	fbw_ki_q = 0.38;
+double	fbw_kp_q = 0.88;
+double	fbw_ki_q = 0.48;
 double	fbw_kp_r = 0.65;
 double	fbw_ki_r = 0.25;
 double	fbw_aw_gain = 1.20;
@@ -404,17 +404,17 @@ double	fbw_region_approach_kts = 240.0;
 double	fbw_region_min_kts = 110.0;
 double	fbw_region_alpha1_deg = 12.0;
 double	fbw_region_alpha2_deg = 18.0;
-double	fbw_alpha_cmd_per_stick_deg = 10.0;
-double	fbw_q_cmd_land_max_deg = 35.0;
+double	fbw_alpha_cmd_per_stick_deg = 13.5;
+double	fbw_q_cmd_land_max_deg = 50.0;
 
 double	fbw_ail_limit_deg = 22.0;
 double	fbw_ele_limit_deg = 25.0;
 double	fbw_rud_limit_deg = 30.0;
 double	fbw_ail_rate_deg_s = 110.0;
-double	fbw_ele_rate_deg_s = 90.0;
+double	fbw_ele_rate_deg_s = 120.0;
 double	fbw_rud_rate_deg_s = 80.0;
 double	fbw_ail_lag_tau = 0.05;
-double	fbw_ele_lag_tau = 0.06;
+double	fbw_ele_lag_tau = 0.04;
 double	fbw_rud_lag_tau = 0.07;
 
 bool	fbw_enabled = true;
@@ -1518,8 +1518,13 @@ void ed_fm_simulate(double dt)
 	// Lift/normal force, acts upwards
 	double Lift = Cy + FM_DATA::Cy0 + (FM_DATA::cy_flap * flaps_pos);
 
+	// Add lift/AoA-dependent drag so hard pulls trade energy for turn performance.
+	const double induced_drag = (FM_DATA::cx_lift_k * Lift * Lift) +
+		(FM_DATA::cx_alpha_k * aoa * aoa) +
+		(FM_DATA::cx_elevator_k * fabs(elevator_command));
+
 	// Drag force, acts backwards
-	double Drag = Cx0_ + (FM_DATA::cx_brk * airbrake_pos) + (FM_DATA::cx_flap * flaps_pos) + (FM_DATA::cx_gear * gear_pos);
+	double Drag = Cx0_ + (FM_DATA::cx_brk * airbrake_pos) + (FM_DATA::cx_flap * flaps_pos) + (FM_DATA::cx_gear * gear_pos) + induced_drag;
 
 	// Cheap, unrealistic, but effective aoa limiter
 	if ((fabs(alpha) / AlphaMax_) >= 0.75)
@@ -1550,7 +1555,7 @@ void ed_fm_simulate(double dt)
 #pragma region PITCH
 
 	// Elevator deflection plus default angle
-	double elevator_deflection = (-(rescale(elevator_command + 0.15, rad(-25), rad(35))) * 14) * cos(aoa / 2);
+	double elevator_deflection = (-(rescale(elevator_command + 0.15, rad(-25), rad(35))) * 18) * cos(aoa / 2);
 
 	double pitch_stability = (aoa + sin(aoa / 2) / 2) + (pitch_rate * 2);
 

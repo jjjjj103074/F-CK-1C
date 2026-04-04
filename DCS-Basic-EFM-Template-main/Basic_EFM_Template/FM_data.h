@@ -22,6 +22,9 @@ namespace FM_DATA
 	double cx_brk = 0.06; // Air brake drag
 
 	double cx_flap = 0.05; // Flap drag
+	double cx_lift_k = 0.030; // Additional drag from lift production
+	double cx_alpha_k = 0.080; // Additional drag from AoA in radians
+	double cx_elevator_k = 0.008; // Additional drag from large elevator deflection
 	double cy_flap = 0.3; // Flap lift
 
 	// Important: Make sure the first value is 0.
