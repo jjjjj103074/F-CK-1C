@@ -312,12 +312,12 @@ local F_CK_1C = {
         -- Center
         pylon(4, 0, -0.7202, -0.8726, 0,
             {
-                use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = 310, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = 310, arg_value = -1,
             },
             {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "<CLEAN>",  arg_value = -1 },                                                  -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1, forbidden = { { station = 5 }, { station = 6 } } }, -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, forbidden = { { station = 5 }, { station = 6 } } }, -- CATM-9M
             },
             4
         ),
@@ -327,10 +327,9 @@ local F_CK_1C = {
                 use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"),
             },
             {
-                { CLSID = "<CLEAN>",        arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}",       arg_value = 1 }, -- AIM-9L
-                { CLSID = "CATM-9M",        arg_value = 1 }, -- CATM-9M
-                { CLSID = "{BELLY AIM-7F}", arg_value = 1 }
+                { CLSID = "<CLEAN>",  arg_value = -1 },                                 -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1, forbidden = { { station = 4 } } }, -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, forbidden = { { station = 4 } } }, -- CATM-9M
             },
             5
         ),
@@ -340,9 +339,9 @@ local F_CK_1C = {
                 use_full_connector_position = true, connector = "PylonM.001", DisplayName = _("MB"),
             },
             {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "<CLEAN>",  arg_value = -1 },                                 -- Remove pylon
+                { CLSID = "{AIM-9L}", arg_value = 1, forbidden = { { station = 4 } } }, -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, forbidden = { { station = 4 } } }, -- CATM-9M
             },
             6
         ),
