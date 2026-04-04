@@ -64,18 +64,25 @@ end
 -- 輕型空對空
 WPN_AAM_Light = {
     _isAAM = true,
-    { CLSID = "{AIM-9L}",      diameter = 127 }, -- AIM-9L
-    { CLSID = "{AIM-9P3}",     diameter = 127 }, -- AIM-9P3
-    { CLSID = "{AIM-9P5}",     diameter = 127 }, -- AIM-9P5
-    { CLSID = "CATM-9M",       diameter = 127 }, -- CATM-9M
-    { CLSID = "{AIS_ASQ_T50}", diameter = 127 }, -- ACMI pod
+    { CLSID = "{AIM-9L}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9L
+    { CLSID = "{AIM-9P3}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P3
+    { CLSID = "{AIM-9P5}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P5
+    { CLSID = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9X
+    { CLSID = "CATM-9M",                                Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
+    { CLSID = "{AIS_ASQ_T50}",                          Cx_gain = 0.796, diameter = 127 }, -- ACMI pod
 }
 
 -- 中型空對空
 WPN_AAM_Med = {
     _isAAM = true,
-    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178 }, -- AIM-120B
-    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178 }, -- AIM-120C
+    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 }, -- AIM-7
+    { CLSID = "{BELLY AIM-7M}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7M
+    { CLSID = "{BELLY AIM-7F}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7F
+    { CLSID = "{BELLY AIM-7MH}",                        Cx_gain = 0.125, diameter = 200 }, -- AIM-7MH
+    { CLSID = "{BELLY AIM-7P}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7P
+    { CLSID = "{BELLY AIM-7E}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7E
+    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178 },                  -- AIM-120B
+    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178 },                  -- AIM-120C
 }
 
 -- 智能空對地
