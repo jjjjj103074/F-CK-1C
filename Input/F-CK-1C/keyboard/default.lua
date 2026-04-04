@@ -16,8 +16,10 @@ join(res.keyCommands,
 
         { combos = defaultDeviceAssignmentFor("thrust_up"),         pressed = iCommandThrottleIncrease,            up = iCommandThrottleStop,                  name = _('Throttle Smoothly - Increase'),                                   category = { _('Throttle Quadrant'), _('Flight Control') } },
         { combos = defaultDeviceAssignmentFor("thrust_down"),       pressed = iCommandThrottleDecrease,            up = iCommandThrottleStop,                  name = _('Throttle Smoothly - Decrease'),                                   category = { _('Throttle Quadrant'), _('Flight Control') } },
-        { combos = { { key = 'PageUp' } },                          down = iCommandPlaneAUTIncreaseRegime,         name = _('Throttle Step - Increase'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
-        { combos = { { key = 'PageDown' } },                        down = iCommandPlaneAUTDecreaseRegime,         name = _('Throttle Step - Decrease'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = { { key = 'PageUp' } },                          pressed = iCommandThrottleIncrease,            up = iCommandThrottleStop,                  name = _('Throttle Smoothly - Increase'),   category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = { { key = 'PageDown' } },                        pressed = iCommandThrottleDecrease,            up = iCommandThrottleStop,                  name = _('Throttle Smoothly - Decrease'),   category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = { { key = 'PageUp', reformers = { 'RCtrl' } } }, down = iCommandThrottleIncrease,               name = _('Throttle Step - Increase'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
+        { combos = { { key = 'PageDown', reformers = { 'RCtrl' } } },down = iCommandThrottleDecrease,               name = _('Throttle Step - Decrease'),       category = { _('Throttle Quadrant'), _('Flight Control') } },
 
         { combos = defaultDeviceAssignmentFor("wheel_brake"),       down = iCommandPlaneWheelBrakeOn,              up = iCommandPlaneWheelBrakeOff,            name = _('Wheel Brake - ON/OFF'),                                           category = { _('Systems') } },
         { combos = { { key = 'W', reformers = { 'LCtrl' } } },      down = iCommandPlaneWheelBrakeLeftOn,          up = iCommandPlaneWheelBrakeLeftOff,        name = _('Wheel Brake Left - ON/OFF'),                                      category = { _('Systems') } },
@@ -32,16 +34,13 @@ join(res.keyCommands,
         { combos = { { key = 'F', reformers = { 'LShift' } } },     down = iCommandPlaneFlapsOff,                  name = _('Flap Handle - UP'),               category = { _('Throttle Panel'), _('Flight Control') } },
 
         { combos = { { key = 'B' } },                               down = iCommandPlaneAirBrake,                  name = _('Speedbrake Switch - OPEN/CLOSE'), category = { _('Throttle Panel'), _('Throttle Grip'), _('Flight Control') } },
-        { combos = { { key = 'B', reformers = { 'RCtrl' } } },      down = 3016,                                   name = _('Speedbrake - Close'),             category = { _('Throttle Panel'), _('Throttle Grip'), _('Flight Control') } },
-        { combos = { { key = 'B', reformers = { 'RAlt' } } },       down = 3010,                                   name = _('Speedbrake - Hold'),              category = { _('Throttle Panel'), _('Throttle Grip'), _('Flight Control') } },
-        { combos = { { key = 'B', reformers = { 'RShift' } } },     down = 3017,                                   name = _('Speedbrake - Extend'),            category = { _('Throttle Panel'), _('Throttle Grip'), _('Flight Control') } },
+        { combos = { { key = 'B', reformers = { 'RCtrl' } } },      down = 3016,                                   name = _('Speedbrake 3-Pos - Close'),       category = { _('Throttle Panel'), _('Throttle Grip'), _('Flight Control') } },
+        { combos = { { key = 'B', reformers = { 'RAlt' } } },       down = 3010,                                   name = _('Speedbrake 3-Pos - Hold'),        category = { _('Throttle Panel'), _('Throttle Grip'), _('Flight Control') } },
+        { combos = { { key = 'B', reformers = { 'RShift' } } },     down = 3017,                                   name = _('Speedbrake 3-Pos - Extend'),      category = { _('Throttle Panel'), _('Throttle Grip'), _('Flight Control') } },
 
-        { combos = { { key = 'G', reformers = { 'RCtrl' } } },      down = 3018,                                   name = _('LG Handle - UP'),                 category = { _('Left Auxiliary Console') } },
-        { combos = { { key = 'G', reformers = { 'RShift' } } },     down = 3019,                                   name = _('LG Handle - DOWN'),               category = { _('Left Auxiliary Console') } },
-
-        { combos = { { key = 'F', reformers = { 'RCtrl' } } },      down = 3020,                                   name = _('Flap Handle - UP (3-pos)'),       category = { _('Throttle Panel'), _('Flight Control') } },
-        { combos = { { key = 'F', reformers = { 'RAlt' } } },       down = 3012,                                   name = _('Flap Handle - AUTO (3-pos)'),     category = { _('Throttle Panel'), _('Flight Control') } },
-        { combos = { { key = 'F', reformers = { 'RShift' } } },     down = 3021,                                   name = _('Flap Handle - DOWN (3-pos)'),     category = { _('Throttle Panel'), _('Flight Control') } },
+        { combos = { { key = 'F', reformers = { 'RCtrl' } } },      down = 3020,                                   name = _('Flap 3-Pos - UP'),                category = { _('Throttle Panel'), _('Flight Control') } },
+        { combos = { { key = 'F', reformers = { 'RAlt' } } },       down = 3012,                                   name = _('Flap 3-Pos - AUTO'),              category = { _('Throttle Panel'), _('Flight Control') } },
+        { combos = { { key = 'F', reformers = { 'RShift' } } },     down = 3021,                                   name = _('Flap 3-Pos - DOWN'),              category = { _('Throttle Panel'), _('Flight Control') } },
 
         { combos = { { key = 'N' } },                               down = 3022,                                   name = _('Nose Turn Switch - TOGGLE'),      category = { _('Systems') } },
 

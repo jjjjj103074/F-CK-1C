@@ -63,3 +63,6 @@ Copy-Item ".\x64\Release\BasicEFM_template.dll" "..\bin\BasicEFM_template.dll" -
 - `entry.lua` already references `BasicEFM_template.dll`.
 - The current mod already has a DLL at `bin\BasicEFM_template.dll`.
 - If `MSBuild.exe` is not found, open the Visual Studio Developer Command Prompt first and run the same commands there.
+
+
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" "DCS-Basic-EFM-Template-main/BasicEFM.sln" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /v:m; Copy-Item "DCS-Basic-EFM-Template-main/x64/Release/BasicEFM_template.dll" "bin/BasicEFM_template.dll" -Force; Write-Output "SRC HASH:"; Get-FileHash "DCS-Basic-EFM-Template-main/x64/Release/BasicEFM_template.dll" -Algorithm SHA256 | Format-List; Write-Output "BIN HASH:"; Get-FileHash "bin/BasicEFM_template.dll" -Algorithm SHA256 | Format-List
