@@ -27,17 +27,17 @@ end
 
 local function get_outer_pylon_weapons(launcher_connector)
     local weapons = {
-        { CLSID = AIM9M_CLSID, connector = launcher_connector },
+        { CLSID = AIM9M_CLSID, connector = launcher_connector, arg_value = 1 },
         { CLSID = MK82_CLSID },
         { CLSID = MK82_SNAKEYE_CLSID },
-        { CLSID = "<CLEAN>", arg_value = 1 },
+        { CLSID = "<CLEAN>", arg_value = -1 },
     }
     return weapons
 end
 
 local function get_inner_pylon_weapons(launcher_connector, allow_triple_rack)
     local weapons = {
-        { CLSID = AIM9M_CLSID, connector = launcher_connector },
+        { CLSID = AIM9M_CLSID, connector = launcher_connector, arg_value = 1 },
         { CLSID = MK82_CLSID },
         { CLSID = MK82_SNAKEYE_CLSID },
         { CLSID = F16_WING_TANK_CLSID, arg_value = 0.3, attach_point_position = { 0.0, 0.10, 0.0 } },
@@ -48,7 +48,7 @@ local function get_inner_pylon_weapons(launcher_connector, allow_triple_rack)
         weapons[#weapons + 1] = { CLSID = TER_MK82_SNAKEYE_CLSID }
     end
 
-    weapons[#weapons + 1] = { CLSID = "<CLEAN>", arg_value = 1 }
+    weapons[#weapons + 1] = { CLSID = "<CLEAN>", arg_value = -1 }
     return weapons
 end
 
@@ -59,7 +59,7 @@ local function get_centerline_weapons()
         { CLSID = MK82_SNAKEYE_CLSID },
         { CLSID = TER_MK82_CLSID },
         { CLSID = TER_MK82_SNAKEYE_CLSID },
-        { CLSID = "<CLEAN>", arg_value = 1 },
+        { CLSID = "<CLEAN>", arg_value = -1 },
     }
 end
 
@@ -353,8 +353,8 @@ local F_CK_1C = {
     Pylons = {
         pylon(1, 0, -1.85, 0.00, 4.74,
         {
-            arg = 314,
-            arg_value = -1.0,
+            arg = 307,
+            arg_value = 1,
             DisplayName = "1",
             use_full_connector_position = true,
             connector = "launcher_aim9_R"
@@ -362,7 +362,7 @@ local F_CK_1C = {
         get_wingtip_weapons("launcher_aim9_R")),
         pylon(2, 0, -1.55, -0.32, 2.90,
         {
-            arg = 313,
+            arg = 308,
             arg_value = 0,
             DisplayName = "2",
             use_full_connector_position = true,
@@ -371,7 +371,7 @@ local F_CK_1C = {
         get_outer_pylon_weapons("launcher_aim9_R2")),
         pylon(3, 0, -1.15, -0.30, 2.05,
         {
-            arg = 312,
+            arg = 309,
             arg_value = 0,
             DisplayName = "3",
             use_full_connector_position = true,
@@ -380,7 +380,7 @@ local F_CK_1C = {
         get_inner_pylon_weapons("launcher_aim9_R1", true)),
         pylon(4, 0, -0.70, -1.11, 0.00,
         {
-            arg = 311,
+            arg = 310,
             arg_value = 0,
             DisplayName = "4",
             use_full_connector_position = true,
@@ -389,7 +389,7 @@ local F_CK_1C = {
         get_centerline_weapons()),
         pylon(5, 0, -1.15, -0.30, -2.05,
         {
-            arg = 310,
+            arg = 311,
             arg_value = 0,
             DisplayName = "5",
             use_full_connector_position = true,
@@ -398,7 +398,7 @@ local F_CK_1C = {
         get_inner_pylon_weapons("launcher_aim9_L1", true)),
         pylon(6, 0, -1.55, -0.32, -2.90,
         {
-            arg = 309,
+            arg = 312,
             arg_value = 0,
             DisplayName = "6",
             use_full_connector_position = true,
@@ -407,8 +407,8 @@ local F_CK_1C = {
         get_outer_pylon_weapons("launcher_aim9_L2")),
         pylon(7, 0, -1.85, 0.00, -4.74,
         {
-            arg = 308,
-            arg_value = -1.0,
+            arg = 313,
+            arg_value = 1,
             DisplayName = "7",
             use_full_connector_position = true,
             connector = "launcher_aim9_L"
