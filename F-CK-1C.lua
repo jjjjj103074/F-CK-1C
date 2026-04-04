@@ -68,6 +68,7 @@ WPN_AAM_Light = {
     { CLSID = "{AIM-9P3}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P3
     { CLSID = "{AIM-9P5}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P5
     { CLSID = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9X
+    { CLSID = "{GAR-8}",                                Cx_gain = 0.796, diameter = 127 }, -- AIM-9B
     { CLSID = "CATM-9M",                                Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
     { CLSID = "{AIS_ASQ_T50}",                          Cx_gain = 0.796, diameter = 127 }, -- ACMI pod
 }
