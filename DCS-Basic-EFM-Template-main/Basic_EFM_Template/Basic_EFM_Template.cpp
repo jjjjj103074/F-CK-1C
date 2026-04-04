@@ -1701,8 +1701,8 @@ void ed_fm_simulate(double dt)
 		right_afterburner_ratio = 0.0;
 		left_engine_switch = false;
 		right_engine_switch = false;
-		left_engine_power_readout = actuator(right_engine_power_readout, 0.0, -dt / 10, dt / 10);
-		right_engine_power_readout = actuator(left_engine_power_readout, 0.0, -dt / 10, dt / 10);
+		left_engine_power_readout = actuator(left_engine_power_readout, 0.0, -dt / 10, dt / 10);
+		right_engine_power_readout = actuator(right_engine_power_readout, 0.0, -dt / 10, dt / 10);
 	};
 
 	//add_local_force(thrust, thrust_pos);
