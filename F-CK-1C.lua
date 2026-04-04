@@ -4,6 +4,127 @@
 -- 檔案內使用 DCS 既有 helper，例如 pylon、gun_mount、makeAirplaneCanopyGeometry。
 -- 若某些常數尚未在目前環境定義，需依 DCS 版本或其他模組補齊。
 
+-- ===================== 公具函式 =====================
+
+--- 建立掛架武器清單（資料驅動）。
+--- 自動前置 <CLEAN>（arg_value = -1）；若項目已手動填寫 arg_value 則不覆寫。
+---
+--- @param argMode  string   arg_value 填充模式：
+---   "none"     — 移除所有arg值
+---   "normal"   — 若無設定arg值 自動填充: AAM 群組(_isAAM=true) → 1，其他 → 0.1
+---   "diameter" — 用diameter(mm)/200 映射到arg_value 0~1；無 diameter 的項目自動剔除
+--- @param forbidden  table  禁止使用此武器的掛架編號列表，例如 {4,5}；傳 {} 表示不限制
+--- @param ...  tables  一到多個武器群 table
+--- @return table  可直接放入 Pylons 的武器清單
+local function setLoadout(argMode, forbidden, ...)
+    local result = {}
+
+    result[#result + 1] = { CLSID = "<CLEAN>", arg_value = -1 }
+
+    for _, group in ipairs({ ... }) do
+        local groupIsAAM = (group._isAAM == true)
+
+        for _, wpn in ipairs(group) do
+            local entry = {}
+            for k, v in pairs(wpn) do entry[k] = v end
+
+            -- forbidden 站位
+            if forbidden ~= nil and #forbidden > 0 then
+                entry.forbidden = {}
+                for _, f in ipairs(forbidden) do
+                    entry.forbidden[#entry.forbidden + 1] = { station = f }
+                end
+            end
+
+            -- arg_value 填充
+            if argMode == "none" then
+                entry.arg_value = nil
+                result[#result + 1] = entry
+            elseif argMode == "normal" then
+                if entry.arg_value == nil then
+                    entry.arg_value = groupIsAAM and 1 or 0.1
+                end
+                result[#result + 1] = entry
+            elseif argMode == "diameter" then
+                if entry.diameter ~= nil then
+                    entry.arg_value = math.max(0, math.min(1, entry.diameter / 200))
+                    result[#result + 1] = entry
+                end
+            end
+        end
+    end
+
+    return result
+end
+
+-- ===================== 掛載點定義 (Pylon Definition) =====================
+
+-- ---------- 可用掛載設定 ----------
+
+-- 輕型空對空
+WPN_AAM_Light = {
+    _isAAM = true,
+    { CLSID = "{AIM-9L}", diameter = 127 }, -- AIM-9L
+    { CLSID = "CATM-9M",  diameter = 127 }, -- CATM-9M
+}
+
+-- 中型空對空
+WPN_AAM_Med = {
+    _isAAM = true,
+    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178 }, -- AIM-120B
+    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178 }, -- AIM-120C
+}
+
+-- 智能空對地
+WPN_AGM_Smart = {
+
+}
+
+-- 無導引炸彈
+WPN_BOMB_Dumb = {
+
+}
+
+-- 標定莢艙
+WPN_POD_Targeting = {
+
+}
+
+-- 標準副油箱
+WPN_TANK_Standard = {
+    { CLSID = "{EFEC8201-B922-11d7-9897-000476191836}" }, -- F18 800加侖副油箱
+}
+
+-- ---------- 掛載點配置 ----------
+
+-- 翼尖
+Tip = setLoadout("none", {},
+    WPN_AAM_Light
+)
+
+-- 機翼外側
+Outer = setLoadout("normal", {},
+    WPN_AAM_Light,
+    WPN_AAM_Med
+)
+
+-- 機翼內側
+Inner = setLoadout("normal", {},
+    WPN_AAM_Light,
+    WPN_AAM_Med,
+    WPN_TANK_Standard
+)
+
+-- 機腹中心掛架
+CenterlineM = setLoadout("normal", { 5, 6 },
+    WPN_TANK_Standard
+)
+
+-- 機腹前後掛架
+CenterlineFB = setLoadout("diameter", { 4 },
+    WPN_AAM_Light,
+    WPN_AAM_Med
+)
 
 -- ===================== 基本識別資料 (Identification) =====================
 -- Name / DisplayName / shape_table_data 會對應到 DCS 的單位與模型註冊資料。
@@ -278,11 +399,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("RT")
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
-            },
+            Tip,
             1
         ),
         -- Right outer
@@ -290,11 +407,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonR2", DisplayName = _("RO"), arg = 308, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
-            },
+            Outer,
             2
         ),
         -- Right inner
@@ -302,11 +415,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonR1", DisplayName = _("RI"), arg = 309, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
-            },
+            Inner,
             3
         ),
         -- Center
@@ -314,11 +423,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = 310, arg_value = -1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 },                                                  -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, forbidden = { { station = 5 }, { station = 6 } } }, -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, forbidden = { { station = 5 }, { station = 6 } } }, -- CATM-9M
-            },
+            CenterlineM,
             4
         ),
         -- Center Frount
@@ -326,11 +431,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"),
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 },                                 -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, forbidden = { { station = 4 } } }, -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, forbidden = { { station = 4 } } }, -- CATM-9M
-            },
+            CenterlineFB,
             5
         ),
         -- Center Back
@@ -338,11 +439,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonM.001", DisplayName = _("MB"),
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 },                                 -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, forbidden = { { station = 4 } } }, -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, forbidden = { { station = 4 } } }, -- CATM-9M
-            },
+            CenterlineFB,
             6
         ),
         -- Left inner
@@ -350,11 +447,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonL1", DisplayName = _("LI"), arg = 311, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
-            },
+            Inner,
             7
         ),
         -- Left outer
@@ -362,11 +455,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonL2", DisplayName = _("LO"), arg = 312, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
-            },
+            Outer,
             8
         ),
         -- Left tip
@@ -374,11 +463,7 @@ local F_CK_1C = {
             {
                 use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("LT")
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
-            },
+            Tip,
             9
         ),
     },
