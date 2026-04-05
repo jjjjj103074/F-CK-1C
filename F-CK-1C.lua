@@ -30,49 +30,113 @@ local ARG_PYLON_MB = 317 -- Center Back  pylon deploy animation
 
 -- ===================== 公具函式 =====================
 
---- 建立掛架武器清單（資料驅動）。
---- 自動前置 <CLEAN>（arg_value = -1）；若項目已手動填寫 arg_value 則不覆寫。
+--- 登記武器群組到全域清單，供 buildStation Phase 2 (extra) 掃描。
+--- 原樣回傳 grp，可直接用於 WPN_XXX = wpnGroup({ ... })。
+local _allGroups = {}
+local function wpnGroup(grp)
+    _allGroups[#_allGroups + 1] = grp
+    return grp
+end
+
+--- 建立指定站位的武器清單（武器中心化架構）。
+--- 自動前置 <CLEAN>（arg_value = -1）。
 ---
---- @param argMode  string   arg_value 填充模式：
----   "none"     — 移除所有arg值
----   "normal"   — 若無設定arg值 自動填充: AAM 群組(_isAAM=true) → 1，其他 → 0.1
----   "diameter" — 用diameter(mm)/200 映射到arg_value 0~1；無 diameter 的項目自動剔除
---- @param forbidden  table  禁止使用此武器的掛架編號列表，例如 {4,5}；傳 {} 表示不限制
---- @param ...  tables  一到多個武器群 table
---- @return table  可直接放入 Pylons 的武器清單
-local function setLoadout(argMode, forbidden, ...)
+--- @param stationIds    table   此清單服務的站位 ID 列表，例如 {STATION_RT, STATION_LT}
+--- @param argMode       string  arg_value 填充模式：
+---   "none"     — 不填充
+---   "normal"   — AAM 群組(_isAAM=true) → 1，其他 → 0.1
+---   "diameter" — diameter(mm)/200 映射；無 diameter 者剔除
+--- @param callForbidden table   呼叫層級 forbidden，此清單每件武器都會套用
+--- @param ...           tables  已以 wpnGroup() 登記的武器群
+--- @return table   可直接放入 pylon() 的武器清單
+---
+--- 武器項目可選欄位：
+---   stations = {id,...}  白名單：只允許出現在列出的站位，其他自動剔除
+---   deny     = {id,...}  黑名單：在這些站位直接剔除，不出現在 store list 中
+---   extra    = {id,...}  擴展：即使所在群組不在呼叫中，仍額外注入
+local function buildStation(stationIds, argMode, callForbidden, ...)
+    local function inList(val, list)
+        for _, v in ipairs(list) do
+            if v == val then return true end
+        end
+        return false
+    end
+
+    local function anyMatch(listA, listB)
+        for _, a in ipairs(listA) do
+            if inList(a, listB) then return true end
+        end
+        return false
+    end
+
+    -- 從武器定義建立 entry；若此武器不應出現在 stationIds 則回傳 nil
+    local function makeEntry(wpn, groupIsAAM)
+        -- 篩選：stations 白名單 / deny 黑名單（提前於 entry 建立，避免多餘工作）
+        if wpn.stations and not anyMatch(stationIds, wpn.stations) then
+            return nil
+        end
+        if wpn.deny and anyMatch(stationIds, wpn.deny) then
+            return nil
+        end
+
+        local entry = {}
+        for k, v in pairs(wpn) do entry[k] = v end
+
+        -- 清除 meta 欄位
+        entry.stations = nil
+        entry.deny     = nil
+        entry.extra    = nil
+
+        -- callForbidden → forbidden（呼叫層級互斥約束）
+        if callForbidden and #callForbidden > 0 then
+            entry.forbidden = {}
+            for _, f in ipairs(callForbidden) do
+                entry.forbidden[#entry.forbidden + 1] = { station = f }
+            end
+        end
+
+        -- arg_value 填充
+        if argMode == "none" then
+            entry.arg_value = nil
+        elseif argMode == "normal" then
+            if entry.arg_value == nil then
+                entry.arg_value = groupIsAAM and 1 or 0.1
+            end
+        elseif argMode == "diameter" then
+            if entry.diameter == nil then return nil end
+            entry.arg_value = math.max(0, math.min(1, entry.diameter / 200))
+        end
+
+        return entry
+    end
+
     local result = {}
-
     result[#result + 1] = { CLSID = "<CLEAN>", arg_value = -1 }
+    local seen = {}
 
+    -- Phase 1：正常群組
     for _, group in ipairs({ ... }) do
         local groupIsAAM = (group._isAAM == true)
-
         for _, wpn in ipairs(group) do
-            local entry = {}
-            for k, v in pairs(wpn) do entry[k] = v end
-
-            -- forbidden 站位
-            if forbidden ~= nil and #forbidden > 0 then
-                entry.forbidden = {}
-                for _, f in ipairs(forbidden) do
-                    entry.forbidden[#entry.forbidden + 1] = { station = f }
+            if not seen[wpn.CLSID] then
+                local entry = makeEntry(wpn, groupIsAAM)
+                if entry then
+                    result[#result + 1] = entry
+                    seen[wpn.CLSID] = true
                 end
             end
+        end
+    end
 
-            -- arg_value 填充
-            if argMode == "none" then
-                entry.arg_value = nil
-                result[#result + 1] = entry
-            elseif argMode == "normal" then
-                if entry.arg_value == nil then
-                    entry.arg_value = groupIsAAM and 1 or 0.1
-                end
-                result[#result + 1] = entry
-            elseif argMode == "diameter" then
-                if entry.diameter ~= nil then
-                    entry.arg_value = math.max(0, math.min(1, entry.diameter / 200))
+    -- Phase 2：extra 注入（掃描全域登記的所有群組）
+    for _, group in ipairs(_allGroups) do
+        local groupIsAAM = (group._isAAM == true)
+        for _, wpn in ipairs(group) do
+            if wpn.extra and not seen[wpn.CLSID] and anyMatch(stationIds, wpn.extra) then
+                local entry = makeEntry(wpn, groupIsAAM)
+                if entry then
                     result[#result + 1] = entry
+                    seen[wpn.CLSID] = true
                 end
             end
         end
@@ -86,7 +150,7 @@ end
 -- ---------- 可用掛載設定 ----------
 
 -- 輕型空對空
-WPN_AAM_Light = {
+WPN_AAM_Light = wpnGroup({
     _isAAM = true,
     { CLSID = "{AIM-9L}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9L
     { CLSID = "{AIM-9P3}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P3
@@ -95,62 +159,62 @@ WPN_AAM_Light = {
     { CLSID = "{AIM-9B}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9B
     { CLSID = "CATM-9M",                                Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
     { CLSID = "{AIS_ASQ_T50}",                          Cx_gain = 0.796, diameter = 127 }, -- ACMI pod
-}
+})
 
 -- 中型空對空
-WPN_AAM_Med = {
+WPN_AAM_Med = wpnGroup({
     _isAAM = true,
-    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 }, -- AIM-7
-    { CLSID = "{BELLY AIM-7M}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7M
-    { CLSID = "{BELLY AIM-7F}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7F
-    { CLSID = "{BELLY AIM-7MH}",                        Cx_gain = 0.125, diameter = 200 }, -- AIM-7MH
-    { CLSID = "{BELLY AIM-7P}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7P
-    { CLSID = "{BELLY AIM-7E}",                         Cx_gain = 0.125, diameter = 200 }, -- AIM-7E
-    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178 },                  -- AIM-120B
-    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178 },                  -- AIM-120C
-}
+    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 },                     -- AIM-7
+    { CLSID = "{BELLY AIM-7M}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7M
+    { CLSID = "{BELLY AIM-7F}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7F
+    { CLSID = "{BELLY AIM-7MH}",                        Cx_gain = 0.125, diameter = 200 },                     -- AIM-7MH
+    { CLSID = "{BELLY AIM-7P}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7P
+    { CLSID = "{BELLY AIM-7E}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7E
+    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178,  extra = { STATION_RT, STATION_LT } }, -- AIM-120B (額外允許翼尖)
+    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178,  extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
+})
 
 -- 智能空對地
-WPN_AGM_Smart = {
+WPN_AGM_Smart = wpnGroup({
 
-}
+})
 
 -- 無導引炸彈
-WPN_BOMB_Dumb = {
-    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}" }, -- Mk-82
-    { CLSID = "{Mk82SNAKEYE}" },                          -- Mk-82 SNAKEYE
-    { CLSID = "{BRU33_2X_MK-82}" },                       -- BRU-33 2*Mk-82
-    { CLSID = "{BRU33_2X_MK-82_Snakeye}" },               -- BRU-33 2*Mk-82SE
-    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}" }, -- Mk-84
-}
+WPN_BOMB_Dumb = wpnGroup({
+    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}" },                            -- Mk-82
+    { CLSID = "{Mk82SNAKEYE}" },                                                     -- Mk-82 SNAKEYE
+    { CLSID = "{BRU33_2X_MK-82}" },                                                  -- BRU-33 2*Mk-82
+    { CLSID = "{BRU33_2X_MK-82_Snakeye}" },                                          -- BRU-33 2*Mk-82SE
+    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", stations = { STATION_MM } }, -- Mk-84 (只允許機腹中心)
+})
 
 -- 標定莢艙
-WPN_POD_Targeting = {
+WPN_POD_Targeting = wpnGroup({
 
-}
+})
 
 -- 標準副油箱
-WPN_TANK_Standard = {
+WPN_TANK_Standard = wpnGroup({
     { CLSID = "{EFEC8201-B922-11d7-9897-000476191836}" }, -- F18 800加侖副油箱
     { CLSID = "{0395076D-2F77-4420-9D33-087A4398130B}" }, -- 275 gal drop tank
-}
+})
 
 -- ---------- 掛載點配置 ----------
 
 -- 翼尖
-Tip = setLoadout("none", {},
+Tip = buildStation({ STATION_RT, STATION_LT }, "none", {},
     WPN_AAM_Light
 )
 
 -- 機翼外側
-Outer = setLoadout("normal", {},
+Outer = buildStation({ STATION_RO, STATION_LO }, "normal", {},
     WPN_AAM_Light,
     WPN_AAM_Med,
     WPN_BOMB_Dumb
 )
 
 -- 機翼內側
-Inner = setLoadout("normal", {},
+Inner = buildStation({ STATION_RI, STATION_LI }, "normal", {},
     WPN_AAM_Light,
     WPN_AAM_Med,
     WPN_BOMB_Dumb,
@@ -159,14 +223,14 @@ Inner = setLoadout("normal", {},
 )
 
 -- 機腹中心掛架
-CenterlineM = setLoadout("normal", { STATION_MF, STATION_MB },
+CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB },
     WPN_BOMB_Dumb,
     WPN_TANK_Standard,
     WPN_POD_Targeting
 )
 
 -- 機腹前後掛架
-CenterlineFB = setLoadout("diameter", { STATION_MM },
+CenterlineFB = buildStation({ STATION_MF, STATION_MB }, "diameter", { STATION_MM },
     WPN_AAM_Light,
     WPN_AAM_Med
 )
