@@ -18,11 +18,15 @@ local STATION_LO = 8 -- Left Outer
 local STATION_LT = 9 -- Left Tip
 
 -- 動畫 Arg 編號（對應模型骨架動畫通道）
+local ARG_PYLON_RT = 307 -- Right Tip    pylon deploy animation
 local ARG_PYLON_RO = 308 -- Right Outer  pylon deploy animation
 local ARG_PYLON_RI = 309 -- Right Inner  pylon deploy animation
 local ARG_PYLON_MM = 310 -- Center Main  pylon deploy animation
 local ARG_PYLON_LI = 311 -- Left Inner   pylon deploy animation
 local ARG_PYLON_LO = 312 -- Left Outer   pylon deploy animation
+local ARG_PYLON_LT = 313 -- Left Tip     pylon deploy animation
+local ARG_PYLON_MF = 316 -- Center Front pylon deploy animation
+local ARG_PYLON_MB = 317 -- Center Back  pylon deploy animation
 
 -- ===================== 公具函式 =====================
 
@@ -438,7 +442,7 @@ local F_CK_1C = {
         -- Right tip
         pylon(STATION_RT, 0, -1.109, 0.0015, 4.6,
             {
-                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("RT")
+                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("RT"), arg = ARG_PYLON_RT, arg_value = 1,
             },
             Tip,
             1
@@ -470,7 +474,7 @@ local F_CK_1C = {
         -- Center Front
         pylon(STATION_MF, 0, 0, 0, 0,
             {
-                use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"),
+                use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"), arg = ARG_PYLON_MF, arg_value = 0,
             },
             CenterlineFB,
             5
@@ -478,7 +482,7 @@ local F_CK_1C = {
         -- Center Back
         pylon(STATION_MB, 0, 0, 0, 0,
             {
-                use_full_connector_position = true, connector = "PylonB", DisplayName = _("MB"),
+                use_full_connector_position = true, connector = "PylonB", DisplayName = _("MB"), arg = ARG_PYLON_MB, arg_value = 0,
             },
             CenterlineFB,
             6
@@ -502,7 +506,7 @@ local F_CK_1C = {
         -- Left tip
         pylon(STATION_LT, 0, -1.109, 0.0015, -4.6,
             {
-                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("LT")
+                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("LT"), arg = ARG_PYLON_LT, arg_value = 1,
             },
             Tip,
             9
