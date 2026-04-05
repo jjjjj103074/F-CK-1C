@@ -172,14 +172,14 @@ WPN_AAM_Light = wpnGroup({
 -- 中型空對空
 WPN_AAM_Med = wpnGroup({
     _isAAM = true,
-    { CLSID = "{AIM-7E}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7E
-    { CLSID = "{AIM-7E-2}",                             Cx_gain = 0.49, diameter = 200 },                      -- AIM-7E-2
-    { CLSID = "{AIM-7F}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7F
-    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49, diameter = 200 },                      -- AIM-7M
-    { CLSID = "{AIM-7H}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7H
-    { CLSID = "{AIM-7P}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7P
-    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178, extra = { STATION_RT, STATION_LT } },  -- AIM-120B (額外允許翼尖)
-    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178, extra = { STATION_RT, STATION_LT } },  -- AIM-120C (額外允許翼尖)
+    { CLSID = "{AIM-7E}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E
+    { CLSID = "{AIM-7E-2}",                             Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E-2
+    { CLSID = "{AIM-7F}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7F
+    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7M
+    { CLSID = "{AIM-7H}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7H
+    { CLSID = "{AIM-7P}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7P
+    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120B (額外允許翼尖)
+    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
 })
 
 -- 智能空對地
@@ -189,11 +189,11 @@ WPN_AGM_Smart = wpnGroup({
 
 -- 無導引炸彈
 WPN_BOMB_Dumb = wpnGroup({
-    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}" },                            -- Mk-82
-    { CLSID = "{Mk82SNAKEYE}" },                                                     -- Mk-82 SNAKEYE
-    { CLSID = "{BRU33_2X_MK-82}" },                                                  -- BRU-33 2*Mk-82
-    { CLSID = "{BRU33_2X_MK-82_Snakeye}" },                                          -- BRU-33 2*Mk-82SE
-    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", stations = { STATION_MM } }, -- Mk-84 (只允許機腹中心)
+    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}", Cx_gain = 1.563 },                                  -- Mk-82
+    { CLSID = "{Mk82SNAKEYE}",                          Cx_gain = 1.882, },                                 -- Mk-82 SNAKEYE
+    { CLSID = "{BRU33_2X_MK-82}",                       Cx_gain_empty = 0.335, Cx_gain_item = 1.653 },      -- BRU-33 2*Mk-82
+    { CLSID = "{BRU33_2X_MK-82_Snakeye}"                Cx_gain_empty = 0.328, Cx_gain_item = 2.128 },      -- BRU-33 2*Mk-82SE
+    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260,       stations = { STATION_MM } }, -- Mk-84 (只允許機腹中心)
 })
 
 -- 標定莢艙
