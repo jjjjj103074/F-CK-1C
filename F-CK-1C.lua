@@ -70,11 +70,12 @@ local function buildStation(stationIds, argMode, callForbidden, ...)
     end
 
     -- 從武器定義建立 entry；若此武器不應出現在 stationIds 則回傳 nil
-    local function makeEntry(wpn, groupIsAAM)
-        -- 篩選：stations 白名單 / deny 黑名單（提前於 entry 建立，避免多餘工作）
+    local function makeEntry(wpn, group)
+        -- 篩選：stations 白名單
         if wpn.stations and not anyMatch(stationIds, wpn.stations) then
             return nil
         end
+        -- 篩選：deny 黑名單
         if wpn.deny and anyMatch(stationIds, wpn.deny) then
             return nil
         end
@@ -96,6 +97,7 @@ local function buildStation(stationIds, argMode, callForbidden, ...)
         end
 
         -- arg_value 填充
+        local groupIsAAM = (group._isAAM == true)
         if argMode == "none" then
             entry.arg_value = nil
         elseif argMode == "normal" then
@@ -116,10 +118,9 @@ local function buildStation(stationIds, argMode, callForbidden, ...)
 
     -- Phase 1：正常群組
     for _, group in ipairs({ ... }) do
-        local groupIsAAM = (group._isAAM == true)
         for _, wpn in ipairs(group) do
             if not seen[wpn.CLSID] then
-                local entry = makeEntry(wpn, groupIsAAM)
+                local entry = makeEntry(wpn, group)
                 if entry then
                     result[#result + 1] = entry
                     seen[wpn.CLSID] = true
@@ -130,10 +131,9 @@ local function buildStation(stationIds, argMode, callForbidden, ...)
 
     -- Phase 2：extra 注入（掃描全域登記的所有群組）
     for _, group in ipairs(_allGroups) do
-        local groupIsAAM = (group._isAAM == true)
         for _, wpn in ipairs(group) do
             if wpn.extra and not seen[wpn.CLSID] and anyMatch(stationIds, wpn.extra) then
-                local entry = makeEntry(wpn, groupIsAAM)
+                local entry = makeEntry(wpn, group)
                 if entry then
                     result[#result + 1] = entry
                     seen[wpn.CLSID] = true
@@ -181,21 +181,20 @@ WPN_AAM_Med = wpnGroup({
     { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
 })
 
--- 智能空對地
-WPN_AGM_Smart = wpnGroup({
-
+-- 輕型炸彈（外側以內均可，導引與傳統均收錄）
+WPN_BOMB_LIGHT = wpnGroup({
+    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}", Cx_gain = 1.563 }, -- Mk-82
+    { CLSID = "{Mk82SNAKEYE}",                          Cx_gain = 1.882 }, -- Mk-82 SNAKEYE
+    { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 }, -- MK-20 Rockeye
+    { CLSID = "{BDU-50LD}",                             Cx_gain = 1.388 }, -- BDU-50LD
 })
 
--- 無導引炸彈
-WPN_BOMB_Dumb = wpnGroup({
-    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}", Cx_gain = 1.563 },                                  -- Mk-82
-    { CLSID = "{Mk82SNAKEYE}",                          Cx_gain = 1.882, },                                 -- Mk-82 SNAKEYE
-    { CLSID = "{BRU33_2X_MK-82}",                       Cx_gain_empty = 0.335, Cx_gain_item = 1.653 },      -- BRU-33 2*Mk-82
-    { CLSID = "{BRU33_2X_MK-82_Snakeye}",               Cx_gain_empty = 0.328, Cx_gain_item = 2.128 },      -- BRU-33 2*Mk-82SE
-    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260,       stations = { STATION_MM } }, -- Mk-84 (只允許機腹中心)
-    { CLSID = "{BRU33_2X_ROCKEYE}",                     Cx_gain_empty = 0.341, Cx_gain_item = 1.496 },      -- BRU-33 2*Mk-20
-    { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 },                                  -- MK-20
-    { CLSID = "{BDU-50LD}",                             Cx_gain = 1.388 },                                  -- BDU-50LD
+-- 重型炸彈（僅內側及機腹，導引與傳統均收錄）
+WPN_BOMB_HEAVY = wpnGroup({
+    { CLSID = "{BRU33_2X_MK-82}",                       Cx_gain_empty = 0.335, Cx_gain_item = 1.653 }, -- BRU-33 2*Mk-82
+    { CLSID = "{BRU33_2X_MK-82_Snakeye}",               Cx_gain_empty = 0.328, Cx_gain_item = 2.128 }, -- BRU-33 2*Mk-82SE
+    { CLSID = "{BRU33_2X_ROCKEYE}",                     Cx_gain_empty = 0.341, Cx_gain_item = 1.496 }, -- BRU-33 2*Mk-20
+    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260 },                             -- Mk-84
 })
 
 -- 標定莢艙
@@ -205,13 +204,13 @@ WPN_POD_Targeting = wpnGroup({
 
 -- 訓練／展示莢艙
 WPN_POD_Misc = wpnGroup({
-    { CLSID = "{AIS_ASQ_T50}",                          diameter = 127 }, -- ACMI pod
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", diameter = 66 },  -- Smokewinder blue
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", diameter = 66 },  -- Smokewinder green
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", diameter = 66 },  -- Smokewinder orange
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", diameter = 66 },  -- Smokewinder red
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", diameter = 66 },  -- Smokewinder white
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", diameter = 66 },  -- Smokewinder yellow
+    { CLSID = "{AIS_ASQ_T50}",                          diameter = 127, deny = { STATION_MM, STATION_MF, STATION_MB } }, -- ACMI pod
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", diameter = 66 },                                                 -- Smokewinder blue
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", diameter = 66 },                                                 -- Smokewinder green
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", diameter = 66 },                                                 -- Smokewinder orange
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", diameter = 66 },                                                 -- Smokewinder red
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", diameter = 66 },                                                 -- Smokewinder white
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", diameter = 66 },                                                 -- Smokewinder yellow
 })
 
 -- 標準副油箱
@@ -232,7 +231,7 @@ Tip = buildStation({ STATION_RT, STATION_LT }, "none", {},
 Outer = buildStation({ STATION_RO, STATION_LO }, "normal", {},
     WPN_AAM_Light,
     WPN_AAM_Med,
-    WPN_BOMB_Dumb,
+    WPN_BOMB_LIGHT,
     WPN_POD_Misc
 )
 
@@ -240,7 +239,8 @@ Outer = buildStation({ STATION_RO, STATION_LO }, "normal", {},
 Inner = buildStation({ STATION_RI, STATION_LI }, "normal", {},
     WPN_AAM_Light,
     WPN_AAM_Med,
-    WPN_BOMB_Dumb,
+    WPN_BOMB_LIGHT,
+    WPN_BOMB_HEAVY,
     WPN_TANK_Standard,
     WPN_POD_Targeting,
     WPN_POD_Misc
@@ -248,7 +248,8 @@ Inner = buildStation({ STATION_RI, STATION_LI }, "normal", {},
 
 -- 機腹中心掛架
 CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB },
-    WPN_BOMB_Dumb,
+    WPN_BOMB_LIGHT,
+    WPN_BOMB_HEAVY,
     WPN_TANK_Standard,
     WPN_POD_Targeting,
     WPN_POD_Misc
@@ -256,9 +257,7 @@ CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB },
 
 -- 機腹前後掛架
 CenterlineFB = buildStation({ STATION_MF, STATION_MB }, "diameter", { STATION_MM },
-    WPN_AAM_Light,
-    WPN_AAM_Med,
-    WPN_POD_Misc
+    WPN_AAM_Med
 )
 
 -- ===================== 基本識別資料 (Identification) =====================
