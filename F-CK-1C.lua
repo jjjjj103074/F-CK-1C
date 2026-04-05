@@ -194,6 +194,9 @@ WPN_BOMB_Dumb = wpnGroup({
     { CLSID = "{BRU33_2X_MK-82}",                       Cx_gain_empty = 0.335, Cx_gain_item = 1.653 },      -- BRU-33 2*Mk-82
     { CLSID = "{BRU33_2X_MK-82_Snakeye}"                Cx_gain_empty = 0.328, Cx_gain_item = 2.128 },      -- BRU-33 2*Mk-82SE
     { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260,       stations = { STATION_MM } }, -- Mk-84 (只允許機腹中心)
+    { CLSID = "{BRU33_2X_ROCKEYE}",                     Cx_gain_empty = 0.341, Cx_gain_item = 1.496 },      -- BRU-33 2*Mk-20
+    { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 },                                  -- MK-20
+    { CLSID = "{BDU-50LD}",                             Cx_gain = 1.388 },                                  -- BDU-50LD
 })
 
 -- 標定莢艙
