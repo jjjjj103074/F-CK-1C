@@ -166,7 +166,6 @@ WPN_AAM_Light = wpnGroup({
     { CLSID = "{Rb_24J}",                               Cx_gain = 0.796, diameter = 127 }, -- Rb_24J
     { CLSID = "{Rb_74}",                                Cx_gain = 0.796, diameter = 127 }, -- Rb_74
     { CLSID = "CATM-9M",                                Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
-    { CLSID = "{AIS_ASQ_T50}",                          Cx_gain = 0.796, diameter = 127 }, -- ACMI pod
 })
 
 -- 中型空對空
@@ -192,7 +191,7 @@ WPN_BOMB_Dumb = wpnGroup({
     { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}", Cx_gain = 1.563 },                                  -- Mk-82
     { CLSID = "{Mk82SNAKEYE}",                          Cx_gain = 1.882, },                                 -- Mk-82 SNAKEYE
     { CLSID = "{BRU33_2X_MK-82}",                       Cx_gain_empty = 0.335, Cx_gain_item = 1.653 },      -- BRU-33 2*Mk-82
-    { CLSID = "{BRU33_2X_MK-82_Snakeye}"                Cx_gain_empty = 0.328, Cx_gain_item = 2.128 },      -- BRU-33 2*Mk-82SE
+    { CLSID = "{BRU33_2X_MK-82_Snakeye}",               Cx_gain_empty = 0.328, Cx_gain_item = 2.128 },      -- BRU-33 2*Mk-82SE
     { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260,       stations = { STATION_MM } }, -- Mk-84 (只允許機腹中心)
     { CLSID = "{BRU33_2X_ROCKEYE}",                     Cx_gain_empty = 0.341, Cx_gain_item = 1.496 },      -- BRU-33 2*Mk-20
     { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 },                                  -- MK-20
@@ -202,6 +201,17 @@ WPN_BOMB_Dumb = wpnGroup({
 -- 標定莢艙
 WPN_POD_Targeting = wpnGroup({
 
+})
+
+-- 訓練／展示莢艙
+WPN_POD_Misc = wpnGroup({
+    { CLSID = "{AIS_ASQ_T50}",                          diameter = 127 }, -- ACMI pod
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", diameter = 66 },  -- Smokewinder blue
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", diameter = 66 },  -- Smokewinder green
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", diameter = 66 },  -- Smokewinder orange
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", diameter = 66 },  -- Smokewinder red
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", diameter = 66 },  -- Smokewinder white
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", diameter = 66 },  -- Smokewinder yellow
 })
 
 -- 標準副油箱
@@ -214,14 +224,16 @@ WPN_TANK_Standard = wpnGroup({
 
 -- 翼尖
 Tip = buildStation({ STATION_RT, STATION_LT }, "none", {},
-    WPN_AAM_Light
+    WPN_AAM_Light,
+    WPN_POD_Misc
 )
 
 -- 機翼外側
 Outer = buildStation({ STATION_RO, STATION_LO }, "normal", {},
     WPN_AAM_Light,
     WPN_AAM_Med,
-    WPN_BOMB_Dumb
+    WPN_BOMB_Dumb,
+    WPN_POD_Misc
 )
 
 -- 機翼內側
@@ -230,20 +242,23 @@ Inner = buildStation({ STATION_RI, STATION_LI }, "normal", {},
     WPN_AAM_Med,
     WPN_BOMB_Dumb,
     WPN_TANK_Standard,
-    WPN_POD_Targeting
+    WPN_POD_Targeting,
+    WPN_POD_Misc
 )
 
 -- 機腹中心掛架
 CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB },
     WPN_BOMB_Dumb,
     WPN_TANK_Standard,
-    WPN_POD_Targeting
+    WPN_POD_Targeting,
+    WPN_POD_Misc
 )
 
 -- 機腹前後掛架
 CenterlineFB = buildStation({ STATION_MF, STATION_MB }, "diameter", { STATION_MM },
     WPN_AAM_Light,
-    WPN_AAM_Med
+    WPN_AAM_Med,
+    WPN_POD_Misc
 )
 
 -- ===================== 基本識別資料 (Identification) =====================
