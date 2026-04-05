@@ -40,6 +40,8 @@ DCS-Basic-EFM-Template-main/bin/
 temp/
 cache/
 backup/
+Sounds/_backup_normalized_*/
+TODO/
 
 # 本地備份資料夾（如需提交請註解掉）
 baseline_original/

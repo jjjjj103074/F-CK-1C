@@ -19,6 +19,9 @@ local actuators_device_id = devices and devices.Actuators
 local cms_device_id = devices and devices.CMS
 local weapon_system_device_id = devices and devices.WEAPON_SYSTEM
 local hmcs_device_id = devices and devices.HMCS
+local aam_audio_device_id = devices and devices.AAM_AUDIO
+local radar_device_id = devices and devices.RADAR
+local radar_state_device_id = devices and devices.RADAR_STATE
 
 if gear_device_id == nil then
     gear_device_id = 1
@@ -34,6 +37,15 @@ if weapon_system_device_id == nil then
 end
 if hmcs_device_id == nil then
     hmcs_device_id = 5
+end
+if aam_audio_device_id == nil then
+    aam_audio_device_id = 6
+end
+if radar_device_id == nil then
+    radar_device_id = 7
+end
+if radar_state_device_id == nil then
+    radar_state_device_id = 8
 end
 
 creators[gear_device_id] = {
@@ -56,13 +68,29 @@ creators[weapon_system_device_id] = {
     LockOn_Options.script_path .. "Systems/weapon_system.lua",
 }
 
+creators[radar_device_id] = {
+    "avSimpleRadar",
+    LockOn_Options.script_path .. "RADAR/FCK1C_Radar.lua",
+}
+
+creators[radar_state_device_id] = {
+    "avLuaDevice",
+    LockOn_Options.script_path .. "Systems/radar_state_system.lua",
+}
+
 creators[hmcs_device_id] = {
     "avLuaDevice",
     LockOn_Options.script_path .. "Systems/hmcs_system.lua",
 }
 
+creators[aam_audio_device_id] = {
+    "avLuaDevice",
+    LockOn_Options.script_path .. "Systems/aam_audio_system.lua",
+}
+
 indicators = {}
 indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "ControlsIndicator/ControlsIndicator.lua" }
 indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "HMCS/HMCS_init.lua" }
+indicators[#indicators + 1] = { "ccIndicator", LockOn_Options.script_path .. "HMCS/HMCS_VR_init.lua" }
 
 need_to_be_closed = true

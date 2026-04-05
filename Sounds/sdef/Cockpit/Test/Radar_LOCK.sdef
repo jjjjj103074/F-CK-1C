@@ -1,0 +1,4 @@
+wave = "Effects/Cockpit/Radar/LOCK"
+inner_radius = 10
+outer_radius = 100
+gain = 1.2

@@ -282,8 +282,8 @@ local F_CK_1C = {
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonT-R", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonT-R", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
             },
             1
         ),
@@ -294,8 +294,8 @@ local F_CK_1C = {
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonR2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonR2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
             },
             2
         ),
@@ -306,8 +306,8 @@ local F_CK_1C = {
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonR1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonR1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
             },
             3
         ),
@@ -317,46 +317,46 @@ local F_CK_1C = {
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonM", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonM", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
             },
             4
         ),
         -- Left inner
         pylon(5, 0, -0.2861, -0.48, -2.05,
             {
-                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("7"), arg = 311, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("5"), arg = 311, arg_value = 1,
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonL1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonL1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
             },
-            7
+            5
         ),
         -- Left outer
         pylon(6, 0, -0.5744, -0.465, -2.972,
             {
-                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("8"), arg = 312, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("6"), arg = 312, arg_value = 1,
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonL2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonL2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
             },
-            8
+            6
         ),
         -- Left tip
         pylon(7, 0, -1.109, 0.0015, -4.6,
             {
-                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("9")
+                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("7")
             },
             {
                 { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1 },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1 },  -- CATM-9M
+                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonT-L", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
+                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonT-L", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
             },
-            9
+            7
         ),
     },
 
@@ -378,6 +378,8 @@ local F_CK_1C = {
     },    -- 參考 F-16C 的基本配比
 
     Sensors = {
+        RADAR = "N-011M",
+        IRST = "OLS-27",
         RWR = "Abstract RWR"
     }, -- 感測器設定
 
@@ -405,23 +407,28 @@ local F_CK_1C = {
     -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
     Damage = verbose_to_dmg_properties({
-        ["Blap"]      = { critical_damage = 3 },
-        ["body"]      = { critical_damage = 10 },
-        ["Brap"]      = { critical_damage = 3 },
-        ["F W"]       = { critical_damage = 4 },
-        ["FGG"]       = { critical_damage = 3 },
-        ["Flap"]      = { critical_damage = 2 },
-        ["Flap.001"]  = { critical_damage = 2 },
-        ["LBW"]       = { critical_damage = 4 },
-        ["LC"]        = { critical_damage = 4 },
-        ["LGG"]       = { critical_damage = 3 },
-        ["M wing"]    = { critical_damage = 5 },
-        ["M wing.001"] = { critical_damage = 5 },
-        ["RBW"]       = { critical_damage = 4 },
-        ["RC"]        = { critical_damage = 4 },
-        ["RGG"]       = { critical_damage = 3 },
-        ["Tail"]      = { critical_damage = 6 },
-        ["Wayt"]      = { critical_damage = 3 },
+        -- Minimal damage mapping test:
+        -- Keep the table empty for now so we can verify whether the current
+        -- custom hitbox names are what triggers "Corrupt damage model".
+
+        -- Previous custom hitbox-name mapping kept for rollback/reference.
+        -- ["Blap"]      = { critical_damage = 3 },
+        -- ["body"]      = { critical_damage = 10 },
+        -- ["Brap"]      = { critical_damage = 3 },
+        -- ["F_W"]       = { critical_damage = 4 },
+        -- ["FGG"]       = { critical_damage = 3 },
+        -- ["Flap"]      = { critical_damage = 2 },
+        -- ["Flap01"]    = { critical_damage = 2 },
+        -- ["LBW"]       = { critical_damage = 4 },
+        -- ["LC"]        = { critical_damage = 4 },
+        -- ["LGG"]       = { critical_damage = 3 },
+        -- ["M_wing"]    = { critical_damage = 5 },
+        -- ["M_wing01"]  = { critical_damage = 5 },
+        -- ["RBW"]       = { critical_damage = 4 },
+        -- ["RC"]        = { critical_damage = 4 },
+        -- ["RGG"]       = { critical_damage = 3 },
+        -- ["Tail"]      = { critical_damage = 6 },
+        -- ["Wayt"]      = { critical_damage = 3 },
     }),
 
     -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
@@ -592,29 +599,46 @@ local F_CK_1C = {
     --     ECM = "AN/ALQ-126"
     -- }, -- ECM 範例設定
 
-    -- -- ===================== 額外 UI 屬性 =====================
-    -- AddPropAircraft = {{
-    --     id = "HelmetMountedDevice",
-    --     control = 'comboList',
-    --     label = _('Helmet Mounted Device'),
-    --     values = {{
-    --         id = 0,
-    --         dispName = _('Not installed'),
-    --         value = 0.5
-    --     }, {
-    --         id = 1,
-    --         dispName = _('JHMCS'),
-    --         value = 0.0
-    --     }, {
-    --         id = 2,
-    --         dispName = _('NVG'),
-    --         value = 1.0
-    --     }},
-    --     defValue = 1,
-    --     wCtrl = 150,
-    --     playerOnly = true,
-    --     arg = 509
-    -- }}
+    -- ===================== 額外 UI 屬性 =====================
+    AddPropAircraft = {{
+        id = "HelmetMountedDevice",
+        control = 'comboList',
+        label = _('Helmet Mounted Device'),
+        values = {{
+            id = 0,
+            dispName = _('Not installed'),
+            value = 0.5
+        }, {
+            id = 1,
+            dispName = _('JHMCS'),
+            value = 0.0
+        }, {
+            id = 2,
+            dispName = _('NVG'),
+            value = 1.0
+        }},
+        defValue = 1,
+        wCtrl = 150,
+        playerOnly = true,
+        arg = 509
+    }, {
+        id = "HMCSDisplayMode",
+        control = 'comboList',
+        label = _('HMCS Display Mode'),
+        values = {{
+            id = 0,
+            dispName = _('2D Overlay'),
+            value = 0.0
+        }, {
+            id = 1,
+            dispName = _('VR Helmet Test'),
+            value = 1.0
+        }},
+        defValue = 0,
+        wCtrl = 150,
+        playerOnly = true,
+        arg = 510
+    }}
 
     -- 若之後要加入 datalink，可使用 connectDatalinks / datalinks。
     -- 目前版本先不啟用，避免引用不存在的腳本或資料表。

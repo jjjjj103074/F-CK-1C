@@ -11,8 +11,21 @@ local text_size_title = { 0.0032, 0.0032, 0.0, 0.0 }
 local text_size_value = { 0.0026, 0.0026, 0.0, 0.0 }
 local heading_slot_spacing = 0.048
 local heading_slot_count = 13
+local hmcs_root_name = "hmcs_2d_root"
+
+local hmcs_root = CreateElement "ceSimple"
+hmcs_root.name = hmcs_root_name
+hmcs_root.element_params = { "HMCS_ENABLED", "HMCS_DISPLAY_MODE" }
+hmcs_root.controllers = {
+	{ "parameter_in_range", 0, 0.9, 1.1 },
+	{ "parameter_in_range", 1, -0.1, 0.1 },
+}
+Add(hmcs_root)
 
 local function AddElement(object)
+	if object.parent_element == nil then
+		object.parent_element = hmcs_root_name
+	end
 	object.screenspace = ScreenType.SCREENSPACE_TRUE
 	object.use_mipfilter = true
 	Add(object)
@@ -245,7 +258,15 @@ add_param_text("hmcs_master_sim", "SIM", { -0.245, -0.125 }, "LeftCenter", "HMCS
 add_param_text("hmcs_master_arm", "ARM", { -0.245, -0.125 }, "LeftCenter", "HMCS_MASTER_MODE", 1.9, 2.1, text_size_value)
 
 add_text("hmcs_mode_title", "MODE", { -0.255, -0.172 }, "RightCenter", "font_hmcs_small", text_size_title)
-add_param_text("hmcs_mode_nav", "NAV", { -0.245, -0.202 }, "LeftCenter", "HMCS_DOGFIGHT_MODE", -0.1, 0.1, text_size_value)
-add_param_text("hmcs_mode_dgf", "DGF", { -0.245, -0.202 }, "LeftCenter", "HMCS_DOGFIGHT_MODE", 0.9, 1.1, text_size_value)
+add_param_text("hmcs_mode_nav", "NAV", { -0.245, -0.202 }, "LeftCenter", "HMCS_FC_MODE", -0.1, 0.1, text_size_value)
+add_param_text("hmcs_mode_dgf", "DGF", { -0.245, -0.202 }, "LeftCenter", "HMCS_FC_MODE", 0.9, 1.1, text_size_value)
+add_param_text("hmcs_mode_msl", "MSL", { -0.245, -0.202 }, "LeftCenter", "HMCS_FC_MODE", 1.9, 2.1, text_size_value)
+
+add_text("hmcs_sub_title", "SUB", { -0.255, -0.232 }, "RightCenter", "font_hmcs_small", text_size_title)
+add_param_text("hmcs_sub_none", "---", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", -0.1, 0.1, text_size_value)
+add_param_text("hmcs_sub_hmd", "HMD", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 0.9, 1.1, text_size_value)
+add_param_text("hmcs_sub_vs", "VS", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 1.9, 2.1, text_size_value)
+add_param_text("hmcs_sub_hud", "HUD", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 2.9, 3.1, text_size_value)
+add_param_text("hmcs_sub_bvr", "BVR", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 3.9, 4.1, text_size_value)
 
 add_heading_tape()

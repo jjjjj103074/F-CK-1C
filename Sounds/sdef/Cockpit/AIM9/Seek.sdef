@@ -1,0 +1,4 @@
+wave = "Effects/Cockpit/AIM9/Seek"
+inner_radius = 10
+outer_radius = 100
+gain = 1.2

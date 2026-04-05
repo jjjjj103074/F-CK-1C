@@ -90,6 +90,7 @@ enum InputCommands
 	WheelBrakeAxisLeft = 3024,
 	WheelBrakeAxisRight = 3025,
 	FBWGLimiterOverride = 3026,
+	FBWGLimiterOverrideToggle = 3027,
 	AirBrakesUp = 3016,
 	AirBrakesDown = 3017,
 	GearHandleUp = 3018,

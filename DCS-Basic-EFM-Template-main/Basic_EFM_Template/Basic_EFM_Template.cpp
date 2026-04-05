@@ -191,7 +191,7 @@ double total_damage = 1 - (left_wing_integrity + right_wing_integrity + tail_int
 						left_engine_integrity + right_engine_integrity) / 5;
 
 // Optional parameters set in the options menu
-bool invincible = true; // No damage received if true
+bool invincible = false; // No damage received if true
 bool infinite_fuel = false; // No fuel drained if true
 bool easy_flight = false; // Easier and more stable flight characteristics if true
 
@@ -364,12 +364,12 @@ struct FBWGainScheduleValues
 
 FBWCatParams fbw_cat1 = {
 	0.03, 0.18, 2.8, 2.2, rad(55.0), rad(42.0), 15.5, 2500.0, 0.35, 0.85, 0.65, 0.05, 9.5, 0.10,
-	rad(190.0), rad(145.0), rad(80.0), 15.0, 21.0, 7.0, 8.8, rad(220.0), rad(170.0), rad(95.0), 0.90, 0.60
+	rad(190.0), rad(145.0), rad(80.0), 15.0, 21.0, 6.4, 8.8, rad(220.0), rad(170.0), rad(95.0), 0.90, 0.60
 };
 
 FBWCatParams fbw_cat3 = {
 	0.05, 0.26, 2.0, 1.6, rad(40.0), rad(30.0), 13.5, 4000.0, 0.22, 0.70, 0.40, 0.10, 5.5, 0.20,
-	rad(140.0), rad(110.0), rad(60.0), 12.5, 17.5, 6.2, 7.6, rad(170.0), rad(130.0), rad(75.0), 1.10, 0.80
+	rad(140.0), rad(110.0), rad(60.0), 12.5, 17.5, 5.8, 7.6, rad(170.0), rad(130.0), rad(75.0), 1.10, 0.80
 };
 
 FBWGainSchedulePoint fbw_gain_schedule[] = {
@@ -396,8 +396,10 @@ double	fbw_outer_int_limit = rad(75.0);
 double	fbw_alpha_trim_tau = 1.20;
 double	fbw_nz_trim_tau = 1.60;
 double	fbw_nz_filter_tau = 0.26;
-double	fbw_pitch_ref_tau = 0.10;
+double	fbw_pitch_ref_tau = 0.14;
 double	fbw_pitch_ref_rate_deg_s = 90.0;
+double	fbw_nz_limit_gain_floor = 0.58;
+double	fbw_nz_limit_buffer_bias = 0.15;
 double	fbw_region_low_kts = 220.0;
 double	fbw_region_high_kts = 380.0;
 double	fbw_region_approach_kts = 240.0;
@@ -540,6 +542,11 @@ static const Vec3 kFallbackGearPoints[3] = {
 };
 
 static const double kFallbackWheelRadius[3] = { 0.2286, 0.3048, 0.3048 };
+static const double kFallbackSpring[3] = { 320000.0, 480000.0, 480000.0 };
+static const double kFallbackDamping[3] = { 45000.0, 65000.0, 65000.0 };
+static const double kFallbackContactBand[3] = { 0.06, 0.06, 0.06 };
+static const Vec3 kFallbackBellyPoint(0.0, -1.05, 0.0);
+static const bool kEnableFallbackGroundForces = false;
 static int kFallbackLogDecimation = 0;
 
 static inline bool has_suspension_feedback()
@@ -552,9 +559,77 @@ static inline bool any_wow()
 	return suspension_wow[0] || suspension_wow[1] || suspension_wow[2];
 }
 
+static inline double fallback_world_vertical_offset(const Vec3& point)
+{
+	const double cp = cos(pitch);
+	const double sp = sin(pitch);
+	const double cr = cos(roll);
+	const double sr = sin(roll);
+
+	const double y_after_pitch = point.x * sp + point.y * cp;
+	return (y_after_pitch * cr) - (point.z * sr);
+}
+
 static inline double apply_fallback_ground_forces()
 {
-	return 0.0;
+	if (!kEnableFallbackGroundForces)
+	{
+		return 0.0;
+	}
+
+	double total_force = 0.0;
+	const double sink_rate = limit(-velocity_world.y, 0.0, 80.0);
+	const double gear_support = limit((gear_pos - 0.2) / 0.8, 0.0, 1.0);
+	bool gear_contact = false;
+
+	if (gear_support > 0.0)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			const double wheel_bottom_agl =
+				altitude_AGL +
+				fallback_world_vertical_offset(kFallbackGearPoints[i]) -
+				kFallbackWheelRadius[i];
+			const double compression = kFallbackContactBand[i] - wheel_bottom_agl;
+
+			if (compression > 0.0)
+			{
+				double force_mag =
+					(compression * kFallbackSpring[i] * gear_support) +
+					(sink_rate * kFallbackDamping[i] * gear_support);
+
+				force_mag = limit(force_mag, 0.0, current_mass * 9.81 * 2.5);
+				add_local_force(Vec3(0.0, force_mag, 0.0), kFallbackGearPoints[i]);
+
+				suspension_feedback_valid[i] = true;
+				suspension_compression[i] = compression;
+				suspension_force_mag[i] = force_mag;
+				suspension_wow[i] = true;
+
+				total_force += force_mag;
+				gear_contact = true;
+			}
+		}
+	}
+
+	if (!gear_contact)
+	{
+		const double belly_bottom_agl = altitude_AGL + fallback_world_vertical_offset(kFallbackBellyPoint);
+		const double belly_compression = 0.03 - belly_bottom_agl;
+
+		if (belly_compression > 0.0)
+		{
+			double belly_force =
+				(belly_compression * 260000.0) +
+				(sink_rate * 40000.0);
+
+			belly_force = limit(belly_force, 0.0, current_mass * 9.81 * 2.0);
+			add_local_force(Vec3(0.0, belly_force, 0.0), kFallbackBellyPoint);
+			total_force += belly_force;
+		}
+	}
+
+	return total_force;
 }
 
 static void reset_suspension_feedback_state()
@@ -1150,7 +1225,7 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 
 	const double nz_pos_limit = fbw_g_limiter_override ? (cat.g_hard + 2.0) : cat.g_hard;
 	const double nz_neg_limit = 2.5;
-	const double nz_pos_soft = min(cat.g_soft, nz_pos_limit - 0.25);
+	const double nz_pos_soft = min(cat.g_soft, nz_pos_limit - max(0.25, fbw_nz_limit_buffer_bias));
 	const double nz_neg_hard = -nz_neg_limit;
 	const double nz_neg_soft = -max(1.0, nz_neg_limit * 0.65);
 	if (fbw_stick_pitch_shaped >= 0.0)
@@ -1178,7 +1253,8 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 	if (fbw_stick_pitch_shaped > 0.0)
 	{
 		const double t = limit((fbw_nz_f - nz_pos_soft) / max(nz_pos_limit - nz_pos_soft, 0.1), 0.0, 1.0);
-		nz_limit_gain_scale = fbw_blend_value(1.0, 0.35, t);
+		const double shaped_t = fbw_smoothstep01(t);
+		nz_limit_gain_scale = fbw_blend_value(1.0, fbw_nz_limit_gain_floor, shaped_t);
 	}
 	const double kp_nz_outer = fbw_blend_value(0.34, 0.24, fbw_mode_blend) * gs.cmd_gain * nz_limit_gain_scale;
 	const double ki_nz_outer = fbw_blend_value(0.11, 0.06, fbw_mode_blend) * gs.hold_gain * nz_limit_gain_scale;
@@ -1767,7 +1843,7 @@ void ed_fm_simulate(double dt)
 		char ground_buf[256];
 		snprintf(
 			ground_buf, sizeof(ground_buf),
-			"fallback agl=%.3f vy=%.3f gear=%.2f mass=%.1f fg=%.1f pitch=%.2f roll=%.2f wow=%d",
+			"fallback agl=%.3f vy=%.3f gear=%.2f mass=%.1f fg=%.1f pitch=%.2f roll=%.2f wow=%d valid=%d fallback=%d",
 			altitude_AGL,
 			velocity_world.y,
 			gear_pos,
@@ -1775,14 +1851,15 @@ void ed_fm_simulate(double dt)
 			fallback_ground_force,
 			pitch * rad_to_deg,
 			roll * rad_to_deg,
-			any_wow() ? 1 : 0
+			any_wow() ? 1 : 0,
+			has_suspension_feedback() ? 1 : 0,
+			kEnableFallbackGroundForces ? 1 : 0
 		);
 		dbg_susp(ground_buf);
 		kFallbackLogDecimation = 0;
 	}
 
-	// Logic for determining if the aircraft is on the ground.
-	// Use suspension feedback (WoW) instead of AGL thresholds.
+	// Diagnostic mode: only trust the suspension data returned by DCS.
 	on_ground = ((gear_pos > 0.5) && has_suspension_feedback() && any_wow());
 
 	// Cockpit shaking intensity
@@ -2044,6 +2121,12 @@ void ed_fm_set_command (int command, float value)
 		break;
 	case FBWGLimiterOverride:
 		fbw_g_limiter_override = (value > 0.5f);
+		break;
+	case FBWGLimiterOverrideToggle:
+		if (value > 0.5f)
+		{
+			fbw_g_limiter_override = !fbw_g_limiter_override;
+		}
 		break;
 
 	//	Engine and throttle commands
@@ -2597,6 +2680,16 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 		// Right engine
 		right_engine_integrity = element_integrity[14] * element_integrity[18] * element_integrity[104];
 	}
+
+	char buf[160];
+	snprintf(
+		buf, sizeof(buf),
+		"damage element=%d integrity=%.3f invincible=%d",
+		Element,
+		element_integrity_factor,
+		invincible ? 1 : 0
+	);
+	dbg_susp(buf);
 }
 
 // ed_fm_suspension_feedback will be defined below with debug logging.

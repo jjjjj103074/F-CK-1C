@@ -31,16 +31,23 @@
 FM = {
     center_of_mass = {-0.6, 0, 0},
     moment_of_inertia = {38912, 254758, 223845, -705},
+    -- Match the working Su-30 EFM setup for collision/suspension testing.
+    zeroize_amortizers_before_collision_check = false,
 
     suspension = {
         { -- Nose
             mass = 100,
-            pos = {3.85, -1.12, 0.0},
+            -- Original FM contact point kept for rollback/reference.
+            -- pos = {3.85, -1.12, 0.0},
+            -- Geometry-aligned test value kept for rollback/reference.
+            -- pos = {4.12, -1.912, 0.0},
+            -- Match the working Su-30 structure: rely on collision_shell_name instead of explicit pos.
             damage_element = 0,
             self_attitude = true,
             wheel_axle_offset = 0.14,
             yaw_limit = math.rad(60.0),
-            damper_coeff = 400.0,
+            -- Original template-only damper coefficient kept for rollback/reference.
+            -- damper_coeff = 400.0,
             allowable_hard_contact_length = 0.19,
 
             amortizer_max_length = 0.53,
@@ -55,7 +62,10 @@ FM = {
 
             anti_skid_installed = true,
 
-            wheel_radius = 0.64,
+            -- Original FM wheel radius kept for rollback/reference.
+            -- wheel_radius = 0.64,
+            -- Match aircraft Lua gear geometry: nose_gear_wheel_diameter / 2
+            wheel_radius = 0.2286,
             wheel_static_friction_factor = 0.75,
             wheel_roll_friction_factor = 0.08,
             wheel_glide_friction_factor = 0.65,
@@ -66,18 +76,27 @@ FM = {
             arg_post = 0,
             arg_amortizer = 1,
             arg_wheel_yaw = 2,
-            collision_shell_name = "F W",
+            -- Original F-CK-1C shell name kept for rollback/reference.
+            -- collision_shell_name = "F_W",
+            collision_shell_name = "WHEEL_F",
             arg_wheel_damage = 134,
         },
 
         { -- Left main
             mass = 200,
-            pos = {-1.51, -1.09, -1.35},
+            -- Original FM contact point kept for rollback/reference.
+            -- pos = {-1.51, -1.09, -1.35},
+            -- Geometry-aligned test value kept for rollback/reference.
+            -- pos = {-1.185, -1.913, -0.7905},
+            -- Match the working Su-30 structure: rely on collision_shell_name instead of explicit pos.
             damage_element = 3,
-            wheel_axle_offset = 0.38,
+            -- Original F-CK-1C offset kept for rollback/reference.
+            -- wheel_axle_offset = 0.38,
+            wheel_axle_offset = 0.0,
             self_attitude = false,
             yaw_limit = math.rad(0.0),
-            damper_coeff = 160.0,
+            -- Original template-only damper coefficient kept for rollback/reference.
+            -- damper_coeff = 160.0,
 
             amortizer_max_length = 0.40,
             amortizer_basic_length = 0.40,
@@ -94,7 +113,10 @@ FM = {
             wheel_damage_speed = 180,
             wheel_moment_of_inertia = 0.6,
 
-            wheel_radius = 0.60,
+            -- Original FM wheel radius kept for rollback/reference.
+            -- wheel_radius = 0.60,
+            -- Match aircraft Lua gear geometry: main_gear_wheel_diameter / 2
+            wheel_radius = 0.3048,
             wheel_static_friction_factor = 0.75,
             wheel_side_friction_factor = 1.0,
             wheel_roll_friction_factor = 0.1,
@@ -105,18 +127,27 @@ FM = {
             arg_post = 5,
             arg_amortizer = 6,
             arg_wheel_yaw = -1,
-            collision_shell_name = "LBW",
+            -- Original F-CK-1C shell name kept for rollback/reference.
+            -- collision_shell_name = "LBW",
+            collision_shell_name = "WHEEL_L",
             arg_wheel_damage = 136,
         },
 
         { -- Right main
             mass = 200,
-            pos = {-1.51, -1.09, 1.3},
+            -- Original FM contact point kept for rollback/reference.
+            -- pos = {-1.51, -1.09, 1.3},
+            -- Geometry-aligned test value kept for rollback/reference.
+            -- pos = {-1.185, -1.913, 0.7905},
+            -- Match the working Su-30 structure: rely on collision_shell_name instead of explicit pos.
             damage_element = 5,
-            wheel_axle_offset = 0.38,
+            -- Original F-CK-1C offset kept for rollback/reference.
+            -- wheel_axle_offset = 0.38,
+            wheel_axle_offset = 0.0,
             self_attitude = false,
             yaw_limit = math.rad(0.0),
-            damper_coeff = 160.0,
+            -- Original template-only damper coefficient kept for rollback/reference.
+            -- damper_coeff = 160.0,
 
             amortizer_max_length = 0.40,
             amortizer_basic_length = 0.40,
@@ -133,7 +164,10 @@ FM = {
             wheel_damage_speed = 180,
             wheel_moment_of_inertia = 0.6,
 
-            wheel_radius = 0.60,
+            -- Original FM wheel radius kept for rollback/reference.
+            -- wheel_radius = 0.60,
+            -- Match aircraft Lua gear geometry: main_gear_wheel_diameter / 2
+            wheel_radius = 0.3048,
             wheel_static_friction_factor = 0.75,
             wheel_side_friction_factor = 1.0,
             wheel_roll_friction_factor = 0.1,
@@ -144,7 +178,9 @@ FM = {
             arg_post = 3,
             arg_amortizer = 4,
             arg_wheel_yaw = -1,
-            collision_shell_name = "RBW",
+            -- Original F-CK-1C shell name kept for rollback/reference.
+            -- collision_shell_name = "RBW",
+            collision_shell_name = "WHEEL_R",
         },
     },
 
