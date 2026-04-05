@@ -157,6 +157,14 @@ WPN_AAM_Light = wpnGroup({
     { CLSID = "{AIM-9P5}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P5
     { CLSID = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9X
     { CLSID = "{AIM-9B}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9B
+    { CLSID = "{AIM-9E}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9E
+    { CLSID = "{AIM-9J}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9J
+    { CLSID = "{9BFD8C90-F7AE-4e90-833B-BFD0CED0E536}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P
+    { CLSID = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9
+    { CLSID = "{AIM-9JULI}",                            Cx_gain = 0.796, diameter = 127 }, -- AIM-9JULI
+    { CLSID = "{Rb_24}",                                Cx_gain = 0.796, diameter = 127 }, -- Rb_24
+    { CLSID = "{Rb_24J}",                               Cx_gain = 0.796, diameter = 127 }, -- Rb_24J
+    { CLSID = "{Rb_74}",                                Cx_gain = 0.796, diameter = 127 }, -- Rb_74
     { CLSID = "CATM-9M",                                Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
     { CLSID = "{AIS_ASQ_T50}",                          Cx_gain = 0.796, diameter = 127 }, -- ACMI pod
 })
@@ -164,14 +172,14 @@ WPN_AAM_Light = wpnGroup({
 -- 中型空對空
 WPN_AAM_Med = wpnGroup({
     _isAAM = true,
-    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 },                     -- AIM-7
-    { CLSID = "{BELLY AIM-7M}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7M
-    { CLSID = "{BELLY AIM-7F}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7F
-    { CLSID = "{BELLY AIM-7MH}",                        Cx_gain = 0.125, diameter = 200 },                     -- AIM-7MH
-    { CLSID = "{BELLY AIM-7P}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7P
-    { CLSID = "{BELLY AIM-7E}",                         Cx_gain = 0.125, diameter = 200 },                     -- AIM-7E
-    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178,  extra = { STATION_RT, STATION_LT } }, -- AIM-120B (額外允許翼尖)
-    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178,  extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
+    { CLSID = "{AIM-7E}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7E
+    { CLSID = "{AIM-7E-2}",                             Cx_gain = 0.49, diameter = 200 },                      -- AIM-7E-2
+    { CLSID = "{AIM-7F}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7F
+    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49, diameter = 200 },                      -- AIM-7M
+    { CLSID = "{AIM-7H}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7H
+    { CLSID = "{AIM-7P}",                               Cx_gain = 0.49, diameter = 200 },                      -- AIM-7P
+    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", diameter = 178, extra = { STATION_RT, STATION_LT } },  -- AIM-120B (額外允許翼尖)
+    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", diameter = 178, extra = { STATION_RT, STATION_LT } },  -- AIM-120C (額外允許翼尖)
 })
 
 -- 智能空對地
