@@ -1,0 +1,14 @@
+model = 
+{
+    lods = {
+        {"F-CK-1C.edm", 10000.0};
+        -- Previous full-model test kept for reference only.
+        -- {"Su-30MK.FCK_TEST.edm", 50000.0};
+    };
+    collision_shell = "idf_hitbox.edm";
+    -- Previous full-model test kept for reference only.
+    -- collision_shell = "su-30mk-collision.FCK_TEST.edm";
+    -- Previous collision-only test kept for reference only. DCS rejected it because
+    -- the collision shell argument count exceeded the active outer model.
+    -- collision_shell = "su-30mk-collision_TEST.edm";
+}
