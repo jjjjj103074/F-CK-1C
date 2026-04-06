@@ -106,7 +106,8 @@ bool	fbw_throttle_override = false;  // true = force FBW throttle command
 double	engine_throttle_cmd_left = 0.0; // Final command after pilot/FBW mixing
 double	engine_throttle_cmd_right = 0.0;
 double	afterburner_detent = 0.70;       // Throttle position where AB starts
-double	afterburner_thrust_factor = 1.80; // AB max thrust = dry thrust * factor
+double	afterburner_thrust_factor = 1.73; // AB max thrust = dry thrust * factor
+											 // TFE1042-70: 2×46.7kN AB / 2×27.0kN MIL ≈ 1.73
 double	afterburner_fuel_factor = 2.2;   // Fuel burn multiplier at full AB
 double	afterburner_core_rpm = 0.94;      // Core RPM readout while in AB
 double	afterburner_core_drop_time = 0.80; // Seconds for core RPM transition between mil and AB
@@ -1695,7 +1696,14 @@ void ed_fm_simulate(double dt)
 	if (left_engine_switch == true && left_engine_power_readout >= 0.5)
 	{
 		const double left_mil_cmd = limit(left_throttle_input / afterburner_detent, 0.0, 1.0);
-		left_throttle_output = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), left_mil_cmd), 0.1, 1);
+		// Spool lag: TFE1042-70 does not respond instantaneously to throttle changes.
+		// Apply a first-order lag so throttle_output tracks the target with realistic delay.
+		const double left_throttle_target = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), left_mil_cmd), 0.1, 1.0);
+		const double l_spool_tau = (left_throttle_target > left_throttle_output)
+			? FM_DATA::engine_spool_up_tau
+			: FM_DATA::engine_spool_down_tau;
+		left_throttle_output = fbw_first_order(left_throttle_output, left_throttle_target, l_spool_tau, dt);
+		left_throttle_output = limit(left_throttle_output, 0.1, 1.0);
 		double left_target_core = 0.5 + 0.5 * left_mil_cmd;
 		if (left_throttle_input <= afterburner_detent)
 		{
@@ -1728,7 +1736,13 @@ void ed_fm_simulate(double dt)
 	if (right_engine_switch == true && right_engine_power_readout >= 0.5)
 	{
 		const double right_mil_cmd = limit(right_throttle_input / afterburner_detent, 0.0, 1.0);
-		right_throttle_output = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), right_mil_cmd), 0.1, 1);
+		// Spool lag: same first-order lag as left engine.
+		const double right_throttle_target = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), right_mil_cmd), 0.1, 1.0);
+		const double r_spool_tau = (right_throttle_target > right_throttle_output)
+			? FM_DATA::engine_spool_up_tau
+			: FM_DATA::engine_spool_down_tau;
+		right_throttle_output = fbw_first_order(right_throttle_output, right_throttle_target, r_spool_tau, dt);
+		right_throttle_output = limit(right_throttle_output, 0.1, 1.0);
 		double right_target_core = 0.5 + 0.5 * right_mil_cmd;
 		if (right_throttle_input <= afterburner_detent)
 		{
@@ -1819,6 +1833,20 @@ void ed_fm_simulate(double dt)
 		speed_limiter = limit(pow(over_mach * 3.0, 2.0) * (q * 0.35 + 25000.0), 0.0, 6e5);
 	}
 	add_local_force(-speed_limiter, center_of_mass);
+
+	// Speedbrake pitch compensation (F-CK-1C FLCS auto-trims for speedbrake deployment).
+	// When the dorsal speedbrake opens it creates a pitch-down disturbance (reduced tail
+	// effectiveness from changed downwash + drag couple below the net aerodynamic centre).
+	// The real FLCS applies a nose-up feed-forward through the elevators before the Nz/alpha
+	// outer loop saturates and the hold mode degrades.  We model this as a direct pitching
+	// moment proportional to airbrake_pos * q * S * c_bar (dimensionally correct Cm scaling).
+	// Positive z-moment = nose UP in the DCS body-axis convention.
+	{
+		const double c_bar = FM_DATA::wing_area / FM_DATA::wingspan; // mean aerodynamic chord [m]
+		const double airbrake_pitch_comp =
+			FM_DATA::airbrake_pitch_comp_k * airbrake_pos * q * FM_DATA::wing_area * c_bar;
+		add_local_moment(Vec3(0, 0, airbrake_pitch_comp));
+	}
 
 	// Note about speed:
 	// In DCS, if a plane goes faster than around 3100 Km/h (860 m/s) ground speed, it explodes. Even with invincibility on.

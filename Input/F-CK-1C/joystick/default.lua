@@ -5,8 +5,11 @@ dofile(cscripts .. "command_defs.lua")
 
 join(res.axisCommands,
     {
-        { combos = defaultDeviceAssignmentFor("pitch"),             action = 2001, name = _('Pitch Axis'),                category = { _('Flight Control') } },
-        { combos = defaultDeviceAssignmentFor("roll"),              action = 2002, name = _('Roll Axis'),                 category = { _('Flight Control') } },
+        -- curvature {0,0,20,0,0}：5 點貝氏曲線，第 3 點（中心）+20 = 中心柔化 20%。
+        -- 模擬 F-CK-1C FBW 飛控的中立區靈敏度降低（參考 F-16 FLCS 內建 20% 曲線設定）。
+        -- 可在 DCS 選項 > 控制器 > 軸設定中由玩家進一步調整。
+        { combos = defaultDeviceAssignmentFor("pitch"),             action = 2001, name = _('Pitch Axis'),   curvature = {0, 0, 20, 0, 0}, category = { _('Flight Control') } },
+        { combos = defaultDeviceAssignmentFor("roll"),              action = 2002, name = _('Roll Axis'),    curvature = {0, 0, 20, 0, 0}, category = { _('Flight Control') } },
         { combos = defaultDeviceAssignmentFor("rudder"),            action = 2003, name = _('Yaw Axis'),                  category = { _('Flight Control') } },
         { combos = defaultDeviceAssignmentFor("thrust"),            action = 2004, name = _('Throttle Axis - Both'),      category = { _('Throttle Quadrant'), _('Flight Control') } },
         { combos = defaultDeviceAssignmentFor("thrust_left"),       action = 2005, name = _('Throttle Axis - Left'),      category = { _('Throttle Quadrant'), _('Flight Control') } },

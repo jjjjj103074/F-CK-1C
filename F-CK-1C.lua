@@ -446,14 +446,24 @@ local F_CK_1C = {
         {
             Cy0 = 0,
             Mzalfa = 4.355,
-            Mzalfadt = 0.8,
+            -- 俯仰率阻尼：原值 0.8 沿用 F-16 基線，高速大桿量時阻尼不足導致震盪。
+            -- 提高至 1.5 以補足 FBW 飛控的人工阻尼增益（FCS pitch rate damping augmentation）。
+            Mzalfadt = 1.5,
             kjx = 2.75,
             kjz = 0.00125,
             Czbe = -0.016,
             cx_gear = 0.0268,
-            cx_flap = 0.05,
-            cy_flap = 0.52,
-            cx_brk = 0.06,
+            -- flap 阻力：F-CK-1C 使用前緣 flap（LEF）+ 後緣 flaperon 組合。
+            -- 前緣裝置以增升為主，附加阻力遠低於純後緣 flap。
+            -- 降低至 0.03（原 0.05）以反映 LEF 主導的低阻力特性。
+            cx_flap = 0.03,
+            -- flap 升力：前緣+後緣組合可提供更高的升力增量，提高至 0.65（原 0.52）。
+            -- 改善自動 flap 系統在中高仰角時的升阻比，使機動性符合設計意圖。
+            cy_flap = 0.65,
+            -- 減速板：真實 F-CK-1C 於起落架放下時自動限制減速板至 60% 開啟（防止結構干涉）。
+            -- SFM 無法動態判斷起落架狀態，此處取 0.04（原 0.06 的約 67%）作為折衷值。
+            -- 完整的條件式「起落架下 → 減速板 60%」邏輯需升級至 EFM 實作。
+            cx_brk = 0.04,
             table_data =
             {
                 [1] = { 0, 0.0165, 0.07, 0.132, 0.025, 0.5, 30, 1.45 },
@@ -480,6 +490,9 @@ local F_CK_1C = {
         },     -- end of aerodynamics
         engine =
         {
+            -- 油門響應延遲（Issue #2）：DCS 標準 SFM 的 engine 區塊不支援油門惰性時間參數
+            -- （即 rpm_acceleration_time_factor / throttle spool time）。
+            -- 若需要模擬 TFE1042-70 約 3–5 秒的油門響應延遲，必須升級至 EFM 實作。
             type              = "TurboFan",
             Nmg               = 67.5,
             Nominal_RPM       = 14710.0,
