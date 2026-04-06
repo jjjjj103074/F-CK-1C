@@ -111,8 +111,16 @@ double	afterburner_thrust_factor = 1.73; // AB max thrust = dry thrust * factor
 double	afterburner_fuel_factor = 2.2;   // Fuel burn multiplier at full AB
 double	afterburner_core_rpm = 0.94;      // Core RPM readout while in AB
 double	afterburner_core_drop_time = 0.80; // Seconds for core RPM transition between mil and AB
-double	left_afterburner_ratio = 0.0;    // 0..1
+double	left_afterburner_ratio = 0.0;    // 0..1  (lagged, actual AB ratio driving thrust & nozzle)
 double	right_afterburner_ratio = 0.0;   // 0..1
+// Afterburner spool-lag state.
+// lit flag becomes true only when the engine throttle_output has reached near-military power.
+// Once lit, the ratio ramps in over ab_spool_in_tau; on extinguish it ramps out over ab_spool_out_tau.
+bool	left_afterburner_lit           = false;
+bool	right_afterburner_lit          = false;
+double	ab_spool_in_tau               = 2.0;   // ~2 s ramp from ignition to full AB
+double	ab_spool_out_tau              = 0.6;   // ~0.6 s to extinguish flame
+double	ab_light_throttle_output_min  = 0.88;  // throttle_output must reach this before AB can light
 bool	fbw_g_limiter_override = false;
 
 // Lift and drag devices
@@ -1758,21 +1766,50 @@ void ed_fm_simulate(double dt)
 		right_engine_power_readout = actuator(right_engine_power_readout, right_target_core, -core_step, core_step);
 	};
 
-	// AB stage logic:
-	// 0..detent = military power only, >detent adds extra AB thrust linearly.
-	left_afterburner_ratio = 0.0;
-	right_afterburner_ratio = 0.0;
-	if (left_engine_switch == true && left_engine_power_readout >= 0.5 && left_throttle_input > afterburner_detent)
+	// AB stage logic with ignition gate and spool lag.
+	// Light condition : pilot pushes past detent AND engine throttle_output >= ab_light_throttle_output_min
+	//                   (i.e., engine is already near military thrust).  Prevents instant AB at low power.
+	// Extinguish      : pilot pulls below detent OR engine is shut down; ratio ramps to 0.
+	// Nozzle follows the lagged afterburner_ratio, so opening/closing tracks actual AB state.
 	{
-		left_afterburner_ratio = limit((left_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
-	}
-	if (right_engine_switch == true && right_engine_power_readout >= 0.5 && right_throttle_input > afterburner_detent)
-	{
-		right_afterburner_ratio = limit((right_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
+		// --- Left AB ---
+		const double left_ab_demand = limit((left_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
+		if (left_engine_switch && left_throttle_input > afterburner_detent
+			&& left_throttle_output >= ab_light_throttle_output_min)
+		{
+			left_afterburner_lit = true;
+		}
+		else if (!left_engine_switch || left_throttle_input <= afterburner_detent)
+		{
+			left_afterburner_lit = false;
+		}
+		const double left_ab_target  = left_afterburner_lit ? left_ab_demand : 0.0;
+		const double left_ab_tau     = (left_ab_target > left_afterburner_ratio) ? ab_spool_in_tau : ab_spool_out_tau;
+		left_afterburner_ratio  = limit(fbw_first_order(left_afterburner_ratio,  left_ab_target,  left_ab_tau,  dt), 0.0, 1.0);
+
+		// --- Right AB ---
+		const double right_ab_demand = limit((right_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
+		if (right_engine_switch && right_throttle_input > afterburner_detent
+			&& right_throttle_output >= ab_light_throttle_output_min)
+		{
+			right_afterburner_lit = true;
+		}
+		else if (!right_engine_switch || right_throttle_input <= afterburner_detent)
+		{
+			right_afterburner_lit = false;
+		}
+		const double right_ab_target = right_afterburner_lit ? right_ab_demand : 0.0;
+		const double right_ab_tau    = (right_ab_target > right_afterburner_ratio) ? ab_spool_in_tau : ab_spool_out_tau;
+		right_afterburner_ratio = limit(fbw_first_order(right_afterburner_ratio, right_ab_target, right_ab_tau, dt), 0.0, 1.0);
 	}
 
-	const double left_nozzle_target = estimate_nozzle_aperture_target(left_throttle_input, left_engine_power_readout, left_afterburner_ratio, left_engine_switch);
-	const double right_nozzle_target = estimate_nozzle_aperture_target(right_throttle_input, right_engine_power_readout, right_afterburner_ratio, right_engine_switch);
+	// Nozzle: dry-power schedule driven by throttle_output (follows actual engine state, not raw command).
+	// Scale throttle_output back into the [0, afterburner_detent] range so the schedule's dry_ratio
+	// matches the original calibration: throttle_output=1.0 at military maps to dry_ratio=1.0.
+	const double left_nozzle_throttle  = left_throttle_output  * afterburner_detent;
+	const double right_nozzle_throttle = right_throttle_output * afterburner_detent;
+	const double left_nozzle_target  = estimate_nozzle_aperture_target(left_nozzle_throttle,  left_engine_power_readout,  left_afterburner_ratio,  left_engine_switch);
+	const double right_nozzle_target = estimate_nozzle_aperture_target(right_nozzle_throttle, right_engine_power_readout, right_afterburner_ratio, right_engine_switch);
 	left_nozzle_aperture = update_nozzle_aperture(left_nozzle_aperture, left_nozzle_target, left_engine_power_readout, left_afterburner_ratio, left_engine_switch, dt);
 	right_nozzle_aperture = update_nozzle_aperture(right_nozzle_aperture, right_nozzle_target, right_engine_power_readout, right_afterburner_ratio, right_engine_switch, dt);
 
@@ -1792,9 +1829,11 @@ void ed_fm_simulate(double dt)
 	{
 		left_thrust_force = 0;
 		right_thrust_force = 0;
-		left_afterburner_ratio = 0.0;
+		left_afterburner_ratio  = 0.0;
 		right_afterburner_ratio = 0.0;
-		left_engine_switch = false;
+		left_afterburner_lit    = false;
+		right_afterburner_lit   = false;
+		left_engine_switch  = false;
 		right_engine_switch = false;
 		left_engine_power_readout = actuator(left_engine_power_readout, 0.0, -dt / 10, dt / 10);
 		right_engine_power_readout = actuator(right_engine_power_readout, 0.0, -dt / 10, dt / 10);
