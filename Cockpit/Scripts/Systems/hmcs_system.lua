@@ -49,6 +49,8 @@ local hmcs_display_mode = get_param_handle("HMCS_DISPLAY_MODE")
 local aim9_uncage_state = get_param_handle("AIM9_UNCAGE_HELD")
 local aim9_contact_state = get_param_handle("AIM9_SEEKER_CONTACT")
 local aim9_lock_state = get_param_handle("AIM9_SEEKER_LOCK")
+local aim9_missile_status = get_param_handle("AIM9_MISSILE_STATUS")
+local aim9_missile_count = get_param_handle("AIM9_MISSILE_COUNT")
 
 local hmcs_slot_count = 13
 local hmcs_slot_spacing = 0.048
@@ -277,6 +279,8 @@ local function push_params()
     local aim9_uncage_active = aim9_uncage_state:get() > 0.5
     local aim9_contact_active = aim9_contact_state:get() > 0.5
     local aim9_lock_active = aim9_lock_state:get() > 0.5
+    local aim9_status = math.floor((aim9_missile_status:get() or 0) + 0.5)
+    local aim9_quantity = math.max(0, math.floor((aim9_missile_count:get() or 0) + 0.5))
 
     if gun_quantity_live >= 0.0 then
         hmcs_gun_qty_sim = gun_quantity_live
@@ -284,9 +288,11 @@ local function push_params()
         hmcs_gun_qty_sim = math.max(0.0, hmcs_gun_qty_sim - hmcs_gun_rounds_per_second * update_rate)
     end
 
-    if display_fc_mode == 1 or display_fc_mode == 2 or aim9_uncage_active or aim9_contact_active or aim9_lock_active then
+    if display_fc_mode == 1 or display_fc_mode == 2 or aim9_uncage_active or aim9_contact_active or aim9_lock_active or aim9_status > 0 then
         display_weapon_class = WEAPON_AAM
-        if display_weapon_quantity < 1 then
+        if aim9_quantity >= 0 then
+            display_weapon_quantity = aim9_quantity
+        elseif display_weapon_quantity < 1 then
             display_weapon_quantity = AAM_DEFAULT_QUANTITY
         end
     elseif gun_firing or display_weapon_class == WEAPON_GUN then

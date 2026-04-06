@@ -42,6 +42,9 @@ cache/
 backup/
 Sounds/_backup_normalized_*/
 TODO/
+generated_audio/
+tools/
+docs/
 
 # 本地備份資料夾（如需提交請註解掉）
 baseline_original/

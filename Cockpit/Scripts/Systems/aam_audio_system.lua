@@ -5,13 +5,16 @@ make_default_activity(update_rate)
 
 local AIM9_TONE_OFF = 0
 local AIM9_TONE_SEEK = 1
-local AIM9_TONE_LOCK = 2
+local AIM9_TONE_ACQUIRE = 2
+local AIM9_TONE_LOCK = 3
 local SOUND_TEST_CYCLE_CMD = 3052
 
 local tone_state = get_param_handle("AIM9_TONE_STATE")
+local aim9_weapon_active = get_param_handle("AIM9_WEAPON_ACTIVE")
 
 local sound_host = nil
 local seek_sound = nil
+local acquire_sound = nil
 local lock_sound = nil
 local active_tone = AIM9_TONE_OFF
 local active_gain = 1.6
@@ -21,7 +24,8 @@ local test_sound = nil
 local test_sound_name = nil
 local test_playlist = {
     { name = "AIM9 Seek", sdef = "Cockpit/Test/AIM9_Seek" },
-    { name = "AIM9 Lock", sdef = "Cockpit/Test/AIM9_LockTone" },
+    { name = "AIM9 Acquire LO", sdef = "Cockpit/Test/AIM9_AcquireLo" },
+    { name = "AIM9 Tone HI", sdef = "Cockpit/Test/AIM9_ToneHi" },
     { name = "Radar Lock", sdef = "Cockpit/Test/Radar_LOCK" },
     { name = "Warning Altitude", sdef = "Cockpit/Test/Warning_ALTITUDE" },
     { name = "Warning Pull Up", sdef = "Cockpit/Test/Warning_PULL_UP" },
@@ -66,7 +70,7 @@ local function update_playing_sound(sound_obj)
     end
 end
 
-local function start_sound(sound_obj, label)
+local function start_sound(sound_obj, label, prefer_continue)
     if sound_obj == nil then
         dlog("start requested but sound is nil: " .. tostring(label))
         return
@@ -76,7 +80,9 @@ local function start_sound(sound_obj, label)
         sound_obj:update(nil, active_gain, nil)
     end
 
-    if sound_obj.play_once ~= nil then
+    if prefer_continue and sound_obj.play_continue ~= nil then
+        sound_obj:play_continue()
+    elseif sound_obj.play_once ~= nil then
         sound_obj:play_once()
     elseif sound_obj.play_continue ~= nil then
         sound_obj:play_continue()
@@ -91,7 +97,7 @@ local function sustain_sound(sound_obj, label)
     update_playing_sound(sound_obj)
 
     if sound_obj.is_playing ~= nil and not sound_obj:is_playing() then
-        start_sound(sound_obj, label)
+        start_sound(sound_obj, label, true)
         dlog("retrigger " .. tostring(label))
     end
 end
@@ -139,12 +145,15 @@ local function set_active_tone(next_tone)
     end
 
     stop_sound(seek_sound)
+    stop_sound(acquire_sound)
     stop_sound(lock_sound)
 
     if next_tone == AIM9_TONE_SEEK then
-        start_sound(seek_sound, "seek")
+        start_sound(seek_sound, "seek", true)
+    elseif next_tone == AIM9_TONE_ACQUIRE then
+        start_sound(acquire_sound, "acquire", true)
     elseif next_tone == AIM9_TONE_LOCK then
-        start_sound(lock_sound, "lock")
+        start_sound(lock_sound, "tone_hi", true)
     end
 
     active_tone = next_tone
@@ -153,6 +162,7 @@ end
 
 function post_initialize()
     tone_state:set(AIM9_TONE_OFF)
+    aim9_weapon_active:set(0)
 
     if create_sound_host == nil then
         dlog("create_sound_host unavailable")
@@ -175,8 +185,10 @@ function post_initialize()
     end
 
     seek_sound = sound_host:create_sound("Cockpit/AIM9/Seek")
-    lock_sound = sound_host:create_sound("Cockpit/AIM9/LockTone")
+    acquire_sound = sound_host:create_sound("Cockpit/AIM9/AcquireLo")
+    lock_sound = sound_host:create_sound("Cockpit/AIM9/ToneHi")
     dlog("seek sound created=" .. tostring(seek_sound ~= nil))
+    dlog("acquire sound created=" .. tostring(acquire_sound ~= nil))
     dlog("lock sound created=" .. tostring(lock_sound ~= nil))
     dlog("test playlist size=" .. tostring(#test_playlist))
     dlog("initialized")
@@ -208,8 +220,10 @@ function update()
 
     if active_tone == AIM9_TONE_SEEK then
         sustain_sound(seek_sound, "seek")
+    elseif active_tone == AIM9_TONE_ACQUIRE then
+        sustain_sound(acquire_sound, "acquire")
     elseif active_tone == AIM9_TONE_LOCK then
-        sustain_sound(lock_sound, "lock")
+        sustain_sound(lock_sound, "tone_hi")
     end
 
     if test_sound ~= nil then

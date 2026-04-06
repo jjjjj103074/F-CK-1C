@@ -1,4 +1,5 @@
 local dev = GetSelf()
+local sensor_data = get_base_data()
 
 local update_rate = 0.02
 make_default_activity(update_rate)
@@ -64,6 +65,27 @@ local AAM_SUBMODE_BVR = 4
 local AIM9_TONE_OFF = 0
 local AIM9_TONE_SEEK = 1
 local AIM9_TONE_LOCK = 2
+local AIM9_STATUS_OFF = 0
+local AIM9_STATUS_COOL = 1
+local AIM9_STATUS_RDY = 2
+local AIM9_STATUS_TRACK = 3
+local AIM9_MISSILE_COUNT_DEFAULT = 1
+local GUN_COUNT_CANDIDATES = {
+    "getGunAmmoCount",
+    "getCannonsAmmoCount",
+    "getAmmoCount",
+}
+local AIM9_COUNT_CANDIDATES = {
+    "getAAMMissileCount",
+    "getAAMCount",
+    "getAirMissileCount",
+    "getAirToAirMissileCount",
+    "getMissileCount",
+    "getMissilesCount",
+    "getWeaponCount",
+    "getSelectedWeaponCount",
+    "getAmmoCount",
+}
 
 local cms_program_active = false
 local cms_program_name = "idle"
@@ -84,10 +106,19 @@ local weapon_release_latched = false
 local weapon_release_pending = false
 local weapon_release_hold_timer = 0.0
 local weapon_release_min_hold_time = 0.08
+local aim9_missile_count = AIM9_MISSILE_COUNT_DEFAULT
+local aim9_missile_live_source = nil
+local aim9_missile_live_last = -1
+local gun_ammo_live_source = nil
+local gun_ammo_live_last = -1
+local store_probe_dumped = false
+local store_probe_summary_timer = 0.0
+local store_probe_summary_period = 5.0
 local target_lock_latched = false
 local target_lock_release_pending = false
 local target_lock_hold_timer = 0.0
 local target_lock_min_hold_time = 0.08
+local aim9_target_designated = false
 local dgft_auto_lock_timer = 0.0
 local dgft_auto_lock_interval = 1.0
 local cms_connected = true
@@ -109,11 +140,109 @@ local hmcs_fc_mode = get_param_handle("HMCS_FC_MODE")
 local hmcs_aam_submode = get_param_handle("HMCS_AAM_SUBMODE")
 local aim9_uncage_state = get_param_handle("AIM9_UNCAGE_HELD")
 local aim9_tone_state = get_param_handle("AIM9_TONE_STATE")
+local aim9_target_designated_state = get_param_handle("AIM9_TARGET_DESIGNATED")
+local aim9_missile_status_state = get_param_handle("AIM9_MISSILE_STATUS")
+local aim9_missile_count_state = get_param_handle("AIM9_MISSILE_COUNT")
 local radar_state_param = get_param_handle("RADARSTATE")
 
 local function dlog(msg)
     if log ~= nil and log.info ~= nil then
         log.info("FCK1C CMS: " .. tostring(msg))
+    end
+end
+
+local function safe_sensor_call(method_name, default_value)
+    local method = sensor_data and sensor_data[method_name]
+    if type(method) ~= "function" then
+        return default_value
+    end
+
+    local ok, value = pcall(method, sensor_data)
+    if ok and type(value) == "number" then
+        return value
+    end
+
+    return default_value
+end
+
+local function describe_sensor_candidate(method_name)
+    local method = sensor_data and sensor_data[method_name]
+    if type(method) ~= "function" then
+        return "missing"
+    end
+
+    local ok, value = pcall(method, sensor_data)
+    if not ok then
+        return "error"
+    end
+    if value == nil then
+        return "nil"
+    end
+    if type(value) == "number" then
+        return string.format("number(%0.3f)", value)
+    end
+
+    return type(value)
+end
+
+local function dump_store_probe_candidates_once()
+    if store_probe_dumped then
+        return
+    end
+
+    store_probe_dumped = true
+    for _, method_name in ipairs(GUN_COUNT_CANDIDATES) do
+        dlog("probe gun " .. tostring(method_name) .. " -> " .. describe_sensor_candidate(method_name))
+    end
+    for _, method_name in ipairs(AIM9_COUNT_CANDIDATES) do
+        dlog("probe aim9 " .. tostring(method_name) .. " -> " .. describe_sensor_candidate(method_name))
+    end
+end
+
+local function first_sensor_count(candidates, min_value, max_value)
+    for _, method_name in ipairs(candidates) do
+        local value = safe_sensor_call(method_name, -1.0)
+        if value >= min_value and value <= max_value then
+            return method_name, value
+        end
+    end
+    return nil, -1.0
+end
+
+local function refresh_live_store_counts()
+    dump_store_probe_candidates_once()
+
+    local gun_source, gun_value = first_sensor_count(GUN_COUNT_CANDIDATES, 0.0, 9999.0)
+
+    if gun_source ~= nil then
+        local rounded = math.max(0, math.floor(gun_value + 0.5))
+        if gun_source ~= gun_ammo_live_source or rounded ~= gun_ammo_live_last then
+            gun_ammo_live_source = gun_source
+            gun_ammo_live_last = rounded
+            dlog("live gun count -> " .. tostring(rounded) .. " via " .. tostring(gun_source))
+        end
+    end
+
+    local aim9_source, aim9_value = first_sensor_count(AIM9_COUNT_CANDIDATES, 0.0, 12.0)
+
+    if aim9_source ~= nil then
+        local rounded = math.max(0, math.floor(aim9_value + 0.5))
+        aim9_missile_count = rounded
+        if aim9_source ~= aim9_missile_live_source or rounded ~= aim9_missile_live_last then
+            aim9_missile_live_source = aim9_source
+            aim9_missile_live_last = rounded
+            dlog("live aim9 count -> " .. tostring(rounded) .. " via " .. tostring(aim9_source))
+        end
+    end
+
+    if gun_source == nil and aim9_source == nil then
+        store_probe_summary_timer = store_probe_summary_timer + update_rate
+        if store_probe_summary_timer >= store_probe_summary_period then
+            store_probe_summary_timer = 0.0
+            dlog("live store probe: no candidate hit yet (gun=nil aim9=nil)")
+        end
+    else
+        store_probe_summary_timer = 0.0
     end
 end
 
@@ -164,6 +293,10 @@ local function dogfight_active()
     return fire_control_mode == FC_MODE_DGFT
 end
 
+local function aam_mode_active()
+    return fire_control_mode == FC_MODE_DGFT or fire_control_mode == FC_MODE_MSL
+end
+
 local function push_hmcs_gun_state()
     if trigger_second_latched and master_arm_mode == MASTER_ON and dogfight_active() then
         hmcs_gun_firing:set(1)
@@ -179,8 +312,32 @@ local function push_hmcs_mode_state()
     hmcs_aam_submode:set(aam_submode)
 end
 
+local function current_aim9_status()
+    if not aam_mode_active() or aim9_missile_count <= 0 then
+        return AIM9_STATUS_OFF
+    end
+    if missile_uncage_held and aim9_target_designated then
+        return AIM9_STATUS_TRACK
+    end
+    if missile_uncage_held then
+        return AIM9_STATUS_RDY
+    end
+    return AIM9_STATUS_COOL
+end
+
+local function push_aim9_store_state()
+    aim9_missile_status_state:set(current_aim9_status())
+    aim9_missile_count_state:set(math.max(0, aim9_missile_count))
+end
+
 local function push_aim9_uncage_state()
     aim9_uncage_state:set(missile_uncage_held and 1 or 0)
+    push_aim9_store_state()
+end
+
+local function push_aim9_designation_state()
+    aim9_target_designated_state:set(aim9_target_designated and 1 or 0)
+    push_aim9_store_state()
 end
 
 local function fire_gate_reason()
@@ -218,7 +375,7 @@ local function log_gate_snapshot(tag)
     local gun_reason = fire_gate_reason()
     local aam_reason = aam_release_reason()
     local line = string.format(
-        "DBG[%s] master=%s fcmode=%s sub=%s stores=%d cms=%d trig=%d relpend=%d hold=%.2f uncage=%d pickle=%d pickrel=%d pickhold=%.2f lock=%d lockrel=%d lockhold=%.2f tone=%1.0f cmsprog=%d mode=%s cmsrem=%d gun=%s aam=%s",
+        "DBG[%s] master=%s fcmode=%s sub=%s stores=%d cms=%d trig=%d relpend=%d hold=%.2f uncage=%d pickle=%d pickrel=%d pickhold=%.2f lock=%d lockrel=%d lockhold=%.2f desig=%d aim9=%d tone=%1.0f cmsprog=%d mode=%s cmsrem=%d gun=%s aam=%s",
         tostring(tag),
         master_mode_name(),
         fc_mode_name(),
@@ -235,6 +392,8 @@ local function log_gate_snapshot(tag)
         bool_to_num(target_lock_latched),
         bool_to_num(target_lock_release_pending),
         target_lock_hold_timer,
+        bool_to_num(aim9_target_designated),
+        aim9_missile_count,
         aim9_tone_state:get(),
         bool_to_num(cms_program_active),
         tostring(cms_program_name),
@@ -334,6 +493,8 @@ local function target_lock_begin(reason_tag)
     target_lock_latched = true
     target_lock_release_pending = false
     target_lock_hold_timer = target_lock_min_hold_time
+    aim9_target_designated = true
+    push_aim9_designation_state()
 end
 
 local function target_lock_end(reason_tag)
@@ -368,11 +529,31 @@ local function unlock_target(reason_tag)
         dispatch_with_log(ICMD_PLANE_CHANGE_LOCK_UP, "change lock up")
     end
 
+    aim9_target_designated = false
+    push_aim9_designation_state()
+
 end
 
 local function switch_target(reason_tag)
     dlog("switch target -> " .. tostring(reason_tag))
     dispatch_with_log(ICMD_PLANE_CHANGE_LOCK, "change lock")
+    aim9_target_designated = true
+    push_aim9_designation_state()
+end
+
+local function consume_aim9_missile(reason_tag)
+    if aim9_missile_live_source == nil then
+        if aim9_missile_count <= 0 then
+            return
+        end
+        aim9_missile_count = math.max(0, aim9_missile_count - 1)
+        dlog("aim9 consume -> " .. tostring(reason_tag) .. " remaining=" .. tostring(aim9_missile_count) .. " via fallback")
+    else
+        dlog("aim9 consume -> " .. tostring(reason_tag) .. " awaiting live sync via " .. tostring(aim9_missile_live_source))
+    end
+
+    unlock_target("aim9_launch")
+    push_aim9_store_state()
 end
 
 local function stop_gun_and_pickle()
@@ -399,6 +580,8 @@ local function set_fire_control_mode(mode, reason_tag, cycle_weapon)
 
     if mode == FC_MODE_NAV then
         aam_submode = AAM_SUBMODE_NONE
+        aim9_target_designated = false
+        push_aim9_designation_state()
         unlock_target("nav_mode")
         dispatch_with_log(ICMD_PLANE_MODE_CANNON, "mode cannon")
     elseif mode == FC_MODE_DGFT then
@@ -413,6 +596,9 @@ local function set_fire_control_mode(mode, reason_tag, cycle_weapon)
     elseif mode == FC_MODE_MSL then
         master_arm_mode = MASTER_ON
         aam_submode = AAM_SUBMODE_BVR
+        aim9_target_designated = false
+        push_aim9_designation_state()
+        unlock_target("msl_mode_enter")
         ensure_radar_on(reason_tag)
         if cycle_weapon then
             cycle_aam_weapon(reason_tag)
@@ -665,6 +851,8 @@ function post_initialize()
     push_hmcs_gun_state()
     push_hmcs_mode_state()
     push_aim9_uncage_state()
+    push_aim9_designation_state()
+    push_aim9_store_state()
     log_gate_snapshot("init")
 end
 
@@ -681,6 +869,8 @@ function SetCommand(command, value)
         if missile_uncage_held and (fire_control_mode == FC_MODE_DGFT or fire_control_mode == FC_MODE_MSL) then
             ensure_radar_on("uncage_cmd")
             apply_aam_submode(aam_submode, "uncage_cmd")
+        elseif not missile_uncage_held and fire_control_mode == FC_MODE_DGFT then
+            unlock_target("uncage_release_dgft")
         end
         push_aim9_uncage_state()
         log_gate_snapshot(missile_uncage_held and "uncage_down" or "uncage_up")
@@ -731,6 +921,7 @@ function SetCommand(command, value)
                     pickle_off()
                     weapon_release_latched = false
                     weapon_release_pending = false
+                    consume_aim9_missile("pickle_up")
                 else
                     weapon_release_pending = true
                 end
@@ -849,6 +1040,8 @@ function SetCommand(command, value)
 end
 
 function update()
+    refresh_live_store_counts()
+
     debug_state_timer = debug_state_timer + update_rate
     if debug_state_timer >= debug_state_period then
         debug_state_timer = debug_state_timer - debug_state_period
@@ -888,6 +1081,7 @@ function update()
         pickle_off()
         weapon_release_latched = false
         weapon_release_pending = false
+        consume_aim9_missile("pickle_release")
         log_gate_snapshot("pickle_release")
     end
 
@@ -927,7 +1121,7 @@ function update()
         end
     end
 
-    if fire_control_mode == FC_MODE_DGFT and master_arm_mode == MASTER_ON then
+    if fire_control_mode == FC_MODE_DGFT and master_arm_mode == MASTER_ON and missile_uncage_held and aim9_missile_count > 0 then
         dgft_auto_lock_timer = dgft_auto_lock_timer - update_rate
         if dgft_auto_lock_timer <= 0.0 then
             target_lock_pulse("dgft_auto")
