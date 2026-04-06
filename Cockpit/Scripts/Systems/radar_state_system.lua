@@ -45,6 +45,9 @@ local radar_contact_01_range_scaled = get_param_handle("RADAR_CONTACT_01_RANGE_S
 local ws_target_range = get_param_handle("WS_TARGET_RANGE")
 local ws_ir_slave_azimuth = get_param_handle("WS_IR_MISSILE_SEEKER_DESIRED_AZIMUTH")
 local ws_ir_slave_elevation = get_param_handle("WS_IR_MISSILE_SEEKER_DESIRED_ELEVATION")
+local ws_ir_lock = get_param_handle("WS_IR_MISSILE_LOCK")
+local ws_ir_tgt_azimuth = get_param_handle("WS_IR_MISSILE_TARGET_AZIMUTH")
+local ws_ir_tgt_elevation = get_param_handle("WS_IR_MISSILE_TARGET_ELEVATION")
 
 local debug_last_line = ""
 local debug_timer = 0.0
@@ -161,15 +164,31 @@ function update()
     local ir_contact_valid = seeker_metric(ir_azimuth, ir_elevation) > 0.00001
     local stt_valid = stt_range > 1.0
     local real_telemetry_active = telemetry_metric() > 0.00001
-    local use_fallback_logic = not real_telemetry_active
+
+    -- DCS WS_IR_MISSILE_LOCK: 1 = 尋標器鎖定熱源 (由 avSimpleWeaponSystem 自動填入)
+    local dcs_ir_lock = num(ws_ir_lock) > 0.5
+    local dcs_ir_tgt_az = num(ws_ir_tgt_azimuth)
+    local dcs_ir_tgt_el = num(ws_ir_tgt_elevation)
+    local dcs_ir_has_signal = (math.abs(dcs_ir_tgt_az) > 0.001 or math.abs(dcs_ir_tgt_el) > 0.001)
+
+    -- 判斷資料來源優先序：
+    -- 1. DCS IR lock (最可靠，來自 avSimpleWeaponSystem select_station 後自動填入)
+    -- 2. 真實遙測 (雷達 STT 等)
+    -- 3. 按鍵 fallback (uncage + designate)
+    local use_fallback_logic = not real_telemetry_active and not dcs_ir_lock and not dcs_ir_has_signal
     local fallback_contact_valid = weapon_active and uncage_held
     local fallback_lock_valid = fallback_contact_valid and target_designated
-    local contact_valid = weapon_active and uncage_held and ir_contact_valid
-    local lock_valid = weapon_active and uncage_held and stt_valid
 
-    if use_fallback_logic then
+    if dcs_ir_lock or dcs_ir_has_signal then
+        -- DCS 引擎提供真實 IR 資料
+        contact_valid = weapon_active and (dcs_ir_has_signal or dcs_ir_lock)
+        lock_valid    = weapon_active and dcs_ir_lock
+    elseif real_telemetry_active then
+        contact_valid = weapon_active and uncage_held and ir_contact_valid
+        lock_valid    = weapon_active and uncage_held and stt_valid
+    else
         contact_valid = fallback_contact_valid
-        lock_valid = fallback_lock_valid
+        lock_valid    = fallback_lock_valid
     end
 
     aim9_weapon_active:set(weapon_active and 1 or 0)
