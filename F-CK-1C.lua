@@ -204,13 +204,13 @@ WPN_POD_Targeting = wpnGroup({
 
 -- 訓練／展示莢艙
 WPN_POD_Misc = wpnGroup({
-    { CLSID = "{AIS_ASQ_T50}",                          diameter = 127, deny = { STATION_MM, STATION_MF, STATION_MB } }, -- ACMI pod
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", diameter = 66 },                                                 -- Smokewinder blue
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", diameter = 66 },                                                 -- Smokewinder green
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", diameter = 66 },                                                 -- Smokewinder orange
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", diameter = 66 },                                                 -- Smokewinder red
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", diameter = 66 },                                                 -- Smokewinder white
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", diameter = 66 },                                                 -- Smokewinder yellow
+    { CLSID = "{AIS_ASQ_T50}",                          arg_value = 1, diameter = 127, deny = { STATION_MM } }, -- ACMI pod
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder blue
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder green
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder orange
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder red
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder white
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder yellow
 })
 
 -- 標準副油箱
@@ -394,7 +394,7 @@ local F_CK_1C = {
             -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 補上可拋棄艙罩模型名稱
             -- canopy_pos = {3.2, 0.674, 0}, -- 艙罩參考位置
             pos = { 3.28, -0.08, 0 }, -- 飛行員座位位置 (x, y, z)，單位公尺
-            g_suit = 1.02           -- G-suit 係數，1.0 為標準值
+            g_suit = 1.02             -- G-suit 係數，1.0 為標準值
         }
     },
 
@@ -648,23 +648,23 @@ local F_CK_1C = {
     -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
     Damage = verbose_to_dmg_properties({
-        ["Blap"]      = { critical_damage = 3 },
-        ["body"]      = { critical_damage = 10 },
-        ["Brap"]      = { critical_damage = 3 },
-        ["F W"]       = { critical_damage = 4 },
-        ["FGG"]       = { critical_damage = 3 },
-        ["Flap"]      = { critical_damage = 2 },
-        ["Flap.001"]  = { critical_damage = 2 },
-        ["LBW"]       = { critical_damage = 4 },
-        ["LC"]        = { critical_damage = 4 },
-        ["LGG"]       = { critical_damage = 3 },
-        ["M wing"]    = { critical_damage = 5 },
+        ["Blap"]       = { critical_damage = 3 },
+        ["body"]       = { critical_damage = 10 },
+        ["Brap"]       = { critical_damage = 3 },
+        ["F W"]        = { critical_damage = 4 },
+        ["FGG"]        = { critical_damage = 3 },
+        ["Flap"]       = { critical_damage = 2 },
+        ["Flap.001"]   = { critical_damage = 2 },
+        ["LBW"]        = { critical_damage = 4 },
+        ["LC"]         = { critical_damage = 4 },
+        ["LGG"]        = { critical_damage = 3 },
+        ["M wing"]     = { critical_damage = 5 },
         ["M wing.001"] = { critical_damage = 5 },
-        ["RBW"]       = { critical_damage = 4 },
-        ["RC"]        = { critical_damage = 4 },
-        ["RGG"]       = { critical_damage = 3 },
-        ["Tail"]      = { critical_damage = 6 },
-        ["Wayt"]      = { critical_damage = 3 },
+        ["RBW"]        = { critical_damage = 4 },
+        ["RC"]         = { critical_damage = 4 },
+        ["RGG"]        = { critical_damage = 3 },
+        ["Tail"]       = { critical_damage = 6 },
+        ["Wayt"]       = { critical_damage = 3 },
     }),
 
     -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
