@@ -22,6 +22,7 @@ local hmcs_device_id = devices and devices.HMCS
 local aam_audio_device_id = devices and devices.AAM_AUDIO
 local radar_device_id = devices and devices.RADAR
 local radar_state_device_id = devices and devices.RADAR_STATE
+local autopilot_device_id = devices and devices.AUTOPILOT
 
 if gear_device_id == nil then
     gear_device_id = 1
@@ -46,6 +47,9 @@ if radar_device_id == nil then
 end
 if radar_state_device_id == nil then
     radar_state_device_id = 8
+end
+if autopilot_device_id == nil then
+    autopilot_device_id = 9
 end
 
 creators[gear_device_id] = {
@@ -86,6 +90,11 @@ creators[hmcs_device_id] = {
 creators[aam_audio_device_id] = {
     "avLuaDevice",
     LockOn_Options.script_path .. "Systems/aam_audio_system.lua",
+}
+
+creators[autopilot_device_id] = {
+    "avLuaDevice",
+    LockOn_Options.script_path .. "Systems/autopilot_system.lua",
 }
 
 indicators = {}

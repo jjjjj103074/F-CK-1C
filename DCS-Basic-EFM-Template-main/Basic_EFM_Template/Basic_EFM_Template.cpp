@@ -1419,6 +1419,49 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 // Conventionally, parameter names are in all-caps.
 void* fm_export_temperature = interface.getParamHandle("FM_TEMPERATURE_C");
 
+// Autopilot param handles (read from Lua autopilot_system.lua)
+void* ap_param_master    = interface.getParamHandle("AP_MASTER_ENGAGED");
+void* ap_param_pitch_cmd = interface.getParamHandle("AP_PITCH_CMD");
+void* ap_param_roll_cmd  = interface.getParamHandle("AP_ROLL_CMD");
+void* ap_param_thr_cmd   = interface.getParamHandle("AP_THROTTLE_CMD");
+void* ap_param_bypass    = interface.getParamHandle("AP_BYPASS_ACTIVE");
+void* ap_param_at_eng    = interface.getParamHandle("AP_AT_ENGAGED");
+
+// AP state cached per frame
+double ap_pitch_cmd_cached  = 0.0;
+double ap_roll_cmd_cached   = 0.0;
+double ap_throttle_cached   = 0.0;
+bool   ap_master_cached     = false;
+bool   ap_bypass_cached     = false;
+bool   ap_at_engaged_cached = false;
+
+static void update_autopilot_from_lua()
+{
+	ap_master_cached     = interface.getParamNumber(ap_param_master) > 0.5;
+	ap_bypass_cached     = interface.getParamNumber(ap_param_bypass) > 0.5;
+	ap_at_engaged_cached = interface.getParamNumber(ap_param_at_eng) > 0.5;
+
+	if (ap_master_cached && !ap_bypass_cached)
+	{
+		ap_pitch_cmd_cached = limit(interface.getParamNumber(ap_param_pitch_cmd), -1.0, 1.0);
+		ap_roll_cmd_cached  = limit(interface.getParamNumber(ap_param_roll_cmd), -1.0, 1.0);
+	}
+	else
+	{
+		ap_pitch_cmd_cached = 0.0;
+		ap_roll_cmd_cached  = 0.0;
+	}
+
+	if (ap_at_engaged_cached)
+	{
+		ap_throttle_cached = limit(interface.getParamNumber(ap_param_thr_cmd), 0.0, 1.0);
+	}
+	else
+	{
+		ap_throttle_cached = 0.0;
+	}
+}
+
 // Add force
 void add_local_force(const Vec3 & Force, const Vec3 & Force_pos)
 {
@@ -1598,6 +1641,31 @@ void ed_fm_simulate(double dt)
 
 	// Update pilot inputs first, then run FBW once per frame.
 	update_primary_control_inputs();
+
+	// Autopilot: read commands from Lua and blend with pilot inputs.
+	// AP sits above the FBW: it replaces stick commands, and the FBW
+	// processes them identically to pilot inputs (rate limiting, gain
+	// scheduling, safety features all remain active).
+	update_autopilot_from_lua();
+	if (ap_master_cached && !ap_bypass_cached)
+	{
+		// AP overrides pitch/roll inputs; pilot trim remains additive.
+		pitch_input = ap_pitch_cmd_cached;
+		roll_input  = ap_roll_cmd_cached;
+	}
+	// A/T: use existing FBW throttle blend infrastructure
+	if (ap_at_engaged_cached)
+	{
+		fbw_throttle_cmd_left  = ap_throttle_cached;
+		fbw_throttle_cmd_right = ap_throttle_cached;
+		fbw_throttle_blend     = 1.0;
+		fbw_throttle_override  = false;
+	}
+	else
+	{
+		fbw_throttle_blend     = 0.0;
+	}
+
 	update_fbw_controller(dt, q, AlphaMax_);
 
 	// Lift/normal force, acts upwards
@@ -2997,6 +3065,14 @@ void ed_fm_release()
 	right_afterburner_ratio = 0.0;
 	left_nozzle_aperture = 0.80;
 	right_nozzle_aperture = 0.80;
+
+	// Reset cached AP state
+	ap_pitch_cmd_cached  = 0.0;
+	ap_roll_cmd_cached   = 0.0;
+	ap_throttle_cached   = 0.0;
+	ap_master_cached     = false;
+	ap_bypass_cached     = false;
+	ap_at_engaged_cached = false;
 
 	// Repair
 	ed_fm_repair();

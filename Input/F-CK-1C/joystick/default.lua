@@ -96,6 +96,30 @@ join(res.keyCommands,
 
         { down = 3022, name = _('Nose Wheel Steering - Toggle'),  category = { _('Systems') } },
 
+        -- Autopilot
+        { down = device_commands.APMasterToggle,        up = device_commands.APMasterToggle,        cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Master - Toggle'),             category = { _('Autopilot') } },
+        { down = device_commands.APMasterOn,            up = device_commands.APMasterOn,            cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Master - ON'),                 category = { _('Autopilot') } },
+        { down = device_commands.APMasterOff,           up = device_commands.APMasterOff,           cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Master - OFF'),                category = { _('Autopilot') } },
+        { down = device_commands.APBypass,              up = device_commands.APBypass,              cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Bypass (Hold)'),               category = { _('Autopilot') } },
+
+        { down = device_commands.APVertPitchHold,       up = device_commands.APVertPitchHold,       cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Vertical - Pitch Hold'),       category = { _('Autopilot') } },
+        { down = device_commands.APVertVSHold,          up = device_commands.APVertVSHold,          cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Vertical - VS Hold'),          category = { _('Autopilot') } },
+        { down = device_commands.APVertAltHold,         up = device_commands.APVertAltHold,         cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Vertical - ALT Hold'),         category = { _('Autopilot') } },
+        { down = device_commands.APVertIncrease,        up = device_commands.APVertIncrease,        cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Vertical Ref - Increase'),     category = { _('Autopilot') } },
+        { down = device_commands.APVertDecrease,        up = device_commands.APVertDecrease,        cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Vertical Ref - Decrease'),     category = { _('Autopilot') } },
+
+        { down = device_commands.APLatHeadingHold,      up = device_commands.APLatHeadingHold,      cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Lateral - Heading Hold'),      category = { _('Autopilot') } },
+        { down = device_commands.APLatHeadingSelect,    up = device_commands.APLatHeadingSelect,    cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Lateral - Heading Select'),    category = { _('Autopilot') } },
+        { down = device_commands.APLatNavTrack,         up = device_commands.APLatNavTrack,         cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Lateral - NAV Track'),         category = { _('Autopilot') } },
+        { down = device_commands.APLatIncrease,         up = device_commands.APLatIncrease,         cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Heading Ref - Increase'),      category = { _('Autopilot') } },
+        { down = device_commands.APLatDecrease,         up = device_commands.APLatDecrease,         cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Heading Ref - Decrease'),      category = { _('Autopilot') } },
+
+        { down = device_commands.APAutoThrottleToggle,  up = device_commands.APAutoThrottleToggle,  cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Auto Throttle - Toggle'),      category = { _('Autopilot') } },
+        { down = device_commands.APAutoThrottleOn,      up = device_commands.APAutoThrottleOn,      cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Auto Throttle - ON'),          category = { _('Autopilot') } },
+        { down = device_commands.APAutoThrottleOff,     up = device_commands.APAutoThrottleOff,     cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Auto Throttle - OFF'),         category = { _('Autopilot') } },
+        { down = device_commands.APSpeedIncrease,       up = device_commands.APSpeedIncrease,       cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Speed Ref - Increase'),        category = { _('Autopilot') } },
+        { down = device_commands.APSpeedDecrease,       up = device_commands.APSpeedDecrease,       cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Speed Ref - Decrease'),        category = { _('Autopilot') } },
+
     }
 )
 
