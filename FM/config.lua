@@ -50,6 +50,16 @@ FM = {
             -- damper_coeff = 400.0,
             allowable_hard_contact_length = 0.19,
 
+            -- amortizer_max_length = 0.53,
+            -- amortizer_basic_length = 0.53,
+            -- amortizer_reduce_length = 0.53,
+
+            -- amortizer_spring_force_factor = 990000.0, -- 彈簧剛度係數
+            -- amortizer_spring_force_factor_rate = 1,  -- 彈簧非線性/倍率
+            -- amortizer_static_force = 47500.0, -- 靜態支撐 / 預載力（影響落地時的靜態下沉）
+            -- amortizer_direct_damper_force_factor = 50000,  -- 壓縮阻尼（compression），增大會抑制下壓震盪
+            -- amortizer_back_damper_force_factor = 60000,  -- 回彈阻尼（rebound），增大會抑制回彈震動
+
             amortizer_max_length = 0.53,
             amortizer_basic_length = 0.53,
             amortizer_reduce_length = 0.53,
@@ -57,8 +67,8 @@ FM = {
             amortizer_spring_force_factor = 990000.0,
             amortizer_spring_force_factor_rate = 1,
             amortizer_static_force = 47500.0,
-            amortizer_direct_damper_force_factor = 50000,
-            amortizer_back_damper_force_factor = 60000,
+            amortizer_direct_damper_force_factor = 100000,
+            amortizer_back_damper_force_factor = 150000,
 
             anti_skid_installed = true,
 
@@ -76,9 +86,11 @@ FM = {
             arg_post = 0,
             arg_amortizer = 1,
             arg_wheel_yaw = 2,
-            -- Original F-CK-1C shell name kept for rollback/reference.
-            -- collision_shell_name = "F_W",
-            collision_shell_name = "WHEEL_F",
+            -- Use the actual collision shell segment names present in
+            -- Shapes/F-CK-1C-box_new.edm (lineFG/lineLG/lineRG).
+            -- Previously referenced WHEEL_F which does not exist in the
+            -- active collision shell and causes fallback/single-point contact.
+            collision_shell_name = "lineFG",
             arg_wheel_damage = 134,
         },
 
@@ -98,15 +110,15 @@ FM = {
             -- Original template-only damper coefficient kept for rollback/reference.
             -- damper_coeff = 160.0,
 
-            amortizer_max_length = 0.40,
-            amortizer_basic_length = 0.40,
+            amortizer_max_length = 0.45,
+            amortizer_basic_length = 0.45,
             amortizer_reduce_length = 0.40,
 
-            amortizer_spring_force_factor = 50000.0,
-            amortizer_spring_force_factor_rate = 3,
+            amortizer_spring_force_factor = 30000.0,
+            amortizer_spring_force_factor_rate = 2,
             amortizer_static_force = 202394.0,
-            amortizer_direct_damper_force_factor = 50000,
-            amortizer_back_damper_force_factor = 60000,
+            amortizer_direct_damper_force_factor = 80000,
+            amortizer_back_damper_force_factor = 120000,
 
             allowable_hard_contact_length = 0.25,
             anti_skid_installed = true,
@@ -127,9 +139,8 @@ FM = {
             arg_post = 5,
             arg_amortizer = 6,
             arg_wheel_yaw = -1,
-            -- Original F-CK-1C shell name kept for rollback/reference.
-            -- collision_shell_name = "LBW",
-            collision_shell_name = "WHEEL_L",
+            -- Map to EDM collision line for left main gear
+            collision_shell_name = "lineLG",
             arg_wheel_damage = 136,
         },
 
@@ -149,15 +160,15 @@ FM = {
             -- Original template-only damper coefficient kept for rollback/reference.
             -- damper_coeff = 160.0,
 
-            amortizer_max_length = 0.40,
-            amortizer_basic_length = 0.40,
+            amortizer_max_length = 0.45,
+            amortizer_basic_length = 0.45,
             amortizer_reduce_length = 0.40,
 
-            amortizer_spring_force_factor = 50000.0,
-            amortizer_spring_force_factor_rate = 3,
+            amortizer_spring_force_factor = 30000.0,
+            amortizer_spring_force_factor_rate = 2,
             amortizer_static_force = 202394.0,
-            amortizer_direct_damper_force_factor = 50000,
-            amortizer_back_damper_force_factor = 60000,
+            amortizer_direct_damper_force_factor = 80000,
+            amortizer_back_damper_force_factor = 120000,
 
             allowable_hard_contact_length = 0.25,
             anti_skid_installed = true,
@@ -178,9 +189,8 @@ FM = {
             arg_post = 3,
             arg_amortizer = 4,
             arg_wheel_yaw = -1,
-            -- Original F-CK-1C shell name kept for rollback/reference.
-            -- collision_shell_name = "RBW",
-            collision_shell_name = "WHEEL_R",
+            -- Map to EDM collision line for right main gear
+            collision_shell_name = "lineRG",
         },
     },
 

@@ -66,3 +66,7 @@ dist/
 # ----------------------------
 bin/*
 !bin/BasicEFM_template.dll
+
+# Ignore temporary trash for Shapes cleaning
+Shapes/trash/
+Shapes/trash/*

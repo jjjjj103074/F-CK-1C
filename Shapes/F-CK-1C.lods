@@ -8,7 +8,7 @@ model =
     -- Original F-CK collision shell kept for rollback/reference.
     -- collision_shell = "idf_hitbox.edm";
     -- Ground-contact diagnostic: wheel-only shell with WHEEL_F/WHEEL_L/WHEEL_R.
-    collision_shell = "IDFTS1.FCK_GROUND_TEST.edm";
+    collision_shell = "F-CK-1C-box.edm";
     -- Previous full-model test kept for reference only.
     -- collision_shell = "su-30mk-collision.FCK_TEST.edm";
     -- Previous collision-only test kept for reference only. DCS rejected it because

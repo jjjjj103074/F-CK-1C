@@ -407,28 +407,30 @@ local F_CK_1C = {
     -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
     Damage = verbose_to_dmg_properties({
-        -- Minimal damage mapping test:
-        -- Keep the table empty for now so we can verify whether the current
-        -- custom hitbox names are what triggers "Corrupt damage model".
-
-        -- Previous custom hitbox-name mapping kept for rollback/reference.
-        -- ["Blap"]      = { critical_damage = 3 },
-        -- ["body"]      = { critical_damage = 10 },
-        -- ["Brap"]      = { critical_damage = 3 },
-        -- ["F_W"]       = { critical_damage = 4 },
-        -- ["FGG"]       = { critical_damage = 3 },
-        -- ["Flap"]      = { critical_damage = 2 },
-        -- ["Flap01"]    = { critical_damage = 2 },
-        -- ["LBW"]       = { critical_damage = 4 },
-        -- ["LC"]        = { critical_damage = 4 },
-        -- ["LGG"]       = { critical_damage = 3 },
-        -- ["M_wing"]    = { critical_damage = 5 },
-        -- ["M_wing01"]  = { critical_damage = 5 },
-        -- ["RBW"]       = { critical_damage = 4 },
-        -- ["RC"]        = { critical_damage = 4 },
-        -- ["RGG"]       = { critical_damage = 3 },
-        -- ["Tail"]      = { critical_damage = 6 },
-        -- ["Wayt"]      = { critical_damage = 3 },
+        -- 碰撞區域損傷映射：名稱需對應 collision_shell EDM 內的 segment 節點。
+        -- 碰撞線 (lineFG/LG/RG) 必須在此註冊，DCS 才能用它們定位起落架接地點，
+        -- 否則只會以重心單點懸掛。
+        ["Blap"]      = { critical_damage = 3 },
+        ["body"]      = { critical_damage = 10 },
+        ["Brap"]      = { critical_damage = 3 },
+        ["F_W"]       = { critical_damage = 4 },
+        ["FGG"]       = { critical_damage = 3 },
+        ["Flap"]      = { critical_damage = 2 },
+        ["Flap01"]    = { critical_damage = 2 },
+        ["LBW"]       = { critical_damage = 4 },
+        ["LC"]        = { critical_damage = 4 },
+        ["LGG"]       = { critical_damage = 3 },
+        ["M_wing"]    = { critical_damage = 5 },
+        ["M_wing01"]  = { critical_damage = 5 },
+        ["RBW"]       = { critical_damage = 4 },
+        ["RC"]        = { critical_damage = 4 },
+        ["RGG"]       = { critical_damage = 3 },
+        ["Tail"]      = { critical_damage = 6 },
+        ["Wayt"]      = { critical_damage = 3 },
+        -- 起落架碰撞線：對應 collision_shell 內的 lineFG/lineLG/lineRG 節點
+        ["lineFG"]    = { critical_damage = 3 },
+        ["lineLG"]    = { critical_damage = 3 },
+        ["lineRG"]    = { critical_damage = 3 },
     }),
 
     -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
