@@ -172,17 +172,17 @@ WPN_AAM_Light = wpnGroup({
 -- 中型空對空
 WPN_AAM_Med = wpnGroup({
     _isAAM = true,
-    { CLSID = "{AIM-7E}",                               Cx_gain = 0.49,  diameter = 200 },                                      -- AIM-7E
-    { CLSID = "{AIM-7E-2}",                             Cx_gain = 0.49,  diameter = 200 },                                      -- AIM-7E-2
-    { CLSID = "{AIM-7F}",                               Cx_gain = 0.49,  diameter = 200 },                                      -- AIM-7F
-    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 },                                      -- AIM-7M
-    { CLSID = "{AIM-7H}",                               Cx_gain = 0.49,  diameter = 200 },                                      -- AIM-7H
-    { CLSID = "{AIM-7P}",                               Cx_gain = 0.49,  diameter = 200 },                                      -- AIM-7P
-    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } },  -- AIM-120B (額外允許翼尖)
-    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } },  -- AIM-120C (額外允許翼尖)
-    { CLSID = "TC-2",                                   Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } },  -- TC-2
-    { CLSID = "TC-2C",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } },  -- TC-2C
-    { CLSID = "TC-2A",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } },  -- TC-2A
+    { CLSID = "{AIM-7E}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E
+    { CLSID = "{AIM-7E-2}",                             Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E-2
+    { CLSID = "{AIM-7F}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7F
+    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7M
+    { CLSID = "{AIM-7H}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7H
+    { CLSID = "{AIM-7P}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7P
+    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120B (額外允許翼尖)
+    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
+    { CLSID = "TC-2",                                   Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2
+    { CLSID = "TC-2C",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2C
+    { CLSID = "TC-2A",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2A
 })
 
 -- 輕型對地（外側以內均可，炸彈、導引均收錄）
@@ -209,13 +209,13 @@ WPN_POD_Targeting = wpnGroup({
 
 -- 訓練／展示莢艙
 WPN_POD_Misc = wpnGroup({
-    { CLSID = "{AIS_ASQ_T50}",                          arg_value = 1, diameter = 127, deny = { STATION_MM } }, -- ACMI pod
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder blue
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder green
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder orange
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder red
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder white
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", arg_value = 1, diameter = 66,  deny = { STATION_MM } }, -- Smokewinder yellow
+    { CLSID = "{AIS_ASQ_T50}",                          arg_value = 1, attach_point_position = { 0.25, 0.0, 0.0 }, diameter = 127,       deny = { STATION_MM } }, -- ACMI pod
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder blue
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder green
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder orange
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder red
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder white
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder yellow
 })
 
 -- 標準副油箱
