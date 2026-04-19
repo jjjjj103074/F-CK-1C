@@ -64,11 +64,13 @@ FM = {
             amortizer_basic_length = 0.53,
             amortizer_reduce_length = 0.53,
 
-            amortizer_spring_force_factor = 990000.0,
+            amortizer_spring_force_factor = 450000.0,
             amortizer_spring_force_factor_rate = 1,
             amortizer_static_force = 47500.0,
-            amortizer_direct_damper_force_factor = 100000,
-            amortizer_back_damper_force_factor = 150000,
+            -- Adjust nose: soften spring and lower damping/rebound to reduce
+            -- the initial harsh bounce while keeping convergence.
+            amortizer_direct_damper_force_factor = 80000,
+            amortizer_back_damper_force_factor = 50000,
 
             anti_skid_installed = true,
 
@@ -86,11 +88,13 @@ FM = {
             arg_post = 0,
             arg_amortizer = 1,
             arg_wheel_yaw = 2,
+            -- Test: explicit contact position (from EDM nearest triplet)
+            pos = { 4.12, -1.912, 0.0 },
             -- Use the actual collision shell segment names present in
             -- Shapes/F-CK-1C-box_new.edm (lineFG/lineLG/lineRG).
             -- Previously referenced WHEEL_F which does not exist in the
             -- active collision shell and causes fallback/single-point contact.
-            collision_shell_name = "lineFG",
+            -- collision_shell_name = "lineFG",
             arg_wheel_damage = 134,
         },
 
@@ -112,13 +116,15 @@ FM = {
 
             amortizer_max_length = 0.45,
             amortizer_basic_length = 0.45,
-            amortizer_reduce_length = 0.40,
+            amortizer_reduce_length = 0.63,
 
-            amortizer_spring_force_factor = 30000.0,
-            amortizer_spring_force_factor_rate = 2,
-            amortizer_static_force = 202394.0,
-            amortizer_direct_damper_force_factor = 80000,
-            amortizer_back_damper_force_factor = 120000,
+            amortizer_spring_force_factor = 480000.0,
+            amortizer_spring_force_factor_rate = 3,
+            -- Moderately reduce left-main spring and static preload; lower
+            -- damping to soften initial contact while keeping damping for convergence.
+            amortizer_static_force = 220000.0,
+            amortizer_direct_damper_force_factor = 90000,
+            amortizer_back_damper_force_factor = 70000,
 
             allowable_hard_contact_length = 0.25,
             anti_skid_installed = true,
@@ -140,7 +146,9 @@ FM = {
             arg_amortizer = 6,
             arg_wheel_yaw = -1,
             -- Map to EDM collision line for left main gear
-            collision_shell_name = "lineLG",
+            -- Use explicit contact pos derived from EDM triplet for testing
+            pos = { -1.185, -1.913, -0.7905 },
+            -- collision_shell_name = "lineLG",
             arg_wheel_damage = 136,
         },
 
@@ -162,13 +170,13 @@ FM = {
 
             amortizer_max_length = 0.45,
             amortizer_basic_length = 0.45,
-            amortizer_reduce_length = 0.40,
+            amortizer_reduce_length = 0.63,
 
-            amortizer_spring_force_factor = 30000.0,
-            amortizer_spring_force_factor_rate = 2,
+            amortizer_spring_force_factor = 480000.0,
+            amortizer_spring_force_factor_rate = 3,
             amortizer_static_force = 202394.0,
-            amortizer_direct_damper_force_factor = 80000,
-            amortizer_back_damper_force_factor = 120000,
+            amortizer_direct_damper_force_factor = 50000,
+            amortizer_back_damper_force_factor = 60000,
 
             allowable_hard_contact_length = 0.25,
             anti_skid_installed = true,
@@ -190,7 +198,9 @@ FM = {
             arg_amortizer = 4,
             arg_wheel_yaw = -1,
             -- Map to EDM collision line for right main gear
-            collision_shell_name = "lineRG",
+            -- Use explicit contact pos derived from EDM triplet for testing
+            pos = { -1.185, -1.913, 0.7905 },
+            -- collision_shell_name = "lineRG",
         },
     },
 

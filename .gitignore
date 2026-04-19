@@ -4,6 +4,7 @@
 Thumbs.db
 Desktop.ini
 .vscode/
+.codex/
 
 # Visual Studio（IDE 暫存）
 .vs/

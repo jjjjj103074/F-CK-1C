@@ -33,11 +33,53 @@ Write-Output "Using MSBuild: $MsBuildPath"
 Write-Output "Solution: $slnPath"
 Write-Output "Configuration: $Configuration | Platform: $Platform"
 
+# Resolve MSBuild path before attempting to run it.
+$resolvedMsBuild = $null
+
+if ($MsBuildPath -ne 'MSBuild.exe') {
+    if (Test-Path $MsBuildPath) { $resolvedMsBuild = $MsBuildPath }
+    else {
+        $cmd = Get-Command -Name $MsBuildPath -ErrorAction SilentlyContinue
+        if ($cmd) { $resolvedMsBuild = $cmd.Source }
+    }
+} else {
+    $cmd = Get-Command -Name $MsBuildPath -ErrorAction SilentlyContinue
+    if ($cmd) { $resolvedMsBuild = $cmd.Source }
+}
+
+if (-not $resolvedMsBuild) {
+    Write-Output "MSBuild not found on PATH. Searching common Visual Studio locations..."
+    $candidates = @(
+        'C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe'
+    )
+    foreach ($p in $candidates) { if (Test-Path $p) { $resolvedMsBuild = $p; break } }
+
+    if (-not $resolvedMsBuild) {
+        try {
+            $found = Get-ChildItem -Path 'C:\Program Files','C:\Program Files (x86)' -Filter 'MSBuild.exe' -Recurse -ErrorAction SilentlyContinue | Sort-Object -Property LastWriteTime -Descending | Select-Object -First 1
+            if ($found) { $resolvedMsBuild = $found.FullName }
+        } catch { }
+    }
+}
+
+if (-not $resolvedMsBuild) {
+    Write-Error "MSBuild.exe not found. Run this script from a Visual Studio Developer Command Prompt or pass -MsBuildPath with the full path to MSBuild.exe."
+    exit 2
+} else {
+    Write-Output "Resolved MSBuild: $resolvedMsBuild"
+    $MsBuildPath = $resolvedMsBuild
+}
+
 try {
     & $MsBuildPath $slnPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform /m /v:m
 }
 catch {
-    Write-Error "MSBuild failed. If MSBuild.exe is not on PATH, run this script from a Visual Studio Developer Command Prompt or pass -MsBuildPath with the full path."
+    Write-Error "MSBuild failed. Command: $MsBuildPath`n$($_.Exception.Message)"
     throw
 }
 

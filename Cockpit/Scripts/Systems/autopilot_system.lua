@@ -82,6 +82,7 @@ local CMD_AT_ON              = CMD.APAutoThrottleOn
 local CMD_AT_OFF             = CMD.APAutoThrottleOff
 local CMD_SPEED_INCREASE    = CMD.APSpeedIncrease
 local CMD_SPEED_DECREASE    = CMD.APSpeedDecrease
+local CMD_AP_MAXPOWER_TOGGLE = CMD.APMaxpowerToggle
 
 -- ========================== Exported Params ==================================
 -- These are read by the EFM C++ side and by HUD/indicators
@@ -93,6 +94,10 @@ local p_ap_pitch_cmd         = get_param_handle("AP_PITCH_CMD")
 local p_ap_roll_cmd          = get_param_handle("AP_ROLL_CMD")
 local p_ap_throttle_cmd      = get_param_handle("AP_THROTTLE_CMD")
 local p_ap_bypass_active     = get_param_handle("AP_BYPASS_ACTIVE")
+-- Maxpower test switch: when set to 0 the EFM will zero engine thrust for ground-coupling tests.
+local p_maxpower_switch     = get_param_handle("FM_MAXPOWER_SWITCH")
+-- Default to enabled
+p_maxpower_switch:set(1)
 local p_ap_target_alt_ft     = get_param_handle("AP_TARGET_ALT_FT")
 local p_ap_target_hdg_deg    = get_param_handle("AP_TARGET_HDG_DEG")
 local p_ap_target_spd_kts    = get_param_handle("AP_TARGET_SPD_KTS")
@@ -811,6 +816,21 @@ function SetCommand(command, value)
             local new_kts = clamp(target_speed * MPS_TO_KTS - AT_SPEED_STEP_KTS, AT_MIN_SPEED_KTS, AT_MAX_SPEED_KTS)
             target_speed = new_kts / MPS_TO_KTS
             dlog("A/T speed target -> " .. string.format("%.0f", new_kts) .. " kts")
+        end
+        return
+    end
+
+    -- ---- Maxpower test toggle (in-game bindable) ----
+    if command == CMD_AP_MAXPOWER_TOGGLE then
+        if value > 0.5 then
+            local cur = p_maxpower_switch:get()
+            if cur > 0.5 then
+                p_maxpower_switch:set(0)
+                dlog("FM_MAXPOWER_SWITCH OFF (test)")
+            else
+                p_maxpower_switch:set(1)
+                dlog("FM_MAXPOWER_SWITCH ON (test)")
+            end
         end
         return
     end

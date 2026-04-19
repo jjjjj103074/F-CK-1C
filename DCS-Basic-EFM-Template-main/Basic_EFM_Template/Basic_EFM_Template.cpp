@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <cstdio>
 #include <string>
+#include <direct.h>
 #include "Inputs.h"
 #include "include/Cockpit/CockpitAPI_Declare.h" // Provides param handle interfacing for use in lua
 #include "include/FM/API_Declare.h"
@@ -1419,6 +1420,9 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 // Conventionally, parameter names are in all-caps.
 void* fm_export_temperature = interface.getParamHandle("FM_TEMPERATURE_C");
 
+// Test hook: Maxpower switch (set from cockpit Lua). When OFF (0) the EFM will zero engine thrust.
+void* fm_param_maxpower = interface.getParamHandle("FM_MAXPOWER_SWITCH");
+
 // Autopilot param handles (read from Lua autopilot_system.lua)
 void* ap_param_master    = interface.getParamHandle("AP_MASTER_ENGAGED");
 void* ap_param_pitch_cmd = interface.getParamHandle("AP_PITCH_CMD");
@@ -1908,8 +1912,37 @@ void ed_fm_simulate(double dt)
 	};
 
 	//add_local_force(thrust, thrust_pos);
+
+	// Apply Maxpower test switch: when set to OFF (<=0.5) zero engine thrust for ground-coupling tests.
+	double maxpower_val = 1.0;
+	if (fm_param_maxpower != nullptr)
+	{
+		maxpower_val = interface.getParamNumber(fm_param_maxpower) > 0.5 ? 1.0 : 0.0;
+	}
+	if (maxpower_val < 0.5)
+	{
+		left_thrust_force = 0.0;
+		right_thrust_force = 0.0;
+	}
+
+	// Apply thrust forces at engine positions
 	add_local_force(Vec3(left_thrust_force, 0, 0), left_engine_pos);
 	add_local_force(Vec3(right_thrust_force, 0, 0), right_engine_pos);
+
+	// Structured debug output: left/right thrust, net moment from engines, suspension forces
+	{
+		char dbgline[512];
+		Vec3 lforce(left_thrust_force, 0.0, 0.0);
+		Vec3 rforce(right_thrust_force, 0.0, 0.0);
+		Vec3 lm = cross(left_engine_pos, lforce);
+		Vec3 rm = cross(right_engine_pos, rforce);
+		Vec3 netm(lm.x + rm.x + common_moment.x, lm.y + rm.y + common_moment.y, lm.z + rm.z + common_moment.z);
+		snprintf(dbgline, sizeof(dbgline), "THRUST L=%.3f R=%.3f NETM=(%.3f,%.3f,%.3f) SUSP=(%.3f,%.3f,%.3f)",
+			left_thrust_force, right_thrust_force,
+			netm.x, netm.y, netm.z,
+			suspension_force_mag[0], suspension_force_mag[1], suspension_force_mag[2]);
+		dbg_susp(dbgline);
+	}
 
 	if (infinite_fuel == false)
 	{
@@ -2831,7 +2864,12 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 
 static void dbg_susp(const char* msg)
 {
-	FILE* f = fopen("C:\\Users\\Ragdoll\\Saved Games\\DCS\\Logs\\fck1c_susp_dbg.txt", "a");
+	const char* debug_dir = "C:\\Users\\Ragdoll\\Saved Games\\DCS\\Mods\\aircraft\\F-CK-1C\\debug";
+	// Ensure debug directory exists (ignore error if it already does)
+	_mkdir(debug_dir);
+	char path[1024];
+	snprintf(path, sizeof(path), "%s\\fck1c_efm_dbg.txt", debug_dir);
+	FILE* f = fopen(path, "a");
 	if (!f) return;
 	fprintf(f, "%s\n", msg);
 	fclose(f);

@@ -41,4 +41,5 @@ device_commands = {
     APAutoThrottleOff   = 3132,
     APSpeedIncrease     = 3133,
     APSpeedDecrease     = 3134,
+    APMaxpowerToggle    = 3135,
 }
