@@ -194,7 +194,7 @@ double	heading = 0;
 double	yaw_rate = 0;
 
 // Damage stuff
-int element_integrity[111]; 
+double element_integrity[111] = {};
 double left_wing_integrity = 1.0;
 double right_wing_integrity = 1.0;
 double tail_integrity = 1.0;
@@ -202,6 +202,20 @@ double left_engine_integrity = 1.0;
 double right_engine_integrity = 1.0;
 double total_damage = 1 - (left_wing_integrity + right_wing_integrity + tail_integrity + 
 						left_engine_integrity + right_engine_integrity) / 5;
+
+static void reset_damage_state()
+{
+	for (int i = 0; i < 111; ++i)
+	{
+		element_integrity[i] = 1.0;
+	}
+	left_wing_integrity = 1.0;
+	right_wing_integrity = 1.0;
+	tail_integrity = 1.0;
+	left_engine_integrity = 1.0;
+	right_engine_integrity = 1.0;
+	total_damage = 0.0;
+}
 
 // Optional parameters set in the options menu
 bool invincible = false; // No damage received if true
@@ -1976,7 +1990,7 @@ void ed_fm_simulate(double dt)
 		Vec3 lm = cross(left_engine_pos, lforce);
 		Vec3 rm = cross(right_engine_pos, rforce);
 		Vec3 netm(lm.x + rm.x + common_moment.x, lm.y + rm.y + common_moment.y, lm.z + rm.z + common_moment.z);
-		snprintf(dbgline, sizeof(dbgline), "THRUST L=%.3f R=%.3f NETM=(%.3f,%.3f,%.3f) SUSP=(%.3f,%.3f,%.3f) MAXPWR ready=%.1f sw=%.1f ENGSW=(%d,%d) THRIN=(%.3f,%.3f) THROUT=(%.3f,%.3f) CORE=(%.3f,%.3f) FUEL=%.1f",
+		snprintf(dbgline, sizeof(dbgline), "THRUST L=%.3f R=%.3f NETM=(%.3f,%.3f,%.3f) SUSP=(%.3f,%.3f,%.3f) MAXPWR ready=%.1f sw=%.1f ENGSW=(%d,%d) THRIN=(%.3f,%.3f) THROUT=(%.3f,%.3f) CORE=(%.3f,%.3f) INTEG wing=(%.3f,%.3f) eng=(%.3f,%.3f) FUEL=%.1f",
 			left_thrust_force, right_thrust_force,
 			netm.x, netm.y, netm.z,
 			suspension_force_mag[0], suspension_force_mag[1], suspension_force_mag[2],
@@ -1985,6 +1999,8 @@ void ed_fm_simulate(double dt)
 			left_throttle_input, right_throttle_input,
 			left_throttle_output, right_throttle_output,
 			left_engine_power_readout, right_engine_power_readout,
+			left_wing_integrity, right_wing_integrity,
+			left_engine_integrity, right_engine_integrity,
 			internal_fuel);
 		dbg_susp(dbgline);
 	}
@@ -2658,12 +2674,12 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[15].f = (float)limit(elevator_command, -1, 1);
 	drawargs[16].f = (float)limit(elevator_command, -1, 1);
 
-	// Flaperons: positive drawarg is trailing-edge down on this model.
-	// Keep flap droop positive, then let differential roll command reduce
-	// droop on the rising wing instead of inverting the entire baseline.
-	const double flaperon_base = limit(flaps_pos, 0.0, 1.0);
-	drawargs[11].f = (float)limit(flaperon_base - limit(aileron_command, 0.0, 1.0), -1, 1);   // Right flaperon
-	drawargs[12].f = (float)limit(flaperon_base - limit(-aileron_command, 0.0, 1.0), -1, 1);  // Left flaperon
+	// On this model, flap-related trailing-edge surfaces use negative drawarg
+	// values for trailing-edge-down deflection. Keep the aerodynamic flap state
+	// positive in FM logic and only invert the visual mapping here.
+	const double flap_visual = -limit(flaps_pos, 0.0, 1.0);
+	drawargs[11].f = (float)limit(flap_visual + aileron_command, -1, 1); // Right flaperon
+	drawargs[12].f = (float)limit(flap_visual - aileron_command, -1, 1); // Left flaperon
 
 	// Rudder(s)
 	drawargs[17].f = (float)limit(rudder_command, -1, 1);
@@ -2684,8 +2700,8 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 
 	// Practical model mapping based on in-sim verification:
 	// 9/10 behave like the leading-edge slot pieces, while 11/12 are the flaperons.
-	drawargs[9].f = (float)limit(flaps_pos, 0, 1);
-	drawargs[10].f = (float)limit(flaps_pos, 0, 1);
+	drawargs[9].f = (float)limit(flap_visual, -1, 1);
+	drawargs[10].f = (float)limit(flap_visual, -1, 1);
 	drawargs[126].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
 	drawargs[127].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
 	drawargs[128].f = (float)limit(slats_pos, 0, 1); // Left leading-edge section
@@ -2990,10 +3006,7 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 // What should be reset when the aircraft is repaired?
 void ed_fm_repair()
 {
-	for (int i = 0; i < 111; i++)
-	{
-		element_integrity[i] = 1.0; // Resets all elements to full integrity.
-	}
+	reset_damage_state();
 }
 
 bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
@@ -3041,6 +3054,7 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 // What should be set on a cold start on the ground?
 void ed_fm_cold_start()
 {
+	ed_fm_repair();
 	reset_suspension_feedback_state();
 	reset_fbw_state();
 	on_ground = false;
@@ -3075,6 +3089,7 @@ void ed_fm_cold_start()
 // What should be set on a hot start on the ground?
 void ed_fm_hot_start()
 {	
+	ed_fm_repair();
 	reset_suspension_feedback_state();
 	reset_fbw_state();
 	on_ground = false;
@@ -3113,6 +3128,7 @@ void ed_fm_hot_start()
 // What should be set on a hot start in the air?
 void ed_fm_hot_start_in_air()
 {
+	ed_fm_repair();
 	reset_suspension_feedback_state();
 	reset_fbw_state();
 	on_ground = false;
