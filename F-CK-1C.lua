@@ -4,6 +4,266 @@
 -- 檔案內使用 DCS 既有 helper，例如 pylon、gun_mount、makeAirplaneCanopyGeometry。
 -- 若某些常數尚未在目前環境定義，需依 DCS 版本或其他模組補齊。
 
+-- ===================== 常數 (Constants) =====================
+
+-- 掛架站位 ID（對應 pylon() 呼叫的站位編號）
+local STATION_RT = 1 -- Right Tip
+local STATION_RO = 2 -- Right Outer
+local STATION_RI = 3 -- Right Inner
+local STATION_MM = 4 -- Center Main
+local STATION_MF = 5 -- Center Front
+local STATION_MB = 6 -- Center Back
+local STATION_LI = 7 -- Left Inner
+local STATION_LO = 8 -- Left Outer
+local STATION_LT = 9 -- Left Tip
+
+-- 動畫 Arg 編號（對應模型骨架動畫通道）
+local ARG_PYLON_RT = 307 -- Right Tip    pylon deploy animation
+local ARG_PYLON_RO = 308 -- Right Outer  pylon deploy animation
+local ARG_PYLON_RI = 309 -- Right Inner  pylon deploy animation
+local ARG_PYLON_MM = 310 -- Center Main  pylon deploy animation
+local ARG_PYLON_LI = 311 -- Left Inner   pylon deploy animation
+local ARG_PYLON_LO = 312 -- Left Outer   pylon deploy animation
+local ARG_PYLON_LT = 313 -- Left Tip     pylon deploy animation
+local ARG_PYLON_MF = 316 -- Center Front pylon deploy animation
+local ARG_PYLON_MB = 317 -- Center Back  pylon deploy animation
+
+-- ===================== 公具函式 =====================
+
+--- 登記武器群組到全域清單，供 buildStation Phase 2 (extra) 掃描。
+--- 原樣回傳 grp，可直接用於 WPN_XXX = wpnGroup({ ... })。
+local _allGroups = {}
+local function wpnGroup(grp)
+    _allGroups[#_allGroups + 1] = grp
+    return grp
+end
+
+--- 建立指定站位的武器清單（武器中心化架構）。
+--- 自動前置 <CLEAN>（arg_value = -1）。
+---
+--- @param stationIds    table   此清單服務的站位 ID 列表，例如 {STATION_RT, STATION_LT}
+--- @param argMode       string  arg_value 填充模式：
+---   "none"     — 不填充
+---   "normal"   — AAM 群組(_isAAM=true) → 1，其他 → 0.1
+---   "diameter" — diameter(mm)/200 映射；無 diameter 者剔除
+--- @param callForbidden table   呼叫層級 forbidden，此清單每件武器都會套用
+--- @param ...           tables  已以 wpnGroup() 登記的武器群
+--- @return table   可直接放入 pylon() 的武器清單
+---
+--- 武器項目可選欄位：
+---   stations = {id,...}  白名單：只允許出現在列出的站位，其他自動剔除
+---   deny     = {id,...}  黑名單：在這些站位直接剔除，不出現在 store list 中
+---   extra    = {id,...}  擴展：即使所在群組不在呼叫中，仍額外注入
+local function buildStation(stationIds, argMode, callForbidden, ...)
+    local function inList(val, list)
+        for _, v in ipairs(list) do
+            if v == val then return true end
+        end
+        return false
+    end
+
+    local function anyMatch(listA, listB)
+        for _, a in ipairs(listA) do
+            if inList(a, listB) then return true end
+        end
+        return false
+    end
+
+    -- 從武器定義建立 entry；若此武器不應出現在 stationIds 則回傳 nil
+    local function makeEntry(wpn, group)
+        -- 篩選：stations 白名單
+        if wpn.stations and not anyMatch(stationIds, wpn.stations) then
+            return nil
+        end
+        -- 篩選：deny 黑名單
+        if wpn.deny and anyMatch(stationIds, wpn.deny) then
+            return nil
+        end
+
+        local entry = {}
+        for k, v in pairs(wpn) do entry[k] = v end
+
+        -- 清除 meta 欄位
+        entry.stations = nil
+        entry.deny     = nil
+        entry.extra    = nil
+
+        -- callForbidden → forbidden（呼叫層級互斥約束）
+        if callForbidden and #callForbidden > 0 then
+            entry.forbidden = {}
+            for _, f in ipairs(callForbidden) do
+                entry.forbidden[#entry.forbidden + 1] = { station = f }
+            end
+        end
+
+        -- arg_value 填充
+        local groupIsAAM = (group._isAAM == true)
+        if argMode == "none" then
+            entry.arg_value = nil
+        elseif argMode == "normal" then
+            if entry.arg_value == nil then
+                entry.arg_value = groupIsAAM and 1 or 0.1
+            end
+        elseif argMode == "diameter" then
+            if entry.diameter == nil then return nil end
+            entry.arg_value = math.max(0, math.min(1, entry.diameter / 200))
+        end
+
+        return entry
+    end
+
+    local result = {}
+    result[#result + 1] = { CLSID = "<CLEAN>", arg_value = -1 }
+    local seen = {}
+
+    -- Phase 1：正常群組
+    for _, group in ipairs({ ... }) do
+        for _, wpn in ipairs(group) do
+            if not seen[wpn.CLSID] then
+                local entry = makeEntry(wpn, group)
+                if entry then
+                    result[#result + 1] = entry
+                    seen[wpn.CLSID] = true
+                end
+            end
+        end
+    end
+
+    -- Phase 2：extra 注入（掃描全域登記的所有群組）
+    for _, group in ipairs(_allGroups) do
+        for _, wpn in ipairs(group) do
+            if wpn.extra and not seen[wpn.CLSID] and anyMatch(stationIds, wpn.extra) then
+                local entry = makeEntry(wpn, group)
+                if entry then
+                    result[#result + 1] = entry
+                    seen[wpn.CLSID] = true
+                end
+            end
+        end
+    end
+
+    return result
+end
+
+-- ===================== 掛載點定義 (Pylon Definition) =====================
+
+-- ---------- 可用掛載設定 ----------
+
+-- 輕型空對空
+WPN_AAM_Light = wpnGroup({
+    _isAAM = true,
+    { CLSID = "{AIM-9L}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9L
+    { CLSID = "{AIM-9P3}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P3
+    { CLSID = "{AIM-9P5}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P5
+    { CLSID = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9X
+    { CLSID = "{AIM-9B}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9B
+    { CLSID = "{AIM-9E}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9E
+    { CLSID = "{AIM-9J}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9J
+    { CLSID = "{9BFD8C90-F7AE-4e90-833B-BFD0CED0E536}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P
+    { CLSID = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9
+    { CLSID = "{AIM-9JULI}",                            Cx_gain = 0.796, diameter = 127 }, -- AIM-9JULI
+    { CLSID = "{Rb_24}",                                Cx_gain = 0.796, diameter = 127 }, -- Rb_24
+    { CLSID = "{Rb_24J}",                               Cx_gain = 0.796, diameter = 127 }, -- Rb_24J
+    { CLSID = "{Rb_74}",                                Cx_gain = 0.796, diameter = 127 }, -- Rb_74
+    { CLSID = "CATM-9M",                                Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
+    { CLSID = "TC-1",                                   Cx_gain = 0.796, diameter = 127 }, -- TC-1
+})
+
+-- 中型空對空
+WPN_AAM_Med = wpnGroup({
+    _isAAM = true,
+    { CLSID = "{AIM-7E}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E
+    { CLSID = "{AIM-7E-2}",                             Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E-2
+    { CLSID = "{AIM-7F}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7F
+    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7M
+    { CLSID = "{AIM-7H}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7H
+    { CLSID = "{AIM-7P}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7P
+    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120B (額外允許翼尖)
+    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
+    { CLSID = "TC-2",                                   Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2
+    { CLSID = "TC-2C",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2C
+    { CLSID = "TC-2A",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2A
+})
+
+-- 輕型對地（外側以內均可，炸彈、導引均收錄）
+WPN_AG_LIGHT = wpnGroup({
+    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}", Cx_gain = 1.563 }, -- Mk-82
+    { CLSID = "{Mk82SNAKEYE}",                          Cx_gain = 1.882 }, -- Mk-82 SNAKEYE
+    { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 }, -- MK-20 Rockeye
+    { CLSID = "{BDU-50LD}",                             Cx_gain = 1.388 }, -- BDU-50LD
+})
+
+-- 重型對地（僅內側及機腹，炸彈、導引、反艦均收錄）
+WPN_AG_HEAVY = wpnGroup({
+    { CLSID = "{BRU33_2X_MK-82}",                       Cx_gain_empty = 0.335, Cx_gain_item = 1.653 }, -- BRU-33 2*Mk-82
+    { CLSID = "{BRU33_2X_MK-82_Snakeye}",               Cx_gain_empty = 0.328, Cx_gain_item = 2.128 }, -- BRU-33 2*Mk-82SE
+    { CLSID = "{BRU33_2X_ROCKEYE}",                     Cx_gain_empty = 0.341, Cx_gain_item = 1.496 }, -- BRU-33 2*Mk-20
+    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260 },                             -- Mk-84
+    { CLSID = "HF-3" },                                                                                -- 雄风三型反艦導彈
+})
+
+-- 標定莢艙
+WPN_POD_Targeting = wpnGroup({
+
+})
+
+-- 訓練／展示莢艙
+WPN_POD_Misc = wpnGroup({
+    { CLSID = "{AIS_ASQ_T50}",                          arg_value = 1, attach_point_position = { 0.25, 0.0, 0.0 }, diameter = 127,       deny = { STATION_MM } }, -- ACMI pod
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder blue
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder green
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder orange
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder red
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder white
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder yellow
+})
+
+-- 標準副油箱
+WPN_TANK_Standard = wpnGroup({
+    { CLSID = "{EFEC8201-B922-11d7-9897-000476191836}" }, -- F18 800加侖副油箱
+    { CLSID = "{0395076D-2F77-4420-9D33-087A4398130B}" }, -- 275 gal drop tank
+})
+
+-- ---------- 掛載點配置 ----------
+
+-- 翼尖
+Tip = buildStation({ STATION_RT, STATION_LT }, "none", {},
+    WPN_AAM_Light,
+    WPN_POD_Misc
+)
+
+-- 機翼外側
+Outer = buildStation({ STATION_RO, STATION_LO }, "normal", {},
+    WPN_AAM_Light,
+    WPN_AAM_Med,
+    WPN_AG_LIGHT,
+    WPN_POD_Misc
+)
+
+-- 機翼內側
+Inner = buildStation({ STATION_RI, STATION_LI }, "normal", {},
+    WPN_AAM_Light,
+    WPN_AAM_Med,
+    WPN_AG_LIGHT,
+    WPN_AG_HEAVY,
+    WPN_TANK_Standard,
+    WPN_POD_Targeting,
+    WPN_POD_Misc
+)
+
+-- 機腹中心掛架
+CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB },
+    WPN_AG_LIGHT,
+    WPN_AG_HEAVY,
+    WPN_TANK_Standard,
+    WPN_POD_Targeting,
+    WPN_POD_Misc
+)
+
+-- 機腹前後掛架
+CenterlineFB = buildStation({ STATION_MF, STATION_MB }, "diameter", { STATION_MM },
+    WPN_AAM_Med
+)
 
 -- ===================== 基本識別資料 (Identification) =====================
 -- Name / DisplayName / shape_table_data 會對應到 DCS 的單位與模型註冊資料。
@@ -139,7 +399,7 @@ local F_CK_1C = {
             -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 補上可拋棄艙罩模型名稱
             -- canopy_pos = {3.2, 0.674, 0}, -- 艙罩參考位置
             pos = { 3.28, -0.08, 0 }, -- 飛行員座位位置 (x, y, z)，單位公尺
-            g_suit = 1.02           -- G-suit 係數，1.0 為標準值
+            g_suit = 1.02             -- G-suit 係數，1.0 為標準值
         }
     },
 
@@ -276,87 +536,76 @@ local F_CK_1C = {
 
     Pylons = {
         -- Right tip
-        pylon(1, 0, -1.109, 0.0015, 4.6,
+        pylon(STATION_RT, 0, -1.109, 0.0015, 4.6,
             {
-                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("1")
+                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("RT"), arg = ARG_PYLON_RT, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonT-R", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonT-R", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
-            },
+            Tip,
             1
         ),
         -- Right outer
-        pylon(2, 0, -0.5744, -0.465, 2.972,
+        pylon(STATION_RO, 0, -0.5744, -0.465, 2.972,
             {
-                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("2"), arg = 308, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("RO"), arg = ARG_PYLON_RO, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonR2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonR2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
-            },
+            Outer,
             2
         ),
         -- Right inner
-        pylon(3, 0, -0.2861, -0.48, 2.05,
+        pylon(STATION_RI, 0, -0.2861, -0.48, 2.05,
             {
-                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("3"), arg = 309, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("RI"), arg = ARG_PYLON_RI, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonR1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonR1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
-            },
+            Inner,
             3
         ),
-        pylon(4, 0, -0.7202, -0.8726, 0,
+        -- Center
+        pylon(STATION_MM, 0, -0.7202, -0.8726, 0,
             {
-                use_full_connector_position = true, connector = "PylonM", DisplayName = _("4"), arg = 310, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = ARG_PYLON_MM, arg_value = -1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonM", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonM", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
-            },
+            CenterlineM,
             4
         ),
-        -- Left inner
-        pylon(5, 0, -0.2861, -0.48, -2.05,
+        -- Center Front
+        pylon(STATION_MF, 0, 0, 0, 0,
             {
-                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("5"), arg = 311, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"), arg = ARG_PYLON_MF, arg_value = 0,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonL1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonL1", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
-            },
+            CenterlineFB,
             5
         ),
-        -- Left outer
-        pylon(6, 0, -0.5744, -0.465, -2.972,
+        -- Center Back
+        pylon(STATION_MB, 0, 0, 0, 0,
             {
-                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("6"), arg = 312, arg_value = 1,
+                use_full_connector_position = true, connector = "PylonB", DisplayName = _("MB"), arg = ARG_PYLON_MB, arg_value = 0,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonL2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonL2", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
-            },
+            CenterlineFB,
             6
         ),
-        -- Left tip
-        pylon(7, 0, -1.109, 0.0015, -4.6,
+        -- Left inner
+        pylon(STATION_LI, 0, -0.2861, -0.48, -2.05,
             {
-                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("7")
+                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("LI"), arg = ARG_PYLON_LI, arg_value = 1,
             },
-            {
-                { CLSID = "<CLEAN>",  arg_value = -1 }, -- Remove pylon
-                { CLSID = "{AIM-9L}", arg_value = 1, connector = "PylonT-L", attach_point_position = { 0.0, 0.0, 0.0 } },  -- AIM-9L
-                { CLSID = "CATM-9M",  arg_value = 1, connector = "PylonT-L", attach_point_position = { 0.0, 0.0, 0.0 } },  -- CATM-9M
-            },
+            Inner,
             7
+        ),
+        -- Left outer
+        pylon(STATION_LO, 0, -0.5744, -0.465, -2.972,
+            {
+                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("LO"), arg = ARG_PYLON_LO, arg_value = 1,
+            },
+            Outer,
+            8
+        ),
+        -- Left tip
+        pylon(STATION_LT, 0, -1.109, 0.0015, -4.6,
+            {
+                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("LT"), arg = ARG_PYLON_LT, arg_value = 1,
+            },
+            Tip,
+            9
         ),
     },
 
