@@ -108,6 +108,10 @@ join(res.keyCommands,
         {                                                             down = device_commands.APAutoThrottleOff,      up = device_commands.APAutoThrottleOff,     cockpit_device_id = devices.AUTOPILOT,  value_down = 1.0, value_up = 0.0, name = _('AP Auto Throttle - OFF'),                 category = { _('Autopilot') } },
         { combos = { { key = 'T', reformers = { 'LAlt', 'LCtrl' } } }, pressed = device_commands.APSpeedIncrease,  up = device_commands.APSpeedIncrease,       cockpit_device_id = devices.AUTOPILOT,  value_pressed = 1.0, value_up = 0.0, name = _('AP Speed Ref - Increase'),             category = { _('Autopilot') } },
         { combos = { { key = 'T', reformers = { 'LAlt', 'LShift' } } }, pressed = device_commands.APSpeedDecrease, up = device_commands.APSpeedDecrease,       cockpit_device_id = devices.AUTOPILOT,  value_pressed = 1.0, value_up = 0.0, name = _('AP Speed Ref - Decrease'),             category = { _('Autopilot') } },
+
+        { combos = { { key = 'Y', reformers = { 'RAlt' } } },       down = device_commands.EngineThrustCutTestToggle, up = device_commands.EngineThrustCutTestToggle, cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('Engine Thrust Cut Test - Toggle'), category = { _('Flight Test') } },
+        {                                                             down = device_commands.EngineThrustCutTestEnable, up = device_commands.EngineThrustCutTestEnable, cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('Engine Thrust Cut Test - Enable (Thrust = 0)'), category = { _('Flight Test') } },
+        {                                                             down = device_commands.EngineThrustCutTestDisable, up = device_commands.EngineThrustCutTestDisable, cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('Engine Thrust Cut Test - Disable (Restore Thrust)'), category = { _('Flight Test') } },
     }
 )
 

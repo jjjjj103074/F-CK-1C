@@ -657,11 +657,19 @@ local F_CK_1C = {
 
     Damage = verbose_to_dmg_properties({
         -- 碰撞區域損傷映射：名稱需對應 collision_shell EDM 內的 segment 節點。
-        -- 碰撞線 (lineFG/LG/RG) 必須在此註冊，DCS 才能用它們定位起落架接地點，
-        -- 否則只會以重心單點懸掛。
+        -- Damage names must stay aligned with the active collision shell.
+        -- Active runtime uses F-CK-1C-F_W, F-CK-1C-LBW, and F-CK-1C-RBW
+        -- as the suspension-aligned gear contact shell nodes.
+        -- lineFG, lineLG, and lineRG must also stay registered here because
+        -- DCS uses those line segments to expose multi-point ground contact.
+        -- Removing them causes the aircraft to collapse to a single ground
+        -- contact point and pivot/rotate around that point.
         ["Blap"]      = { critical_damage = 3 },
         ["body"]      = { critical_damage = 10 },
         ["Brap"]      = { critical_damage = 3 },
+        ["F-CK-1C-F_W"] = { critical_damage = 4 },
+        ["F-CK-1C-LBW"] = { critical_damage = 4 },
+        ["F-CK-1C-RBW"] = { critical_damage = 4 },
         ["F_W"]       = { critical_damage = 4 },
         ["FGG"]       = { critical_damage = 3 },
         ["Flap"]      = { critical_damage = 2 },
@@ -676,7 +684,6 @@ local F_CK_1C = {
         ["RGG"]       = { critical_damage = 3 },
         ["Tail"]      = { critical_damage = 6 },
         ["Wayt"]      = { critical_damage = 3 },
-        -- 起落架碰撞線：對應 collision_shell 內的 lineFG/lineLG/lineRG 節點
         ["lineFG"]    = { critical_damage = 3 },
         ["lineLG"]    = { critical_damage = 3 },
         ["lineRG"]    = { critical_damage = 3 },

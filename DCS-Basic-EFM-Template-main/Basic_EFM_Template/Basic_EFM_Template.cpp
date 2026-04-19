@@ -154,7 +154,10 @@ double  fuel_consumption_since_last_time = 0;
 
 double  atmosphere_density = 101000.0; // Atmosphere/air density (Pascals)
 double	altitude_ASL = 0; // Altitude above sea level
-double	altitude_AGL = 0; // Altitude above gound/surface leveldouble 
+double	altitude_AGL = 0; // Altitude above ground/surface level
+double	surface_height_raw = 0;
+double	surface_height_with_objects = 0;
+unsigned surface_type_raw = 0;
 double	position_world_z = 0; // World position Z for debug
 double	V_scalar = 0; // Velocity scalar
 double  speed_of_sound = 320; // Speed of sound (m/s)
@@ -557,7 +560,11 @@ static const double kFallbackDamping[3] = { 45000.0, 65000.0, 65000.0 };
 static const double kFallbackContactBand[3] = { 0.06, 0.06, 0.06 };
 static const Vec3 kFallbackBellyPoint(0.0, -1.05, 0.0);
 static const bool kEnableFallbackGroundForces = false;
+static const char* kActiveCollisionShellName = "F-CK-1C-box.edm";
+static const char* kActiveGearShellNodes = "F-CK-1C-F_W/F-CK-1C-LBW/F-CK-1C-RBW";
+static const char* kSuspensionModeName = "collision_shell_name";
 static int kFallbackLogDecimation = 0;
+static bool kGroundConfigLogged = false;
 
 static inline bool has_suspension_feedback()
 {
@@ -1422,6 +1429,7 @@ void* fm_export_temperature = interface.getParamHandle("FM_TEMPERATURE_C");
 
 // Test hook: Maxpower switch (set from cockpit Lua). When OFF (0) the EFM will zero engine thrust.
 void* fm_param_maxpower = interface.getParamHandle("FM_MAXPOWER_SWITCH");
+void* fm_param_maxpower_ready = interface.getParamHandle("FM_MAXPOWER_READY");
 
 // Autopilot param handles (read from Lua autopilot_system.lua)
 void* ap_param_master    = interface.getParamHandle("AP_MASTER_ENGAGED");
@@ -1575,6 +1583,20 @@ void ed_fm_simulate(double dt)
 
 	right_aileron_pos.x = center_of_mass.x;
 	right_aileron_pos.y = center_of_mass.y;
+	if (!kGroundConfigLogged)
+	{
+		char cfg_buf[256];
+		snprintf(
+			cfg_buf, sizeof(cfg_buf),
+			"GROUND_CFG shell=%s gear_nodes=%s suspension_mode=%s fallback=%d",
+			kActiveCollisionShellName,
+			kActiveGearShellNodes,
+			kSuspensionModeName,
+			kEnableFallbackGroundForces ? 1 : 0
+		);
+		dbg_susp(cfg_buf);
+		kGroundConfigLogged = true;
+	}
 	}
 
 	// Actuator animation function for the moving parts
@@ -1899,6 +1921,17 @@ void ed_fm_simulate(double dt)
 	// Engine shutdown
 	if (internal_fuel <= 0 || altitude_ASL > 20000)
 	{
+		char shutdown_dbg[256];
+		snprintf(
+			shutdown_dbg, sizeof(shutdown_dbg),
+			"ENG_SHUTDOWN fuel=%.3f asl=%.3f left_sw=%d right_sw=%d",
+			internal_fuel,
+			altitude_ASL,
+			left_engine_switch ? 1 : 0,
+			right_engine_switch ? 1 : 0
+		);
+		dbg_susp(shutdown_dbg);
+
 		left_thrust_force = 0;
 		right_thrust_force = 0;
 		left_afterburner_ratio  = 0.0;
@@ -1913,13 +1946,19 @@ void ed_fm_simulate(double dt)
 
 	//add_local_force(thrust, thrust_pos);
 
-	// Apply Maxpower test switch: when set to OFF (<=0.5) zero engine thrust for ground-coupling tests.
+	// Apply Maxpower test switch only after the Lua side reports the param is initialised.
+	// This prevents a missing/uninitialised cockpit device from silently killing all thrust.
+	double maxpower_ready = 0.0;
 	double maxpower_val = 1.0;
-	if (fm_param_maxpower != nullptr)
+	if (fm_param_maxpower_ready != nullptr)
+	{
+		maxpower_ready = interface.getParamNumber(fm_param_maxpower_ready);
+	}
+	if (maxpower_ready > 0.5 && fm_param_maxpower != nullptr)
 	{
 		maxpower_val = interface.getParamNumber(fm_param_maxpower) > 0.5 ? 1.0 : 0.0;
 	}
-	if (maxpower_val < 0.5)
+	if (maxpower_ready > 0.5 && maxpower_val < 0.5)
 	{
 		left_thrust_force = 0.0;
 		right_thrust_force = 0.0;
@@ -1931,16 +1970,22 @@ void ed_fm_simulate(double dt)
 
 	// Structured debug output: left/right thrust, net moment from engines, suspension forces
 	{
-		char dbgline[512];
+		char dbgline[768];
 		Vec3 lforce(left_thrust_force, 0.0, 0.0);
 		Vec3 rforce(right_thrust_force, 0.0, 0.0);
 		Vec3 lm = cross(left_engine_pos, lforce);
 		Vec3 rm = cross(right_engine_pos, rforce);
 		Vec3 netm(lm.x + rm.x + common_moment.x, lm.y + rm.y + common_moment.y, lm.z + rm.z + common_moment.z);
-		snprintf(dbgline, sizeof(dbgline), "THRUST L=%.3f R=%.3f NETM=(%.3f,%.3f,%.3f) SUSP=(%.3f,%.3f,%.3f)",
+		snprintf(dbgline, sizeof(dbgline), "THRUST L=%.3f R=%.3f NETM=(%.3f,%.3f,%.3f) SUSP=(%.3f,%.3f,%.3f) MAXPWR ready=%.1f sw=%.1f ENGSW=(%d,%d) THRIN=(%.3f,%.3f) THROUT=(%.3f,%.3f) CORE=(%.3f,%.3f) FUEL=%.1f",
 			left_thrust_force, right_thrust_force,
 			netm.x, netm.y, netm.z,
-			suspension_force_mag[0], suspension_force_mag[1], suspension_force_mag[2]);
+			suspension_force_mag[0], suspension_force_mag[1], suspension_force_mag[2],
+			maxpower_ready, maxpower_val,
+			left_engine_switch ? 1 : 0, right_engine_switch ? 1 : 0,
+			left_throttle_input, right_throttle_input,
+			left_throttle_output, right_throttle_output,
+			left_engine_power_readout, right_engine_power_readout,
+			internal_fuel);
 		dbg_susp(dbgline);
 	}
 
@@ -2011,8 +2056,11 @@ void ed_fm_simulate(double dt)
 		char ground_buf[256];
 		snprintf(
 			ground_buf, sizeof(ground_buf),
-			"fallback agl=%.3f vy=%.3f gear=%.2f mass=%.1f fg=%.1f pitch=%.2f roll=%.2f wow=%d valid=%d fallback=%d",
+			"ground agl=%.3f h=%.3f h_obj=%.3f surf=%u vy=%.3f gear=%.2f mass=%.1f fg=%.1f pitch=%.2f roll=%.2f wow=%d valid=%d fallback=%d",
 			altitude_AGL,
+			surface_height_raw,
+			surface_height_with_objects,
+			surface_type_raw,
 			velocity_world.y,
 			gear_pos,
 			current_mass,
@@ -2087,7 +2135,10 @@ void ed_fm_set_surface(double h, // distance between sea level and the surface/g
 	double normal_x, double normal_y, double normal_z // components of normal vector to surface
 )
 {
-	altitude_AGL = altitude_ASL - (h + h_obj * 0.5);
+	surface_height_raw = h;
+	surface_height_with_objects = h_obj;
+	surface_type_raw = surface_type;
+	altitude_AGL = altitude_ASL - h;
 }
 
 // Called before simulation to set up your environment for the next step
@@ -2607,10 +2658,12 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[15].f = (float)limit(elevator_command, -1, 1);
 	drawargs[16].f = (float)limit(elevator_command, -1, 1);
 
-	// Flaperons: flap extension sets the baseline droop, and roll input can only drive them upward from that baseline.
-	const double flaperon_base = -limit(flaps_pos, 0.0, 1.0);
-	drawargs[11].f = (float)limit(flaperon_base + limit(aileron_command, 0.0, 1.0), -1, 1);   // Right flaperon
-	drawargs[12].f = (float)limit(flaperon_base + limit(-aileron_command, 0.0, 1.0), -1, 1);  // Left flaperon
+	// Flaperons: positive drawarg is trailing-edge down on this model.
+	// Keep flap droop positive, then let differential roll command reduce
+	// droop on the rising wing instead of inverting the entire baseline.
+	const double flaperon_base = limit(flaps_pos, 0.0, 1.0);
+	drawargs[11].f = (float)limit(flaperon_base - limit(aileron_command, 0.0, 1.0), -1, 1);   // Right flaperon
+	drawargs[12].f = (float)limit(flaperon_base - limit(-aileron_command, 0.0, 1.0), -1, 1);  // Left flaperon
 
 	// Rudder(s)
 	drawargs[17].f = (float)limit(rudder_command, -1, 1);
@@ -2666,9 +2719,31 @@ void ed_fm_configure(const char * cfg_path)
 	// Not sure what this does.
 }
 
+static inline double engine_display_related_rpm(double core_readout)
+{
+	const double idle_related_rpm = 0.675;
+	const double clamped = limit(core_readout, 0.0, 1.0);
+	if (clamped <= 0.5)
+	{
+		return (clamped / 0.5) * idle_related_rpm;
+	}
+	return idle_related_rpm + ((clamped - 0.5) / 0.5) * (1.0 - idle_related_rpm);
+}
+
 // Interface with default parameters like gear and engines
 double ed_fm_get_param(unsigned index)
 {
+	const double nominal_core_rpm = 14710.0;
+	const double nominal_fan_rpm = 8215.0;
+	const double left_core_related_rpm = engine_display_related_rpm(left_engine_power_readout);
+	const double right_core_related_rpm = engine_display_related_rpm(right_engine_power_readout);
+	const double left_fan_related_rpm = left_engine_switch ? left_core_related_rpm : 0.0;
+	const double right_fan_related_rpm = right_engine_switch ? right_core_related_rpm : 0.0;
+	const double left_core_rpm = left_core_related_rpm * nominal_core_rpm;
+	const double right_core_rpm = right_core_related_rpm * nominal_core_rpm;
+	const double left_fan_rpm = left_fan_related_rpm * nominal_fan_rpm;
+	const double right_fan_rpm = right_fan_related_rpm * nominal_fan_rpm;
+
 	switch (index)
 	{
 		case ED_FM_SUSPENSION_0_WHEEL_YAW: // Nose wheel steering
@@ -2739,41 +2814,47 @@ double ed_fm_get_param(unsigned index)
 
 			// Engine 1, left
 		case ED_FM_ENGINE_1_CORE_RPM:
+			return left_core_rpm;
 		case ED_FM_ENGINE_1_RPM:
+			return left_fan_rpm;
 		case ED_FM_ENGINE_1_COMBUSTION:
-			return left_throttle_output;
+			return left_engine_switch ? limit(left_engine_power_readout * 2.0, 0.0, 1.0) : 0.0;
 
 		case ED_FM_ENGINE_1_RELATED_THRUST: // low frequency rumble
 			return left_throttle_output;
 		case ED_FM_ENGINE_1_CORE_RELATED_THRUST:
-		case ED_FM_ENGINE_1_RELATED_RPM:
 			return left_throttle_output;
+		case ED_FM_ENGINE_1_RELATED_RPM:
+			return left_fan_related_rpm;
 		case ED_FM_ENGINE_1_CORE_RELATED_RPM: // RPM readout and core sound
-			return left_engine_power_readout;
+			return left_core_related_rpm;
 
 		case ED_FM_ENGINE_1_CORE_THRUST:
 		case ED_FM_ENGINE_1_THRUST:
-			return left_throttle_output;
+			return left_thrust_force;
 		case ED_FM_ENGINE_1_TEMPERATURE:
 			return (pow(left_engine_power_readout, 3) * 500) + atmosphere_temperature;
 
 			// Engine 2, right
 		case ED_FM_ENGINE_2_CORE_RPM:
+			return right_core_rpm;
 		case ED_FM_ENGINE_2_RPM:
+			return right_fan_rpm;
 		case ED_FM_ENGINE_2_COMBUSTION:
-			return right_throttle_output;
+			return right_engine_switch ? limit(right_engine_power_readout * 2.0, 0.0, 1.0) : 0.0;
 
 		case ED_FM_ENGINE_2_RELATED_THRUST: // low frequency rumble
 			return right_throttle_output;
 		case ED_FM_ENGINE_2_CORE_RELATED_THRUST:
-		case ED_FM_ENGINE_2_RELATED_RPM:
 			return right_throttle_output;
+		case ED_FM_ENGINE_2_RELATED_RPM:
+			return right_fan_related_rpm;
 		case ED_FM_ENGINE_2_CORE_RELATED_RPM: // RPM readout and core sound
-			return right_engine_power_readout;
+			return right_core_related_rpm;
 
 		case ED_FM_ENGINE_2_CORE_THRUST:
 		case ED_FM_ENGINE_2_THRUST:
-			return right_throttle_output;
+			return right_thrust_force;
 		case ED_FM_ENGINE_2_TEMPERATURE:
 			return (pow(right_engine_power_readout, 3) * 500) + atmosphere_temperature;
 		}
