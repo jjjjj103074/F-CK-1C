@@ -144,6 +144,7 @@ double	gear_pos = 0;
 double	wheel_brake = 0; 
 double	wheel_brake_left = 0;
 double	wheel_brake_right = 0;
+double	wheel_spin[3] = { 0.0, 0.0, 0.0 };
 int	carrier_pos = 0;
 double	current_mass = 9000.0;
 
@@ -1639,7 +1640,7 @@ void ed_fm_simulate(double dt)
 		}
 	}
 	flaps_pos = limit(actuator(flaps_pos, flap_target, -0.002, 0.002), 0, 1); // Flaps
-	slats_pos = limit(actuator(slats_pos, (alpha - 6.0) / 12.0, -0.003, 0.003), 0, 1); // Slats, starts moving at 6 degrees alpha
+	slats_pos = limit(actuator(slats_pos, flap_target, -0.003, 0.003), 0, 1); // Slats track the flap command on the F-CK-1C
 
 #pragma region AERODYNAMICS
 	airspeed.x = velocity_world.x - wind.x;
@@ -1647,6 +1648,21 @@ void ed_fm_simulate(double dt)
 	airspeed.z = velocity_world.z - wind.z;
 
 	V_scalar = sqrt(airspeed.x * airspeed.x + airspeed.y * airspeed.y + airspeed.z * airspeed.z);
+
+	const double ground_speed = sqrt(velocity_world.x * velocity_world.x + velocity_world.z * velocity_world.z);
+	const double spin_enable = ((gear_pos > 0.2) && (altitude_AGL < 2.5)) ? 1.0 : 0.0;
+	for (int i = 0; i < 3; ++i)
+	{
+		const double wheel_circumference = 2.0 * pi * kFallbackWheelRadius[i];
+		if (wheel_circumference > 1e-6)
+		{
+			wheel_spin[i] = fmod(wheel_spin[i] + (ground_speed / wheel_circumference) * dt * spin_enable, 1.0);
+			if (wheel_spin[i] < 0.0)
+			{
+				wheel_spin[i] += 1.0;
+			}
+		}
+	}
 
 	mach = V_scalar / speed_of_sound;
 
@@ -2700,16 +2716,14 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 
 	// Practical model mapping based on in-sim verification:
 	// 9/10 behave like the leading-edge slot pieces, while 11/12 are the flaperons.
-	drawargs[9].f = (float)limit(flap_visual, -1, 1);
-	drawargs[10].f = (float)limit(flap_visual, -1, 1);
-	drawargs[126].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
-	drawargs[127].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
-	drawargs[128].f = (float)limit(slats_pos, 0, 1); // Left leading-edge section
-	drawargs[129].f = (float)limit(slats_pos, 0, 1); // Left leading-edge section
+	const double slat_visual = limit(slats_pos, 0.0, 1.0);
+	drawargs[9].f = (float)slat_visual;
+	drawargs[10].f = (float)slat_visual;
 
-	// Slats
-	drawargs[13].f = (float)limit(slats_pos, 0, 1);
-	drawargs[14].f = (float)limit(slats_pos, 0, 1);
+	// Wheel spin bones: 76 = nose, 101 = left main, 102 = right main.
+	drawargs[76].f = (float)wheel_spin[0];
+	drawargs[101].f = (float)wheel_spin[1];
+	drawargs[102].f = (float)wheel_spin[2];
 
 	/*
 	Hints on some aircraft args where applicable
@@ -2769,6 +2783,13 @@ double ed_fm_get_param(unsigned index)
 			const double nws_gain = (nose_turn_enabled && (V_scalar < 70.0)) ? 0.75 : 0.0;
 			return nws_valid ? (limit(yaw_input, -1.0, 1.0) * nws_gain) : 0.0;
 		}
+
+		case ED_FM_SUSPENSION_0_WHEEL_SELF_ATTITUDE:
+			return wheel_spin[0];
+		case ED_FM_SUSPENSION_1_WHEEL_SELF_ATTITUDE:
+			return wheel_spin[1];
+		case ED_FM_SUSPENSION_2_WHEEL_SELF_ATTITUDE:
+			return wheel_spin[2];
 
 		case ED_FM_SUSPENSION_0_RELATIVE_BRAKE_MOMENT:
 			return 1e-4;
@@ -3102,6 +3123,7 @@ void ed_fm_hot_start()
 	// Flaps down
 	flap_mode = FLAP_MODE_DOWN;
 	flaps_pos = 1;
+	slats_pos = 1;
 
 	// Engines on at idle/minimum throttle
 	left_engine_switch = true;
