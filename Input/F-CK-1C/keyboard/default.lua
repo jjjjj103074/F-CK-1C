@@ -42,7 +42,9 @@ join(res.keyCommands,
         { combos = { { key = 'F', reformers = { 'RAlt' } } },       down = 3012,                                   name = _('Flap 3-Pos - AUTO'),              category = { _('Throttle Panel'), _('Flight Control') } },
         { combos = { { key = 'F', reformers = { 'RShift' } } },     down = 3021,                                   name = _('Flap 3-Pos - DOWN'),              category = { _('Throttle Panel'), _('Flight Control') } },
 
-        { combos = { { key = 'N' } },                               down = 3022,                                   name = _('Nose Turn Switch - TOGGLE'),      category = { _('Systems') } },
+        { combos = { { key = 'N' } },                               down = 3022,                                   name = _('Nose Wheel Steering - Toggle'),   category = { _('Systems') } },
+        { combos = { { key = 'N', reformers = { 'LCtrl' } } },      down = 3013,                                   name = _('Nose Wheel Steering - OFF'),      category = { _('Systems') } },
+        { combos = { { key = 'N', reformers = { 'LShift' } } },     down = 3015,                                   name = _('Nose Wheel Steering - ON'),       category = { _('Systems') } },
 
         { combos = { { key = 'Space', reformers = { 'LAlt' } } },   down = device_commands.TriggerFirstStage,      up = device_commands.TriggerFirstStage,     cockpit_device_id = devices.CMS,                                            value_down = 1.0,                                          value_up = 0.0, name = _('HOTAS Trigger - First Stage'),                         category = { _('Weapons') } },
         { combos = { { key = 'Space' } },                           down = device_commands.TriggerSecondStage,     up = device_commands.TriggerSecondStage,    cockpit_device_id = devices.CMS,                                            value_down = 1.0,                                          value_up = 0.0, name = _('HOTAS Trigger - Second Stage (Gun Fire)'),       category = { _('Weapons') } },

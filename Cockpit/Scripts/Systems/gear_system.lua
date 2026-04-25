@@ -17,7 +17,7 @@ function update()
 
     -- 3. 實際控制 (Output Control)
     -- 直接把讀到的數值，塞給動畫參數
-    set_aircraft_draw_argument_value(arguments["steering_angle_nose_gear"], raw_rudder / -85)
+    -- Nose wheel steering arg 2 is driven by the EFM.
 
     -- -- 除錯用：印出數值到螢幕上 (測試完可以刪掉)
     -- print_message_to_user("Rudder Input: " .. tostring(raw_rudder))

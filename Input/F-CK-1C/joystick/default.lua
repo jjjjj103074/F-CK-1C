@@ -95,6 +95,8 @@ join(res.keyCommands,
         { down = 3021, name = _('Flap 3-Pos - DOWN'),             category = { _('Throttle Panel'), _('Flight Control') } },
 
         { down = 3022, name = _('Nose Wheel Steering - Toggle'),  category = { _('Systems') } },
+        { down = 3013, name = _('Nose Wheel Steering - OFF'),     category = { _('Systems') } },
+        { down = 3015, name = _('Nose Wheel Steering - ON'),      category = { _('Systems') } },
 
         -- Autopilot
         { down = device_commands.APMasterToggle,        up = device_commands.APMasterToggle,        cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _('AP Master - Toggle'),             category = { _('Autopilot') } },
