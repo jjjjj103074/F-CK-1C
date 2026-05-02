@@ -685,12 +685,12 @@ local F_CK_1C = {
         ["BODY_Ho"] = { critical_damage = 3 },
         ["BODY_VeL"] = { critical_damage = 3 },
         ["BODY_VeR"] = { critical_damage = 3 },
-        ["FG_W"] = { critical_damage = 4 },
-        ["LG_W"] = { critical_damage = 4 },
-        ["lineFG"] = { critical_damage = 3 },
-        ["lineLG"] = { critical_damage = 3 },
-        ["lineRG"] = { critical_damage = 3 },
-        ["RG_W"] = { critical_damage = 4 },
+        --["FG_W"] = { critical_damage = 4 },  -- TEST: disabled to probe gear-line structural contact
+        --["LG_W"] = { critical_damage = 4 },  -- TEST: disabled to probe gear-line structural contact
+        --["lineFG"] = { critical_damage = 3 },  -- TEST: disabled to probe structural line contact
+        --["lineLG"] = { critical_damage = 3 },  -- TEST: disabled to probe structural line contact
+        --["lineRG"] = { critical_damage = 3 },  -- TEST: disabled to probe structural line contact
+        --["RG_W"] = { critical_damage = 4 },  -- TEST: disabled to probe gear-line structural contact
         ["TW_L"] = { critical_damage = 3 },
         ["TW_R"] = { critical_damage = 3 },
         ["wing_L"] = { critical_damage = 5 },

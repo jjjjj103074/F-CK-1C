@@ -9,7 +9,7 @@
 
 . EXAMPLE
     .\build_dll.ps1
-    .\build_dll.ps1 -MsBuildPath 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe'
+    .\build_dll.ps1 -MsBuildPath '<path-to-MSBuild.exe>'
 #>
 
 param(
@@ -49,19 +49,25 @@ if ($MsBuildPath -ne 'MSBuild.exe') {
 
 if (-not $resolvedMsBuild) {
     Write-Output "MSBuild not found on PATH. Searching common Visual Studio locations..."
-    $candidates = @(
-        'C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe',
-        'C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe',
-        'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe',
-        'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe',
-        'C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe',
-        'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe'
-    )
+    $programFilesRoots = @(@($env:ProgramFiles, ${env:ProgramFiles(x86)}) |
+        Where-Object { $_ -and (Test-Path $_) } |
+        Select-Object -Unique)
+    $vsYears = @('2022', '2019')
+    $vsEditions = @('Community', 'Professional', 'Enterprise', 'BuildTools')
+    $candidates = @()
+    foreach ($root in $programFilesRoots) {
+        foreach ($year in $vsYears) {
+            foreach ($edition in $vsEditions) {
+                $candidates += Join-Path $root "Microsoft Visual Studio\$year\$edition\MSBuild\Current\Bin\MSBuild.exe"
+                $candidates += Join-Path $root "Microsoft Visual Studio\$year\$edition\MSBuild\Current\Bin\amd64\MSBuild.exe"
+            }
+        }
+    }
     foreach ($p in $candidates) { if (Test-Path $p) { $resolvedMsBuild = $p; break } }
 
-    if (-not $resolvedMsBuild) {
+    if (-not $resolvedMsBuild -and $programFilesRoots.Count -gt 0) {
         try {
-            $found = Get-ChildItem -Path 'C:\Program Files','C:\Program Files (x86)' -Filter 'MSBuild.exe' -Recurse -ErrorAction SilentlyContinue | Sort-Object -Property LastWriteTime -Descending | Select-Object -First 1
+            $found = Get-ChildItem -Path $programFilesRoots -Filter 'MSBuild.exe' -Recurse -ErrorAction SilentlyContinue | Sort-Object -Property LastWriteTime -Descending | Select-Object -First 1
             if ($found) { $resolvedMsBuild = $found.FullName }
         } catch { }
     }
