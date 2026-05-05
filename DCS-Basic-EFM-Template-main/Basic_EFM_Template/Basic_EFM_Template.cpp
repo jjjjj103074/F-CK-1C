@@ -243,6 +243,18 @@ bool sim_inititalised = false;
 double left_nozzle_aperture = 0.80;
 double right_nozzle_aperture = 0.80;
 
+// 臨時用：專門記錄動畫與物理同步的獨立 Log
+static void suspension_debug_log(const char* msg)
+{
+	// 檔案會獨立生成在你的 DCS Logs 資料夾下
+	const char* path = "C:\\Users\\User\\Saved Games\\DCS\\Logs\\susp_debug.log";
+	FILE* f = fopen(path, "a");
+	if (!f) return;
+
+	fprintf(f, "%s\n", msg);
+	fclose(f);
+}
+
 static double remap_range(double value, double in_min, double in_max, double out_min, double out_max)
 {
 	if (in_max <= in_min)
@@ -582,8 +594,8 @@ static const Vec3 kFallbackGearPoints[3] = {
 };
 
 static const double kFallbackWheelRadius[3] = { 0.2286, 0.3048, 0.3048 };
-static const double kFallbackSpring[3] = { 90000.0, 420000.0, 420000.0 };
-static const double kFallbackDamping[3] = { 140000.0, 90000.0, 90000.0 };
+static const double kFallbackSpring[3] = { 1000000.0, 3200000.0, 3200000.0 };
+static const double kFallbackDamping[3] = { 12000.0, 20000.0, 20000.0 };
 static const double kFallbackContactBand[3] = { 0.015, 0.055, 0.055 };
 static const Vec3 kFallbackBellyPoint(0.0, -1.05, 0.0);
 static const bool kEnableFallbackGroundForces = false;
@@ -592,7 +604,7 @@ static const double kSuspProbeInterval = 0.25;
 static const bool kStartupSuspProbeMode = true;
 static const double kStartupSuspProbeDuration = 5.0;
 static const double kStartupSuspForceEpsilon = 1e-3;
-static const double kSuspensionVisualTravel[3] = { 0.53, 0.45, 0.45 };
+static const double kSuspensionVisualTravel[3] = { 0.2, 0.184, 0.184 };
 static const char* kActiveCollisionShellName = "F-CK-1C-box.edm";
 static const char* kActiveGearShellNodes = "F-CK-1C-F_W/F-CK-1C-LBW/F-CK-1C-RBW";
 static const char* kSuspensionModeName = "native_collision_shell_name";
@@ -610,15 +622,15 @@ static bool kStartupSuspSeenAnyCompression = false;
 static bool kStartupSuspLoggedCompAllZero = false;
 
 static const char* kSuspOriginalWheelNodes[3] = {
-	"F-CK-1C-F_W",
-	"F-CK-1C-LBW",
-	"F-CK-1C-RBW"
+	"WHEEL_F",
+	"WHEEL_L",
+	"WHEEL_R"
 };
 
 static const char* kSuspModelViewerWheelNodes[3] = {
-	"FG_W",
-	"LG_W",
-	"RG_W"
+	"WHEEL_F",
+	"WHEEL_L",
+	"WHEEL_R"
 };
 
 static bool config_flag_is_true(const char* flag_name)
@@ -944,12 +956,12 @@ static inline bool any_fallback_wow()
 
 static inline double suspension_visual_arg(int idx)
 {
-	if (idx < 0 || idx >= 3 || !suspension_feedback_valid[idx] || kSuspensionVisualTravel[idx] <= 1e-6)
+	if (idx < 0 || idx >= 3 || !suspension_feedback_valid[idx])
 	{
 		return 0.0;
 	}
 
-	return limit(suspension_compression[idx] / kSuspensionVisualTravel[idx], 0.0, 1.0) * limit(gear_pos, 0.0, 1.0);
+	return limit(suspension_compression[idx], 0.0, 1.0) * limit(gear_pos, 0.0, 1.0);
 }
 
 static inline double fallback_world_vertical_offset(const Vec3& point)
@@ -2695,13 +2707,13 @@ void ed_fm_simulate(double dt)
 			shake_amplitude += (mach - (FM_DATA::mach_max * 0.8)) / 2;
 	};
 
-	if (on_ground && gear_pos > 0.5 && fabs(nose_wheel_steering) > 0.01)
-	{
-		const double speed_ms = limit(sqrt(velocity_body.x * velocity_body.x + velocity_body.z * velocity_body.z), 0.0, 55.0);
-		const double steering_gain = limit(1.0 - (speed_ms / 70.0), 0.15, 1.0);
-		const double side_force = current_mass * 9.81 * 0.10 * steering_gain * nose_wheel_steering;
-		add_local_force(Vec3(0.0, 0.0, side_force), kFallbackGearPoints[0]);
-	}
+	// if (on_ground && gear_pos > 0.5 && fabs(nose_wheel_steering) > 0.01)
+	// {
+	// 	const double speed_ms = limit(sqrt(velocity_body.x * velocity_body.x + velocity_body.z * velocity_body.z), 0.0, 55.0);
+	// 	const double steering_gain = limit(1.0 - (speed_ms / 70.0), 0.15, 1.0);
+	// 	const double side_force = current_mass * 9.81 * 0.10 * steering_gain * nose_wheel_steering;
+	// 	add_local_force(Vec3(0.0, 0.0, side_force), kFallbackGearPoints[0]);
+	// }
 #pragma endregion
 
 	sim_inititalised = true; // The first step is complete
@@ -3265,9 +3277,9 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[3].f = (float)limit(gear_pos, 0, 1); // Right
 	drawargs[5].f = (float)limit(gear_pos, 0, 1); // Left
 	drawargs[2].f = (float)limit(nose_wheel_steering, -1, 1); // Nose wheel steering
-	drawargs[1].f = (float)suspension_visual_arg(0); // Nose shock absorber
-	drawargs[6].f = (float)suspension_visual_arg(1); // Left main shock absorber
-	drawargs[4].f = (float)suspension_visual_arg(2); // Right main shock absorber
+	// drawargs[1].f = (float)suspension_visual_arg(0); // Nose shock absorber
+	// drawargs[6].f = (float)suspension_visual_arg(1); // Left main shock absorber
+	// drawargs[4].f = (float)suspension_visual_arg(2); // Right main shock absorber
 
 	// Elevators/stabilators
 	drawargs[15].f = (float)limit(elevator_command, -1, 1);
@@ -3566,6 +3578,8 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 		invincible ? 1 : 0
 	);
 	dbg_susp(buf);
+
+	suspension_debug_log(buf);
 }
 
 // ed_fm_suspension_feedback will be defined below with debug logging.
@@ -3634,6 +3648,16 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 		suspension_wow[idx] ? 1 : 0
 	);
 	dbg_susp(buf);
+
+	snprintf(
+		buf, sizeof(buf),
+		"susp idx=%d comp_norm=%.6f arg_val=%.3f speed=%.3f",
+		idx,
+		suspension_compression[idx],
+		(float)suspension_visual_arg(idx),
+		info->wheel_speed_X
+	);
+	suspension_debug_log(buf);
 }
 
 // What should be reset when the aircraft is repaired?
