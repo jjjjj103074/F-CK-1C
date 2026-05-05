@@ -26,6 +26,270 @@ static const char* FCK1C_EFM_VERSION_DATE = "2026-04-01";
 
 namespace FM 
 {
+static const size_t kFckPathMax = 1024;
+static char g_mod_root_path[kFckPathMax] = ".";
+static char g_fm_config_path[kFckPathMax] = "FM\\config.lua";
+static bool g_project_paths_initialized = false;
+
+static void copy_path(char* out, size_t out_size, const char* value)
+{
+	if (!out || out_size == 0)
+	{
+		return;
+	}
+
+	snprintf(out, out_size, "%s", value ? value : "");
+}
+
+static void normalize_path_separators(char* path)
+{
+	if (!path)
+	{
+		return;
+	}
+
+	for (char* p = path; *p; ++p)
+	{
+		if (*p == '/')
+		{
+			*p = '\\';
+		}
+	}
+}
+
+static bool is_path_separator(char c)
+{
+	return c == '\\' || c == '/';
+}
+
+static bool path_file_exists(const char* path)
+{
+	FILE* f = fopen(path, "rb");
+	if (!f)
+	{
+		return false;
+	}
+
+	fclose(f);
+	return true;
+}
+
+static void path_dirname(char* path)
+{
+	if (!path || path[0] == '\0')
+	{
+		return;
+	}
+
+	normalize_path_separators(path);
+
+	size_t len = strlen(path);
+	while (len > 1 && is_path_separator(path[len - 1]))
+	{
+		path[--len] = '\0';
+	}
+
+	char* last_sep = strrchr(path, '\\');
+	if (!last_sep)
+	{
+		copy_path(path, kFckPathMax, ".");
+		return;
+	}
+
+	if (last_sep == path)
+	{
+		path[1] = '\0';
+		return;
+	}
+
+	if (last_sep > path && path[1] == ':' && last_sep == path + 2)
+	{
+		path[3] = '\0';
+		return;
+	}
+
+	*last_sep = '\0';
+}
+
+static bool path_has_component_suffix(const char* path, const char* component)
+{
+	if (!path || !component)
+	{
+		return false;
+	}
+
+	const size_t path_len = strlen(path);
+	const size_t component_len = strlen(component);
+	if (path_len < component_len)
+	{
+		return false;
+	}
+
+	const char* suffix = path + path_len - component_len;
+	if (_stricmp(suffix, component) != 0)
+	{
+		return false;
+	}
+
+	return suffix == path || is_path_separator(*(suffix - 1));
+}
+
+static void build_path(char* out, size_t out_size, const char* base, const char* relative)
+{
+	if (!out || out_size == 0)
+	{
+		return;
+	}
+
+	if (!base || base[0] == '\0' || strcmp(base, ".") == 0)
+	{
+		snprintf(out, out_size, "%s", relative ? relative : "");
+	}
+	else
+	{
+		const size_t base_len = strlen(base);
+		const bool needs_sep = base_len > 0 && !is_path_separator(base[base_len - 1]);
+		snprintf(out, out_size, "%s%s%s", base, needs_sep ? "\\" : "", relative ? relative : "");
+	}
+
+	normalize_path_separators(out);
+}
+
+static void set_project_paths_from_config(const char* cfg_path)
+{
+	if (!cfg_path || cfg_path[0] == '\0')
+	{
+		return;
+	}
+
+	copy_path(g_fm_config_path, sizeof(g_fm_config_path), cfg_path);
+	normalize_path_separators(g_fm_config_path);
+
+	char fm_dir[kFckPathMax];
+	copy_path(fm_dir, sizeof(fm_dir), g_fm_config_path);
+	path_dirname(fm_dir);
+
+	if (path_has_component_suffix(fm_dir, "FM"))
+	{
+		copy_path(g_mod_root_path, sizeof(g_mod_root_path), fm_dir);
+		path_dirname(g_mod_root_path);
+	}
+	else
+	{
+		copy_path(g_mod_root_path, sizeof(g_mod_root_path), fm_dir);
+	}
+}
+
+static bool try_set_mod_root(const char* root)
+{
+	char cfg_path[kFckPathMax];
+	build_path(cfg_path, sizeof(cfg_path), root, "FM\\config.lua");
+	if (!path_file_exists(cfg_path))
+	{
+		return false;
+	}
+
+	copy_path(g_mod_root_path, sizeof(g_mod_root_path), root);
+	normalize_path_separators(g_mod_root_path);
+	copy_path(g_fm_config_path, sizeof(g_fm_config_path), cfg_path);
+	return true;
+}
+
+static void initialize_project_paths()
+{
+	if (g_project_paths_initialized)
+	{
+		return;
+	}
+	g_project_paths_initialized = true;
+
+	if (path_file_exists(g_fm_config_path))
+	{
+		set_project_paths_from_config(g_fm_config_path);
+		return;
+	}
+
+	HMODULE module = nullptr;
+	if (GetModuleHandleExA(
+		GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		reinterpret_cast<LPCSTR>(&g_project_paths_initialized),
+		&module))
+	{
+		char module_path[kFckPathMax];
+		const DWORD len = GetModuleFileNameA(module, module_path, (DWORD)sizeof(module_path));
+		if (len > 0 && len < sizeof(module_path))
+		{
+			normalize_path_separators(module_path);
+
+			char module_dir[kFckPathMax];
+			copy_path(module_dir, sizeof(module_dir), module_path);
+			path_dirname(module_dir);
+
+			char root[kFckPathMax];
+			copy_path(root, sizeof(root), module_dir);
+
+			if (path_has_component_suffix(root, "bin"))
+			{
+				path_dirname(root);
+			}
+			else if (path_has_component_suffix(root, "vc100.debug") || path_has_component_suffix(root, "vc100.release"))
+			{
+				path_dirname(root);
+				path_dirname(root);
+				path_dirname(root);
+			}
+
+			if (try_set_mod_root(root))
+			{
+				return;
+			}
+
+			copy_path(root, sizeof(root), module_dir);
+			path_dirname(root);
+			path_dirname(root);
+			path_dirname(root);
+			if (try_set_mod_root(root))
+			{
+				return;
+			}
+		}
+	}
+}
+
+static const char* active_fm_config_path()
+{
+	initialize_project_paths();
+	return g_fm_config_path;
+}
+
+static void build_mod_path(char* out, size_t out_size, const char* relative)
+{
+	initialize_project_paths();
+	build_path(out, out_size, g_mod_root_path, relative);
+}
+
+static bool resolve_saved_games_logs_dir(char* out, size_t out_size)
+{
+	const char* userprofile = getenv("USERPROFILE");
+	if (!userprofile || userprofile[0] == '\0')
+	{
+		const char* home_drive = getenv("HOMEDRIVE");
+		const char* home_path = getenv("HOMEPATH");
+		if (home_drive && home_drive[0] != '\0' && home_path && home_path[0] != '\0')
+		{
+			char home[kFckPathMax];
+			snprintf(home, sizeof(home), "%s%s", home_drive, home_path);
+			build_path(out, out_size, home, "Saved Games\\DCS\\Logs");
+			return true;
+		}
+
+		return false;
+	}
+
+	build_path(out, out_size, userprofile, "Saved Games\\DCS\\Logs");
+	return true;
+}
+
 Vec3	common_force;
 Vec3	common_moment;
 Vec3    center_of_mass;
@@ -635,8 +899,7 @@ static const char* kSuspModelViewerWheelNodes[3] = {
 
 static bool config_flag_is_true(const char* flag_name)
 {
-	const char* cfg_path = "C:\\Users\\Ragdoll\\Saved Games\\DCS\\Mods\\aircraft\\F-CK-1C\\FM\\config.lua";
-	FILE* f = fopen(cfg_path, "rb");
+	FILE* f = fopen(active_fm_config_path(), "rb");
 	if (!f)
 	{
 		return false;
@@ -660,8 +923,7 @@ static bool config_flag_is_true(const char* flag_name)
 
 static double config_number_or_default(const char* key_name, double default_value)
 {
-	const char* cfg_path = "C:\\Users\\Ragdoll\\Saved Games\\DCS\\Mods\\aircraft\\F-CK-1C\\FM\\config.lua";
-	FILE* f = fopen(cfg_path, "rb");
+	FILE* f = fopen(active_fm_config_path(), "rb");
 	if (!f)
 	{
 		return default_value;
@@ -699,8 +961,7 @@ static void config_string_or_default(const char* key_name, const char* default_v
 
 	snprintf(out, out_size, "%s", default_value ? default_value : "");
 
-	const char* cfg_path = "C:\\Users\\Ragdoll\\Saved Games\\DCS\\Mods\\aircraft\\F-CK-1C\\FM\\config.lua";
-	FILE* f = fopen(cfg_path, "rb");
+	FILE* f = fopen(active_fm_config_path(), "rb");
 	if (!f)
 	{
 		return;
@@ -3341,7 +3602,14 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 
 void ed_fm_configure(const char * cfg_path)
 {
-	// Not sure what this does.
+	if (cfg_path && cfg_path[0] != '\0')
+	{
+		set_project_paths_from_config(cfg_path);
+		g_project_paths_initialized = true;
+		return;
+	}
+
+	initialize_project_paths();
 }
 
 static inline double engine_display_related_rpm(double core_readout)
@@ -3586,7 +3854,8 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 
 static void dbg_susp(const char* msg)
 {
-	const char* debug_dir = "C:\\Users\\Ragdoll\\Saved Games\\DCS\\Mods\\aircraft\\F-CK-1C\\debug";
+	char debug_dir[kFckPathMax];
+	build_mod_path(debug_dir, sizeof(debug_dir), "debug");
 	// Ensure debug directory exists (ignore error if it already does)
 	_mkdir(debug_dir);
 	char path[1024];
@@ -3599,14 +3868,11 @@ static void dbg_susp(const char* msg)
 
 static void susp_probe_log(const char* msg)
 {
-	const char* userprofile = getenv("USERPROFILE");
-	if (!userprofile || userprofile[0] == '\0')
-	{
-		userprofile = "C:\\Users\\Ragdoll";
-	}
-
 	char log_dir[1024];
-	snprintf(log_dir, sizeof(log_dir), "%s\\Saved Games\\DCS\\Logs", userprofile);
+	if (!resolve_saved_games_logs_dir(log_dir, sizeof(log_dir)))
+	{
+		build_mod_path(log_dir, sizeof(log_dir), "debug");
+	}
 	_mkdir(log_dir);
 
 	char path[1200];

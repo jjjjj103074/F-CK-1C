@@ -7,8 +7,8 @@ local SUSP_TEST_MARK = "GEOM_TEST_100_050_ACTIVE"
 local SUSP_USE_MODELVIEWER_WHEEL_NODES = false
 local SUSP_GEOMETRY_TEST = false
 -- Geometry probe amount. For aggressive tests, change this to 0.60 or 1.00.
-local SUSP_GEOMETRY_TEST_RADIUS_ADD = 1.00
-local SUSP_GEOMETRY_TEST_WHEEL_Y_OFFSET = -0.50
+local SUSP_GEOMETRY_TEST_RADIUS_ADD = 0.00
+local SUSP_GEOMETRY_TEST_WHEEL_Y_OFFSET = 0.00
 local SUSP_GEOMETRY_RADIUS_ADD = SUSP_GEOMETRY_TEST and SUSP_GEOMETRY_TEST_RADIUS_ADD or 0.0
 local SUSP_GEOMETRY_WHEEL_Y_OFFSET = SUSP_GEOMETRY_TEST and SUSP_GEOMETRY_TEST_WHEEL_Y_OFFSET or 0.0
 
@@ -47,8 +47,12 @@ local function fck_susp_log(message)
         return
     end
 
-    local userprofile = os and os.getenv and os.getenv("USERPROFILE") or "C:\\Users\\Ragdoll"
-    local path = userprofile .. "\\Saved Games\\DCS\\Logs\\fck_susp_debug.log"
+    local userprofile = os and os.getenv and os.getenv("USERPROFILE") or nil
+    local path = "fck_susp_debug.log"
+    if userprofile and userprofile ~= "" then
+        path = userprofile .. "\\Saved Games\\DCS\\Logs\\fck_susp_debug.log"
+    end
+
     local f = io.open(path, "a")
     if not f then
         return
