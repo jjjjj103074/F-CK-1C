@@ -98,13 +98,14 @@ local mainGear = {
     amortizer_basic_length               = 0.184,
     amortizer_reduce_length              = 0.01,
 
-    amortizer_spring_force_factor        = 5e+7,
+    amortizer_spring_force_factor        = 5.0e+7,
     amortizer_spring_force_factor_rate   = 3,
-    amortizer_direct_damper_force_factor = 50000,
-    amortizer_back_damper_force_factor   = 25000,
     amortizer_static_force               = 5000.0,
+    amortizer_direct_damper_force_factor = 25000,
+    amortizer_back_damper_force_factor   = 60000,
+    damper_coeff                         = 300,
 
-    allowable_hard_contact_length        = 0.25,
+    allowable_hard_contact_length        = 0.1,
     anti_skid_installed                  = true,
     wheel_damage_speed                   = 180,
     wheel_moment_of_inertia              = 0.6,
@@ -119,8 +120,8 @@ local mainGear = {
 }
 
 FM = {
-    center_of_mass = { -0.6, -0.4, 0 },
-    moment_of_inertia = { 38912, 254758, 223845, -705 },
+    center_of_mass = { -0.7, 0, 0 },
+    moment_of_inertia = { 11000.0, 66000.0, 62000.0, -1000.0 },
 
     -- Keep the fallback path disabled while validating the active collision
     -- shell contract and DCS-provided suspension feedback.
@@ -131,9 +132,9 @@ FM = {
             -- pos = SUSP_FINAL_WHEEL_POS[1],
             mass = 100,
             damage_element = 83,
-            self_attitude = true,
+            self_attitude = false,
             yaw_limit = math.rad(60.0),
-            allowable_hard_contact_length = 0.25,
+            allowable_hard_contact_length = 0.1,
 
             amortizer_min_length = 0.0,
             amortizer_max_length = 0.2,
@@ -143,9 +144,9 @@ FM = {
             amortizer_spring_force_factor = 0.85e+7,
             amortizer_spring_force_factor_rate = 3,
             amortizer_static_force = 5000.0,
-            amortizer_direct_damper_force_factor = 50000,
-            amortizer_back_damper_force_factor = 20000,
-            damper_coeff					= 300.0,
+            amortizer_direct_damper_force_factor = 10000,
+            amortizer_back_damper_force_factor = 30000,
+            damper_coeff					= 300,
 
             anti_skid_installed = false,
 
@@ -186,6 +187,7 @@ FM = {
             amortizer_static_force               = mainGear.amortizer_static_force,
             amortizer_direct_damper_force_factor = mainGear.amortizer_direct_damper_force_factor,
             amortizer_back_damper_force_factor   = mainGear.amortizer_back_damper_force_factor,
+            damper_coeff					     = mainGear.damper_coeff,
 
             allowable_hard_contact_length        = mainGear.allowable_hard_contact_length,
             anti_skid_installed                  = mainGear.anti_skid_installed,
@@ -225,6 +227,7 @@ FM = {
             amortizer_static_force               = mainGear.amortizer_static_force,
             amortizer_direct_damper_force_factor = mainGear.amortizer_direct_damper_force_factor,
             amortizer_back_damper_force_factor   = mainGear.amortizer_back_damper_force_factor,
+            damper_coeff						 = mainGear.damper_coeff,
 
             allowable_hard_contact_length        = mainGear.allowable_hard_contact_length,
             anti_skid_installed                  = mainGear.anti_skid_installed,
