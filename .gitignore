@@ -1,9 +1,15 @@
 # F-CK-1C / EFM 專案 .gitignore
 
+# Node.js（開發工具用，不進 git）
+node_modules/
+npm-debug.log*
+
 # Windows / Editor
 Thumbs.db
 Desktop.ini
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .codex/
 .claude/
 

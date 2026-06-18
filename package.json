@@ -1,0 +1,25 @@
+{
+  "name": "f-ck-1c",
+  "description": "F-CK-1C DCS World mod — dev tooling config (commitlint, husky, czg)",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "commit": "czg"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/czg"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jjjjj103074/F-CK-1C.git"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "czg": "^1.13.1",
+    "husky": "^9.1.7"
+  }
+}

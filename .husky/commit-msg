@@ -1,0 +1,19 @@
+#!/bin/sh
+# commit-msg hook: validate commit message format via commitlint
+# Uses local binary directly to avoid npx version compatibility issues.
+set +e  # disable exit-on-error so script continues after commitlint failure
+
+RESULT=$(./node_modules/.bin/commitlint --edit "$1" --no-color 2>&1)
+LINT_EXIT=$?
+
+if [ $LINT_EXIT -ne 0 ]; then
+    echo "[F-CK-1C] Commit rejected: commit message title format is invalid (NOT a Git error)."
+    echo "Format : <type>(<scope>): <title>"
+    echo "Type   : feat | fix | refactor | docs | chore | wip"
+    echo "Scope  : SFM | EFM | Cockpit_device | Cockpit_indicators | entry"
+    echo "Tip    : run 'npm run commit' for guided input"
+    echo ""
+    echo "$RESULT"
+fi
+
+exit $LINT_EXIT
