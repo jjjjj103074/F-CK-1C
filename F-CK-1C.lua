@@ -191,6 +191,8 @@ WPN_AG_LIGHT = wpnGroup({
     { CLSID = "{Mk82SNAKEYE}",                          Cx_gain = 1.882 }, -- Mk-82 SNAKEYE
     { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 }, -- MK-20 Rockeye
     { CLSID = "{BDU-50LD}",                             Cx_gain = 1.388 }, -- BDU-50LD
+    { CLSID = "{BDU_45}",                               Cx_gain = 0.944 },    -- BDU-45
+    { CLSID = "{BDU_45B}",                              Cx_gain = 0.566 },    -- BDU-45B
 })
 
 -- 重型對地（僅內側及機腹，炸彈、導引、反艦均收錄）
