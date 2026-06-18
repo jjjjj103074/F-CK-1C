@@ -517,8 +517,9 @@ local F_CK_1C = {
             },
             {
                 supply_position = { 0.4, 0.55, 0.0 },
-                muzzle_pos = { 3.85, 0.56, 2.02 },
-                ejector_pos = { 2.95, 0.42, 2.00 },
+                muzzle_pos = { 0.0, 0.0, 0.0 },
+                muzzle_pos_connector = "gun",
+                ejector_pos = { 2.15, 0.04, -0.70 },
                 effects = { gatling_effect(351, 6), fire_effect(350), smoke_effect() },
             })
     },
@@ -626,6 +627,8 @@ local F_CK_1C = {
     },    -- 參考 F-16C 的基本配比
 
     Sensors = {
+        RADAR = "N-011M",
+        IRST = "OLS-27",
         RWR = "Abstract RWR"
     }, -- 感測器設定
 
@@ -653,23 +656,44 @@ local F_CK_1C = {
     -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
 
     Damage = verbose_to_dmg_properties({
-        ["Blap"]       = { critical_damage = 3 },
-        ["body"]       = { critical_damage = 10 },
-        ["Brap"]       = { critical_damage = 3 },
-        ["F W"]        = { critical_damage = 4 },
-        ["FGG"]        = { critical_damage = 3 },
-        ["Flap"]       = { critical_damage = 2 },
-        ["Flap.001"]   = { critical_damage = 2 },
-        ["LBW"]        = { critical_damage = 4 },
-        ["LC"]         = { critical_damage = 4 },
-        ["LGG"]        = { critical_damage = 3 },
-        ["M wing"]     = { critical_damage = 5 },
-        ["M wing.001"] = { critical_damage = 5 },
-        ["RBW"]        = { critical_damage = 4 },
-        ["RC"]         = { critical_damage = 4 },
-        ["RGG"]        = { critical_damage = 3 },
-        ["Tail"]       = { critical_damage = 6 },
-        ["Wayt"]       = { critical_damage = 3 },
+        -- 碰撞區域損傷映射：名稱需對應 collision_shell EDM 內的 segment 節點。
+        -- Damage names must stay aligned with the active collision shell.
+        -- Active runtime uses F-CK-1C-F_W, F-CK-1C-LBW, and F-CK-1C-RBW
+        -- as the suspension-aligned gear contact shell nodes.
+        -- lineFG, lineLG, and lineRG must also stay registered here because
+        -- DCS uses those line segments to expose multi-point ground contact.
+        -- Removing them causes the aircraft to collapse to a single ground
+        -- contact point and pivot/rotate around that point.
+        ["F-CK-1C-_wing01"] = { critical_damage = 5 },
+        ["F-CK-1C-ap"] = { critical_damage = 5 },
+        ["F-CK-1C-body"] = { critical_damage = 5 },
+        ["F-CK-1C-Flap"] = { critical_damage = 5 },
+        ["F-CK-1C-Flap01"] = { critical_damage = 5 },
+        ["F-CK-1C-LC"] = { critical_damage = 4 },
+        ["F-CK-1C-LGG"] = { critical_damage = 4 },
+        ["F-CK-1C-M_wing"] = { critical_damage = 5 },
+        ["F-CK-1C-rap"] = { critical_damage = 5 },
+        ["F-CK-1C-RC"] = { critical_damage = 4 },
+        ["F-CK-1C-RGG"] = { critical_damage = 4 },
+        ["F-CK-1C-Tail"] = { critical_damage = 5 },
+        ["F-CK-1C-Wayt"] = { critical_damage = 5 },
+        -- ["F-CK-1C-RBW"] = { critical_damage = 3 },
+        -- ["F-CK-1C-LBW"] = { critical_damage = 3 },
+        -- ["F-CK-1C-F_W"] = { critical_damage = 3 },
+
+
+
+        ["WHEEL_L"] = { critical_damage = 3 },
+        ["WHEEL_R"] = { critical_damage = 3 },
+        ["WHEEL_F"] = { critical_damage = 3 },
+        ["BODY_Ho"] = { critical_damage = 3 },
+        ["BODY_VeL"] = { critical_damage = 3 },
+        ["BODY_VeR"] = { critical_damage = 3 },
+        ["TW_L"] = { critical_damage = 3 },
+        ["TW_R"] = { critical_damage = 3 },
+        ["wing_L"] = { critical_damage = 5 },
+        ["wing_R"] = { critical_damage = 5 },
+        ["Taiil"] = { critical_damage = 5 },
     }),
 
     -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
@@ -687,14 +711,24 @@ local F_CK_1C = {
         {
             Cy0 = 0,
             Mzalfa = 4.355,
-            Mzalfadt = 0.8,
+            -- 俯仰率阻尼：原值 0.8 沿用 F-16 基線，高速大桿量時阻尼不足導致震盪。
+            -- 提高至 1.5 以補足 FBW 飛控的人工阻尼增益（FCS pitch rate damping augmentation）。
+            Mzalfadt = 1.5,
             kjx = 2.75,
             kjz = 0.00125,
             Czbe = -0.016,
             cx_gear = 0.0268,
-            cx_flap = 0.05,
-            cy_flap = 0.52,
-            cx_brk = 0.06,
+            -- flap 阻力：F-CK-1C 使用前緣 flap（LEF）+ 後緣 flaperon 組合。
+            -- 前緣裝置以增升為主，附加阻力遠低於純後緣 flap。
+            -- 降低至 0.03（原 0.05）以反映 LEF 主導的低阻力特性。
+            cx_flap = 0.03,
+            -- flap 升力：前緣+後緣組合可提供更高的升力增量，提高至 0.65（原 0.52）。
+            -- 改善自動 flap 系統在中高仰角時的升阻比，使機動性符合設計意圖。
+            cy_flap = 0.65,
+            -- 減速板：真實 F-CK-1C 於起落架放下時自動限制減速板至 60% 開啟（防止結構干涉）。
+            -- SFM 無法動態判斷起落架狀態，此處取 0.04（原 0.06 的約 67%）作為折衷值。
+            -- 完整的條件式「起落架下 → 減速板 60%」邏輯需升級至 EFM 實作。
+            cx_brk = 0.04,
             table_data =
             {
                 [1] = { 0, 0.0165, 0.07, 0.132, 0.025, 0.5, 30, 1.45 },
@@ -721,6 +755,9 @@ local F_CK_1C = {
         },     -- end of aerodynamics
         engine =
         {
+            -- 油門響應延遲（Issue #2）：DCS 標準 SFM 的 engine 區塊不支援油門惰性時間參數
+            -- （即 rpm_acceleration_time_factor / throttle spool time）。
+            -- 若需要模擬 TFE1042-70 約 3–5 秒的油門響應延遲，必須升級至 EFM 實作。
             type              = "TurboFan",
             Nmg               = 67.5,
             Nominal_RPM       = 14710.0,
@@ -807,11 +844,11 @@ local F_CK_1C = {
     chaff_flare_dispenser = {
         [1] = {
             dir = { 0, -1, 0 },
-            pos = { -3.78, -0.45, -0.78 } -- Left side of speedbrake
+            pos = { -4.75, -0.95, -1.10 } -- Left dispenser, simplified to a native-style downward release
         },
         [2] = {
             dir = { 0, -1, 0 },
-            pos = { -3.78, -0.45, 0.78 } -- Right side of speedbrake
+            pos = { -4.75, -0.95, 1.10 } -- Right dispenser, mirrored to match the left side
         }
     },
 
@@ -840,29 +877,46 @@ local F_CK_1C = {
     --     ECM = "AN/ALQ-126"
     -- }, -- ECM 範例設定
 
-    -- -- ===================== 額外 UI 屬性 =====================
-    -- AddPropAircraft = {{
-    --     id = "HelmetMountedDevice",
-    --     control = 'comboList',
-    --     label = _('Helmet Mounted Device'),
-    --     values = {{
-    --         id = 0,
-    --         dispName = _('Not installed'),
-    --         value = 0.5
-    --     }, {
-    --         id = 1,
-    --         dispName = _('JHMCS'),
-    --         value = 0.0
-    --     }, {
-    --         id = 2,
-    --         dispName = _('NVG'),
-    --         value = 1.0
-    --     }},
-    --     defValue = 1,
-    --     wCtrl = 150,
-    --     playerOnly = true,
-    --     arg = 509
-    -- }}
+    -- ===================== 額外 UI 屬性 =====================
+    AddPropAircraft = {{
+        id = "HelmetMountedDevice",
+        control = 'comboList',
+        label = _('Helmet Mounted Device'),
+        values = {{
+            id = 0,
+            dispName = _('Not installed'),
+            value = 0.5
+        }, {
+            id = 1,
+            dispName = _('JHMCS'),
+            value = 0.0
+        }, {
+            id = 2,
+            dispName = _('NVG'),
+            value = 1.0
+        }},
+        defValue = 1,
+        wCtrl = 150,
+        playerOnly = true,
+        arg = 509
+    }, {
+        id = "HMCSDisplayMode",
+        control = 'comboList',
+        label = _('HMCS Display Mode'),
+        values = {{
+            id = 0,
+            dispName = _('2D Overlay'),
+            value = 0.0
+        }, {
+            id = 1,
+            dispName = _('VR Helmet Test'),
+            value = 1.0
+        }},
+        defValue = 0,
+        wCtrl = 150,
+        playerOnly = true,
+        arg = 510
+    }}
 
     -- 若之後要加入 datalink，可使用 connectDatalinks / datalinks。
     -- 目前版本先不啟用，避免引用不存在的腳本或資料表。

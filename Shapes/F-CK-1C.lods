@@ -2,6 +2,17 @@ model =
 {
     lods = {
         {"F-CK-1C.edm", 10000.0};
+        -- Previous full-model test kept for reference only.
+        -- {"Su-30MK.FCK_TEST.edm", 50000.0};
     };
-    collision_shell = "idf_hitbox.edm";
+    -- Active collision shell source of truth for runtime ground contact.
+    -- Gear contact nodes in this shell are F-CK-1C-F_W, F-CK-1C-LBW,
+    -- and F-CK-1C-RBW. Ground-contact line segments are lineFG/lineLG/lineRG.
+    collision_shell = "F-CK-1C-box.edm";
+    -- Legacy shells kept only for rollback/reference.
+    -- collision_shell = "idf_hitbox.edm";
+    -- collision_shell = "su-30mk-collision.FCK_TEST.edm";
+    -- DCS rejected this test shell because the collision shell argument count
+    -- exceeded the active outer model.
+    -- collision_shell = "su-30mk-collision_TEST.edm";
 }

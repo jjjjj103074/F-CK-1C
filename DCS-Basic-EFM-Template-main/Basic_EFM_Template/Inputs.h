@@ -90,6 +90,7 @@ enum InputCommands
 	WheelBrakeAxisLeft = 3024,
 	WheelBrakeAxisRight = 3025,
 	FBWGLimiterOverride = 3026,
+	FBWGLimiterOverrideToggle = 3027,
 	AirBrakesUp = 3016,
 	AirBrakesDown = 3017,
 	GearHandleUp = 3018,
@@ -110,6 +111,27 @@ enum InputCommands
 	PlaneFire = 84,
 	PlaneFireOff = 85,
 	PlaneDropFlareOnce = 357,
+
+	// Autopilot commands (routed to Lua device, listed here for reference)
+	APMasterToggle = 3100,
+	APMasterOn = 3101,
+	APMasterOff = 3102,
+	APBypass = 3103,
+	APVertPitchHold = 3110,
+	APVertVSHold = 3111,
+	APVertAltHold = 3112,
+	APVertIncrease = 3113,
+	APVertDecrease = 3114,
+	APLatHeadingHold = 3120,
+	APLatHeadingSelect = 3121,
+	APLatNavTrack = 3122,
+	APLatIncrease = 3123,
+	APLatDecrease = 3124,
+	APAutoThrottleToggle = 3130,
+	APAutoThrottleOn = 3131,
+	APAutoThrottleOff = 3132,
+	APSpeedIncrease = 3133,
+	APSpeedDecrease = 3134,
 
 	Reserved // Placeholder
 };

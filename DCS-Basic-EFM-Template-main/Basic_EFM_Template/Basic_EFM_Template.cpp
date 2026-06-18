@@ -6,7 +6,10 @@
 #include <Math.h>
 #include <stdio.h>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <string>
+#include <direct.h>
 #include "Inputs.h"
 #include "include/Cockpit/CockpitAPI_Declare.h" // Provides param handle interfacing for use in lua
 #include "include/FM/API_Declare.h"
@@ -23,12 +26,278 @@ static const char* FCK1C_EFM_VERSION_DATE = "2026-04-01";
 
 namespace FM 
 {
+static const size_t kFckPathMax = 1024;
+static char g_mod_root_path[kFckPathMax] = ".";
+static char g_fm_config_path[kFckPathMax] = "FM\\config.lua";
+static bool g_project_paths_initialized = false;
+
+static void copy_path(char* out, size_t out_size, const char* value)
+{
+	if (!out || out_size == 0)
+	{
+		return;
+	}
+
+	snprintf(out, out_size, "%s", value ? value : "");
+}
+
+static void normalize_path_separators(char* path)
+{
+	if (!path)
+	{
+		return;
+	}
+
+	for (char* p = path; *p; ++p)
+	{
+		if (*p == '/')
+		{
+			*p = '\\';
+		}
+	}
+}
+
+static bool is_path_separator(char c)
+{
+	return c == '\\' || c == '/';
+}
+
+static bool path_file_exists(const char* path)
+{
+	FILE* f = fopen(path, "rb");
+	if (!f)
+	{
+		return false;
+	}
+
+	fclose(f);
+	return true;
+}
+
+static void path_dirname(char* path)
+{
+	if (!path || path[0] == '\0')
+	{
+		return;
+	}
+
+	normalize_path_separators(path);
+
+	size_t len = strlen(path);
+	while (len > 1 && is_path_separator(path[len - 1]))
+	{
+		path[--len] = '\0';
+	}
+
+	char* last_sep = strrchr(path, '\\');
+	if (!last_sep)
+	{
+		copy_path(path, kFckPathMax, ".");
+		return;
+	}
+
+	if (last_sep == path)
+	{
+		path[1] = '\0';
+		return;
+	}
+
+	if (last_sep > path && path[1] == ':' && last_sep == path + 2)
+	{
+		path[3] = '\0';
+		return;
+	}
+
+	*last_sep = '\0';
+}
+
+static bool path_has_component_suffix(const char* path, const char* component)
+{
+	if (!path || !component)
+	{
+		return false;
+	}
+
+	const size_t path_len = strlen(path);
+	const size_t component_len = strlen(component);
+	if (path_len < component_len)
+	{
+		return false;
+	}
+
+	const char* suffix = path + path_len - component_len;
+	if (_stricmp(suffix, component) != 0)
+	{
+		return false;
+	}
+
+	return suffix == path || is_path_separator(*(suffix - 1));
+}
+
+static void build_path(char* out, size_t out_size, const char* base, const char* relative)
+{
+	if (!out || out_size == 0)
+	{
+		return;
+	}
+
+	if (!base || base[0] == '\0' || strcmp(base, ".") == 0)
+	{
+		snprintf(out, out_size, "%s", relative ? relative : "");
+	}
+	else
+	{
+		const size_t base_len = strlen(base);
+		const bool needs_sep = base_len > 0 && !is_path_separator(base[base_len - 1]);
+		snprintf(out, out_size, "%s%s%s", base, needs_sep ? "\\" : "", relative ? relative : "");
+	}
+
+	normalize_path_separators(out);
+}
+
+static void set_project_paths_from_config(const char* cfg_path)
+{
+	if (!cfg_path || cfg_path[0] == '\0')
+	{
+		return;
+	}
+
+	copy_path(g_fm_config_path, sizeof(g_fm_config_path), cfg_path);
+	normalize_path_separators(g_fm_config_path);
+
+	char fm_dir[kFckPathMax];
+	copy_path(fm_dir, sizeof(fm_dir), g_fm_config_path);
+	path_dirname(fm_dir);
+
+	if (path_has_component_suffix(fm_dir, "FM"))
+	{
+		copy_path(g_mod_root_path, sizeof(g_mod_root_path), fm_dir);
+		path_dirname(g_mod_root_path);
+	}
+	else
+	{
+		copy_path(g_mod_root_path, sizeof(g_mod_root_path), fm_dir);
+	}
+}
+
+static bool try_set_mod_root(const char* root)
+{
+	char cfg_path[kFckPathMax];
+	build_path(cfg_path, sizeof(cfg_path), root, "FM\\config.lua");
+	if (!path_file_exists(cfg_path))
+	{
+		return false;
+	}
+
+	copy_path(g_mod_root_path, sizeof(g_mod_root_path), root);
+	normalize_path_separators(g_mod_root_path);
+	copy_path(g_fm_config_path, sizeof(g_fm_config_path), cfg_path);
+	return true;
+}
+
+static void initialize_project_paths()
+{
+	if (g_project_paths_initialized)
+	{
+		return;
+	}
+	g_project_paths_initialized = true;
+
+	if (path_file_exists(g_fm_config_path))
+	{
+		set_project_paths_from_config(g_fm_config_path);
+		return;
+	}
+
+	HMODULE module = nullptr;
+	if (GetModuleHandleExA(
+		GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		reinterpret_cast<LPCSTR>(&g_project_paths_initialized),
+		&module))
+	{
+		char module_path[kFckPathMax];
+		const DWORD len = GetModuleFileNameA(module, module_path, (DWORD)sizeof(module_path));
+		if (len > 0 && len < sizeof(module_path))
+		{
+			normalize_path_separators(module_path);
+
+			char module_dir[kFckPathMax];
+			copy_path(module_dir, sizeof(module_dir), module_path);
+			path_dirname(module_dir);
+
+			char root[kFckPathMax];
+			copy_path(root, sizeof(root), module_dir);
+
+			if (path_has_component_suffix(root, "bin"))
+			{
+				path_dirname(root);
+			}
+			else if (path_has_component_suffix(root, "vc100.debug") || path_has_component_suffix(root, "vc100.release"))
+			{
+				path_dirname(root);
+				path_dirname(root);
+				path_dirname(root);
+			}
+
+			if (try_set_mod_root(root))
+			{
+				return;
+			}
+
+			copy_path(root, sizeof(root), module_dir);
+			path_dirname(root);
+			path_dirname(root);
+			path_dirname(root);
+			if (try_set_mod_root(root))
+			{
+				return;
+			}
+		}
+	}
+}
+
+static const char* active_fm_config_path()
+{
+	initialize_project_paths();
+	return g_fm_config_path;
+}
+
+static void build_mod_path(char* out, size_t out_size, const char* relative)
+{
+	initialize_project_paths();
+	build_path(out, out_size, g_mod_root_path, relative);
+}
+
+static bool resolve_saved_games_logs_dir(char* out, size_t out_size)
+{
+	const char* userprofile = getenv("USERPROFILE");
+	if (!userprofile || userprofile[0] == '\0')
+	{
+		const char* home_drive = getenv("HOMEDRIVE");
+		const char* home_path = getenv("HOMEPATH");
+		if (home_drive && home_drive[0] != '\0' && home_path && home_path[0] != '\0')
+		{
+			char home[kFckPathMax];
+			snprintf(home, sizeof(home), "%s%s", home_drive, home_path);
+			build_path(out, out_size, home, "Saved Games\\DCS\\Logs");
+			return true;
+		}
+
+		return false;
+	}
+
+	build_path(out, out_size, userprofile, "Saved Games\\DCS\\Logs");
+	return true;
+}
+
 Vec3	common_force;
 Vec3	common_moment;
 Vec3    center_of_mass;
 Vec3	wind;
 Vec3	velocity_world;
 Vec3	velocity_body;
+Vec3	angular_velocity_world;
+Vec3	angular_velocity_body;
 Vec3	airspeed;
 
 double	const	pi = 3.1415926535897932384626433832795;
@@ -106,12 +375,21 @@ bool	fbw_throttle_override = false;  // true = force FBW throttle command
 double	engine_throttle_cmd_left = 0.0; // Final command after pilot/FBW mixing
 double	engine_throttle_cmd_right = 0.0;
 double	afterburner_detent = 0.70;       // Throttle position where AB starts
-double	afterburner_thrust_factor = 1.80; // AB max thrust = dry thrust * factor
+double	afterburner_thrust_factor = 1.73; // AB max thrust = dry thrust * factor
+											 // TFE1042-70: 2×46.7kN AB / 2×27.0kN MIL ≈ 1.73
 double	afterburner_fuel_factor = 2.2;   // Fuel burn multiplier at full AB
 double	afterburner_core_rpm = 0.94;      // Core RPM readout while in AB
 double	afterburner_core_drop_time = 0.80; // Seconds for core RPM transition between mil and AB
-double	left_afterburner_ratio = 0.0;    // 0..1
+double	left_afterburner_ratio = 0.0;    // 0..1  (lagged, actual AB ratio driving thrust & nozzle)
 double	right_afterburner_ratio = 0.0;   // 0..1
+// Afterburner spool-lag state.
+// lit flag becomes true only when the engine throttle_output has reached near-military power.
+// Once lit, the ratio ramps in over ab_spool_in_tau; on extinguish it ramps out over ab_spool_out_tau.
+bool	left_afterburner_lit           = false;
+bool	right_afterburner_lit          = false;
+double	ab_spool_in_tau               = 2.0;   // ~2 s ramp from ignition to full AB
+double	ab_spool_out_tau              = 0.6;   // ~0.6 s to extinguish flame
+double	ab_light_throttle_output_min  = 0.88;  // throttle_output must reach this before AB can light
 bool	fbw_g_limiter_override = false;
 
 // Lift and drag devices
@@ -126,7 +404,7 @@ enum FlapMode
 };
 int		flap_mode = FLAP_MODE_UP;
 double	slats_pos = 0;
-bool	nose_turn_enabled = false;
+bool	nose_turn_enabled = true;
 
 // Landing gear
 bool	gear_switch = false;
@@ -134,6 +412,8 @@ double	gear_pos = 0;
 double	wheel_brake = 0; 
 double	wheel_brake_left = 0;
 double	wheel_brake_right = 0;
+double	wheel_spin[3] = { 0.0, 0.0, 0.0 };
+double	nose_wheel_steering = 0.0;
 int	carrier_pos = 0;
 double	current_mass = 9000.0;
 
@@ -144,7 +424,10 @@ double  fuel_consumption_since_last_time = 0;
 
 double  atmosphere_density = 101000.0; // Atmosphere/air density (Pascals)
 double	altitude_ASL = 0; // Altitude above sea level
-double	altitude_AGL = 0; // Altitude above gound/surface leveldouble 
+double	altitude_AGL = 0; // Altitude above ground/surface level
+double	surface_height_raw = 0;
+double	surface_height_with_objects = 0;
+unsigned surface_type_raw = 0;
 double	position_world_z = 0; // World position Z for debug
 double	V_scalar = 0; // Velocity scalar
 double  speed_of_sound = 320; // Speed of sound (m/s)
@@ -163,9 +446,13 @@ double	atmosphere_temperature = 273; // Current temperature in Kelvin
 
 bool	on_ground = false; // Is the aircraft currently on the ground?
 double	suspension_compression[3] = { 0.0, 0.0, 0.0 };
+Vec3	suspension_force_vec[3] = { Vec3(), Vec3(), Vec3() };
 double	suspension_force_mag[3] = { 0.0, 0.0, 0.0 };
 bool	suspension_wow[3] = { false, false, false };
 bool	suspension_feedback_valid[3] = { false, false, false };
+double	fallback_suspension_compression[3] = { 0.0, 0.0, 0.0 };
+double	fallback_suspension_force_mag[3] = { 0.0, 0.0, 0.0 };
+bool	fallback_suspension_wow[3] = { false, false, false };
 double	fallback_ground_force = 0.0;
 
 // Pitch
@@ -181,7 +468,7 @@ double	heading = 0;
 double	yaw_rate = 0;
 
 // Damage stuff
-int element_integrity[111]; 
+double element_integrity[111] = {};
 double left_wing_integrity = 1.0;
 double right_wing_integrity = 1.0;
 double tail_integrity = 1.0;
@@ -190,8 +477,22 @@ double right_engine_integrity = 1.0;
 double total_damage = 1 - (left_wing_integrity + right_wing_integrity + tail_integrity + 
 						left_engine_integrity + right_engine_integrity) / 5;
 
+static void reset_damage_state()
+{
+	for (int i = 0; i < 111; ++i)
+	{
+		element_integrity[i] = 1.0;
+	}
+	left_wing_integrity = 1.0;
+	right_wing_integrity = 1.0;
+	tail_integrity = 1.0;
+	left_engine_integrity = 1.0;
+	right_engine_integrity = 1.0;
+	total_damage = 0.0;
+}
+
 // Optional parameters set in the options menu
-bool invincible = true; // No damage received if true
+bool invincible = false; // No damage received if true
 bool infinite_fuel = false; // No fuel drained if true
 bool easy_flight = false; // Easier and more stable flight characteristics if true
 
@@ -205,6 +506,18 @@ double fm_clock = 0;
 bool sim_inititalised = false;
 double left_nozzle_aperture = 0.80;
 double right_nozzle_aperture = 0.80;
+
+// 臨時用：專門記錄動畫與物理同步的獨立 Log
+static void suspension_debug_log(const char* msg)
+{
+	// 檔案會獨立生成在你的 DCS Logs 資料夾下
+	const char* path = "C:\\Users\\User\\Saved Games\\DCS\\Logs\\susp_debug.log";
+	FILE* f = fopen(path, "a");
+	if (!f) return;
+
+	fprintf(f, "%s\n", msg);
+	fclose(f);
+}
 
 static double remap_range(double value, double in_min, double in_max, double out_min, double out_max)
 {
@@ -363,13 +676,13 @@ struct FBWGainScheduleValues
 };
 
 FBWCatParams fbw_cat1 = {
-	0.04, 0.22, 2.8, 2.2, rad(55.0), rad(35.0), 14.5, 2500.0, 0.35, 0.85, 0.65, 0.08, 7.0, 0.20,
-	rad(190.0), rad(120.0), rad(80.0), 13.0, 18.0, 6.5, 8.5, rad(220.0), rad(140.0), rad(95.0), 0.90, 0.60
+	0.03, 0.18, 2.8, 2.2, rad(55.0), rad(42.0), 15.5, 2500.0, 0.35, 0.85, 0.65, 0.05, 9.5, 0.10,
+	rad(190.0), rad(145.0), rad(80.0), 15.0, 21.0, 6.4, 8.8, rad(220.0), rad(170.0), rad(95.0), 0.90, 0.60
 };
 
 FBWCatParams fbw_cat3 = {
-	0.06, 0.32, 2.0, 1.6, rad(40.0), rad(25.0), 12.0, 4000.0, 0.22, 0.70, 0.40, 0.16, 4.0, 0.35,
-	rad(140.0), rad(90.0), rad(60.0), 11.0, 15.5, 5.8, 7.2, rad(170.0), rad(110.0), rad(75.0), 1.10, 0.80
+	0.05, 0.26, 2.0, 1.6, rad(40.0), rad(30.0), 13.5, 4000.0, 0.22, 0.70, 0.40, 0.10, 5.5, 0.20,
+	rad(140.0), rad(110.0), rad(60.0), 12.5, 17.5, 5.8, 7.6, rad(170.0), rad(130.0), rad(75.0), 1.10, 0.80
 };
 
 FBWGainSchedulePoint fbw_gain_schedule[] = {
@@ -385,8 +698,8 @@ double	fbw_qbar_filter_tau = 0.18;
 
 double	fbw_kp_p = 0.55;
 double	fbw_ki_p = 0.35;
-double	fbw_kp_q = 0.70;
-double	fbw_ki_q = 0.38;
+double	fbw_kp_q = 0.88;
+double	fbw_ki_q = 0.48;
 double	fbw_kp_r = 0.65;
 double	fbw_ki_r = 0.25;
 double	fbw_aw_gain = 1.20;
@@ -396,25 +709,27 @@ double	fbw_outer_int_limit = rad(75.0);
 double	fbw_alpha_trim_tau = 1.20;
 double	fbw_nz_trim_tau = 1.60;
 double	fbw_nz_filter_tau = 0.26;
-double	fbw_pitch_ref_tau = 0.10;
+double	fbw_pitch_ref_tau = 0.14;
 double	fbw_pitch_ref_rate_deg_s = 90.0;
+double	fbw_nz_limit_gain_floor = 0.58;
+double	fbw_nz_limit_buffer_bias = 0.15;
 double	fbw_region_low_kts = 220.0;
 double	fbw_region_high_kts = 380.0;
 double	fbw_region_approach_kts = 240.0;
 double	fbw_region_min_kts = 110.0;
 double	fbw_region_alpha1_deg = 12.0;
 double	fbw_region_alpha2_deg = 18.0;
-double	fbw_alpha_cmd_per_stick_deg = 10.0;
-double	fbw_q_cmd_land_max_deg = 35.0;
+double	fbw_alpha_cmd_per_stick_deg = 13.5;
+double	fbw_q_cmd_land_max_deg = 50.0;
 
 double	fbw_ail_limit_deg = 22.0;
 double	fbw_ele_limit_deg = 25.0;
 double	fbw_rud_limit_deg = 30.0;
 double	fbw_ail_rate_deg_s = 110.0;
-double	fbw_ele_rate_deg_s = 90.0;
+double	fbw_ele_rate_deg_s = 120.0;
 double	fbw_rud_rate_deg_s = 80.0;
 double	fbw_ail_lag_tau = 0.05;
-double	fbw_ele_lag_tau = 0.06;
+double	fbw_ele_lag_tau = 0.04;
 double	fbw_rud_lag_tau = 0.07;
 
 bool	fbw_enabled = true;
@@ -532,6 +847,9 @@ using namespace FM;
 
 void add_local_force(const Vec3 & Force, const Vec3 & Force_pos);
 static void dbg_susp(const char* msg);
+static void susp_probe_log(const char* msg);
+static inline double suspension_total_force_mag();
+static void append_tag(char* tags, size_t tags_size, const char* tag);
 
 static const Vec3 kFallbackGearPoints[3] = {
 	Vec3(4.12, -1.912, 0.0),
@@ -540,7 +858,313 @@ static const Vec3 kFallbackGearPoints[3] = {
 };
 
 static const double kFallbackWheelRadius[3] = { 0.2286, 0.3048, 0.3048 };
+static const double kFallbackSpring[3] = { 1000000.0, 3200000.0, 3200000.0 };
+static const double kFallbackDamping[3] = { 12000.0, 20000.0, 20000.0 };
+static const double kFallbackContactBand[3] = { 0.015, 0.055, 0.055 };
+static const Vec3 kFallbackBellyPoint(0.0, -1.05, 0.0);
+static const bool kEnableFallbackGroundForces = false;
+static const bool kSuspProbeMode = true;
+static const double kSuspProbeInterval = 0.25;
+static const bool kStartupSuspProbeMode = true;
+static const double kStartupSuspProbeDuration = 5.0;
+static const double kStartupSuspForceEpsilon = 1e-3;
+static const double kSuspensionVisualTravel[3] = { 0.2, 0.184, 0.184 };
+static const char* kActiveCollisionShellName = "F-CK-1C-box.edm";
+static const char* kActiveGearShellNodes = "F-CK-1C-F_W/F-CK-1C-LBW/F-CK-1C-RBW";
+static const char* kSuspensionModeName = "native_collision_shell_name";
 static int kFallbackLogDecimation = 0;
+static bool kGroundConfigLogged = false;
+static double kSuspProbeTimer = 0.0;
+static unsigned long long kStartupSuspFrameIndex = 0;
+static double kStartupSuspProbeElapsed = 0.0;
+static bool kStartupSuspSeenForce = false;
+static bool kStartupSuspLoggedFirstForce = false;
+static bool kStartupSuspLoggedZeroAfterForce = false;
+static bool kStartupSuspSeenAnyWow = false;
+static bool kStartupSuspLoggedAllWowZero = false;
+static bool kStartupSuspSeenAnyCompression = false;
+static bool kStartupSuspLoggedCompAllZero = false;
+
+static const char* kSuspOriginalWheelNodes[3] = {
+	"WHEEL_F",
+	"WHEEL_L",
+	"WHEEL_R"
+};
+
+static const char* kSuspModelViewerWheelNodes[3] = {
+	"WHEEL_F",
+	"WHEEL_L",
+	"WHEEL_R"
+};
+
+static bool config_flag_is_true(const char* flag_name)
+{
+	FILE* f = fopen(active_fm_config_path(), "rb");
+	if (!f)
+	{
+		return false;
+	}
+
+	char content[8192];
+	const size_t read = fread(content, 1, sizeof(content) - 1, f);
+	fclose(f);
+	content[read] = '\0';
+
+	const char* p = strstr(content, flag_name);
+	if (!p)
+	{
+		return false;
+	}
+
+	const char* line_end = strchr(p, '\n');
+	const char* true_pos = strstr(p, "true");
+	return true_pos && (!line_end || true_pos < line_end);
+}
+
+static double config_number_or_default(const char* key_name, double default_value)
+{
+	FILE* f = fopen(active_fm_config_path(), "rb");
+	if (!f)
+	{
+		return default_value;
+	}
+
+	char content[8192];
+	const size_t read = fread(content, 1, sizeof(content) - 1, f);
+	fclose(f);
+	content[read] = '\0';
+
+	const char* p = strstr(content, key_name);
+	if (!p)
+	{
+		return default_value;
+	}
+
+	const char* line_end = strchr(p, '\n');
+	const char* equals = strchr(p, '=');
+	if (!equals || (line_end && equals > line_end))
+	{
+		return default_value;
+	}
+
+	char* end = nullptr;
+	const double value = strtod(equals + 1, &end);
+	return (end != equals + 1) ? value : default_value;
+}
+
+static void config_string_or_default(const char* key_name, const char* default_value, char* out, size_t out_size)
+{
+	if (!out || out_size == 0)
+	{
+		return;
+	}
+
+	snprintf(out, out_size, "%s", default_value ? default_value : "");
+
+	FILE* f = fopen(active_fm_config_path(), "rb");
+	if (!f)
+	{
+		return;
+	}
+
+	char content[8192];
+	const size_t read = fread(content, 1, sizeof(content) - 1, f);
+	fclose(f);
+	content[read] = '\0';
+
+	const char* p = strstr(content, key_name);
+	if (!p)
+	{
+		return;
+	}
+
+	const char* line_end = strchr(p, '\n');
+	const char* first_quote = strchr(p, '"');
+	if (!first_quote || (line_end && first_quote > line_end))
+	{
+		return;
+	}
+
+	const char* second_quote = strchr(first_quote + 1, '"');
+	if (!second_quote || (line_end && second_quote > line_end))
+	{
+		return;
+	}
+
+	const size_t len = (size_t)(second_quote - first_quote - 1);
+	const size_t copy_len = (len < out_size - 1) ? len : out_size - 1;
+	memcpy(out, first_quote + 1, copy_len);
+	out[copy_len] = '\0';
+}
+
+static double active_susp_radius_add()
+{
+	if (!config_flag_is_true("SUSP_GEOMETRY_TEST"))
+	{
+		return 0.0;
+	}
+
+	return config_number_or_default("SUSP_GEOMETRY_TEST_RADIUS_ADD", 0.30);
+}
+
+static double active_susp_wheel_y_offset()
+{
+	if (!config_flag_is_true("SUSP_GEOMETRY_TEST"))
+	{
+		return 0.0;
+	}
+
+	return config_number_or_default("SUSP_GEOMETRY_TEST_WHEEL_Y_OFFSET", -0.50);
+}
+
+static Vec3 active_susp_wheel_pos(int idx)
+{
+	if (idx < 0 || idx >= 3)
+	{
+		return Vec3();
+	}
+
+	Vec3 pos = kFallbackGearPoints[idx];
+	pos.y += active_susp_wheel_y_offset();
+	return pos;
+}
+
+static void active_susp_node_names(const char*& nose, const char*& left, const char*& right)
+{
+	const bool use_modelviewer_nodes = config_flag_is_true("SUSP_USE_MODELVIEWER_WHEEL_NODES");
+	const char** nodes = use_modelviewer_nodes ? kSuspModelViewerWheelNodes : kSuspOriginalWheelNodes;
+	nose = nodes[0];
+	left = nodes[1];
+	right = nodes[2];
+}
+
+static void log_startup_susp_probe(double dt)
+{
+	if (!kStartupSuspProbeMode || kStartupSuspProbeElapsed > kStartupSuspProbeDuration)
+	{
+		return;
+	}
+
+	++kStartupSuspFrameIndex;
+
+	const double total_force = suspension_total_force_mag();
+	const bool any_force = total_force > kStartupSuspForceEpsilon;
+	const bool any_wow_now = suspension_wow[0] || suspension_wow[1] || suspension_wow[2];
+	const bool all_wow_zero = !any_wow_now;
+	const bool any_comp_now =
+		(fabs(suspension_compression[0]) > 1e-5) ||
+		(fabs(suspension_compression[1]) > 1e-5) ||
+		(fabs(suspension_compression[2]) > 1e-5);
+	const bool comp_all_zero = !any_comp_now;
+
+	char tags[256] = "";
+	if (any_force)
+	{
+		kStartupSuspSeenForce = true;
+		if (!kStartupSuspLoggedFirstForce)
+		{
+			append_tag(tags, sizeof(tags), "FIRST_FORCE_FRAME");
+			kStartupSuspLoggedFirstForce = true;
+		}
+	}
+	else if (kStartupSuspSeenForce && !kStartupSuspLoggedZeroAfterForce)
+	{
+		append_tag(tags, sizeof(tags), "FIRST_ZERO_FORCE_AFTER_FORCE");
+		kStartupSuspLoggedZeroAfterForce = true;
+	}
+
+	if (any_wow_now)
+	{
+		kStartupSuspSeenAnyWow = true;
+	}
+	else if (kStartupSuspSeenAnyWow && all_wow_zero && !kStartupSuspLoggedAllWowZero)
+	{
+		append_tag(tags, sizeof(tags), "FIRST_ALL_WOW_ZERO");
+		kStartupSuspLoggedAllWowZero = true;
+	}
+
+	if (any_comp_now)
+	{
+		kStartupSuspSeenAnyCompression = true;
+	}
+	else if (kStartupSuspSeenAnyCompression && comp_all_zero && !kStartupSuspLoggedCompAllZero)
+	{
+		append_tag(tags, sizeof(tags), "FIRST_COMP_ALL_ZERO");
+		kStartupSuspLoggedCompAllZero = true;
+	}
+
+	if (tags[0] == '\0')
+	{
+		snprintf(tags, sizeof(tags), "-");
+	}
+
+	char buf[2048];
+	snprintf(
+		buf, sizeof(buf),
+		"STARTUP_SUSP sim_time=%.4f startup_time=%.4f frame=%llu dt=%.5f AGL=%.3f h=%.3f h_obj=%.3f "
+		"vy=%.3f pitch=%.3f roll=%.3f mass=%.1f gear_down=%d "
+		"wow=%d/%d/%d comp=%.6f/%.6f/%.6f "
+		"force_vec=(%.1f,%.1f,%.1f)/(%.1f,%.1f,%.1f)/(%.1f,%.1f,%.1f) "
+		"force_mag=%.1f/%.1f/%.1f SUSP_total=%.1f "
+		"throttle_output=%.3f/%.3f thrust=%.1f/%.1f "
+		"vel_world=(%.3f,%.3f,%.3f) vel_body=(%.3f,%.3f,%.3f) "
+		"omega_world=(%.5f,%.5f,%.5f) omega_body=(%.5f,%.5f,%.5f) tags=%s",
+		fm_clock,
+		kStartupSuspProbeElapsed,
+		kStartupSuspFrameIndex,
+		dt,
+		altitude_AGL,
+		surface_height_raw,
+		surface_height_with_objects,
+		velocity_world.y,
+		pitch * rad_to_deg,
+		roll * rad_to_deg,
+		current_mass,
+		gear_pos > 0.5 ? 1 : 0,
+		suspension_wow[0] ? 1 : 0,
+		suspension_wow[1] ? 1 : 0,
+		suspension_wow[2] ? 1 : 0,
+		suspension_compression[0],
+		suspension_compression[1],
+		suspension_compression[2],
+		suspension_force_vec[0].x,
+		suspension_force_vec[0].y,
+		suspension_force_vec[0].z,
+		suspension_force_vec[1].x,
+		suspension_force_vec[1].y,
+		suspension_force_vec[1].z,
+		suspension_force_vec[2].x,
+		suspension_force_vec[2].y,
+		suspension_force_vec[2].z,
+		suspension_force_mag[0],
+		suspension_force_mag[1],
+		suspension_force_mag[2],
+		total_force,
+		left_throttle_output,
+		right_throttle_output,
+		left_thrust_force,
+		right_thrust_force,
+		velocity_world.x,
+		velocity_world.y,
+		velocity_world.z,
+		velocity_body.x,
+		velocity_body.y,
+		velocity_body.z,
+		angular_velocity_world.x,
+		angular_velocity_world.y,
+		angular_velocity_world.z,
+		angular_velocity_body.x,
+		angular_velocity_body.y,
+		angular_velocity_body.z,
+		tags
+	);
+	susp_probe_log(buf);
+
+	if (dt > 0.0)
+	{
+		kStartupSuspProbeElapsed += dt;
+	}
+}
 
 static inline bool has_suspension_feedback()
 {
@@ -552,9 +1176,182 @@ static inline bool any_wow()
 	return suspension_wow[0] || suspension_wow[1] || suspension_wow[2];
 }
 
+static inline double suspension_total_force_mag()
+{
+	return suspension_force_mag[0] + suspension_force_mag[1] + suspension_force_mag[2];
+}
+
+static void append_tag(char* tags, size_t tags_size, const char* tag)
+{
+	if (!tags || !tag || tags_size == 0)
+	{
+		return;
+	}
+
+	const size_t used = strlen(tags);
+	if (used >= tags_size - 1)
+	{
+		return;
+	}
+
+	snprintf(tags + used, tags_size - used, "%s%s", used > 0 ? "|" : "", tag);
+}
+
+static void reset_startup_susp_probe_state()
+{
+	kStartupSuspFrameIndex = 0;
+	kStartupSuspProbeElapsed = 0.0;
+	kStartupSuspSeenForce = false;
+	kStartupSuspLoggedFirstForce = false;
+	kStartupSuspLoggedZeroAfterForce = false;
+	kStartupSuspSeenAnyWow = false;
+	kStartupSuspLoggedAllWowZero = false;
+	kStartupSuspSeenAnyCompression = false;
+	kStartupSuspLoggedCompAllZero = false;
+}
+
+static inline bool any_fallback_wow()
+{
+	return fallback_suspension_wow[0] || fallback_suspension_wow[1] || fallback_suspension_wow[2];
+}
+
+static inline double suspension_visual_arg(int idx)
+{
+	if (idx < 0 || idx >= 3 || !suspension_feedback_valid[idx])
+	{
+		return 0.0;
+	}
+
+	return limit(suspension_compression[idx], 0.0, 1.0) * limit(gear_pos, 0.0, 1.0);
+}
+
+static inline double fallback_world_vertical_offset(const Vec3& point)
+{
+	const double cp = cos(pitch);
+	const double sp = sin(pitch);
+	const double cr = cos(roll);
+	const double sr = sin(roll);
+
+	const double y_after_pitch = point.x * sp + point.y * cp;
+	return (y_after_pitch * cr) - (point.z * sr);
+}
+
 static inline double apply_fallback_ground_forces()
 {
-	return 0.0;
+	for (int i = 0; i < 3; ++i)
+	{
+		fallback_suspension_compression[i] = 0.0;
+		fallback_suspension_force_mag[i] = 0.0;
+		fallback_suspension_wow[i] = false;
+	}
+
+	if (!kEnableFallbackGroundForces)
+	{
+		return 0.0;
+	}
+
+	double total_force = 0.0;
+	double total_main_normal = 0.0;
+	double left_main_normal = 0.0;
+	double right_main_normal = 0.0;
+	const double sink_rate = limit(-velocity_world.y, 0.0, 80.0);
+	const double gear_support = limit((gear_pos - 0.2) / 0.8, 0.0, 1.0);
+	bool gear_contact = false;
+
+	if (gear_support > 0.0)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			const double wheel_bottom_agl =
+				altitude_AGL +
+				fallback_world_vertical_offset(kFallbackGearPoints[i]) -
+				kFallbackWheelRadius[i];
+			const double compression = kFallbackContactBand[i] - wheel_bottom_agl;
+
+			if (compression > 0.0)
+			{
+				double force_mag =
+					(compression * kFallbackSpring[i] * gear_support) +
+					(sink_rate * kFallbackDamping[i] * gear_support);
+
+				if (i == 0)
+				{
+					force_mag = limit(force_mag, 0.0, current_mass * 9.81 * 0.45);
+				}
+				else
+				{
+					force_mag = limit(force_mag, 0.0, current_mass * 9.81 * 1.15);
+				}
+
+				add_local_force(Vec3(0.0, force_mag, 0.0), kFallbackGearPoints[i]);
+
+				fallback_suspension_compression[i] = compression;
+				fallback_suspension_force_mag[i] = force_mag;
+				fallback_suspension_wow[i] = true;
+
+				total_force += force_mag;
+				if (i == 1)
+				{
+					left_main_normal = force_mag;
+					total_main_normal += force_mag;
+				}
+				else if (i == 2)
+				{
+					right_main_normal = force_mag;
+					total_main_normal += force_mag;
+				}
+				gear_contact = true;
+			}
+		}
+	}
+
+	if (total_main_normal > 1.0)
+	{
+		const double forward_speed = velocity_body.x;
+		const double speed_abs = fabs(forward_speed);
+		const double speed_sign = (forward_speed >= 0.0) ? 1.0 : -1.0;
+		const double avg_throttle = 0.5 * (left_throttle_input + right_throttle_input);
+		const double brake_norm =
+			(left_main_normal * limit(wheel_brake_left, 0.0, 1.0)) +
+			(right_main_normal * limit(wheel_brake_right, 0.0, 1.0));
+
+		double longitudinal_resist =
+			(total_main_normal * 0.035) +
+			(brake_norm * 0.85);
+
+		if (speed_abs < 1.5 && avg_throttle < 0.05)
+		{
+			longitudinal_resist += limit(left_thrust_force + right_thrust_force, 0.0, total_main_normal * 0.12);
+		}
+
+		if (speed_abs > 0.05)
+		{
+			add_local_force(Vec3(-speed_sign * longitudinal_resist, 0.0, 0.0), Vec3(-0.9, -1.6, 0.0));
+		}
+		else if (avg_throttle < 0.05 || brake_norm > 1.0)
+		{
+			add_local_force(Vec3(-longitudinal_resist, 0.0, 0.0), Vec3(-0.9, -1.6, 0.0));
+		}
+	}
+
+	if (!gear_contact)
+	{
+		const double belly_bottom_agl = altitude_AGL + fallback_world_vertical_offset(kFallbackBellyPoint);
+		const double belly_compression = 0.03 - belly_bottom_agl;
+
+		if (belly_compression > 0.0)
+		{
+			double belly_force =
+				(belly_compression * 260000.0) +
+				(sink_rate * 40000.0);
+
+			belly_force = limit(belly_force, 0.0, current_mass * 9.81 * 2.0);
+			add_local_force(Vec3(0.0, belly_force, 0.0), kFallbackBellyPoint);
+			total_force += belly_force;
+		}
+	}
+
+	return total_force;
 }
 
 static void reset_suspension_feedback_state()
@@ -562,10 +1359,41 @@ static void reset_suspension_feedback_state()
 	for (int i = 0; i < 3; ++i)
 	{
 		suspension_compression[i] = 0.0;
+		suspension_force_vec[i] = Vec3();
 		suspension_force_mag[i] = 0.0;
 		suspension_wow[i] = false;
 		suspension_feedback_valid[i] = false;
+		fallback_suspension_compression[i] = 0.0;
+		fallback_suspension_force_mag[i] = 0.0;
+		fallback_suspension_wow[i] = false;
 	}
+	fallback_ground_force = 0.0;
+}
+
+static void reset_wheel_brakes()
+{
+	wheel_brake = 0.0;
+	wheel_brake_left = 0.0;
+	wheel_brake_right = 0.0;
+}
+
+static void reset_wheel_spin()
+{
+	for (int i = 0; i < 3; ++i)
+	{
+		wheel_spin[i] = 0.0;
+	}
+	nose_wheel_steering = 0.0;
+}
+
+static inline double compute_nose_wheel_steering()
+{
+	if (!nose_turn_enabled || gear_pos <= 0.5 || V_scalar >= 70.0)
+	{
+		return 0.0;
+	}
+
+	return -limit(yaw_input, -1.0, 1.0) * 0.75;
 }
 
 static inline double normalize_throttle_axis(double raw_value)
@@ -1150,7 +1978,7 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 
 	const double nz_pos_limit = fbw_g_limiter_override ? (cat.g_hard + 2.0) : cat.g_hard;
 	const double nz_neg_limit = 2.5;
-	const double nz_pos_soft = min(cat.g_soft, nz_pos_limit - 0.25);
+	const double nz_pos_soft = min(cat.g_soft, nz_pos_limit - max(0.25, fbw_nz_limit_buffer_bias));
 	const double nz_neg_hard = -nz_neg_limit;
 	const double nz_neg_soft = -max(1.0, nz_neg_limit * 0.65);
 	if (fbw_stick_pitch_shaped >= 0.0)
@@ -1178,7 +2006,8 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 	if (fbw_stick_pitch_shaped > 0.0)
 	{
 		const double t = limit((fbw_nz_f - nz_pos_soft) / max(nz_pos_limit - nz_pos_soft, 0.1), 0.0, 1.0);
-		nz_limit_gain_scale = fbw_blend_value(1.0, 0.35, t);
+		const double shaped_t = fbw_smoothstep01(t);
+		nz_limit_gain_scale = fbw_blend_value(1.0, fbw_nz_limit_gain_floor, shaped_t);
 	}
 	const double kp_nz_outer = fbw_blend_value(0.34, 0.24, fbw_mode_blend) * gs.cmd_gain * nz_limit_gain_scale;
 	const double ki_nz_outer = fbw_blend_value(0.11, 0.06, fbw_mode_blend) * gs.hold_gain * nz_limit_gain_scale;
@@ -1334,6 +2163,53 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 // Conventionally, parameter names are in all-caps.
 void* fm_export_temperature = interface.getParamHandle("FM_TEMPERATURE_C");
 
+// Test hook: Maxpower switch (set from cockpit Lua). When OFF (0) the EFM will zero engine thrust.
+void* fm_param_maxpower = interface.getParamHandle("FM_MAXPOWER_SWITCH");
+void* fm_param_maxpower_ready = interface.getParamHandle("FM_MAXPOWER_READY");
+
+// Autopilot param handles (read from Lua autopilot_system.lua)
+void* ap_param_master    = interface.getParamHandle("AP_MASTER_ENGAGED");
+void* ap_param_pitch_cmd = interface.getParamHandle("AP_PITCH_CMD");
+void* ap_param_roll_cmd  = interface.getParamHandle("AP_ROLL_CMD");
+void* ap_param_thr_cmd   = interface.getParamHandle("AP_THROTTLE_CMD");
+void* ap_param_bypass    = interface.getParamHandle("AP_BYPASS_ACTIVE");
+void* ap_param_at_eng    = interface.getParamHandle("AP_AT_ENGAGED");
+
+// AP state cached per frame
+double ap_pitch_cmd_cached  = 0.0;
+double ap_roll_cmd_cached   = 0.0;
+double ap_throttle_cached   = 0.0;
+bool   ap_master_cached     = false;
+bool   ap_bypass_cached     = false;
+bool   ap_at_engaged_cached = false;
+
+static void update_autopilot_from_lua()
+{
+	ap_master_cached     = interface.getParamNumber(ap_param_master) > 0.5;
+	ap_bypass_cached     = interface.getParamNumber(ap_param_bypass) > 0.5;
+	ap_at_engaged_cached = interface.getParamNumber(ap_param_at_eng) > 0.5;
+
+	if (ap_master_cached && !ap_bypass_cached)
+	{
+		ap_pitch_cmd_cached = limit(interface.getParamNumber(ap_param_pitch_cmd), -1.0, 1.0);
+		ap_roll_cmd_cached  = limit(interface.getParamNumber(ap_param_roll_cmd), -1.0, 1.0);
+	}
+	else
+	{
+		ap_pitch_cmd_cached = 0.0;
+		ap_roll_cmd_cached  = 0.0;
+	}
+
+	if (ap_at_engaged_cached)
+	{
+		ap_throttle_cached = limit(interface.getParamNumber(ap_param_thr_cmd), 0.0, 1.0);
+	}
+	else
+	{
+		ap_throttle_cached = 0.0;
+	}
+}
+
 // Add force
 void add_local_force(const Vec3 & Force, const Vec3 & Force_pos)
 {
@@ -1443,6 +2319,60 @@ void ed_fm_simulate(double dt)
 
 	right_aileron_pos.x = center_of_mass.x;
 	right_aileron_pos.y = center_of_mass.y;
+	if (!kGroundConfigLogged)
+	{
+		const bool use_modelviewer_nodes = config_flag_is_true("SUSP_USE_MODELVIEWER_WHEEL_NODES");
+		const bool geometry_test = config_flag_is_true("SUSP_GEOMETRY_TEST");
+		const double radius_add = active_susp_radius_add();
+		const double wheel_y_offset = active_susp_wheel_y_offset();
+		const Vec3 final_pos_nose = active_susp_wheel_pos(0);
+		const Vec3 final_pos_left = active_susp_wheel_pos(1);
+		const Vec3 final_pos_right = active_susp_wheel_pos(2);
+		char susp_test_mark[128];
+		config_string_or_default("SUSP_TEST_MARK", "SUSP_TEST_MARK_NOT_FOUND", susp_test_mark, sizeof(susp_test_mark));
+		const char* node_nose = nullptr;
+		const char* node_left = nullptr;
+		const char* node_right = nullptr;
+		active_susp_node_names(node_nose, node_left, node_right);
+
+		char cfg_buf[1536];
+		snprintf(
+			cfg_buf, sizeof(cfg_buf),
+			"GROUND_CFG SUSP_TEST_MARK=%s efm_session=%s_%s SUSP_USE_MODELVIEWER_WHEEL_NODES=%d SUSP_GEOMETRY_TEST=%d "
+			"radius_add=%.2f wheel_y_offset=%.2f gear_nodes=%s/%s/%s "
+			"final_wheel_radius=%.4f/%.4f/%.4f "
+			"final_wheel_pos=(%.3f,%.3f,%.3f)/(%.3f,%.3f,%.3f)/(%.3f,%.3f,%.3f) "
+			"active_collision_shell=%s suspension_mode=%s fallback=%d",
+			susp_test_mark,
+			__DATE__,
+			__TIME__,
+			use_modelviewer_nodes ? 1 : 0,
+			geometry_test ? 1 : 0,
+			radius_add,
+			wheel_y_offset,
+			node_nose,
+			node_left,
+			node_right,
+			kFallbackWheelRadius[0] + radius_add,
+			kFallbackWheelRadius[1] + radius_add,
+			kFallbackWheelRadius[2] + radius_add,
+			final_pos_nose.x,
+			final_pos_nose.y,
+			final_pos_nose.z,
+			final_pos_left.x,
+			final_pos_left.y,
+			final_pos_left.z,
+			final_pos_right.x,
+			final_pos_right.y,
+			final_pos_right.z,
+			kActiveCollisionShellName,
+			kSuspensionModeName,
+			kEnableFallbackGroundForces ? 1 : 0
+		);
+		dbg_susp(cfg_buf);
+		susp_probe_log(cfg_buf);
+		kGroundConfigLogged = true;
+	}
 	}
 
 	// Actuator animation function for the moving parts
@@ -1471,7 +2401,8 @@ void ed_fm_simulate(double dt)
 		}
 	}
 	flaps_pos = limit(actuator(flaps_pos, flap_target, -0.002, 0.002), 0, 1); // Flaps
-	slats_pos = limit(actuator(slats_pos, (alpha - 6.0) / 12.0, -0.003, 0.003), 0, 1); // Slats, starts moving at 6 degrees alpha
+	slats_pos = limit(actuator(slats_pos, flap_target, -0.003, 0.003), 0, 1); // Slats track the flap command on the F-CK-1C
+	nose_wheel_steering = limit(actuator(nose_wheel_steering, compute_nose_wheel_steering(), -0.06, 0.06), -1, 1);
 
 #pragma region AERODYNAMICS
 	airspeed.x = velocity_world.x - wind.x;
@@ -1479,6 +2410,21 @@ void ed_fm_simulate(double dt)
 	airspeed.z = velocity_world.z - wind.z;
 
 	V_scalar = sqrt(airspeed.x * airspeed.x + airspeed.y * airspeed.y + airspeed.z * airspeed.z);
+
+	const double ground_speed = sqrt(velocity_world.x * velocity_world.x + velocity_world.z * velocity_world.z);
+	const double spin_enable = ((gear_pos > 0.2) && (altitude_AGL < 2.5)) ? 1.0 : 0.0;
+	for (int i = 0; i < 3; ++i)
+	{
+		const double wheel_circumference = 2.0 * pi * kFallbackWheelRadius[i];
+		if (wheel_circumference > 1e-6)
+		{
+			wheel_spin[i] = fmod(wheel_spin[i] + (ground_speed / wheel_circumference) * dt * spin_enable, 1.0);
+			if (wheel_spin[i] < 0.0)
+			{
+				wheel_spin[i] += 1.0;
+			}
+		}
+	}
 
 	mach = V_scalar / speed_of_sound;
 
@@ -1513,13 +2459,43 @@ void ed_fm_simulate(double dt)
 
 	// Update pilot inputs first, then run FBW once per frame.
 	update_primary_control_inputs();
+
+	// Autopilot: read commands from Lua and blend with pilot inputs.
+	// AP sits above the FBW: it replaces stick commands, and the FBW
+	// processes them identically to pilot inputs (rate limiting, gain
+	// scheduling, safety features all remain active).
+	update_autopilot_from_lua();
+	if (ap_master_cached && !ap_bypass_cached)
+	{
+		// AP overrides pitch/roll inputs; pilot trim remains additive.
+		pitch_input = ap_pitch_cmd_cached;
+		roll_input  = ap_roll_cmd_cached;
+	}
+	// A/T: use existing FBW throttle blend infrastructure
+	if (ap_at_engaged_cached)
+	{
+		fbw_throttle_cmd_left  = ap_throttle_cached;
+		fbw_throttle_cmd_right = ap_throttle_cached;
+		fbw_throttle_blend     = 1.0;
+		fbw_throttle_override  = false;
+	}
+	else
+	{
+		fbw_throttle_blend     = 0.0;
+	}
+
 	update_fbw_controller(dt, q, AlphaMax_);
 
 	// Lift/normal force, acts upwards
 	double Lift = Cy + FM_DATA::Cy0 + (FM_DATA::cy_flap * flaps_pos);
 
+	// Add lift/AoA-dependent drag so hard pulls trade energy for turn performance.
+	const double induced_drag = (FM_DATA::cx_lift_k * Lift * Lift) +
+		(FM_DATA::cx_alpha_k * aoa * aoa) +
+		(FM_DATA::cx_elevator_k * fabs(elevator_command));
+
 	// Drag force, acts backwards
-	double Drag = Cx0_ + (FM_DATA::cx_brk * airbrake_pos) + (FM_DATA::cx_flap * flaps_pos) + (FM_DATA::cx_gear * gear_pos);
+	double Drag = Cx0_ + (FM_DATA::cx_brk * airbrake_pos) + (FM_DATA::cx_flap * flaps_pos) + (FM_DATA::cx_gear * gear_pos) + induced_drag;
 
 	// Cheap, unrealistic, but effective aoa limiter
 	if ((fabs(alpha) / AlphaMax_) >= 0.75)
@@ -1550,7 +2526,7 @@ void ed_fm_simulate(double dt)
 #pragma region PITCH
 
 	// Elevator deflection plus default angle
-	double elevator_deflection = (-(rescale(elevator_command + 0.15, rad(-25), rad(35))) * 14) * cos(aoa / 2);
+	double elevator_deflection = (-(rescale(elevator_command + 0.15, rad(-25), rad(35))) * 18) * cos(aoa / 2);
 
 	double pitch_stability = (aoa + sin(aoa / 2) / 2) + (pitch_rate * 2);
 
@@ -1614,7 +2590,14 @@ void ed_fm_simulate(double dt)
 	if (left_engine_switch == true && left_engine_power_readout >= 0.5)
 	{
 		const double left_mil_cmd = limit(left_throttle_input / afterburner_detent, 0.0, 1.0);
-		left_throttle_output = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), left_mil_cmd), 0.1, 1);
+		// Spool lag: TFE1042-70 does not respond instantaneously to throttle changes.
+		// Apply a first-order lag so throttle_output tracks the target with realistic delay.
+		const double left_throttle_target = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), left_mil_cmd), 0.1, 1.0);
+		const double l_spool_tau = (left_throttle_target > left_throttle_output)
+			? FM_DATA::engine_spool_up_tau
+			: FM_DATA::engine_spool_down_tau;
+		left_throttle_output = fbw_first_order(left_throttle_output, left_throttle_target, l_spool_tau, dt);
+		left_throttle_output = limit(left_throttle_output, 0.1, 1.0);
 		double left_target_core = 0.5 + 0.5 * left_mil_cmd;
 		if (left_throttle_input <= afterburner_detent)
 		{
@@ -1647,7 +2630,13 @@ void ed_fm_simulate(double dt)
 	if (right_engine_switch == true && right_engine_power_readout >= 0.5)
 	{
 		const double right_mil_cmd = limit(right_throttle_input / afterburner_detent, 0.0, 1.0);
-		right_throttle_output = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), right_mil_cmd), 0.1, 1);
+		// Spool lag: same first-order lag as left engine.
+		const double right_throttle_target = limit(lerp(FM_DATA::throttle_input_table, FM_DATA::engine_power_table, sizeof(FM_DATA::throttle_input_table) / sizeof(float), right_mil_cmd), 0.1, 1.0);
+		const double r_spool_tau = (right_throttle_target > right_throttle_output)
+			? FM_DATA::engine_spool_up_tau
+			: FM_DATA::engine_spool_down_tau;
+		right_throttle_output = fbw_first_order(right_throttle_output, right_throttle_target, r_spool_tau, dt);
+		right_throttle_output = limit(right_throttle_output, 0.1, 1.0);
 		double right_target_core = 0.5 + 0.5 * right_mil_cmd;
 		if (right_throttle_input <= afterburner_detent)
 		{
@@ -1663,21 +2652,50 @@ void ed_fm_simulate(double dt)
 		right_engine_power_readout = actuator(right_engine_power_readout, right_target_core, -core_step, core_step);
 	};
 
-	// AB stage logic:
-	// 0..detent = military power only, >detent adds extra AB thrust linearly.
-	left_afterburner_ratio = 0.0;
-	right_afterburner_ratio = 0.0;
-	if (left_engine_switch == true && left_engine_power_readout >= 0.5 && left_throttle_input > afterburner_detent)
+	// AB stage logic with ignition gate and spool lag.
+	// Light condition : pilot pushes past detent AND engine throttle_output >= ab_light_throttle_output_min
+	//                   (i.e., engine is already near military thrust).  Prevents instant AB at low power.
+	// Extinguish      : pilot pulls below detent OR engine is shut down; ratio ramps to 0.
+	// Nozzle follows the lagged afterburner_ratio, so opening/closing tracks actual AB state.
 	{
-		left_afterburner_ratio = limit((left_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
-	}
-	if (right_engine_switch == true && right_engine_power_readout >= 0.5 && right_throttle_input > afterburner_detent)
-	{
-		right_afterburner_ratio = limit((right_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
+		// --- Left AB ---
+		const double left_ab_demand = limit((left_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
+		if (left_engine_switch && left_throttle_input > afterburner_detent
+			&& left_throttle_output >= ab_light_throttle_output_min)
+		{
+			left_afterburner_lit = true;
+		}
+		else if (!left_engine_switch || left_throttle_input <= afterburner_detent)
+		{
+			left_afterburner_lit = false;
+		}
+		const double left_ab_target  = left_afterburner_lit ? left_ab_demand : 0.0;
+		const double left_ab_tau     = (left_ab_target > left_afterburner_ratio) ? ab_spool_in_tau : ab_spool_out_tau;
+		left_afterburner_ratio  = limit(fbw_first_order(left_afterburner_ratio,  left_ab_target,  left_ab_tau,  dt), 0.0, 1.0);
+
+		// --- Right AB ---
+		const double right_ab_demand = limit((right_throttle_input - afterburner_detent) / (1.0 - afterburner_detent), 0.0, 1.0);
+		if (right_engine_switch && right_throttle_input > afterburner_detent
+			&& right_throttle_output >= ab_light_throttle_output_min)
+		{
+			right_afterburner_lit = true;
+		}
+		else if (!right_engine_switch || right_throttle_input <= afterburner_detent)
+		{
+			right_afterburner_lit = false;
+		}
+		const double right_ab_target = right_afterburner_lit ? right_ab_demand : 0.0;
+		const double right_ab_tau    = (right_ab_target > right_afterburner_ratio) ? ab_spool_in_tau : ab_spool_out_tau;
+		right_afterburner_ratio = limit(fbw_first_order(right_afterburner_ratio, right_ab_target, right_ab_tau, dt), 0.0, 1.0);
 	}
 
-	const double left_nozzle_target = estimate_nozzle_aperture_target(left_throttle_input, left_engine_power_readout, left_afterburner_ratio, left_engine_switch);
-	const double right_nozzle_target = estimate_nozzle_aperture_target(right_throttle_input, right_engine_power_readout, right_afterburner_ratio, right_engine_switch);
+	// Nozzle: dry-power schedule driven by throttle_output (follows actual engine state, not raw command).
+	// Scale throttle_output back into the [0, afterburner_detent] range so the schedule's dry_ratio
+	// matches the original calibration: throttle_output=1.0 at military maps to dry_ratio=1.0.
+	const double left_nozzle_throttle  = left_throttle_output  * afterburner_detent;
+	const double right_nozzle_throttle = right_throttle_output * afterburner_detent;
+	const double left_nozzle_target  = estimate_nozzle_aperture_target(left_nozzle_throttle,  left_engine_power_readout,  left_afterburner_ratio,  left_engine_switch);
+	const double right_nozzle_target = estimate_nozzle_aperture_target(right_nozzle_throttle, right_engine_power_readout, right_afterburner_ratio, right_engine_switch);
 	left_nozzle_aperture = update_nozzle_aperture(left_nozzle_aperture, left_nozzle_target, left_engine_power_readout, left_afterburner_ratio, left_engine_switch, dt);
 	right_nozzle_aperture = update_nozzle_aperture(right_nozzle_aperture, right_nozzle_target, right_engine_power_readout, right_afterburner_ratio, right_engine_switch, dt);
 
@@ -1695,19 +2713,75 @@ void ed_fm_simulate(double dt)
 	// Engine shutdown
 	if (internal_fuel <= 0 || altitude_ASL > 20000)
 	{
+		char shutdown_dbg[256];
+		snprintf(
+			shutdown_dbg, sizeof(shutdown_dbg),
+			"ENG_SHUTDOWN fuel=%.3f asl=%.3f left_sw=%d right_sw=%d",
+			internal_fuel,
+			altitude_ASL,
+			left_engine_switch ? 1 : 0,
+			right_engine_switch ? 1 : 0
+		);
+		dbg_susp(shutdown_dbg);
+
 		left_thrust_force = 0;
 		right_thrust_force = 0;
-		left_afterburner_ratio = 0.0;
+		left_afterburner_ratio  = 0.0;
 		right_afterburner_ratio = 0.0;
-		left_engine_switch = false;
+		left_afterburner_lit    = false;
+		right_afterburner_lit   = false;
+		left_engine_switch  = false;
 		right_engine_switch = false;
 		left_engine_power_readout = actuator(left_engine_power_readout, 0.0, -dt / 10, dt / 10);
 		right_engine_power_readout = actuator(right_engine_power_readout, 0.0, -dt / 10, dt / 10);
 	};
 
 	//add_local_force(thrust, thrust_pos);
+
+	// Apply Maxpower test switch only after the Lua side reports the param is initialised.
+	// This prevents a missing/uninitialised cockpit device from silently killing all thrust.
+	double maxpower_ready = 0.0;
+	double maxpower_val = 1.0;
+	if (fm_param_maxpower_ready != nullptr)
+	{
+		maxpower_ready = interface.getParamNumber(fm_param_maxpower_ready);
+	}
+	if (maxpower_ready > 0.5 && fm_param_maxpower != nullptr)
+	{
+		maxpower_val = interface.getParamNumber(fm_param_maxpower) > 0.5 ? 1.0 : 0.0;
+	}
+	if (maxpower_ready > 0.5 && maxpower_val < 0.5)
+	{
+		left_thrust_force = 0.0;
+		right_thrust_force = 0.0;
+	}
+
+	// Apply thrust forces at engine positions
 	add_local_force(Vec3(left_thrust_force, 0, 0), left_engine_pos);
 	add_local_force(Vec3(right_thrust_force, 0, 0), right_engine_pos);
+
+	// Structured debug output: left/right thrust, net moment from engines, suspension forces
+	{
+		char dbgline[768];
+		Vec3 lforce(left_thrust_force, 0.0, 0.0);
+		Vec3 rforce(right_thrust_force, 0.0, 0.0);
+		Vec3 lm = cross(left_engine_pos, lforce);
+		Vec3 rm = cross(right_engine_pos, rforce);
+		Vec3 netm(lm.x + rm.x + common_moment.x, lm.y + rm.y + common_moment.y, lm.z + rm.z + common_moment.z);
+		snprintf(dbgline, sizeof(dbgline), "THRUST L=%.3f R=%.3f NETM=(%.3f,%.3f,%.3f) SUSP=(%.3f,%.3f,%.3f) MAXPWR ready=%.1f sw=%.1f ENGSW=(%d,%d) THRIN=(%.3f,%.3f) THROUT=(%.3f,%.3f) CORE=(%.3f,%.3f) INTEG wing=(%.3f,%.3f) eng=(%.3f,%.3f) FUEL=%.1f",
+			left_thrust_force, right_thrust_force,
+			netm.x, netm.y, netm.z,
+			suspension_force_mag[0], suspension_force_mag[1], suspension_force_mag[2],
+			maxpower_ready, maxpower_val,
+			left_engine_switch ? 1 : 0, right_engine_switch ? 1 : 0,
+			left_throttle_input, right_throttle_input,
+			left_throttle_output, right_throttle_output,
+			left_engine_power_readout, right_engine_power_readout,
+			left_wing_integrity, right_wing_integrity,
+			left_engine_integrity, right_engine_integrity,
+			internal_fuel);
+		dbg_susp(dbgline);
+	}
 
 	if (infinite_fuel == false)
 	{
@@ -1739,6 +2813,20 @@ void ed_fm_simulate(double dt)
 	}
 	add_local_force(-speed_limiter, center_of_mass);
 
+	// Speedbrake pitch compensation (F-CK-1C FLCS auto-trims for speedbrake deployment).
+	// When the dorsal speedbrake opens it creates a pitch-down disturbance (reduced tail
+	// effectiveness from changed downwash + drag couple below the net aerodynamic centre).
+	// The real FLCS applies a nose-up feed-forward through the elevators before the Nz/alpha
+	// outer loop saturates and the hold mode degrades.  We model this as a direct pitching
+	// moment proportional to airbrake_pos * q * S * c_bar (dimensionally correct Cm scaling).
+	// Positive z-moment = nose UP in the DCS body-axis convention.
+	{
+		const double c_bar = FM_DATA::wing_area / FM_DATA::wingspan; // mean aerodynamic chord [m]
+		const double airbrake_pitch_comp =
+			FM_DATA::airbrake_pitch_comp_k * airbrake_pos * q * FM_DATA::wing_area * c_bar;
+		add_local_moment(Vec3(0, 0, airbrake_pitch_comp));
+	}
+
 	// Note about speed:
 	// In DCS, if a plane goes faster than around 3100 Km/h (860 m/s) ground speed, it explodes. Even with invincibility on.
 
@@ -1757,27 +2845,107 @@ void ed_fm_simulate(double dt)
 	fallback_ground_force = 0.0;
 	fallback_ground_force = apply_fallback_ground_forces();
 
+	log_startup_susp_probe(dt);
+
+	if (kSuspProbeMode)
+	{
+		kSuspProbeTimer += dt;
+		if (kSuspProbeTimer >= kSuspProbeInterval)
+		{
+			kSuspProbeTimer = 0.0;
+
+			const char* node_nose = nullptr;
+			const char* node_left = nullptr;
+			const char* node_right = nullptr;
+			active_susp_node_names(node_nose, node_left, node_right);
+			const bool geometry_test = config_flag_is_true("SUSP_GEOMETRY_TEST");
+			const double radius_add = active_susp_radius_add();
+			const double wheel_y_offset = active_susp_wheel_y_offset();
+			char susp_test_mark[128];
+			config_string_or_default("SUSP_TEST_MARK", "SUSP_TEST_MARK_NOT_FOUND", susp_test_mark, sizeof(susp_test_mark));
+
+			char probe_buf[1536];
+			snprintf(
+				probe_buf, sizeof(probe_buf),
+				"SUSP_PROBE mode=1 SUSP_TEST_MARK=%s geometry_test=%d radius_add=%.2f wheel_y_offset=%.2f AGL=%.3f gear_down=%d nodes=%s/%s/%s "
+				"valid=%d/%d/%d WOW=%d/%d/%d compression=%.5f/%.5f/%.5f force=%.1f/%.1f/%.1f "
+				"brake_moment=%.3f/%.3f/%.3f input_only_raw_brake=%.3f/%.3f/%.3f "
+				"input_only_raw_yaw=%.3f rudder_command=%.3f NWS_command=%.3f NWS_drawarg=%.3f",
+				susp_test_mark,
+				geometry_test ? 1 : 0,
+				radius_add,
+				wheel_y_offset,
+				altitude_AGL,
+				gear_pos > 0.5 ? 1 : 0,
+				node_nose,
+				node_left,
+				node_right,
+				suspension_feedback_valid[0] ? 1 : 0,
+				suspension_feedback_valid[1] ? 1 : 0,
+				suspension_feedback_valid[2] ? 1 : 0,
+				suspension_wow[0] ? 1 : 0,
+				suspension_wow[1] ? 1 : 0,
+				suspension_wow[2] ? 1 : 0,
+				suspension_compression[0],
+				suspension_compression[1],
+				suspension_compression[2],
+				suspension_force_mag[0],
+				suspension_force_mag[1],
+				suspension_force_mag[2],
+				0.0,
+				limit(wheel_brake_left, 0.0, 1.0),
+				limit(wheel_brake_right, 0.0, 1.0),
+				wheel_brake,
+				wheel_brake_left,
+				wheel_brake_right,
+				yaw_input,
+				rudder_command,
+				compute_nose_wheel_steering(),
+				nose_wheel_steering
+			);
+			susp_probe_log(probe_buf);
+		}
+	}
+
 	if (++kFallbackLogDecimation >= 20)
 	{
-		char ground_buf[256];
+		char ground_buf[768];
 		snprintf(
 			ground_buf, sizeof(ground_buf),
-			"fallback agl=%.3f vy=%.3f gear=%.2f mass=%.1f fg=%.1f pitch=%.2f roll=%.2f wow=%d",
+			"ground agl=%.3f h=%.3f h_obj=%.3f surf=%u vy=%.3f gear=%.2f mass=%.1f native=(valid:%d wow:%d comp:%.4f/%.4f/%.4f force:%.1f/%.1f/%.1f) fallback=(enabled:%d wow:%d fg:%.1f comp:%.4f/%.4f/%.4f) pitch=%.2f roll=%.2f nws=%d yaw=%.2f nwsarg=%.2f brk=%.2f/%.2f",
 			altitude_AGL,
+			surface_height_raw,
+			surface_height_with_objects,
+			surface_type_raw,
 			velocity_world.y,
 			gear_pos,
 			current_mass,
+			has_suspension_feedback() ? 1 : 0,
+			any_wow() ? 1 : 0,
+			suspension_compression[0],
+			suspension_compression[1],
+			suspension_compression[2],
+			suspension_force_mag[0],
+			suspension_force_mag[1],
+			suspension_force_mag[2],
+			kEnableFallbackGroundForces ? 1 : 0,
+			any_fallback_wow() ? 1 : 0,
 			fallback_ground_force,
+			fallback_suspension_compression[0],
+			fallback_suspension_compression[1],
+			fallback_suspension_compression[2],
 			pitch * rad_to_deg,
 			roll * rad_to_deg,
-			any_wow() ? 1 : 0
+			nose_turn_enabled ? 1 : 0,
+			yaw_input,
+			nose_wheel_steering,
+			wheel_brake_left,
+			wheel_brake_right
 		);
 		dbg_susp(ground_buf);
 		kFallbackLogDecimation = 0;
 	}
 
-	// Logic for determining if the aircraft is on the ground.
-	// Use suspension feedback (WoW) instead of AGL thresholds.
 	on_ground = ((gear_pos > 0.5) && has_suspension_feedback() && any_wow());
 
 	// Cockpit shaking intensity
@@ -1799,6 +2967,14 @@ void ed_fm_simulate(double dt)
 		if (mach > FM_DATA::mach_max * 0.8) // Approaching maximum speed
 			shake_amplitude += (mach - (FM_DATA::mach_max * 0.8)) / 2;
 	};
+
+	// if (on_ground && gear_pos > 0.5 && fabs(nose_wheel_steering) > 0.01)
+	// {
+	// 	const double speed_ms = limit(sqrt(velocity_body.x * velocity_body.x + velocity_body.z * velocity_body.z), 0.0, 55.0);
+	// 	const double steering_gain = limit(1.0 - (speed_ms / 70.0), 0.15, 1.0);
+	// 	const double side_force = current_mass * 9.81 * 0.10 * steering_gain * nose_wheel_steering;
+	// 	add_local_force(Vec3(0.0, 0.0, side_force), kFallbackGearPoints[0]);
+	// }
 #pragma endregion
 
 	sim_inititalised = true; // The first step is complete
@@ -1837,7 +3013,10 @@ void ed_fm_set_surface(double h, // distance between sea level and the surface/g
 	double normal_x, double normal_y, double normal_z // components of normal vector to surface
 )
 {
-	altitude_AGL = altitude_ASL - (h + h_obj * 0.5);
+	surface_height_raw = h;
+	surface_height_with_objects = h_obj;
+	surface_type_raw = surface_type;
+	altitude_AGL = altitude_ASL - h;
 }
 
 // Called before simulation to set up your environment for the next step
@@ -1864,6 +3043,9 @@ void ed_fm_set_current_state (double ax, double ay, double az,//linear accelerat
 	velocity_world.x = vx;
 	velocity_world.y = vy;
 	velocity_world.z = vz;
+	angular_velocity_world.x = omegax;
+	angular_velocity_world.y = omegay;
+	angular_velocity_world.z = omegaz;
 	position_world_z = pz;
 }
 
@@ -1884,6 +3066,9 @@ void ed_fm_set_current_state_body_axis(double ax, double ay, double az,//linear 
 	velocity_body.x = vx;
 	velocity_body.y = vy;
 	velocity_body.z = vz;
+	angular_velocity_body.x = omegax;
+	angular_velocity_body.y = omegay;
+	angular_velocity_body.z = omegaz;
 
 	aoa = common_angle_of_attack;
 	alpha = common_angle_of_attack * rad_to_deg;
@@ -2039,6 +3224,12 @@ void ed_fm_set_command (int command, float value)
 		break;
 	case FBWGLimiterOverride:
 		fbw_g_limiter_override = (value > 0.5f);
+		break;
+	case FBWGLimiterOverrideToggle:
+		if (value > 0.5f)
+		{
+			fbw_g_limiter_override = !fbw_g_limiter_override;
+		}
 		break;
 
 	//	Engine and throttle commands
@@ -2346,15 +3537,21 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[0].f = (float)limit(gear_pos, 0, 1); // Nose
 	drawargs[3].f = (float)limit(gear_pos, 0, 1); // Right
 	drawargs[5].f = (float)limit(gear_pos, 0, 1); // Left
+	drawargs[2].f = (float)limit(nose_wheel_steering, -1, 1); // Nose wheel steering
+	// drawargs[1].f = (float)suspension_visual_arg(0); // Nose shock absorber
+	// drawargs[6].f = (float)suspension_visual_arg(1); // Left main shock absorber
+	// drawargs[4].f = (float)suspension_visual_arg(2); // Right main shock absorber
 
 	// Elevators/stabilators
 	drawargs[15].f = (float)limit(elevator_command, -1, 1);
 	drawargs[16].f = (float)limit(elevator_command, -1, 1);
 
-	// Flaperons: flap extension sets the baseline droop, and roll input can only drive them upward from that baseline.
-	const double flaperon_base = -limit(flaps_pos, 0.0, 1.0);
-	drawargs[11].f = (float)limit(flaperon_base + limit(aileron_command, 0.0, 1.0), -1, 1);   // Right flaperon
-	drawargs[12].f = (float)limit(flaperon_base + limit(-aileron_command, 0.0, 1.0), -1, 1);  // Left flaperon
+	// On this model, flap-related trailing-edge surfaces use negative drawarg
+	// values for trailing-edge-down deflection. Keep the aerodynamic flap state
+	// positive in FM logic and only invert the visual mapping here.
+	const double flap_visual = -limit(flaps_pos, 0.0, 1.0);
+	drawargs[11].f = (float)limit(flap_visual + aileron_command, -1, 1); // Right flaperon
+	drawargs[12].f = (float)limit(flap_visual - aileron_command, -1, 1); // Left flaperon
 
 	// Rudder(s)
 	drawargs[17].f = (float)limit(rudder_command, -1, 1);
@@ -2375,16 +3572,14 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 
 	// Practical model mapping based on in-sim verification:
 	// 9/10 behave like the leading-edge slot pieces, while 11/12 are the flaperons.
-	drawargs[9].f = (float)limit(flaps_pos, 0, 1);
-	drawargs[10].f = (float)limit(flaps_pos, 0, 1);
-	drawargs[126].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
-	drawargs[127].f = (float)limit(slats_pos, 0, 1); // Right leading-edge section
-	drawargs[128].f = (float)limit(slats_pos, 0, 1); // Left leading-edge section
-	drawargs[129].f = (float)limit(slats_pos, 0, 1); // Left leading-edge section
+	const double slat_visual = limit(slats_pos, 0.0, 1.0);
+	drawargs[9].f = (float)slat_visual;
+	drawargs[10].f = (float)slat_visual;
 
-	// Slats
-	drawargs[13].f = (float)limit(slats_pos, 0, 1);
-	drawargs[14].f = (float)limit(slats_pos, 0, 1);
+	// Wheel spin bones: 76 = nose, 101 = left main, 102 = right main.
+	drawargs[76].f = (float)wheel_spin[0];
+	drawargs[101].f = (float)wheel_spin[1];
+	drawargs[102].f = (float)wheel_spin[2];
 
 	/*
 	Hints on some aircraft args where applicable
@@ -2407,28 +3602,63 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 
 void ed_fm_configure(const char * cfg_path)
 {
-	// Not sure what this does.
+	if (cfg_path && cfg_path[0] != '\0')
+	{
+		set_project_paths_from_config(cfg_path);
+		g_project_paths_initialized = true;
+		return;
+	}
+
+	initialize_project_paths();
+}
+
+static inline double engine_display_related_rpm(double core_readout)
+{
+	const double idle_related_rpm = 0.675;
+	const double clamped = limit(core_readout, 0.0, 1.0);
+	if (clamped <= 0.5)
+	{
+		return (clamped / 0.5) * idle_related_rpm;
+	}
+	return idle_related_rpm + ((clamped - 0.5) / 0.5) * (1.0 - idle_related_rpm);
 }
 
 // Interface with default parameters like gear and engines
 double ed_fm_get_param(unsigned index)
 {
+	const double nominal_core_rpm = 14710.0;
+	const double nominal_fan_rpm = 8215.0;
+	const double left_core_related_rpm = engine_display_related_rpm(left_engine_power_readout);
+	const double right_core_related_rpm = engine_display_related_rpm(right_engine_power_readout);
+	const double left_fan_related_rpm = left_engine_switch ? left_core_related_rpm : 0.0;
+	const double right_fan_related_rpm = right_engine_switch ? right_core_related_rpm : 0.0;
+	const double left_core_rpm = left_core_related_rpm * nominal_core_rpm;
+	const double right_core_rpm = right_core_related_rpm * nominal_core_rpm;
+	const double left_fan_rpm = left_fan_related_rpm * nominal_fan_rpm;
+	const double right_fan_rpm = right_fan_related_rpm * nominal_fan_rpm;
+
 	switch (index)
 	{
 		case ED_FM_SUSPENSION_0_WHEEL_YAW: // Nose wheel steering
 		{
 			const bool wow = has_suspension_feedback() && any_wow();
 			const bool nws_valid = wow && (gear_pos > 0.5);
-			const double nws_gain = (nose_turn_enabled && (V_scalar < 70.0)) ? 0.75 : 0.0;
-			return nws_valid ? (limit(yaw_input, -1.0, 1.0) * nws_gain) : 0.0;
+			return nws_valid ? nose_wheel_steering : 0.0;
 		}
 
+		case ED_FM_SUSPENSION_0_WHEEL_SELF_ATTITUDE:
+			return wheel_spin[0];
+		case ED_FM_SUSPENSION_1_WHEEL_SELF_ATTITUDE:
+			return wheel_spin[1];
+		case ED_FM_SUSPENSION_2_WHEEL_SELF_ATTITUDE:
+			return wheel_spin[2];
+
 		case ED_FM_SUSPENSION_0_RELATIVE_BRAKE_MOMENT:
-			return 1e-4;
+			return 0.0;
 		case ED_FM_SUSPENSION_1_RELATIVE_BRAKE_MOMENT:
-			return 1e-4 + (5 * wheel_brake_left);
+			return limit(wheel_brake_left, 0.0, 1.0);
 		case ED_FM_SUSPENSION_2_RELATIVE_BRAKE_MOMENT:
-			return 1e-4 + (5 * wheel_brake_right);
+			return limit(wheel_brake_right, 0.0, 1.0);
 
 		case ED_FM_ANTI_SKID_ENABLE:
 			return true;
@@ -2441,6 +3671,14 @@ double ed_fm_get_param(unsigned index)
 
 		case ED_FM_FC3_RUDDER_PEDALS:
 			return limit(-yaw_input, -1.0, 1.0);
+
+		case ED_FM_FC3_WHEEL_BRAKE_LEFT:
+		case ED_FM_FC3_WHEEL_BRAKE_COMMAND_LEFT:
+			return limit(wheel_brake_left, 0.0, 1.0);
+
+		case ED_FM_FC3_WHEEL_BRAKE_RIGHT:
+		case ED_FM_FC3_WHEEL_BRAKE_COMMAND_RIGHT:
+			return limit(wheel_brake_right, 0.0, 1.0);
 
 		case ED_FM_FC3_THROTTLE_LEFT:
 			if (left_engine_switch == false)
@@ -2483,41 +3721,47 @@ double ed_fm_get_param(unsigned index)
 
 			// Engine 1, left
 		case ED_FM_ENGINE_1_CORE_RPM:
+			return left_core_rpm;
 		case ED_FM_ENGINE_1_RPM:
+			return left_fan_rpm;
 		case ED_FM_ENGINE_1_COMBUSTION:
-			return left_throttle_output;
+			return left_engine_switch ? limit(left_engine_power_readout * 2.0, 0.0, 1.0) : 0.0;
 
 		case ED_FM_ENGINE_1_RELATED_THRUST: // low frequency rumble
 			return left_throttle_output;
 		case ED_FM_ENGINE_1_CORE_RELATED_THRUST:
-		case ED_FM_ENGINE_1_RELATED_RPM:
 			return left_throttle_output;
+		case ED_FM_ENGINE_1_RELATED_RPM:
+			return left_fan_related_rpm;
 		case ED_FM_ENGINE_1_CORE_RELATED_RPM: // RPM readout and core sound
-			return left_engine_power_readout;
+			return left_core_related_rpm;
 
 		case ED_FM_ENGINE_1_CORE_THRUST:
 		case ED_FM_ENGINE_1_THRUST:
-			return left_throttle_output;
+			return left_thrust_force;
 		case ED_FM_ENGINE_1_TEMPERATURE:
 			return (pow(left_engine_power_readout, 3) * 500) + atmosphere_temperature;
 
 			// Engine 2, right
 		case ED_FM_ENGINE_2_CORE_RPM:
+			return right_core_rpm;
 		case ED_FM_ENGINE_2_RPM:
+			return right_fan_rpm;
 		case ED_FM_ENGINE_2_COMBUSTION:
-			return right_throttle_output;
+			return right_engine_switch ? limit(right_engine_power_readout * 2.0, 0.0, 1.0) : 0.0;
 
 		case ED_FM_ENGINE_2_RELATED_THRUST: // low frequency rumble
 			return right_throttle_output;
 		case ED_FM_ENGINE_2_CORE_RELATED_THRUST:
-		case ED_FM_ENGINE_2_RELATED_RPM:
 			return right_throttle_output;
+		case ED_FM_ENGINE_2_RELATED_RPM:
+			return right_fan_related_rpm;
 		case ED_FM_ENGINE_2_CORE_RELATED_RPM: // RPM readout and core sound
-			return right_engine_power_readout;
+			return right_core_related_rpm;
 
 		case ED_FM_ENGINE_2_CORE_THRUST:
 		case ED_FM_ENGINE_2_THRUST:
-			return right_throttle_output;
+			return right_thrust_force;
 		case ED_FM_ENGINE_2_TEMPERATURE:
 			return (pow(right_engine_power_readout, 3) * 500) + atmosphere_temperature;
 		}
@@ -2592,15 +3836,50 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 		// Right engine
 		right_engine_integrity = element_integrity[14] * element_integrity[18] * element_integrity[104];
 	}
+
+	char buf[160];
+	snprintf(
+		buf, sizeof(buf),
+		"damage element=%d integrity=%.3f invincible=%d",
+		Element,
+		element_integrity_factor,
+		invincible ? 1 : 0
+	);
+	dbg_susp(buf);
+
+	suspension_debug_log(buf);
 }
 
 // ed_fm_suspension_feedback will be defined below with debug logging.
 
 static void dbg_susp(const char* msg)
 {
-	FILE* f = fopen("C:\\Users\\Ragdoll\\Saved Games\\DCS\\Logs\\fck1c_susp_dbg.txt", "a");
+	char debug_dir[kFckPathMax];
+	build_mod_path(debug_dir, sizeof(debug_dir), "debug");
+	// Ensure debug directory exists (ignore error if it already does)
+	_mkdir(debug_dir);
+	char path[1024];
+	snprintf(path, sizeof(path), "%s\\fck1c_efm_dbg.txt", debug_dir);
+	FILE* f = fopen(path, "a");
 	if (!f) return;
 	fprintf(f, "%s\n", msg);
+	fclose(f);
+}
+
+static void susp_probe_log(const char* msg)
+{
+	char log_dir[1024];
+	if (!resolve_saved_games_logs_dir(log_dir, sizeof(log_dir)))
+	{
+		build_mod_path(log_dir, sizeof(log_dir), "debug");
+	}
+	_mkdir(log_dir);
+
+	char path[1200];
+	snprintf(path, sizeof(path), "%s\\fck_susp_debug.log", log_dir);
+	FILE* f = fopen(path, "a");
+	if (!f) return;
+	fprintf(f, "%.3f %s\n", fm_clock, msg);
 	fclose(f);
 }
 
@@ -2608,6 +3887,7 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 {
 	if (idx < 0 || idx >= 3 || info == nullptr)
 	{
+		susp_probe_log("suspension_feedback: invalid idx or null info");
 		dbg_susp("suspension_feedback: invalid idx or null info");
 		return;
 	}
@@ -2618,6 +3898,7 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 	const double fx = info->acting_force[0];
 	const double fy = info->acting_force[1];
 	const double fz = info->acting_force[2];
+	suspension_force_vec[idx] = Vec3(fx, fy, fz);
 	suspension_force_mag[idx] = sqrt(fx * fx + fy * fy + fz * fz);
 
 	suspension_wow[idx] = (suspension_compression[idx] > 1e-4) || (suspension_force_mag[idx] > 50.0);
@@ -2633,15 +3914,22 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 		suspension_wow[idx] ? 1 : 0
 	);
 	dbg_susp(buf);
+
+	snprintf(
+		buf, sizeof(buf),
+		"susp idx=%d comp_norm=%.6f arg_val=%.3f speed=%.3f",
+		idx,
+		suspension_compression[idx],
+		(float)suspension_visual_arg(idx),
+		info->wheel_speed_X
+	);
+	suspension_debug_log(buf);
 }
 
 // What should be reset when the aircraft is repaired?
 void ed_fm_repair()
 {
-	for (int i = 0; i < 111; i++)
-	{
-		element_integrity[i] = 1.0; // Resets all elements to full integrity.
-	}
+	reset_damage_state();
 }
 
 bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
@@ -2689,13 +3977,18 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 // What should be set on a cold start on the ground?
 void ed_fm_cold_start()
 {
+	ed_fm_repair();
 	reset_suspension_feedback_state();
+	reset_startup_susp_probe_state();
 	reset_fbw_state();
+	reset_wheel_brakes();
+	reset_wheel_spin();
 	on_ground = false;
 
 	// Landing gear down
 	gear_switch = true;
 	gear_pos = 1;
+	nose_turn_enabled = true;
 	carrier_pos = 0;
 
 	// Engines off
@@ -2723,18 +4016,24 @@ void ed_fm_cold_start()
 // What should be set on a hot start on the ground?
 void ed_fm_hot_start()
 {	
+	ed_fm_repair();
 	reset_suspension_feedback_state();
+	reset_startup_susp_probe_state();
 	reset_fbw_state();
+	reset_wheel_brakes();
+	reset_wheel_spin();
 	on_ground = false;
 
 	// Landing gear down
 	gear_switch = true;
 	gear_pos = 1;
+	nose_turn_enabled = true;
 	carrier_pos = 0;
 
 	// Flaps down
 	flap_mode = FLAP_MODE_DOWN;
 	flaps_pos = 1;
+	slats_pos = 1;
 
 	// Engines on at idle/minimum throttle
 	left_engine_switch = true;
@@ -2761,13 +4060,18 @@ void ed_fm_hot_start()
 // What should be set on a hot start in the air?
 void ed_fm_hot_start_in_air()
 {
+	ed_fm_repair();
 	reset_suspension_feedback_state();
+	reset_startup_susp_probe_state();
 	reset_fbw_state();
+	reset_wheel_brakes();
+	reset_wheel_spin();
 	on_ground = false;
 
 	// Landing gear up
 	gear_switch = false;
 	gear_pos = 0;
+	nose_turn_enabled = false;
 	carrier_pos = 0;
 
 	//Engines on at 50% throttle
@@ -2813,6 +4117,7 @@ void ed_fm_release()
 	yaw_input = 0;
 	yaw_trim = 0;
 	rudder_command = 0;
+	nose_turn_enabled = false;
 
 	throttle_axis_cmd_left = 0.0;
 	throttle_axis_cmd_right = 0.0;
@@ -2832,6 +4137,14 @@ void ed_fm_release()
 	right_afterburner_ratio = 0.0;
 	left_nozzle_aperture = 0.80;
 	right_nozzle_aperture = 0.80;
+
+	// Reset cached AP state
+	ap_pitch_cmd_cached  = 0.0;
+	ap_roll_cmd_cached   = 0.0;
+	ap_throttle_cached   = 0.0;
+	ap_master_cached     = false;
+	ap_bypass_cached     = false;
+	ap_at_engaged_cached = false;
 
 	// Repair
 	ed_fm_repair();

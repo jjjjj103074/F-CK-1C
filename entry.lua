@@ -94,6 +94,9 @@ mount_vfs_model_path(current_mod_path .. "/Shapes")
 mount_vfs_model_path(current_mod_path .. "/Cockpit/Shapes")
 mount_vfs_liveries_path(current_mod_path .. "/Liveries")
 mount_vfs_liveries_path(current_mod_path .. "/Cockpit/Liveries")
+if mount_vfs_sound_path ~= nil then
+    mount_vfs_sound_path(current_mod_path .. "/Sounds")
+end
 mount_vfs_texture_path(current_mod_path .. "/Textures")
 mount_vfs_texture_path(current_mod_path .. "/Textures/F-CK-1C.zip")
 -- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50")

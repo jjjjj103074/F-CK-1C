@@ -84,6 +84,32 @@ local function add_line(name, pos, length, _width05, rot, parent, controllers)
 	return elem
 end
 
+local function add_text(name, value, pos, alignment, material, size, parent, element_params, controllers, formats)
+	local elem = CreateElement "ceStringPoly"
+	elem.name = name
+	elem.material = material or "font_hmcs_small"
+	elem.alignment = alignment or "CenterCenter"
+	elem.stringdefs = size or { 0.005, 0.005, 0.0, 0.0 }
+	elem.init_pos = { pos[1], pos[2], 0 }
+	elem.value = value
+
+	if parent ~= nil then
+		elem.parent_element = parent
+	end
+	if element_params ~= nil then
+		elem.element_params = element_params
+	end
+	if controllers ~= nil then
+		elem.controllers = controllers
+	end
+	if formats ~= nil then
+		elem.formats = formats
+	end
+
+	AddElement(elem)
+	return elem
+end
+
 
 
 
@@ -186,6 +212,39 @@ local ab_scale = add_line("ab_scale",
 -- THROTTLE
 local throttle_index = add_line("throttle_index", { throttle_px - rud_shift * 1.5 * 0.5, throttle_py }, rud_shift * 1.5,
 	line_width * 2, nil, base.name, { { "throttle", throttle_scale_length } --[[,{"scale",1.0,2.0}]] })
+
+local thrust_test_text_y = throttle_py + throttle_scale_length + ds * 0.8
+add_text(
+	"thrust_test_label",
+	"THR TEST",
+	{ throttle_px, thrust_test_text_y },
+	"CenterCenter",
+	"font_hmcs_small",
+	{ 0.0045, 0.0045, 0.0, 0.0 },
+	base.name
+)
+add_text(
+	"thrust_test_status_norm",
+	"NORM",
+	{ throttle_px, thrust_test_text_y - ds * 0.9 },
+	"CenterCenter",
+	"font_hmcs_small",
+	{ 0.0045, 0.0045, 0.0, 0.0 },
+	base.name,
+	{ "FM_MAXPOWER_SWITCH" },
+	{ { "parameter_in_range", 0, 0.9, 1.1 } }
+)
+add_text(
+	"thrust_test_status_cut",
+	"CUT",
+	{ throttle_px, thrust_test_text_y - ds * 0.9 },
+	"CenterCenter",
+	"font_hmcs_small",
+	{ 0.0045, 0.0045, 0.0, 0.0 },
+	base.name,
+	{ "FM_MAXPOWER_SWITCH" },
+	{ { "parameter_in_range", 0, -0.1, 0.1 } }
+)
 
 
 -- WHEEL BRAKES ---------------------------------------------------------------

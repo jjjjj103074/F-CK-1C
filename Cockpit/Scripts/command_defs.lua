@@ -10,4 +10,44 @@ device_commands = {
     MasterArmOff = 3041,
     MasterArmSim = 3042,
     DogfightSwitch = 3043,
+    MissileUncage = 3044,
+    WeaponRelease = 3045,
+    TargetLock = 3046,
+    TMSUp = 3046,
+    TMSDown = 3047,
+    TMSLeft = 3048,
+    TMSRight = 3049,
+    NavMode = 3050,
+    MissileOverride = 3051,
+    SoundTestCycle = 3052,
+
+    -- Autopilot commands (3100-3134)
+    APMasterToggle      = 3100,
+    APMasterOn          = 3101,
+    APMasterOff         = 3102,
+    APBypass            = 3103,
+    APVertPitchHold     = 3110,
+    APVertVSHold        = 3111,
+    APVertAltHold       = 3112,
+    APVertIncrease      = 3113,
+    APVertDecrease      = 3114,
+    APLatHeadingHold    = 3120,
+    APLatHeadingSelect  = 3121,
+    APLatNavTrack       = 3122,
+    APLatIncrease       = 3123,
+    APLatDecrease       = 3124,
+    APAutoThrottleToggle = 3130,
+    APAutoThrottleOn    = 3131,
+    APAutoThrottleOff   = 3132,
+    APSpeedIncrease     = 3133,
+    APSpeedDecrease     = 3134,
+
+    -- Flight test: engine thrust cut test.
+    -- When enabled, EFM zeros engine thrust so we can isolate bounce/jump behavior.
+    EngineThrustCutTestToggle = 3135,
+    EngineThrustCutTestEnable = 3136,
+    EngineThrustCutTestDisable = 3137,
+
+    -- Backward-compatible alias used by earlier autopilot test code.
+    APMaxpowerToggle    = 3135,
 }

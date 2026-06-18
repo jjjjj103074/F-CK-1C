@@ -22,6 +22,9 @@ namespace FM_DATA
 	double cx_brk = 0.06; // Air brake drag
 
 	double cx_flap = 0.05; // Flap drag
+	double cx_lift_k = 0.030; // Additional drag from lift production
+	double cx_alpha_k = 0.080; // Additional drag from AoA in radians
+	double cx_elevator_k = 0.008; // Additional drag from large elevator deflection
 	double cy_flap = 0.3; // Flap lift
 
 	// Important: Make sure the first value is 0.
@@ -99,6 +102,18 @@ namespace FM_DATA
 	double idle_rpm = 60.0; // RPM % at idle
 	double fuel_consumption = 0.37; // Fuel consumption at full throttle (Kg/s)
 	double engine_start_time = 60; // Engine startup time (s)
+
+	// TFE1042-70 throttle spool lag (first-order time constants, seconds).
+	// Spool-up ~3s and spool-down ~5s are consistent with medium-bypass turbofan behaviour.
+	// These apply to left_throttle_output / right_throttle_output tracking their target values.
+	double engine_spool_up_tau   = 2.5; // Time constant for throttle increase (idle->MIL)
+	double engine_spool_down_tau = 4.0; // Time constant for throttle decrease (MIL->idle)
+
+	// Speedbrake pitch compensation coefficient.
+	// F-CK-1C FLCS couples airbrake deployment to a nose-up pitch trim feedforward to
+	// prevent the pitch-down disturbance that occurs when the speedbrake is opened at speed.
+	// Units: Cm / (airbrake_pos [0-1] * q_bar [Pa]) -- applied as Moment = k * ab * q * S * c_bar
+	double airbrake_pitch_comp_k = 0.003;
 
 	// Important: Make sure the first value is 0.
 	// Make sure the number of entries (size) of all other tables are exactly the same.
