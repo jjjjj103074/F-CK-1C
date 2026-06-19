@@ -1,0 +1,2 @@
+# pre-commit hook
+# 目前無 pre-commit 檢查，保留此檔供未來擴充（例如 stylua --check）
