@@ -1,0 +1,60 @@
+name: Feature Request / 功能建議
+description: Suggest a new feature or improvement. / 建議新功能或改善項目。
+title: "[Feature]: "
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Have an idea to improve F-CK-1C?**
+        Please describe it clearly so we can understand and evaluate your suggestion.
+
+        **有想法讓 F-CK-1C 更好嗎？**
+        請清楚描述你的建議，讓我們能理解並評估。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Feature Description / 功能描述"
+      description: "What do you want to see added or changed? / 你希望新增或改變什麼？"
+      placeholder: "e.g. Add HOTAS binding for AIM-9 seeker uncage..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: "Use Case / 使用情境"
+      description: "Why is this feature needed? How would it be used? / 為什麼需要這個功能？如何使用？"
+      placeholder: "e.g. Currently, uncaging the seeker requires going through menus, which breaks immersion in a dogfight..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: system
+    attributes:
+      label: "Related System / 相關系統"
+      options:
+        - SFM — Simplified Flight Model / 簡化飛行模型
+        - EFM — Enhanced Flight Model / 增強飛行模型
+        - Cockpit / 座艙系統
+        - Weapons / 武器系統
+        - Input / 輸入綁定
+        - Visual / 視覺效果
+        - Audio / 音效
+        - Other / 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: "Player Impact / 對玩家的影響"
+      description: "How much does this feature affect the gameplay experience? / 此功能對遊玩體驗的影響程度？"
+      options:
+        - "Critical — Core gameplay is limited without this / 關鍵功能 — 沒有此功能核心玩法受限"
+        - "Enhancement — Noticeably better with this / 提升體驗 — 有了明顯更好"
+        - "Polish — Comfort or immersion improvement / 錦上添花 — 舒適度或沉浸感提升"
+    validations:
+      required: true

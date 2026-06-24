@@ -1,0 +1,98 @@
+name: Bug Report / 錯誤回報
+description: Report a bug in the F-CK-1C module. / 回報 F-CK-1C 模組的錯誤。
+title: "[Bug]: "
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thank you for taking the time to report a bug.**
+        Please fill in as much detail as possible to help us reproduce and fix the issue.
+
+        **感謝你花時間回報錯誤。**
+        請盡量填寫完整資訊，幫助我們重現並修正問題。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description / 錯誤描述"
+      description: "A clear description of what the bug is. / 清楚描述發生了什麼錯誤。"
+      placeholder: "e.g. AIM-9 tone does not play when tracking a target..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to Reproduce / 重現步驟"
+      description: "Step-by-step instructions to reproduce the bug. / 逐步說明如何重現此問題。"
+      placeholder: |
+        1. Load into a mission with F-CK-1C
+        2. Select AIM-9 station
+        3. Slew seeker toward a heat source
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-actual
+    attributes:
+      label: "Expected vs Actual Behavior / 預期與實際行為"
+      description: "What did you expect to happen, and what actually happened? / 你預期發生什麼，實際上發生了什麼？"
+      placeholder: |
+        Expected / 預期：AIM-9 growl tone plays when seeker detects heat
+        Actual / 實際：No audio, seeker appears unresponsive
+    validations:
+      required: true
+
+  - type: dropdown
+    id: dcs-version
+    attributes:
+      label: "DCS Version / DCS 版本"
+      options:
+        - DCS World Stable
+        - DCS World OpenBeta
+    validations:
+      required: true
+
+  - type: input
+    id: module-version
+    attributes:
+      label: "Module Version / 模組版本"
+      description: "Check entry.lua or the DCS module manager. / 查看 entry.lua 或 DCS 模組管理器。"
+      placeholder: "e.g. v0.1.3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mission-type
+    attributes:
+      label: "Mission Type / 任務類型"
+      options:
+        - Single-player Mission / 單人任務
+        - Multiplayer Server / 多人伺服器
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: affected-system
+    attributes:
+      label: "Affected System / 影響的系統"
+      description: "Select all that apply. / 勾選所有相關選項。"
+      options:
+        - label: "SFM — Simplified Flight Model / 簡化飛行模型"
+        - label: "EFM — Enhanced Flight Model / 增強飛行模型"
+        - label: "Cockpit / 座艙系統"
+        - label: "Weapons / 武器系統"
+        - label: "Input / 輸入綁定"
+        - label: "Visual / 視覺效果"
+        - label: "Audio / 音效"
+        - label: "Other / 其他"
+
+  - type: textarea
+    id: log
+    attributes:
+      label: "DCS Log (optional) / DCS 日誌（選填）"
+      description: "Paste relevant lines from DCS.log if available. / 若有，貼上 DCS.log 的相關片段。"
+      render: shell
