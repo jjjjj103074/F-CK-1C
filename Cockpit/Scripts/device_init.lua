@@ -24,33 +24,15 @@ local radar_device_id = devices and devices.RADAR
 local radar_state_device_id = devices and devices.RADAR_STATE
 local autopilot_device_id = devices and devices.AUTOPILOT
 
-if gear_device_id == nil then
-    gear_device_id = 1
-end
-if actuators_device_id == nil then
-    actuators_device_id = 2
-end
-if cms_device_id == nil then
-    cms_device_id = 3
-end
-if weapon_system_device_id == nil then
-    weapon_system_device_id = 4
-end
-if hmcs_device_id == nil then
-    hmcs_device_id = 5
-end
-if aam_audio_device_id == nil then
-    aam_audio_device_id = 6
-end
-if radar_device_id == nil then
-    radar_device_id = 7
-end
-if radar_state_device_id == nil then
-    radar_state_device_id = 8
-end
-if autopilot_device_id == nil then
-    autopilot_device_id = 9
-end
+if gear_device_id == nil then gear_device_id = 1 end
+if actuators_device_id == nil then actuators_device_id = 2 end
+if cms_device_id == nil then cms_device_id = 3 end
+if weapon_system_device_id == nil then weapon_system_device_id = 4 end
+if hmcs_device_id == nil then hmcs_device_id = 5 end
+if aam_audio_device_id == nil then aam_audio_device_id = 6 end
+if radar_device_id == nil then radar_device_id = 7 end
+if radar_state_device_id == nil then radar_state_device_id = 8 end
+if autopilot_device_id == nil then autopilot_device_id = 9 end
 
 creators[gear_device_id] = {
     "avLuaDevice",

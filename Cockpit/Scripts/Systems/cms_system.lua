@@ -146,49 +146,33 @@ local aim9_missile_count_state = get_param_handle("AIM9_MISSILE_COUNT")
 local radar_state_param = get_param_handle("RADARSTATE")
 
 local function dlog(msg)
-    if log ~= nil and log.info ~= nil then
-        log.info("FCK1C CMS: " .. tostring(msg))
-    end
+    if log ~= nil and log.info ~= nil then log.info("FCK1C CMS: " .. tostring(msg)) end
 end
 
 local function safe_sensor_call(method_name, default_value)
     local method = sensor_data and sensor_data[method_name]
-    if type(method) ~= "function" then
-        return default_value
-    end
+    if type(method) ~= "function" then return default_value end
 
     local ok, value = pcall(method, sensor_data)
-    if ok and type(value) == "number" then
-        return value
-    end
+    if ok and type(value) == "number" then return value end
 
     return default_value
 end
 
 local function describe_sensor_candidate(method_name)
     local method = sensor_data and sensor_data[method_name]
-    if type(method) ~= "function" then
-        return "missing"
-    end
+    if type(method) ~= "function" then return "missing" end
 
     local ok, value = pcall(method, sensor_data)
-    if not ok then
-        return "error"
-    end
-    if value == nil then
-        return "nil"
-    end
-    if type(value) == "number" then
-        return string.format("number(%0.3f)", value)
-    end
+    if not ok then return "error" end
+    if value == nil then return "nil" end
+    if type(value) == "number" then return string.format("number(%0.3f)", value) end
 
     return type(value)
 end
 
 local function dump_store_probe_candidates_once()
-    if store_probe_dumped then
-        return
-    end
+    if store_probe_dumped then return end
 
     store_probe_dumped = true
     for _, method_name in ipairs(GUN_COUNT_CANDIDATES) do
@@ -202,9 +186,7 @@ end
 local function first_sensor_count(candidates, min_value, max_value)
     for _, method_name in ipairs(candidates) do
         local value = safe_sensor_call(method_name, -1.0)
-        if value >= min_value and value <= max_value then
-            return method_name, value
-        end
+        if value >= min_value and value <= max_value then return method_name, value end
     end
     return nil, -1.0
 end
@@ -247,45 +229,27 @@ local function refresh_live_store_counts()
 end
 
 local function bool_to_num(v)
-    if v then
-        return 1
-    end
+    if v then return 1 end
     return 0
 end
 
 local function master_mode_name()
-    if master_arm_mode == MASTER_ON then
-        return "ON"
-    end
-    if master_arm_mode == MASTER_SIM then
-        return "SIM"
-    end
+    if master_arm_mode == MASTER_ON then return "ON" end
+    if master_arm_mode == MASTER_SIM then return "SIM" end
     return "OFF"
 end
 
 local function fc_mode_name()
-    if fire_control_mode == FC_MODE_DGFT then
-        return "DGFT"
-    end
-    if fire_control_mode == FC_MODE_MSL then
-        return "MSL"
-    end
+    if fire_control_mode == FC_MODE_DGFT then return "DGFT" end
+    if fire_control_mode == FC_MODE_MSL then return "MSL" end
     return "NAV"
 end
 
 local function aam_submode_name()
-    if aam_submode == AAM_SUBMODE_HELMET then
-        return "HMD"
-    end
-    if aam_submode == AAM_SUBMODE_VERTICAL then
-        return "VS"
-    end
-    if aam_submode == AAM_SUBMODE_HUD then
-        return "HUD"
-    end
-    if aam_submode == AAM_SUBMODE_BVR then
-        return "BVR"
-    end
+    if aam_submode == AAM_SUBMODE_HELMET then return "HMD" end
+    if aam_submode == AAM_SUBMODE_VERTICAL then return "VS" end
+    if aam_submode == AAM_SUBMODE_HUD then return "HUD" end
+    if aam_submode == AAM_SUBMODE_BVR then return "BVR" end
     return "NONE"
 end
 
@@ -313,15 +277,9 @@ local function push_hmcs_mode_state()
 end
 
 local function current_aim9_status()
-    if not aam_mode_active() or aim9_missile_count <= 0 then
-        return AIM9_STATUS_OFF
-    end
-    if missile_uncage_held and aim9_target_designated then
-        return AIM9_STATUS_TRACK
-    end
-    if missile_uncage_held then
-        return AIM9_STATUS_RDY
-    end
+    if not aam_mode_active() or aim9_missile_count <= 0 then return AIM9_STATUS_OFF end
+    if missile_uncage_held and aim9_target_designated then return AIM9_STATUS_TRACK end
+    if missile_uncage_held then return AIM9_STATUS_RDY end
     return AIM9_STATUS_COOL
 end
 
@@ -341,31 +299,17 @@ local function push_aim9_designation_state()
 end
 
 local function fire_gate_reason()
-    if dispatch_action == nil then
-        return "dispatch_nil"
-    end
-    if master_arm_mode ~= MASTER_ON then
-        return "master_not_on"
-    end
-    if fire_control_mode ~= FC_MODE_DGFT then
-        return "not_in_dgft"
-    end
+    if dispatch_action == nil then return "dispatch_nil" end
+    if master_arm_mode ~= MASTER_ON then return "master_not_on" end
+    if fire_control_mode ~= FC_MODE_DGFT then return "not_in_dgft" end
     return "ok"
 end
 
 local function aam_release_reason()
-    if dispatch_action == nil then
-        return "dispatch_nil"
-    end
-    if master_arm_mode ~= MASTER_ON then
-        return "master_not_on"
-    end
-    if fire_control_mode ~= FC_MODE_DGFT and fire_control_mode ~= FC_MODE_MSL then
-        return "not_in_aam_mode"
-    end
-    if not missile_uncage_held then
-        return "uncage_not_held"
-    end
+    if dispatch_action == nil then return "dispatch_nil" end
+    if master_arm_mode ~= MASTER_ON then return "master_not_on" end
+    if fire_control_mode ~= FC_MODE_DGFT and fire_control_mode ~= FC_MODE_MSL then return "not_in_aam_mode" end
+    if not missile_uncage_held then return "uncage_not_held" end
     return "ok"
 end
 
@@ -374,33 +318,7 @@ local function log_gate_snapshot(tag)
     local cms_ok = (cms_connected and stores_ok)
     local gun_reason = fire_gate_reason()
     local aam_reason = aam_release_reason()
-    local line = string.format(
-        "DBG[%s] master=%s fcmode=%s sub=%s stores=%d cms=%d trig=%d relpend=%d hold=%.2f uncage=%d pickle=%d pickrel=%d pickhold=%.2f lock=%d lockrel=%d lockhold=%.2f desig=%d aim9=%d tone=%1.0f cmsprog=%d mode=%s cmsrem=%d gun=%s aam=%s",
-        tostring(tag),
-        master_mode_name(),
-        fc_mode_name(),
-        aam_submode_name(),
-        bool_to_num(stores_ok),
-        bool_to_num(cms_ok),
-        bool_to_num(trigger_second_latched),
-        bool_to_num(trigger_release_pending),
-        trigger_hold_timer,
-        bool_to_num(missile_uncage_held),
-        bool_to_num(weapon_release_latched),
-        bool_to_num(weapon_release_pending),
-        weapon_release_hold_timer,
-        bool_to_num(target_lock_latched),
-        bool_to_num(target_lock_release_pending),
-        target_lock_hold_timer,
-        bool_to_num(aim9_target_designated),
-        aim9_missile_count,
-        aim9_tone_state:get(),
-        bool_to_num(cms_program_active),
-        tostring(cms_program_name),
-        cms_program_steps_remaining,
-        gun_reason,
-        aam_reason
-    )
+    local line = string.format("DBG[%s] master=%s fcmode=%s sub=%s stores=%d cms=%d trig=%d relpend=%d hold=%.2f uncage=%d pickle=%d pickrel=%d pickhold=%.2f lock=%d lockrel=%d lockhold=%.2f desig=%d aim9=%d tone=%1.0f cmsprog=%d mode=%s cmsrem=%d gun=%s aam=%s", tostring(tag), master_mode_name(), fc_mode_name(), aam_submode_name(), bool_to_num(stores_ok), bool_to_num(cms_ok), bool_to_num(trigger_second_latched), bool_to_num(trigger_release_pending), trigger_hold_timer, bool_to_num(missile_uncage_held), bool_to_num(weapon_release_latched), bool_to_num(weapon_release_pending), weapon_release_hold_timer, bool_to_num(target_lock_latched), bool_to_num(target_lock_release_pending), target_lock_hold_timer, bool_to_num(aim9_target_designated), aim9_missile_count, aim9_tone_state:get(), bool_to_num(cms_program_active), tostring(cms_program_name), cms_program_steps_remaining, gun_reason, aam_reason)
 
     if line ~= debug_state_last_line then
         dlog(line)
@@ -409,23 +327,17 @@ local function log_gate_snapshot(tag)
 end
 
 local function dispatch_with_log(command_id, tag)
-    if dispatch_action == nil then
-        return nil
-    end
+    if dispatch_action == nil then return nil end
 
     dlog("dispatch " .. tostring(tag))
     local ok = dispatch_action(nil, command_id)
-    if ok ~= nil then
-        dlog("dispatch " .. tostring(tag) .. " result=" .. tostring(ok))
-    end
+    if ok ~= nil then dlog("dispatch " .. tostring(tag) .. " result=" .. tostring(ok)) end
     return ok
 end
 
 local function ensure_radar_on(reason_tag)
     local radar_state = tonumber(radar_state_param:get()) or 0.0
-    if radar_state > 0.5 then
-        return
-    end
+    if radar_state > 0.5 then return end
 
     dlog("ensure radar on -> " .. tostring(reason_tag))
     dispatch_with_log(ICMD_PLANE_RADAR_ON_OFF, "radar on/off")
@@ -480,13 +392,9 @@ local function apply_aam_submode(mode, reason_tag)
 end
 
 local function target_lock_begin(reason_tag)
-    if dispatch_action == nil then
-        return
-    end
+    if dispatch_action == nil then return end
 
-    if fire_control_mode == FC_MODE_DGFT or fire_control_mode == FC_MODE_MSL then
-        apply_aam_submode(aam_submode, reason_tag .. "_refresh")
-    end
+    if fire_control_mode == FC_MODE_DGFT or fire_control_mode == FC_MODE_MSL then apply_aam_submode(aam_submode, reason_tag .. "_refresh") end
 
     dispatch_with_log(ICMD_PLANE_LOCKON_START, "lockon start")
     dispatch_with_log(ICMD_PLANE_CHANGE_LOCK, "change lock")
@@ -498,9 +406,7 @@ local function target_lock_begin(reason_tag)
 end
 
 local function target_lock_end(reason_tag)
-    if dispatch_action == nil then
-        return
-    end
+    if dispatch_action == nil then return end
 
     dispatch_with_log(ICMD_PLANE_LOCKON_FINISH, "lockon finish")
     dispatch_with_log(ICMD_PLANE_CHANGE_LOCK_UP, "change lock up")
@@ -531,7 +437,6 @@ local function unlock_target(reason_tag)
 
     aim9_target_designated = false
     push_aim9_designation_state()
-
 end
 
 local function switch_target(reason_tag)
@@ -543,9 +448,7 @@ end
 
 local function consume_aim9_missile(reason_tag)
     if aim9_missile_live_source == nil then
-        if aim9_missile_count <= 0 then
-            return
-        end
+        if aim9_missile_count <= 0 then return end
         aim9_missile_count = math.max(0, aim9_missile_count - 1)
         dlog("aim9 consume -> " .. tostring(reason_tag) .. " remaining=" .. tostring(aim9_missile_count) .. " via fallback")
     else
@@ -588,9 +491,7 @@ local function set_fire_control_mode(mode, reason_tag, cycle_weapon)
         master_arm_mode = MASTER_ON
         aam_submode = AAM_SUBMODE_HELMET
         ensure_radar_on(reason_tag)
-        if cycle_weapon then
-            cycle_aam_weapon(reason_tag)
-        end
+        if cycle_weapon then cycle_aam_weapon(reason_tag) end
         apply_aam_submode(AAM_SUBMODE_HELMET, reason_tag)
         target_lock_pulse(reason_tag .. "_auto_lock")
     elseif mode == FC_MODE_MSL then
@@ -600,9 +501,7 @@ local function set_fire_control_mode(mode, reason_tag, cycle_weapon)
         push_aim9_designation_state()
         unlock_target("msl_mode_enter")
         ensure_radar_on(reason_tag)
-        if cycle_weapon then
-            cycle_aam_weapon(reason_tag)
-        end
+        if cycle_weapon then cycle_aam_weapon(reason_tag) end
         apply_aam_submode(AAM_SUBMODE_BVR, reason_tag)
     end
 
@@ -614,38 +513,28 @@ end
 local function flare_once()
     dlog("dispatch flare once")
     local ok = dispatch_action(nil, ICMD_PLANE_DROP_FLARE_ONCE)
-    if ok ~= nil then
-        dlog("dispatch flare result=" .. tostring(ok))
-    end
+    if ok ~= nil then dlog("dispatch flare result=" .. tostring(ok)) end
 end
 
 local function chaff_once()
     dlog("dispatch chaff once")
     local ok = dispatch_action(nil, ICMD_PLANE_DROP_CHAFF_ONCE)
-    if ok ~= nil then
-        dlog("dispatch chaff result=" .. tostring(ok))
-    end
+    if ok ~= nil then dlog("dispatch chaff result=" .. tostring(ok)) end
 end
 
 local function pair_release_off()
-    if not cms_pair_release_latched then
-        return
-    end
+    if not cms_pair_release_latched then return end
 
     dlog("dispatch cm release OFF")
     local ok = dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE_OFF)
-    if ok ~= nil then
-        dlog("dispatch cm release OFF result=" .. tostring(ok))
-    end
+    if ok ~= nil then dlog("dispatch cm release OFF result=" .. tostring(ok)) end
 
     cms_pair_release_latched = false
     cms_pair_release_hold_timer = 0.0
 end
 
 local function clear_pair_release_queue(reason_tag)
-    if cms_pair_release_latched or cms_pair_release_pending > 0 then
-        dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending))
-    end
+    if cms_pair_release_latched or cms_pair_release_pending > 0 then dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending)) end
 
     pair_release_off()
     cms_pair_release_pending = 0
@@ -653,25 +542,17 @@ local function clear_pair_release_queue(reason_tag)
 end
 
 local function queue_pair_release(count)
-    if count == nil or count <= 0 then
-        return
-    end
+    if count == nil or count <= 0 then return end
 
     cms_pair_release_pending = cms_pair_release_pending + count
     dlog("queue cm release x" .. tostring(count) .. " pending=" .. tostring(cms_pair_release_pending))
 end
 
 local function release_countermeasures(flare_count, chaff_count)
-    if flare_count == nil then
-        flare_count = 0
-    end
-    if chaff_count == nil then
-        chaff_count = 0
-    end
+    if flare_count == nil then flare_count = 0 end
+    if chaff_count == nil then chaff_count = 0 end
 
-    if flare_count <= 0 and chaff_count <= 0 then
-        return
-    end
+    if flare_count <= 0 and chaff_count <= 0 then return end
 
     if not cms_release_allowed() then
         dlog("countermeasure release blocked by arm/cms state")
@@ -699,9 +580,7 @@ local function release_countermeasures(flare_count, chaff_count)
 end
 
 local function stop_cms_program(reason_tag)
-    if cms_program_active then
-        dlog("cms program stop -> " .. tostring(reason_tag))
-    end
+    if cms_program_active then dlog("cms program stop -> " .. tostring(reason_tag)) end
     cms_program_active = false
     cms_program_name = "idle"
     cms_program_steps_remaining = 0
@@ -767,9 +646,7 @@ local function handle_tms_up(value)
 end
 
 local function handle_tms_down(value)
-    if value <= 0.5 then
-        return
-    end
+    if value <= 0.5 then return end
 
     if fire_control_mode == FC_MODE_DGFT then
         apply_aam_submode(AAM_SUBMODE_VERTICAL, "tms_down_dgft")
@@ -783,9 +660,7 @@ local function handle_tms_down(value)
 end
 
 local function handle_tms_left(value)
-    if value <= 0.5 then
-        return
-    end
+    if value <= 0.5 then return end
 
     if fire_control_mode == FC_MODE_MSL then
         dlog("tms left -> IFF reserved")
@@ -798,9 +673,7 @@ local function handle_tms_left(value)
 end
 
 local function handle_tms_right(value)
-    if value <= 0.5 then
-        return
-    end
+    if value <= 0.5 then return end
 
     if fire_control_mode == FC_MODE_DGFT then
         apply_aam_submode(AAM_SUBMODE_HUD, "tms_right_dgft")
@@ -899,9 +772,7 @@ function SetCommand(command, value)
 
     if command == CMD_WEAPON_RELEASE then
         if value > 0.5 then
-            if fire_control_mode == FC_MODE_DGFT or fire_control_mode == FC_MODE_MSL then
-                apply_aam_submode(aam_submode, "pickle")
-            end
+            if fire_control_mode == FC_MODE_DGFT or fire_control_mode == FC_MODE_MSL then apply_aam_submode(aam_submode, "pickle") end
             log_gate_snapshot("pickle_down")
             if aam_release_reason() == "ok" then
                 pickle_on()
@@ -972,9 +843,7 @@ function SetCommand(command, value)
         return
     end
 
-    if value <= 0.5 then
-        return
-    end
+    if value <= 0.5 then return end
 
     if command == CMD_MASTER_ARM_ON then
         master_arm_mode = MASTER_ON
@@ -1050,23 +919,17 @@ function update()
 
     if trigger_hold_timer > 0.0 then
         trigger_hold_timer = trigger_hold_timer - update_rate
-        if trigger_hold_timer < 0.0 then
-            trigger_hold_timer = 0.0
-        end
+        if trigger_hold_timer < 0.0 then trigger_hold_timer = 0.0 end
     end
 
     if weapon_release_hold_timer > 0.0 then
         weapon_release_hold_timer = weapon_release_hold_timer - update_rate
-        if weapon_release_hold_timer < 0.0 then
-            weapon_release_hold_timer = 0.0
-        end
+        if weapon_release_hold_timer < 0.0 then weapon_release_hold_timer = 0.0 end
     end
 
     if target_lock_hold_timer > 0.0 then
         target_lock_hold_timer = target_lock_hold_timer - update_rate
-        if target_lock_hold_timer < 0.0 then
-            target_lock_hold_timer = 0.0
-        end
+        if target_lock_hold_timer < 0.0 then target_lock_hold_timer = 0.0 end
     end
 
     if trigger_release_pending and trigger_second_latched and trigger_hold_timer <= 0.0 then
@@ -1097,23 +960,17 @@ function update()
         if cms_pair_release_hold_timer <= 0.0 then
             pair_release_off()
             cms_pair_release_pending = cms_pair_release_pending - 1
-            if cms_pair_release_pending < 0 then
-                cms_pair_release_pending = 0
-            end
+            if cms_pair_release_pending < 0 then cms_pair_release_pending = 0 end
             cms_pair_release_gap_timer = cms_pair_release_gap_time
         end
     elseif cms_pair_release_pending > 0 then
         if cms_pair_release_gap_timer > 0.0 then
             cms_pair_release_gap_timer = cms_pair_release_gap_timer - update_rate
-            if cms_pair_release_gap_timer < 0.0 then
-                cms_pair_release_gap_timer = 0.0
-            end
+            if cms_pair_release_gap_timer < 0.0 then cms_pair_release_gap_timer = 0.0 end
         elseif cms_release_allowed() then
             dlog("dispatch cm release ON")
             local ok = dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE)
-            if ok ~= nil then
-                dlog("dispatch cm release ON result=" .. tostring(ok))
-            end
+            if ok ~= nil then dlog("dispatch cm release ON result=" .. tostring(ok)) end
             cms_pair_release_latched = true
             cms_pair_release_hold_timer = cms_pair_release_hold_time
         else
@@ -1134,9 +991,7 @@ function update()
     push_hmcs_mode_state()
     push_aim9_uncage_state()
 
-    if not cms_program_active then
-        return
-    end
+    if not cms_program_active then return end
 
     if cms_program_steps_remaining <= 0 then
         stop_cms_program("cms_done")

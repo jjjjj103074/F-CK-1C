@@ -54,9 +54,7 @@ local debug_timer = 0.0
 local debug_period = 0.20
 
 local function dlog(msg)
-    if log ~= nil and log.info ~= nil then
-        log.info("FCK1C RADAR: " .. tostring(msg))
-    end
+    if log ~= nil and log.info ~= nil then log.info("FCK1C RADAR: " .. tostring(msg)) end
 end
 
 local function num(handle)
@@ -88,39 +86,11 @@ end
 
 local function update_debug(weapon_active, contact_valid, lock_valid, ir_azimuth, ir_elevation, stt_azimuth, stt_elevation, stt_range, radar_mode_value, target_designated, use_fallback, missile_status, missile_count)
     debug_timer = debug_timer + update_rate
-    if debug_timer < debug_period then
-        return
-    end
+    if debug_timer < debug_period then return end
 
     debug_timer = debug_timer - debug_period
 
-    local line = string.format(
-        "DBG uncage=%d aam=%d weapon=%d contact=%d lock=%d desig=%d status=%d aim9=%d src=%s radar=%d mode=%.1f ir=(%.4f,%.4f) stt=(%.4f,%.4f,%.1f) stab=(%.4f,%.4f) tdc=(%.4f,%.4f) gate=%.4f c1=(%.4f,%.4f) ws=%.1f",
-        (num(aim9_uncage_held) > 0.5) and 1 or 0,
-        in_aam_mode() and 1 or 0,
-        weapon_active and 1 or 0,
-        contact_valid and 1 or 0,
-        lock_valid and 1 or 0,
-        target_designated and 1 or 0,
-        missile_status,
-        missile_count,
-        use_fallback and "fallback" or "telemetry",
-        (num(radar_state) > 0.5 and num(radar_power_state) > 0.5) and 1 or 0,
-        radar_mode_value,
-        ir_azimuth,
-        ir_elevation,
-        stt_azimuth,
-        stt_elevation,
-        stt_range,
-        num(radar_stt_azimuth_stab),
-        num(radar_stt_elevation_stab),
-        num(radar_tdc_azimuth),
-        num(radar_tdc_range_scaled),
-        num(radar_gate_range_scaled),
-        num(radar_contact_01_azimuth),
-        num(radar_contact_01_range_scaled),
-        num(ws_target_range)
-    )
+    local line = string.format("DBG uncage=%d aam=%d weapon=%d contact=%d lock=%d desig=%d status=%d aim9=%d src=%s radar=%d mode=%.1f ir=(%.4f,%.4f) stt=(%.4f,%.4f,%.1f) stab=(%.4f,%.4f) tdc=(%.4f,%.4f) gate=%.4f c1=(%.4f,%.4f) ws=%.1f", (num(aim9_uncage_held) > 0.5) and 1 or 0, in_aam_mode() and 1 or 0, weapon_active and 1 or 0, contact_valid and 1 or 0, lock_valid and 1 or 0, target_designated and 1 or 0, missile_status, missile_count, use_fallback and "fallback" or "telemetry", (num(radar_state) > 0.5 and num(radar_power_state) > 0.5) and 1 or 0, radar_mode_value, ir_azimuth, ir_elevation, stt_azimuth, stt_elevation, stt_range, num(radar_stt_azimuth_stab), num(radar_stt_elevation_stab), num(radar_tdc_azimuth), num(radar_tdc_range_scaled), num(radar_gate_range_scaled), num(radar_contact_01_azimuth), num(radar_contact_01_range_scaled), num(ws_target_range))
 
     if line ~= debug_last_line then
         debug_last_line = line
@@ -182,13 +152,13 @@ function update()
     if dcs_ir_lock or dcs_ir_has_signal then
         -- DCS 引擎提供真實 IR 資料
         contact_valid = weapon_active and (dcs_ir_has_signal or dcs_ir_lock)
-        lock_valid    = weapon_active and dcs_ir_lock
+        lock_valid = weapon_active and dcs_ir_lock
     elseif real_telemetry_active then
         contact_valid = weapon_active and uncage_held and ir_contact_valid
-        lock_valid    = weapon_active and uncage_held and stt_valid
+        lock_valid = weapon_active and uncage_held and stt_valid
     else
         contact_valid = fallback_contact_valid
-        lock_valid    = fallback_lock_valid
+        lock_valid = fallback_lock_valid
     end
 
     aim9_weapon_active:set(weapon_active and 1 or 0)

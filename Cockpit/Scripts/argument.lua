@@ -1,14 +1,27 @@
 arguments = {}
-arguments["angle_of_draw_nose_gear"] = 0;         -- 0: Retracted | 1: Extended
-arguments["steering_angle_nose_gear"] = 2;        -- -1: Clockwise max | 0: Center | 1: Counter-clockwise max
-arguments["angle_of_draw_right_gear"] = 3;        -- 0: Retracted | 1: Extended
-arguments["angle_of_draw_left_gear"] = 5;         -- 0: Retracted | 1: Extended
-arguments["angle_of_draw_left_flap"] = 9;         -- Left slot, 0: Up | 1: Down
-arguments["angle_of_draw_right_flap"] = 10;       -- Right slot, 0: Up | 1: Down
-arguments["angle_of_draw_right_aileron"] = 11;    -- Right flaperon, -1: Down | 1: Up
-arguments["angle_of_draw_left_aileron"] = 12;     -- Left flaperon, -1: Down | 1: Up
-arguments["angle_of_draw_right_stabilizer"] = 15; -- -1: Tail edge down | 1: Tail edge up
-arguments["angle_of_draw_left_stabilizer"] = 16;  -- -1: Tail edge down | 1: Tail edge up
-arguments["angle_of_draw_right_rudder"] = 17;     -- -1: Counterclockwise | 1: Clockwise
-arguments["hook"] = 25;                           -- 0: Retracted | 1: Extended
-arguments["draw_angle_of_canopy"] = 38;           -- 0: Closed | 0.9: Elevated | 1: No draw
+arguments["angle_of_draw_nose_gear"] = 0 -- 0: Retracted | 1: Extended
+
+arguments["steering_angle_nose_gear"] = 2 -- -1: Clockwise max | 0: Center | 1: Counter-clockwise max
+
+arguments["angle_of_draw_right_gear"] = 3 -- 0: Retracted | 1: Extended
+
+arguments["angle_of_draw_left_gear"] = 5 -- 0: Retracted | 1: Extended
+
+arguments["angle_of_draw_left_flap"] = 9 -- Left slot, 0: Up | 1: Down
+
+arguments["angle_of_draw_right_flap"] = 10 -- Right slot, 0: Up | 1: Down
+
+arguments["angle_of_draw_right_aileron"] = 11 -- Right flaperon, -1: Down | 1: Up
+
+arguments["angle_of_draw_left_aileron"] = 12 -- Left flaperon, -1: Down | 1: Up
+
+arguments["angle_of_draw_right_stabilizer"] = 15 -- -1: Tail edge down | 1: Tail edge up
+
+arguments["angle_of_draw_left_stabilizer"] = 16 -- -1: Tail edge down | 1: Tail edge up
+
+arguments["angle_of_draw_right_rudder"] = 17 -- -1: Counterclockwise | 1: Clockwise
+
+arguments["hook"] = 25 -- 0: Retracted | 1: Extended
+
+arguments["draw_angle_of_canopy"] = 38 -- 0: Closed | 0.9: Elevated | 1: No draw
+

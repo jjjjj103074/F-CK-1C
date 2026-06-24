@@ -7,16 +7,14 @@ function Actuator:new(model_arg, arg_range, input_arg, input_range)
     -- 如果 model_arg 是字串，從 arguments 表查詢 ID；如果是數字則直接使用
     if type(model_arg) == "string" then
         self.model_arg = arguments[model_arg]
-        if not self.model_arg then
-            error("Actuator: argument name '" .. model_arg .. "' not found in arguments table")
-        end
+        if not self.model_arg then error("Actuator: argument name '" .. model_arg .. "' not found in arguments table") end
     else
         self.model_arg = model_arg
     end
 
     self.arg_range = arg_range or { -1, 1 } -- {min, max} 輸出範圍，默認 [-1, 1]
-    self.input = input_arg                  -- function
-    self.input_range = input_range          -- {min, max} 輸入範圍
+    self.input = input_arg -- function
+    self.input_range = input_range -- {min, max} 輸入範圍
 
     return self
 end

@@ -9,7 +9,6 @@ make_default_activity(update_rate)
 -- 1. 建立資料源連接 (這就是資料流的源頭)
 local sensor_data = get_base_data()
 
-
 function update()
     -- 2. 擷取控制 (Capture Input)
     -- getRudderPosition() 回傳值是角度

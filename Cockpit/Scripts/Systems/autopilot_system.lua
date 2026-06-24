@@ -5,7 +5,7 @@
 local dev = GetSelf()
 local sensor_data = get_base_data()
 
-local update_rate = 0.02  -- 50 Hz
+local update_rate = 0.02 -- 50 Hz
 make_default_activity(update_rate)
 
 dofile(LockOn_Options.script_path .. "command_defs.lua")
@@ -15,155 +15,153 @@ dofile(LockOn_Options.script_path .. "devices.lua")
 local RAD_TO_DEG = 57.29577951308232
 local DEG_TO_RAD = 0.01745329251994
 local MPS_TO_KTS = 1.943844
-local FT_TO_M    = 0.3048
-local M_TO_FT    = 3.28084
+local FT_TO_M = 0.3048
+local M_TO_FT = 3.28084
 
 -- Engage conditions
-local AP_MIN_SPEED_KTS      = 240.0   -- 低於此速度不可接通 AP
-local AP_MACH_MAX_AT        = 0.95    -- A/T 上限
+local AP_MIN_SPEED_KTS = 240.0 -- 低於此速度不可接通 AP
+local AP_MACH_MAX_AT = 0.95 -- A/T 上限
 
 -- Attitude engage limits (CAT III defaults for Phase 1)
-local AP_ENGAGE_ROLL_MAX    = 45.0 * DEG_TO_RAD
-local AP_ENGAGE_PITCH_MAX   = 45.0 * DEG_TO_RAD
+local AP_ENGAGE_ROLL_MAX = 45.0 * DEG_TO_RAD
+local AP_ENGAGE_PITCH_MAX = 45.0 * DEG_TO_RAD
 
 -- Control limits
-local AP_BANK_LIMIT         = 60.0 * DEG_TO_RAD
-local AP_PITCH_CMD_LIMIT    = 0.6   -- normalised -1..+1 range
+local AP_BANK_LIMIT = 60.0 * DEG_TO_RAD
+local AP_PITCH_CMD_LIMIT = 0.6 -- normalised -1..+1 range
 
 -- Altitude capture
-local ALT_HOLD_WINDOW_FT    = 500.0
-local ALT_CAPTURE_K          = 2.0
-local ALT_CAPTURE_ENTRY_FT  = ALT_HOLD_WINDOW_FT * ALT_CAPTURE_K  -- 1000 ft
-local ALT_FINE_HOLD_FT      = ALT_HOLD_WINDOW_FT * 0.10           -- 50 ft
-local ALT_COMFORT_UNLOAD_G  = 0.6
+local ALT_HOLD_WINDOW_FT = 500.0
+local ALT_CAPTURE_K = 2.0
+local ALT_CAPTURE_ENTRY_FT = ALT_HOLD_WINDOW_FT * ALT_CAPTURE_K -- 1000 ft
+local ALT_FINE_HOLD_FT = ALT_HOLD_WINDOW_FT * 0.10 -- 50 ft
+local ALT_COMFORT_UNLOAD_G = 0.6
 
 -- VS limits (m/s)
-local VS_MAX                = 40.0     -- ~7900 fpm
-local VS_CAPTURE_TAPER      = 10.0    -- m/s: begin reducing VS when close
+local VS_MAX = 40.0 -- ~7900 fpm
+local VS_CAPTURE_TAPER = 10.0 -- m/s: begin reducing VS when close
 
 -- Override detection
-local OVERRIDE_FACTOR       = 1.2
-local OVERRIDE_HOLD_TIME    = 1.0     -- seconds
+local OVERRIDE_FACTOR = 1.2
+local OVERRIDE_HOLD_TIME = 1.0 -- seconds
 
 -- Bypass
 local BYPASS_ATTITUDE_THRESHOLD = 1.0 * DEG_TO_RAD
 
 -- Speed (A/T)
-local AT_SPEED_STEP_KTS     = 5.0
-local AT_MIN_SPEED_KTS      = 200.0
-local AT_MAX_SPEED_KTS      = 550.0
+local AT_SPEED_STEP_KTS = 5.0
+local AT_MIN_SPEED_KTS = 200.0
+local AT_MAX_SPEED_KTS = 550.0
 
 -- ALT/HDG step sizes
-local ALT_STEP_FT           = 100.0
-local HDG_STEP_DEG          = 1.0
+local ALT_STEP_FT = 100.0
+local HDG_STEP_DEG = 1.0
 
 -- Sensor degradation limits
-local DEGRADE_PITCH_LIMIT   = 13.0 * DEG_TO_RAD
-local DEGRADE_ROLL_LIMIT    = 15.0 * DEG_TO_RAD
+local DEGRADE_PITCH_LIMIT = 13.0 * DEG_TO_RAD
+local DEGRADE_ROLL_LIMIT = 15.0 * DEG_TO_RAD
 
 -- ========================== Command IDs =====================================
 local CMD = device_commands
-local CMD_AP_MASTER_TOGGLE   = CMD.APMasterToggle
-local CMD_AP_MASTER_ON       = CMD.APMasterOn
-local CMD_AP_MASTER_OFF      = CMD.APMasterOff
-local CMD_AP_BYPASS          = CMD.APBypass
-local CMD_VERT_PITCH_HOLD   = CMD.APVertPitchHold
-local CMD_VERT_VS_HOLD      = CMD.APVertVSHold
-local CMD_VERT_ALT_HOLD     = CMD.APVertAltHold
-local CMD_VERT_INCREASE     = CMD.APVertIncrease
-local CMD_VERT_DECREASE     = CMD.APVertDecrease
-local CMD_LAT_HDG_HOLD      = CMD.APLatHeadingHold
-local CMD_LAT_HDG_SELECT    = CMD.APLatHeadingSelect
-local CMD_LAT_NAV_TRACK     = CMD.APLatNavTrack
-local CMD_LAT_INCREASE      = CMD.APLatIncrease
-local CMD_LAT_DECREASE      = CMD.APLatDecrease
-local CMD_AT_TOGGLE          = CMD.APAutoThrottleToggle
-local CMD_AT_ON              = CMD.APAutoThrottleOn
-local CMD_AT_OFF             = CMD.APAutoThrottleOff
-local CMD_SPEED_INCREASE    = CMD.APSpeedIncrease
-local CMD_SPEED_DECREASE    = CMD.APSpeedDecrease
+local CMD_AP_MASTER_TOGGLE = CMD.APMasterToggle
+local CMD_AP_MASTER_ON = CMD.APMasterOn
+local CMD_AP_MASTER_OFF = CMD.APMasterOff
+local CMD_AP_BYPASS = CMD.APBypass
+local CMD_VERT_PITCH_HOLD = CMD.APVertPitchHold
+local CMD_VERT_VS_HOLD = CMD.APVertVSHold
+local CMD_VERT_ALT_HOLD = CMD.APVertAltHold
+local CMD_VERT_INCREASE = CMD.APVertIncrease
+local CMD_VERT_DECREASE = CMD.APVertDecrease
+local CMD_LAT_HDG_HOLD = CMD.APLatHeadingHold
+local CMD_LAT_HDG_SELECT = CMD.APLatHeadingSelect
+local CMD_LAT_NAV_TRACK = CMD.APLatNavTrack
+local CMD_LAT_INCREASE = CMD.APLatIncrease
+local CMD_LAT_DECREASE = CMD.APLatDecrease
+local CMD_AT_TOGGLE = CMD.APAutoThrottleToggle
+local CMD_AT_ON = CMD.APAutoThrottleOn
+local CMD_AT_OFF = CMD.APAutoThrottleOff
+local CMD_SPEED_INCREASE = CMD.APSpeedIncrease
+local CMD_SPEED_DECREASE = CMD.APSpeedDecrease
 local CMD_THRUST_TEST_TOGGLE = CMD.EngineThrustCutTestToggle or CMD.APMaxpowerToggle
 local CMD_THRUST_TEST_ENABLE = CMD.EngineThrustCutTestEnable
 local CMD_THRUST_TEST_DISABLE = CMD.EngineThrustCutTestDisable
 
 -- ========================== Exported Params ==================================
 -- These are read by the EFM C++ side and by HUD/indicators
-local p_ap_master_engaged    = get_param_handle("AP_MASTER_ENGAGED")
-local p_ap_vert_mode         = get_param_handle("AP_VERT_MODE")
-local p_ap_lat_mode          = get_param_handle("AP_LAT_MODE")
-local p_ap_at_engaged        = get_param_handle("AP_AT_ENGAGED")
-local p_ap_pitch_cmd         = get_param_handle("AP_PITCH_CMD")
-local p_ap_roll_cmd          = get_param_handle("AP_ROLL_CMD")
-local p_ap_throttle_cmd      = get_param_handle("AP_THROTTLE_CMD")
-local p_ap_bypass_active     = get_param_handle("AP_BYPASS_ACTIVE")
+local p_ap_master_engaged = get_param_handle("AP_MASTER_ENGAGED")
+local p_ap_vert_mode = get_param_handle("AP_VERT_MODE")
+local p_ap_lat_mode = get_param_handle("AP_LAT_MODE")
+local p_ap_at_engaged = get_param_handle("AP_AT_ENGAGED")
+local p_ap_pitch_cmd = get_param_handle("AP_PITCH_CMD")
+local p_ap_roll_cmd = get_param_handle("AP_ROLL_CMD")
+local p_ap_throttle_cmd = get_param_handle("AP_THROTTLE_CMD")
+local p_ap_bypass_active = get_param_handle("AP_BYPASS_ACTIVE")
 -- Maxpower test switch: when set to 0 the EFM will zero engine thrust for ground-coupling tests.
-local p_maxpower_switch     = get_param_handle("FM_MAXPOWER_SWITCH")
-local p_maxpower_ready      = get_param_handle("FM_MAXPOWER_READY")
+local p_maxpower_switch = get_param_handle("FM_MAXPOWER_SWITCH")
+local p_maxpower_ready = get_param_handle("FM_MAXPOWER_READY")
 -- Default to enabled
 p_maxpower_switch:set(1)
 p_maxpower_ready:set(1)
-local p_ap_target_alt_ft     = get_param_handle("AP_TARGET_ALT_FT")
-local p_ap_target_hdg_deg    = get_param_handle("AP_TARGET_HDG_DEG")
-local p_ap_target_spd_kts    = get_param_handle("AP_TARGET_SPD_KTS")
-local p_ap_target_pitch_deg  = get_param_handle("AP_TARGET_PITCH_DEG")
-local p_ap_target_vs_fpm     = get_param_handle("AP_TARGET_VS_FPM")
+local p_ap_target_alt_ft = get_param_handle("AP_TARGET_ALT_FT")
+local p_ap_target_hdg_deg = get_param_handle("AP_TARGET_HDG_DEG")
+local p_ap_target_spd_kts = get_param_handle("AP_TARGET_SPD_KTS")
+local p_ap_target_pitch_deg = get_param_handle("AP_TARGET_PITCH_DEG")
+local p_ap_target_vs_fpm = get_param_handle("AP_TARGET_VS_FPM")
 
 -- ========================== Mode Enums ======================================
-local VERT_MODE_OFF          = 0
-local VERT_MODE_PITCH_HOLD   = 1
-local VERT_MODE_VS_HOLD      = 2
-local VERT_MODE_ALT_HOLD     = 3
+local VERT_MODE_OFF = 0
+local VERT_MODE_PITCH_HOLD = 1
+local VERT_MODE_VS_HOLD = 2
+local VERT_MODE_ALT_HOLD = 3
 
-local LAT_MODE_OFF           = 0
-local LAT_MODE_HDG_HOLD      = 1
-local LAT_MODE_HDG_SELECT    = 2
-local LAT_MODE_NAV_TRACK     = 3
+local LAT_MODE_OFF = 0
+local LAT_MODE_HDG_HOLD = 1
+local LAT_MODE_HDG_SELECT = 2
+local LAT_MODE_NAV_TRACK = 3
 
 -- ========================== State ==========================================
-local ap_master              = false
-local vert_mode              = VERT_MODE_OFF
-local lat_mode               = LAT_MODE_OFF
-local at_engaged             = false
+local ap_master = false
+local vert_mode = VERT_MODE_OFF
+local lat_mode = LAT_MODE_OFF
+local at_engaged = false
 
 -- Targets
-local target_pitch           = 0.0    -- rad
-local target_vs              = 0.0    -- m/s
-local target_alt             = 0.0    -- meters
-local target_hdg             = 0.0    -- rad
-local target_hdg_select      = 0.0    -- rad (for Heading Select mode)
-local target_speed           = 0.0    -- m/s (IAS)
+local target_pitch = 0.0 -- rad
+local target_vs = 0.0 -- m/s
+local target_alt = 0.0 -- meters
+local target_hdg = 0.0 -- rad
+local target_hdg_select = 0.0 -- rad (for Heading Select mode)
+local target_speed = 0.0 -- m/s (IAS)
 
 -- Control outputs
-local ap_pitch_cmd           = 0.0    -- -1..+1
-local ap_roll_cmd            = 0.0    -- -1..+1
-local ap_throttle_cmd        = 0.0    -- 0..1
+local ap_pitch_cmd = 0.0 -- -1..+1
+local ap_roll_cmd = 0.0 -- -1..+1
+local ap_throttle_cmd = 0.0 -- 0..1
 
 -- Bypass state
-local bypass_held            = false
-local bypass_active          = false
-local bypass_start_pitch     = 0.0
-local bypass_start_roll      = 0.0
-local bypass_start_hdg       = 0.0
+local bypass_held = false
+local bypass_active = false
+local bypass_start_pitch = 0.0
+local bypass_start_roll = 0.0
+local bypass_start_hdg = 0.0
 
 -- Override detection
-local override_timer_pitch   = 0.0
-local override_timer_roll    = 0.0
+local override_timer_pitch = 0.0
+local override_timer_roll = 0.0
 
 -- PID integrators
-local pid_alt_int            = 0.0
-local pid_hdg_int            = 0.0
-local pid_spd_int            = 0.0
-local pid_pitch_int          = 0.0
-local pid_vs_int             = 0.0
+local pid_alt_int = 0.0
+local pid_hdg_int = 0.0
+local pid_spd_int = 0.0
+local pid_pitch_int = 0.0
+local pid_vs_int = 0.0
 
 -- ALT capture state
 local alt_capture_overshoot_count = 0
 
 -- ========================== Utilities =======================================
 local function dlog(msg)
-    if log ~= nil and log.info ~= nil then
-        log.info("FCK1C AP: " .. tostring(msg))
-    end
+    if log ~= nil and log.info ~= nil then log.info("FCK1C AP: " .. tostring(msg)) end
 end
 
 local function set_thrust_cut_test_enabled(enabled)
@@ -187,19 +185,33 @@ local function clamp(v, lo, hi)
 end
 
 local function wrap_pi(angle)
-    while angle > math.pi do angle = angle - 2 * math.pi end
-    while angle < -math.pi do angle = angle + 2 * math.pi end
+    while angle > math.pi do
+        angle = angle - 2 * math.pi
+    end
+    while angle < -math.pi do
+        angle = angle + 2 * math.pi
+    end
     return angle
 end
 
 local function wrap_2pi(angle)
-    while angle >= 2 * math.pi do angle = angle - 2 * math.pi end
-    while angle < 0 do angle = angle + 2 * math.pi end
+    while angle >= 2 * math.pi do
+        angle = angle - 2 * math.pi
+    end
+    while angle < 0 do
+        angle = angle + 2 * math.pi
+    end
     return angle
 end
 
 local function sign(x)
-    if x > 0 then return 1 elseif x < 0 then return -1 else return 0 end
+    if x > 0 then
+        return 1
+    elseif x < 0 then
+        return -1
+    else
+        return 0
+    end
 end
 
 local function safe_sensor(method_name, default)
@@ -211,16 +223,36 @@ local function safe_sensor(method_name, default)
 end
 
 -- ========================== Sensor Reads ====================================
-local function get_pitch()       return safe_sensor("getPitch", 0) end
-local function get_roll()        return safe_sensor("getRoll", 0) end
-local function get_heading()     return safe_sensor("getHeading", 0) end
-local function get_baro_alt()    return safe_sensor("getBarometricAltitude", 0) end
-local function get_radar_alt()   return safe_sensor("getRadarAltitude", 0) end
-local function get_ias()         return safe_sensor("getIndicatedAirSpeed", 0) end
-local function get_tas()         return safe_sensor("getTrueAirSpeed", 0) end
-local function get_mach()        return safe_sensor("getMachNumber", 0) end
-local function get_vs()          return safe_sensor("getVerticalVelocity", 0) end
-local function get_aoa()         return safe_sensor("getAngleOfAttack", 0) end
+local function get_pitch()
+    return safe_sensor("getPitch", 0)
+end
+local function get_roll()
+    return safe_sensor("getRoll", 0)
+end
+local function get_heading()
+    return safe_sensor("getHeading", 0)
+end
+local function get_baro_alt()
+    return safe_sensor("getBarometricAltitude", 0)
+end
+local function get_radar_alt()
+    return safe_sensor("getRadarAltitude", 0)
+end
+local function get_ias()
+    return safe_sensor("getIndicatedAirSpeed", 0)
+end
+local function get_tas()
+    return safe_sensor("getTrueAirSpeed", 0)
+end
+local function get_mach()
+    return safe_sensor("getMachNumber", 0)
+end
+local function get_vs()
+    return safe_sensor("getVerticalVelocity", 0)
+end
+local function get_aoa()
+    return safe_sensor("getAngleOfAttack", 0)
+end
 local function get_wow()
     -- check any weight-on-wheels
     local n = safe_sensor("getWOW_NoseLandingGear", 0)
@@ -343,9 +375,7 @@ end
 local function engage_hdg_select()
     lat_mode = LAT_MODE_HDG_SELECT
     -- Keep current selected heading, or init to current if first time
-    if target_hdg_select == 0.0 then
-        target_hdg_select = get_heading()
-    end
+    if target_hdg_select == 0.0 then target_hdg_select = get_heading() end
     pid_hdg_int = 0.0
     dlog("HDG SELECT @ " .. string.format("%.1f", target_hdg_select * RAD_TO_DEG) .. " deg")
 end
@@ -447,9 +477,7 @@ local function update_alt_hold(dt)
     elseif abs_err_ft > ALT_HOLD_WINDOW_FT and sign(alt_err_ft) ~= sign(vs) then
         -- Moving away from target (overshoot recovery)
         alt_capture_overshoot_count = alt_capture_overshoot_count + 1
-        if alt_capture_overshoot_count > 2 then
-            dlog("ALT capture unstable: overshoot count " .. alt_capture_overshoot_count)
-        end
+        if alt_capture_overshoot_count > 2 then dlog("ALT capture unstable: overshoot count " .. alt_capture_overshoot_count) end
     end
 end
 
@@ -490,12 +518,12 @@ local function update_auto_throttle(dt)
     end
 
     local ias = get_ias()
-    local speed_err = target_speed - ias  -- m/s
+    local speed_err = target_speed - ias -- m/s
     local kp = 0.015
     local ki = 0.003
     pid_spd_int = clamp(pid_spd_int + speed_err * dt, -30.0, 30.0)
     local cmd = 0.5 + kp * speed_err + ki * pid_spd_int
-    ap_throttle_cmd = clamp(cmd, 0.0, 0.95)  -- Don't command full AB via A/T
+    ap_throttle_cmd = clamp(cmd, 0.0, 0.95) -- Don't command full AB via A/T
 end
 
 -- ========================== Bypass Logic ====================================
@@ -519,9 +547,7 @@ local function exit_bypass()
     local d_pitch = math.abs(get_pitch() - bypass_start_pitch)
     local d_roll = math.abs(get_roll() - bypass_start_roll)
     local d_hdg = math.abs(wrap_pi(get_heading() - bypass_start_hdg))
-    local meaningful = (d_pitch > BYPASS_ATTITUDE_THRESHOLD) or
-                       (d_roll > BYPASS_ATTITUDE_THRESHOLD) or
-                       (d_hdg > BYPASS_ATTITUDE_THRESHOLD)
+    local meaningful = (d_pitch > BYPASS_ATTITUDE_THRESHOLD) or (d_roll > BYPASS_ATTITUDE_THRESHOLD) or (d_hdg > BYPASS_ATTITUDE_THRESHOLD)
 
     if meaningful then
         -- Re-capture current values as new references (Hold modes)
@@ -583,9 +609,7 @@ function update()
         ap_pitch_cmd = 0.0
         ap_roll_cmd = 0.0
         -- A/T remains active during bypass (independent subsystem)
-        if at_engaged then
-            update_auto_throttle(dt)
-        end
+        if at_engaged then update_auto_throttle(dt) end
         push_params()
         return
     end
@@ -677,9 +701,7 @@ function SetCommand(command, value)
         return
     end
     if command == CMD_AP_MASTER_OFF then
-        if value > 0.5 then
-            disengage_all()
-        end
+        if value > 0.5 then disengage_all() end
         return
     end
 
@@ -697,21 +719,15 @@ function SetCommand(command, value)
 
     -- ---- Vertical Channel ----
     if command == CMD_VERT_PITCH_HOLD then
-        if value > 0.5 and ap_master then
-            engage_pitch_hold()
-        end
+        if value > 0.5 and ap_master then engage_pitch_hold() end
         return
     end
     if command == CMD_VERT_VS_HOLD then
-        if value > 0.5 and ap_master then
-            engage_vs_hold()
-        end
+        if value > 0.5 and ap_master then engage_vs_hold() end
         return
     end
     if command == CMD_VERT_ALT_HOLD then
-        if value > 0.5 and ap_master then
-            engage_alt_hold()
-        end
+        if value > 0.5 and ap_master then engage_alt_hold() end
         return
     end
     if command == CMD_VERT_INCREASE then
@@ -722,7 +738,7 @@ function SetCommand(command, value)
                 alt_capture_overshoot_count = 0
                 dlog("ALT target -> " .. string.format("%.0f", target_alt * M_TO_FT) .. " ft")
             elseif vert_mode == VERT_MODE_VS_HOLD then
-                target_vs = target_vs + 1.0  -- +1 m/s ≈ +200 fpm
+                target_vs = target_vs + 1.0 -- +1 m/s ≈ +200 fpm
                 dlog("VS target -> " .. string.format("%.0f", target_vs * M_TO_FT * 60) .. " fpm")
             elseif vert_mode == VERT_MODE_PITCH_HOLD then
                 target_pitch = target_pitch + 1.0 * DEG_TO_RAD
@@ -751,15 +767,11 @@ function SetCommand(command, value)
 
     -- ---- Lateral Channel ----
     if command == CMD_LAT_HDG_HOLD then
-        if value > 0.5 and ap_master then
-            engage_hdg_hold()
-        end
+        if value > 0.5 and ap_master then engage_hdg_hold() end
         return
     end
     if command == CMD_LAT_HDG_SELECT then
-        if value > 0.5 and ap_master then
-            engage_hdg_select()
-        end
+        if value > 0.5 and ap_master then engage_hdg_select() end
         return
     end
     if command == CMD_LAT_NAV_TRACK then
@@ -809,9 +821,7 @@ function SetCommand(command, value)
         return
     end
     if command == CMD_AT_ON then
-        if value > 0.5 and not at_engaged then
-            engage_at()
-        end
+        if value > 0.5 and not at_engaged then engage_at() end
         return
     end
     if command == CMD_AT_OFF then
@@ -840,21 +850,15 @@ function SetCommand(command, value)
 
     -- ---- Engine thrust cut test ----
     if command == CMD_THRUST_TEST_TOGGLE then
-        if value > 0.5 then
-            set_thrust_cut_test_enabled(not is_thrust_cut_test_enabled())
-        end
+        if value > 0.5 then set_thrust_cut_test_enabled(not is_thrust_cut_test_enabled()) end
         return
     end
     if command == CMD_THRUST_TEST_ENABLE then
-        if value > 0.5 then
-            set_thrust_cut_test_enabled(true)
-        end
+        if value > 0.5 then set_thrust_cut_test_enabled(true) end
         return
     end
     if command == CMD_THRUST_TEST_DISABLE then
-        if value > 0.5 then
-            set_thrust_cut_test_enabled(false)
-        end
+        if value > 0.5 then set_thrust_cut_test_enabled(false) end
         return
     end
 end

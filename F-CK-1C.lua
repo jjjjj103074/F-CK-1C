@@ -72,21 +72,19 @@ local function buildStation(stationIds, argMode, callForbidden, ...)
     -- 從武器定義建立 entry；若此武器不應出現在 stationIds 則回傳 nil
     local function makeEntry(wpn, group)
         -- 篩選：stations 白名單
-        if wpn.stations and not anyMatch(stationIds, wpn.stations) then
-            return nil
-        end
+        if wpn.stations and not anyMatch(stationIds, wpn.stations) then return nil end
         -- 篩選：deny 黑名單
-        if wpn.deny and anyMatch(stationIds, wpn.deny) then
-            return nil
-        end
+        if wpn.deny and anyMatch(stationIds, wpn.deny) then return nil end
 
         local entry = {}
-        for k, v in pairs(wpn) do entry[k] = v end
+        for k, v in pairs(wpn) do
+            entry[k] = v
+        end
 
         -- 清除 meta 欄位
         entry.stations = nil
-        entry.deny     = nil
-        entry.extra    = nil
+        entry.deny = nil
+        entry.extra = nil
 
         -- callForbidden → forbidden（呼叫層級互斥約束）
         if callForbidden and #callForbidden > 0 then
@@ -101,9 +99,7 @@ local function buildStation(stationIds, argMode, callForbidden, ...)
         if argMode == "none" then
             entry.arg_value = nil
         elseif argMode == "normal" then
-            if entry.arg_value == nil then
-                entry.arg_value = groupIsAAM and 1 or 0.1
-            end
+            if entry.arg_value == nil then entry.arg_value = groupIsAAM and 1 or 0.1 end
         elseif argMode == "diameter" then
             if entry.diameter == nil then return nil end
             entry.arg_value = math.max(0, math.min(1, entry.diameter / 200))
@@ -152,72 +148,70 @@ end
 -- 輕型空對空
 WPN_AAM_Light = wpnGroup({
     _isAAM = true,
-    { CLSID = "{AIM-9L}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9L
-    { CLSID = "{AIM-9P3}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P3
-    { CLSID = "{AIM-9P5}",                              Cx_gain = 0.796, diameter = 127 }, -- AIM-9P5
+    { CLSID = "{AIM-9L}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9L
+    { CLSID = "{AIM-9P3}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P3
+    { CLSID = "{AIM-9P5}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P5
     { CLSID = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9X
-    { CLSID = "{AIM-9B}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9B
-    { CLSID = "{AIM-9E}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9E
-    { CLSID = "{AIM-9J}",                               Cx_gain = 0.796, diameter = 127 }, -- AIM-9J
+    { CLSID = "{AIM-9B}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9B
+    { CLSID = "{AIM-9E}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9E
+    { CLSID = "{AIM-9J}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9J
     { CLSID = "{9BFD8C90-F7AE-4e90-833B-BFD0CED0E536}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P
     { CLSID = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9
-    { CLSID = "{AIM-9JULI}",                            Cx_gain = 0.796, diameter = 127 }, -- AIM-9JULI
-    { CLSID = "{Rb_24}",                                Cx_gain = 0.796, diameter = 127 }, -- Rb_24
-    { CLSID = "{Rb_24J}",                               Cx_gain = 0.796, diameter = 127 }, -- Rb_24J
-    { CLSID = "{Rb_74}",                                Cx_gain = 0.796, diameter = 127 }, -- Rb_74
-    { CLSID = "CATM-9M",                                Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
-    { CLSID = "TC-1",                                   Cx_gain = 0.796, diameter = 127 }, -- TC-1
+    { CLSID = "{AIM-9JULI}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9JULI
+    { CLSID = "{Rb_24}", Cx_gain = 0.796, diameter = 127 }, -- Rb_24
+    { CLSID = "{Rb_24J}", Cx_gain = 0.796, diameter = 127 }, -- Rb_24J
+    { CLSID = "{Rb_74}", Cx_gain = 0.796, diameter = 127 }, -- Rb_74
+    { CLSID = "CATM-9M", Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
+    { CLSID = "TC-1", Cx_gain = 0.796, diameter = 127 }, -- TC-1
 })
 
 -- 中型空對空
 WPN_AAM_Med = wpnGroup({
     _isAAM = true,
-    { CLSID = "{AIM-7E}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E
-    { CLSID = "{AIM-7E-2}",                             Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7E-2
-    { CLSID = "{AIM-7F}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7F
-    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7M
-    { CLSID = "{AIM-7H}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7H
-    { CLSID = "{AIM-7P}",                               Cx_gain = 0.49,  diameter = 200 },                                     -- AIM-7P
+    { CLSID = "{AIM-7E}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7E
+    { CLSID = "{AIM-7E-2}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7E-2
+    { CLSID = "{AIM-7F}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7F
+    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7M
+    { CLSID = "{AIM-7H}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7H
+    { CLSID = "{AIM-7P}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7P
     { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120B (額外允許翼尖)
     { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
-    { CLSID = "TC-2",                                   Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2
-    { CLSID = "TC-2C",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2C
-    { CLSID = "TC-2A",                                  Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2A
+    { CLSID = "TC-2", Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2
+    { CLSID = "TC-2C", Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2C
+    { CLSID = "TC-2A", Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2A
 })
 
 -- 輕型對地（外側以內均可，炸彈、導引均收錄）
 WPN_AG_LIGHT = wpnGroup({
     { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}", Cx_gain = 1.563 }, -- Mk-82
-    { CLSID = "{Mk82SNAKEYE}",                          Cx_gain = 1.882 }, -- Mk-82 SNAKEYE
+    { CLSID = "{Mk82SNAKEYE}", Cx_gain = 1.882 }, -- Mk-82 SNAKEYE
     { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 }, -- MK-20 Rockeye
-    { CLSID = "{BDU-50LD}",                             Cx_gain = 1.388 }, -- BDU-50LD
-    { CLSID = "{BDU_45}",                               Cx_gain = 0.944 },    -- BDU-45
-    { CLSID = "{BDU_45B}",                              Cx_gain = 0.566 },    -- BDU-45B
+    { CLSID = "{BDU-50LD}", Cx_gain = 1.388 }, -- BDU-50LD
+    { CLSID = "{BDU_45}", Cx_gain = 0.944 }, -- BDU-45
+    { CLSID = "{BDU_45B}", Cx_gain = 0.566 }, -- BDU-45B
 })
 
 -- 重型對地（僅內側及機腹，炸彈、導引、反艦均收錄）
 WPN_AG_HEAVY = wpnGroup({
-    { CLSID = "{BRU33_2X_MK-82}",                       Cx_gain_empty = 0.335, Cx_gain_item = 1.653 }, -- BRU-33 2*Mk-82
-    { CLSID = "{BRU33_2X_MK-82_Snakeye}",               Cx_gain_empty = 0.328, Cx_gain_item = 2.128 }, -- BRU-33 2*Mk-82SE
-    { CLSID = "{BRU33_2X_ROCKEYE}",                     Cx_gain_empty = 0.341, Cx_gain_item = 1.496 }, -- BRU-33 2*Mk-20
-    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260 },                             -- Mk-84
-    { CLSID = "HF-3" },                                                                                -- 雄风三型反艦導彈
+    { CLSID = "{BRU33_2X_MK-82}", Cx_gain_empty = 0.335, Cx_gain_item = 1.653 }, -- BRU-33 2*Mk-82
+    { CLSID = "{BRU33_2X_MK-82_Snakeye}", Cx_gain_empty = 0.328, Cx_gain_item = 2.128 }, -- BRU-33 2*Mk-82SE
+    { CLSID = "{BRU33_2X_ROCKEYE}", Cx_gain_empty = 0.341, Cx_gain_item = 1.496 }, -- BRU-33 2*Mk-20
+    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260 }, -- Mk-84
+    { CLSID = "HF-3" }, -- 雄风三型反艦導彈
 })
 
 -- 標定莢艙
-WPN_POD_Targeting = wpnGroup({
-
-})
+WPN_POD_Targeting = wpnGroup({})
 
 -- 訓練／展示莢艙
 WPN_POD_Misc = wpnGroup({
-    { CLSID = "{AIS_ASQ_T50}",                          arg_value = 1, attach_point_position = { 0.25, 0.0, 0.0 }, diameter = 127,       deny = { STATION_MM } }, -- ACMI pod
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder blue
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder green
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder orange
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder red
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder white
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", arg_value = 1, diameter = 66,                              deny = { STATION_MM } },                       -- Smokewinder yellow
+    { CLSID = "{AIS_ASQ_T50}", arg_value = 1, attach_point_position = { 0.25, 0.0, 0.0 }, diameter = 127, deny = { STATION_MM } }, -- ACMI pod
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder blue
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder green
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder orange
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder red
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder white
+    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder yellow
 })
 
 -- 標準副油箱
@@ -229,69 +223,46 @@ WPN_TANK_Standard = wpnGroup({
 -- ---------- 掛載點配置 ----------
 
 -- 翼尖
-Tip = buildStation({ STATION_RT, STATION_LT }, "none", {},
-    WPN_AAM_Light,
-    WPN_POD_Misc
-)
+Tip = buildStation({ STATION_RT, STATION_LT }, "none", {}, WPN_AAM_Light, WPN_POD_Misc)
 
 -- 機翼外側
-Outer = buildStation({ STATION_RO, STATION_LO }, "normal", {},
-    WPN_AAM_Light,
-    WPN_AAM_Med,
-    WPN_AG_LIGHT,
-    WPN_POD_Misc
-)
+Outer = buildStation({ STATION_RO, STATION_LO }, "normal", {}, WPN_AAM_Light, WPN_AAM_Med, WPN_AG_LIGHT, WPN_POD_Misc)
 
 -- 機翼內側
-Inner = buildStation({ STATION_RI, STATION_LI }, "normal", {},
-    WPN_AAM_Light,
-    WPN_AAM_Med,
-    WPN_AG_LIGHT,
-    WPN_AG_HEAVY,
-    WPN_TANK_Standard,
-    WPN_POD_Targeting,
-    WPN_POD_Misc
-)
+Inner = buildStation({ STATION_RI, STATION_LI }, "normal", {}, WPN_AAM_Light, WPN_AAM_Med, WPN_AG_LIGHT, WPN_AG_HEAVY, WPN_TANK_Standard, WPN_POD_Targeting, WPN_POD_Misc)
 
 -- 機腹中心掛架
-CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB },
-    WPN_AG_LIGHT,
-    WPN_AG_HEAVY,
-    WPN_TANK_Standard,
-    WPN_POD_Targeting,
-    WPN_POD_Misc
-)
+CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB }, WPN_AG_LIGHT, WPN_AG_HEAVY, WPN_TANK_Standard, WPN_POD_Targeting, WPN_POD_Misc)
 
 -- 機腹前後掛架
-CenterlineFB = buildStation({ STATION_MF, STATION_MB }, "diameter", { STATION_MM },
-    WPN_AAM_Med
-)
+CenterlineFB = buildStation({ STATION_MF, STATION_MB }, "diameter", { STATION_MM }, WPN_AAM_Med)
 
 -- ===================== 基本識別資料 (Identification) =====================
 -- Name / DisplayName / shape_table_data 會對應到 DCS 的單位與模型註冊資料。
 
 local F_CK_1C = {
     -- 內部單位名稱
-    Name = 'F-CK-1C',
+    Name = "F-CK-1C",
     -- UI 顯示名稱
-    DisplayName = _('F-CK-1C'),
+    DisplayName = _("F-CK-1C"),
 
     Rate = 40, -- RewardPoint in Multiplayer
 
     Shape = "F-CK-1C",
     -- shape_table_data: 將單位名稱綁定到 3D 模型與損毀模型設定。
-    shape_table_data = { {
-        name = "F-CK-1C",
-        file = "F-CK-1C", -- 3D 模型檔名，對應 Shapes 資料夾
-        username = "F-CK-1C",
-        index = WSTYPE_PLACEHOLDER,
-        life = 20,                 -- 單位生命值 / 耐久度
-        vis = 3,                   -- 可見度等級，影響 LOD 與目視辨識
-        desrt = 'Fighter-2-crush', -- Name of destroyed object file name Alphajet-destr. This is a placeholder.
-        fire = { 300, 2 },         -- 受損起火效果參數
-        classname = "lLandPlane",
-        positioning = "BYNORMAL"
-    },
+    shape_table_data = {
+        {
+            name = "F-CK-1C",
+            file = "F-CK-1C", -- 3D 模型檔名，對應 Shapes 資料夾
+            username = "F-CK-1C",
+            index = WSTYPE_PLACEHOLDER,
+            life = 20, -- 單位生命值 / 耐久度
+            vis = 3, -- 可見度等級，影響 LOD 與目視辨識
+            desrt = "Fighter-2-crush", -- Name of destroyed object file name Alphajet-destr. This is a placeholder.
+            fire = { 300, 2 }, -- 受損起火效果參數
+            classname = "lLandPlane",
+            positioning = "BYNORMAL",
+        },
         -- {
         --     name = "F-CK-1C_destr",
         --     file = "f-ck-1c-oblomok",
@@ -377,7 +348,7 @@ local F_CK_1C = {
         "USAF Aggressors",
         "Venezuela",
         "Vietnam",
-        "Yemen"
+        "Yemen",
     },
 
     -- UI 與分類
@@ -390,10 +361,10 @@ local F_CK_1C = {
 
     -- ===================== 座艙與組員 (Crew & Cockpit) =====================
     -- 先沿用既有座艙結構，之後再依實機需求細化。
-    HumanCockpit = true,                                -- 允許玩家進入座艙飛行
-    HumanCockpitPath = current_mod_path .. '/Cockpit/', -- 座艙腳本路徑
+    HumanCockpit = true, -- 允許玩家進入座艙飛行
+    HumanCockpitPath = current_mod_path .. "/Cockpit/", -- 座艙腳本路徑
 
-    crew_size = 1,                                      -- 機組員數量
+    crew_size = 1, -- 機組員數量
     crew_members = {
         [1] = {
             ejection_seat_name = 17, -- DCS 內建彈射椅 ID，暫沿用既有設定
@@ -401,69 +372,69 @@ local F_CK_1C = {
             -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 補上可拋棄艙罩模型名稱
             -- canopy_pos = {3.2, 0.674, 0}, -- 艙罩參考位置
             pos = { 3.28, -0.08, 0 }, -- 飛行員座位位置 (x, y, z)，單位公尺
-            g_suit = 1.02             -- G-suit 係數，1.0 為標準值
-        }
+            g_suit = 1.02, -- G-suit 係數，1.0 為標準值
+        },
     },
 
     -- ===================== 重量、幾何與性能 (Mass, Geometry, Performance) =====================
     -- 幾何、重量與性能數值。
-    M_empty = 6492,    -- 空重 (kg)
-    M_nominal = 9072,  -- 典型作戰重量 (kg)
-    M_max = 12530,     -- 最大起飛重量 (kg)
+    M_empty = 6492, -- 空重 (kg)
+    M_nominal = 9072, -- 典型作戰重量 (kg)
+    M_max = 12530, -- 最大起飛重量 (kg)
     M_fuel_max = 2111, -- 最大內載燃油 (kg)
 
     -- AI 使用的最低校正空速，暫參考 A-4E-C 類型設定。
     CAS_min = 23.15, -- 最低校正空速 (m/s) [AI]
 
     -- 外形尺寸
-    length = 14.48,                         -- 機長 (m)
-    height = 4.7,                           -- 機高 (m)
-    wing_area = 24.26,                      -- 翼面積 (m^2)
-    wing_span = 8.53,                       -- 翼展 (m)
+    length = 14.48, -- 機長 (m)
+    height = 4.7, -- 機高 (m)
+    wing_area = 24.26, -- 翼面積 (m^2)
+    wing_span = 8.53, -- 翼展 (m)
     wing_tip_pos = { -2.3, 0.0006, 4.396 }, -- 翼尖參考位置 (x, y, z)，單位公尺
 
     -- 速度與飛行包線
-    V_opt = 220,             -- 最佳巡航速度 (m/s)
-    V_take_off = 75,         -- 起飛速度 (m/s)
-    V_land = 65,             -- 著陸速度 (m/s)
+    V_opt = 220, -- 最佳巡航速度 (m/s)
+    V_take_off = 75, -- 起飛速度 (m/s)
+    V_land = 65, -- 著陸速度 (m/s)
     V_max_sea_level = 369.4, -- 海平面最大速度 (m/s)
-    V_max_h = 612.5,         -- 高空最大速度 (m/s)
-    Mach_max = 1.8,          -- 最大馬赫數
-    Vy_max = 238.7,          -- 最大爬升率 (m/s)
-    Ny_min = -3,             -- 最小過載限制 (-G)
-    Ny_max = 9,              -- 最大過載限制 (+G)
-    bank_angle_max = 60,     -- 最大持續傾斜角 (deg)
-    range = 2200,            -- 航程 (km) [AI]
+    V_max_h = 612.5, -- 高空最大速度 (m/s)
+    Mach_max = 1.8, -- 最大馬赫數
+    Vy_max = 238.7, -- 最大爬升率 (m/s)
+    Ny_min = -3, -- 最小過載限制 (-G)
+    Ny_max = 9, -- 最大過載限制 (+G)
+    bank_angle_max = 60, -- 最大持續傾斜角 (deg)
+    range = 2200, -- 航程 (km) [AI]
 
     -- 推力
     thrust_sum_max = 5506.47, -- 軍用推力總和
-    thrust_sum_ab = 8524.83,  -- 後燃器推力總和
-    has_afterburner = true,   -- 具備後燃器
+    thrust_sum_ab = 8524.83, -- 後燃器推力總和
+    has_afterburner = true, -- 具備後燃器
 
     -- 雷達與紅外特徵
-    RCS = 3.6,                   -- 雷達截面積估計值 (m^2)
+    RCS = 3.6, -- 雷達截面積估計值 (m^2)
     radar_can_see_ground = true, -- 雷達可進行對地探測
-    detection_range_max = 150,   -- 最大偵測距離 (km)
-    IR_emission_coeff = 0.73,    -- 軍用推力紅外特徵係數
-    IR_emission_coeff_ab = 4.0,  -- 後燃器紅外特徵係數
+    detection_range_max = 150, -- 最大偵測距離 (km)
+    IR_emission_coeff = 0.73, -- 軍用推力紅外特徵係數
+    IR_emission_coeff_ab = 4.0, -- 後燃器紅外特徵係數
 
     -- 空中加油相關
     -- air_refuel_receptacle_pos = {-0.051, 0.911, 0.0}, -- 受油口位置 (x, y, z)，單位公尺
     -- tanker_type = 1, -- 若要充當加油機，可在此指定類型
 
     -- ===================== 起落架 (Landing Gear) =====================
-    tand_gear_max = 0.761,                                    -- 起落架可承受的最大俯仰角參考值 (rad)
-    nose_gear_pos = { 4.12, -1.912, 0 },                      -- 前輪位置 (x, y, z) (m)
-    nose_gear_amortizer_direct_stroke = 0.0,                  -- 前輪減震器壓縮行程 (m)
-    nose_gear_amortizer_reversal_stroke = 1.712 - 1.912,      -- 前輪減震器回彈行程 (m)
+    tand_gear_max = 0.761, -- 起落架可承受的最大俯仰角參考值 (rad)
+    nose_gear_pos = { 4.12, -1.912, 0 }, -- 前輪位置 (x, y, z) (m)
+    nose_gear_amortizer_direct_stroke = 0.0, -- 前輪減震器壓縮行程 (m)
+    nose_gear_amortizer_reversal_stroke = 1.712 - 1.912, -- 前輪減震器回彈行程 (m)
     nose_gear_amortizer_normal_weight_stroke = 1.812 - 1.912, -- 前輪在正常重量下的壓縮量 (m)
-    nose_gear_wheel_diameter = 0.4572,                        -- 前輪輪徑 (m)
+    nose_gear_wheel_diameter = 0.4572, -- 前輪輪徑 (m)
 
-    main_gear_pos = { -1.185, -1.913, 0.7905 },               -- 主輪位置 (x, y, z) (m)
-    main_gear_amortizer_direct_stroke = 0,                    -- 主輪減震器壓縮行程 (m)
-    main_gear_amortizer_reversal_stroke = 1.727 - 1.913,      -- 主輪減震器回彈行程 (m)
+    main_gear_pos = { -1.185, -1.913, 0.7905 }, -- 主輪位置 (x, y, z) (m)
+    main_gear_amortizer_direct_stroke = 0, -- 主輪減震器壓縮行程 (m)
+    main_gear_amortizer_reversal_stroke = 1.727 - 1.913, -- 主輪減震器回彈行程 (m)
     main_gear_amortizer_normal_weight_stroke = 1.796 - 1.913, -- 主輪在正常重量下的壓縮量 (m)
-    main_gear_wheel_diameter = 0.6096,                        -- 主輪輪徑 (m)
+    main_gear_wheel_diameter = 0.6096, -- 主輪輪徑 (m)
 
     -- nose_gear_door_close_after_retract = false,
     -- main_gear_door_close_after_retract = false,
@@ -472,29 +443,29 @@ local F_CK_1C = {
     engines_count = 2, -- 發動機數量
     engines_nozzles = {
         [1] = {
-            pos = { -6.118, 0.0918, 0.4452 },                -- 噴口位置 (x, y, z) (m)
-            elevation = 0,                                   -- 噴口仰角 (deg)
-            diameter = 0.64,                                 -- 噴口直徑 (m)
-            exhaust_length_ab = 3.5,                         -- 後燃尾焰長度 (m)
-            exhaust_length_ab_K = 0.77,                      -- 後燃尾焰視覺縮放係數
-            smokiness_level = 0.05,                          -- 燃燒煙霧等級
-            afterburner_circles_count = 6,                   -- 後燃圓環效果數量
+            pos = { -6.118, 0.0918, 0.4452 }, -- 噴口位置 (x, y, z) (m)
+            elevation = 0, -- 噴口仰角 (deg)
+            diameter = 0.64, -- 噴口直徑 (m)
+            exhaust_length_ab = 3.5, -- 後燃尾焰長度 (m)
+            exhaust_length_ab_K = 0.77, -- 後燃尾焰視覺縮放係數
+            smokiness_level = 0.05, -- 燃燒煙霧等級
+            afterburner_circles_count = 6, -- 後燃圓環效果數量
             -- afterburner_circles_pos = {0.2, 0.8}, -- 後燃圓環在噴口內的相對位置
-            afterburner_circles_scale = 1.0,                 -- 後燃圓環尺寸縮放
-            afterburner_effect_texture = "afterburner_f-16c" -- 後燃效果貼圖
+            afterburner_circles_scale = 1.0, -- 後燃圓環尺寸縮放
+            afterburner_effect_texture = "afterburner_f-16c", -- 後燃效果貼圖
         },
         [2] = {
-            pos = { -6.118, 0.0918, -0.4452 },               -- 噴口位置 (x, y, z) (m)
-            elevation = 0,                                   -- 噴口仰角 (deg)
-            diameter = 0.64,                                 -- 噴口直徑 (m)
-            exhaust_length_ab = 3.5,                         -- 後燃尾焰長度 (m)
-            exhaust_length_ab_K = 0.77,                      -- 後燃尾焰視覺縮放係數
-            smokiness_level = 0.05,                          -- 燃燒煙霧等級
-            afterburner_circles_count = 6,                   -- 後燃圓環效果數量
+            pos = { -6.118, 0.0918, -0.4452 }, -- 噴口位置 (x, y, z) (m)
+            elevation = 0, -- 噴口仰角 (deg)
+            diameter = 0.64, -- 噴口直徑 (m)
+            exhaust_length_ab = 3.5, -- 後燃尾焰長度 (m)
+            exhaust_length_ab_K = 0.77, -- 後燃尾焰視覺縮放係數
+            smokiness_level = 0.05, -- 燃燒煙霧等級
+            afterburner_circles_count = 6, -- 後燃圓環效果數量
             -- afterburner_circles_pos = {0.2, 0.8}, -- 後燃圓環在噴口內的相對位置
-            afterburner_circles_scale = 1.0,                 -- 後燃圓環尺寸縮放
-            afterburner_effect_texture = "afterburner_f-16c" -- 後燃效果貼圖
-        }
+            afterburner_circles_scale = 1.0, -- 後燃圓環尺寸縮放
+            afterburner_effect_texture = "afterburner_f-16c", -- 後燃效果貼圖
+        },
     },
 
     -- ===================== 機砲與掛點 (Guns & Pylons) =====================
@@ -505,25 +476,23 @@ local F_CK_1C = {
     -- 目前保留機砲，掛點維持空表以避免 connector 不完整造成載入問題。
     -- M61A2 (using M_61 gun descriptor for compatibility in current mod environment)
     Guns = {
-        gun_mount("M_61",
-            {
-                mixes = {
-                    { 1 },    -- XM242 HEI-T
-                    { 2 },    -- M56 HEI
-                    { 3 },    -- M53 API
-                    { 4, 5 }, -- M55 + M220 TP
-                    { 6 },    -- PGU-28/B SAPHEI
-                    { 7, 8 }, -- PGU-27/B TP with tracers
-                },
-                count = 523
+        gun_mount("M_61", {
+            mixes = {
+                { 1 }, -- XM242 HEI-T
+                { 2 }, -- M56 HEI
+                { 3 }, -- M53 API
+                { 4, 5 }, -- M55 + M220 TP
+                { 6 }, -- PGU-28/B SAPHEI
+                { 7, 8 }, -- PGU-27/B TP with tracers
             },
-            {
-                supply_position = { 0.4, 0.55, 0.0 },
-                muzzle_pos = { 0.0, 0.0, 0.0 },
-                muzzle_pos_connector = "gun",
-                ejector_pos = { 2.15, 0.04, -0.70 },
-                effects = { gatling_effect(351, 6), fire_effect(350), smoke_effect() },
-            })
+            count = 523,
+        }, {
+            supply_position = { 0.4, 0.55, 0.0 },
+            muzzle_pos = { 0.0, 0.0, 0.0 },
+            muzzle_pos_connector = "gun",
+            ejector_pos = { 2.15, 0.04, -0.70 },
+            effects = { gatling_effect(351, 6), fire_effect(350), smoke_effect() },
+        }),
     },
     ammo_type_default = 5,
     ammo_type = {
@@ -535,105 +504,103 @@ local F_CK_1C = {
         _("TP Target Practice-Tracer PGU"),
     },
 
-
     Pylons = {
         -- Right tip
-        pylon(STATION_RT, 0, -1.109, 0.0015, 4.6,
-            {
-                use_full_connector_position = true, connector = "PylonT-R", DisplayName = _("RT"), arg = ARG_PYLON_RT, arg_value = 1,
-            },
-            Tip,
-            1
-        ),
+        pylon(STATION_RT, 0, -1.109, 0.0015, 4.6, {
+            use_full_connector_position = true,
+            connector = "PylonT-R",
+            DisplayName = _("RT"),
+            arg = ARG_PYLON_RT,
+            arg_value = 1,
+        }, Tip, 1),
         -- Right outer
-        pylon(STATION_RO, 0, -0.5744, -0.465, 2.972,
-            {
-                use_full_connector_position = true, connector = "PylonR2", DisplayName = _("RO"), arg = ARG_PYLON_RO, arg_value = 1,
-            },
-            Outer,
-            2
-        ),
+        pylon(STATION_RO, 0, -0.5744, -0.465, 2.972, {
+            use_full_connector_position = true,
+            connector = "PylonR2",
+            DisplayName = _("RO"),
+            arg = ARG_PYLON_RO,
+            arg_value = 1,
+        }, Outer, 2),
         -- Right inner
-        pylon(STATION_RI, 0, -0.2861, -0.48, 2.05,
-            {
-                use_full_connector_position = true, connector = "PylonR1", DisplayName = _("RI"), arg = ARG_PYLON_RI, arg_value = 1,
-            },
-            Inner,
-            3
-        ),
+        pylon(STATION_RI, 0, -0.2861, -0.48, 2.05, {
+            use_full_connector_position = true,
+            connector = "PylonR1",
+            DisplayName = _("RI"),
+            arg = ARG_PYLON_RI,
+            arg_value = 1,
+        }, Inner, 3),
         -- Center
-        pylon(STATION_MM, 0, -0.7202, -0.8726, 0,
-            {
-                use_full_connector_position = true, connector = "PylonM", DisplayName = _("MM"), arg = ARG_PYLON_MM, arg_value = -1,
-            },
-            CenterlineM,
-            4
-        ),
+        pylon(STATION_MM, 0, -0.7202, -0.8726, 0, {
+            use_full_connector_position = true,
+            connector = "PylonM",
+            DisplayName = _("MM"),
+            arg = ARG_PYLON_MM,
+            arg_value = -1,
+        }, CenterlineM, 4),
         -- Center Front
-        pylon(STATION_MF, 0, 0, 0, 0,
-            {
-                use_full_connector_position = true, connector = "PylonF", DisplayName = _("MF"), arg = ARG_PYLON_MF, arg_value = 0,
-            },
-            CenterlineFB,
-            5
-        ),
+        pylon(STATION_MF, 0, 0, 0, 0, {
+            use_full_connector_position = true,
+            connector = "PylonF",
+            DisplayName = _("MF"),
+            arg = ARG_PYLON_MF,
+            arg_value = 0,
+        }, CenterlineFB, 5),
         -- Center Back
-        pylon(STATION_MB, 0, 0, 0, 0,
-            {
-                use_full_connector_position = true, connector = "PylonB", DisplayName = _("MB"), arg = ARG_PYLON_MB, arg_value = 0,
-            },
-            CenterlineFB,
-            6
-        ),
+        pylon(STATION_MB, 0, 0, 0, 0, {
+            use_full_connector_position = true,
+            connector = "PylonB",
+            DisplayName = _("MB"),
+            arg = ARG_PYLON_MB,
+            arg_value = 0,
+        }, CenterlineFB, 6),
         -- Left inner
-        pylon(STATION_LI, 0, -0.2861, -0.48, -2.05,
-            {
-                use_full_connector_position = true, connector = "PylonL1", DisplayName = _("LI"), arg = ARG_PYLON_LI, arg_value = 1,
-            },
-            Inner,
-            7
-        ),
+        pylon(STATION_LI, 0, -0.2861, -0.48, -2.05, {
+            use_full_connector_position = true,
+            connector = "PylonL1",
+            DisplayName = _("LI"),
+            arg = ARG_PYLON_LI,
+            arg_value = 1,
+        }, Inner, 7),
         -- Left outer
-        pylon(STATION_LO, 0, -0.5744, -0.465, -2.972,
-            {
-                use_full_connector_position = true, connector = "PylonL2", DisplayName = _("LO"), arg = ARG_PYLON_LO, arg_value = 1,
-            },
-            Outer,
-            8
-        ),
+        pylon(STATION_LO, 0, -0.5744, -0.465, -2.972, {
+            use_full_connector_position = true,
+            connector = "PylonL2",
+            DisplayName = _("LO"),
+            arg = ARG_PYLON_LO,
+            arg_value = 1,
+        }, Outer, 8),
         -- Left tip
-        pylon(STATION_LT, 0, -1.109, 0.0015, -4.6,
-            {
-                use_full_connector_position = true, connector = "PylonT-L", DisplayName = _("LT"), arg = ARG_PYLON_LT, arg_value = 1,
-            },
-            Tip,
-            9
-        ),
+        pylon(STATION_LT, 0, -1.109, 0.0015, -4.6, {
+            use_full_connector_position = true,
+            connector = "PylonT-L",
+            DisplayName = _("LT"),
+            arg = ARG_PYLON_LT,
+            arg_value = 1,
+        }, Tip, 9),
     },
 
     -- ===================== 反制系統與感測器 =====================
 
     passivCounterm = {
-        CMDS_Edit = true,        -- 允許在任務中編輯 CMDS 配置
+        CMDS_Edit = true, -- 允許在任務中編輯 CMDS 配置
         SingleChargeTotal = 180, -- 箔條與熱焰彈總數
         chaff = {
             default = 90,
             increment = 30,
-            chargeSz = 1
+            chargeSz = 1,
         }, -- chaff: 箔條配置
         flare = {
             default = 90,
             increment = 30,
-            chargeSz = 1
-        } -- flare: 熱焰彈配置
-    },    -- 參考 F-16C 的基本配比
+            chargeSz = 1,
+        }, -- flare: 熱焰彈配置
+    }, -- 參考 F-16C 的基本配比
 
     Sensors = {
         RADAR = "N-011M",
         IRST = "OLS-27",
-        RWR = "Abstract RWR"
+        RWR = "Abstract RWR",
     }, -- 感測器設定
-
 
     EPLRS = true, -- 啟用 EPLRS / 資料鏈定位能力
 
@@ -651,7 +618,7 @@ local F_CK_1C = {
         aircraft_task(AFAC),
         aircraft_task(AntishipStrike),
         aircraft_task(Reconnaissance),
-    },                                -- end of Tasks
+    }, -- end of Tasks
     DefaultTask = aircraft_task(CAP), -- 預設 AI 任務
 
     -- ===================== 損傷 (Damage) =====================
@@ -683,8 +650,6 @@ local F_CK_1C = {
         -- ["F-CK-1C-LBW"] = { critical_damage = 3 },
         -- ["F-CK-1C-F_W"] = { critical_damage = 3 },
 
-
-
         ["WHEEL_L"] = { critical_damage = 3 },
         ["WHEEL_R"] = { critical_damage = 3 },
         ["WHEEL_F"] = { critical_damage = 3 },
@@ -709,8 +674,7 @@ local F_CK_1C = {
     -- ===================== 簡化飛行模型 (SFM_Data) =====================
     -- SFM_Data 先沿用接近 F-16C 的數值型態，後續再依 EFM / SFM 需求調整。
     SFM_Data = { -- 目前主要提供 AI 與基礎飛行行為
-        aerodynamics =
-        {
+        aerodynamics = {
             Cy0 = 0,
             Mzalfa = 4.355,
             -- 俯仰率阻尼：原值 0.8 沿用 F-16 基線，高速大桿量時阻尼不足導致震盪。
@@ -731,8 +695,7 @@ local F_CK_1C = {
             -- SFM 無法動態判斷起落架狀態，此處取 0.04（原 0.06 的約 67%）作為折衷值。
             -- 完整的條件式「起落架下 → 減速板 60%」邏輯需升級至 EFM 實作。
             cx_brk = 0.04,
-            table_data =
-            {
+            table_data = {
                 [1] = { 0, 0.0165, 0.07, 0.132, 0.025, 0.5, 30, 1.45 },
                 [2] = { 0.2, 0.0165, 0.07, 0.132, 0.025, 1.5, 30, 1.45 },
                 [3] = { 0.4, 0.0165, 0.07, 0.133, 0.028, 2.5, 30, 1.45 },
@@ -754,31 +717,29 @@ local F_CK_1C = {
                 [19] = { 2.5, 0.039, 0.033, 0.25, 4.5, 0.7, 9, 0.4 },
                 [20] = { 3.9, 0.035, 0.033, 0.35, 6, 0.7, 9, 0.4 },
             }, -- end of table_data
-        },     -- end of aerodynamics
-        engine =
-        {
+        }, -- end of aerodynamics
+        engine = {
             -- 油門響應延遲（Issue #2）：DCS 標準 SFM 的 engine 區塊不支援油門惰性時間參數
             -- （即 rpm_acceleration_time_factor / throttle spool time）。
             -- 若需要模擬 TFE1042-70 約 3–5 秒的油門響應延遲，必須升級至 EFM 實作。
-            type              = "TurboFan",
-            Nmg               = 67.5,
-            Nominal_RPM       = 14710.0,
-            Nominal_Fan_RPM   = 8215.0,
-            Startup_Prework   = 10.0,
-            Startup_Duration  = 35.0,
+            type = "TurboFan",
+            Nmg = 67.5,
+            Nominal_RPM = 14710.0,
+            Nominal_Fan_RPM = 8215.0,
+            Startup_Prework = 10.0,
+            Startup_Duration = 35.0,
             Shutdown_Duration = 19.0,
-            MinRUD            = 0,
-            MaxRUD            = 1,
-            MaksRUD           = 0.85,
-            ForsRUD           = 0.91,
-            hMaxEng           = 19,
-            dcx_eng           = 0.0144,
-            cemax             = 1.24,
-            cefor             = 2.56,
-            dpdh_m            = 6200,
-            dpdh_f            = 13000,
-            table_data        =
-            {
+            MinRUD = 0,
+            MaxRUD = 1,
+            MaksRUD = 0.85,
+            ForsRUD = 0.91,
+            hMaxEng = 19,
+            dcx_eng = 0.0144,
+            cemax = 1.24,
+            cefor = 2.56,
+            dpdh_m = 6200,
+            dpdh_f = 13000,
+            table_data = {
                 [1] = { 0, 77000, 108313.6 },
                 [2] = { 0.2, 74000, 109850 },
                 [3] = { 0.4, 74000, 122000 },
@@ -797,7 +758,7 @@ local F_CK_1C = {
                 [16] = { 2.35, 43000, 224000 },
                 [17] = { 3.9, 25000, 120636.4 },
             }, -- end of table_data
-        },     -- end of engine
+        }, -- end of engine
     },
 
     -- ===================== 視覺與網路 (Visual & Net) =====================
@@ -807,24 +768,23 @@ local F_CK_1C = {
             -- NAVLIGHTS
             [1] = {
                 typename = "collection",
-                lights = { { typename = "argumentlight", argument = 553 }, -- red
-                    { typename = "argumentlight", argument = 554 },        -- green
-                    { typename = "argumentlight", argument = 555 },        -- white
+                lights = {
+                    { typename = "argumentlight", argument = 553 }, -- red
+                    { typename = "argumentlight", argument = 554 }, -- green
+                    { typename = "argumentlight", argument = 555 }, -- white
                 },
             },
-        }
+        },
     },
 
     net_animation = { -- 網路同步動畫參數
-
     },
 
     -- 起火與煙霧效果位置 (Fires Position)
     -- 每個項目格式: [index] = {x, y, z}
     -- x 為前後、y 為上下、z 為左右方向
     -- 位置可參考 A-4E-C.lua 的配置方式
-    fires_pos =
-    { -- 預留火焰 / 煙霧發生點
+    fires_pos = { -- 預留火焰 / 煙霧發生點
         -- [1] =     {-0.232,    1.262,    0},     -- Fuselage
         -- [2] =     {-0.2,    -0.5,    0.84},     -- wing (inner?) right, WING_R_IN
         -- [3] =     {-0.75,    -0.5,    -0.8},    -- wing (inner?) left, WING_L_IN
@@ -846,12 +806,12 @@ local F_CK_1C = {
     chaff_flare_dispenser = {
         [1] = {
             dir = { 0, -1, 0 },
-            pos = { -4.75, -0.95, -1.10 } -- Left dispenser, simplified to a native-style downward release
+            pos = { -4.75, -0.95, -1.10 }, -- Left dispenser, simplified to a native-style downward release
         },
         [2] = {
             dir = { 0, -1, 0 },
-            pos = { -4.75, -0.95, 1.10 } -- Right dispenser, mirrored to match the left side
-        }
+            pos = { -4.75, -0.95, 1.10 }, -- Right dispenser, mirrored to match the left side
+        },
     },
 
     -- 以下欄位多參考 A-4E 的可選設定，目前先保留註解。
@@ -880,51 +840,50 @@ local F_CK_1C = {
     -- }, -- ECM 範例設定
 
     -- ===================== 額外 UI 屬性 =====================
-    AddPropAircraft = {{
+    AddPropAircraft = { {
         id = "HelmetMountedDevice",
-        control = 'comboList',
-        label = _('Helmet Mounted Device'),
-        values = {{
+        control = "comboList",
+        label = _("Helmet Mounted Device"),
+        values = { {
             id = 0,
-            dispName = _('Not installed'),
-            value = 0.5
+            dispName = _("Not installed"),
+            value = 0.5,
         }, {
             id = 1,
-            dispName = _('JHMCS'),
-            value = 0.0
+            dispName = _("JHMCS"),
+            value = 0.0,
         }, {
             id = 2,
-            dispName = _('NVG'),
-            value = 1.0
-        }},
+            dispName = _("NVG"),
+            value = 1.0,
+        } },
         defValue = 1,
         wCtrl = 150,
         playerOnly = true,
-        arg = 509
+        arg = 509,
     }, {
         id = "HMCSDisplayMode",
-        control = 'comboList',
-        label = _('HMCS Display Mode'),
-        values = {{
+        control = "comboList",
+        label = _("HMCS Display Mode"),
+        values = { {
             id = 0,
-            dispName = _('2D Overlay'),
-            value = 0.0
+            dispName = _("2D Overlay"),
+            value = 0.0,
         }, {
             id = 1,
-            dispName = _('VR Helmet Test'),
-            value = 1.0
-        }},
+            dispName = _("VR Helmet Test"),
+            value = 1.0,
+        } },
         defValue = 0,
         wCtrl = 150,
         playerOnly = true,
-        arg = 510
-    }}
+        arg = 510,
+    } },
 
     -- 若之後要加入 datalink，可使用 connectDatalinks / datalinks。
     -- 目前版本先不啟用，避免引用不存在的腳本或資料表。
     -- connectDatalinks = {"Link16"},
     -- datalinks = { Link16 = "CoreMods\\aircraft\\F-CK-1C\\Datalinks\\Link16.lua" }
-
 }
 
 -- 將此機體註冊到 DCS

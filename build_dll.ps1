@@ -42,7 +42,8 @@ if ($MsBuildPath -ne 'MSBuild.exe') {
         $cmd = Get-Command -Name $MsBuildPath -ErrorAction SilentlyContinue
         if ($cmd) { $resolvedMsBuild = $cmd.Source }
     }
-} else {
+}
+else {
     $cmd = Get-Command -Name $MsBuildPath -ErrorAction SilentlyContinue
     if ($cmd) { $resolvedMsBuild = $cmd.Source }
 }
@@ -69,14 +70,16 @@ if (-not $resolvedMsBuild) {
         try {
             $found = Get-ChildItem -Path $programFilesRoots -Filter 'MSBuild.exe' -Recurse -ErrorAction SilentlyContinue | Sort-Object -Property LastWriteTime -Descending | Select-Object -First 1
             if ($found) { $resolvedMsBuild = $found.FullName }
-        } catch { }
+        }
+        catch { }
     }
 }
 
 if (-not $resolvedMsBuild) {
     Write-Error "MSBuild.exe not found. Run this script from a Visual Studio Developer Command Prompt or pass -MsBuildPath with the full path to MSBuild.exe."
     exit 2
-} else {
+}
+else {
     Write-Output "Resolved MSBuild: $resolvedMsBuild"
     $MsBuildPath = $resolvedMsBuild
 }

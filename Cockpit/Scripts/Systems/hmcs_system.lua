@@ -70,64 +70,46 @@ end
 
 local function shared_master_mode()
     local value = hmcs_master_mode:get()
-    if value >= MASTER_OFF - 0.1 and value <= MASTER_ON + 0.1 then
-        return value
-    end
+    if value >= MASTER_OFF - 0.1 and value <= MASTER_ON + 0.1 then return value end
     return master_mode
 end
 
 local function shared_dogfight_mode()
     local value = hmcs_dogfight_mode:get()
-    if value > 0.5 then
-        return 1
-    end
+    if value > 0.5 then return 1 end
     return 0
 end
 
 local function shared_fc_mode()
     local value = hmcs_fc_mode:get()
-    if value >= -0.1 and value <= 2.1 then
-        return math.floor(value + 0.5)
-    end
-    if submode_dogfight > 0 then
-        return 1
-    end
+    if value >= -0.1 and value <= 2.1 then return math.floor(value + 0.5) end
+    if submode_dogfight > 0 then return 1 end
     return 0
 end
 
 local function safe_sensor_call(method_name, default_value)
     local method = sensor_data and sensor_data[method_name]
-    if type(method) ~= "function" then
-        return default_value
-    end
+    if type(method) ~= "function" then return default_value end
 
     local ok, value = pcall(method, sensor_data)
-    if ok and type(value) == "number" then
-        return value
-    end
+    if ok and type(value) == "number" then return value end
 
     return default_value
 end
 
 local function try_global_number_call(function_name, ...)
     local fn = _G[function_name]
-    if type(fn) ~= "function" then
-        return false, nil
-    end
+    if type(fn) ~= "function" then return false, nil end
 
     local ok, value = pcall(fn, ...)
-    if ok and type(value) == "number" then
-        return true, value
-    end
+    if ok and type(value) == "number" then return true, value end
 
     return false, nil
 end
 
 local function read_draw_argument(argument_number, default_value)
     local ok, value = try_global_number_call("get_aircraft_draw_argument_value", argument_number)
-    if ok then
-        return value
-    end
+    if ok then return value end
     return default_value
 end
 
@@ -137,9 +119,7 @@ local function update_display_mode_params()
     local helmet_installed = math.abs(helmet_arg - 0.0) < 0.25
     local display_mode_value = 0
 
-    if display_mode_arg >= 0.5 then
-        display_mode_value = 1
-    end
+    if display_mode_arg >= 0.5 then display_mode_value = 1 end
 
     hmcs_enabled:set(helmet_installed and 1 or 0)
     hmcs_display_mode:set(display_mode_value)
@@ -147,14 +127,10 @@ end
 
 local function try_sensor_call(method_name)
     local method = sensor_data and sensor_data[method_name]
-    if type(method) ~= "function" then
-        return false, nil
-    end
+    if type(method) ~= "function" then return false, nil end
 
     local ok, value = pcall(method, sensor_data)
-    if ok and type(value) == "number" then
-        return true, value
-    end
+    if ok and type(value) == "number" then return true, value end
 
     return false, nil
 end
@@ -162,17 +138,13 @@ end
 local function normalize_heading_deg(heading_rad)
     local heading_deg = math.deg(heading_rad or 0.0)
     heading_deg = heading_deg % 360.0
-    if heading_deg < 0.0 then
-        heading_deg = heading_deg + 360.0
-    end
+    if heading_deg < 0.0 then heading_deg = heading_deg + 360.0 end
     return heading_deg
 end
 
 local function safe_heading_deg()
     local has_magnetic_heading, magnetic_heading = try_sensor_call("getMagneticHeading")
-    if has_magnetic_heading then
-        return normalize_heading_deg(magnetic_heading + math.rad(hmcs_heading_bias_deg))
-    end
+    if has_magnetic_heading then return normalize_heading_deg(magnetic_heading + math.rad(hmcs_heading_bias_deg)) end
 
     local heading = safe_sensor_call("getHeading", 0.0)
     return normalize_heading_deg(-heading + math.rad(hmcs_heading_bias_deg))
@@ -180,53 +152,25 @@ end
 
 local function heading_label_code(heading_deg)
     local normalized = heading_deg % 360
-    if normalized % 30 ~= 0 then
-        return 0
-    end
-    if normalized == 0 then
-        return 1
-    end
-    if normalized == 30 then
-        return 2
-    end
-    if normalized == 60 then
-        return 3
-    end
-    if normalized == 90 then
-        return 4
-    end
-    if normalized == 120 then
-        return 5
-    end
-    if normalized == 150 then
-        return 6
-    end
-    if normalized == 180 then
-        return 7
-    end
-    if normalized == 210 then
-        return 8
-    end
-    if normalized == 240 then
-        return 9
-    end
-    if normalized == 270 then
-        return 10
-    end
-    if normalized == 300 then
-        return 11
-    end
+    if normalized % 30 ~= 0 then return 0 end
+    if normalized == 0 then return 1 end
+    if normalized == 30 then return 2 end
+    if normalized == 60 then return 3 end
+    if normalized == 90 then return 4 end
+    if normalized == 120 then return 5 end
+    if normalized == 150 then return 6 end
+    if normalized == 180 then return 7 end
+    if normalized == 210 then return 8 end
+    if normalized == 240 then return 9 end
+    if normalized == 270 then return 10 end
+    if normalized == 300 then return 11 end
     return 12
 end
 
 local function heading_tick_code(heading_deg)
     local normalized = heading_deg % 360
-    if normalized % 90 == 0 then
-        return 3
-    end
-    if normalized % 30 == 0 then
-        return 2
-    end
+    if normalized % 90 == 0 then return 3 end
+    if normalized % 30 == 0 then return 2 end
     return 1
 end
 
@@ -254,9 +198,7 @@ local function safe_gun_quantity()
 
     for _, method_name in ipairs(candidates) do
         local value = safe_sensor_call(method_name, -1.0)
-        if value >= 0.0 then
-            return value
-        end
+        if value >= 0.0 then return value end
     end
 
     return -1.0
@@ -335,9 +277,7 @@ function SetCommand(command, value)
         return
     end
 
-    if value <= 0.5 then
-        return
-    end
+    if value <= 0.5 then return end
 
     if command == CMD_MASTER_ARM_ON then
         master_mode = MASTER_ON
@@ -400,7 +340,6 @@ function SetCommand(command, value)
         push_params()
         return
     end
-
 end
 
 function update()

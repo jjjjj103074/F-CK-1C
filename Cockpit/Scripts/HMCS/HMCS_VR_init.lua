@@ -4,12 +4,12 @@ indicator_type = indicator_types.COLLIMATOR
 purposes = { render_purpose.GENERAL, render_purpose.HUD_ONLY_VIEW }
 
 id_Page = {
-	MAIN = 0,
+    MAIN = 0,
 }
 
 id_pagesubset = {
-	BASE = 0,
-	COMMON = 1,
+    BASE = 0,
+    COMMON = 1,
 }
 
 page_subsets = {}
