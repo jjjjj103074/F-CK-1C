@@ -45,6 +45,9 @@ DCS-Basic-EFM-Template-main/bin/
 # 暫存 / 備份檔
 *.tmp
 *.bak
+*.old
+*.original.*
+*.pretrim*
 temp/
 cache/
 backup/

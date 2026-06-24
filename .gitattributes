@@ -1,0 +1,31 @@
+# F-CK-1C .gitattributes
+# Ensures consistent line endings across platforms.
+# This project is Windows-primary (CRLF), with exceptions for shell scripts.
+
+# ── Default ──────────────────────────────────────────────────────────────────
+# Auto-detect text files and normalize to CRLF on checkout (Windows default).
+* text=auto eol=crlf
+
+# ── Lua scripts ──────────────────────────────────────────────────────────────
+*.lua text eol=crlf
+
+# ── Shell scripts (Git hooks must use LF to run under Git Bash on Windows) ───
+.husky/* text eol=lf
+
+# ── Web / Config (Node.js tooling) ───────────────────────────────────────────
+*.json text eol=crlf
+*.js   text eol=crlf
+*.toml text eol=crlf
+*.yml  text eol=crlf
+*.yaml text eol=crlf
+*.md   text eol=crlf
+
+# ── Binary assets (no line-ending conversion) ─────────────────────────────────
+*.dll    binary
+*.edm    binary
+*.dds    binary
+*.ogg    binary
+*.zip    binary
+*.png    binary
+*.jpg    binary
+*.lods   binary
