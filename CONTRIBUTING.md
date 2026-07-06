@@ -53,28 +53,28 @@ Use `npm run commit` for interactive guided input (recommended).
 | `fix` | Bug fix |
 | `refactor` | Code restructure without behavior change |
 | `docs` | Documentation only |
-| `chore` | Tooling, config, maintenance |
-| `wip` | Work in progress (not for merging to `main`) |
-| `ci` | CI/CD, automation, project infrastructure |
+| `chore` | Maintenance, tooling, assets, or config |
 
 **Scopes:**
 
+Scopes are required and must be lowercase.
+
 | Scope | Area |
 |---|---|
-| `SFM` | Simplified flight model |
-| `EFM` | Enhanced flight model / C++ DLL |
-| `Cockpit_device` | Cockpit device scripts |
-| `Cockpit_indicators` | Cockpit indicator scripts |
-| `entry` | Module entry point |
-| `ci` | Project tooling and infrastructure |
+| `core` | Module entry, aircraft definition, SFM/FM config, weapons, runtime Lua |
+| `efm` | C++ EFM project, DLL, MSBuild |
+| `cockpit` | Cockpit scripts, devices, indicators, input bindings |
+| `assets` | Shapes, Textures, Sounds, Liveries |
+| `tooling` | Git hooks, commitlint, GitHub Actions, repo tools |
+| `docs` | README, CONTRIBUTING, docs |
 
 **Examples:**
 
 ```
-feat(SFM): adjust drag coefficients for transonic flight
-fix(Cockpit_device): correct AIM-9 tone trigger threshold
-docs: update CONTRIBUTING with scope list
-chore(ci): add *.old to gitignore
+feat(cockpit): add radar mode switch
+fix(efm): correct landing gear compression feedback
+docs(docs): update build instructions
+chore(tooling): add pre-commit EFM build
 ```
 
 ### Pull Request Process
@@ -146,28 +146,28 @@ npm install
 | `fix` | 錯誤修正 |
 | `refactor` | 程式碼重構（不改變行為） |
 | `docs` | 純文件變更 |
-| `chore` | 工具、設定、維護 |
-| `wip` | 進行中（不應合併到 `main`） |
-| `ci` | CI/CD、自動化、專案基礎建設 |
+| `chore` | 維護、工具、素材、設定 |
 
 **Scope 範圍：**
 
+Scope 必填，且必須使用小寫。
+
 | Scope | 對應區域 |
 |---|---|
-| `SFM` | 簡化飛行模型 |
-| `EFM` | 增強飛行模型 / C++ DLL |
-| `Cockpit_device` | 座艙裝置腳本 |
-| `Cockpit_indicators` | 座艙指示器腳本 |
-| `entry` | 模組進入點 |
-| `ci` | 專案工具與基礎建設 |
+| `core` | 模組進入點、飛機定義、SFM/FM config、武器、runtime Lua |
+| `efm` | C++ EFM 專案、DLL、MSBuild |
+| `cockpit` | 座艙腳本、裝置、指示器、輸入綁定 |
+| `assets` | Shapes、Textures、Sounds、Liveries |
+| `tooling` | Git hooks、commitlint、GitHub Actions、專案工具 |
+| `docs` | README、CONTRIBUTING、docs |
 
 **範例：**
 
 ```
-feat(SFM): 調整穿音速飛行的阻力係數
-fix(Cockpit_device): 修正 AIM-9 音調觸發閾值
-docs: 更新 CONTRIBUTING 的 scope 清單
-chore(ci): 將 *.old 加入 gitignore
+feat(cockpit): 新增雷達模式切換
+fix(efm): 修正起落架壓縮回饋
+docs(docs): 更新建置說明
+chore(tooling): 新增 commit 前 EFM 建置
 ```
 
 ### Pull Request 流程

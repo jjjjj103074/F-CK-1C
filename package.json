@@ -5,7 +5,7 @@
   "scripts": {
     "prepare": "husky",
     "build:efm": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1",
-    "commit": "czg"
+    "commit": "czg --config ./cz.config.js"
   },
   "config": {
     "commitizen": {

@@ -78,17 +78,15 @@ body:
   - type: checkboxes
     id: affected-system
     attributes:
-      label: "Affected System / 影響的系統"
-      description: "Select all that apply. / 勾選所有相關選項。"
+      label: "Related Scope / 相關範圍"
+      description: "Select all matching project scopes. / 勾選所有相關的專案範圍。"
       options:
-        - label: "SFM — Simplified Flight Model / 簡化飛行模型"
-        - label: "EFM — Enhanced Flight Model / 增強飛行模型"
-        - label: "Cockpit / 座艙系統"
-        - label: "Weapons / 武器系統"
-        - label: "Input / 輸入綁定"
-        - label: "Visual / 視覺效果"
-        - label: "Audio / 音效"
-        - label: "Other / 其他"
+        - label: "core — Entry, aircraft definition, SFM/FM config, weapons, runtime Lua / 模組進入點、飛機定義、SFM/FM config、武器、runtime Lua"
+        - label: "efm — C++ EFM, DLL, MSBuild / C++ EFM、DLL、MSBuild"
+        - label: "cockpit — Cockpit scripts, devices, indicators, input bindings / 座艙腳本、裝置、指示器、輸入綁定"
+        - label: "assets — Shapes, Textures, Sounds, Liveries / Shapes、Textures、Sounds、Liveries"
+        - label: "tooling — Git hooks, commitlint, GitHub Actions, repo tools / Git hooks、commitlint、GitHub Actions、專案工具"
+        - label: "docs — README, CONTRIBUTING, docs / README、CONTRIBUTING、文件"
 
   - type: textarea
     id: log

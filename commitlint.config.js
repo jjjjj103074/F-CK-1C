@@ -1,33 +1,33 @@
-// commitlint.config.js
-// Commit message validation rules for F-CK-1C project.
+// Commit message and PR title validation rules for F-CK-1C.
 // Format: <type>(<scope>): <title>
-// Example: fix(CMS): 修正 chaff 連發模式在低速時不觸發的問題
+// Example: chore(tooling): update commit rules
 
 module.exports = {
     extends: ["@commitlint/config-conventional"],
     rules: {
-        // --- Type: required, must be one of the following ---
+        // Type is required and must stay intentionally small.
         "type-enum": [
             2, // error
             "always",
-            ["feat", "fix", "refactor", "docs", "chore", "wip", "ci"],
+            ["feat", "fix", "refactor", "docs", "chore"],
         ],
 
-        // --- Scope: optional, suggested list (warning if outside list) ---
+        // Scope is required so commit history remains easy to scan.
+        "scope-empty": [2, "never"],
         "scope-enum": [
-            1, // warning only — free input is allowed
+            2, // error
             "always",
-            ["SFM", "EFM", "Cockpit_device", "Cockpit_indicators", "entry", "ci"],
+            ["core", "efm", "cockpit", "assets", "tooling", "docs"],
         ],
 
-        // --- Case rules: disabled to allow Chinese titles and mixed-case scopes ---
-        "scope-case": [0],
+        // Keep type/scope lowercase; subjects may be English or Traditional Chinese.
+        "type-case": [2, "always", "lower-case"],
+        "scope-case": [2, "always", "lower-case"],
         "subject-case": [0],
 
-        // --- Title length: warning at 100 chars (Chinese-friendly) ---
+        // Warn only, because Chinese descriptions can be dense but still readable.
         "header-max-length": [1, "always", 100],
 
-        // --- Body/footer: no restrictions ---
         "body-max-line-length": [0],
         "footer-max-line-length": [0],
     },

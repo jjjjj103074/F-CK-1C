@@ -34,16 +34,14 @@ body:
   - type: dropdown
     id: system
     attributes:
-      label: "Related System / 相關系統"
+      label: "Related Scope / 相關範圍"
       options:
-        - SFM — Simplified Flight Model / 簡化飛行模型
-        - EFM — Enhanced Flight Model / 增強飛行模型
-        - Cockpit / 座艙系統
-        - Weapons / 武器系統
-        - Input / 輸入綁定
-        - Visual / 視覺效果
-        - Audio / 音效
-        - Other / 其他
+        - core — Entry, aircraft definition, SFM/FM config, weapons, runtime Lua / 模組進入點、飛機定義、SFM/FM config、武器、runtime Lua
+        - efm — C++ EFM, DLL, MSBuild / C++ EFM、DLL、MSBuild
+        - cockpit — Cockpit scripts, devices, indicators, input bindings / 座艙腳本、裝置、指示器、輸入綁定
+        - assets — Shapes, Textures, Sounds, Liveries / Shapes、Textures、Sounds、Liveries
+        - tooling — Git hooks, commitlint, GitHub Actions, repo tools / Git hooks、commitlint、GitHub Actions、專案工具
+        - docs — README, CONTRIBUTING, docs / README、CONTRIBUTING、文件
     validations:
       required: true
 
