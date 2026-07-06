@@ -1,2 +1,11 @@
-# pre-commit hook
-# 目前無 pre-commit 檢查，保留此檔供未來擴充（例如 stylua --check）
+#!/bin/sh
+# pre-commit hook: rebuild the runtime EFM DLL before creating a commit.
+set -e
+
+echo "[F-CK-1C] Building EFM DLL (Release|x64) before commit..."
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1
+
+echo "[F-CK-1C] Staging rebuilt EFM DLL..."
+git add bin/F-CK-1C_EFM.dll
+
+echo "[F-CK-1C] EFM build completed."

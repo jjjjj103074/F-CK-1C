@@ -10,6 +10,7 @@
 
 - **Node.js** — Required for commit tooling (commitlint, husky, czg)
 - **DCS World** — Required for testing changes
+- **Visual Studio Build Tools / MSBuild** — Required because commits rebuild the EFM DLL automatically
 - **VSCode** with the [StyLua](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.stylua) extension (recommended)
 
 ### Development Setup
@@ -22,7 +23,10 @@ git clone https://github.com/jjjjj103074/F-CK-1C.git
 #    This automatically installs Git hooks via Husky
 npm install
 
-# 3. Install the module in DCS World to test your changes
+# 3. Make sure MSBuild.exe is available
+#    The pre-commit hook runs tools/build_dll.ps1 and stages bin/F-CK-1C_EFM.dll
+
+# 4. Install the module in DCS World to test your changes
 #    Run install.bat or follow your usual DCS mod installation workflow
 ```
 
@@ -99,6 +103,7 @@ Commit messages, code comments, and PR descriptions may be written in **English 
 
 - **Node.js** — 提交工具所需（commitlint、husky、czg）
 - **DCS World** — 測試變更所需
+- **Visual Studio Build Tools / MSBuild** — commit 時會自動重建 EFM DLL，因此需要 MSBuild
 - **VSCode** 搭配 [StyLua](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.stylua) 擴充套件（建議安裝）
 
 ### 開發環境設定
@@ -111,7 +116,10 @@ git clone https://github.com/jjjjj103074/F-CK-1C.git
 #    此步驟會透過 Husky 自動安裝 Git hooks
 npm install
 
-# 3. 將模組安裝至 DCS World 以測試變更
+# 3. 確認 MSBuild.exe 可用
+#    pre-commit hook 會執行 tools/build_dll.ps1，並暫存 bin/F-CK-1C_EFM.dll
+
+# 4. 將模組安裝至 DCS World 以測試變更
 #    執行 install.bat 或依照你慣用的 DCS 模組安裝流程
 ```
 
