@@ -1,8 +1,8 @@
 @echo off
-rem Simple uninstaller: removes Saved Games\DCS\Mods\aircraft\F-CK-1-C
+rem Simple uninstaller: removes Saved Games\DCS\Mods\aircraft\F-CK-1C
 rem Usage: uninstall.bat [SavedGamesRoot]
 
-set MOD_NAME=F-CK-1-C
+set MOD_NAME=F-CK-1C
 
 if not "%~1"=="" (
   set TARGET_ROOT=%~1
