@@ -237,19 +237,17 @@ CenterlineM = buildStation({ STATION_MM }, "normal", { STATION_MF, STATION_MB },
 -- 機腹前後掛架
 CenterlineFB = buildStation({ STATION_MF, STATION_MB }, "diameter", { STATION_MM }, WPN_AAM_Med)
 
--- ===================== 基本識別資料 (Identification) =====================
--- Name / DisplayName / shape_table_data 會對應到 DCS 的單位與模型註冊資料。
+    -- Identification.
+    -- Name / DisplayName / shape_table_data map the aircraft to DCS unit and model registration.
 
 local F_CK_1C = {
-    -- 內部單位名稱
     Name = "F-CK-1C",
-    -- UI 顯示名稱
     DisplayName = _("F-CK-1C"),
 
     Rate = 40, -- RewardPoint in Multiplayer
 
     Shape = "F-CK-1C",
-    -- shape_table_data: 將單位名稱綁定到 3D 模型與損毀模型設定。
+    -- Bind the unit name to the 3D model and destroyed-model settings.
     shape_table_data = {
         {
             name = "F-CK-1C",
@@ -258,19 +256,14 @@ local F_CK_1C = {
             index = WSTYPE_PLACEHOLDER,
             life = 20, -- 單位生命值 / 耐久度
             vis = 3, -- 可見度等級，影響 LOD 與目視辨識
-            desrt = "Fighter-2-crush", -- Name of destroyed object file name Alphajet-destr. This is a placeholder.
+            desrt = "Fighter-2-crush", -- Destroyed model fallback.
             fire = { 300, 2 }, -- 受損起火效果參數
             classname = "lLandPlane",
             positioning = "BYNORMAL",
         },
-        -- {
-        --     name = "F-CK-1C_destr",
-        --     file = "f-ck-1c-oblomok",
-        --     fire = {0, 1}
-        -- }
     },
 
-    -- 可用國家
+    -- Countries.
     Countries = {
         "Abkhazia",
         "Algeria",
@@ -351,15 +344,14 @@ local F_CK_1C = {
         "Yemen",
     },
 
-    -- UI 與分類
-    -- 這些欄位控制任務編輯器與選單中的顯示方式。
+    -- UI and mission editor classification.
     Picture = "F-CK-1C.png", -- [OPTIONAL]
     mapclasskey = "P0091000024",
     WorldID = WSTYPE_PLACEHOLDER,
     attribute = { wsType_Air, wsType_Airplane, wsType_Fighter, WSTYPE_PLACEHOLDER, "Multirole fighters", "Refuelable" },
     Categories = { "{78EFB7A2-FD52-4b57-A6A6-3BF0E1D6555F}", "Interceptor" },
 
-    -- ===================== 座艙與組員 (Crew & Cockpit) =====================
+    -- Crew and cockpit.
     -- 先沿用既有座艙結構，之後再依實機需求細化。
     HumanCockpit = true, -- 允許玩家進入座艙飛行
     HumanCockpitPath = current_mod_path .. "/Cockpit/", -- 座艙腳本路徑
@@ -367,10 +359,7 @@ local F_CK_1C = {
     crew_size = 1, -- 機組員數量
     crew_members = {
         [1] = {
-            ejection_seat_name = 17, -- DCS 內建彈射椅 ID，暫沿用既有設定
-            -- pilot_name 可於後續補上專用飛行員模型名稱
-            -- drop_canopy_name = "F-CK-1C_canopy", -- TODO: 補上可拋棄艙罩模型名稱
-            -- canopy_pos = {3.2, 0.674, 0}, -- 艙罩參考位置
+            ejection_seat_name = 17, -- DCS built-in ejection seat ID.
             pos = { 3.28, -0.08, 0 }, -- 飛行員座位位置 (x, y, z)，單位公尺
             g_suit = 1.02, -- G-suit 係數，1.0 為標準值
         },
@@ -621,18 +610,10 @@ local F_CK_1C = {
     }, -- end of Tasks
     DefaultTask = aircraft_task(CAP), -- 預設 AI 任務
 
-    -- ===================== 損傷 (Damage) =====================
-    -- Damage 區塊可把命名損傷區映射到模型 arg 與 critical_damage。
+    -- Damage.
+    -- Damage names must match the active collision shell segments.
 
     Damage = verbose_to_dmg_properties({
-        -- 碰撞區域損傷映射：名稱需對應 collision_shell EDM 內的 segment 節點。
-        -- Damage names must stay aligned with the active collision shell.
-        -- Active runtime uses F-CK-1C-F_W, F-CK-1C-LBW, and F-CK-1C-RBW
-        -- as the suspension-aligned gear contact shell nodes.
-        -- lineFG, lineLG, and lineRG must also stay registered here because
-        -- DCS uses those line segments to expose multi-point ground contact.
-        -- Removing them causes the aircraft to collapse to a single ground
-        -- contact point and pivot/rotate around that point.
         ["F-CK-1C-_wing01"] = { critical_damage = 5 },
         ["F-CK-1C-ap"] = { critical_damage = 5 },
         ["F-CK-1C-body"] = { critical_damage = 5 },
@@ -646,10 +627,6 @@ local F_CK_1C = {
         ["F-CK-1C-RGG"] = { critical_damage = 4 },
         ["F-CK-1C-Tail"] = { critical_damage = 5 },
         ["F-CK-1C-Wayt"] = { critical_damage = 5 },
-        -- ["F-CK-1C-RBW"] = { critical_damage = 3 },
-        -- ["F-CK-1C-LBW"] = { critical_damage = 3 },
-        -- ["F-CK-1C-F_W"] = { critical_damage = 3 },
-
         ["WHEEL_L"] = { critical_damage = 3 },
         ["WHEEL_R"] = { critical_damage = 3 },
         ["WHEEL_F"] = { critical_damage = 3 },
@@ -663,13 +640,7 @@ local F_CK_1C = {
         ["Taiil"] = { critical_damage = 5 },
     }),
 
-    -- TODO: 後續補上機翼殘骸模型，例如 F-CK-1C_oblomok_wing_R/L.edm
-    -- DamageParts = {
-    --     [1] = "F-CK-1C_oblomok_wing_R",
-    --     [2] = "F-CK-1C_oblomok_wing_L"
-    -- },
-    -- 若暫時沒有殘骸模型，可先保持註解狀態。
-    -- DamageParts = {}, -- 無殘骸模型時可維持空表
+    -- DamageParts are intentionally omitted until dedicated debris models exist.
 
     -- ===================== 簡化飛行模型 (SFM_Data) =====================
     -- SFM_Data 先沿用接近 F-16C 的數值型態，後續再依 EFM / SFM 需求調整。
@@ -780,28 +751,9 @@ local F_CK_1C = {
     net_animation = { -- 網路同步動畫參數
     },
 
-    -- 起火與煙霧效果位置 (Fires Position)
-    -- 每個項目格式: [index] = {x, y, z}
-    -- x 為前後、y 為上下、z 為左右方向
-    -- 位置可參考 A-4E-C.lua 的配置方式
+    -- Fire and smoke emitter positions. Empty until verified against the model.
     fires_pos = { -- 預留火焰 / 煙霧發生點
-        -- [1] =     {-0.232,    1.262,    0},     -- Fuselage
-        -- [2] =     {-0.2,    -0.5,    0.84},     -- wing (inner?) right, WING_R_IN
-        -- [3] =     {-0.75,    -0.5,    -0.8},    -- wing (inner?) left, WING_L_IN
-        -- [4] =     {-0.32,    0.265,    1.774},  -- Wing center Right? {-0.82,    0.265,    2.774},
-        -- [5] =     {-0.32,    0.265,    -1.774}, -- Wing center Left?  {-0.82,    0.265,    -2.774},
-        -- [6] =     {-1.0,    -0.5,    4.0},      -- Wing outer Right? {-0.82,    0.255,    4.274}, probably WING_R_OUT
-        -- [7] =     {-1.0,    -0.5,    -4.0},     -- Wing outer Left?  {-0.82,    0.255,    -4.274}, probably WING_L_OUT
-        -- [8] =     {-5.6,    0.185,    0},       -- High Altitude Contrails
-        -- [9] =     {-5.5,    0.2,    0},         -- left engine
-        -- [10] =     {-7.728,    0.039,    0.5},  -- Right Engine? {0.304,    -0.748,    0.442},
-        -- [11] =     {-7.728,    0.039,    -0.5}, -- Left Engine?
     },
-
-    -- effects_presets = {{
-    --     effect = "OVERWING_VAPOR",
-    --     file = current_mod_path .. "/Effects/F-CK-1C_overwingVapor.lua"
-    -- }},
 
     chaff_flare_dispenser = {
         [1] = {
@@ -814,32 +766,7 @@ local F_CK_1C = {
         },
     },
 
-    -- 以下欄位多參考 A-4E 的可選設定，目前先保留註解。
-    -- 後續若要補完整 AI / 無線電 / 航艦操作能力，可再逐項開啟。
-    -- stores_number = 9, -- 掛載站位總數
-    -- average_fuel_consumption = 0.86, -- 平均燃油消耗係數
-    -- is_tanker = false, -- 是否為空中加油機
-    -- launch_bar_connected_arg_value = 0.87, -- 航艦彈射桿動畫參數
-    -- sounderName = "Aircraft/Planes/F-CK-1C", -- 音效資源路徑
-    -- -- 艙罩運動限制 (AI / 動畫用)
-    -- CanopyGeometry = {
-    --     elevation = {-50.0, 90.0}
-    -- },
-    -- -- 無線電調變設定，通常戰鬥機使用 AM
-    -- HumanRadio = {
-    --     modulation = MODULATION_AM
-    -- },
-    -- panelRadio = {}, -- 座艙面板無線電定義
-    -- -- 跑道分類限制 (玩家 / AI 起降用)
-    -- LandRWCategories = {},
-    -- TakeOffRWCategories = {},
-    -- -- Failures / Countermeasures / ECM 可於後續補齊
-    -- Failures = {},
-    -- Countermeasures = {
-    --     ECM = "AN/ALQ-126"
-    -- }, -- ECM 範例設定
-
-    -- ===================== 額外 UI 屬性 =====================
+    -- Extra UI properties.
     AddPropAircraft = { {
         id = "HelmetMountedDevice",
         control = "comboList",

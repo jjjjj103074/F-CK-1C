@@ -1,9 +1,6 @@
--- BEGIN -- this part of the file is not intended for an end-user editing, but forget about that :)
---[[ --------------------------------------------------------------- ]]
---
-
--- Native suspension probe switches. Keep these focused on DCS wheel mapping
--- only; do not use them for brake, steering, thrust, or aero tuning.
+-- Native suspension and collision-shell tuning.
+-- Keep these switches focused on DCS wheel mapping only; do not use them for
+-- brake, steering, thrust, or aerodynamic tuning.
 local SUSP_TEST_MARK = "GEOM_TEST_100_050_ACTIVE"
 local SUSP_USE_MODELVIEWER_WHEEL_NODES = false
 local SUSP_GEOMETRY_TEST = false
@@ -224,7 +221,7 @@ FM = {
 }
 
 fck_susp_log(string.format(
-    "FM/config.lua FINAL_SUSP_TABLE session_id=%s SUSP_TEST_MARK=%s SUSP_GEOMETRY_TEST=%s radius_add=%.2f wheel_y_offset=%.2f nodes=%s/%s/%s final_wheel_radius=%.4f/%.4f/%.4f", -- final_wheel_pos=(%.3f,%.3f,%.3f)/(%.3f,%.3f,%.3f)/(%.3f,%.3f,%.3f)
+    "FM/config.lua FINAL_SUSP_TABLE session_id=%s SUSP_TEST_MARK=%s SUSP_GEOMETRY_TEST=%s radius_add=%.2f wheel_y_offset=%.2f nodes=%s/%s/%s final_wheel_radius=%.4f/%.4f/%.4f",
     SUSP_SESSION_ID,
     SUSP_TEST_MARK,
     tostring(SUSP_GEOMETRY_TEST),
@@ -236,13 +233,4 @@ fck_susp_log(string.format(
     FM.suspension[1].wheel_radius,
     FM.suspension[2].wheel_radius,
     FM.suspension[3].wheel_radius
-    -- FM.suspension[1].pos[1],
-    -- FM.suspension[1].pos[2],
-    -- FM.suspension[1].pos[3],
-    -- FM.suspension[2].pos[1],
-    -- FM.suspension[2].pos[2],
-    -- FM.suspension[2].pos[3],
-    -- FM.suspension[3].pos[1],
-    -- FM.suspension[3].pos[2],
-    -- FM.suspension[3].pos[3]
 ))
