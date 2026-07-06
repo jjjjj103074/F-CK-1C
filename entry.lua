@@ -7,7 +7,7 @@ local function log_error(msg)
     if logger and logger.error then logger.error(msg) end
 end
 
--- F-CK-1C module version metadata
+-- Module version metadata.
 local FCK1C_BUILD_VERSION = "v0.1.3-april-fools"
 local FCK1C_BUILD_DATE = "2026-04-01"
 local FCK1C_CHANGELOG = {
@@ -24,64 +24,62 @@ local FCK1C_VERSION_HISTORY = {
 }
 
 declare_plugin(self_ID, {
-    -- =================基本模組信息=================
-    image = "F-CK-1C.png", -- 模組圖標文件: 顯示在DCS模組管理器中的圖標 [檔案名稱]
-    installed = true, -- 安裝狀態標記: true=已安裝可用, false=占位符或廣告 [布林值]
-    dirName = current_mod_path, -- 模組目錄路徑: DCS自動提供的當前模組根目錄路徑 [字串路徑]
-    displayName = _("F-CK-1C Module"), -- 顯示名稱: 用戶界面中顯示的模組名稱 [本地化字串]
-    developerName = _("F-CK-1C Development Team"), -- 開發者名稱: 模組開發團隊或個人名稱 [本地化字串]
+    -- Module identity.
+    image = "F-CK-1C.png", -- DCS module manager icon.
+    installed = true,
+    dirName = current_mod_path,
+    displayName = _("F-CK-1C Module"),
+    developerName = _("F-CK-1C Development Team"),
 
-    -- ================= 更新與描述資訊 =================
-    fileMenuName = _("F-CK-1C"), -- DCS 選單中的名稱
-    update_id = "F-CK-1C_Mod", -- 更新系統使用的模組 ID
-    version = FCK1C_BUILD_VERSION, -- 模組版本號
-    state = "installed", -- 模組狀態: installed / beta
-    info = _("F-CK-1C multirole fighter module. Contains aircraft configuration, liveries and mission samples for testing and AI use."), -- 模組說明文字
+    -- Version and menu metadata.
+    fileMenuName = _("F-CK-1C"),
+    update_id = "F-CK-1C_Mod",
+    version = FCK1C_BUILD_VERSION,
+    state = "installed",
+    info = _("F-CK-1C multirole fighter module. Contains aircraft configuration, liveries and mission samples for testing and AI use."),
 
-    binaries = { "BasicEFM_template.dll" },
+    binaries = { "F-CK-1C_EFM.dll" },
 
-    -- ================= 外觀塗裝 =================
+    -- External liveries.
     Skins = {
         {
-            name = _("F-CK-1C Skins"), -- 塗裝分類名稱
-            dir = "Liveries", -- 塗裝資料夾
+            name = _("F-CK-1C Skins"),
+            dir = "Liveries",
         },
     },
 
-    -- ================= 任務內容 =================
+    -- Mission package.
     Missions = {
         {
-            name = _("F-CK-1C Training"), -- 任務包名稱: 顯示在任務選擇界面的名稱 [本地化字串]
-            dir = "Missions", -- 任務檔案目錄: 存放.miz任務檔案的資料夾 [相對路徑]
-            CLSID = "{F-CK-1C missions}", -- 任務類別識別符: 用於任務分類的唯一ID [CLSID字串]
+            name = _("F-CK-1C Training"),
+            dir = "Missions",
+            CLSID = "{F-CK-1C missions}",
         },
     },
 
-    -- ================= Logbook 類別 =================
+    -- Logbook category.
     LogBook = {
         {
-            name = _("F-CK-1C Operations"), -- 飛行紀錄分類名稱
-            type = "F-CK-1C_Mod", -- 飛行紀錄類型 ID
+            name = _("F-CK-1C Operations"),
+            type = "F-CK-1C_Mod",
         },
     },
 
-    -- ================= 模組設定頁 =================
+    -- Options page.
     Options = {
         {
-            name = _("F-CK-1C Settings"), -- 設定選單名稱: 顯示在選項界面的名稱 [本地化字串]
-            nameId = "F-CK-1C", -- 設定識別符: 內部用於識別設定組的ID [ID字串]
-            dir = "Options", -- 設定檔案目錄: 存放設定界面檔案的資料夾 [相對路徑]
-            CLSID = "{F-CK-1C options}", -- 設定類別識別符: 用於設定分類的唯一ID [CLSID字串]
+            name = _("F-CK-1C Settings"),
+            nameId = "F-CK-1C",
+            dir = "Options",
+            CLSID = "{F-CK-1C options}",
         },
     },
 
-    -- ================= 輸入設定檔 =================
+    -- Input profile root.
     InputProfiles = {
-        ["F-CK-1C"] = current_mod_path .. "/Input/F-CK-1C/", -- 搖桿、鍵盤等輸入設定檔路徑
+        ["F-CK-1C"] = current_mod_path .. "/Input/F-CK-1C/",
     },
 })
-
--- log.info("FCK1C: entry.lua loaded, current_mod_path=" .. tostring(current_mod_path))
 
 mount_vfs_model_path(current_mod_path .. "/Shapes")
 mount_vfs_model_path(current_mod_path .. "/Cockpit/Shapes")
@@ -90,17 +88,12 @@ mount_vfs_liveries_path(current_mod_path .. "/Cockpit/Liveries")
 if mount_vfs_sound_path ~= nil then mount_vfs_sound_path(current_mod_path .. "/Sounds") end
 mount_vfs_texture_path(current_mod_path .. "/Textures")
 mount_vfs_texture_path(current_mod_path .. "/Textures/F-CK-1C.zip")
--- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50")
--- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50_HAF")
--- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_bl50_IAF")
--- mount_vfs_texture_path(current_mod_path .. "/Textures/F16C_Pilot")
--- ---------------------------------------------------------
 dofile(current_mod_path .. "/F-CK-1C.lua")
 
--- Diagnostic switch:
--- "baseline" = original non-EFM path (known good for collision)
--- "efm_min"  = EFM without FM/config.lua
--- "efm_full" = EFM with FM/config.lua
+-- EFM mode selector:
+-- baseline: non-EFM fallback path.
+-- efm_min : EFM without FM/config.lua.
+-- efm_full: EFM with FM/config.lua.
 local EFM_MODE = "efm_full"
 log_info("FCK1C: entry.lua loaded, version=" .. tostring(FCK1C_BUILD_VERSION) .. ", date=" .. tostring(FCK1C_BUILD_DATE) .. ", EFM_MODE=" .. tostring(EFM_MODE))
 
@@ -110,7 +103,7 @@ if EFM_MODE == "efm_min" or EFM_MODE == "efm_full" then
     if EFM_MODE == "efm_full" then dofile(cfg_path) end
     FM = FM or {}
     FM[1] = self_ID
-    FM[2] = "BasicEFM_template.dll"
+    FM[2] = "F-CK-1C_EFM.dll"
     if EFM_MODE == "efm_full" then
         FM.config_path = cfg_path
     else

@@ -1,4 +1,4 @@
-// FCS.h
+// Flight Control System interface.
 #pragma once
 
 struct FMState;
@@ -9,6 +9,3 @@ public:
 private:
     double q_int_ = 0.0;
 };
-
-
-// FCS.h - Flight Control System header file

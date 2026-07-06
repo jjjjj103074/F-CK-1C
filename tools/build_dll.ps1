@@ -1,28 +1,30 @@
 <#
 . SYNOPSIS
-    Build BasicEFM_template.dll and copy it into the mod `bin` folder.
+    Build F-CK-1C_EFM.dll and copy it into the mod `bin` folder.
 
 . DESCRIPTION
     This script runs MSBuild (or the msbuild path you provide), performs a
-    rebuild for Release/x64, and copies the produced DLL to the mod `bin`
+    rebuild for the only supported target, Release/x64, and copies the produced DLL to the mod `bin`
     folder. It prints SHA256 hashes for confirmation.
 
 . EXAMPLE
-    .\build_dll.ps1
-    .\build_dll.ps1 -MsBuildPath '<path-to-MSBuild.exe>'
+    .\tools\build_dll.ps1
+    .\tools\build_dll.ps1 -MsBuildPath '<path-to-MSBuild.exe>'
 #>
 
 param(
-    [string]$MsBuildPath = 'MSBuild.exe',
-    [string]$Configuration = 'Release',
-    [string]$Platform = 'x64'
+    [string]$MsBuildPath = 'MSBuild.exe'
 )
 
 Set-StrictMode -Version Latest
 
-$repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$solutionDir = Join-Path $repoRoot 'DCS-Basic-EFM-Template-main'
-$slnPath = Join-Path $solutionDir 'BasicEFM.sln'
+$Configuration = 'Release'
+$Platform = 'x64'
+
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $scriptDir
+$solutionDir = Join-Path $repoRoot 'src\efm'
+$slnPath = Join-Path $solutionDir 'F-CK-1C_EFM.sln'
 
 if (-not (Test-Path $slnPath)) {
     Write-Error "Solution not found: $slnPath"
@@ -32,6 +34,7 @@ if (-not (Test-Path $slnPath)) {
 Write-Output "Using MSBuild: $MsBuildPath"
 Write-Output "Solution: $slnPath"
 Write-Output "Configuration: $Configuration | Platform: $Platform"
+Write-Output "Only Release | x64 is supported for the F-CK-1C EFM DLL."
 
 # Resolve MSBuild path before attempting to run it.
 $resolvedMsBuild = $null
@@ -92,9 +95,9 @@ catch {
     throw
 }
 
-$dllSrc = Join-Path $solutionDir "x64\$Configuration\BasicEFM_template.dll"
+$dllSrc = Join-Path $solutionDir "x64\$Configuration\F-CK-1C_EFM.dll"
 $dllDstFolder = Join-Path $repoRoot 'bin'
-$dllDst = Join-Path $dllDstFolder 'BasicEFM_template.dll'
+$dllDst = Join-Path $dllDstFolder 'F-CK-1C_EFM.dll'
 
 if (-not (Test-Path $dllSrc)) {
     Write-Error "Built DLL not found: $dllSrc"

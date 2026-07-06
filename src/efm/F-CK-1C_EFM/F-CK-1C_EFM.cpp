@@ -1,7 +1,6 @@
-// Basic_EFM_Template.cpp : Defines the exported functions for the DLL application.
-// This is essentially the main file.
+// F-CK-1C EFM implementation.
 #include "stdafx.h"
-#include "Basic_EFM_Template.h"
+#include "F-CK-1C_EFM.h"
 #include "Utility.h"
 #include <Math.h>
 #include <stdio.h>
@@ -11,20 +10,20 @@
 #include <string>
 #include <direct.h>
 #include "Inputs.h"
-#include "include/Cockpit/CockpitAPI_Declare.h" // Provides param handle interfacing for use in lua
+#include "include/Cockpit/CockpitAPI_Declare.h" // Lua/cockpit parameter bridge.
 #include "include/FM/API_Declare.h"
 #include "FM_data.h"
 
-// F-CK-1C EFM version metadata
+// EFM version metadata.
 static const char* FCK1C_EFM_VERSION = "v0.1.3-april-fools";
 static const char* FCK1C_EFM_VERSION_DATE = "2026-04-01";
-// Version iteration (summary):
+// Version history:
 // v0.1.0     - Initial module load and base structure.
 // v0.1.1     - EFM integration and diagnostic mode switch.
 // v0.1.2-dev - Version metadata and iteration tracking.
 // v0.1.3-april-fools - April Fools build with experimental ground-contact tuning.
 
-namespace FM 
+namespace FM
 {
 static const size_t kFckPathMax = 1024;
 static char g_mod_root_path[kFckPathMax] = ".";
@@ -376,7 +375,7 @@ double	engine_throttle_cmd_left = 0.0; // Final command after pilot/FBW mixing
 double	engine_throttle_cmd_right = 0.0;
 double	afterburner_detent = 0.70;       // Throttle position where AB starts
 double	afterburner_thrust_factor = 1.73; // AB max thrust = dry thrust * factor
-											 // TFE1042-70: 2×46.7kN AB / 2×27.0kN MIL ≈ 1.73
+											 // TFE1042-70: 2x46.7 kN AB / 2x27.0 kN MIL ~= 1.73
 double	afterburner_fuel_factor = 2.2;   // Fuel burn multiplier at full AB
 double	afterburner_core_rpm = 0.94;      // Core RPM readout while in AB
 double	afterburner_core_drop_time = 0.80; // Seconds for core RPM transition between mil and AB
@@ -409,7 +408,7 @@ bool	nose_turn_enabled = true;
 // Landing gear
 bool	gear_switch = false;
 double	gear_pos = 0;
-double	wheel_brake = 0; 
+double	wheel_brake = 0;
 double	wheel_brake_left = 0;
 double	wheel_brake_right = 0;
 double	wheel_spin[3] = { 0.0, 0.0, 0.0 };
@@ -474,7 +473,7 @@ double right_wing_integrity = 1.0;
 double tail_integrity = 1.0;
 double left_engine_integrity = 1.0;
 double right_engine_integrity = 1.0;
-double total_damage = 1 - (left_wing_integrity + right_wing_integrity + tail_integrity + 
+double total_damage = 1 - (left_wing_integrity + right_wing_integrity + tail_integrity +
 						left_engine_integrity + right_engine_integrity) / 5;
 
 static void reset_damage_state()
@@ -491,26 +490,25 @@ static void reset_damage_state()
 	total_damage = 0.0;
 }
 
-// Optional parameters set in the options menu
+// Optional parameters set in the options menu.
 bool invincible = false; // No damage received if true
 bool infinite_fuel = false; // No fuel drained if true
 bool easy_flight = false; // Easier and more stable flight characteristics if true
 
-// Cockpit/head shaking intensity
-double shake_amplitude = 0; 
+// Cockpit/head shaking intensity.
+double shake_amplitude = 0;
 
-// Basic timer
-double fm_clock = 0; 
+// Basic simulation timer.
+double fm_clock = 0;
 
-// Has the simulation passed frame 1?
+// True after the first simulation frame.
 bool sim_inititalised = false;
 double left_nozzle_aperture = 0.80;
 double right_nozzle_aperture = 0.80;
 
-// 臨時用：專門記錄動畫與物理同步的獨立 Log
+// Suspension and animation diagnostics log.
 static void suspension_debug_log(const char* msg)
 {
-	// 檔案會獨立生成在你的 DCS Logs 資料夾下
 	const char* path = "C:\\Users\\User\\Saved Games\\DCS\\Logs\\susp_debug.log";
 	FILE* f = fopen(path, "a");
 	if (!f) return;
@@ -840,7 +838,7 @@ double	fbw_rud_cmd_rate = 0.0;
 double	fbw_rud_cmd_lag = 0.0;
 
 // DLL-Lua interface
-EDPARAM interface; 
+EDPARAM interface;
 }
 
 using namespace FM;
@@ -2159,15 +2157,14 @@ static void update_fbw_controller(double dt, double qbar, double alpha_limit_deg
 	}
 }
 
-// An example of how to interface with the Lua environment.
-// Conventionally, parameter names are in all-caps.
+// Cockpit/Lua parameter handles.
 void* fm_export_temperature = interface.getParamHandle("FM_TEMPERATURE_C");
 
-// Test hook: Maxpower switch (set from cockpit Lua). When OFF (0) the EFM will zero engine thrust.
+// Flight-test thrust cut switch set from cockpit Lua.
 void* fm_param_maxpower = interface.getParamHandle("FM_MAXPOWER_SWITCH");
 void* fm_param_maxpower_ready = interface.getParamHandle("FM_MAXPOWER_READY");
 
-// Autopilot param handles (read from Lua autopilot_system.lua)
+// Autopilot parameter handles read from Lua autopilot_system.lua.
 void* ap_param_master    = interface.getParamHandle("AP_MASTER_ENGAGED");
 void* ap_param_pitch_cmd = interface.getParamHandle("AP_PITCH_CMD");
 void* ap_param_roll_cmd  = interface.getParamHandle("AP_ROLL_CMD");
@@ -2175,7 +2172,7 @@ void* ap_param_thr_cmd   = interface.getParamHandle("AP_THROTTLE_CMD");
 void* ap_param_bypass    = interface.getParamHandle("AP_BYPASS_ACTIVE");
 void* ap_param_at_eng    = interface.getParamHandle("AP_AT_ENGAGED");
 
-// AP state cached per frame
+// AP state cached per frame.
 double ap_pitch_cmd_cached  = 0.0;
 double ap_roll_cmd_cached   = 0.0;
 double ap_throttle_cached   = 0.0;
@@ -2273,7 +2270,7 @@ void simulate_fuel_consumption(double dt)
 	const double ab_avg = 0.5 * (left_afterburner_ratio + right_afterburner_ratio);
 	const double ab_fuel_mult = 1.0 + ab_avg * (afterburner_fuel_factor - 1.0);
 
-	// Fuel drain at full throttle in Kg/s. 
+	// Fuel drain at full throttle in Kg/s.
 	fuel_consumption_since_last_time = FM_DATA::fuel_consumption * ((left_throttle_output + right_throttle_output + 1) / 3) * ab_fuel_mult * dt;
 
 	if (external_fuel >= 0) // Drain external fuel first
@@ -2736,9 +2733,7 @@ void ed_fm_simulate(double dt)
 		right_engine_power_readout = actuator(right_engine_power_readout, 0.0, -dt / 10, dt / 10);
 	};
 
-	//add_local_force(thrust, thrust_pos);
-
-	// Apply Maxpower test switch only after the Lua side reports the param is initialised.
+	// Apply the thrust cut switch only after the Lua side reports the param is initialised.
 	// This prevents a missing/uninitialised cockpit device from silently killing all thrust.
 	double maxpower_ready = 0.0;
 	double maxpower_val = 1.0;
@@ -2760,7 +2755,7 @@ void ed_fm_simulate(double dt)
 	add_local_force(Vec3(left_thrust_force, 0, 0), left_engine_pos);
 	add_local_force(Vec3(right_thrust_force, 0, 0), right_engine_pos);
 
-	// Structured debug output: left/right thrust, net moment from engines, suspension forces
+	// Structured diagnostics: thrust, net moment, suspension force, and engine state.
 	{
 		char dbgline[768];
 		Vec3 lforce(left_thrust_force, 0.0, 0.0);
@@ -2968,13 +2963,6 @@ void ed_fm_simulate(double dt)
 			shake_amplitude += (mach - (FM_DATA::mach_max * 0.8)) / 2;
 	};
 
-	// if (on_ground && gear_pos > 0.5 && fabs(nose_wheel_steering) > 0.01)
-	// {
-	// 	const double speed_ms = limit(sqrt(velocity_body.x * velocity_body.x + velocity_body.z * velocity_body.z), 0.0, 55.0);
-	// 	const double steering_gain = limit(1.0 - (speed_ms / 70.0), 0.15, 1.0);
-	// 	const double side_force = current_mass * 9.81 * 0.10 * steering_gain * nose_wheel_steering;
-	// 	add_local_force(Vec3(0.0, 0.0, side_force), kFallbackGearPoints[0]);
-	// }
 #pragma endregion
 
 	sim_inititalised = true; // The first step is complete
@@ -2999,11 +2987,11 @@ void ed_fm_set_atmosphere(double h, //altitude above sea level
 
 	altitude_ASL = h;
 
-	engine_alt_effect = limit(pow(1 - (h / 30000), 0.3), 0.1, 1); 
+	engine_alt_effect = limit(pow(1 - (h / 30000), 0.3), 0.1, 1);
 
 	atmosphere_temperature = t;
 
-	// FM interface example: exporting the current outside temperature in degrees Celsius.
+	// Export atmosphere temperature for cockpit/debug consumers.
 	interface.setParamNumber(fm_export_temperature, t + 273);
 }
 
@@ -3036,7 +3024,7 @@ void ed_fm_set_current_state (double ax, double ay, double az,//linear accelerat
 							double vx, double vy, double vz,//linear velocity component in world coordinate system
 							double px, double py, double pz,//center of the body position in world coordinate system
 							double omegadotx, double omegadoty, double omegadotz,//angular accelearation components in world coordinate system
-							double omegax, double omegay, double omegaz, //angular velocity components in world coordinate system 
+							double omegax, double omegay, double omegaz, //angular velocity components in world coordinate system
 							double quaternion_x, double quaternion_y, double quaternion_z, double quaternion_w //orientation quaternion components in world coordinate system
 							)
 {
@@ -3074,11 +3062,11 @@ void ed_fm_set_current_state_body_axis(double ax, double ay, double az,//linear 
 	alpha = common_angle_of_attack * rad_to_deg;
 
 	aos = common_angle_of_slide;
-	beta = common_angle_of_slide * rad_to_deg; 
+	beta = common_angle_of_slide * rad_to_deg;
 	// Positive aos is yaw left, negative is right.
 	// Positive aos means more wind on the right wing, negative on the left wing.
 
-	g = (ay / 9.81) + 1; // 1 g is -9.81 m/s^2, Earth's gravity. 
+	g = (ay / 9.81) + 1; // 1 g is -9.81 m/s^2, Earth's gravity.
 
 	FM::pitch = pitch;
 	FM::roll = roll;
@@ -3109,7 +3097,6 @@ void ed_fm_set_command (int command, float value)
 	case PitchUp:
 		pitch_discrete = 1;
 		pitch_analog = false;
-		//pitch_acc = 1;
 		break;
 	case PitchUpStop:
 		pitch_discrete = 0;
@@ -3451,27 +3438,6 @@ void ed_fm_set_command (int command, float value)
 
 }
 
-/*
-	Mass handling 
-
-	will be called  after ed_fm_simulate :
-	you should collect mass changes in ed_fm_simulate 
-
-	double delta_mass = 0;
-	double x = 0;
-	double y = 0; 
-	double z = 0;
-	double piece_of_mass_MOI_x = 0;
-	double piece_of_mass_MOI_y = 0; 
-	double piece_of_mass_MOI_z = 0;
- 
-	//
-	while (ed_fm_change_mass(delta_mass,x,y,z,piece_of_mass_MOI_x,piece_of_mass_MOI_y,piece_of_mass_MOI_z))
-	{
-	//internal DCS calculations for changing mass, center of gravity,  and moments of inertia
-	}
-*/
-
 bool ed_fm_change_mass  (double & delta_mass,
 						double & delta_mass_pos_x,
 						double & delta_mass_pos_y,
@@ -3492,11 +3458,11 @@ bool ed_fm_change_mass  (double & delta_mass,
 		delta_mass_moment_of_inertia_y	= 0;
 		delta_mass_moment_of_inertia_z	= 0;
 
-		fuel_consumption_since_last_time = 0; // set it 0 to avoid infinite loop, because it called in cycle 
-		// better to use stack like structure for mass changing 
+		fuel_consumption_since_last_time = 0; // set it 0 to avoid infinite loop, because it called in cycle
+		// better to use stack like structure for mass changing
 		return true;
 	}
-	else 
+	else
 	{
 		return false;
 	}
@@ -3508,7 +3474,7 @@ void   ed_fm_set_internal_fuel(double fuel)
 	internal_fuel = fuel;
 }
 
-// Get internal fuel volume 
+// Get internal fuel volume
 double ed_fm_get_internal_fuel()
 {
 	return internal_fuel;
@@ -3528,19 +3494,14 @@ double ed_fm_get_external_fuel ()
 	return 0;
 }
 
-// This stuff controls "arguments", which are mostly moving parts, pylons, lights, etc on the aircraft's model.
+// Drive model draw arguments for moving parts, lights, and visual effects.
 void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 {
-	//See the model viewer on your aircraft model for arguments on the aircraft.
-
 	// Landing gear
 	drawargs[0].f = (float)limit(gear_pos, 0, 1); // Nose
 	drawargs[3].f = (float)limit(gear_pos, 0, 1); // Right
 	drawargs[5].f = (float)limit(gear_pos, 0, 1); // Left
 	drawargs[2].f = (float)limit(nose_wheel_steering, -1, 1); // Nose wheel steering
-	// drawargs[1].f = (float)suspension_visual_arg(0); // Nose shock absorber
-	// drawargs[6].f = (float)suspension_visual_arg(1); // Left main shock absorber
-	// drawargs[4].f = (float)suspension_visual_arg(2); // Right main shock absorber
 
 	// Elevators/stabilators
 	drawargs[15].f = (float)limit(elevator_command, -1, 1);
@@ -3581,23 +3542,6 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	drawargs[101].f = (float)wheel_spin[1];
 	drawargs[102].f = (float)wheel_spin[2];
 
-	/*
-	Hints on some aircraft args where applicable
-
-	25 is the tail hook or weapons bay on some aircraft
-
-	115 to 117 are gear doors
-
-	7 is wing sweep
-
-	28 and 29 are left and right afterburners
-
-	89 and 90 are engine nozzle apertures (this module uses 89 = right, 90 = left)
-
-	40 and 41 are helicopter rotors
-
-	407 to 410 are propellers
-	*/
 }
 
 void ed_fm_configure(const char * cfg_path)
@@ -3771,54 +3715,36 @@ double ed_fm_get_param(unsigned index)
 
 void ed_fm_refueling_add_fuel(double fuel)
 {
-	// Doesn't seem to do anything, maybe it's for mid-air refueling?
+	// External refuel callback is currently unused.
 }
 
-// Infinite fuel setting
+// Infinite fuel setting.
 void ed_fm_unlimited_fuel(bool value)
 {
 	infinite_fuel = value;
-
-	/*
-	This setting doesn't do anything on its own.
-	In this FM, it simply disables fuel consumption when set to true.
-	*/
 }
 
-// Easy/"game" flight mode setting
+// Easy/game flight mode setting.
 void ed_fm_set_easy_flight(bool value)
 {
 	easy_flight = value;
-
-	/*
-	This setting doesn't do anything on its own.
-	The expectation is that the aircraft is a lot more stable and easy to fly when set to true.
-	Such is the case with this FM.
-	*/
 }
 
-// Invincibility setting
+// Invincibility setting.
 void ed_fm_set_immortal(bool value)
 {
 	invincible = value;
-
-	/*
-	When enabled, the aircraft does not register damage.
-	When disabled, you have to code what would happen when certain parts are damaged.
-	See the function below.
-	*/
 }
 
-// What happens when certain parts of the aircraft are hit?
+// Apply damage to aircraft subsystems.
 void ed_fm_on_damage(int Element, double element_integrity_factor)
 {
 	if (Element >= 0 && Element < 111)
 	{
 		element_integrity[Element] = element_integrity_factor;
-		// Element integrity is a scale from 0 to 1, 0 is completely broken and 1 is fully intact.
 	}
 
-	// See DCSWorld/scripts/Aircrafts/_Common/Damage.lua for a full list of elements.
+	// Element integrity uses 0.0 = destroyed and 1.0 = intact.
 	if (invincible == false)
 	{
 		// Left wing
@@ -3850,13 +3776,10 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 	suspension_debug_log(buf);
 }
 
-// ed_fm_suspension_feedback will be defined below with debug logging.
-
 static void dbg_susp(const char* msg)
 {
 	char debug_dir[kFckPathMax];
 	build_mod_path(debug_dir, sizeof(debug_dir), "debug");
-	// Ensure debug directory exists (ignore error if it already does)
 	_mkdir(debug_dir);
 	char path[1024];
 	snprintf(path, sizeof(path), "%s\\fck1c_efm_dbg.txt", debug_dir);
@@ -3926,7 +3849,7 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 	suspension_debug_log(buf);
 }
 
-// What should be reset when the aircraft is repaired?
+// Reset damage state after repair.
 void ed_fm_repair()
 {
 	reset_damage_state();
@@ -3951,7 +3874,7 @@ bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 	return false;
 }
 
-// bool ed_fm_push_simulation_event. DCS will call it for your FM when ingame event occurs
+// DCS calls this when an in-game simulation event occurs.
 bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 {
 	if (in.event_type == ED_FM_EVENT_CARRIER_CATAPULT)
@@ -3970,11 +3893,10 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 		}
 	}
 	return false;
-	// TO DO: Failure events
 }
 
 
-// What should be set on a cold start on the ground?
+// Cold start on the ground.
 void ed_fm_cold_start()
 {
 	ed_fm_repair();
@@ -4013,9 +3935,9 @@ void ed_fm_cold_start()
 	right_nozzle_aperture = 0.80;
 }
 
-// What should be set on a hot start on the ground?
+// Hot start on the ground.
 void ed_fm_hot_start()
-{	
+{
 	ed_fm_repair();
 	reset_suspension_feedback_state();
 	reset_startup_susp_probe_state();
@@ -4053,11 +3975,11 @@ void ed_fm_hot_start()
 	pilot_throttle_cmd_right = 0.0;
 	right_throttle_input = 0.0;
 	right_throttle_output = 0.5;
-	right_engine_power_readout = 0.5; 
+	right_engine_power_readout = 0.5;
 	right_nozzle_aperture = estimate_nozzle_aperture_target(right_throttle_input, right_engine_power_readout, 0.0, right_engine_switch);
 }
 
-// What should be set on a hot start in the air?
+// Hot start in the air.
 void ed_fm_hot_start_in_air()
 {
 	ed_fm_repair();
@@ -4074,7 +3996,7 @@ void ed_fm_hot_start_in_air()
 	nose_turn_enabled = false;
 	carrier_pos = 0;
 
-	//Engines on at 50% throttle
+	// Engines on at 50% throttle
 	left_engine_switch = true;
 	throttle_axis_cmd_left = 0.5;
 	throttle_keyboard_cmd_left = 0.5;
@@ -4096,7 +4018,7 @@ void ed_fm_hot_start_in_air()
 	right_nozzle_aperture = estimate_nozzle_aperture_target(right_throttle_input, right_engine_power_readout, 0.0, right_engine_switch);
 }
 
-// What should be reset on mission exit?
+// Mission exit cleanup.
 void ed_fm_release()
 {
 	reset_suspension_feedback_state();
@@ -4106,7 +4028,7 @@ void ed_fm_release()
 	fm_clock = 0;
 
 	// Reset user inputs
-	pitch_input = 0; 
+	pitch_input = 0;
 	pitch_trim = 0;
 	elevator_command = 0;
 
@@ -4150,47 +4072,37 @@ void ed_fm_release()
 	ed_fm_repair();
 }
 
-// Cockpit view shaking
+// Cockpit view shaking.
 double ed_fm_get_shake_amplitude()
 {
 	return shake_amplitude;
-
-	//This can be used to give a visual indication of stress on the airframe.
 }
 
-// Unused
+// Optional force/moment component callbacks are not used by this FM.
 bool ed_fm_add_local_force_component( double & x,double &y,double &z,double & pos_x,double & pos_y,double & pos_z )
 {
 	return false;
 }
 
-// Unused
 bool ed_fm_add_global_force_component( double & x,double &y,double &z,double & pos_x,double & pos_y,double & pos_z )
 {
 	return false;
 }
 
-// Unused
 bool ed_fm_add_local_moment_component( double & x,double &y,double &z )
 {
 	return false;
 }
 
-// Unused
 bool ed_fm_add_global_moment_component( double & x,double &y,double &z )
 {
 	return false;
 }
 
-// Debug force vector and center of mass visualisation
+// DCS debug-vector overlay is disabled for normal builds.
 bool ed_fm_enable_debug_info()
 {
 	return false;
-
-	/*
-	When set to true, DCS draws lines on the aircraft.
-	The blue box is the center of mass, green line is net force vector, pink line is the velocity vector.
-	*/
 }
 
 size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)

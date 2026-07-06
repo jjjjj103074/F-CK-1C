@@ -1,4 +1,4 @@
-// Flight Control System implementation
+// Flight Control System implementation.
 #include "stdafx.h"
 
 #ifdef min
@@ -18,22 +18,22 @@ static inline double clamp(double x, double lo, double hi)
     return std::max(lo, std::min(x, hi));
 }
 
-// ---- Tunings (先用這組，能飛再調) ----
+// Pitch-axis tuning.
 static constexpr double PI = 3.14159265358979323846;
 static constexpr double DEG2RAD = PI / 180.0;
 
-// stick -> q_cmd (rad/s per stick)
+// Stick to pitch-rate command (rad/s per stick).
 static constexpr double K_STICK_Q = 1.6;
 
-// PI on q loop
+// Pitch-rate PI loop.
 static constexpr double KP_Q = 0.9;
 static constexpr double KI_Q = 0.25;
 
-// elevator limits
+// Elevator limits.
 static constexpr double DE_MAX  = 25.0 * DEG2RAD;  // 25 deg
 static constexpr double DE_RATE = 60.0 * DEG2RAD;  // 60 deg/s
 
-// simple anti-windup
+// Anti-windup gain.
 static constexpr double AW_GAIN = 0.5;
 
 void FCS::update(double dt, FMState& s)
@@ -41,7 +41,7 @@ void FCS::update(double dt, FMState& s)
     // Inputs
     const double stick = clamp(s.in.pitch, -1.0, 1.0);
 
-    // States (你目前 mapping：s.q = pitch_rate(rad/s), s.alpha = AoA(deg))
+    // States: s.q = pitch rate (rad/s), s.alpha = AoA (deg).
     const double q   = s.q;                  // rad/s
     const double aoa = s.alpha * DEG2RAD;    // rad
 
@@ -53,7 +53,7 @@ void FCS::update(double dt, FMState& s)
     q_int_ += q_err * dt;
     double de_cmd = KP_Q * q_err + KI_Q * q_int_;
 
-    // Simple AoA soft limiter (暫定 25deg 當參考)
+    // AoA soft limiter reference.
     const double aoa_max = 25.0 * DEG2RAD;
     if (std::fabs(aoa) > 0.9 * aoa_max)
     {
@@ -73,7 +73,7 @@ void FCS::update(double dt, FMState& s)
     double de_next = s.out.de + clamp(de_sat - s.out.de, -max_step, +max_step);
     s.out.de = clamp(de_next, -DE_MAX, +DE_MAX);
 
-    // Debug output
+    // Export the saturated elevator command for diagnostics.
     s.out.de_cmd = de_sat;
 }
 

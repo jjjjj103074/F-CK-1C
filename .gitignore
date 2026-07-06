@@ -39,8 +39,8 @@ Desktop.ini
 **/*.lastbuildstate
 **/*.log
 
-# Template 專案內的建置複製輸出
-DCS-Basic-EFM-Template-main/bin/
+# EFM source 專案內的建置複製輸出
+src/efm/bin/
 
 # 暫存 / 備份檔
 *.tmp
@@ -54,8 +54,8 @@ backup/
 Sounds/_backup_normalized_*/
 TODO/
 generated_audio/
-tools/
-docs/
+local_tools/
+local_docs/
 
 # 本地備份資料夾（如需提交請註解掉）
 baseline_original/
@@ -72,11 +72,11 @@ dist/
 # Liveries
 
 # ----------------------------
-# EFM 需求：DCS 執行時需要 bin/BasicEFM_template.dll
+# EFM 需求：DCS 執行時需要 bin/F-CK-1C_EFM.dll
 # 因此保留此檔案追蹤，其餘 bin 內容忽略
 # ----------------------------
 bin/*
-!bin/BasicEFM_template.dll
+!bin/F-CK-1C_EFM.dll
 
 # Ignore temporary trash for Shapes cleaning
 Shapes/trash/

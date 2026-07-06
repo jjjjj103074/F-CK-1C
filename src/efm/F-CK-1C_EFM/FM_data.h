@@ -3,16 +3,13 @@
 
 namespace FM_DATA
 {
-	// Default data here is from the Su-25T with some slight modifications
-
-
 	double wing_area = 24.26; // Wing area (sq. m)
 	double wingspan = 8.53;// Wing span (m)
 	double length = 14.48;// Length (m)
 	double height = 4.7;// Height (m)
 	double mach_max = 1.8; // Max airspeed (mach)
 
-	// Mass, weight, inertia, and moment of inertia are all calculated automatically from the aircraft definition file.
+	// Mass, weight, and inertia are supplied by the aircraft definition.
 
 	double Cy0 = 0.0001; // Zero AoA lift coefficient
 	double Czbe = -0.016; // Yaw/side force coefficient
@@ -58,14 +55,9 @@ namespace FM_DATA
 		0.08,
 		0.08,
 	};
-	
-	/* 
-	In the SFM and the template, there are tables for "B" and "B4", 
-	those being drag polar and drag polar quad coefficients.
 
-	Implementing these into the drag force leads to far worse performance 
-	(greater deceleration) compared to official DCS modules, so they are excluded here.
-	*/
+	// Drag polar B/B4 tables are intentionally omitted because they caused
+	// excessive deceleration compared with current DCS module behavior.
 
 	double OmxMax[] = // Max roll rate, radians per second
 	{

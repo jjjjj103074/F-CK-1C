@@ -2,7 +2,7 @@
 
 enum InputCommands
 {
-	// commands from command_defs.lua, similar to the Su-25T and FC3 aircraft.
+	// Command IDs from Lua command_defs.lua and DCS built-in bindings.
 
 	// Pitch
 	JoystickPitch = 2001,
@@ -133,5 +133,5 @@ enum InputCommands
 	APSpeedIncrease = 3133,
 	APSpeedDecrease = 3134,
 
-	Reserved // Placeholder
+	Reserved
 };
