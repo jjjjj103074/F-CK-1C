@@ -185,7 +185,7 @@ function update()
         select_aim9()
     end
 
-    -- Debug
+    -- Periodic AIM-9 seeker telemetry log.
     debug_timer = debug_timer + update_rate
     if debug_timer >= DEBUG_INTERVAL then
         debug_timer = 0.0

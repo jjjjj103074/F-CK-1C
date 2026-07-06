@@ -42,12 +42,11 @@ device_commands = {
     APSpeedIncrease = 3133,
     APSpeedDecrease = 3134,
 
-    -- Flight test: engine thrust cut test.
-    -- When enabled, EFM zeros engine thrust so we can isolate bounce/jump behavior.
+    -- Flight-test command: isolate ground-coupling behavior by zeroing EFM thrust.
     EngineThrustCutTestToggle = 3135,
     EngineThrustCutTestEnable = 3136,
     EngineThrustCutTestDisable = 3137,
 
-    -- Backward-compatible alias used by earlier autopilot test code.
+    -- Backward-compatible alias for the original command name.
     APMaxpowerToggle = 3135,
 }

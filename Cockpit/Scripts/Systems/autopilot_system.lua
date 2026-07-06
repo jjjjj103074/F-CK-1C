@@ -96,10 +96,11 @@ local p_ap_pitch_cmd = get_param_handle("AP_PITCH_CMD")
 local p_ap_roll_cmd = get_param_handle("AP_ROLL_CMD")
 local p_ap_throttle_cmd = get_param_handle("AP_THROTTLE_CMD")
 local p_ap_bypass_active = get_param_handle("AP_BYPASS_ACTIVE")
--- Maxpower test switch: when set to 0 the EFM will zero engine thrust for ground-coupling tests.
+-- Engine thrust cut bridge. When set to 0, the EFM zeros engine thrust for
+-- ground-coupling diagnostics.
 local p_maxpower_switch = get_param_handle("FM_MAXPOWER_SWITCH")
 local p_maxpower_ready = get_param_handle("FM_MAXPOWER_READY")
--- Default to enabled
+-- Default to normal thrust.
 p_maxpower_switch:set(1)
 p_maxpower_ready:set(1)
 local p_ap_target_alt_ft = get_param_handle("AP_TARGET_ALT_FT")
@@ -848,7 +849,7 @@ function SetCommand(command, value)
         return
     end
 
-    -- ---- Engine thrust cut test ----
+    -- Engine thrust cut flight-test commands.
     if command == CMD_THRUST_TEST_TOGGLE then
         if value > 0.5 then set_thrust_cut_test_enabled(not is_thrust_cut_test_enabled()) end
         return
