@@ -35,6 +35,14 @@ DCS World 社群模組，重現中華民國空軍輕型多功能戰鬥機 AIDC F
 - **Bug Report** — 行為錯誤或當機問題
 - **Feature Request** — 功能建議
 
+## 授權與標註
+
+程式碼、工具、文件與由原始碼產生的 runtime binary 採用 MIT License。非程式素材若未另行標註，採用 CC BY 4.0。
+
+使用、修改或再散布時，請保留原作者與貢獻者標註。第三方或原始元件的既有授權聲明仍然有效，包含 `src/efm/LICENSE`。
+
+詳細內容請見 [LICENSE](LICENSE)。
+
 ## 貢獻專案
 
 開發環境設定、分支策略與 Commit 格式請見 [CONTRIBUTING.md](CONTRIBUTING.md)。

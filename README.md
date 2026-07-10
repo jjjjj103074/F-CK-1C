@@ -35,6 +35,14 @@ Please use the [Issues](../../issues) tab with the provided templates:
 - **Bug Report** — for incorrect behavior or crashes
 - **Feature Request** — for suggestions
 
+## License and Attribution
+
+Source code, tooling, documentation, and generated runtime binaries are licensed under the MIT License. Non-code assets are licensed under CC BY 4.0 unless otherwise noted.
+
+Please preserve attribution to the original author(s) and contributors. Third-party or original component notices remain in effect, including `src/efm/LICENSE`.
+
+See [LICENSE](LICENSE) for details.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, branch strategy, and commit format.

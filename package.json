@@ -16,7 +16,7 @@
     "type": "git",
     "url": "git+https://github.com/jjjjj103074/F-CK-1C.git"
   },
-  "license": "ISC",
+  "license": "SEE LICENSE IN LICENSE",
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
