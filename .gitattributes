@@ -8,6 +8,7 @@
 
 # ── Lua scripts ──────────────────────────────────────────────────────────────
 *.lua text eol=crlf
+*.bat text eol=crlf
 
 # ── Shell scripts (Git hooks must use LF to run under Git Bash on Windows) ───
 .husky/* text eol=lf
