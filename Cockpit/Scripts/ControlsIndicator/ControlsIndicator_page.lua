@@ -1,4 +1,5 @@
 dofile(LockOn_Options.common_script_path .. "elements_defs.lua")
+dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 SetCustomScale(1.0)
 
@@ -168,8 +169,8 @@ local throttle_index = add_line("throttle_index", { throttle_px - rud_shift * 1.
 
 local thrust_test_text_y = throttle_py + throttle_scale_length + ds * 0.8
 add_text("thrust_test_label", "THR TEST", { throttle_px, thrust_test_text_y }, "CenterCenter", "font_hmcs_small", { 0.0045, 0.0045, 0.0, 0.0 }, base.name)
-add_text("thrust_test_status_norm", "NORM", { throttle_px, thrust_test_text_y - ds * 0.9 }, "CenterCenter", "font_hmcs_small", { 0.0045, 0.0045, 0.0, 0.0 }, base.name, { "FM_MAXPOWER_SWITCH" }, { { "parameter_in_range", 0, 0.9, 1.1 } })
-add_text("thrust_test_status_cut", "CUT", { throttle_px, thrust_test_text_y - ds * 0.9 }, "CenterCenter", "font_hmcs_small", { 0.0045, 0.0045, 0.0, 0.0 }, base.name, { "FM_MAXPOWER_SWITCH" }, { { "parameter_in_range", 0, -0.1, 0.1 } })
+add_text("thrust_test_status_norm", "NORM", { throttle_px, thrust_test_text_y - ds * 0.9 }, "CenterCenter", "font_hmcs_small", { 0.0045, 0.0045, 0.0, 0.0 }, base.name, { cockpit_params.MaxPowerSwitch }, { { "parameter_in_range", 0, 0.9, 1.1 } })
+add_text("thrust_test_status_cut", "CUT", { throttle_px, thrust_test_text_y - ds * 0.9 }, "CenterCenter", "font_hmcs_small", { 0.0045, 0.0045, 0.0, 0.0 }, base.name, { cockpit_params.MaxPowerSwitch }, { { "parameter_in_range", 0, -0.1, 0.1 } })
 
 -- WHEEL BRAKES ---------------------------------------------------------------
 

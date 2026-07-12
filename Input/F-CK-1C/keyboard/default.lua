@@ -33,17 +33,17 @@ join(res.keyCommands, {
     { combos = { { key = "F", reformers = { "LShift" } } }, down = iCommandPlaneFlapsOff, name = _("Flap Handle - UP"), category = { _("Throttle Panel"), _("Flight Control") } },
 
     { combos = { { key = "B" } }, down = iCommandPlaneAirBrake, name = _("Speedbrake Switch - OPEN/CLOSE"), category = { _("Throttle Panel"), _("Throttle Grip"), _("Flight Control") } },
-    { combos = { { key = "B", reformers = { "RCtrl" } } }, down = 3016, name = _("Speedbrake 3-Pos - Close"), category = { _("Throttle Panel"), _("Throttle Grip"), _("Flight Control") } },
-    { combos = { { key = "B", reformers = { "RAlt" } } }, down = 3010, name = _("Speedbrake 3-Pos - Hold"), category = { _("Throttle Panel"), _("Throttle Grip"), _("Flight Control") } },
-    { combos = { { key = "B", reformers = { "RShift" } } }, down = 3017, name = _("Speedbrake 3-Pos - Extend"), category = { _("Throttle Panel"), _("Throttle Grip"), _("Flight Control") } },
+    { combos = { { key = "B", reformers = { "RCtrl" } } }, down = device_commands.AirBrakesUp, name = _("Speedbrake 3-Pos - Close"), category = { _("Throttle Panel"), _("Throttle Grip"), _("Flight Control") } },
+    { combos = { { key = "B", reformers = { "RAlt" } } }, down = device_commands.AirBrakesAuto, name = _("Speedbrake 3-Pos - Hold"), category = { _("Throttle Panel"), _("Throttle Grip"), _("Flight Control") } },
+    { combos = { { key = "B", reformers = { "RShift" } } }, down = device_commands.AirBrakesDown, name = _("Speedbrake 3-Pos - Extend"), category = { _("Throttle Panel"), _("Throttle Grip"), _("Flight Control") } },
 
-    { combos = { { key = "F", reformers = { "RCtrl" } } }, down = 3020, name = _("Flap 3-Pos - UP"), category = { _("Throttle Panel"), _("Flight Control") } },
-    { combos = { { key = "F", reformers = { "RAlt" } } }, down = 3012, name = _("Flap 3-Pos - AUTO"), category = { _("Throttle Panel"), _("Flight Control") } },
-    { combos = { { key = "F", reformers = { "RShift" } } }, down = 3021, name = _("Flap 3-Pos - DOWN"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { combos = { { key = "F", reformers = { "RCtrl" } } }, down = device_commands.FlapsUpCmd, name = _("Flap 3-Pos - UP"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { combos = { { key = "F", reformers = { "RAlt" } } }, down = device_commands.FlapsAuto, name = _("Flap 3-Pos - AUTO"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { combos = { { key = "F", reformers = { "RShift" } } }, down = device_commands.FlapsDownCmd, name = _("Flap 3-Pos - DOWN"), category = { _("Throttle Panel"), _("Flight Control") } },
 
-    { combos = { { key = "N" } }, down = 3022, name = _("Nose Wheel Steering - Toggle"), category = { _("Systems") } },
-    { combos = { { key = "N", reformers = { "LCtrl" } } }, down = 3013, name = _("Nose Wheel Steering - OFF"), category = { _("Systems") } },
-    { combos = { { key = "N", reformers = { "LShift" } } }, down = 3015, name = _("Nose Wheel Steering - ON"), category = { _("Systems") } },
+    { combos = { { key = "N" } }, down = device_commands.NoseTurnToggle, name = _("Nose Wheel Steering - Toggle"), category = { _("Systems") } },
+    { combos = { { key = "N", reformers = { "LCtrl" } } }, down = device_commands.NoseTurnUp, name = _("Nose Wheel Steering - OFF"), category = { _("Systems") } },
+    { combos = { { key = "N", reformers = { "LShift" } } }, down = device_commands.NoseTurnDown, name = _("Nose Wheel Steering - ON"), category = { _("Systems") } },
 
     { combos = { { key = "Space", reformers = { "LAlt" } } }, down = device_commands.TriggerFirstStage, up = device_commands.TriggerFirstStage, cockpit_device_id = devices.CMS, value_down = 1.0, value_up = 0.0, name = _("HOTAS Trigger - First Stage"), category = { _("Weapons") } },
     { combos = { { key = "Space" } }, down = device_commands.TriggerSecondStage, up = device_commands.TriggerSecondStage, cockpit_device_id = devices.CMS, value_down = 1.0, value_up = 0.0, name = _("HOTAS Trigger - Second Stage (Gun Fire)"), category = { _("Weapons") } },
@@ -81,11 +81,11 @@ join(res.keyCommands, {
     { down = iCommandPlaneDropFlareOnce, name = _("Flare Release - Direct (Fallback)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
     { down = iCommandPlaneDropChaffOnce, name = _("Chaff Release - Direct (Fallback)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
 
-    { combos = { { key = "C", reformers = { "RCtrl" } } }, down = 3007, name = _("FBW CAT - Toggle"), category = { _("Flight Control") } },
-    { combos = { { key = "1", reformers = { "RAlt" } } }, down = 3008, name = _("FBW CAT - CAT I"), category = { _("Flight Control") } },
-    { combos = { { key = "3", reformers = { "RAlt" } } }, down = 3009, name = _("FBW CAT - CAT III"), category = { _("Flight Control") } },
-    { combos = { { key = "G", reformers = { "RCtrl" } } }, down = 3026, up = 3026, value_down = 1.0, value_up = 0.0, name = _("FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
-    { combos = { { key = "G", reformers = { "RAlt" } } }, down = 3027, name = _("FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
+    { combos = { { key = "C", reformers = { "RCtrl" } } }, down = device_commands.FBWCatToggle, name = _("FBW CAT - Toggle"), category = { _("Flight Control") } },
+    { combos = { { key = "1", reformers = { "RAlt" } } }, down = device_commands.FBWCat1, name = _("FBW CAT - CAT I"), category = { _("Flight Control") } },
+    { combos = { { key = "3", reformers = { "RAlt" } } }, down = device_commands.FBWCat3, name = _("FBW CAT - CAT III"), category = { _("Flight Control") } },
+    { combos = { { key = "G", reformers = { "RCtrl" } } }, down = device_commands.FBWGLimiterOverride, up = device_commands.FBWGLimiterOverride, value_down = 1.0, value_up = 0.0, name = _("FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
+    { combos = { { key = "G", reformers = { "RAlt" } } }, down = device_commands.FBWGLimiterOverrideToggle, name = _("FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
 
     -- Autopilot
     { combos = { { key = "A", reformers = { "LAlt" } } }, down = device_commands.APMasterToggle, up = device_commands.APMasterToggle, cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _("AP Master - Toggle"), category = { _("Autopilot") } },

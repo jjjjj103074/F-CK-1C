@@ -13,9 +13,9 @@ join(res.axisCommands, {
     { combos = defaultDeviceAssignmentFor("thrust"), action = 2004, name = _("Throttle Axis - Both"), category = { _("Throttle Quadrant"), _("Flight Control") } },
     { combos = defaultDeviceAssignmentFor("thrust_left"), action = 2005, name = _("Throttle Axis - Left"), category = { _("Throttle Quadrant"), _("Flight Control") } },
     { combos = defaultDeviceAssignmentFor("thrust_right"), action = 2006, name = _("Throttle Axis - Right"), category = { _("Throttle Quadrant"), _("Flight Control") } },
-    { combos = defaultDeviceAssignmentFor("wheel_brake"), action = 3023, name = _("Wheel Brake Axis - Both"), category = { _("Systems") } },
-    { combos = defaultDeviceAssignmentFor("wheel_brake_left"), action = 3024, name = _("Wheel Brake Axis - Left"), category = { _("Systems") } },
-    { combos = defaultDeviceAssignmentFor("wheel_brake_right"), action = 3025, name = _("Wheel Brake Axis - Right"), category = { _("Systems") } },
+    { combos = defaultDeviceAssignmentFor("wheel_brake"), action = device_commands.WheelBrakeAxis, name = _("Wheel Brake Axis - Both"), category = { _("Systems") } },
+    { combos = defaultDeviceAssignmentFor("wheel_brake_left"), action = device_commands.WheelBrakeAxisLeft, name = _("Wheel Brake Axis - Left"), category = { _("Systems") } },
+    { combos = defaultDeviceAssignmentFor("wheel_brake_right"), action = device_commands.WheelBrakeAxisRight, name = _("Wheel Brake Axis - Right"), category = { _("Systems") } },
 })
 
 join(res.keyCommands, {
@@ -74,26 +74,26 @@ join(res.keyCommands, {
     { down = iCommandPlaneDropFlareOnce, name = _("Flare Release - Direct (Fallback)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
     { down = iCommandPlaneDropChaffOnce, name = _("Chaff Release - Direct (Fallback)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
 
-    { down = 3007, name = _("FBW CAT - Toggle"), category = { _("Flight Control") } },
-    { down = 3008, name = _("FBW CAT - CAT I"), category = { _("Flight Control") } },
-    { down = 3009, name = _("FBW CAT - CAT III"), category = { _("Flight Control") } },
-    { down = 3026, up = 3026, value_down = 1.0, value_up = 0.0, name = _("FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
-    { down = 3027, name = _("FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
+    { down = device_commands.FBWCatToggle, name = _("FBW CAT - Toggle"), category = { _("Flight Control") } },
+    { down = device_commands.FBWCat1, name = _("FBW CAT - CAT I"), category = { _("Flight Control") } },
+    { down = device_commands.FBWCat3, name = _("FBW CAT - CAT III"), category = { _("Flight Control") } },
+    { down = device_commands.FBWGLimiterOverride, up = device_commands.FBWGLimiterOverride, value_down = 1.0, value_up = 0.0, name = _("FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
+    { down = device_commands.FBWGLimiterOverrideToggle, name = _("FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
 
-    { down = 3016, name = _("Speedbrake 3-Pos - Close"), category = { _("Throttle Panel"), _("Flight Control") } },
-    { down = 3010, name = _("Speedbrake 3-Pos - Hold"), category = { _("Throttle Panel"), _("Flight Control") } },
-    { down = 3017, name = _("Speedbrake 3-Pos - Extend"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { down = device_commands.AirBrakesUp, name = _("Speedbrake 3-Pos - Close"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { down = device_commands.AirBrakesAuto, name = _("Speedbrake 3-Pos - Hold"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { down = device_commands.AirBrakesDown, name = _("Speedbrake 3-Pos - Extend"), category = { _("Throttle Panel"), _("Flight Control") } },
 
-    { down = 3018, name = _("LG Handle 3-Pos - UP"), category = { _("Left Auxiliary Console") } },
-    { down = 3019, name = _("LG Handle 3-Pos - DOWN"), category = { _("Left Auxiliary Console") } },
+    { down = device_commands.GearHandleUp, name = _("LG Handle 3-Pos - UP"), category = { _("Left Auxiliary Console") } },
+    { down = device_commands.GearHandleDown, name = _("LG Handle 3-Pos - DOWN"), category = { _("Left Auxiliary Console") } },
 
-    { down = 3020, name = _("Flap 3-Pos - UP"), category = { _("Throttle Panel"), _("Flight Control") } },
-    { down = 3012, name = _("Flap 3-Pos - AUTO"), category = { _("Throttle Panel"), _("Flight Control") } },
-    { down = 3021, name = _("Flap 3-Pos - DOWN"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { down = device_commands.FlapsUpCmd, name = _("Flap 3-Pos - UP"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { down = device_commands.FlapsAuto, name = _("Flap 3-Pos - AUTO"), category = { _("Throttle Panel"), _("Flight Control") } },
+    { down = device_commands.FlapsDownCmd, name = _("Flap 3-Pos - DOWN"), category = { _("Throttle Panel"), _("Flight Control") } },
 
-    { down = 3022, name = _("Nose Wheel Steering - Toggle"), category = { _("Systems") } },
-    { down = 3013, name = _("Nose Wheel Steering - OFF"), category = { _("Systems") } },
-    { down = 3015, name = _("Nose Wheel Steering - ON"), category = { _("Systems") } },
+    { down = device_commands.NoseTurnToggle, name = _("Nose Wheel Steering - Toggle"), category = { _("Systems") } },
+    { down = device_commands.NoseTurnUp, name = _("Nose Wheel Steering - OFF"), category = { _("Systems") } },
+    { down = device_commands.NoseTurnDown, name = _("Nose Wheel Steering - ON"), category = { _("Systems") } },
 
     -- Autopilot
     { down = device_commands.APMasterToggle, up = device_commands.APMasterToggle, cockpit_device_id = devices.AUTOPILOT, value_down = 1.0, value_up = 0.0, name = _("AP Master - Toggle"), category = { _("Autopilot") } },

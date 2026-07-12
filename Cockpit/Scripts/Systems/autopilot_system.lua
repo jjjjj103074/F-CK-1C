@@ -10,6 +10,7 @@ make_default_activity(update_rate)
 
 dofile(LockOn_Options.script_path .. "command_defs.lua")
 dofile(LockOn_Options.script_path .. "devices.lua")
+dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 -- ========================== Constants =======================================
 local RAD_TO_DEG = 57.29577951308232
@@ -88,18 +89,18 @@ local CMD_THRUST_TEST_DISABLE = CMD.EngineThrustCutTestDisable
 
 -- ========================== Exported Params ==================================
 -- These are read by the EFM C++ side and by HUD/indicators
-local p_ap_master_engaged = get_param_handle("AP_MASTER_ENGAGED")
+local p_ap_master_engaged = get_param_handle(cockpit_params.ApMasterEngaged)
 local p_ap_vert_mode = get_param_handle("AP_VERT_MODE")
 local p_ap_lat_mode = get_param_handle("AP_LAT_MODE")
-local p_ap_at_engaged = get_param_handle("AP_AT_ENGAGED")
-local p_ap_pitch_cmd = get_param_handle("AP_PITCH_CMD")
-local p_ap_roll_cmd = get_param_handle("AP_ROLL_CMD")
-local p_ap_throttle_cmd = get_param_handle("AP_THROTTLE_CMD")
-local p_ap_bypass_active = get_param_handle("AP_BYPASS_ACTIVE")
+local p_ap_at_engaged = get_param_handle(cockpit_params.ApAutoThrottleEngaged)
+local p_ap_pitch_cmd = get_param_handle(cockpit_params.ApPitchCommand)
+local p_ap_roll_cmd = get_param_handle(cockpit_params.ApRollCommand)
+local p_ap_throttle_cmd = get_param_handle(cockpit_params.ApThrottleCommand)
+local p_ap_bypass_active = get_param_handle(cockpit_params.ApBypassActive)
 -- Engine thrust cut bridge. When set to 0, the EFM zeros engine thrust for
 -- ground-coupling diagnostics.
-local p_maxpower_switch = get_param_handle("FM_MAXPOWER_SWITCH")
-local p_maxpower_ready = get_param_handle("FM_MAXPOWER_READY")
+local p_maxpower_switch = get_param_handle(cockpit_params.MaxPowerSwitch)
+local p_maxpower_ready = get_param_handle(cockpit_params.MaxPowerReady)
 -- Default to normal thrust.
 p_maxpower_switch:set(1)
 p_maxpower_ready:set(1)
