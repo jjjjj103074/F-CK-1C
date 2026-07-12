@@ -3,6 +3,7 @@
 #include "F-CK-1C_EFM.h"
 #include "Utility.h"
 #include "Core/AircraftState.h"
+#include "Core/Fck1cEfm.h"
 #include "Core/ForceMoment.h"
 #include "DcsBridge/AutopilotBridge.h"
 #include "DcsBridge/ConfigReader.h"
@@ -81,90 +82,90 @@ static bool resolve_saved_games_logs_dir(char* out, size_t out_size)
 	return Common::resolve_saved_games_logs_dir(out, out_size);
 }
 
-// EFMSTATE: Core/ForceMoment - per-frame accumulated force/moment returned to DCS.
-Vec3	common_force;
-Vec3	common_moment;
-Vec3    center_of_mass;
+static Core::Fck1cEfmConfig make_fck1c_efm_config()
+{
+	Core::Fck1cEfmConfig config;
+	config.aerodynamics.wing_area = FM_DATA::wing_area;
+	config.aerodynamics.wingspan = FM_DATA::wingspan;
+	config.aerodynamics.length = FM_DATA::length;
+	config.aerodynamics.height = FM_DATA::height;
+	config.aerodynamics.mach_max = FM_DATA::mach_max;
+	config.aerodynamics.cy_zero = FM_DATA::Cy0;
+	config.aerodynamics.cz_beta = FM_DATA::Czbe;
+	config.aerodynamics.cx_gear = FM_DATA::cx_gear;
+	config.aerodynamics.cx_airbrake = FM_DATA::cx_brk;
+	config.aerodynamics.cx_flap = FM_DATA::cx_flap;
+	config.aerodynamics.cx_lift_k = FM_DATA::cx_lift_k;
+	config.aerodynamics.cx_alpha_k = FM_DATA::cx_alpha_k;
+	config.aerodynamics.cx_elevator_k = FM_DATA::cx_elevator_k;
+	config.aerodynamics.cy_flap = FM_DATA::cy_flap;
+	config.aerodynamics.airbrake_pitch_comp_k = FM_DATA::airbrake_pitch_comp_k;
+	config.aerodynamics.mach_table = FM_DATA::mach_table;
+	config.aerodynamics.cx_zero_table = FM_DATA::cx0;
+	config.aerodynamics.cy_alpha_table = FM_DATA::Cya;
+	config.aerodynamics.roll_rate_max_table = FM_DATA::OmxMax;
+	config.aerodynamics.alpha_max_table = FM_DATA::Aldop;
+	config.aerodynamics.cy_max_table = FM_DATA::CyMax;
+	config.aerodynamics.table_size = FM_DATA::kAeroTableSize;
+	config.left_engine_position = Vec3(-3.793, -0.391, -0.716);
+	config.right_engine_position = Vec3(-3.793, -0.391, 0.716);
+	return config;
+}
 
-// EFMSTATE: Core/AircraftState - DCS-provided atmosphere, kinematics, and wind state.
-Core::AircraftState aircraft_state;
+// Single owner for DCS-neutral EFM state and configuration.
+Core::Fck1cEfm g_efm(make_fck1c_efm_config());
+Core::ForceMomentFrame& force_moment_frame = g_efm.force_moment();
+Core::Fck1cEfmSystems& efm_systems = g_efm.systems();
 
-// Compatibility aliases while call sites migrate to aircraft_state.
-Vec3&	wind = aircraft_state.wind;
-Vec3&	velocity_world = aircraft_state.velocity_world;
-Vec3&	velocity_body = aircraft_state.velocity_body;
-Vec3&	angular_velocity_world = aircraft_state.angular_velocity_world;
-Vec3&	angular_velocity_body = aircraft_state.angular_velocity_body;
-Vec3&	airspeed = aircraft_state.airspeed;
+// Compatibility aliases remain until the simulation pipeline moves into Core.
+Vec3& common_force = force_moment_frame.force;
+Vec3& common_moment = force_moment_frame.moment;
+Vec3& center_of_mass = force_moment_frame.center_of_mass;
+Core::AircraftState& aircraft_state = g_efm.aircraft_state();
+Vec3& wind = aircraft_state.wind;
+Vec3& velocity_world = aircraft_state.velocity_world;
+Vec3& velocity_body = aircraft_state.velocity_body;
+Vec3& angular_velocity_world = aircraft_state.angular_velocity_world;
+Vec3& angular_velocity_body = aircraft_state.angular_velocity_body;
+Vec3& airspeed = aircraft_state.airspeed;
 
 // EFMSTATE: Common/Units - shared constants; replace with Common/Units during utility extraction.
-double	const	pi = 3.1415926535897932384626433832795;
-double	const	rad_to_deg = 180.0 / pi;
+double const pi = 3.1415926535897932384626433832795;
+double const rad_to_deg = 180.0 / pi;
 
 // Engine RPM compatibility value; retained until the remaining engine readout bridge is cleaned up.
 double idle_rpm = FM_DATA::idle_rpm / 100; // RPM % at idle throttle
 
-static Systems::AerodynamicsSystemConfig make_aerodynamics_config()
-{
-	Systems::AerodynamicsSystemConfig config;
-	config.wing_area = FM_DATA::wing_area;
-	config.wingspan = FM_DATA::wingspan;
-	config.length = FM_DATA::length;
-	config.height = FM_DATA::height;
-	config.mach_max = FM_DATA::mach_max;
-	config.cy_zero = FM_DATA::Cy0;
-	config.cz_beta = FM_DATA::Czbe;
-	config.cx_gear = FM_DATA::cx_gear;
-	config.cx_airbrake = FM_DATA::cx_brk;
-	config.cx_flap = FM_DATA::cx_flap;
-	config.cx_lift_k = FM_DATA::cx_lift_k;
-	config.cx_alpha_k = FM_DATA::cx_alpha_k;
-	config.cx_elevator_k = FM_DATA::cx_elevator_k;
-	config.cy_flap = FM_DATA::cy_flap;
-	config.airbrake_pitch_comp_k = FM_DATA::airbrake_pitch_comp_k;
-	config.mach_table = FM_DATA::mach_table;
-	config.cx_zero_table = FM_DATA::cx0;
-	config.cy_alpha_table = FM_DATA::Cya;
-	config.roll_rate_max_table = FM_DATA::OmxMax;
-	config.alpha_max_table = FM_DATA::Aldop;
-	config.cy_max_table = FM_DATA::CyMax;
-	config.table_size = FM_DATA::kAeroTableSize;
-	return config;
-}
-
-// EFMSTATE: Systems/AerodynamicsSystem - aerodynamic configuration, conditions, and force application points.
-Systems::AerodynamicsSystemConfig aerodynamics_config = make_aerodynamics_config();
-Systems::AerodynamicsSystemState aerodynamics_system;
-
-// Greater Y and Z offsets create moments from the thrust force.
-// EFMSTATE: Systems/EngineSystem - engine force application points.
-Vec3 left_engine_pos(-3.793, -0.391, -0.716); // Position (forward/back, up/down, left/right) of the first engine, usually left.
-Vec3 right_engine_pos(-3.793, -0.391, 0.716); // Position of the second engine, usually right.
+const Systems::AerodynamicsSystemConfig& aerodynamics_config = g_efm.config().aerodynamics;
+Systems::AerodynamicsSystemState& aerodynamics_system = efm_systems.aerodynamics;
+const Vec3& left_engine_pos = g_efm.config().left_engine_position;
+const Vec3& right_engine_pos = g_efm.config().right_engine_position;
 
 // EFMSTATE: Systems/InputSystem - pilot primary control state.
-Systems::PrimaryControlState primary_control_state;
+Systems::PrimaryControlState& primary_control_state = efm_systems.primary_controls;
+Core::ControlSurfaceState& control_surface_state = g_efm.control_surfaces();
 
 // Compatibility aliases while call sites migrate to primary_control_state.
 double& pitch_input = primary_control_state.pitch.input;
 int&	pitch_discrete = primary_control_state.pitch.discrete;
 bool&	pitch_analog = primary_control_state.pitch.analog;
 double&	pitch_trim = primary_control_state.pitch.trim;
-double	elevator_command = 0;
+double& elevator_command = control_surface_state.elevator_command;
 
 double& roll_input = primary_control_state.roll.input;
 int&	roll_discrete = primary_control_state.roll.discrete;
 bool&	roll_analog = primary_control_state.roll.analog;
 double& roll_trim = primary_control_state.roll.trim;
-double	aileron_command = 0;
+double& aileron_command = control_surface_state.aileron_command;
 
 double& yaw_input = primary_control_state.yaw.input;
 int&	yaw_discrete = primary_control_state.yaw.discrete;
 bool&	yaw_analog = primary_control_state.yaw.analog;
 double&	yaw_trim = primary_control_state.yaw.trim;
-double	rudder_command = 0;
+double& rudder_command = control_surface_state.rudder_command;
 
 // EFMSTATE: Systems/EngineSystem - engine switches, throttle, readout, thrust, AB, and nozzle state.
-Systems::EngineSystemState engine_system;
+Systems::EngineSystemState& engine_system = efm_systems.engines;
 
 // Compatibility aliases while call sites migrate to engine_system.
 bool&	left_engine_switch = engine_system.left.switch_on;
@@ -180,7 +181,7 @@ double&	right_engine_power_readout = engine_system.right.power_readout;
 double&	right_thrust_force = engine_system.right.thrust_force;
 
 // EFMSTATE: Systems/InputSystem - throttle axis/keyboard arbitration state.
-Systems::ThrottleInputState throttle_input_state;
+Systems::ThrottleInputState& throttle_input_state = efm_systems.throttle_inputs;
 
 // Compatibility aliases while call sites migrate to throttle_input_state.
 bool&	throttle_axis_inverted = throttle_input_state.axis_inverted; // true = axis forward -> larger throttle
@@ -222,7 +223,7 @@ enum FlapMode
 };
 
 // EFMSTATE: Systems/AirframeDeviceSystem - high-lift, speedbrake, and gear command/position state.
-Systems::AirframeDeviceState airframe_device_state;
+Systems::AirframeDeviceState& airframe_device_state = efm_systems.airframe_devices;
 
 // Compatibility aliases while call sites migrate to airframe_device_state.
 bool&	airbrake_switch = airframe_device_state.airbrake_switch;
@@ -235,12 +236,12 @@ double&	slats_pos = airframe_device_state.slats_pos;
 // EFMSTATE: Systems/LandingGearSystem - brake, wheel animation, and carrier launch state.
 bool&	gear_switch = airframe_device_state.gear_switch;
 double&	gear_pos = airframe_device_state.gear_pos;
-Systems::WheelState wheel_state;
+Systems::WheelState& wheel_state = efm_systems.wheels;
 DcsBridge::CarrierLaunchState carrier_launch = {};
 double&	current_mass = aircraft_state.current_mass;
 
 // EFMSTATE: Systems/FuelSystem - fuel quantities and pending DCS mass delta.
-Systems::FuelSystem fuel_system;
+Systems::FuelSystem& fuel_system = efm_systems.fuel;
 
 // EFMSTATE: Core/AircraftState - atmosphere, terrain, speed, aero angles, and derived flight state.
 double& atmosphere_density = aircraft_state.atmosphere_density; // Atmosphere/air density (Pascals)
@@ -266,8 +267,8 @@ double& g = aircraft_state.g; // G force
 double&	atmosphere_temperature = aircraft_state.atmosphere_temperature; // Current temperature in Kelvin
 
 // EFMSTATE: Systems/SuspensionSystem - native/fallback suspension feedback and WOW state.
-Systems::SuspensionSystemConfig suspension_config;
-Systems::SuspensionSystemState suspension_system;
+const Systems::SuspensionSystemConfig& suspension_config = g_efm.config().suspension;
+Systems::SuspensionSystemState& suspension_system = efm_systems.suspension;
 
 // Compatibility aliases while call sites migrate to suspension_system.
 bool&	on_ground = suspension_system.on_ground; // Is the aircraft currently on the ground?
@@ -288,7 +289,7 @@ double&	yaw_rate = aircraft_state.yaw_rate;
 
 // Damage stuff
 // EFMSTATE: Systems/DamageModel - DCS damage element integrity and subsystem multipliers.
-Systems::DamageModel damage_model;
+Systems::DamageModel& damage_model = efm_systems.damage;
 
 // EFMREF: CUSTOM_SYSTEM - Damage model reset; candidate for Systems/DamageModel.
 static void reset_damage_state()
@@ -298,16 +299,17 @@ static void reset_damage_state()
 
 // Optional parameters set in the options menu.
 // EFMSTATE: DcsInterface/GameOptions - gameplay option flags set by DCS callbacks.
-bool invincible = false; // No damage received if true
-bool infinite_fuel = false; // No fuel drained if true
-bool easy_flight = false; // Easier and more stable flight characteristics if true
+Core::GameplayState& gameplay_state = g_efm.gameplay();
+bool& invincible = gameplay_state.invincible; // No damage received if true
+bool& infinite_fuel = gameplay_state.infinite_fuel; // No fuel drained if true
+bool& easy_flight = gameplay_state.easy_flight; // Easier and more stable flight characteristics if true
 
 // Cockpit/head shaking intensity.
 // EFMSTATE: DcsInterface/CockpitOutput - cockpit shake value returned to DCS.
-double shake_amplitude = 0;
+double& shake_amplitude = gameplay_state.shake_amplitude;
 
 // EFMSTATE: Systems/StartupSystem - simulation clock, startup mode, and first-frame state.
-Systems::StartupSystemState startup_system;
+Systems::StartupSystemState& startup_system = efm_systems.startup;
 Diagnostics::SuspensionDiagnosticsState suspension_diagnostics;
 Diagnostics::SuspensionDiagnosticsConfig suspension_diagnostics_config;
 bool suspension_diagnostics_config_loaded = false;
@@ -315,8 +317,8 @@ double& left_nozzle_aperture = engine_system.left.nozzle_aperture;
 double& right_nozzle_aperture = engine_system.right.nozzle_aperture;
 
 // EFMSTATE: Systems/FBWController - FBW CAT tables, tuning config, and runtime state.
-Systems::FBWControllerConfig fbw_config;
-Systems::FBWControllerState fbw_controller;
+const Systems::FBWControllerConfig& fbw_config = g_efm.config().fbw;
+Systems::FBWControllerState& fbw_controller = efm_systems.fbw;
 
 // DLL-Lua interface
 // EFMSTATE: DcsInterface/CockpitBridge - cockpit parameter API entrypoint.

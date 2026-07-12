@@ -188,7 +188,7 @@ double engine_power_readout_table[kEngineTableSize] =
 
 namespace FM
 {
-extern Core::AircraftState aircraft_state;
+extern Core::AircraftState& aircraft_state;
 }
 
 namespace

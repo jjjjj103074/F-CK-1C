@@ -57,9 +57,11 @@
   <ItemGroup>
     <ClCompile Include="CommonTests.cpp" />
     <ClCompile Include="EngineSystemTests.cpp" />
+    <ClCompile Include="Fck1cEfmTests.cpp" />
     <ClCompile Include="FmDataTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />
     <ClCompile Include="TestMain.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\Core\Fck1cEfm.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\FM_data.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

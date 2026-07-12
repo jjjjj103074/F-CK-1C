@@ -5,7 +5,8 @@
 
 namespace FM
 {
-Core::AircraftState aircraft_state;
+Core::AircraftState test_aircraft_state;
+Core::AircraftState& aircraft_state = test_aircraft_state;
 }
 
 namespace

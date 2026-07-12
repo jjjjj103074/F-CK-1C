@@ -73,6 +73,7 @@
     <ClInclude Include="Common\Units.h" />
     <ClInclude Include="Common\Vec3.h" />
     <ClInclude Include="Core\AircraftState.h" />
+    <ClInclude Include="Core\Fck1cEfm.h" />
     <ClInclude Include="Core\ForceMoment.h" />
     <ClInclude Include="DcsBridge\AutopilotBridge.h" />
     <ClInclude Include="DcsBridge\ConfigReader.h" />
@@ -119,6 +120,9 @@
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</CompileAsManaged>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Core\Fck1cEfm.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="F-CK-1C_EFM.cpp" />
     <ClCompile Include="FM_data.cpp" />
