@@ -1,70 +1,45 @@
-# F-CK-1C DLL Build Commands
+# F-CK-1C EFM DLL Build
 
-This file records the commands used to build `F-CK-1C_EFM.dll` for this mod.
-
-## Project paths
-
-- Solution: `src\efm\F-CK-1C_EFM.sln`
-- Project: `src\efm\F-CK-1C_EFM\F-CK-1C_EFM.vcxproj`
-- Only supported target: `Release | x64`
-
-## Requirement
-
-Use a shell where `MSBuild.exe` is available.
-
-Recommended:
-
-- Visual Studio 2019 Developer Command Prompt
-
-The project file uses `PlatformToolset=v142`, which usually maps to Visual Studio 2019.
-
-## Build DLL
-
-```powershell
-Set-Location .\src\efm
-MSBuild.exe .\F-CK-1C_EFM.sln /t:Build /p:Configuration=Release /p:Platform=x64
-```
-
-## Output DLL
-
-After a successful build, the DLL should be here:
+This project builds one runtime DLL:
 
 ```text
-src\efm\x64\Release\F-CK-1C_EFM.dll
+bin\F-CK-1C_EFM.dll
 ```
 
-## Copy DLL into mod bin
+Only `Release | x64` is supported for runtime use.
 
-```powershell
-Copy-Item `
-  ".\src\efm\x64\Release\F-CK-1C_EFM.dll" `
-  ".\bin\F-CK-1C_EFM.dll" `
-  -Force
-```
+## Recommended Command
 
-## Build and copy in one go
-
-```powershell
-Set-Location .\src\efm
-MSBuild.exe .\F-CK-1C_EFM.sln /t:Build /p:Configuration=Release /p:Platform=x64
-Copy-Item ".\x64\Release\F-CK-1C_EFM.dll" "..\..\bin\F-CK-1C_EFM.dll" -Force
-```
-
-## Clean build
-
-```powershell
-Set-Location .\src\efm
-MSBuild.exe .\F-CK-1C_EFM.sln /t:Clean,Build /p:Configuration=Release /p:Platform=x64
-Copy-Item ".\x64\Release\F-CK-1C_EFM.dll" "..\..\bin\F-CK-1C_EFM.dll" -Force
-```
-
-## Notes
-
-- `entry.lua` already references `F-CK-1C_EFM.dll`.
-- The current mod already has a DLL at `bin\F-CK-1C_EFM.dll`.
-- Do not build Debug, x86, or Win32 variants for runtime use.
-- If `MSBuild.exe` is not found, open the Visual Studio Developer Command Prompt first and run the same commands there.
+Run from the repository root:
 
 ```powershell
 .\tools\build_dll.ps1
 ```
+
+The script:
+
+- resolves `MSBuild.exe` from PATH or common Visual Studio install locations
+- rebuilds `src\efm\F-CK-1C_EFM.sln`
+- copies the output DLL into `bin\F-CK-1C_EFM.dll`
+- prints SHA256 hashes for the source and runtime DLL
+- exits with an error if MSBuild fails, the DLL is missing, or the copy fails
+
+## Requirements
+
+- Visual Studio Build Tools or Visual Studio with MSBuild
+- MSVC C++ toolchain and Windows SDK
+- C++ toolset compatible with `PlatformToolset=v142`
+
+Visual Studio 2019 Build Tools works directly. Newer Visual Studio versions can also work if they include the v142 toolset.
+
+## Manual Debug Command
+
+Use this only when debugging the Visual Studio project directly:
+
+```powershell
+Set-Location .\src\efm
+MSBuild.exe .\F-CK-1C_EFM.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64
+Copy-Item ".\x64\Release\F-CK-1C_EFM.dll" "..\..\bin\F-CK-1C_EFM.dll" -Force
+```
+
+Do not use Debug, x86, or Win32 builds for the runtime DLL.

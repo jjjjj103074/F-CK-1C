@@ -1,6 +1,16 @@
 #!/bin/sh
-# pre-commit hook: rebuild the runtime EFM DLL before creating a commit.
+# pre-commit hook: rebuild the runtime EFM DLL only when EFM inputs change.
 set -e
+
+EFM_CHANGES=$(git diff --cached --name-only --diff-filter=ACMR -- src/efm tools/build_dll.ps1 bin/F-CK-1C_EFM.dll)
+
+if [ -z "$EFM_CHANGES" ]; then
+    echo "[F-CK-1C] No staged EFM changes; skipping EFM DLL build."
+    exit 0
+fi
+
+echo "[F-CK-1C] Staged EFM changes detected:"
+echo "$EFM_CHANGES"
 
 echo "[F-CK-1C] Building EFM DLL (Release|x64) before commit..."
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1

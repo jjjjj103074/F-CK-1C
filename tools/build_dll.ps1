@@ -31,6 +31,20 @@ if (-not (Test-Path $slnPath)) {
     exit 2
 }
 
+$idGenerator = Join-Path $repoRoot 'tools\generate_dcs_ids.ps1'
+if (-not (Test-Path -LiteralPath $idGenerator)) {
+    Write-Error "DCS ID generator not found: $idGenerator"
+    exit 2
+}
+
+try {
+    & $idGenerator -RepoRoot $repoRoot
+}
+catch {
+    Write-Error "DCS ID generation failed: $($_.Exception.Message)"
+    exit 2
+}
+
 Write-Output "Using MSBuild: $MsBuildPath"
 Write-Output "Solution: $slnPath"
 Write-Output "Configuration: $Configuration | Platform: $Platform"
@@ -89,10 +103,16 @@ else {
 
 try {
     & $MsBuildPath $slnPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform /m /v:m
+    $msBuildExitCode = $LASTEXITCODE
 }
 catch {
     Write-Error "MSBuild failed. Command: $MsBuildPath`n$($_.Exception.Message)"
-    throw
+    exit 2
+}
+
+if ($msBuildExitCode -ne 0) {
+    Write-Error "MSBuild failed with exit code $msBuildExitCode. Command: $MsBuildPath $slnPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform" -ErrorAction Continue
+    exit $msBuildExitCode
 }
 
 $dllSrc = Join-Path $solutionDir "x64\$Configuration\F-CK-1C_EFM.dll"
@@ -108,7 +128,13 @@ if (-not (Test-Path $dllDstFolder)) {
     New-Item -Path $dllDstFolder -ItemType Directory | Out-Null
 }
 
-Copy-Item $dllSrc $dllDst -Force
+try {
+    Copy-Item $dllSrc $dllDst -Force -ErrorAction Stop
+}
+catch {
+    Write-Error "Failed to copy built DLL to runtime bin folder: $($_.Exception.Message)"
+    exit 4
+}
 
 Write-Output "Copied: $dllSrc -> $dllDst"
 
