@@ -1,13 +1,6 @@
 #include "TestHarness.h"
 
-#include "Core/AircraftState.h"
 #include "FM_data.h"
-
-namespace FM
-{
-Core::AircraftState test_aircraft_state;
-Core::AircraftState& aircraft_state = test_aircraft_state;
-}
 
 namespace
 {

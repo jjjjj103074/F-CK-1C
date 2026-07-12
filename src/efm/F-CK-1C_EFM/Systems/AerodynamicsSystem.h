@@ -28,12 +28,12 @@ struct AerodynamicsSystemConfig
 	double cy_flap = 0.0;
 	double airbrake_pitch_comp_k = 0.0;
 
-	double* mach_table = nullptr;
-	double* cx_zero_table = nullptr;
-	double* cy_alpha_table = nullptr;
-	double* roll_rate_max_table = nullptr;
-	double* alpha_max_table = nullptr;
-	double* cy_max_table = nullptr;
+	const double* mach_table = nullptr;
+	const double* cx_zero_table = nullptr;
+	const double* cy_alpha_table = nullptr;
+	const double* roll_rate_max_table = nullptr;
+	const double* alpha_max_table = nullptr;
+	const double* cy_max_table = nullptr;
 	unsigned table_size = 0;
 };
 

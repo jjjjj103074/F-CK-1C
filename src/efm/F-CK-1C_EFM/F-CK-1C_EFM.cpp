@@ -59,6 +59,13 @@ static const char* FCK1C_EFM_VERSION_DATE = "2026-04-01";
 // They are intentionally coarse groups so the next refactor can move state
 // by ownership instead of moving one variable at a time.
 
+static Core::AutopilotCommand read_autopilot_command();
+static Core::MaxPowerCommand read_max_power_command();
+static void observe_first_frame(const Core::Fck1cEfm& efm);
+static void observe_engine_shutdown(const Core::Fck1cEfm& efm);
+static void observe_thrust(const Core::Fck1cEfm& efm, const Core::MaxPowerCommand& command);
+static void observe_ground_diagnostics(const Core::Fck1cEfm& efm, double dt);
+
 namespace FM
 {
 static const size_t kFckPathMax = DcsBridge::kModulePathMax;
@@ -81,6 +88,40 @@ static bool resolve_saved_games_logs_dir(char* out, size_t out_size)
 {
 	return Common::resolve_saved_games_logs_dir(out, out_size);
 }
+
+class DcsEfmRuntime final : public Core::Fck1cEfmRuntime
+{
+public:
+	Core::AutopilotCommand read_autopilot() override
+	{
+		return read_autopilot_command();
+	}
+
+	Core::MaxPowerCommand read_max_power() override
+	{
+		return read_max_power_command();
+	}
+
+	void on_first_frame(const Core::Fck1cEfm& efm) override
+	{
+		observe_first_frame(efm);
+	}
+
+	void on_engine_shutdown(const Core::Fck1cEfm& efm) override
+	{
+		observe_engine_shutdown(efm);
+	}
+
+	void on_thrust_updated(const Core::Fck1cEfm& efm, const Core::MaxPowerCommand& command) override
+	{
+		observe_thrust(efm, command);
+	}
+
+	void on_ground_diagnostics(const Core::Fck1cEfm& efm, double dt) override
+	{
+		observe_ground_diagnostics(efm, dt);
+	}
+};
 
 static Core::Fck1cEfmConfig make_fck1c_efm_config()
 {
@@ -107,112 +148,24 @@ static Core::Fck1cEfmConfig make_fck1c_efm_config()
 	config.aerodynamics.alpha_max_table = FM_DATA::Aldop;
 	config.aerodynamics.cy_max_table = FM_DATA::CyMax;
 	config.aerodynamics.table_size = FM_DATA::kAeroTableSize;
+	config.engine.fuel_consumption = FM_DATA::fuel_consumption;
+	config.engine.start_time = FM_DATA::engine_start_time;
+	config.engine.spool_up_tau = FM_DATA::engine_spool_up_tau;
+	config.engine.spool_down_tau = FM_DATA::engine_spool_down_tau;
+	config.engine.mach_table = FM_DATA::engine_mach_table;
+	config.engine.max_thrust_table = FM_DATA::max_thrust;
+	config.engine.mach_table_size = FM_DATA::kEngineTableSize;
+	config.engine.throttle_input_table = FM_DATA::throttle_input_table;
+	config.engine.power_table = FM_DATA::engine_power_table;
+	config.engine.throttle_table_size = sizeof(FM_DATA::throttle_input_table) / sizeof(float);
 	config.left_engine_position = Vec3(-3.793, -0.391, -0.716);
 	config.right_engine_position = Vec3(-3.793, -0.391, 0.716);
 	return config;
 }
 
 // Single owner for DCS-neutral EFM state and configuration.
-Core::Fck1cEfm g_efm(make_fck1c_efm_config());
-Core::ForceMomentFrame& force_moment_frame = g_efm.force_moment();
-Core::Fck1cEfmSystems& efm_systems = g_efm.systems();
-
-// Compatibility aliases remain until the simulation pipeline moves into Core.
-Vec3& common_force = force_moment_frame.force;
-Vec3& common_moment = force_moment_frame.moment;
-Vec3& center_of_mass = force_moment_frame.center_of_mass;
-Core::AircraftState& aircraft_state = g_efm.aircraft_state();
-Vec3& wind = aircraft_state.wind;
-Vec3& velocity_world = aircraft_state.velocity_world;
-Vec3& velocity_body = aircraft_state.velocity_body;
-Vec3& angular_velocity_world = aircraft_state.angular_velocity_world;
-Vec3& angular_velocity_body = aircraft_state.angular_velocity_body;
-Vec3& airspeed = aircraft_state.airspeed;
-
-// EFMSTATE: Common/Units - shared constants; replace with Common/Units during utility extraction.
-double const pi = 3.1415926535897932384626433832795;
-double const rad_to_deg = 180.0 / pi;
-
-// Engine RPM compatibility value; retained until the remaining engine readout bridge is cleaned up.
-double idle_rpm = FM_DATA::idle_rpm / 100; // RPM % at idle throttle
-
-const Systems::AerodynamicsSystemConfig& aerodynamics_config = g_efm.config().aerodynamics;
-Systems::AerodynamicsSystemState& aerodynamics_system = efm_systems.aerodynamics;
-const Vec3& left_engine_pos = g_efm.config().left_engine_position;
-const Vec3& right_engine_pos = g_efm.config().right_engine_position;
-
-// EFMSTATE: Systems/InputSystem - pilot primary control state.
-Systems::PrimaryControlState& primary_control_state = efm_systems.primary_controls;
-Core::ControlSurfaceState& control_surface_state = g_efm.control_surfaces();
-
-// Compatibility aliases while call sites migrate to primary_control_state.
-double& pitch_input = primary_control_state.pitch.input;
-int&	pitch_discrete = primary_control_state.pitch.discrete;
-bool&	pitch_analog = primary_control_state.pitch.analog;
-double&	pitch_trim = primary_control_state.pitch.trim;
-double& elevator_command = control_surface_state.elevator_command;
-
-double& roll_input = primary_control_state.roll.input;
-int&	roll_discrete = primary_control_state.roll.discrete;
-bool&	roll_analog = primary_control_state.roll.analog;
-double& roll_trim = primary_control_state.roll.trim;
-double& aileron_command = control_surface_state.aileron_command;
-
-double& yaw_input = primary_control_state.yaw.input;
-int&	yaw_discrete = primary_control_state.yaw.discrete;
-bool&	yaw_analog = primary_control_state.yaw.analog;
-double&	yaw_trim = primary_control_state.yaw.trim;
-double& rudder_command = control_surface_state.rudder_command;
-
-// EFMSTATE: Systems/EngineSystem - engine switches, throttle, readout, thrust, AB, and nozzle state.
-Systems::EngineSystemState& engine_system = efm_systems.engines;
-
-// Compatibility aliases while call sites migrate to engine_system.
-bool&	left_engine_switch = engine_system.left.switch_on;
-double&	left_throttle_input = engine_system.left.throttle_input;
-double&	left_throttle_output = engine_system.left.throttle_output;
-double&	left_engine_power_readout = engine_system.left.power_readout;
-double&	left_thrust_force = engine_system.left.thrust_force;
-
-bool&	right_engine_switch = engine_system.right.switch_on;
-double&	right_throttle_input = engine_system.right.throttle_input;
-double&	right_throttle_output = engine_system.right.throttle_output;
-double&	right_engine_power_readout = engine_system.right.power_readout;
-double&	right_thrust_force = engine_system.right.thrust_force;
-
-// EFMSTATE: Systems/InputSystem - throttle axis/keyboard arbitration state.
-Systems::ThrottleInputState& throttle_input_state = efm_systems.throttle_inputs;
-
-// Compatibility aliases while call sites migrate to throttle_input_state.
-bool&	throttle_axis_inverted = throttle_input_state.axis_inverted; // true = axis forward -> larger throttle
-double&	throttle_axis_cmd_left = throttle_input_state.left.axis_cmd;
-double&	throttle_axis_cmd_right = throttle_input_state.right.axis_cmd;
-double&	throttle_keyboard_cmd_left = throttle_input_state.left.keyboard_cmd;
-double&	throttle_keyboard_cmd_right = throttle_input_state.right.keyboard_cmd;
-bool&	throttle_use_axis_left = throttle_input_state.left.use_axis;
-bool&	throttle_use_axis_right = throttle_input_state.right.use_axis;
-double&	pilot_throttle_cmd_left = throttle_input_state.left.pilot_cmd;
-double&	pilot_throttle_cmd_right = throttle_input_state.right.pilot_cmd;
-
-// EFMSTATE: Systems/EngineSystem - final engine throttle command and afterburner model state.
-double&	engine_throttle_cmd_left = engine_system.throttle_cmd_left; // Final command after pilot/FBW mixing
-double&	engine_throttle_cmd_right = engine_system.throttle_cmd_right;
-double&	afterburner_detent = engine_system.afterburner.detent;       // Throttle position where AB starts
-double&	afterburner_thrust_factor = engine_system.afterburner.thrust_factor; // AB max thrust = dry thrust * factor
-																		   // TFE1042-70: 2x46.7 kN AB / 2x27.0 kN MIL ~= 1.73
-double&	afterburner_fuel_factor = engine_system.afterburner.fuel_factor;   // Fuel burn multiplier at full AB
-double&	afterburner_core_rpm = engine_system.afterburner.core_rpm;      // Core RPM readout while in AB
-double&	afterburner_core_drop_time = engine_system.afterburner.core_drop_time; // Seconds for core RPM transition between mil and AB
-double&	left_afterburner_ratio = engine_system.left.afterburner_ratio;    // 0..1  (lagged, actual AB ratio driving thrust & nozzle)
-double&	right_afterburner_ratio = engine_system.right.afterburner_ratio;   // 0..1
-// Afterburner spool-lag state.
-// lit flag becomes true only when the engine throttle_output has reached near-military power.
-// Once lit, the ratio ramps in over ab_spool_in_tau; on extinguish it ramps out over ab_spool_out_tau.
-bool&	left_afterburner_lit = engine_system.left.afterburner_lit;
-bool&	right_afterburner_lit = engine_system.right.afterburner_lit;
-double&	ab_spool_in_tau = engine_system.afterburner.spool_in_tau;   // ~2 s ramp from ignition to full AB
-double&	ab_spool_out_tau = engine_system.afterburner.spool_out_tau;   // ~0.6 s to extinguish flame
-double&	ab_light_throttle_output_min = engine_system.afterburner.light_throttle_output_min;  // throttle_output must reach this before AB can light
+DcsEfmRuntime dcs_runtime;
+Core::Fck1cEfm g_efm(make_fck1c_efm_config(), dcs_runtime);
 
 // Lift and drag devices
 enum FlapMode
@@ -222,103 +175,10 @@ enum FlapMode
 	FLAP_MODE_DOWN = 2,
 };
 
-// EFMSTATE: Systems/AirframeDeviceSystem - high-lift, speedbrake, and gear command/position state.
-Systems::AirframeDeviceState& airframe_device_state = efm_systems.airframe_devices;
-
-// Compatibility aliases while call sites migrate to airframe_device_state.
-bool&	airbrake_switch = airframe_device_state.airbrake_switch;
-double&	airbrake_pos = airframe_device_state.airbrake_pos;
-double&	flaps_pos = airframe_device_state.flaps_pos;
-int&	flap_mode = airframe_device_state.flap_mode;
-double&	slats_pos = airframe_device_state.slats_pos;
-
-// Landing gear
-// EFMSTATE: Systems/LandingGearSystem - brake, wheel animation, and carrier launch state.
-bool&	gear_switch = airframe_device_state.gear_switch;
-double&	gear_pos = airframe_device_state.gear_pos;
-Systems::WheelState& wheel_state = efm_systems.wheels;
 DcsBridge::CarrierLaunchState carrier_launch = {};
-double&	current_mass = aircraft_state.current_mass;
-
-// EFMSTATE: Systems/FuelSystem - fuel quantities and pending DCS mass delta.
-Systems::FuelSystem& fuel_system = efm_systems.fuel;
-
-// EFMSTATE: Core/AircraftState - atmosphere, terrain, speed, aero angles, and derived flight state.
-double& atmosphere_density = aircraft_state.atmosphere_density; // Atmosphere/air density (Pascals)
-double&	altitude_ASL = aircraft_state.altitude_asl; // Altitude above sea level
-double&	altitude_AGL = aircraft_state.altitude_agl; // Altitude above ground/surface level
-double&	surface_height_raw = aircraft_state.surface_height_raw;
-double&	surface_height_with_objects = aircraft_state.surface_height_with_objects;
-unsigned& surface_type_raw = aircraft_state.surface_type_raw;
-double&	position_world_z = aircraft_state.position_world_z; // World position Z for debug
-double&	V_scalar = aircraft_state.speed_scalar; // Velocity scalar
-double& speed_of_sound = aircraft_state.speed_of_sound; // Speed of sound (m/s)
-double&	mach = aircraft_state.mach; // Air speed as a multiple of the speed of sound
-double&	engine_alt_effect = aircraft_state.engine_alt_effect; // Multiplier of maximum thrust based on altitude
-
-double& aoa = aircraft_state.aoa; // Angle of attack in radians
-double& alpha = aircraft_state.alpha; // Angle of attack in degrees
-
-double& aos = aircraft_state.aos; // Angle of slide in radians
-double& beta = aircraft_state.beta; // Angle of slide in degrees
-
-double& g = aircraft_state.g; // G force
-
-double&	atmosphere_temperature = aircraft_state.atmosphere_temperature; // Current temperature in Kelvin
-
-// EFMSTATE: Systems/SuspensionSystem - native/fallback suspension feedback and WOW state.
-const Systems::SuspensionSystemConfig& suspension_config = g_efm.config().suspension;
-Systems::SuspensionSystemState& suspension_system = efm_systems.suspension;
-
-// Compatibility aliases while call sites migrate to suspension_system.
-bool&	on_ground = suspension_system.on_ground; // Is the aircraft currently on the ground?
-double&	fallback_ground_force = suspension_system.fallback_ground_force;
-
-// Pitch
-// EFMSTATE: Core/AircraftState - aircraft attitude and body-rate state.
-double&	pitch = aircraft_state.pitch; // Pitch angle in radians
-double&	pitch_rate = aircraft_state.pitch_rate;
-
-// Roll
-double&	roll = aircraft_state.roll; // Roll/bank angle in radians
-double&	roll_rate = aircraft_state.roll_rate;
-
-// Yaw/heading
-double&	heading = aircraft_state.heading;
-double&	yaw_rate = aircraft_state.yaw_rate;
-
-// Damage stuff
-// EFMSTATE: Systems/DamageModel - DCS damage element integrity and subsystem multipliers.
-Systems::DamageModel& damage_model = efm_systems.damage;
-
-// EFMREF: CUSTOM_SYSTEM - Damage model reset; candidate for Systems/DamageModel.
-static void reset_damage_state()
-{
-	Systems::reset_damage_model(damage_model);
-}
-
-// Optional parameters set in the options menu.
-// EFMSTATE: DcsInterface/GameOptions - gameplay option flags set by DCS callbacks.
-Core::GameplayState& gameplay_state = g_efm.gameplay();
-bool& invincible = gameplay_state.invincible; // No damage received if true
-bool& infinite_fuel = gameplay_state.infinite_fuel; // No fuel drained if true
-bool& easy_flight = gameplay_state.easy_flight; // Easier and more stable flight characteristics if true
-
-// Cockpit/head shaking intensity.
-// EFMSTATE: DcsInterface/CockpitOutput - cockpit shake value returned to DCS.
-double& shake_amplitude = gameplay_state.shake_amplitude;
-
-// EFMSTATE: Systems/StartupSystem - simulation clock, startup mode, and first-frame state.
-Systems::StartupSystemState& startup_system = efm_systems.startup;
 Diagnostics::SuspensionDiagnosticsState suspension_diagnostics;
 Diagnostics::SuspensionDiagnosticsConfig suspension_diagnostics_config;
 bool suspension_diagnostics_config_loaded = false;
-double& left_nozzle_aperture = engine_system.left.nozzle_aperture;
-double& right_nozzle_aperture = engine_system.right.nozzle_aperture;
-
-// EFMSTATE: Systems/FBWController - FBW CAT tables, tuning config, and runtime state.
-const Systems::FBWControllerConfig& fbw_config = g_efm.config().fbw;
-Systems::FBWControllerState& fbw_controller = efm_systems.fbw;
 
 // DLL-Lua interface
 // EFMSTATE: DcsInterface/CockpitBridge - cockpit parameter API entrypoint.
@@ -327,8 +187,6 @@ EDPARAM interface;
 
 using namespace FM;
 
-// EFMREF: forward declarations mirror tagged definitions below.
-void add_local_force(const Vec3 & Force, const Vec3 & Force_pos);
 static void dbg_susp(const char* msg);
 static void susp_probe_log(const char* msg);
 static void suspension_debug_log(const char* msg);
@@ -399,6 +257,7 @@ static void active_susp_node_names(const char*& nose, const char*& left, const c
 // EFMREF: DCS_BRIDGE - Converts FM/config.lua and suspension geometry into diagnostics-only config.
 static void refresh_suspension_diagnostics_config()
 {
+	const Systems::SuspensionSystemConfig& suspension_config = g_efm.config().suspension;
 	Diagnostics::SuspensionDiagnosticsConfig config;
 	config.use_modelviewer_nodes = config_flag_is_true("SUSP_USE_MODELVIEWER_WHEEL_NODES");
 	config.geometry_test = config_flag_is_true("SUSP_GEOMETRY_TEST");
@@ -433,13 +292,13 @@ static void refresh_suspension_diagnostics_config()
 // EFMREF: CUSTOM_SYSTEM - Landing-gear/suspension state query; candidate for Systems/SuspensionSystem.
 static inline bool has_suspension_feedback()
 {
-	return Systems::has_suspension_feedback(suspension_system);
+	return Systems::has_suspension_feedback(g_efm.systems().suspension);
 }
 
 // EFMREF: CUSTOM_SYSTEM - Weight-on-wheels state query; candidate for Systems/SuspensionSystem.
 static inline bool any_wow()
 {
-	return Systems::any_wow(suspension_system);
+	return Systems::any_wow(g_efm.systems().suspension);
 }
 
 // EFMREF: DIAGNOSTICS - Thin adapter used by DCS startup callbacks.
@@ -451,210 +310,104 @@ static void reset_startup_susp_probe_state()
 // EFMREF: DCS_BRIDGE - Maps suspension feedback into draw-arg space.
 static inline double suspension_visual_arg(int idx)
 {
-	return Systems::suspension_visual_arg(suspension_system, idx, gear_pos);
-}
-
-// EFMREF: CUSTOM_SYSTEM - Optional fallback ground-force model; candidate for Systems/SuspensionSystem.
-static inline double apply_fallback_ground_forces()
-{
-	const Systems::SuspensionFallbackInput input = {
-		altitude_AGL,
-		pitch,
-		roll,
-		velocity_world.y,
-		velocity_body.x,
-		gear_pos,
-		current_mass,
-		left_throttle_input,
-		right_throttle_input,
-		left_thrust_force,
-		right_thrust_force,
-		wheel_state.brake_left,
-		wheel_state.brake_right
-	};
-
-	return Systems::apply_fallback_ground_forces(
-		suspension_system,
-		suspension_config,
-		input,
-		[](const Common::Vec3& force, const Common::Vec3& pos)
-		{
-			add_local_force(force, pos);
-		});
-}
-
-// EFMREF: CUSTOM_SYSTEM - Nose-wheel steering law; candidate for Systems/LandingGearSystem.
-static inline double compute_nose_wheel_steering()
-{
-	return Systems::compute_nose_wheel_steering(wheel_state, gear_pos, V_scalar, yaw_input);
+	const Core::Fck1cEfmSystems& systems = g_efm.systems();
+	return Systems::suspension_visual_arg(
+		systems.suspension,
+		idx,
+		systems.airframe_devices.gear_pos);
 }
 
 // EFMREF: DCS_BRIDGE - Builds a read-only diagnostics snapshot from current EFM state.
-static Diagnostics::SuspensionDiagnosticsSnapshot make_suspension_diagnostics_snapshot()
+static Diagnostics::SuspensionDiagnosticsSnapshot make_suspension_diagnostics_snapshot(
+	const Core::Fck1cEfm& efm)
 {
+	const Core::AircraftState& aircraft = efm.aircraft_state();
+	const Core::Fck1cEfmSystems& systems = efm.systems();
+	const Core::ControlSurfaceState& controls = efm.control_surfaces();
 	Diagnostics::SuspensionDiagnosticsSnapshot snapshot;
-	snapshot.simulation_time = startup_system.simulation_time;
-	snapshot.altitude_agl = altitude_AGL;
-	snapshot.surface_height = surface_height_raw;
-	snapshot.surface_height_with_objects = surface_height_with_objects;
-	snapshot.surface_type = surface_type_raw;
-	snapshot.vertical_velocity = velocity_world.y;
-	snapshot.pitch_deg = Common::deg(pitch);
-	snapshot.roll_deg = Common::deg(roll);
-	snapshot.current_mass = current_mass;
-	snapshot.gear_pos = gear_pos;
+	snapshot.simulation_time = systems.startup.simulation_time;
+	snapshot.altitude_agl = aircraft.altitude_agl;
+	snapshot.surface_height = aircraft.surface_height_raw;
+	snapshot.surface_height_with_objects = aircraft.surface_height_with_objects;
+	snapshot.surface_type = aircraft.surface_type_raw;
+	snapshot.vertical_velocity = aircraft.velocity_world.y;
+	snapshot.pitch_deg = Common::deg(aircraft.pitch);
+	snapshot.roll_deg = Common::deg(aircraft.roll);
+	snapshot.current_mass = aircraft.current_mass;
+	snapshot.gear_pos = systems.airframe_devices.gear_pos;
 	for (int index = 0; index < Diagnostics::kDiagnosticWheelCount; ++index)
 	{
-		snapshot.feedback_valid[index] = suspension_system.feedback_valid[index];
-		snapshot.wow[index] = suspension_system.wow[index];
-		snapshot.compression[index] = suspension_system.compression[index];
-		snapshot.force_vec[index] = suspension_system.force_vec[index];
-		snapshot.force_magnitude[index] = suspension_system.force_mag[index];
-		snapshot.fallback_wow[index] = suspension_system.fallback_wow[index];
-		snapshot.fallback_compression[index] = suspension_system.fallback_compression[index];
+		snapshot.feedback_valid[index] = systems.suspension.feedback_valid[index];
+		snapshot.wow[index] = systems.suspension.wow[index];
+		snapshot.compression[index] = systems.suspension.compression[index];
+		snapshot.force_vec[index] = systems.suspension.force_vec[index];
+		snapshot.force_magnitude[index] = systems.suspension.force_mag[index];
+		snapshot.fallback_wow[index] = systems.suspension.fallback_wow[index];
+		snapshot.fallback_compression[index] = systems.suspension.fallback_compression[index];
 	}
-	snapshot.fallback_ground_force = suspension_system.fallback_ground_force;
-	snapshot.left_throttle_output = engine_system.left.throttle_output;
-	snapshot.right_throttle_output = engine_system.right.throttle_output;
-	snapshot.left_thrust = engine_system.left.thrust_force;
-	snapshot.right_thrust = engine_system.right.thrust_force;
-	snapshot.velocity_world = aircraft_state.velocity_world;
-	snapshot.velocity_body = aircraft_state.velocity_body;
-	snapshot.angular_velocity_world = aircraft_state.angular_velocity_world;
-	snapshot.angular_velocity_body = aircraft_state.angular_velocity_body;
-	snapshot.brake = wheel_state.brake;
-	snapshot.brake_left = wheel_state.brake_left;
-	snapshot.brake_right = wheel_state.brake_right;
-	snapshot.yaw_input = yaw_input;
-	snapshot.rudder_command = rudder_command;
-	snapshot.nose_wheel_command = compute_nose_wheel_steering();
-	snapshot.nose_wheel_draw_arg = wheel_state.nose_steering;
-	snapshot.nose_turn_enabled = wheel_state.nose_turn_enabled;
+	snapshot.fallback_ground_force = systems.suspension.fallback_ground_force;
+	snapshot.left_throttle_output = systems.engines.left.throttle_output;
+	snapshot.right_throttle_output = systems.engines.right.throttle_output;
+	snapshot.left_thrust = systems.engines.left.thrust_force;
+	snapshot.right_thrust = systems.engines.right.thrust_force;
+	snapshot.velocity_world = aircraft.velocity_world;
+	snapshot.velocity_body = aircraft.velocity_body;
+	snapshot.angular_velocity_world = aircraft.angular_velocity_world;
+	snapshot.angular_velocity_body = aircraft.angular_velocity_body;
+	snapshot.brake = systems.wheels.brake;
+	snapshot.brake_left = systems.wheels.brake_left;
+	snapshot.brake_right = systems.wheels.brake_right;
+	snapshot.yaw_input = systems.primary_controls.yaw.input;
+	snapshot.rudder_command = controls.rudder_command;
+	snapshot.nose_wheel_command = Systems::compute_nose_wheel_steering(
+		systems.wheels,
+		systems.airframe_devices.gear_pos,
+		aircraft.speed_scalar,
+		systems.primary_controls.yaw.input);
+	snapshot.nose_wheel_draw_arg = systems.wheels.nose_steering;
+	snapshot.nose_turn_enabled = systems.wheels.nose_turn_enabled;
 	return snapshot;
 }
 
 static Diagnostics::ThrustDiagnosticsSnapshot make_thrust_diagnostics_snapshot(
+	const Core::Fck1cEfm& efm,
 	double maxpower_ready,
 	double maxpower_value)
 {
+	const Core::Fck1cEfmConfig& config = efm.config();
+	const Core::Fck1cEfmSystems& systems = efm.systems();
+	const Core::ForceMomentFrame& frame = efm.force_moment();
 	Diagnostics::ThrustDiagnosticsSnapshot snapshot;
-	snapshot.left_thrust = left_thrust_force;
-	snapshot.right_thrust = right_thrust_force;
-	const Vec3 left_force(left_thrust_force, 0.0, 0.0);
-	const Vec3 right_force(right_thrust_force, 0.0, 0.0);
-	const Vec3 left_moment = cross(left_engine_pos, left_force);
-	const Vec3 right_moment = cross(right_engine_pos, right_force);
+	snapshot.left_thrust = systems.engines.left.thrust_force;
+	snapshot.right_thrust = systems.engines.right.thrust_force;
+	const Vec3 left_force(snapshot.left_thrust, 0.0, 0.0);
+	const Vec3 right_force(snapshot.right_thrust, 0.0, 0.0);
+	const Vec3 left_moment = cross(config.left_engine_position, left_force);
+	const Vec3 right_moment = cross(config.right_engine_position, right_force);
 	snapshot.net_moment = Vec3(
-		left_moment.x + right_moment.x + common_moment.x,
-		left_moment.y + right_moment.y + common_moment.y,
-		left_moment.z + right_moment.z + common_moment.z);
+		left_moment.x + right_moment.x + frame.moment.x,
+		left_moment.y + right_moment.y + frame.moment.y,
+		left_moment.z + right_moment.z + frame.moment.z);
 	for (int index = 0; index < Diagnostics::kDiagnosticWheelCount; ++index)
 	{
-		snapshot.suspension_force[index] = suspension_system.force_mag[index];
+		snapshot.suspension_force[index] = systems.suspension.force_mag[index];
 	}
 	snapshot.maxpower_ready = maxpower_ready;
 	snapshot.maxpower_value = maxpower_value;
-	snapshot.left_engine_switch = left_engine_switch;
-	snapshot.right_engine_switch = right_engine_switch;
-	snapshot.left_throttle_input = left_throttle_input;
-	snapshot.right_throttle_input = right_throttle_input;
-	snapshot.left_throttle_output = left_throttle_output;
-	snapshot.right_throttle_output = right_throttle_output;
-	snapshot.left_power_readout = left_engine_power_readout;
-	snapshot.right_power_readout = right_engine_power_readout;
-	snapshot.left_wing_integrity = damage_model.left_wing_integrity;
-	snapshot.right_wing_integrity = damage_model.right_wing_integrity;
-	snapshot.left_engine_integrity = damage_model.left_engine_integrity;
-	snapshot.right_engine_integrity = damage_model.right_engine_integrity;
-	snapshot.internal_fuel = fuel_system.internal_fuel;
+	snapshot.left_engine_switch = systems.engines.left.switch_on;
+	snapshot.right_engine_switch = systems.engines.right.switch_on;
+	snapshot.left_throttle_input = systems.engines.left.throttle_input;
+	snapshot.right_throttle_input = systems.engines.right.throttle_input;
+	snapshot.left_throttle_output = systems.engines.left.throttle_output;
+	snapshot.right_throttle_output = systems.engines.right.throttle_output;
+	snapshot.left_power_readout = systems.engines.left.power_readout;
+	snapshot.right_power_readout = systems.engines.right.power_readout;
+	snapshot.left_wing_integrity = systems.damage.left_wing_integrity;
+	snapshot.right_wing_integrity = systems.damage.right_wing_integrity;
+	snapshot.left_engine_integrity = systems.damage.left_engine_integrity;
+	snapshot.right_engine_integrity = systems.damage.right_engine_integrity;
+	snapshot.internal_fuel = systems.fuel.internal_fuel;
 	return snapshot;
-}
-
-// EFMREF: CUSTOM_SYSTEM - Pilot/FBW throttle blending; candidate for Systems/InputSystem or FBWController.
-static inline double compose_engine_throttle_cmd(double pilot_cmd, double fbw_cmd)
-{
-	return Systems::compose_engine_throttle_cmd(
-		pilot_cmd,
-		fbw_cmd,
-		fbw_controller.throttle_override,
-		fbw_controller.throttle_blend);
-}
-
-// EFMREF: CUSTOM_SYSTEM - Applies throttle arbitration to engine commands.
-static inline void update_engine_throttle_inputs_from_interface()
-{
-	Systems::update_pilot_throttle_cmds(throttle_input_state);
-	Systems::apply_engine_throttle_commands(
-		engine_system,
-		compose_engine_throttle_cmd(pilot_throttle_cmd_left, fbw_controller.throttle_cmd_left),
-		compose_engine_throttle_cmd(pilot_throttle_cmd_right, fbw_controller.throttle_cmd_right));
-}
-
-// EFMREF: CUSTOM_SYSTEM - Pilot axis/discrete input update; candidate for Systems/InputSystem.
-static void update_primary_control_inputs()
-{
-	Systems::update_primary_control_inputs(primary_control_state);
-}
-
-// EFMREF: DCS_BRIDGE - Adapts FM globals into Systems/FBWController.
-static void update_fbw_controller_from_fm_state(double dt, double qbar, double alpha_limit_deg)
-{
-	Systems::FBWControllerInput input;
-	input.dt = dt;
-	input.qbar = qbar;
-	input.alpha_limit_deg = alpha_limit_deg;
-	input.roll = roll;
-	input.pitch = pitch;
-	input.roll_rate = roll_rate;
-	input.pitch_rate = pitch_rate;
-	input.yaw_rate = yaw_rate;
-	input.alpha = alpha;
-	input.beta = beta;
-	input.speed_scalar = V_scalar;
-	input.mach = mach;
-	input.g = g;
-	input.roll_input = roll_input;
-	input.roll_trim = roll_trim;
-	input.pitch_input = pitch_input;
-	input.pitch_trim = pitch_trim;
-	input.yaw_input = yaw_input;
-	input.yaw_trim = yaw_trim;
-	input.gear_pos = gear_pos;
-	input.wow = has_suspension_feedback() && any_wow();
-	input.elevator_command = elevator_command;
-	input.aileron_command = aileron_command;
-	input.rudder_command = rudder_command;
-
-	const Systems::FBWControllerOutput output = Systems::update_fbw_controller(fbw_controller, fbw_config, input);
-	elevator_command = output.elevator_command;
-	aileron_command = output.aileron_command;
-	rudder_command = output.rudder_command;
-}
-
-// EFMREF: DCS_BRIDGE - Adapts current FM/system state into the aerodynamic model input.
-static Systems::AerodynamicsFrameInput make_aerodynamics_frame_input()
-{
-	Systems::AerodynamicsFrameInput input;
-	input.center_of_mass = center_of_mass;
-	input.mach = mach;
-	input.aoa = aoa;
-	input.alpha_deg = alpha;
-	input.aos = aos;
-	input.roll = roll;
-	input.pitch_rate = pitch_rate;
-	input.roll_rate = roll_rate;
-	input.yaw_rate = yaw_rate;
-	input.elevator_command = elevator_command;
-	input.aileron_command = aileron_command;
-	input.rudder_command = rudder_command;
-	input.airbrake_pos = airbrake_pos;
-	input.flaps_pos = flaps_pos;
-	input.gear_pos = gear_pos;
-	input.left_wing_integrity = damage_model.left_wing_integrity;
-	input.right_wing_integrity = damage_model.right_wing_integrity;
-	input.tail_integrity = damage_model.tail_integrity;
-	input.easy_flight = easy_flight;
-	return input;
 }
 
 
@@ -676,37 +429,109 @@ static void update_autopilot_from_lua()
 	DcsBridge::update_autopilot_from_lua(interface, ap_params, ap_state);
 }
 
-// EFMREF: CUSTOM_SYSTEM - Internal force accumulator helper; candidate for Core/ForceMoment.
-// Add force
-void add_local_force(const Vec3 & Force, const Vec3 & Force_pos)
+static Core::AutopilotCommand read_autopilot_command()
 {
-	Core::add_local_force(common_force, common_moment, center_of_mass, Force, Force_pos);
+	update_autopilot_from_lua();
+	Core::AutopilotCommand command;
+	command.master = ap_state.master;
+	command.bypass = ap_state.bypass;
+	command.auto_throttle_engaged = ap_state.at_engaged;
+	command.pitch_command = ap_state.pitch_cmd;
+	command.roll_command = ap_state.roll_cmd;
+	command.throttle_command = ap_state.throttle_cmd;
+	return command;
 }
 
-// EFMREF: CUSTOM_SYSTEM - Internal moment accumulator helper; candidate for Core/ForceMoment.
-// Add moment
-void add_local_moment(const Vec3& Moment)
+static Core::MaxPowerCommand read_max_power_command()
 {
-	Core::add_local_moment(common_moment, Moment);
+	const DcsBridge::MaxPowerSwitchState state = DcsBridge::read_max_power_switch(interface, cockpit_params);
+	Core::MaxPowerCommand command;
+	command.ready = state.ready;
+	command.value = state.value;
+	return command;
+}
+
+static void observe_first_frame(const Core::Fck1cEfm& efm)
+{
+	(void)efm;
+	refresh_suspension_diagnostics_config();
+	Diagnostics::log_ground_configuration_once(
+		suspension_diagnostics,
+		suspension_diagnostics_config,
+		[](const char* message) { dbg_susp(message); },
+		[](const char* message) { susp_probe_log(message); });
+}
+
+static void observe_engine_shutdown(const Core::Fck1cEfm& efm)
+{
+	const Core::AircraftState& aircraft = efm.aircraft_state();
+	const Core::Fck1cEfmSystems& systems = efm.systems();
+	char shutdown_dbg[256];
+	Diagnostics::format_engine_shutdown(
+		shutdown_dbg,
+		sizeof(shutdown_dbg),
+		systems.fuel.internal_fuel,
+		aircraft.altitude_asl,
+		systems.engines.left.switch_on,
+		systems.engines.right.switch_on);
+	dbg_susp(shutdown_dbg);
+}
+
+static void observe_thrust(const Core::Fck1cEfm& efm, const Core::MaxPowerCommand& command)
+{
+	char dbgline[768];
+	Diagnostics::format_thrust_diagnostics(
+		dbgline,
+		sizeof(dbgline),
+		make_thrust_diagnostics_snapshot(efm, command.ready, command.value));
+	dbg_susp(dbgline);
+}
+
+static void observe_ground_diagnostics(const Core::Fck1cEfm& efm, double dt)
+{
+	if (!suspension_diagnostics_config_loaded)
+	{
+		refresh_suspension_diagnostics_config();
+	}
+	const Diagnostics::SuspensionDiagnosticsSnapshot snapshot = make_suspension_diagnostics_snapshot(efm);
+	Diagnostics::log_startup_suspension_probe(
+		suspension_diagnostics,
+		suspension_diagnostics_config,
+		snapshot,
+		dt,
+		[](const char* message) { susp_probe_log(message); });
+	Diagnostics::update_periodic_suspension_probe(
+		suspension_diagnostics,
+		suspension_diagnostics_config,
+		snapshot,
+		dt,
+		[](const char* message) { susp_probe_log(message); });
+	Diagnostics::update_periodic_ground_log(
+		suspension_diagnostics,
+		suspension_diagnostics_config,
+		snapshot,
+		[](const char* message) { dbg_susp(message); });
 }
 
 // EFMREF: DCS_CONTRACT - DCS force callback; keep exported name/signature stable.
 void ed_fm_add_local_force(double & x,double &y,double &z,double & pos_x,double & pos_y,double & pos_z)
 {
-	x = common_force.x;
-	y = common_force.y;
-	z = common_force.z;
-	pos_x = center_of_mass.x;
-	pos_y = center_of_mass.y;
-	pos_z = center_of_mass.z;
+	const Core::ForceMomentFrame& frame = g_efm.force_moment();
+	x = frame.force.x;
+	y = frame.force.y;
+	z = frame.force.z;
+	pos_x = frame.center_of_mass.x;
+	pos_y = frame.center_of_mass.y;
+	pos_z = frame.center_of_mass.z;
 }
 
 // EFMREF: DCS_CONTRACT - DCS moment callback; keep exported name/signature stable.
 void ed_fm_add_local_moment(double& x, double& y, double& z)
 {
-	x = common_moment.x;
-	y = common_moment.y;
-	z = common_moment.z;
+	const Core::ForceMomentFrame& frame = g_efm.force_moment();
+	x = frame.moment.x;
+	y = frame.moment.y;
+	z = frame.moment.z;
 }
 
 /*
@@ -723,245 +548,12 @@ void ed_fm_add_global_moment(double & x,double &y,double &z)
 }
 */
 
-// Fuel consumption
-// EFMREF: CUSTOM_SYSTEM - Fuel burn model; candidate for Systems/FuelSystem.
-void simulate_fuel_consumption(double dt)
-{
-	Systems::simulate_fuel_consumption(
-		fuel_system,
-		dt,
-		FM_DATA::fuel_consumption,
-		left_throttle_output,
-		right_throttle_output,
-		left_afterburner_ratio,
-		right_afterburner_ratio,
-		afterburner_fuel_factor);
-}
-
 // The most important part of this whole thing.
 // dt is apparently fixed to 0.006 seconds.
 // EFMREF: DCS_CONTRACT - Main DCS simulation callback; future thin wrapper around Core/Fck1cEfm.
 void ed_fm_simulate(double dt)
 {
-	Systems::advance_simulation_time(startup_system, dt);
-
-	Core::reset_force_moment(common_force, common_moment);
-
-	// Update the force positions to be relative to the center of mass.
-	// Somewhat unrealistic, but if this isn't done it usually leads to really weird flight behaviour.
-	if (!startup_system.first_frame_completed)
-	{
-		Systems::initialize_aerodynamic_force_positions(aerodynamics_system, aerodynamics_config, center_of_mass);
-		refresh_suspension_diagnostics_config();
-		Diagnostics::log_ground_configuration_once(
-			suspension_diagnostics,
-			suspension_diagnostics_config,
-			[](const char* message) { dbg_susp(message); },
-			[](const char* message) { susp_probe_log(message); });
-	}
-
-	Systems::update_airframe_device_positions(airframe_device_state, V_scalar, FLAP_MODE_DOWN, FLAP_MODE_AUTO);
-	Systems::update_nose_wheel_steering(wheel_state, compute_nose_wheel_steering());
-
-#pragma region AERODYNAMICS
-	Core::update_airspeed(aircraft_state);
-
-	const double ground_speed = Core::ground_speed(aircraft_state);
-	Systems::update_wheel_spin(wheel_state, ground_speed, dt, gear_pos, altitude_AGL, suspension_config.fallback_wheel_radius, pi);
-
-	// Many coefficients are not static, they change with mach.
-	// Here, we use a linear interpolation (lerp for short) function for these coefficients.
-	// See the definition of the lerp function in ED_FM_Utility.h for more info on how it works.
-
-	Systems::update_aerodynamic_conditions(
-		aerodynamics_system,
-		aerodynamics_config,
-		center_of_mass,
-		atmosphere_density,
-		V_scalar,
-		mach,
-		alpha,
-		beta,
-		slats_pos);
-	const double AlphaMax_ = aerodynamics_system.alpha_max_deg;
-	const double q = aerodynamics_system.dynamic_pressure;
-
-	// Update pilot inputs first, then run FBW once per frame.
-	update_primary_control_inputs();
-
-	// Autopilot: read commands from Lua and blend with pilot inputs.
-	// AP sits above the FBW: it replaces stick commands, and the FBW
-	// processes them identically to pilot inputs (rate limiting, gain
-	// scheduling, safety features all remain active).
-	update_autopilot_from_lua();
-	if (ap_state.master && !ap_state.bypass)
-	{
-		// AP overrides pitch/roll inputs; pilot trim remains additive.
-		pitch_input = ap_state.pitch_cmd;
-		roll_input  = ap_state.roll_cmd;
-	}
-	// A/T: use existing FBW throttle blend infrastructure
-	if (ap_state.at_engaged)
-	{
-		fbw_controller.throttle_cmd_left = ap_state.throttle_cmd;
-		fbw_controller.throttle_cmd_right = ap_state.throttle_cmd;
-		fbw_controller.throttle_blend = 1.0;
-		fbw_controller.throttle_override = false;
-	}
-	else
-	{
-		fbw_controller.throttle_blend = 0.0;
-	}
-
-	update_fbw_controller_from_fm_state(dt, q, AlphaMax_);
-
-	const Systems::AerodynamicsFrameInput aerodynamics_input = make_aerodynamics_frame_input();
-	Systems::apply_primary_aerodynamics(
-		aerodynamics_system,
-		aerodynamics_config,
-		aerodynamics_input,
-		[](const Vec3& force, const Vec3& force_pos)
-		{
-			add_local_force(force, force_pos);
-		});
-	#pragma endregion
-
-	// ENGINE(S) AND THRUST //
-#pragma region THRUST
-
-	double max_dry_thrust = lerp(FM_DATA::engine_mach_table, FM_DATA::max_thrust, sizeof(FM_DATA::engine_mach_table) / sizeof(double), mach);
-
-	// FBW/autothrottle interface point:
-	// Keep pilot throttle path intact, then optionally blend/override with FBW command.
-	update_engine_throttle_inputs_from_interface();
-
-	Systems::clamp_engine_throttle_inputs(engine_system);
-
-	Systems::update_dry_engine_channels(
-		engine_system,
-		dt,
-		FM_DATA::engine_start_time,
-		FM_DATA::throttle_input_table,
-		FM_DATA::engine_power_table,
-		sizeof(FM_DATA::throttle_input_table) / sizeof(float),
-		FM_DATA::engine_spool_up_tau,
-		FM_DATA::engine_spool_down_tau);
-
-	// AB stage logic uses an ignition gate and spool lag.
-	Systems::update_afterburners(engine_system, dt);
-
-	// Nozzle schedule is driven by throttle_output, so it follows actual engine state rather than raw command.
-	Systems::update_nozzle_apertures(engine_system, dt);
-
-	Systems::update_engine_thrust_outputs(
-		engine_system,
-		max_dry_thrust,
-		engine_alt_effect,
-		damage_model.left_engine_integrity,
-		damage_model.right_engine_integrity);
-	Systems::apply_engine_readout_integrity(
-		engine_system,
-		damage_model.left_engine_integrity,
-		damage_model.right_engine_integrity);
-
-	// Engine shutdown
-	if (Systems::should_shutdown_engines(fuel_system.internal_fuel, altitude_ASL))
-	{
-		char shutdown_dbg[256];
-		Diagnostics::format_engine_shutdown(
-			shutdown_dbg,
-			sizeof(shutdown_dbg),
-			fuel_system.internal_fuel,
-			altitude_ASL,
-			left_engine_switch,
-			right_engine_switch);
-		dbg_susp(shutdown_dbg);
-
-		Systems::shutdown_engines(engine_system, dt);
-	};
-
-	// Apply the thrust cut switch only after the Lua side reports the param is initialised.
-	// This prevents a missing/uninitialised cockpit device from silently killing all thrust.
-	const DcsBridge::MaxPowerSwitchState maxpower = DcsBridge::read_max_power_switch(interface, cockpit_params);
-	double maxpower_ready = maxpower.ready;
-	double maxpower_val = maxpower.value;
-	Systems::apply_thrust_cut(engine_system, maxpower_ready > 0.5 && maxpower_val < 0.5);
-
-	// Apply thrust forces at engine positions
-	add_local_force(Vec3(left_thrust_force, 0, 0), left_engine_pos);
-	add_local_force(Vec3(right_thrust_force, 0, 0), right_engine_pos);
-
-	// Structured diagnostics: thrust, net moment, suspension force, and engine state.
-	{
-		char dbgline[768];
-		Diagnostics::format_thrust_diagnostics(
-			dbgline,
-			sizeof(dbgline),
-			make_thrust_diagnostics_snapshot(maxpower_ready, maxpower_val));
-		dbg_susp(dbgline);
-	}
-
-	if (infinite_fuel == false)
-	{
-		simulate_fuel_consumption(dt);
-	};
-
-#pragma endregion
-
-	// MISC //
-#pragma region MISC
-	Systems::apply_aerodynamic_limiters(
-		aerodynamics_system,
-		aerodynamics_config,
-		aerodynamics_input,
-		[](const Vec3& force, const Vec3& force_pos)
-		{
-			add_local_force(force, force_pos);
-		},
-		[](const Vec3& moment)
-		{
-			add_local_moment(moment);
-		});
-
-	fallback_ground_force = 0.0;
-	fallback_ground_force = apply_fallback_ground_forces();
-
-	if (!suspension_diagnostics_config_loaded)
-	{
-		refresh_suspension_diagnostics_config();
-	}
-	const Diagnostics::SuspensionDiagnosticsSnapshot diagnostics_snapshot =
-		make_suspension_diagnostics_snapshot();
-	Diagnostics::log_startup_suspension_probe(
-		suspension_diagnostics,
-		suspension_diagnostics_config,
-		diagnostics_snapshot,
-		dt,
-		[](const char* message) { susp_probe_log(message); });
-	Diagnostics::update_periodic_suspension_probe(
-		suspension_diagnostics,
-		suspension_diagnostics_config,
-		diagnostics_snapshot,
-		dt,
-		[](const char* message) { susp_probe_log(message); });
-	Diagnostics::update_periodic_ground_log(
-		suspension_diagnostics,
-		suspension_diagnostics_config,
-		diagnostics_snapshot,
-		[](const char* message) { dbg_susp(message); });
-
-	Systems::update_on_ground(suspension_system, gear_pos);
-
-	shake_amplitude = Systems::update_aerodynamic_shake(
-		aerodynamics_system,
-		aerodynamics_config,
-		aerodynamics_input,
-		on_ground,
-		g);
-
-#pragma endregion
-
-	Systems::mark_first_frame_completed(startup_system);
+	g_efm.simulate(dt);
 }
 
 // Atmosphere data
@@ -975,7 +567,7 @@ void ed_fm_set_atmosphere(double h, //altitude above sea level
 						)
 
 {
-	Core::set_atmosphere(aircraft_state, h, t, a, ro, wind_vx, wind_vy, wind_vz);
+	Core::set_atmosphere(g_efm.aircraft_state(), h, t, a, ro, wind_vx, wind_vy, wind_vz);
 
 	// Export atmosphere temperature for cockpit/debug consumers.
 	DcsBridge::export_temperature_param(interface, cockpit_params, t + 273);
@@ -988,7 +580,7 @@ void ed_fm_set_surface(double h, // distance between sea level and the surface/g
 	double normal_x, double normal_y, double normal_z // components of normal vector to surface
 )
 {
-	Core::set_surface(aircraft_state, h, h_obj, surface_type);
+	Core::set_surface(g_efm.aircraft_state(), h, h_obj, surface_type);
 }
 
 // Called before simulation to set up your environment for the next step
@@ -998,10 +590,11 @@ void ed_fm_set_current_mass_state (double mass,
 									double moment_of_inertia_x, double moment_of_inertia_y, double moment_of_inertia_z
 									)
 {
-	Core::set_current_mass(aircraft_state, mass);
-	center_of_mass.x  = center_of_mass_x;
-	center_of_mass.y  = center_of_mass_y;
-	center_of_mass.z  = center_of_mass_z;
+	Core::set_current_mass(g_efm.aircraft_state(), mass);
+	Common::Vec3& center_of_mass = g_efm.force_moment().center_of_mass;
+	center_of_mass.x = center_of_mass_x;
+	center_of_mass.y = center_of_mass_y;
+	center_of_mass.z = center_of_mass_z;
 }
 
 // Called before simulation to set up your environment for the next step
@@ -1014,7 +607,7 @@ void ed_fm_set_current_state (double ax, double ay, double az,//linear accelerat
 							double quaternion_x, double quaternion_y, double quaternion_z, double quaternion_w //orientation quaternion components in world coordinate system
 							)
 {
-	Core::set_world_kinematics(aircraft_state, vx, vy, vz, omegax, omegay, omegaz, pz);
+	Core::set_world_kinematics(g_efm.aircraft_state(), vx, vy, vz, omegax, omegay, omegaz, pz);
 }
 
 
@@ -1036,7 +629,7 @@ void ed_fm_set_current_state_body_axis(double ax, double ay, double az,//linear 
 	// Positive aos means more wind on the right wing, negative on the left wing.
 
 	Core::set_body_kinematics(
-		aircraft_state,
+		g_efm.aircraft_state(),
 		vx,
 		vy,
 		vz,
@@ -1056,6 +649,13 @@ void ed_fm_set_current_state_body_axis(double ax, double ay, double az,//linear 
 void ed_fm_set_command (int command, float value)
 {
 	using namespace DcsIds::Commands;
+	Core::Fck1cEfmSystems& systems = g_efm.systems();
+	Systems::PrimaryControlState& primary_control_state = systems.primary_controls;
+	Systems::FBWControllerState& fbw_controller = systems.fbw;
+	Systems::EngineSystemState& engine_system = systems.engines;
+	Systems::ThrottleInputState& throttle_input_state = systems.throttle_inputs;
+	Systems::AirframeDeviceState& airframe_device_state = systems.airframe_devices;
+	Systems::WheelState& wheel_state = systems.wheels;
 	switch (command)
 	{
 
@@ -1342,7 +942,7 @@ bool ed_fm_change_mass  (double & delta_mass,
 						)
 {
 	return Systems::change_mass(
-		fuel_system,
+		g_efm.systems().fuel,
 		delta_mass,
 		delta_mass_pos_x,
 		delta_mass_pos_y,
@@ -1356,14 +956,14 @@ bool ed_fm_change_mass  (double & delta_mass,
 // EFMREF: DCS_CONTRACT - DCS internal fuel setter callback.
 void   ed_fm_set_internal_fuel(double fuel)
 {
-	Systems::set_internal_fuel(fuel_system, fuel);
+	Systems::set_internal_fuel(g_efm.systems().fuel, fuel);
 }
 
 // Get internal fuel volume
 // EFMREF: DCS_CONTRACT - DCS internal fuel getter callback.
 double ed_fm_get_internal_fuel()
 {
-	return Systems::get_internal_fuel(fuel_system);
+	return Systems::get_internal_fuel(g_efm.systems().fuel);
 }
 
 // Set external fuel volume for each payload station, called for weapon init and on reload.
@@ -1372,34 +972,36 @@ void  ed_fm_set_external_fuel (int	 station,
 								double fuel,
 								double x, double y, double z)
 {
-	Systems::set_external_fuel(fuel_system, station, fuel, x, y, z);
+	Systems::set_external_fuel(g_efm.systems().fuel, station, fuel, x, y, z);
 }
 
 // Get external fuel volume
 // EFMREF: DCS_CONTRACT - DCS external fuel total callback.
 double ed_fm_get_external_fuel ()
 {
-	return Systems::get_external_fuel(fuel_system);
+	return Systems::get_external_fuel(g_efm.systems().fuel);
 }
 
 // Drive model draw arguments for moving parts, lights, and visual effects.
 // EFMREF: DCS_CONTRACT - DCS draw-arg callback; IDs should move to a generated/central map.
 void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 {
+	const Core::Fck1cEfmSystems& systems = g_efm.systems();
+	const Core::ControlSurfaceState& controls = g_efm.control_surfaces();
 	const DcsBridge::DrawArgState state = {
-		gear_pos,
-		wheel_state.nose_steering,
-		elevator_command,
-		flaps_pos,
-		aileron_command,
-		rudder_command,
-		airbrake_pos,
-		left_afterburner_ratio,
-		right_afterburner_ratio,
-		right_nozzle_aperture,
-		left_nozzle_aperture,
-		slats_pos,
-		{ wheel_state.spin[0], wheel_state.spin[1], wheel_state.spin[2] }
+		systems.airframe_devices.gear_pos,
+		systems.wheels.nose_steering,
+		controls.elevator_command,
+		systems.airframe_devices.flaps_pos,
+		controls.aileron_command,
+		controls.rudder_command,
+		systems.airframe_devices.airbrake_pos,
+		systems.engines.left.afterburner_ratio,
+		systems.engines.right.afterburner_ratio,
+		systems.engines.right.nozzle_aperture,
+		systems.engines.left.nozzle_aperture,
+		systems.airframe_devices.slats_pos,
+		{ systems.wheels.spin[0], systems.wheels.spin[1], systems.wheels.spin[2] }
 	};
 
 	DcsBridge::set_draw_args(drawargs, size, state);
@@ -1416,30 +1018,32 @@ void ed_fm_configure(const char * cfg_path)
 // EFMREF: DCS_CONTRACT - DCS parameter callback; index IDs are a semi-fixed bridge.
 double ed_fm_get_param(unsigned index)
 {
+	const Core::AircraftState& aircraft = g_efm.aircraft_state();
+	const Core::Fck1cEfmSystems& systems = g_efm.systems();
 	const DcsBridge::ParamExportState state = {
 		has_suspension_feedback(),
 		any_wow(),
-		gear_pos,
-		wheel_state.nose_steering,
-		{ wheel_state.spin[0], wheel_state.spin[1], wheel_state.spin[2] },
-		wheel_state.brake_left,
-		wheel_state.brake_right,
-		pitch_input,
-		roll_input,
-		yaw_input,
-		left_engine_switch,
-		right_engine_switch,
-		left_throttle_input,
-		right_throttle_input,
-		left_throttle_output,
-		right_throttle_output,
-		left_engine_power_readout,
-		right_engine_power_readout,
-		left_thrust_force,
-		right_thrust_force,
-		atmosphere_temperature,
-		fuel_system.internal_fuel,
-		fuel_system.total_fuel
+		systems.airframe_devices.gear_pos,
+		systems.wheels.nose_steering,
+		{ systems.wheels.spin[0], systems.wheels.spin[1], systems.wheels.spin[2] },
+		systems.wheels.brake_left,
+		systems.wheels.brake_right,
+		systems.primary_controls.pitch.input,
+		systems.primary_controls.roll.input,
+		systems.primary_controls.yaw.input,
+		systems.engines.left.switch_on,
+		systems.engines.right.switch_on,
+		systems.engines.left.throttle_input,
+		systems.engines.right.throttle_input,
+		systems.engines.left.throttle_output,
+		systems.engines.right.throttle_output,
+		systems.engines.left.power_readout,
+		systems.engines.right.power_readout,
+		systems.engines.left.thrust_force,
+		systems.engines.right.thrust_force,
+		aircraft.atmosphere_temperature,
+		systems.fuel.internal_fuel,
+		systems.fuel.total_fuel
 	};
 
 	return DcsBridge::get_param(index, state);
@@ -1455,28 +1059,30 @@ void ed_fm_refueling_add_fuel(double fuel)
 // EFMREF: DCS_CONTRACT - DCS gameplay option callback.
 void ed_fm_unlimited_fuel(bool value)
 {
-	infinite_fuel = value;
+	g_efm.gameplay().infinite_fuel = value;
 }
 
 // Easy/game flight mode setting.
 // EFMREF: DCS_CONTRACT - DCS gameplay option callback.
 void ed_fm_set_easy_flight(bool value)
 {
-	easy_flight = value;
+	g_efm.gameplay().easy_flight = value;
 }
 
 // Invincibility setting.
 // EFMREF: DCS_CONTRACT - DCS gameplay option callback.
 void ed_fm_set_immortal(bool value)
 {
-	invincible = value;
+	g_efm.gameplay().invincible = value;
 }
 
 // Apply damage to aircraft subsystems.
 // EFMREF: DCS_CONTRACT - DCS damage callback; maps DCS element IDs into DamageModel state.
 void ed_fm_on_damage(int Element, double element_integrity_factor)
 {
-	Systems::apply_damage(damage_model, Element, element_integrity_factor, invincible);
+	Core::Fck1cEfmSystems& systems = g_efm.systems();
+	const bool invincible = g_efm.gameplay().invincible;
+	Systems::apply_damage(systems.damage, Element, element_integrity_factor, invincible);
 
 	char buf[160];
 	Diagnostics::format_damage_event(
@@ -1506,7 +1112,10 @@ static void susp_probe_log(const char* msg)
 	{
 		build_mod_path(log_dir, sizeof(log_dir), "debug");
 	}
-	Diagnostics::write_suspension_probe_log(log_dir, startup_system.simulation_time, msg);
+	Diagnostics::write_suspension_probe_log(
+		log_dir,
+		g_efm.systems().startup.simulation_time,
+		msg);
 }
 
 // EFMREF: DIAGNOSTICS - Routes legacy suspension messages through the resolved probe-log path.
@@ -1528,8 +1137,9 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 	const double fx = info->acting_force[0];
 	const double fy = info->acting_force[1];
 	const double fz = info->acting_force[2];
+	Systems::SuspensionSystemState& suspension = g_efm.systems().suspension;
 	if (!Systems::update_suspension_feedback(
-		suspension_system,
+		suspension,
 		idx,
 		info->struct_compression,
 		fx,
@@ -1546,19 +1156,19 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 		buf,
 		sizeof(buf),
 		idx,
-		suspension_system.compression[idx],
+		suspension.compression[idx],
 		fx,
 		fy,
 		fz,
-		suspension_system.force_mag[idx],
-		suspension_system.wow[idx]);
+		suspension.force_mag[idx],
+		suspension.wow[idx]);
 	dbg_susp(buf);
 
 	Diagnostics::format_suspension_animation(
 		buf,
 		sizeof(buf),
 		idx,
-		suspension_system.compression[idx],
+		suspension.compression[idx],
 		static_cast<float>(suspension_visual_arg(idx)),
 		info->wheel_speed_X);
 	suspension_debug_log(buf);
@@ -1568,7 +1178,7 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 // EFMREF: DCS_CONTRACT - DCS repair callback; currently forwards to DamageModel reset.
 void ed_fm_repair()
 {
-	reset_damage_state();
+	Systems::reset_damage_model(g_efm.systems().damage);
 }
 
 // EFMREF: DCS_CONTRACT - DCS outbound event callback; currently handles carrier launch.
@@ -1577,7 +1187,7 @@ bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 	return DcsBridge::pop_carrier_launch_event(
 		carrier_launch,
 		out,
-		left_throttle_output,
+		g_efm.systems().engines.left.throttle_output,
 		FM_DATA::max_thrust[1] * 0.5 * 2);
 }
 
@@ -1594,19 +1204,21 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 void ed_fm_cold_start()
 {
 	reset_startup_susp_probe_state();
+	Core::AircraftState& aircraft = g_efm.aircraft_state();
+	Core::Fck1cEfmSystems& systems = g_efm.systems();
 	Systems::configure_cold_ground_start(
-		startup_system,
-		damage_model,
-		suspension_system,
-		fbw_controller,
-		wheel_state,
-		airframe_device_state,
-		throttle_input_state,
-		engine_system,
-		roll,
-		pitch,
-		alpha,
-		g);
+		systems.startup,
+		systems.damage,
+		systems.suspension,
+		systems.fbw,
+		systems.wheels,
+		systems.airframe_devices,
+		systems.throttle_inputs,
+		systems.engines,
+		aircraft.roll,
+		aircraft.pitch,
+		aircraft.alpha,
+		aircraft.g);
 	DcsBridge::reset_carrier_launch_state(carrier_launch);
 }
 
@@ -1615,20 +1227,22 @@ void ed_fm_cold_start()
 void ed_fm_hot_start()
 {
 	reset_startup_susp_probe_state();
+	Core::AircraftState& aircraft = g_efm.aircraft_state();
+	Core::Fck1cEfmSystems& systems = g_efm.systems();
 	Systems::configure_hot_ground_start(
-		startup_system,
-		damage_model,
-		suspension_system,
-		fbw_controller,
-		wheel_state,
-		airframe_device_state,
-		throttle_input_state,
-		engine_system,
+		systems.startup,
+		systems.damage,
+		systems.suspension,
+		systems.fbw,
+		systems.wheels,
+		systems.airframe_devices,
+		systems.throttle_inputs,
+		systems.engines,
 		FLAP_MODE_DOWN,
-		roll,
-		pitch,
-		alpha,
-		g);
+		aircraft.roll,
+		aircraft.pitch,
+		aircraft.alpha,
+		aircraft.g);
 	DcsBridge::reset_carrier_launch_state(carrier_launch);
 }
 
@@ -1637,19 +1251,21 @@ void ed_fm_hot_start()
 void ed_fm_hot_start_in_air()
 {
 	reset_startup_susp_probe_state();
+	Core::AircraftState& aircraft = g_efm.aircraft_state();
+	Core::Fck1cEfmSystems& systems = g_efm.systems();
 	Systems::configure_hot_air_start(
-		startup_system,
-		damage_model,
-		suspension_system,
-		fbw_controller,
-		wheel_state,
-		airframe_device_state,
-		throttle_input_state,
-		engine_system,
-		roll,
-		pitch,
-		alpha,
-		g);
+		systems.startup,
+		systems.damage,
+		systems.suspension,
+		systems.fbw,
+		systems.wheels,
+		systems.airframe_devices,
+		systems.throttle_inputs,
+		systems.engines,
+		aircraft.roll,
+		aircraft.pitch,
+		aircraft.alpha,
+		aircraft.g);
 	DcsBridge::reset_carrier_launch_state(carrier_launch);
 }
 
@@ -1657,21 +1273,24 @@ void ed_fm_hot_start_in_air()
 // EFMREF: DCS_CONTRACT - DCS release callback; should delegate to Core cleanup/reset.
 void ed_fm_release()
 {
+	Core::AircraftState& aircraft = g_efm.aircraft_state();
+	Core::ControlSurfaceState& controls = g_efm.control_surfaces();
+	Core::Fck1cEfmSystems& systems = g_efm.systems();
 	Systems::configure_release(
-		startup_system,
-		suspension_system,
-		fbw_controller,
-		primary_control_state,
-		wheel_state,
-		throttle_input_state,
-		engine_system,
-		roll,
-		pitch,
-		alpha,
-		g,
-		elevator_command,
-		aileron_command,
-		rudder_command);
+		systems.startup,
+		systems.suspension,
+		systems.fbw,
+		systems.primary_controls,
+		systems.wheels,
+		systems.throttle_inputs,
+		systems.engines,
+		aircraft.roll,
+		aircraft.pitch,
+		aircraft.alpha,
+		aircraft.g,
+		controls.elevator_command,
+		controls.aileron_command,
+		controls.rudder_command);
 	DcsBridge::reset_autopilot_state(ap_state);
 	ed_fm_repair();
 }
@@ -1680,7 +1299,7 @@ void ed_fm_release()
 // EFMREF: DCS_CONTRACT - DCS cockpit shake callback.
 double ed_fm_get_shake_amplitude()
 {
-	return shake_amplitude;
+	return g_efm.gameplay().shake_amplitude;
 }
 
 // Optional force/moment component callbacks are not used by this FM.
@@ -1718,21 +1337,23 @@ bool ed_fm_enable_debug_info()
 // EFMREF: DCS_CONTRACT - DCS debug-watch callback; output formatting should move to Diagnostics.
 size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 {
+	const Core::AircraftState& aircraft = g_efm.aircraft_state();
+	const Core::Fck1cEfmSystems& systems = g_efm.systems();
 	Diagnostics::DebugWatchSnapshot snapshot;
 	snapshot.version = FCK1C_EFM_VERSION;
 	snapshot.version_date = FCK1C_EFM_VERSION_DATE;
-	snapshot.altitude_asl = altitude_ASL;
-	snapshot.altitude_agl = altitude_AGL;
-	snapshot.position_world_z = position_world_z;
-	snapshot.gear_pos = gear_pos;
+	snapshot.altitude_asl = aircraft.altitude_asl;
+	snapshot.altitude_agl = aircraft.altitude_agl;
+	snapshot.position_world_z = aircraft.position_world_z;
+	snapshot.gear_pos = systems.airframe_devices.gear_pos;
 	for (int index = 0; index < Diagnostics::kDiagnosticWheelCount; ++index)
 	{
-		snapshot.wow[index] = suspension_system.wow[index];
+		snapshot.wow[index] = systems.suspension.wow[index];
 	}
-	snapshot.wow_any = Systems::any_wow(suspension_system);
-	snapshot.wow_valid = Systems::has_suspension_feedback(suspension_system);
-	snapshot.on_ground = suspension_system.on_ground;
-	snapshot.fallback_ground_force = suspension_system.fallback_ground_force;
-	snapshot.fbw = &fbw_controller;
+	snapshot.wow_any = Systems::any_wow(systems.suspension);
+	snapshot.wow_valid = Systems::has_suspension_feedback(systems.suspension);
+	snapshot.on_ground = systems.suspension.on_ground;
+	snapshot.fallback_ground_force = systems.suspension.fallback_ground_force;
+	snapshot.fbw = &systems.fbw;
 	return Diagnostics::format_debug_watch(level, snapshot, buffer, maxlen);
 }

@@ -186,11 +186,6 @@ double engine_power_readout_table[kEngineTableSize] =
 };
 }
 
-namespace FM
-{
-extern Core::AircraftState& aircraft_state;
-}
-
 namespace
 {
 struct MassModel
@@ -215,18 +210,18 @@ static double agl_prev = 0.0;
 static bool agl_init = false;
 
 // EFMREF: LEGACY_CANDIDATE - AGL-rate helper is not wired into the main EFM flow yet.
-void update_agl_rate(double dt)
+void update_agl_rate(double altitude_agl, double dt)
 {
     if (!agl_init) {
-        agl_prev = FM::aircraft_state.altitude_agl;
+        agl_prev = altitude_agl;
         vertical_speed_AGL = 0.0;
         agl_init = true;
         return;
     }
 
     // Vertical speed over ground in m/s.
-    vertical_speed_AGL = (FM::aircraft_state.altitude_agl - agl_prev) / dt;
-    agl_prev = FM::aircraft_state.altitude_agl;
+    vertical_speed_AGL = (altitude_agl - agl_prev) / dt;
+    agl_prev = altitude_agl;
 }
 
 // EFMREF: LEGACY_CANDIDATE - Prototype mass/fuel logic; compare with main fuel model before keeping.

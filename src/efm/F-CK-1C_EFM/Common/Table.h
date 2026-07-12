@@ -2,7 +2,7 @@
 
 namespace Common
 {
-inline double lerp(double* x, double* f, unsigned sz, double t)
+inline double lerp(const double* x, const double* f, unsigned sz, double t)
 {
 	for (unsigned i = 0; i < sz; i++)
 	{
