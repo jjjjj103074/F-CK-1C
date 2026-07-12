@@ -1,4 +1,5 @@
 // Flight model state shared with the FCS layer.
+// EFMSTATE: LEGACY_CANDIDATE - Prototype state shape; compare with future Core/AircraftState.
 struct ControlsIn {
     double pitch = 0.0;
     double roll  = 0.0;

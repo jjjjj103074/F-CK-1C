@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 
+// EFMREF: COMMON_UTIL - Local clamp helper; should be replaced by Common/Clamp or std::clamp.
 static inline double clamp(double x, double lo, double hi)
 {
     return std::max(lo, std::min(x, hi));
@@ -36,6 +37,7 @@ static constexpr double DE_RATE = 60.0 * DEG2RAD;  // 60 deg/s
 // Anti-windup gain.
 static constexpr double AW_GAIN = 0.5;
 
+// EFMREF: CUSTOM_SYSTEM - Legacy/experimental FCS update; decide whether to merge into FBWController.
 void FCS::update(double dt, FMState& s)
 {
     // Inputs

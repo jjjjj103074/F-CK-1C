@@ -1,6 +1,8 @@
 #include "F-CK-1C_EFM_API.h"
 #include "include/FM/wHumanCustomPhysicsAPI.h"
 
+// EFMREF: DCS_CONTRACT - All exported prototypes in this block are DCS ABI callbacks.
+// Keep names/signatures stable; move behavior behind these wrappers instead.
 extern "C"
 {
 	// Force source callbacks. Body axis: X forward, Y up, Z right.

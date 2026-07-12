@@ -59,8 +59,36 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
+    <None Include="DcsIds\CommandIds.json" />
+    <None Include="DcsIds\README.md" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Common\Actuator.h" />
+    <ClInclude Include="Common\Clamp.h" />
+    <ClInclude Include="Common\Interpolation.h" />
+    <ClInclude Include="Common\PathUtils.h" />
+    <ClInclude Include="Common\Table.h" />
+    <ClInclude Include="Common\Units.h" />
+    <ClInclude Include="Common\Vec3.h" />
+    <ClInclude Include="Core\ForceMoment.h" />
+    <ClInclude Include="DcsBridge\AutopilotBridge.h" />
+    <ClInclude Include="DcsBridge\ConfigReader.h" />
+    <ClInclude Include="DcsBridge\CockpitParams.h" />
+    <ClInclude Include="DcsBridge\DrawArgs.h" />
+    <ClInclude Include="DcsBridge\ModulePaths.h" />
+    <ClInclude Include="DcsBridge\ParamExport.h" />
+    <ClInclude Include="DcsBridge\SimulationEvents.h" />
+    <ClInclude Include="DcsIds\CockpitParams.h" />
+    <ClInclude Include="DcsIds\CockpitParams.g.h" />
+    <ClInclude Include="DcsIds\Commands.h" />
+    <ClInclude Include="DcsIds\CustomCommands.g.h" />
+    <ClInclude Include="DcsIds\DamageIds.h" />
+    <ClInclude Include="DcsIds\DrawArgs.h" />
+    <ClInclude Include="DcsIds\ParamIds.h" />
+    <ClInclude Include="Diagnostics\DebugLogger.h" />
+    <ClInclude Include="Diagnostics\DebugWatch.h" />
+    <ClInclude Include="Diagnostics\RuntimeDiagnostics.h" />
+    <ClInclude Include="Diagnostics\SuspensionDiagnostics.h" />
     <ClInclude Include="F-CK-1C_EFM.h" />
     <ClInclude Include="F-CK-1C_EFM_API.h" />
     <ClInclude Include="include\Cockpit\ccParametersAPI.h" />
@@ -71,6 +99,15 @@
     <ClInclude Include="include\FM\wHumanCustomPhysicsAPI_ImplementationDeclare.h" />
     <ClInclude Include="Inputs.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Systems\AirframeDeviceSystem.h" />
+    <ClInclude Include="Systems\AerodynamicsSystem.h" />
+    <ClInclude Include="Systems\DamageModel.h" />
+    <ClInclude Include="Systems\EngineSystem.h" />
+    <ClInclude Include="Systems\FuelSystem.h" />
+    <ClInclude Include="Systems\InputSystem.h" />
+    <ClInclude Include="Systems\LandingGearSystem.h" />
+    <ClInclude Include="Systems\StartupSystem.h" />
+    <ClInclude Include="Systems\SuspensionSystem.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
