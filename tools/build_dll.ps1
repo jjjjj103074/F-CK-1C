@@ -17,6 +17,7 @@ param(
 )
 
 Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 $Configuration = 'Release'
 $Platform = 'x64'
@@ -24,29 +25,15 @@ $Platform = 'x64'
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
 $solutionDir = Join-Path $repoRoot 'src\efm'
-$slnPath = Join-Path $solutionDir 'F-CK-1C_EFM.sln'
+$projectPath = Join-Path $solutionDir 'F-CK-1C_EFM\F-CK-1C_EFM.vcxproj'
 
-if (-not (Test-Path $slnPath)) {
-    Write-Error "Solution not found: $slnPath"
-    exit 2
-}
-
-$idGenerator = Join-Path $repoRoot 'tools\generate_dcs_ids.ps1'
-if (-not (Test-Path -LiteralPath $idGenerator)) {
-    Write-Error "DCS ID generator not found: $idGenerator"
-    exit 2
-}
-
-try {
-    & $idGenerator -RepoRoot $repoRoot
-}
-catch {
-    Write-Error "DCS ID generation failed: $($_.Exception.Message)"
+if (-not (Test-Path $projectPath)) {
+    Write-Error "EFM project not found: $projectPath"
     exit 2
 }
 
 Write-Output "Using MSBuild: $MsBuildPath"
-Write-Output "Solution: $slnPath"
+Write-Output "Project: $projectPath"
 Write-Output "Configuration: $Configuration | Platform: $Platform"
 Write-Output "Only Release | x64 is supported for the F-CK-1C EFM DLL."
 
@@ -102,7 +89,7 @@ else {
 }
 
 try {
-    & $MsBuildPath $slnPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform /m /v:m
+    & $MsBuildPath $projectPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform /m /v:m
     $msBuildExitCode = $LASTEXITCODE
 }
 catch {
@@ -111,7 +98,7 @@ catch {
 }
 
 if ($msBuildExitCode -ne 0) {
-    Write-Error "MSBuild failed with exit code $msBuildExitCode. Command: $MsBuildPath $slnPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform" -ErrorAction Continue
+    Write-Error "MSBuild failed with exit code $msBuildExitCode. Command: $MsBuildPath $projectPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform" -ErrorAction Continue
     exit $msBuildExitCode
 }
 
@@ -138,10 +125,14 @@ catch {
 
 Write-Output "Copied: $dllSrc -> $dllDst"
 
-Write-Output "SRC HASH:"
-Get-FileHash $dllSrc -Algorithm SHA256 | Format-List
+$sourceHash = (Get-FileHash $dllSrc -Algorithm SHA256).Hash
+$runtimeHash = (Get-FileHash $dllDst -Algorithm SHA256).Hash
+Write-Output "SRC HASH: $sourceHash"
+Write-Output "BIN HASH: $runtimeHash"
 
-Write-Output "BIN HASH:"
-Get-FileHash $dllDst -Algorithm SHA256 | Format-List
+if ($sourceHash -ne $runtimeHash) {
+    Write-Error "Runtime DLL hash does not match the build output."
+    exit 5
+}
 
 Write-Output "Done."

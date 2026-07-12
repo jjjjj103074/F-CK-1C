@@ -19,10 +19,12 @@ Run from the repository root:
 The script:
 
 - resolves `MSBuild.exe` from PATH or common Visual Studio install locations
-- rebuilds `src\efm\F-CK-1C_EFM.sln`
+- rebuilds only `src\efm\F-CK-1C_EFM\F-CK-1C_EFM.vcxproj`
 - copies the output DLL into `bin\F-CK-1C_EFM.dll`
-- prints SHA256 hashes for the source and runtime DLL
-- exits with an error if MSBuild fails, the DLL is missing, or the copy fails
+- verifies that the source and runtime DLL SHA256 hashes match
+- exits with an error if MSBuild fails, the DLL is missing, the copy fails, or the hashes differ
+
+The DLL build does not generate or modify C++ or Lua source files.
 
 ## Requirements
 
@@ -38,8 +40,20 @@ Use this only when debugging the Visual Studio project directly:
 
 ```powershell
 Set-Location .\src\efm
-MSBuild.exe .\F-CK-1C_EFM.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64
+MSBuild.exe .\F-CK-1C_EFM\F-CK-1C_EFM.vcxproj /t:Rebuild /p:Configuration=Release /p:Platform=x64
 Copy-Item ".\x64\Release\F-CK-1C_EFM.dll" "..\..\bin\F-CK-1C_EFM.dll" -Force
 ```
 
 Do not use Debug, x86, or Win32 builds for the runtime DLL.
+
+## Native Logic Tests
+
+The native test executable does not link the DCS runtime. Build and run it from
+the repository root using a Visual Studio Developer PowerShell:
+
+```powershell
+MSBuild.exe .\src\efm\F-CK-1C_EFM_Tests\F-CK-1C_EFM_Tests.vcxproj /t:Rebuild /p:Configuration=Release /p:Platform=x64
+.\src\efm\x64\Release\F-CK-1C_EFM_Tests.exe
+```
+
+The process returns exit code `0` only when every check passes.

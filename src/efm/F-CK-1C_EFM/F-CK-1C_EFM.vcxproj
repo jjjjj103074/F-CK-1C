@@ -30,6 +30,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(ProjectDir)..\x64\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\x64\$(Configuration)\$(ProjectName)\</IntDir>
     <TargetName>F-CK-1C_EFM</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -70,6 +72,7 @@
     <ClInclude Include="Common\Table.h" />
     <ClInclude Include="Common\Units.h" />
     <ClInclude Include="Common\Vec3.h" />
+    <ClInclude Include="Core\AircraftState.h" />
     <ClInclude Include="Core\ForceMoment.h" />
     <ClInclude Include="DcsBridge\AutopilotBridge.h" />
     <ClInclude Include="DcsBridge\ConfigReader.h" />
@@ -103,6 +106,7 @@
     <ClInclude Include="Systems\AerodynamicsSystem.h" />
     <ClInclude Include="Systems\DamageModel.h" />
     <ClInclude Include="Systems\EngineSystem.h" />
+    <ClInclude Include="Systems\FBWController.h" />
     <ClInclude Include="Systems\FuelSystem.h" />
     <ClInclude Include="Systems\InputSystem.h" />
     <ClInclude Include="Systems\LandingGearSystem.h" />
