@@ -2,19 +2,56 @@
 
 #include "../Common/Actuator.h"
 #include "../Common/Clamp.h"
+#include "../Common/Units.h"
+#include <array>
 #include <cmath>
 
 namespace Systems
 {
+static const unsigned kLandingGearWheelCount = 3;
+
 struct WheelState
 {
 	double brake = 0.0;
 	double brake_left = 0.0;
 	double brake_right = 0.0;
-	double spin[3] = { 0.0, 0.0, 0.0 };
+	double spin[kLandingGearWheelCount] = { 0.0, 0.0, 0.0 };
 	double nose_steering = 0.0;
 	bool nose_turn_enabled = true;
 };
+
+struct LandingGearSystemState
+{
+	bool switch_down = false;
+	double position = 0.0;
+	WheelState wheels;
+};
+
+struct WheelSpinInput
+{
+	double ground_speed = 0.0;
+	double dt = 0.0;
+	double altitude_agl = 0.0;
+	std::array<double, kLandingGearWheelCount> wheel_radius = {};
+};
+
+inline void toggle_gear(LandingGearSystemState& landing_gear)
+{
+	landing_gear.switch_down = !landing_gear.switch_down;
+}
+
+inline void set_gear(LandingGearSystemState& landing_gear, bool down)
+{
+	landing_gear.switch_down = down;
+}
+
+inline void update_gear_position(LandingGearSystemState& landing_gear)
+{
+	landing_gear.position = Common::limit(
+		Common::actuator(landing_gear.position, landing_gear.switch_down, -0.001, 0.001),
+		0.0,
+		1.0);
+}
 
 inline void reset_wheel_brakes(WheelState& wheels)
 {
@@ -25,7 +62,7 @@ inline void reset_wheel_brakes(WheelState& wheels)
 
 inline void reset_wheel_spin(WheelState& wheels)
 {
-	for (int i = 0; i < 3; ++i)
+	for (unsigned i = 0; i < kLandingGearWheelCount; ++i)
 	{
 		wheels.spin[i] = 0.0;
 	}
@@ -33,12 +70,13 @@ inline void reset_wheel_spin(WheelState& wheels)
 }
 
 inline double compute_nose_wheel_steering(
-	const WheelState& wheels,
-	double gear_pos,
+	const LandingGearSystemState& landing_gear,
 	double v_scalar,
 	double yaw_input)
 {
-	if (!wheels.nose_turn_enabled || gear_pos <= 0.5 || v_scalar >= 70.0)
+	if (!landing_gear.wheels.nose_turn_enabled ||
+		landing_gear.position <= 0.5 ||
+		v_scalar >= 70.0)
 	{
 		return 0.0;
 	}
@@ -58,20 +96,18 @@ inline void update_nose_wheel_steering(
 
 inline void update_wheel_spin(
 	WheelState& wheels,
-	double ground_speed,
-	double dt,
-	double gear_pos,
-	double altitude_agl,
-	const double wheel_radius[3],
-	double pi)
+	double gear_position,
+	const WheelSpinInput& input)
 {
-	const double spin_enable = ((gear_pos > 0.2) && (altitude_agl < 2.5)) ? 1.0 : 0.0;
-	for (int i = 0; i < 3; ++i)
+	const double spin_enable = ((gear_position > 0.2) && (input.altitude_agl < 2.5)) ? 1.0 : 0.0;
+	for (unsigned i = 0; i < kLandingGearWheelCount; ++i)
 	{
-		const double wheel_circumference = 2.0 * pi * wheel_radius[i];
+		const double wheel_circumference = 2.0 * Common::kPi * input.wheel_radius[i];
 		if (wheel_circumference > 1e-6)
 		{
-			wheels.spin[i] = std::fmod(wheels.spin[i] + (ground_speed / wheel_circumference) * dt * spin_enable, 1.0);
+			wheels.spin[i] = std::fmod(
+				wheels.spin[i] + (input.ground_speed / wheel_circumference) * input.dt * spin_enable,
+				1.0);
 			if (wheels.spin[i] < 0.0)
 			{
 				wheels.spin[i] += 1.0;
@@ -110,5 +146,41 @@ inline void toggle_nose_turn_enabled(WheelState& wheels, bool command_pressed)
 	{
 		wheels.nose_turn_enabled = !wheels.nose_turn_enabled;
 	}
+}
+
+inline double normalize_brake_axis(double raw_value)
+{
+	if (raw_value < 0.0)
+	{
+		return Common::limit((raw_value + 1.0) * 0.5, 0.0, 1.0);
+	}
+	return Common::limit(raw_value, 0.0, 1.0);
+}
+
+inline void reset_wheels(WheelState& wheels)
+{
+	reset_wheel_brakes(wheels);
+	reset_wheel_spin(wheels);
+}
+
+inline void configure_ground_start_landing_gear(LandingGearSystemState& landing_gear)
+{
+	reset_wheels(landing_gear.wheels);
+	landing_gear.switch_down = true;
+	landing_gear.position = 1.0;
+	landing_gear.wheels.nose_turn_enabled = true;
+}
+
+inline void configure_air_start_landing_gear(LandingGearSystemState& landing_gear)
+{
+	reset_wheels(landing_gear.wheels);
+	landing_gear.switch_down = false;
+	landing_gear.position = 0.0;
+	landing_gear.wheels.nose_turn_enabled = false;
+}
+
+inline void configure_release_landing_gear(LandingGearSystemState& landing_gear)
+{
+	landing_gear.wheels.nose_turn_enabled = false;
 }
 }

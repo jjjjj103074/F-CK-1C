@@ -1,13 +1,12 @@
 #include "Fck1cEfm.h"
 
 #include "ForceMoment.h"
-#include "../Common/Table.h"
-#include "../Common/Units.h"
+#include "../Systems/FBWLifecycle.h"
 
 namespace
 {
-constexpr int kFlapModeAuto = 1;
-constexpr int kFlapModeDown = 2;
+constexpr double kColdStartThrottle = 0.0;
+constexpr double kHotAirStartThrottle = 0.5;
 }
 
 namespace Core
@@ -105,21 +104,32 @@ void Fck1cEfm::begin_frame(double dt)
 
 void Fck1cEfm::update_airframe(double dt)
 {
+	Systems::update_gear_position(systems_.landing_gear);
+	const Systems::AirframeDeviceUpdateInput device_input = {
+		aircraft_state_.speed_scalar,
+		systems_.landing_gear.position
+	};
 	Systems::update_airframe_device_positions(
 		systems_.airframe_devices,
-		aircraft_state_.speed_scalar,
-		kFlapModeDown,
-		kFlapModeAuto);
-	Systems::update_nose_wheel_steering(systems_.wheels, nose_wheel_steering());
+		device_input);
+	Systems::update_nose_wheel_steering(
+		systems_.landing_gear.wheels,
+		nose_wheel_steering());
 	update_airspeed(aircraft_state_);
-	Systems::update_wheel_spin(
-		systems_.wheels,
+	const Systems::WheelSpinInput wheel_input = {
 		ground_speed(aircraft_state_),
 		dt,
-		systems_.airframe_devices.gear_pos,
 		aircraft_state_.altitude_agl,
-		config_.suspension.fallback_wheel_radius,
-		Common::kPi);
+		{
+			config_.suspension.fallback_wheel_radius[0],
+			config_.suspension.fallback_wheel_radius[1],
+			config_.suspension.fallback_wheel_radius[2]
+		}
+	};
+	Systems::update_wheel_spin(
+		systems_.landing_gear.wheels,
+		systems_.landing_gear.position,
+		wheel_input);
 	Systems::update_aerodynamic_conditions(
 		systems_.aerodynamics,
 		config_.aerodynamics,
@@ -186,7 +196,7 @@ Systems::FBWControllerInput Fck1cEfm::make_fbw_input(double dt) const
 	input.pitch_trim = systems_.primary_controls.pitch.trim;
 	input.yaw_input = systems_.primary_controls.yaw.input;
 	input.yaw_trim = systems_.primary_controls.yaw.trim;
-	input.gear_pos = systems_.airframe_devices.gear_pos;
+	input.gear_pos = systems_.landing_gear.position;
 	input.wow = Systems::has_suspension_feedback(systems_.suspension) &&
 		Systems::any_wow(systems_.suspension);
 	input.elevator_command = control_surfaces_.elevator_command;
@@ -212,7 +222,7 @@ Systems::AerodynamicsFrameInput Fck1cEfm::make_aerodynamics_input() const
 	input.rudder_command = control_surfaces_.rudder_command;
 	input.airbrake_pos = systems_.airframe_devices.airbrake_pos;
 	input.flaps_pos = systems_.airframe_devices.flaps_pos;
-	input.gear_pos = systems_.airframe_devices.gear_pos;
+	input.gear_pos = systems_.landing_gear.position;
 	input.left_wing_integrity = systems_.damage.left_wing_integrity;
 	input.right_wing_integrity = systems_.damage.right_wing_integrity;
 	input.tail_integrity = systems_.damage.tail_integrity;
@@ -256,11 +266,7 @@ void Fck1cEfm::update_engines_and_fuel(double dt)
 
 double Fck1cEfm::max_dry_thrust() const
 {
-	return Common::lerp(
-		config_.engine.mach_table,
-		config_.engine.max_thrust_table,
-		config_.engine.mach_table_size,
-		aircraft_state_.mach);
+	return Systems::max_dry_thrust(config_.engine, aircraft_state_.mach);
 }
 
 void Fck1cEfm::update_engine_state(double dt, double dry_thrust)
@@ -268,13 +274,8 @@ void Fck1cEfm::update_engine_state(double dt, double dry_thrust)
 	Systems::clamp_engine_throttle_inputs(systems_.engines);
 	Systems::update_dry_engine_channels(
 		systems_.engines,
-		dt,
-		config_.engine.start_time,
-		config_.engine.throttle_input_table,
-		config_.engine.power_table,
-		config_.engine.throttle_table_size,
-		config_.engine.spool_up_tau,
-		config_.engine.spool_down_tau);
+		config_.engine,
+		dt);
 	Systems::update_afterburners(systems_.engines, dt);
 	Systems::update_nozzle_apertures(systems_.engines, dt);
 	Systems::update_engine_thrust_outputs(
@@ -316,15 +317,15 @@ void Fck1cEfm::update_fuel(double dt)
 		return;
 	}
 
-	Systems::simulate_fuel_consumption(
-		systems_.fuel,
+	const Systems::FuelConsumptionInput input = {
 		dt,
-		config_.engine.fuel_consumption,
 		systems_.engines.left.throttle_output,
 		systems_.engines.right.throttle_output,
 		systems_.engines.left.afterburner_ratio,
 		systems_.engines.right.afterburner_ratio,
-		systems_.engines.afterburner.fuel_factor);
+		systems_.engines.afterburner.fuel_factor
+	};
+	Systems::simulate_fuel_consumption(systems_.fuel, config_.fuel, input);
 }
 
 void Fck1cEfm::update_ground_and_suspension(
@@ -345,7 +346,7 @@ void Fck1cEfm::update_ground_and_suspension(
 		});
 	apply_fallback_ground_forces();
 	runtime_.on_ground_diagnostics(*this, dt);
-	Systems::update_on_ground(systems_.suspension, systems_.airframe_devices.gear_pos);
+	Systems::update_on_ground(systems_.suspension, systems_.landing_gear.position);
 	gameplay_.shake_amplitude = Systems::update_aerodynamic_shake(
 		systems_.aerodynamics,
 		config_.aerodynamics,
@@ -362,14 +363,14 @@ void Fck1cEfm::apply_fallback_ground_forces()
 		aircraft_state_.roll,
 		aircraft_state_.velocity_world.y,
 		aircraft_state_.velocity_body.x,
-		systems_.airframe_devices.gear_pos,
+		systems_.landing_gear.position,
 		aircraft_state_.current_mass,
 		systems_.engines.left.throttle_input,
 		systems_.engines.right.throttle_input,
 		systems_.engines.left.thrust_force,
 		systems_.engines.right.thrust_force,
-		systems_.wheels.brake_left,
-		systems_.wheels.brake_right
+		systems_.landing_gear.wheels.brake_left,
+		systems_.landing_gear.wheels.brake_right
 	};
 	systems_.suspension.fallback_ground_force = Systems::apply_fallback_ground_forces(
 		systems_.suspension,
@@ -384,8 +385,7 @@ void Fck1cEfm::apply_fallback_ground_forces()
 double Fck1cEfm::nose_wheel_steering() const
 {
 	return Systems::compute_nose_wheel_steering(
-		systems_.wheels,
-		systems_.airframe_devices.gear_pos,
+		systems_.landing_gear,
 		aircraft_state_.speed_scalar,
 		systems_.primary_controls.yaw.input);
 }
@@ -408,5 +408,84 @@ void Fck1cEfm::add_moment(const Common::Vec3& moment)
 void Fck1cEfm::finish_frame()
 {
 	Systems::mark_first_frame_completed(systems_.startup);
+}
+
+void Fck1cEfm::reset_start_state(Systems::StartupMode mode)
+{
+	Systems::reset_damage_model(systems_.damage);
+	Systems::reset_suspension_feedback_state(systems_.suspension);
+	Systems::reset_fbw_state(
+		systems_.fbw,
+		aircraft_state_.roll,
+		aircraft_state_.pitch,
+		aircraft_state_.alpha,
+		aircraft_state_.g);
+	Systems::begin_startup(systems_.startup, mode);
+}
+
+void Fck1cEfm::cold_start()
+{
+	reset_start_state(Systems::STARTUP_MODE_COLD_GROUND);
+	Systems::configure_ground_start_landing_gear(systems_.landing_gear);
+	Systems::reset_throttle_inputs(
+		systems_.throttle_inputs,
+		kColdStartThrottle,
+		kColdStartThrottle);
+	Systems::configure_cold_start_engines(systems_.engines);
+}
+
+void Fck1cEfm::hot_ground_start()
+{
+	reset_start_state(Systems::STARTUP_MODE_HOT_GROUND);
+	Systems::configure_ground_start_landing_gear(systems_.landing_gear);
+	Systems::configure_hot_ground_start_devices(systems_.airframe_devices);
+	Systems::reset_throttle_inputs(
+		systems_.throttle_inputs,
+		kColdStartThrottle,
+		kColdStartThrottle);
+	Systems::configure_hot_ground_start_engines(systems_.engines);
+}
+
+void Fck1cEfm::hot_air_start()
+{
+	reset_start_state(Systems::STARTUP_MODE_HOT_AIR);
+	Systems::configure_air_start_landing_gear(systems_.landing_gear);
+	Systems::reset_throttle_inputs(
+		systems_.throttle_inputs,
+		kHotAirStartThrottle,
+		kHotAirStartThrottle);
+	Systems::configure_hot_air_start_engines(systems_.engines);
+}
+
+void Fck1cEfm::reset_control_outputs()
+{
+	Systems::reset_primary_commands(systems_.primary_controls);
+	control_surfaces_.elevator_command = 0.0;
+	control_surfaces_.aileron_command = 0.0;
+	control_surfaces_.rudder_command = 0.0;
+}
+
+void Fck1cEfm::release()
+{
+	Systems::reset_suspension_feedback_state(systems_.suspension);
+	Systems::reset_fbw_state(
+		systems_.fbw,
+		aircraft_state_.roll,
+		aircraft_state_.pitch,
+		aircraft_state_.alpha,
+		aircraft_state_.g);
+	Systems::configure_release(systems_.startup);
+	reset_control_outputs();
+	Systems::configure_release_landing_gear(systems_.landing_gear);
+	Systems::reset_throttle_inputs(systems_.throttle_inputs, 0.0, 0.0);
+	Systems::reset_fbw_throttle_interface(systems_.fbw);
+	Systems::reset_engine_release_state(systems_.engines);
+	runtime_.on_release(*this);
+	repair();
+}
+
+void Fck1cEfm::repair()
+{
+	Systems::reset_damage_model(systems_.damage);
 }
 }

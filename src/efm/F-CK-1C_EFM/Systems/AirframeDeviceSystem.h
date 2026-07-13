@@ -5,15 +5,26 @@
 
 namespace Systems
 {
+enum FlapMode
+{
+	FLAP_MODE_UP = 0,
+	FLAP_MODE_AUTO = 1,
+	FLAP_MODE_DOWN = 2
+};
+
 struct AirframeDeviceState
 {
 	bool airbrake_switch = false;
 	double airbrake_pos = 0.0;
-	int flap_mode = 0;
+	FlapMode flap_mode = FLAP_MODE_UP;
 	double flaps_pos = 0.0;
 	double slats_pos = 0.0;
-	bool gear_switch = false;
-	double gear_pos = 0.0;
+};
+
+struct AirframeDeviceUpdateInput
+{
+	double speed_scalar = 0.0;
+	double gear_position = 0.0;
 };
 
 inline void toggle_airbrake(AirframeDeviceState& devices)
@@ -26,61 +37,38 @@ inline void set_airbrake(AirframeDeviceState& devices, bool enabled)
 	devices.airbrake_switch = enabled;
 }
 
-inline void toggle_flap_mode(AirframeDeviceState& devices, int up_mode, int down_mode)
+inline void toggle_flap_mode(AirframeDeviceState& devices)
 {
-	devices.flap_mode = (devices.flap_mode == down_mode) ? up_mode : down_mode;
+	devices.flap_mode = (devices.flap_mode == FLAP_MODE_DOWN)
+		? FLAP_MODE_UP
+		: FLAP_MODE_DOWN;
 }
 
-inline void set_flap_mode(AirframeDeviceState& devices, int mode)
+inline void set_flap_mode(AirframeDeviceState& devices, FlapMode mode)
 {
 	devices.flap_mode = mode;
 }
 
-inline void toggle_gear(AirframeDeviceState& devices)
+inline void configure_hot_ground_start_devices(AirframeDeviceState& devices)
 {
-	devices.gear_switch = !devices.gear_switch;
-}
-
-inline void set_gear(AirframeDeviceState& devices, bool down)
-{
-	devices.gear_switch = down;
-}
-
-inline void configure_ground_start_devices(AirframeDeviceState& devices)
-{
-	devices.gear_switch = true;
-	devices.gear_pos = 1.0;
-}
-
-inline void configure_hot_ground_start_devices(AirframeDeviceState& devices, int down_mode)
-{
-	configure_ground_start_devices(devices);
-	devices.flap_mode = down_mode;
+	devices.flap_mode = FLAP_MODE_DOWN;
 	devices.flaps_pos = 1.0;
 	devices.slats_pos = 1.0;
 }
 
-inline void configure_air_start_devices(AirframeDeviceState& devices)
-{
-	devices.gear_switch = false;
-	devices.gear_pos = 0.0;
-}
-
 inline double compute_flap_target(
 	const AirframeDeviceState& devices,
-	double v_scalar,
-	int down_mode,
-	int auto_mode)
+	const AirframeDeviceUpdateInput& input)
 {
-	if (devices.flap_mode == down_mode)
+	if (devices.flap_mode == FLAP_MODE_DOWN)
 	{
 		return 1.0;
 	}
 
-	if (devices.flap_mode == auto_mode)
+	if (devices.flap_mode == FLAP_MODE_AUTO)
 	{
-		const double ias_kts = v_scalar * 1.943844;
-		if (devices.gear_pos > 0.5 || ias_kts <= 240.0)
+		const double ias_kts = input.speed_scalar * 1.943844;
+		if (input.gear_position > 0.5 || ias_kts <= 240.0)
 		{
 			return 1.0;
 		}
@@ -96,20 +84,14 @@ inline double compute_flap_target(
 
 inline void update_airframe_device_positions(
 	AirframeDeviceState& devices,
-	double v_scalar,
-	int down_mode,
-	int auto_mode)
+	const AirframeDeviceUpdateInput& input)
 {
-	devices.gear_pos = Common::limit(
-		Common::actuator(devices.gear_pos, devices.gear_switch, -0.001, 0.001),
-		0.0,
-		1.0);
 	devices.airbrake_pos = Common::limit(
 		Common::actuator(devices.airbrake_pos, devices.airbrake_switch, -0.003, 0.004),
 		0.0,
 		1.0);
 
-	const double flap_target = compute_flap_target(devices, v_scalar, down_mode, auto_mode);
+	const double flap_target = compute_flap_target(devices, input);
 	devices.flaps_pos = Common::limit(
 		Common::actuator(devices.flaps_pos, flap_target, -0.002, 0.002),
 		0.0,

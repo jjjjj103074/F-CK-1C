@@ -2,6 +2,21 @@
 
 namespace Systems
 {
+struct FuelSystemConfig
+{
+	double consumption_rate = 0.0;
+};
+
+struct FuelConsumptionInput
+{
+	double dt = 0.0;
+	double left_throttle_output = 0.0;
+	double right_throttle_output = 0.0;
+	double left_afterburner_ratio = 0.0;
+	double right_afterburner_ratio = 0.0;
+	double afterburner_fuel_factor = 0.0;
+};
+
 struct FuelSystem
 {
 	double internal_fuel = 0.0;
@@ -12,20 +27,18 @@ struct FuelSystem
 
 inline void simulate_fuel_consumption(
 	FuelSystem& fuel,
-	double dt,
-	double base_fuel_consumption,
-	double left_throttle_output,
-	double right_throttle_output,
-	double left_afterburner_ratio,
-	double right_afterburner_ratio,
-	double afterburner_fuel_factor)
+	const FuelSystemConfig& config,
+	const FuelConsumptionInput& input)
 {
-	const double ab_avg = 0.5 * (left_afterburner_ratio + right_afterburner_ratio);
-	const double ab_fuel_mult = 1.0 + ab_avg * (afterburner_fuel_factor - 1.0);
+	const double ab_avg = 0.5 * (input.left_afterburner_ratio + input.right_afterburner_ratio);
+	const double ab_fuel_mult = 1.0 + ab_avg * (input.afterburner_fuel_factor - 1.0);
 
 	// Fuel drain at full throttle in Kg/s.
 	fuel.fuel_consumption_since_last_time =
-		base_fuel_consumption * ((left_throttle_output + right_throttle_output + 1) / 3) * ab_fuel_mult * dt;
+		config.consumption_rate *
+		((input.left_throttle_output + input.right_throttle_output + 1) / 3) *
+		ab_fuel_mult *
+		input.dt;
 
 	if (fuel.external_fuel >= 0) // Drain external fuel first
 	{

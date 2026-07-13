@@ -123,6 +123,16 @@ inline void reset_primary_trims(PrimaryControlState& controls)
 	reset_primary_trim(controls.yaw);
 }
 
+inline void reset_primary_commands(PrimaryControlState& controls)
+{
+	controls.pitch.input = 0.0;
+	controls.pitch.trim = 0.0;
+	controls.roll.input = 0.0;
+	controls.roll.trim = 0.0;
+	controls.yaw.input = 0.0;
+	controls.yaw.trim = 0.0;
+}
+
 inline double update_pitch_axis_input(double input, int discrete, bool analog)
 {
 	if (analog == true)
@@ -290,15 +300,6 @@ inline void set_right_throttle_axis(ThrottleInputState& throttles, double raw_va
 {
 	const double normalized = normalize_throttle_axis(raw_value, throttles.axis_inverted);
 	set_throttle_axis_channel(throttles.right, normalized);
-}
-
-inline double normalize_brake_axis(double raw_value)
-{
-	if (raw_value < 0.0)
-	{
-		return Common::limit((raw_value + 1.0) * 0.5, 0.0, 1.0);
-	}
-	return Common::limit(raw_value, 0.0, 1.0);
 }
 
 inline double resolve_pilot_throttle_cmd(double axis_cmd, double keyboard_cmd, bool use_axis)

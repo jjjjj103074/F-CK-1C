@@ -51,6 +51,12 @@ public:
 		++ground_updates;
 	}
 
+	void on_release(const Core::Fck1cEfm& efm) override
+	{
+		++release_notifications;
+		release_damage_integrity = efm.systems().damage.left_engine_integrity;
+	}
+
 	Core::AutopilotCommand autopilot;
 	Core::MaxPowerCommand max_power;
 	int autopilot_reads = 0;
@@ -59,6 +65,8 @@ public:
 	int engine_shutdowns = 0;
 	int thrust_updates = 0;
 	int ground_updates = 0;
+	int release_notifications = 0;
+	double release_damage_integrity = 0.0;
 };
 
 Core::Fck1cEfmConfig make_test_config()
@@ -145,6 +153,65 @@ void test_simulation_pipeline(Tests::Context& context)
 	TEST_EXPECT(context, runtime.ground_updates == 2);
 	TEST_EXPECT_NEAR(context, efm.systems().startup.simulation_time, 0.02, kTolerance);
 }
+
+void test_ground_start_lifecycle(Tests::Context& context)
+{
+	TestRuntime runtime;
+	Core::Fck1cEfm efm(make_test_config(), runtime);
+	efm.systems().damage.left_wing_integrity = 0.2;
+	efm.cold_start();
+	TEST_EXPECT(context, efm.systems().startup.mode == Systems::STARTUP_MODE_COLD_GROUND);
+	TEST_EXPECT_NEAR(context, efm.systems().damage.left_wing_integrity, 1.0, kTolerance);
+	TEST_EXPECT(context, efm.systems().landing_gear.switch_down);
+	TEST_EXPECT_NEAR(context, efm.systems().landing_gear.position, 1.0, kTolerance);
+	TEST_EXPECT(context, !efm.systems().engines.left.switch_on);
+
+	efm.hot_ground_start();
+	TEST_EXPECT(context, efm.systems().startup.mode == Systems::STARTUP_MODE_HOT_GROUND);
+	TEST_EXPECT(context, efm.systems().airframe_devices.flap_mode == Systems::FLAP_MODE_DOWN);
+	TEST_EXPECT_NEAR(context, efm.systems().airframe_devices.flaps_pos, 1.0, kTolerance);
+	TEST_EXPECT(context, efm.systems().engines.left.switch_on);
+	TEST_EXPECT_NEAR(context, efm.systems().engines.left.throttle_output, 0.5, kTolerance);
+}
+
+void test_air_start_lifecycle(Tests::Context& context)
+{
+	TestRuntime runtime;
+	Core::Fck1cEfm efm(make_test_config(), runtime);
+	efm.hot_air_start();
+	TEST_EXPECT(context, efm.systems().startup.mode == Systems::STARTUP_MODE_HOT_AIR);
+	TEST_EXPECT(context, !efm.systems().landing_gear.switch_down);
+	TEST_EXPECT_NEAR(context, efm.systems().landing_gear.position, 0.0, kTolerance);
+	TEST_EXPECT(context, !efm.systems().landing_gear.wheels.nose_turn_enabled);
+	TEST_EXPECT_NEAR(context, efm.systems().throttle_inputs.left.pilot_cmd, 0.5, kTolerance);
+	TEST_EXPECT(context, efm.systems().engines.left.switch_on);
+	TEST_EXPECT_NEAR(context, efm.systems().engines.left.throttle_input, 0.5, kTolerance);
+}
+
+void test_release_lifecycle(Tests::Context& context)
+{
+	TestRuntime runtime;
+	Core::Fck1cEfm efm(make_test_config(), runtime);
+	efm.hot_ground_start();
+	efm.systems().startup.simulation_time = 4.0;
+	efm.systems().primary_controls.pitch.input = 0.5;
+	efm.control_surfaces().elevator_command = 0.4;
+	efm.systems().damage.left_engine_integrity = 0.2;
+	efm.systems().landing_gear.wheels.brake_left = 0.7;
+	efm.systems().landing_gear.wheels.spin[0] = 0.6;
+	efm.release();
+	TEST_EXPECT(context, efm.systems().startup.mode == Systems::STARTUP_MODE_RELEASED);
+	TEST_EXPECT_NEAR(context, efm.systems().startup.simulation_time, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, efm.systems().primary_controls.pitch.input, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, efm.control_surfaces().elevator_command, 0.0, kTolerance);
+	TEST_EXPECT(context, !efm.systems().landing_gear.wheels.nose_turn_enabled);
+	TEST_EXPECT_NEAR(context, efm.systems().landing_gear.wheels.brake_left, 0.7, kTolerance);
+	TEST_EXPECT_NEAR(context, efm.systems().landing_gear.wheels.spin[0], 0.6, kTolerance);
+	TEST_EXPECT_NEAR(context, efm.systems().engines.left.nozzle_aperture, 0.8, kTolerance);
+	TEST_EXPECT(context, runtime.release_notifications == 1);
+	TEST_EXPECT_NEAR(context, runtime.release_damage_integrity, 0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, efm.systems().damage.left_engine_integrity, 1.0, kTolerance);
+}
 }
 
 void run_fck1c_efm_tests(Tests::Context& context)
@@ -152,4 +219,7 @@ void run_fck1c_efm_tests(Tests::Context& context)
 	test_config_ownership(context);
 	test_runtime_state_ownership(context);
 	test_simulation_pipeline(context);
+	test_ground_start_lifecycle(context);
+	test_air_start_lifecycle(context);
+	test_release_lifecycle(context);
 }

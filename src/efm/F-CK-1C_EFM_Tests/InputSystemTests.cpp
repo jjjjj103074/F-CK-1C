@@ -24,8 +24,6 @@ void test_axis_normalization(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, Systems::normalize_throttle_axis(-1.0, false), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, Systems::normalize_throttle_axis(1.0, false), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, Systems::normalize_throttle_axis(-1.0, true), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, Systems::normalize_brake_axis(-1.0), 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, Systems::normalize_brake_axis(0.5), 0.5, kTolerance);
 }
 
 void test_throttle_arbitration(Tests::Context& context)

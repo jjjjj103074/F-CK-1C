@@ -43,20 +43,7 @@ public:
 	virtual void on_engine_shutdown(const Fck1cEfm& efm) = 0;
 	virtual void on_thrust_updated(const Fck1cEfm& efm, const MaxPowerCommand& command) = 0;
 	virtual void on_ground_diagnostics(const Fck1cEfm& efm, double dt) = 0;
-};
-
-struct EngineSimulationConfig
-{
-	double fuel_consumption = 0.0;
-	double start_time = 0.0;
-	double spool_up_tau = 0.0;
-	double spool_down_tau = 0.0;
-	const double* mach_table = nullptr;
-	const double* max_thrust_table = nullptr;
-	unsigned mach_table_size = 0;
-	const double* throttle_input_table = nullptr;
-	const double* power_table = nullptr;
-	unsigned throttle_table_size = 0;
+	virtual void on_release(const Fck1cEfm& efm) = 0;
 };
 
 struct Fck1cEfmConfig
@@ -64,7 +51,8 @@ struct Fck1cEfmConfig
 	Systems::AerodynamicsSystemConfig aerodynamics;
 	Systems::SuspensionSystemConfig suspension;
 	Systems::FBWControllerConfig fbw;
-	EngineSimulationConfig engine;
+	Systems::EngineSystemConfig engine;
+	Systems::FuelSystemConfig fuel;
 	Common::Vec3 left_engine_position;
 	Common::Vec3 right_engine_position;
 };
@@ -98,7 +86,7 @@ struct Fck1cEfmSystems
 	Systems::EngineSystemState engines;
 	Systems::ThrottleInputState throttle_inputs;
 	Systems::AirframeDeviceState airframe_devices;
-	Systems::WheelState wheels;
+	Systems::LandingGearSystemState landing_gear;
 	Systems::FuelSystem fuel;
 	Systems::SuspensionSystemState suspension;
 	Systems::DamageModel damage;
@@ -126,6 +114,11 @@ public:
 	Fck1cEfmSystems& systems();
 	const Fck1cEfmSystems& systems() const;
 	void simulate(double dt);
+	void cold_start();
+	void hot_ground_start();
+	void hot_air_start();
+	void release();
+	void repair();
 
 private:
 	void begin_frame(double dt);
@@ -147,6 +140,8 @@ private:
 	void add_force(const Common::Vec3& force, const Common::Vec3& position);
 	void add_moment(const Common::Vec3& moment);
 	void finish_frame();
+	void reset_start_state(Systems::StartupMode mode);
+	void reset_control_outputs();
 
 	const Fck1cEfmConfig config_;
 	Fck1cEfmRuntime& runtime_;

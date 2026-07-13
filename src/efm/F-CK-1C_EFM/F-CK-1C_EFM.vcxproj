@@ -108,6 +108,7 @@
     <ClInclude Include="Systems\DamageModel.h" />
     <ClInclude Include="Systems\EngineSystem.h" />
     <ClInclude Include="Systems\FBWController.h" />
+    <ClInclude Include="Systems\FBWLifecycle.h" />
     <ClInclude Include="Systems\FuelSystem.h" />
     <ClInclude Include="Systems\InputSystem.h" />
     <ClInclude Include="Systems\LandingGearSystem.h" />

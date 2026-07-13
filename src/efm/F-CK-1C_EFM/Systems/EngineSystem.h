@@ -6,6 +6,19 @@
 
 namespace Systems
 {
+struct EngineSystemConfig
+{
+	double start_time = 0.0;
+	double spool_up_tau = 0.0;
+	double spool_down_tau = 0.0;
+	const double* mach_table = nullptr;
+	const double* max_thrust_table = nullptr;
+	unsigned mach_table_size = 0;
+	const double* throttle_input_table = nullptr;
+	const double* power_table = nullptr;
+	unsigned throttle_table_size = 0;
+};
+
 struct EngineChannelState
 {
 	bool switch_on = false;
@@ -38,6 +51,15 @@ struct EngineSystemState
 	double throttle_cmd_right = 0.0;
 	AfterburnerConfig afterburner;
 };
+
+inline double max_dry_thrust(const EngineSystemConfig& config, double mach)
+{
+	return Common::lerp(
+		config.mach_table,
+		config.max_thrust_table,
+		config.mach_table_size,
+		mach);
+}
 
 inline void set_engine_switch(EngineChannelState& engine, bool enabled)
 {
@@ -175,33 +197,28 @@ inline void update_dry_engine_channel(
 
 inline void update_dry_engine_channels(
 	EngineSystemState& engines,
-	double dt,
-	double engine_start_time,
-	const double* throttle_input_table,
-	const double* engine_power_table,
-	unsigned engine_table_size,
-	double engine_spool_up_tau,
-	double engine_spool_down_tau)
+	const EngineSystemConfig& config,
+	double dt)
 {
 	update_dry_engine_channel(
 		engines.left,
 		dt,
-		engine_start_time,
-		throttle_input_table,
-		engine_power_table,
-		engine_table_size,
-		engine_spool_up_tau,
-		engine_spool_down_tau,
+		config.start_time,
+		config.throttle_input_table,
+		config.power_table,
+		config.throttle_table_size,
+		config.spool_up_tau,
+		config.spool_down_tau,
 		engines.afterburner);
 	update_dry_engine_channel(
 		engines.right,
 		dt,
-		engine_start_time,
-		throttle_input_table,
-		engine_power_table,
-		engine_table_size,
-		engine_spool_up_tau,
-		engine_spool_down_tau,
+		config.start_time,
+		config.throttle_input_table,
+		config.power_table,
+		config.throttle_table_size,
+		config.spool_up_tau,
+		config.spool_down_tau,
 		engines.afterburner);
 }
 

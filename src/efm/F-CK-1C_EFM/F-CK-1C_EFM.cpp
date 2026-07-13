@@ -65,6 +65,7 @@ static void observe_first_frame(const Core::Fck1cEfm& efm);
 static void observe_engine_shutdown(const Core::Fck1cEfm& efm);
 static void observe_thrust(const Core::Fck1cEfm& efm, const Core::MaxPowerCommand& command);
 static void observe_ground_diagnostics(const Core::Fck1cEfm& efm, double dt);
+static void observe_release(const Core::Fck1cEfm& efm);
 
 namespace FM
 {
@@ -121,6 +122,11 @@ public:
 	{
 		observe_ground_diagnostics(efm, dt);
 	}
+
+	void on_release(const Core::Fck1cEfm& efm) override
+	{
+		observe_release(efm);
+	}
 };
 
 static Core::Fck1cEfmConfig make_fck1c_efm_config()
@@ -148,7 +154,7 @@ static Core::Fck1cEfmConfig make_fck1c_efm_config()
 	config.aerodynamics.alpha_max_table = FM_DATA::Aldop;
 	config.aerodynamics.cy_max_table = FM_DATA::CyMax;
 	config.aerodynamics.table_size = FM_DATA::kAeroTableSize;
-	config.engine.fuel_consumption = FM_DATA::fuel_consumption;
+	config.fuel.consumption_rate = FM_DATA::fuel_consumption;
 	config.engine.start_time = FM_DATA::engine_start_time;
 	config.engine.spool_up_tau = FM_DATA::engine_spool_up_tau;
 	config.engine.spool_down_tau = FM_DATA::engine_spool_down_tau;
@@ -166,14 +172,6 @@ static Core::Fck1cEfmConfig make_fck1c_efm_config()
 // Single owner for DCS-neutral EFM state and configuration.
 DcsEfmRuntime dcs_runtime;
 Core::Fck1cEfm g_efm(make_fck1c_efm_config(), dcs_runtime);
-
-// Lift and drag devices
-enum FlapMode
-{
-	FLAP_MODE_UP = 0,
-	FLAP_MODE_AUTO = 1,
-	FLAP_MODE_DOWN = 2,
-};
 
 DcsBridge::CarrierLaunchState carrier_launch = {};
 Diagnostics::SuspensionDiagnosticsState suspension_diagnostics;
@@ -314,7 +312,7 @@ static inline double suspension_visual_arg(int idx)
 	return Systems::suspension_visual_arg(
 		systems.suspension,
 		idx,
-		systems.airframe_devices.gear_pos);
+		systems.landing_gear.position);
 }
 
 // EFMREF: DCS_BRIDGE - Builds a read-only diagnostics snapshot from current EFM state.
@@ -334,7 +332,7 @@ static Diagnostics::SuspensionDiagnosticsSnapshot make_suspension_diagnostics_sn
 	snapshot.pitch_deg = Common::deg(aircraft.pitch);
 	snapshot.roll_deg = Common::deg(aircraft.roll);
 	snapshot.current_mass = aircraft.current_mass;
-	snapshot.gear_pos = systems.airframe_devices.gear_pos;
+	snapshot.gear_pos = systems.landing_gear.position;
 	for (int index = 0; index < Diagnostics::kDiagnosticWheelCount; ++index)
 	{
 		snapshot.feedback_valid[index] = systems.suspension.feedback_valid[index];
@@ -354,18 +352,17 @@ static Diagnostics::SuspensionDiagnosticsSnapshot make_suspension_diagnostics_sn
 	snapshot.velocity_body = aircraft.velocity_body;
 	snapshot.angular_velocity_world = aircraft.angular_velocity_world;
 	snapshot.angular_velocity_body = aircraft.angular_velocity_body;
-	snapshot.brake = systems.wheels.brake;
-	snapshot.brake_left = systems.wheels.brake_left;
-	snapshot.brake_right = systems.wheels.brake_right;
+	snapshot.brake = systems.landing_gear.wheels.brake;
+	snapshot.brake_left = systems.landing_gear.wheels.brake_left;
+	snapshot.brake_right = systems.landing_gear.wheels.brake_right;
 	snapshot.yaw_input = systems.primary_controls.yaw.input;
 	snapshot.rudder_command = controls.rudder_command;
 	snapshot.nose_wheel_command = Systems::compute_nose_wheel_steering(
-		systems.wheels,
-		systems.airframe_devices.gear_pos,
+		systems.landing_gear,
 		aircraft.speed_scalar,
 		systems.primary_controls.yaw.input);
-	snapshot.nose_wheel_draw_arg = systems.wheels.nose_steering;
-	snapshot.nose_turn_enabled = systems.wheels.nose_turn_enabled;
+	snapshot.nose_wheel_draw_arg = systems.landing_gear.wheels.nose_steering;
+	snapshot.nose_turn_enabled = systems.landing_gear.wheels.nose_turn_enabled;
 	return snapshot;
 }
 
@@ -513,6 +510,12 @@ static void observe_ground_diagnostics(const Core::Fck1cEfm& efm, double dt)
 		[](const char* message) { dbg_susp(message); });
 }
 
+static void observe_release(const Core::Fck1cEfm& efm)
+{
+	(void)efm;
+	DcsBridge::reset_autopilot_state(ap_state);
+}
+
 // EFMREF: DCS_CONTRACT - DCS force callback; keep exported name/signature stable.
 void ed_fm_add_local_force(double & x,double &y,double &z,double & pos_x,double & pos_y,double & pos_z)
 {
@@ -655,7 +658,7 @@ void ed_fm_set_command (int command, float value)
 	Systems::EngineSystemState& engine_system = systems.engines;
 	Systems::ThrottleInputState& throttle_input_state = systems.throttle_inputs;
 	Systems::AirframeDeviceState& airframe_device_state = systems.airframe_devices;
-	Systems::WheelState& wheel_state = systems.wheels;
+	Systems::LandingGearSystemState& landing_gear = systems.landing_gear;
 	switch (command)
 	{
 
@@ -851,80 +854,80 @@ void ed_fm_set_command (int command, float value)
 		break;
 
 	case FlapsToggle: //toggle
-		Systems::toggle_flap_mode(airframe_device_state, FLAP_MODE_UP, FLAP_MODE_DOWN);
+		Systems::toggle_flap_mode(airframe_device_state);
 		break;
 	case FlapsDown:
-		Systems::set_flap_mode(airframe_device_state, FLAP_MODE_DOWN);
+		Systems::set_flap_mode(airframe_device_state, Systems::FLAP_MODE_DOWN);
 		break;
 	case FlapsUp:
-		Systems::set_flap_mode(airframe_device_state, FLAP_MODE_UP);
+		Systems::set_flap_mode(airframe_device_state, Systems::FLAP_MODE_UP);
 		break;
 	case FlapsAuto:
-		Systems::set_flap_mode(airframe_device_state, FLAP_MODE_AUTO);
+		Systems::set_flap_mode(airframe_device_state, Systems::FLAP_MODE_AUTO);
 		break;
 	case FlapsUpCmd:
-		Systems::set_flap_mode(airframe_device_state, FLAP_MODE_UP);
+		Systems::set_flap_mode(airframe_device_state, Systems::FLAP_MODE_UP);
 		break;
 	case FlapsDownCmd:
-		Systems::set_flap_mode(airframe_device_state, FLAP_MODE_DOWN);
+		Systems::set_flap_mode(airframe_device_state, Systems::FLAP_MODE_DOWN);
 		break;
 
 	case GearToggle:
-		Systems::toggle_gear(airframe_device_state);
+		Systems::toggle_gear(landing_gear);
 		break;
 	case GearDown:
-		Systems::set_gear(airframe_device_state, true);
+		Systems::set_gear(landing_gear, true);
 		break;
 	case GearUp:
-		Systems::set_gear(airframe_device_state, false);
+		Systems::set_gear(landing_gear, false);
 		break;
 	case GearAuto:
 		break;
 	case GearHandleUp:
-		Systems::set_gear(airframe_device_state, false);
+		Systems::set_gear(landing_gear, false);
 		break;
 	case GearHandleDown:
-		Systems::set_gear(airframe_device_state, true);
+		Systems::set_gear(landing_gear, true);
 		break;
 	case NoseTurnToggle:
-		Systems::toggle_nose_turn_enabled(wheel_state, value > 0.5f);
+		Systems::toggle_nose_turn_enabled(landing_gear.wheels, value > 0.5f);
 		break;
 	case NoseTurnUp:
-		Systems::set_nose_turn_enabled(wheel_state, false);
+		Systems::set_nose_turn_enabled(landing_gear.wheels, false);
 		break;
 	case NoseTurnAuto:
-		Systems::set_nose_turn_enabled(wheel_state, false);
+		Systems::set_nose_turn_enabled(landing_gear.wheels, false);
 		break;
 	case NoseTurnDown:
-		Systems::set_nose_turn_enabled(wheel_state, true);
+		Systems::set_nose_turn_enabled(landing_gear.wheels, true);
 		break;
 	case WheelBrakeAxis:
-		Systems::set_brake_axis(wheel_state, Systems::normalize_brake_axis(value));
+		Systems::set_brake_axis(landing_gear.wheels, Systems::normalize_brake_axis(value));
 		break;
 	case WheelBrakeAxisLeft:
-		Systems::set_left_brake(wheel_state, Systems::normalize_brake_axis(value));
+		Systems::set_left_brake(landing_gear.wheels, Systems::normalize_brake_axis(value));
 		break;
 	case WheelBrakeAxisRight:
-		Systems::set_right_brake(wheel_state, Systems::normalize_brake_axis(value));
+		Systems::set_right_brake(landing_gear.wheels, Systems::normalize_brake_axis(value));
 		break;
 
 	case WheelBrakeOn:
-		Systems::set_brake_axis(wheel_state, 1.0);
+		Systems::set_brake_axis(landing_gear.wheels, 1.0);
 		break;
 	case WheelBrakeOff:
-		Systems::set_brake_axis(wheel_state, 0.0);
+		Systems::set_brake_axis(landing_gear.wheels, 0.0);
 		break;
 	case WheelBrakeLeftOn:
-		Systems::set_left_brake(wheel_state, 1.0);
+		Systems::set_left_brake(landing_gear.wheels, 1.0);
 		break;
 	case WheelBrakeLeftOff:
-		Systems::set_left_brake(wheel_state, 0.0);
+		Systems::set_left_brake(landing_gear.wheels, 0.0);
 		break;
 	case WheelBrakeRightOn:
-		Systems::set_right_brake(wheel_state, 1.0);
+		Systems::set_right_brake(landing_gear.wheels, 1.0);
 		break;
 	case WheelBrakeRightOff:
-		Systems::set_right_brake(wheel_state, 0.0);
+		Systems::set_right_brake(landing_gear.wheels, 0.0);
 		break;
 
 	}
@@ -989,8 +992,8 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 	const Core::Fck1cEfmSystems& systems = g_efm.systems();
 	const Core::ControlSurfaceState& controls = g_efm.control_surfaces();
 	const DcsBridge::DrawArgState state = {
-		systems.airframe_devices.gear_pos,
-		systems.wheels.nose_steering,
+		systems.landing_gear.position,
+		systems.landing_gear.wheels.nose_steering,
 		controls.elevator_command,
 		systems.airframe_devices.flaps_pos,
 		controls.aileron_command,
@@ -1001,7 +1004,11 @@ void ed_fm_set_draw_args (EdDrawArgument * drawargs,size_t size)
 		systems.engines.right.nozzle_aperture,
 		systems.engines.left.nozzle_aperture,
 		systems.airframe_devices.slats_pos,
-		{ systems.wheels.spin[0], systems.wheels.spin[1], systems.wheels.spin[2] }
+		{
+			systems.landing_gear.wheels.spin[0],
+			systems.landing_gear.wheels.spin[1],
+			systems.landing_gear.wheels.spin[2]
+		}
 	};
 
 	DcsBridge::set_draw_args(drawargs, size, state);
@@ -1023,11 +1030,15 @@ double ed_fm_get_param(unsigned index)
 	const DcsBridge::ParamExportState state = {
 		has_suspension_feedback(),
 		any_wow(),
-		systems.airframe_devices.gear_pos,
-		systems.wheels.nose_steering,
-		{ systems.wheels.spin[0], systems.wheels.spin[1], systems.wheels.spin[2] },
-		systems.wheels.brake_left,
-		systems.wheels.brake_right,
+		systems.landing_gear.position,
+		systems.landing_gear.wheels.nose_steering,
+		{
+			systems.landing_gear.wheels.spin[0],
+			systems.landing_gear.wheels.spin[1],
+			systems.landing_gear.wheels.spin[2]
+		},
+		systems.landing_gear.wheels.brake_left,
+		systems.landing_gear.wheels.brake_right,
 		systems.primary_controls.pitch.input,
 		systems.primary_controls.roll.input,
 		systems.primary_controls.yaw.input,
@@ -1178,7 +1189,7 @@ void ed_fm_suspension_feedback(int idx, const ed_fm_suspension_info* info)
 // EFMREF: DCS_CONTRACT - DCS repair callback; currently forwards to DamageModel reset.
 void ed_fm_repair()
 {
-	Systems::reset_damage_model(g_efm.systems().damage);
+	g_efm.repair();
 }
 
 // EFMREF: DCS_CONTRACT - DCS outbound event callback; currently handles carrier launch.
@@ -1204,21 +1215,7 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 void ed_fm_cold_start()
 {
 	reset_startup_susp_probe_state();
-	Core::AircraftState& aircraft = g_efm.aircraft_state();
-	Core::Fck1cEfmSystems& systems = g_efm.systems();
-	Systems::configure_cold_ground_start(
-		systems.startup,
-		systems.damage,
-		systems.suspension,
-		systems.fbw,
-		systems.wheels,
-		systems.airframe_devices,
-		systems.throttle_inputs,
-		systems.engines,
-		aircraft.roll,
-		aircraft.pitch,
-		aircraft.alpha,
-		aircraft.g);
+	g_efm.cold_start();
 	DcsBridge::reset_carrier_launch_state(carrier_launch);
 }
 
@@ -1227,22 +1224,7 @@ void ed_fm_cold_start()
 void ed_fm_hot_start()
 {
 	reset_startup_susp_probe_state();
-	Core::AircraftState& aircraft = g_efm.aircraft_state();
-	Core::Fck1cEfmSystems& systems = g_efm.systems();
-	Systems::configure_hot_ground_start(
-		systems.startup,
-		systems.damage,
-		systems.suspension,
-		systems.fbw,
-		systems.wheels,
-		systems.airframe_devices,
-		systems.throttle_inputs,
-		systems.engines,
-		FLAP_MODE_DOWN,
-		aircraft.roll,
-		aircraft.pitch,
-		aircraft.alpha,
-		aircraft.g);
+	g_efm.hot_ground_start();
 	DcsBridge::reset_carrier_launch_state(carrier_launch);
 }
 
@@ -1251,21 +1233,7 @@ void ed_fm_hot_start()
 void ed_fm_hot_start_in_air()
 {
 	reset_startup_susp_probe_state();
-	Core::AircraftState& aircraft = g_efm.aircraft_state();
-	Core::Fck1cEfmSystems& systems = g_efm.systems();
-	Systems::configure_hot_air_start(
-		systems.startup,
-		systems.damage,
-		systems.suspension,
-		systems.fbw,
-		systems.wheels,
-		systems.airframe_devices,
-		systems.throttle_inputs,
-		systems.engines,
-		aircraft.roll,
-		aircraft.pitch,
-		aircraft.alpha,
-		aircraft.g);
+	g_efm.hot_air_start();
 	DcsBridge::reset_carrier_launch_state(carrier_launch);
 }
 
@@ -1273,26 +1241,7 @@ void ed_fm_hot_start_in_air()
 // EFMREF: DCS_CONTRACT - DCS release callback; should delegate to Core cleanup/reset.
 void ed_fm_release()
 {
-	Core::AircraftState& aircraft = g_efm.aircraft_state();
-	Core::ControlSurfaceState& controls = g_efm.control_surfaces();
-	Core::Fck1cEfmSystems& systems = g_efm.systems();
-	Systems::configure_release(
-		systems.startup,
-		systems.suspension,
-		systems.fbw,
-		systems.primary_controls,
-		systems.wheels,
-		systems.throttle_inputs,
-		systems.engines,
-		aircraft.roll,
-		aircraft.pitch,
-		aircraft.alpha,
-		aircraft.g,
-		controls.elevator_command,
-		controls.aileron_command,
-		controls.rudder_command);
-	DcsBridge::reset_autopilot_state(ap_state);
-	ed_fm_repair();
+	g_efm.release();
 }
 
 // Cockpit view shaking.
@@ -1345,7 +1294,7 @@ size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 	snapshot.altitude_asl = aircraft.altitude_asl;
 	snapshot.altitude_agl = aircraft.altitude_agl;
 	snapshot.position_world_z = aircraft.position_world_z;
-	snapshot.gear_pos = systems.airframe_devices.gear_pos;
+	snapshot.gear_pos = systems.landing_gear.position;
 	for (int index = 0; index < Diagnostics::kDiagnosticWheelCount; ++index)
 	{
 		snapshot.wow[index] = systems.suspension.wow[index];
