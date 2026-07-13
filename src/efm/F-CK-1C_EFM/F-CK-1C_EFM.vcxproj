@@ -78,7 +78,12 @@
     <ClInclude Include="DcsBridge\AutopilotBridge.h" />
     <ClInclude Include="DcsBridge\ConfigReader.h" />
     <ClInclude Include="DcsBridge\CockpitParams.h" />
+    <ClInclude Include="DcsBridge\DcsCommandRouter.h" />
+    <ClInclude Include="DcsBridge\DcsModule.h" />
+    <ClInclude Include="DcsBridge\DcsRuntime.h" />
+    <ClInclude Include="DcsBridge\DcsSnapshots.h" />
     <ClInclude Include="DcsBridge\DrawArgs.h" />
+    <ClInclude Include="DcsBridge\MassDelta.h" />
     <ClInclude Include="DcsBridge\ModulePaths.h" />
     <ClInclude Include="DcsBridge\ParamExport.h" />
     <ClInclude Include="DcsBridge\SimulationEvents.h" />
@@ -125,6 +130,18 @@
       </PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Core\Fck1cEfm.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\DcsCommandRouter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\DcsModule.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\DcsRuntime.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\DcsSnapshots.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Systems\FBWController.cpp">
