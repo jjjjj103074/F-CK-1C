@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Common/Clamp.h"
-#include "../DcsIds/CockpitParams.h"
+#include "../DcsIds/CockpitParams.g.h"
 #include "../include/Cockpit/CockpitAPI_Declare.h"
 
 namespace DcsBridge

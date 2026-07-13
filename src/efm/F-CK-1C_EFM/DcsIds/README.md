@@ -3,8 +3,8 @@
 `CommandIds.json` is the single source for custom command IDs and cockpit
 parameter names shared by C++ and Lua.
 
-Run `tools/generate_dcs_ids.ps1` after changing it. The normal DLL build runs
-the generator automatically and updates:
+Run `tools/generate_dcs_ids.ps1` explicitly after changing it. The DLL build
+does not generate or modify source files. The generator updates:
 
 - `DcsIds/CustomCommands.g.h`
 - `DcsIds/CockpitParams.g.h`
