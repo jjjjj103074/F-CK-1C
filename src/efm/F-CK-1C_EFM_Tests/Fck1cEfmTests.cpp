@@ -2,19 +2,11 @@
 
 #include "Core/Fck1cEfm.h"
 
+#include <stdexcept>
+
 namespace
 {
 constexpr double kTolerance = 1e-9;
-
-const double kMachTable[] = { 0.0, 1.0 };
-const double kCxZeroTable[] = { 0.025, 0.030 };
-const double kCyAlphaTable[] = { 0.05, 0.04 };
-const double kRollRateMaxTable[] = { 3.0, 2.0 };
-const double kAlphaMaxTable[] = { 20.0, 18.0 };
-const double kCyMaxTable[] = { 1.2, 1.0 };
-const double kMaxThrustTable[] = { 54000.0, 50000.0 };
-const double kThrottleInputTable[] = { 0.0, 1.0 };
-const double kEnginePowerTable[] = { 0.1, 1.0 };
 
 class TestRuntime final : public Core::Fck1cEfmRuntime
 {
@@ -69,30 +61,27 @@ public:
 	double release_damage_integrity = 0.0;
 };
 
-Core::Fck1cEfmConfig make_test_config()
+Data::AircraftConfig make_test_config()
 {
-	Core::Fck1cEfmConfig config;
+	Data::AircraftConfig config;
 	config.aerodynamics.wing_area = 24.26;
 	config.aerodynamics.wingspan = 8.53;
 	config.aerodynamics.length = 14.48;
 	config.aerodynamics.height = 4.7;
 	config.aerodynamics.mach_max = 1.5;
-	config.aerodynamics.mach_table = kMachTable;
-	config.aerodynamics.cx_zero_table = kCxZeroTable;
-	config.aerodynamics.cy_alpha_table = kCyAlphaTable;
-	config.aerodynamics.roll_rate_max_table = kRollRateMaxTable;
-	config.aerodynamics.alpha_max_table = kAlphaMaxTable;
-	config.aerodynamics.cy_max_table = kCyMaxTable;
-	config.aerodynamics.table_size = 2;
+	config.aerodynamics.mach_table = { 0.0, 1.0 };
+	config.aerodynamics.cx_zero_table = { 0.025, 0.030 };
+	config.aerodynamics.cy_alpha_table = { 0.05, 0.04 };
+	config.aerodynamics.roll_rate_max_table = { 3.0, 2.0 };
+	config.aerodynamics.alpha_max_table = { 20.0, 18.0 };
+	config.aerodynamics.cy_max_table = { 1.2, 1.0 };
 	config.engine.start_time = 5.0;
 	config.engine.spool_up_tau = 1.0;
 	config.engine.spool_down_tau = 1.0;
-	config.engine.mach_table = kMachTable;
-	config.engine.max_thrust_table = kMaxThrustTable;
-	config.engine.mach_table_size = 2;
-	config.engine.throttle_input_table = kThrottleInputTable;
-	config.engine.power_table = kEnginePowerTable;
-	config.engine.throttle_table_size = 2;
+	config.engine.mach_table = { 0.0, 1.0 };
+	config.engine.max_thrust_table = { 54000.0, 50000.0 };
+	config.engine.throttle_input_table = { 0.0, 1.0 };
+	config.engine.power_table = { 0.1, 1.0 };
 	config.left_engine_position = Common::Vec3(-3.793, -0.391, -0.716);
 	config.right_engine_position = Common::Vec3(-3.793, -0.391, 0.716);
 	return config;
@@ -101,10 +90,31 @@ Core::Fck1cEfmConfig make_test_config()
 void test_config_ownership(Tests::Context& context)
 {
 	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Data::AircraftConfig source = make_test_config();
+	Core::Fck1cEfm efm(source, runtime);
+	source.aerodynamics.mach_table[0] = 99.0;
+	source.engine.max_thrust_table[0] = 0.0;
 	TEST_EXPECT_NEAR(context, efm.config().aerodynamics.wing_area, 24.26, kTolerance);
+	TEST_EXPECT_NEAR(context, efm.config().aerodynamics.mach_table[0], 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, efm.config().engine.max_thrust_table[0], 54000.0, kTolerance);
 	TEST_EXPECT_NEAR(context, efm.config().left_engine_position.z, -0.716, kTolerance);
 	TEST_EXPECT_NEAR(context, efm.config().right_engine_position.z, 0.716, kTolerance);
+}
+
+void test_invalid_config_rejected(Tests::Context& context)
+{
+	TestRuntime runtime;
+	Data::AircraftConfig invalid_config;
+	bool rejected = false;
+	try
+	{
+		Core::Fck1cEfm efm(invalid_config, runtime);
+	}
+	catch (const std::invalid_argument&)
+	{
+		rejected = true;
+	}
+	TEST_EXPECT(context, rejected);
 }
 
 void test_runtime_state_ownership(Tests::Context& context)
@@ -217,6 +227,7 @@ void test_release_lifecycle(Tests::Context& context)
 void run_fck1c_efm_tests(Tests::Context& context)
 {
 	test_config_ownership(context);
+	test_invalid_config_rejected(context);
 	test_runtime_state_ownership(context);
 	test_simulation_pipeline(context);
 	test_ground_start_lifecycle(context);

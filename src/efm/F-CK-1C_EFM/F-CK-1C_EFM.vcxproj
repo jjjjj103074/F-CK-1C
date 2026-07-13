@@ -75,6 +75,9 @@
     <ClInclude Include="Core\AircraftState.h" />
     <ClInclude Include="Core\Fck1cEfm.h" />
     <ClInclude Include="Core\ForceMoment.h" />
+    <ClInclude Include="Data\AeroTables.h" />
+    <ClInclude Include="Data\AircraftConfig.h" />
+    <ClInclude Include="Data\EngineTables.h" />
     <ClInclude Include="DcsBridge\AutopilotBridge.h" />
     <ClInclude Include="DcsBridge\ConfigReader.h" />
     <ClInclude Include="DcsBridge\CockpitParams.h" />
@@ -102,7 +105,6 @@
     <ClInclude Include="F-CK-1C_EFM_API.h" />
     <ClInclude Include="include\Cockpit\ccParametersAPI.h" />
     <ClInclude Include="Utility.h" />
-    <ClInclude Include="FM_data.h" />
     <ClInclude Include="include\Cockpit\CockpitAPI_Declare.h" />
     <ClInclude Include="include\FM\wHumanCustomPhysicsAPI.h" />
     <ClInclude Include="include\FM\wHumanCustomPhysicsAPI_ImplementationDeclare.h" />
@@ -132,6 +134,15 @@
     <ClCompile Include="Core\Fck1cEfm.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Data\AeroTables.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Data\AircraftConfig.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Data\EngineTables.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="DcsBridge\DcsCommandRouter.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -151,7 +162,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="F-CK-1C_EFM.cpp" />
-    <ClCompile Include="FM_data.cpp" />
     <ClCompile Include="include\FM\API_Declare.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

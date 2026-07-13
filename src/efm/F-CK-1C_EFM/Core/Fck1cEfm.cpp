@@ -1,6 +1,8 @@
 #include "Fck1cEfm.h"
 
 #include "ForceMoment.h"
+
+#include <stdexcept>
 #include "../Systems/FBWLifecycle.h"
 
 namespace
@@ -11,13 +13,21 @@ constexpr double kHotAirStartThrottle = 0.5;
 
 namespace Core
 {
-Fck1cEfm::Fck1cEfm(const Fck1cEfmConfig& config, Fck1cEfmRuntime& runtime)
+Fck1cEfm::Fck1cEfm(const Data::AircraftConfig& config, Fck1cEfmRuntime& runtime)
 	: config_(config),
 	runtime_(runtime)
 {
+	if (!Systems::has_valid_aerodynamics_tables(config_.aerodynamics))
+	{
+		throw std::invalid_argument("Fck1cEfm requires complete aerodynamic tables.");
+	}
+	if (!Systems::has_valid_engine_tables(config_.engine))
+	{
+		throw std::invalid_argument("Fck1cEfm requires complete engine tables.");
+	}
 }
 
-const Fck1cEfmConfig& Fck1cEfm::config() const
+const Data::AircraftConfig& Fck1cEfm::config() const
 {
 	return config_;
 }

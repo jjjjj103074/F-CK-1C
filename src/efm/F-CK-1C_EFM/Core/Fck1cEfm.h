@@ -2,6 +2,7 @@
 
 #include "AircraftState.h"
 #include "../Common/Vec3.h"
+#include "../Data/AircraftConfig.h"
 #include "../Systems/AerodynamicsSystem.h"
 #include "../Systems/AirframeDeviceSystem.h"
 #include "../Systems/DamageModel.h"
@@ -46,17 +47,6 @@ public:
 	virtual void on_release(const Fck1cEfm& efm) = 0;
 };
 
-struct Fck1cEfmConfig
-{
-	Systems::AerodynamicsSystemConfig aerodynamics;
-	Systems::SuspensionSystemConfig suspension;
-	Systems::FBWControllerConfig fbw;
-	Systems::EngineSystemConfig engine;
-	Systems::FuelSystemConfig fuel;
-	Common::Vec3 left_engine_position;
-	Common::Vec3 right_engine_position;
-};
-
 struct ForceMomentFrame
 {
 	Common::Vec3 force;
@@ -97,12 +87,12 @@ struct Fck1cEfmSystems
 class Fck1cEfm
 {
 public:
-	Fck1cEfm(const Fck1cEfmConfig& config, Fck1cEfmRuntime& runtime);
+	Fck1cEfm(const Data::AircraftConfig& config, Fck1cEfmRuntime& runtime);
 
 	Fck1cEfm(const Fck1cEfm&) = delete;
 	Fck1cEfm& operator=(const Fck1cEfm&) = delete;
 
-	const Fck1cEfmConfig& config() const;
+	const Data::AircraftConfig& config() const;
 	AircraftState& aircraft_state();
 	const AircraftState& aircraft_state() const;
 	ForceMomentFrame& force_moment();
@@ -143,7 +133,7 @@ private:
 	void reset_start_state(Systems::StartupMode mode);
 	void reset_control_outputs();
 
-	const Fck1cEfmConfig config_;
+	const Data::AircraftConfig config_;
 	Fck1cEfmRuntime& runtime_;
 	AircraftState aircraft_state_;
 	ForceMomentFrame force_moment_;

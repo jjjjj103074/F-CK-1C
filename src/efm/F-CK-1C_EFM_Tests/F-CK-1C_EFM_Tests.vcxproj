@@ -62,17 +62,19 @@
     <ClCompile Include="EngineSystemTests.cpp" />
     <ClCompile Include="FBWControllerTests.cpp" />
     <ClCompile Include="Fck1cEfmTests.cpp" />
-    <ClCompile Include="FmDataTests.cpp" />
+    <ClCompile Include="ImmutableDataTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />
     <ClCompile Include="LandingGearSystemTests.cpp" />
     <ClCompile Include="MassDeltaTests.cpp" />
     <ClCompile Include="TestMain.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Core\Fck1cEfm.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\Data\AeroTables.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\Data\AircraftConfig.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\Data\EngineTables.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsCommandRouter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsSnapshots.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWController.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWLifecycle.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\FM_data.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

@@ -12,7 +12,7 @@ Important files:
 - F-CK-1C_EFM_API.h: DLL export/import macro.
 - Core/: DCS-neutral simulation owner and pipeline.
 - Systems/: active aircraft systems, including FBWController.
-- FM_data.*: shared flight model data.
+- Data/: immutable aircraft configuration and aerodynamic/engine tables.
 
 Build from the repository root with:
 

@@ -3,6 +3,8 @@
 #include "../Common/Actuator.h"
 #include "../Common/Clamp.h"
 #include "../Common/Table.h"
+#include <cstddef>
+#include <vector>
 
 namespace Systems
 {
@@ -11,12 +13,10 @@ struct EngineSystemConfig
 	double start_time = 0.0;
 	double spool_up_tau = 0.0;
 	double spool_down_tau = 0.0;
-	const double* mach_table = nullptr;
-	const double* max_thrust_table = nullptr;
-	unsigned mach_table_size = 0;
-	const double* throttle_input_table = nullptr;
-	const double* power_table = nullptr;
-	unsigned throttle_table_size = 0;
+	std::vector<double> mach_table;
+	std::vector<double> max_thrust_table;
+	std::vector<double> throttle_input_table;
+	std::vector<double> power_table;
 };
 
 struct EngineChannelState
@@ -52,12 +52,22 @@ struct EngineSystemState
 	AfterburnerConfig afterburner;
 };
 
+inline bool has_valid_engine_tables(const EngineSystemConfig& config)
+{
+	const std::size_t mach_table_size = config.mach_table.size();
+	const std::size_t throttle_table_size = config.throttle_input_table.size();
+	return mach_table_size > 0 &&
+		config.max_thrust_table.size() == mach_table_size &&
+		throttle_table_size > 0 &&
+		config.power_table.size() == throttle_table_size;
+}
+
 inline double max_dry_thrust(const EngineSystemConfig& config, double mach)
 {
 	return Common::lerp(
-		config.mach_table,
-		config.max_thrust_table,
-		config.mach_table_size,
+		config.mach_table.data(),
+		config.max_thrust_table.data(),
+		static_cast<unsigned>(config.mach_table.size()),
 		mach);
 }
 
@@ -204,9 +214,9 @@ inline void update_dry_engine_channels(
 		engines.left,
 		dt,
 		config.start_time,
-		config.throttle_input_table,
-		config.power_table,
-		config.throttle_table_size,
+		config.throttle_input_table.data(),
+		config.power_table.data(),
+		static_cast<unsigned>(config.throttle_input_table.size()),
 		config.spool_up_tau,
 		config.spool_down_tau,
 		engines.afterburner);
@@ -214,9 +224,9 @@ inline void update_dry_engine_channels(
 		engines.right,
 		dt,
 		config.start_time,
-		config.throttle_input_table,
-		config.power_table,
-		config.throttle_table_size,
+		config.throttle_input_table.data(),
+		config.power_table.data(),
+		static_cast<unsigned>(config.throttle_input_table.size()),
 		config.spool_up_tau,
 		config.spool_down_tau,
 		engines.afterburner);

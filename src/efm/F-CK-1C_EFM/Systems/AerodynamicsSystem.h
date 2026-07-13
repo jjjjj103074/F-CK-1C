@@ -5,7 +5,9 @@
 #include "../Common/Table.h"
 #include "../Common/Units.h"
 #include "../Common/Vec3.h"
+#include <cstddef>
 #include <cmath>
+#include <vector>
 
 namespace Systems
 {
@@ -28,13 +30,12 @@ struct AerodynamicsSystemConfig
 	double cy_flap = 0.0;
 	double airbrake_pitch_comp_k = 0.0;
 
-	const double* mach_table = nullptr;
-	const double* cx_zero_table = nullptr;
-	const double* cy_alpha_table = nullptr;
-	const double* roll_rate_max_table = nullptr;
-	const double* alpha_max_table = nullptr;
-	const double* cy_max_table = nullptr;
-	unsigned table_size = 0;
+	std::vector<double> mach_table;
+	std::vector<double> cx_zero_table;
+	std::vector<double> cy_alpha_table;
+	std::vector<double> roll_rate_max_table;
+	std::vector<double> alpha_max_table;
+	std::vector<double> cy_max_table;
 };
 
 struct AerodynamicsSystemState
@@ -100,13 +101,13 @@ struct AerodynamicsFrameInput
 
 inline bool has_valid_aerodynamics_tables(const AerodynamicsSystemConfig& config)
 {
-	return config.mach_table != nullptr &&
-		config.cx_zero_table != nullptr &&
-		config.cy_alpha_table != nullptr &&
-		config.roll_rate_max_table != nullptr &&
-		config.alpha_max_table != nullptr &&
-		config.cy_max_table != nullptr &&
-		config.table_size > 0;
+	const std::size_t table_size = config.mach_table.size();
+	return table_size > 0 &&
+		config.cx_zero_table.size() == table_size &&
+		config.cy_alpha_table.size() == table_size &&
+		config.roll_rate_max_table.size() == table_size &&
+		config.alpha_max_table.size() == table_size &&
+		config.cy_max_table.size() == table_size;
 }
 
 inline void initialize_aerodynamic_force_positions(
@@ -159,11 +160,17 @@ inline void update_aerodynamic_conditions(
 		return;
 	}
 
-	state.cy_alpha = Common::lerp(config.mach_table, config.cy_alpha_table, config.table_size, mach);
-	state.cx_zero = Common::lerp(config.mach_table, config.cx_zero_table, config.table_size, mach);
-	state.cy_max = Common::lerp(config.mach_table, config.cy_max_table, config.table_size, mach);
-	state.alpha_max_deg = Common::lerp(config.mach_table, config.alpha_max_table, config.table_size, mach);
-	state.roll_rate_max = Common::lerp(config.mach_table, config.roll_rate_max_table, config.table_size, mach);
+	const unsigned table_size = static_cast<unsigned>(config.mach_table.size());
+	state.cy_alpha = Common::lerp(
+		config.mach_table.data(), config.cy_alpha_table.data(), table_size, mach);
+	state.cx_zero = Common::lerp(
+		config.mach_table.data(), config.cx_zero_table.data(), table_size, mach);
+	state.cy_max = Common::lerp(
+		config.mach_table.data(), config.cy_max_table.data(), table_size, mach);
+	state.alpha_max_deg = Common::lerp(
+		config.mach_table.data(), config.alpha_max_table.data(), table_size, mach);
+	state.roll_rate_max = Common::lerp(
+		config.mach_table.data(), config.roll_rate_max_table.data(), table_size, mach);
 	state.cy_max += config.cy_flap * 0.4 * slats_pos;
 
 	state.wing_lift_coefficient = state.cy_alpha * alpha_deg;

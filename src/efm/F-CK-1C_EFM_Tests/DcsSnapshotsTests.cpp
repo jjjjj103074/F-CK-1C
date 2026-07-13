@@ -44,7 +44,7 @@ void seed_snapshot_state(Core::Fck1cEfm& efm)
 void test_draw_arg_snapshot(Tests::Context& context)
 {
 	NullRuntime runtime;
-	Core::Fck1cEfm efm(Core::Fck1cEfmConfig(), runtime);
+	Core::Fck1cEfm efm(Data::fck1c_aircraft_config(), runtime);
 	seed_snapshot_state(efm);
 	const DcsBridge::DrawArgState state = DcsBridge::make_draw_arg_state(efm);
 	TEST_EXPECT_NEAR(context, state.gear_pos, 0.8, kTolerance);
@@ -59,7 +59,7 @@ void test_draw_arg_snapshot(Tests::Context& context)
 void test_param_snapshot(Tests::Context& context)
 {
 	NullRuntime runtime;
-	Core::Fck1cEfm efm(Core::Fck1cEfmConfig(), runtime);
+	Core::Fck1cEfm efm(Data::fck1c_aircraft_config(), runtime);
 	seed_snapshot_state(efm);
 	const DcsBridge::ParamExportState state = DcsBridge::make_param_export_state(efm);
 	TEST_EXPECT_NEAR(context, state.gear_pos, 0.8, kTolerance);
@@ -74,7 +74,7 @@ void test_param_snapshot(Tests::Context& context)
 void test_debug_watch_snapshot(Tests::Context& context)
 {
 	NullRuntime runtime;
-	Core::Fck1cEfm efm(Core::Fck1cEfmConfig(), runtime);
+	Core::Fck1cEfm efm(Data::fck1c_aircraft_config(), runtime);
 	efm.aircraft_state().altitude_asl = 1200.0;
 	efm.systems().landing_gear.position = 1.0;
 	efm.systems().suspension.wow[1] = true;

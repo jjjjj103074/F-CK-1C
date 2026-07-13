@@ -8,7 +8,6 @@
 #include "../Systems/DamageModel.h"
 #include "../Systems/LandingGearSystem.h"
 #include "../Systems/SuspensionSystem.h"
-#include "../FM_data.h"
 
 namespace
 {
@@ -16,6 +15,9 @@ constexpr size_t kModulePathBufferSize = DcsBridge::kModulePathMax;
 constexpr double kLegacyCockpitTemperatureOffset = 273.0;
 constexpr double kSuspensionTestRadiusAdd = 0.30;
 constexpr double kSuspensionTestWheelYOffset = -0.50;
+constexpr double kCarrierLaunchReferenceMach = 0.1;
+constexpr double kCarrierLaunchEngineShare = 0.5;
+constexpr double kCarrierLaunchEngineCount = 2.0;
 constexpr const char* kEfmVersion = "v0.1.3-april-fools";
 constexpr const char* kEfmVersionDate = "2026-04-01";
 constexpr const char* kInvalidSuspensionFeedback =
@@ -194,7 +196,8 @@ bool DcsRuntime::pop_simulation_event(
 		carrier_launch_,
 		out,
 		efm.systems().engines.left.throttle_output,
-		FM_DATA::max_thrust[1] * 0.5 * 2);
+		Systems::max_dry_thrust(efm.config().engine, kCarrierLaunchReferenceMach) *
+			kCarrierLaunchEngineShare * kCarrierLaunchEngineCount);
 }
 
 bool DcsRuntime::push_simulation_event(const ed_fm_simulation_event& in)
@@ -373,7 +376,7 @@ Diagnostics::ThrustDiagnosticsSnapshot DcsRuntime::make_thrust_snapshot(
 	const Core::Fck1cEfm& efm,
 	const Core::MaxPowerCommand& command) const
 {
-	const Core::Fck1cEfmConfig& config = efm.config();
+	const Data::AircraftConfig& config = efm.config();
 	const Core::Fck1cEfmSystems& systems = efm.systems();
 	const Core::ForceMomentFrame& frame = efm.force_moment();
 	Diagnostics::ThrustDiagnosticsSnapshot snapshot;
