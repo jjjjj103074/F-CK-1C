@@ -108,7 +108,9 @@
     <ClInclude Include="Systems\DamageModel.h" />
     <ClInclude Include="Systems\EngineSystem.h" />
     <ClInclude Include="Systems\FBWController.h" />
+    <ClInclude Include="Systems\FBWControllerTypes.h" />
     <ClInclude Include="Systems\FBWLifecycle.h" />
+    <ClInclude Include="Systems\FBWMath.h" />
     <ClInclude Include="Systems\FuelSystem.h" />
     <ClInclude Include="Systems\InputSystem.h" />
     <ClInclude Include="Systems\LandingGearSystem.h" />
@@ -125,13 +127,18 @@
     <ClCompile Include="Core\Fck1cEfm.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Systems\FBWController.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Systems\FBWLifecycle.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="F-CK-1C_EFM.cpp" />
     <ClCompile Include="FM_data.cpp" />
     <ClCompile Include="include\FM\API_Declare.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="FCS.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

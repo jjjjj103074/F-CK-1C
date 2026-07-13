@@ -750,31 +750,25 @@ void ed_fm_set_command (int command, float value)
 		break;
 
 	case FBWCatToggle:
-		if (value > 0.5f)
-		{
-			fbw_controller.mode_target = (fbw_controller.mode_target == Systems::FBW_CAT1) ? Systems::FBW_CAT3 : Systems::FBW_CAT1;
-		}
+		Systems::toggle_fbw_cat_mode(fbw_controller, value > 0.5f);
 		break;
 	case FBWCat1:
 		if (value > 0.5f)
 		{
-			fbw_controller.mode_target = Systems::FBW_CAT1;
+			Systems::set_fbw_cat_mode(fbw_controller, Systems::FBW_CAT1);
 		}
 		break;
 	case FBWCat3:
 		if (value > 0.5f)
 		{
-			fbw_controller.mode_target = Systems::FBW_CAT3;
+			Systems::set_fbw_cat_mode(fbw_controller, Systems::FBW_CAT3);
 		}
 		break;
 	case FBWGLimiterOverride:
-		fbw_controller.g_limiter_override = (value > 0.5f);
+		Systems::set_fbw_g_limiter_override(fbw_controller, value > 0.5f);
 		break;
 	case FBWGLimiterOverrideToggle:
-		if (value > 0.5f)
-		{
-			fbw_controller.g_limiter_override = !fbw_controller.g_limiter_override;
-		}
+		Systems::toggle_fbw_g_limiter_override(fbw_controller, value > 0.5f);
 		break;
 
 	//	Engine and throttle commands

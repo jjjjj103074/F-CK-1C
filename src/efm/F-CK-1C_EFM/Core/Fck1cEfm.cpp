@@ -416,10 +416,12 @@ void Fck1cEfm::reset_start_state(Systems::StartupMode mode)
 	Systems::reset_suspension_feedback_state(systems_.suspension);
 	Systems::reset_fbw_state(
 		systems_.fbw,
-		aircraft_state_.roll,
-		aircraft_state_.pitch,
-		aircraft_state_.alpha,
-		aircraft_state_.g);
+		{
+			aircraft_state_.roll,
+			aircraft_state_.pitch,
+			aircraft_state_.alpha,
+			aircraft_state_.g
+		});
 	Systems::begin_startup(systems_.startup, mode);
 }
 
@@ -470,10 +472,12 @@ void Fck1cEfm::release()
 	Systems::reset_suspension_feedback_state(systems_.suspension);
 	Systems::reset_fbw_state(
 		systems_.fbw,
-		aircraft_state_.roll,
-		aircraft_state_.pitch,
-		aircraft_state_.alpha,
-		aircraft_state_.g);
+		{
+			aircraft_state_.roll,
+			aircraft_state_.pitch,
+			aircraft_state_.alpha,
+			aircraft_state_.g
+		});
 	Systems::configure_release(systems_.startup);
 	reset_control_outputs();
 	Systems::configure_release_landing_gear(systems_.landing_gear);

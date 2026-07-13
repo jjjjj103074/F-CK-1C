@@ -10,8 +10,9 @@ Important files:
 - F-CK-1C_EFM.cpp: main EFM implementation.
 - F-CK-1C_EFM.h: exported DCS EFM function declarations.
 - F-CK-1C_EFM_API.h: DLL export/import macro.
+- Core/: DCS-neutral simulation owner and pipeline.
+- Systems/: active aircraft systems, including FBWController.
 - FM_data.*: shared flight model data.
-- FCS.*: flight control system helpers.
 
 Build from the repository root with:
 
