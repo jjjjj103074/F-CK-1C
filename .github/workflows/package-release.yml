@@ -1,0 +1,47 @@
+name: Package Release
+
+run-name: Package ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release package version, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Create release package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate version
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:PACKAGE_VERSION -notmatch '^[A-Za-z0-9._-]+$') {
+              throw "Version can only contain letters, numbers, dots, underscores, and hyphens."
+          }
+
+      - name: Create package
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: .\tools\package_release.ps1 -Version $env:PACKAGE_VERSION
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: F-CK-1C-${{ inputs.version }}
+          path: |
+            dist/F-CK-1C-${{ inputs.version }}.zip
+            dist/F-CK-1C-${{ inputs.version }}.zip.sha256
+          if-no-files-found: error
