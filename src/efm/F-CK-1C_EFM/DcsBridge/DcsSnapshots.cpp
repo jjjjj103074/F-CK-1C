@@ -1,14 +1,13 @@
 #include "DcsSnapshots.h"
 
 #include "../Diagnostics/SuspensionDiagnostics.h"
-#include "../Systems/SuspensionSystem.h"
 
 namespace DcsBridge
 {
-DrawArgState make_draw_arg_state(const Core::Fck1cEfm& efm)
+DrawArgState make_draw_arg_state(const Core::Fck1cEfmSnapshot& snapshot)
 {
-	const Core::Fck1cEfmSystems& systems = efm.systems();
-	const Core::ControlSurfaceState& controls = efm.control_surfaces();
+	const Core::Fck1cEfmSystems& systems = snapshot.systems;
+	const Core::ControlSurfaceState& controls = snapshot.control_surfaces;
 	return {
 		systems.landing_gear.position,
 		systems.landing_gear.wheels.nose_steering,
@@ -30,13 +29,13 @@ DrawArgState make_draw_arg_state(const Core::Fck1cEfm& efm)
 	};
 }
 
-ParamExportState make_param_export_state(const Core::Fck1cEfm& efm)
+ParamExportState make_param_export_state(const Core::Fck1cEfmSnapshot& snapshot)
 {
-	const Core::AircraftState& aircraft = efm.aircraft_state();
-	const Core::Fck1cEfmSystems& systems = efm.systems();
+	const Core::AircraftState& aircraft = snapshot.aircraft;
+	const Core::Fck1cEfmSystems& systems = snapshot.systems;
 	return {
-		Systems::has_suspension_feedback(systems.suspension),
-		Systems::any_wow(systems.suspension),
+		snapshot.suspension_feedback_available,
+		snapshot.any_weight_on_wheels,
 		systems.landing_gear.position,
 		systems.landing_gear.wheels.nose_steering,
 		{
@@ -66,12 +65,12 @@ ParamExportState make_param_export_state(const Core::Fck1cEfm& efm)
 }
 
 Diagnostics::DebugWatchSnapshot make_debug_watch_snapshot(
-	const Core::Fck1cEfm& efm,
+	const Core::Fck1cEfmSnapshot& efm,
 	const char* version,
 	const char* version_date)
 {
-	const Core::AircraftState& aircraft = efm.aircraft_state();
-	const Core::Fck1cEfmSystems& systems = efm.systems();
+	const Core::AircraftState& aircraft = efm.aircraft;
+	const Core::Fck1cEfmSystems& systems = efm.systems;
 	Diagnostics::DebugWatchSnapshot snapshot;
 	snapshot.version = version;
 	snapshot.version_date = version_date;
@@ -83,11 +82,11 @@ Diagnostics::DebugWatchSnapshot make_debug_watch_snapshot(
 	{
 		snapshot.wow[index] = systems.suspension.wow[index];
 	}
-	snapshot.wow_any = Systems::any_wow(systems.suspension);
-	snapshot.wow_valid = Systems::has_suspension_feedback(systems.suspension);
+	snapshot.wow_any = efm.any_weight_on_wheels;
+	snapshot.wow_valid = efm.suspension_feedback_available;
 	snapshot.on_ground = systems.suspension.on_ground;
 	snapshot.fallback_ground_force = systems.suspension.fallback_ground_force;
-	snapshot.fbw = &systems.fbw;
+	snapshot.fbw = systems.fbw;
 	return snapshot;
 }
 }

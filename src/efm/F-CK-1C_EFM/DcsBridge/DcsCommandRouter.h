@@ -4,5 +4,11 @@
 
 namespace DcsBridge
 {
-void route_command(Core::Fck1cEfmSystems& systems, int command, float value);
+struct DcsCommandMapping
+{
+	bool mapped = false;
+	Core::EfmCommand command;
+};
+
+DcsCommandMapping map_command(int command, float value);
 }

@@ -17,18 +17,22 @@ public:
 	Core::Fck1cEfm efm_;
 };
 
-DcsModuleState g_module;
+DcsModuleState& module_state()
+{
+	static DcsModuleState state;
+	return state;
+}
 }
 
 namespace DcsBridge
 {
 Core::Fck1cEfm& efm()
 {
-	return g_module.efm_;
+	return module_state().efm_;
 }
 
 DcsRuntime& runtime()
 {
-	return g_module.runtime_;
+	return module_state().runtime_;
 }
 }

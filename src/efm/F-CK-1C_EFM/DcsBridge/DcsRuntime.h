@@ -31,27 +31,30 @@ public:
 
 	Core::AutopilotCommand read_autopilot() override;
 	Core::MaxPowerCommand read_max_power() override;
-	void on_first_frame(const Core::Fck1cEfm& efm) override;
-	void on_engine_shutdown(const Core::Fck1cEfm& efm) override;
+	void on_first_frame(const Core::Fck1cEfmSnapshot& snapshot) override;
+	void on_engine_shutdown(const Core::Fck1cEfmSnapshot& snapshot) override;
 	void on_thrust_updated(
-		const Core::Fck1cEfm& efm,
+		const Core::Fck1cEfmSnapshot& snapshot,
 		const Core::MaxPowerCommand& command) override;
-	void on_ground_diagnostics(const Core::Fck1cEfm& efm, double dt) override;
-	void on_release(const Core::Fck1cEfm& efm) override;
+	void on_ground_diagnostics(const Core::Fck1cEfmSnapshot& snapshot, double dt) override;
+	void on_release(const Core::Fck1cEfmSnapshot& snapshot) override;
 
-	void configure(const char* config_path, const Core::Fck1cEfm& efm);
+	void configure(const char* config_path, const Core::Fck1cEfmSnapshot& snapshot);
 	void export_temperature(double dcs_temperature);
 	void reset_startup_suspension_probe();
 	void reset_carrier_launch();
-	void log_damage(const Core::Fck1cEfm& efm, int element, double integrity);
+	void log_damage(const Core::Fck1cEfmSnapshot& snapshot, int element, double integrity);
 	void update_suspension_feedback(
 		Core::Fck1cEfm& efm,
 		int index,
 		const ed_fm_suspension_info* info);
-	bool pop_simulation_event(const Core::Fck1cEfm& efm, ed_fm_simulation_event& out);
+	bool pop_simulation_event(
+		const Core::Fck1cEfmSnapshot& snapshot,
+		double max_dry_thrust,
+		ed_fm_simulation_event& out);
 	bool push_simulation_event(const ed_fm_simulation_event& in);
 	size_t debug_watch(
-		const Core::Fck1cEfm& efm,
+		const Core::Fck1cEfmSnapshot& snapshot,
 		int level,
 		const DebugWatchBuffer& buffer) const;
 
@@ -67,18 +70,17 @@ private:
 	double active_suspension_radius_add();
 	double active_suspension_wheel_y_offset();
 	void active_suspension_node_names(const char*& nose, const char*& left, const char*& right);
-	void refresh_suspension_diagnostics_config(const Core::Fck1cEfm& efm);
-	double suspension_visual_arg(const Core::Fck1cEfm& efm, int index) const;
+	void refresh_suspension_diagnostics_config(const Core::Fck1cEfmSnapshot& snapshot);
 	Diagnostics::SuspensionDiagnosticsSnapshot make_suspension_snapshot(
-		const Core::Fck1cEfm& efm) const;
+		const Core::Fck1cEfmSnapshot& snapshot) const;
 	void copy_suspension_wheel_snapshot(
 		const Core::Fck1cEfmSystems& systems,
 		Diagnostics::SuspensionDiagnosticsSnapshot& snapshot) const;
 	Diagnostics::ThrustDiagnosticsSnapshot make_thrust_snapshot(
-		const Core::Fck1cEfm& efm,
+		const Core::Fck1cEfmSnapshot& snapshot,
 		const Core::MaxPowerCommand& command) const;
 	void write_module_log(const char* message);
-	void write_probe_log(const Core::Fck1cEfm& efm, const char* message);
+	void write_probe_log(double simulation_time, const char* message);
 
 	ModulePaths module_paths_ = { ".", "FM\\config.lua", false };
 	EDPARAM cockpit_interface_;

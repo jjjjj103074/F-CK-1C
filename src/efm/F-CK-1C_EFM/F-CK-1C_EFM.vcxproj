@@ -82,11 +82,11 @@
     <ClInclude Include="DcsBridge\ConfigReader.h" />
     <ClInclude Include="DcsBridge\CockpitParams.h" />
     <ClInclude Include="DcsBridge\DcsCommandRouter.h" />
+    <ClInclude Include="DcsBridge\DcsDamageMapper.h" />
     <ClInclude Include="DcsBridge\DcsModule.h" />
     <ClInclude Include="DcsBridge\DcsRuntime.h" />
     <ClInclude Include="DcsBridge\DcsSnapshots.h" />
     <ClInclude Include="DcsBridge\DrawArgs.h" />
-    <ClInclude Include="DcsBridge\MassDelta.h" />
     <ClInclude Include="DcsBridge\ModulePaths.h" />
     <ClInclude Include="DcsBridge\ParamExport.h" />
     <ClInclude Include="DcsBridge\SimulationEvents.h" />
@@ -100,6 +100,7 @@
     <ClInclude Include="Diagnostics\DebugWatch.h" />
     <ClInclude Include="Diagnostics\RuntimeDiagnostics.h" />
     <ClInclude Include="Diagnostics\SuspensionDiagnostics.h" />
+    <ClInclude Include="Diagnostics\TextBuffer.h" />
     <ClInclude Include="F-CK-1C_EFM.h" />
     <ClInclude Include="F-CK-1C_EFM_API.h" />
     <ClInclude Include="include\Cockpit\ccParametersAPI.h" />
@@ -131,6 +132,9 @@
     <ClCompile Include="Core\Fck1cEfm.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Core\Fck1cEfmCommands.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Data\AeroTables.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -141,6 +145,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DcsBridge\DcsCommandRouter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\DcsDamageMapper.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DcsBridge\DcsModule.cpp">

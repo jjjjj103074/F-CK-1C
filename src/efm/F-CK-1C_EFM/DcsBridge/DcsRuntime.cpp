@@ -3,11 +3,7 @@
 #include "ConfigReader.h"
 #include "DcsSnapshots.h"
 #include "../Common/PathUtils.h"
-#include "../Core/ForceMoment.h"
 #include "../Diagnostics/DebugLogger.h"
-#include "../Systems/DamageModel.h"
-#include "../Systems/LandingGearSystem.h"
-#include "../Systems/SuspensionSystem.h"
 
 namespace
 {
@@ -15,7 +11,6 @@ constexpr size_t kModulePathBufferSize = DcsBridge::kModulePathMax;
 constexpr double kLegacyCockpitTemperatureOffset = 273.0;
 constexpr double kSuspensionTestRadiusAdd = 0.30;
 constexpr double kSuspensionTestWheelYOffset = -0.50;
-constexpr double kCarrierLaunchReferenceMach = 0.1;
 constexpr double kCarrierLaunchEngineShare = 0.5;
 constexpr double kCarrierLaunchEngineCount = 2.0;
 constexpr const char* kEfmVersion = "v0.1.3-april-fools";
@@ -57,71 +52,82 @@ Core::MaxPowerCommand DcsRuntime::read_max_power()
 	return command;
 }
 
-void DcsRuntime::on_first_frame(const Core::Fck1cEfm& efm)
+void DcsRuntime::on_first_frame(const Core::Fck1cEfmSnapshot& snapshot)
 {
-	refresh_suspension_diagnostics_config(efm);
+	refresh_suspension_diagnostics_config(snapshot);
+	const double simulation_time = snapshot.systems.startup.simulation_time;
 	Diagnostics::log_ground_configuration_once(
 		suspension_diagnostics_,
 		suspension_diagnostics_config_,
-		[this](const char* message) { write_module_log(message); },
-		[this, &efm](const char* message) { write_probe_log(efm, message); });
+		Diagnostics::make_diagnostic_sinks(
+			[this](const char* message) { write_module_log(message); },
+			[this, simulation_time](const char* message)
+			{
+				write_probe_log(simulation_time, message);
+			}));
 }
 
-void DcsRuntime::on_engine_shutdown(const Core::Fck1cEfm& efm)
+void DcsRuntime::on_engine_shutdown(const Core::Fck1cEfmSnapshot& snapshot)
 {
-	const Core::AircraftState& aircraft = efm.aircraft_state();
-	const Core::Fck1cEfmSystems& systems = efm.systems();
+	const Core::AircraftState& aircraft = snapshot.aircraft;
+	const Core::Fck1cEfmSystems& systems = snapshot.systems;
 	char message[256];
 	Diagnostics::format_engine_shutdown(
-		message,
-		sizeof(message),
-		systems.fuel.internal_fuel,
-		aircraft.altitude_asl,
-		systems.engines.left.switch_on,
-		systems.engines.right.switch_on);
+		{ message, sizeof(message) },
+		{
+			systems.fuel.internal_fuel,
+			aircraft.altitude_asl,
+			systems.engines.left.switch_on,
+			systems.engines.right.switch_on
+		});
 	write_module_log(message);
 }
 
 void DcsRuntime::on_thrust_updated(
-	const Core::Fck1cEfm& efm,
+	const Core::Fck1cEfmSnapshot& snapshot,
 	const Core::MaxPowerCommand& command)
 {
 	char message[768];
 	Diagnostics::format_thrust_diagnostics(
-		message,
-		sizeof(message),
-		make_thrust_snapshot(efm, command));
+		{ message, sizeof(message) },
+		make_thrust_snapshot(snapshot, command));
 	write_module_log(message);
 }
 
-void DcsRuntime::on_ground_diagnostics(const Core::Fck1cEfm& efm, double dt)
+void DcsRuntime::on_ground_diagnostics(const Core::Fck1cEfmSnapshot& source, double dt)
 {
 	if (!suspension_diagnostics_config_loaded_)
 	{
-		refresh_suspension_diagnostics_config(efm);
+		refresh_suspension_diagnostics_config(source);
 	}
-	const Diagnostics::SuspensionDiagnosticsSnapshot snapshot = make_suspension_snapshot(efm);
+	const Diagnostics::SuspensionDiagnosticsSnapshot snapshot = make_suspension_snapshot(source);
+	const double simulation_time = source.systems.startup.simulation_time;
+	const Diagnostics::SuspensionDiagnosticFrame frame = {
+		suspension_diagnostics_config_, snapshot, dt
+	};
 	Diagnostics::log_startup_suspension_probe(
-		suspension_diagnostics_, suspension_diagnostics_config_, snapshot, dt,
-		[this, &efm](const char* message) { write_probe_log(efm, message); });
+		suspension_diagnostics_, frame,
+		[this, simulation_time](const char* message) { write_probe_log(simulation_time, message); });
 	Diagnostics::update_periodic_suspension_probe(
-		suspension_diagnostics_, suspension_diagnostics_config_, snapshot, dt,
-		[this, &efm](const char* message) { write_probe_log(efm, message); });
+		suspension_diagnostics_, frame,
+		[this, simulation_time](const char* message) { write_probe_log(simulation_time, message); });
 	Diagnostics::update_periodic_ground_log(
-		suspension_diagnostics_, suspension_diagnostics_config_, snapshot,
+		suspension_diagnostics_, frame,
 		[this](const char* message) { write_module_log(message); });
 }
 
-void DcsRuntime::on_release(const Core::Fck1cEfm& efm)
+void DcsRuntime::on_release(const Core::Fck1cEfmSnapshot& snapshot)
 {
-	(void)efm;
+	(void)snapshot;
 	reset_autopilot_state(autopilot_state_);
 }
 
-void DcsRuntime::configure(const char* config_path, const Core::Fck1cEfm& efm)
+void DcsRuntime::configure(
+	const char* config_path,
+	const Core::Fck1cEfmSnapshot& snapshot)
 {
 	configure_module_paths(module_paths_, config_path);
-	refresh_suspension_diagnostics_config(efm);
+	refresh_suspension_diagnostics_config(snapshot);
 }
 
 void DcsRuntime::export_temperature(double dcs_temperature)
@@ -142,17 +148,17 @@ void DcsRuntime::reset_carrier_launch()
 	reset_carrier_launch_state(carrier_launch_);
 }
 
-void DcsRuntime::log_damage(const Core::Fck1cEfm& efm, int element, double integrity)
+void DcsRuntime::log_damage(
+	const Core::Fck1cEfmSnapshot& snapshot,
+	int element,
+	double integrity)
 {
 	char message[160];
 	Diagnostics::format_damage_event(
-		message,
-		sizeof(message),
-		element,
-		integrity,
-		efm.gameplay().invincible);
+		{ message, sizeof(message) },
+		{ element, integrity, snapshot.gameplay.invincible });
 	write_module_log(message);
-	write_probe_log(efm, message);
+	write_probe_log(snapshot.systems.startup.simulation_time, message);
 }
 
 void DcsRuntime::update_suspension_feedback(
@@ -162,42 +168,65 @@ void DcsRuntime::update_suspension_feedback(
 {
 	if (info == nullptr)
 	{
-		write_probe_log(efm, kInvalidSuspensionFeedback);
+		write_probe_log(
+			efm.snapshot().systems.startup.simulation_time,
+			kInvalidSuspensionFeedback);
 		write_module_log(kInvalidSuspensionFeedback);
 		return;
 	}
-	Systems::SuspensionSystemState& suspension = efm.systems().suspension;
-	const double force_x = info->acting_force[0];
-	const double force_y = info->acting_force[1];
-	const double force_z = info->acting_force[2];
-	if (!Systems::update_suspension_feedback(
-		suspension, index, info->struct_compression, force_x, force_y, force_z))
+	const Core::SuspensionFeedbackInput feedback = {
+		index,
+		info->struct_compression,
+		Common::Vec3(
+			info->acting_force[0],
+			info->acting_force[1],
+			info->acting_force[2])
+	};
+	if (!efm.update_suspension_feedback(feedback))
 	{
-		write_probe_log(efm, kInvalidSuspensionFeedback);
+		write_probe_log(
+			efm.snapshot().systems.startup.simulation_time,
+			kInvalidSuspensionFeedback);
 		write_module_log(kInvalidSuspensionFeedback);
 		return;
 	}
+	const Core::Fck1cEfmSnapshot source = efm.snapshot();
+	const Systems::SuspensionSystemState& suspension = source.systems.suspension;
 	char message[512];
 	Diagnostics::format_suspension_feedback(
-		message, sizeof(message), index, suspension.compression[index],
-		force_x, force_y, force_z, suspension.force_mag[index], suspension.wow[index]);
+		{ message, sizeof(message) },
+		{
+			index,
+			suspension.compression[index],
+			feedback.force,
+			suspension.force_mag[index],
+			suspension.wow[index]
+		});
 	write_module_log(message);
 	Diagnostics::format_suspension_animation(
-		message, sizeof(message), index, suspension.compression[index],
-		static_cast<float>(suspension_visual_arg(efm, index)), info->wheel_speed_X);
-	write_probe_log(efm, message);
+		{ message, sizeof(message) },
+		{
+			index,
+			suspension.compression[index],
+			static_cast<float>(source.suspension_visual_arg[index]),
+			info->wheel_speed_X
+		});
+	write_probe_log(source.systems.startup.simulation_time, message);
 }
 
 bool DcsRuntime::pop_simulation_event(
-	const Core::Fck1cEfm& efm,
+	const Core::Fck1cEfmSnapshot& snapshot,
+	double carrier_launch_thrust,
 	ed_fm_simulation_event& out)
 {
 	return pop_carrier_launch_event(
 		carrier_launch_,
 		out,
-		efm.systems().engines.left.throttle_output,
-		Systems::max_dry_thrust(efm.config().engine, kCarrierLaunchReferenceMach) *
-			kCarrierLaunchEngineShare * kCarrierLaunchEngineCount);
+		{
+			snapshot.systems.engines.left.throttle_output,
+			carrier_launch_thrust *
+				kCarrierLaunchEngineShare * kCarrierLaunchEngineCount
+		});
 }
 
 bool DcsRuntime::push_simulation_event(const ed_fm_simulation_event& in)
@@ -206,15 +235,14 @@ bool DcsRuntime::push_simulation_event(const ed_fm_simulation_event& in)
 }
 
 size_t DcsRuntime::debug_watch(
-	const Core::Fck1cEfm& efm,
+	const Core::Fck1cEfmSnapshot& snapshot,
 	int level,
 	const DebugWatchBuffer& buffer) const
 {
 	return Diagnostics::format_debug_watch(
 		level,
-		make_debug_watch_snapshot(efm, kEfmVersion, kEfmVersionDate),
-		buffer.data,
-		buffer.capacity);
+		make_debug_watch_snapshot(snapshot, kEfmVersion, kEfmVersionDate),
+		{ buffer.data, buffer.capacity });
 }
 
 const char* DcsRuntime::active_fm_config_path()
@@ -224,7 +252,8 @@ const char* DcsRuntime::active_fm_config_path()
 
 void DcsRuntime::build_mod_path(char* output, size_t output_size, const char* relative_path)
 {
-	DcsBridge::build_mod_path(module_paths_, output, output_size, relative_path);
+	DcsBridge::build_mod_path(
+		module_paths_, { output, output_size }, relative_path);
 }
 
 bool DcsRuntime::config_flag_is_true(const char* flag_name)
@@ -244,11 +273,8 @@ void DcsRuntime::config_string_or_default(
 	const ConfigStringTarget& target)
 {
 	DcsBridge::config_string_or_default(
-		active_fm_config_path(),
-		key_name,
-		default_value,
-		target.data,
-		target.capacity);
+		{ active_fm_config_path(), key_name, default_value },
+		{ target.data, target.capacity });
 }
 
 double DcsRuntime::active_suspension_radius_add()
@@ -278,9 +304,11 @@ void DcsRuntime::active_suspension_node_names(
 	right = nodes[2];
 }
 
-void DcsRuntime::refresh_suspension_diagnostics_config(const Core::Fck1cEfm& efm)
+void DcsRuntime::refresh_suspension_diagnostics_config(
+	const Core::Fck1cEfmSnapshot& snapshot)
 {
-	const Systems::SuspensionSystemConfig& suspension = efm.config().suspension;
+	const Core::SuspensionConfigurationSnapshot& suspension =
+		snapshot.suspension_configuration;
 	Diagnostics::SuspensionDiagnosticsConfig config;
 	config.use_modelviewer_nodes = config_flag_is_true("SUSP_USE_MODELVIEWER_WHEEL_NODES");
 	config.geometry_test = config_flag_is_true("SUSP_GEOMETRY_TEST");
@@ -295,34 +323,25 @@ void DcsRuntime::refresh_suspension_diagnostics_config(const Core::Fck1cEfm& efm
 	for (int index = 0; index < Diagnostics::kDiagnosticWheelCount; ++index)
 	{
 		config.final_wheel_radius[index] =
-			suspension.fallback_wheel_radius[index] + config.radius_add;
-		config.final_wheel_pos[index] = Systems::active_susp_wheel_pos(
-			suspension, index, config.wheel_y_offset);
+			suspension.wheel_radius[index] + config.radius_add;
+		config.final_wheel_pos[index] = suspension.wheel_position[index];
+		config.final_wheel_pos[index].y += config.wheel_y_offset;
 	}
-	config.active_collision_shell = suspension.active_collision_shell_name;
-	config.suspension_mode = suspension.suspension_mode_name;
-	config.fallback_enabled = suspension.enable_fallback_ground_forces;
+	config.active_collision_shell = suspension.active_collision_shell;
+	config.suspension_mode = suspension.mode_name;
+	config.fallback_enabled = suspension.fallback_enabled;
 	config.build_date = __DATE__;
 	config.build_time = __TIME__;
 	suspension_diagnostics_config_ = config;
 	suspension_diagnostics_config_loaded_ = true;
 }
 
-double DcsRuntime::suspension_visual_arg(const Core::Fck1cEfm& efm, int index) const
-{
-	const Core::Fck1cEfmSystems& systems = efm.systems();
-	return Systems::suspension_visual_arg(
-		systems.suspension,
-		index,
-		systems.landing_gear.position);
-}
-
 Diagnostics::SuspensionDiagnosticsSnapshot DcsRuntime::make_suspension_snapshot(
-	const Core::Fck1cEfm& efm) const
+	const Core::Fck1cEfmSnapshot& source) const
 {
-	const Core::AircraftState& aircraft = efm.aircraft_state();
-	const Core::Fck1cEfmSystems& systems = efm.systems();
-	const Core::ControlSurfaceState& controls = efm.control_surfaces();
+	const Core::AircraftState& aircraft = source.aircraft;
+	const Core::Fck1cEfmSystems& systems = source.systems;
+	const Core::ControlSurfaceState& controls = source.control_surfaces;
 	Diagnostics::SuspensionDiagnosticsSnapshot snapshot;
 	snapshot.simulation_time = systems.startup.simulation_time;
 	snapshot.altitude_agl = aircraft.altitude_agl;
@@ -349,8 +368,7 @@ Diagnostics::SuspensionDiagnosticsSnapshot DcsRuntime::make_suspension_snapshot(
 	snapshot.brake_right = systems.landing_gear.wheels.brake_right;
 	snapshot.yaw_input = systems.primary_controls.yaw.input;
 	snapshot.rudder_command = controls.rudder_command;
-	snapshot.nose_wheel_command = Systems::compute_nose_wheel_steering(
-		systems.landing_gear, aircraft.speed_scalar, systems.primary_controls.yaw.input);
+	snapshot.nose_wheel_command = source.nose_wheel_command;
 	snapshot.nose_wheel_draw_arg = systems.landing_gear.wheels.nose_steering;
 	snapshot.nose_turn_enabled = systems.landing_gear.wheels.nose_turn_enabled;
 	return snapshot;
@@ -373,19 +391,18 @@ void DcsRuntime::copy_suspension_wheel_snapshot(
 }
 
 Diagnostics::ThrustDiagnosticsSnapshot DcsRuntime::make_thrust_snapshot(
-	const Core::Fck1cEfm& efm,
+	const Core::Fck1cEfmSnapshot& source,
 	const Core::MaxPowerCommand& command) const
 {
-	const Data::AircraftConfig& config = efm.config();
-	const Core::Fck1cEfmSystems& systems = efm.systems();
-	const Core::ForceMomentFrame& frame = efm.force_moment();
+	const Core::Fck1cEfmSystems& systems = source.systems;
+	const Core::ForceMomentFrame& frame = source.force_moment;
 	Diagnostics::ThrustDiagnosticsSnapshot snapshot;
 	snapshot.left_thrust = systems.engines.left.thrust_force;
 	snapshot.right_thrust = systems.engines.right.thrust_force;
 	const Common::Vec3 left_force(snapshot.left_thrust, 0.0, 0.0);
 	const Common::Vec3 right_force(snapshot.right_thrust, 0.0, 0.0);
-	const Common::Vec3 left_moment = Common::cross(config.left_engine_position, left_force);
-	const Common::Vec3 right_moment = Common::cross(config.right_engine_position, right_force);
+	const Common::Vec3 left_moment = Common::cross(source.left_engine_position, left_force);
+	const Common::Vec3 right_moment = Common::cross(source.right_engine_position, right_force);
 	snapshot.net_moment = Common::Vec3(
 		left_moment.x + right_moment.x + frame.moment.x,
 		left_moment.y + right_moment.y + frame.moment.y,
@@ -419,7 +436,7 @@ void DcsRuntime::write_module_log(const char* message)
 	Diagnostics::write_module_debug_log(debug_directory, message);
 }
 
-void DcsRuntime::write_probe_log(const Core::Fck1cEfm& efm, const char* message)
+void DcsRuntime::write_probe_log(double simulation_time, const char* message)
 {
 	char log_directory[1024];
 	if (!Common::resolve_saved_games_logs_dir(log_directory, sizeof(log_directory)))
@@ -428,7 +445,7 @@ void DcsRuntime::write_probe_log(const Core::Fck1cEfm& efm, const char* message)
 	}
 	Diagnostics::write_suspension_probe_log(
 		log_directory,
-		efm.systems().startup.simulation_time,
+		simulation_time,
 		message);
 }
 }

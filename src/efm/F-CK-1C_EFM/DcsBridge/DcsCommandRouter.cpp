@@ -2,6 +2,8 @@
 
 #include "../DcsIds/Commands.h"
 
+#include <cstddef>
+
 namespace
 {
 constexpr double kPitchTrimStep = 0.0015;
@@ -10,238 +12,137 @@ constexpr double kYawTrimStep = 0.001;
 constexpr double kThrottleStep = 0.0075;
 constexpr float kCommandPressedThreshold = 0.5f;
 
-bool command_pressed(float value)
+enum class ValueSource
 {
-	return value > kCommandPressedThreshold;
-}
+	Input,
+	Constant,
+	Pressed
+};
 
-bool route_pitch_command(Systems::PrimaryControlState& controls, int command, float value)
+struct CommandBinding
 {
-	using namespace DcsIds::Commands;
-	switch (command)
+	int dcs_id;
+	Core::CommandGroup group;
+	Core::CommandAction action;
+	ValueSource value_source;
+	double constant;
+};
+
+#define BIND_INPUT(id, group, action) \
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueSource::Input, 0.0 }
+#define BIND_CONST(id, group, action, value) \
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueSource::Constant, value }
+#define BIND_PRESS(id, group, action) \
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueSource::Pressed, 0.0 }
+
+constexpr CommandBinding kBindings[] = {
+	BIND_INPUT(JoystickPitch, PitchRoll, SetPitchAxis),
+	BIND_CONST(PitchUp, PitchRoll, SetPitchDiscrete, 1.0),
+	BIND_CONST(PitchUpStop, PitchRoll, SetPitchDiscrete, 0.0),
+	BIND_CONST(PitchDown, PitchRoll, SetPitchDiscrete, -1.0),
+	BIND_CONST(PitchDownStop, PitchRoll, SetPitchDiscrete, 0.0),
+	BIND_CONST(TrimUp, PitchRoll, AdjustPitchTrim, kPitchTrimStep),
+	BIND_CONST(TrimDown, PitchRoll, AdjustPitchTrim, -kPitchTrimStep),
+	BIND_INPUT(JoystickRoll, PitchRoll, SetRollAxis),
+	BIND_CONST(RollLeft, PitchRoll, SetRollDiscrete, -1.0),
+	BIND_CONST(RollLeftStop, PitchRoll, SetRollDiscrete, 0.0),
+	BIND_CONST(RollRight, PitchRoll, SetRollDiscrete, 1.0),
+	BIND_CONST(RollRightStop, PitchRoll, SetRollDiscrete, 0.0),
+	BIND_CONST(TrimLeft, PitchRoll, AdjustRollTrim, -kRollTrimStep),
+	BIND_CONST(TrimRight, PitchRoll, AdjustRollTrim, kRollTrimStep),
+	BIND_INPUT(PedalYaw, Yaw, SetYawAxis),
+	BIND_CONST(RudderLeft, Yaw, SetYawDiscrete, 1.0),
+	BIND_CONST(RudderLeftStop, Yaw, SetYawDiscrete, 0.0),
+	BIND_CONST(RudderRight, Yaw, SetYawDiscrete, -1.0),
+	BIND_CONST(RudderRightStop, Yaw, SetYawDiscrete, 0.0),
+	BIND_CONST(RudderTrimLeft, Yaw, AdjustYawTrim, kYawTrimStep),
+	BIND_CONST(RudderTrimRight, Yaw, AdjustYawTrim, -kYawTrimStep),
+	BIND_CONST(ResetTrim, Yaw, ResetTrim, 0.0),
+	BIND_PRESS(FBWCatToggle, Fbw, ToggleFbwCat),
+	BIND_PRESS(FBWCat1, Fbw, SetFbwCat1),
+	BIND_PRESS(FBWCat3, Fbw, SetFbwCat3),
+	BIND_PRESS(FBWGLimiterOverride, Fbw, SetGLimiterOverride),
+	BIND_PRESS(FBWGLimiterOverrideToggle, Fbw, ToggleGLimiterOverride),
+	BIND_CONST(EnginesOn, Engine, SetBothEngines, 1.0),
+	BIND_CONST(LeftEngineOn, Engine, SetLeftEngine, 1.0),
+	BIND_CONST(RightEngineOn, Engine, SetRightEngine, 1.0),
+	BIND_CONST(EnginesOff, Engine, SetBothEngines, 0.0),
+	BIND_CONST(LeftEngineOff, Engine, SetLeftEngine, 0.0),
+	BIND_CONST(RightEngineOff, Engine, SetRightEngine, 0.0),
+	BIND_INPUT(ThrottleAxis, Throttle, SetCommonThrottleAxis),
+	BIND_INPUT(ThrottleAxisLeft, Throttle, SetLeftThrottleAxis),
+	BIND_INPUT(ThrottleAxisRight, Throttle, SetRightThrottleAxis),
+	BIND_CONST(ThrottleIncrease, Throttle, StepCommonThrottle, kThrottleStep),
+	BIND_CONST(ThrottleLeftUp, Throttle, StepLeftThrottle, kThrottleStep),
+	BIND_CONST(ThrottleRightUp, Throttle, StepRightThrottle, kThrottleStep),
+	BIND_CONST(ThrottleDecrease, Throttle, StepCommonThrottle, -kThrottleStep),
+	BIND_CONST(ThrottleLeftDown, Throttle, StepLeftThrottle, -kThrottleStep),
+	BIND_CONST(ThrottleRightDown, Throttle, StepRightThrottle, -kThrottleStep),
+	BIND_CONST(ThrottleStop, Throttle, NoOp, 0.0),
+	BIND_CONST(AirBrakes, Airframe, ToggleAirbrake, 0.0),
+	BIND_CONST(AirBrakesOff, Airframe, SetAirbrake, 0.0),
+	BIND_CONST(AirBrakesOn, Airframe, SetAirbrake, 1.0),
+	BIND_CONST(AirBrakesAuto, Airframe, NoOp, 0.0),
+	BIND_CONST(AirBrakesUp, Airframe, SetAirbrake, 0.0),
+	BIND_CONST(AirBrakesDown, Airframe, SetAirbrake, 1.0),
+	BIND_CONST(FlapsToggle, Airframe, ToggleFlaps, 0.0),
+	BIND_CONST(FlapsDown, Airframe, SetFlapsDown, 0.0),
+	BIND_CONST(FlapsUp, Airframe, SetFlapsUp, 0.0),
+	BIND_CONST(FlapsAuto, Airframe, SetFlapsAuto, 0.0),
+	BIND_CONST(FlapsUpCmd, Airframe, SetFlapsUp, 0.0),
+	BIND_CONST(FlapsDownCmd, Airframe, SetFlapsDown, 0.0),
+	BIND_CONST(GearToggle, LandingGear, ToggleGear, 0.0),
+	BIND_CONST(GearDown, LandingGear, SetGear, 1.0),
+	BIND_CONST(GearUp, LandingGear, SetGear, 0.0),
+	BIND_CONST(GearAuto, LandingGear, NoOp, 0.0),
+	BIND_CONST(GearHandleUp, LandingGear, SetGear, 0.0),
+	BIND_CONST(GearHandleDown, LandingGear, SetGear, 1.0),
+	BIND_PRESS(NoseTurnToggle, LandingGear, ToggleNoseWheelSteering),
+	BIND_CONST(NoseTurnUp, LandingGear, SetNoseWheelSteering, 0.0),
+	BIND_CONST(NoseTurnAuto, LandingGear, SetNoseWheelSteering, 0.0),
+	BIND_CONST(NoseTurnDown, LandingGear, SetNoseWheelSteering, 1.0),
+	BIND_INPUT(WheelBrakeAxis, LandingGear, SetBrake),
+	BIND_INPUT(WheelBrakeAxisLeft, LandingGear, SetLeftBrake),
+	BIND_INPUT(WheelBrakeAxisRight, LandingGear, SetRightBrake),
+	BIND_CONST(WheelBrakeOn, LandingGear, SetBrake, 1.0),
+	BIND_CONST(WheelBrakeOff, LandingGear, SetBrake, 0.0),
+	BIND_CONST(WheelBrakeLeftOn, LandingGear, SetLeftBrake, 1.0),
+	BIND_CONST(WheelBrakeLeftOff, LandingGear, SetLeftBrake, 0.0),
+	BIND_CONST(WheelBrakeRightOn, LandingGear, SetRightBrake, 1.0),
+	BIND_CONST(WheelBrakeRightOff, LandingGear, SetRightBrake, 0.0)
+};
+
+#undef BIND_INPUT
+#undef BIND_CONST
+#undef BIND_PRESS
+
+double mapped_value(const CommandBinding& binding, float input)
+{
+	switch (binding.value_source)
 	{
-	case JoystickPitch: Systems::set_pitch_axis_input(controls, value); return true;
-	case PitchUp: Systems::set_pitch_discrete_input(controls, 1); return true;
-	case PitchUpStop: Systems::set_pitch_discrete_input(controls, 0); return true;
-	case PitchDown: Systems::set_pitch_discrete_input(controls, -1); return true;
-	case PitchDownStop: Systems::set_pitch_discrete_input(controls, 0); return true;
-	case TrimUp: Systems::adjust_pitch_trim(controls, kPitchTrimStep); return true;
-	case TrimDown: Systems::adjust_pitch_trim(controls, -kPitchTrimStep); return true;
-	default: return false;
+	case ValueSource::Input: return input;
+	case ValueSource::Pressed: return input > kCommandPressedThreshold ? 1.0 : 0.0;
+	case ValueSource::Constant: return binding.constant;
 	}
-}
-
-bool route_roll_command(Systems::PrimaryControlState& controls, int command, float value)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case JoystickRoll: Systems::set_roll_axis_input(controls, value); return true;
-	case RollLeft: Systems::set_roll_discrete_input(controls, -1); return true;
-	case RollLeftStop: Systems::set_roll_discrete_input(controls, 0); return true;
-	case RollRight: Systems::set_roll_discrete_input(controls, 1); return true;
-	case RollRightStop: Systems::set_roll_discrete_input(controls, 0); return true;
-	case TrimLeft: Systems::adjust_roll_trim(controls, -kRollTrimStep); return true;
-	case TrimRight: Systems::adjust_roll_trim(controls, kRollTrimStep); return true;
-	default: return false;
-	}
-}
-
-bool route_yaw_command(Systems::PrimaryControlState& controls, int command, float value)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case PedalYaw: Systems::set_yaw_axis_input(controls, value); return true;
-	case RudderLeft: Systems::set_yaw_discrete_input(controls, 1); return true;
-	case RudderLeftStop: Systems::set_yaw_discrete_input(controls, 0); return true;
-	case RudderRight: Systems::set_yaw_discrete_input(controls, -1); return true;
-	case RudderRightStop: Systems::set_yaw_discrete_input(controls, 0); return true;
-	case RudderTrimLeft: Systems::adjust_yaw_trim(controls, kYawTrimStep); return true;
-	case RudderTrimRight: Systems::adjust_yaw_trim(controls, -kYawTrimStep); return true;
-	case ResetTrim: Systems::reset_primary_trims(controls); return true;
-	default: return false;
-	}
-}
-
-bool route_fbw_command(Systems::FBWControllerState& fbw, int command, float value)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case FBWCatToggle: Systems::toggle_fbw_cat_mode(fbw, command_pressed(value)); return true;
-	case FBWCat1:
-		if (command_pressed(value)) Systems::set_fbw_cat_mode(fbw, Systems::FBW_CAT1);
-		return true;
-	case FBWCat3:
-		if (command_pressed(value)) Systems::set_fbw_cat_mode(fbw, Systems::FBW_CAT3);
-		return true;
-	case FBWGLimiterOverride:
-		Systems::set_fbw_g_limiter_override(fbw, command_pressed(value)); return true;
-	case FBWGLimiterOverrideToggle:
-		Systems::toggle_fbw_g_limiter_override(fbw, command_pressed(value)); return true;
-	default: return false;
-	}
-}
-
-bool route_engine_command(Systems::EngineSystemState& engines, int command)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case EnginesOn: Systems::set_both_engine_switches(engines, true); return true;
-	case LeftEngineOn: Systems::set_left_engine_switch(engines, true); return true;
-	case RightEngineOn: Systems::set_right_engine_switch(engines, true); return true;
-	case EnginesOff: Systems::set_both_engine_switches(engines, false); return true;
-	case LeftEngineOff: Systems::set_left_engine_switch(engines, false); return true;
-	case RightEngineOff: Systems::set_right_engine_switch(engines, false); return true;
-	default: return false;
-	}
-}
-
-bool route_throttle_axis_command(
-	Systems::ThrottleInputState& throttles,
-	int command,
-	float value)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case ThrottleAxis: Systems::set_common_throttle_axis(throttles, value); return true;
-	case ThrottleAxisLeft: Systems::set_left_throttle_axis(throttles, value); return true;
-	case ThrottleAxisRight: Systems::set_right_throttle_axis(throttles, value); return true;
-	default: return false;
-	}
-}
-
-bool route_throttle_keyboard_command(Systems::ThrottleInputState& throttles, int command)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case ThrottleIncrease: Systems::step_common_keyboard_throttle(throttles, kThrottleStep); return true;
-	case ThrottleLeftUp: Systems::step_left_keyboard_throttle(throttles, kThrottleStep); return true;
-	case ThrottleRightUp: Systems::step_right_keyboard_throttle(throttles, kThrottleStep); return true;
-	case ThrottleDecrease: Systems::step_common_keyboard_throttle(throttles, -kThrottleStep); return true;
-	case ThrottleLeftDown: Systems::step_left_keyboard_throttle(throttles, -kThrottleStep); return true;
-	case ThrottleRightDown: Systems::step_right_keyboard_throttle(throttles, -kThrottleStep); return true;
-	case ThrottleStop: return true;
-	default: return false;
-	}
-}
-
-bool route_throttle_command(Systems::ThrottleInputState& throttles, int command, float value)
-{
-	return route_throttle_axis_command(throttles, command, value) ||
-		route_throttle_keyboard_command(throttles, command);
-}
-
-bool route_airbrake_command(Systems::AirframeDeviceState& devices, int command)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case AirBrakes: Systems::toggle_airbrake(devices); return true;
-	case AirBrakesOff: Systems::set_airbrake(devices, false); return true;
-	case AirBrakesOn: Systems::set_airbrake(devices, true); return true;
-	case AirBrakesAuto: return true;
-	case AirBrakesUp: Systems::set_airbrake(devices, false); return true;
-	case AirBrakesDown: Systems::set_airbrake(devices, true); return true;
-	default: return false;
-	}
-}
-
-bool route_flap_command(Systems::AirframeDeviceState& devices, int command)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case FlapsToggle: Systems::toggle_flap_mode(devices); return true;
-	case FlapsDown: Systems::set_flap_mode(devices, Systems::FLAP_MODE_DOWN); return true;
-	case FlapsUp: Systems::set_flap_mode(devices, Systems::FLAP_MODE_UP); return true;
-	case FlapsAuto: Systems::set_flap_mode(devices, Systems::FLAP_MODE_AUTO); return true;
-	case FlapsUpCmd: Systems::set_flap_mode(devices, Systems::FLAP_MODE_UP); return true;
-	case FlapsDownCmd: Systems::set_flap_mode(devices, Systems::FLAP_MODE_DOWN); return true;
-	default: return false;
-	}
-}
-
-bool route_gear_command(Systems::LandingGearSystemState& gear, int command)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case GearToggle: Systems::toggle_gear(gear); return true;
-	case GearDown: Systems::set_gear(gear, true); return true;
-	case GearUp: Systems::set_gear(gear, false); return true;
-	case GearAuto: return true;
-	case GearHandleUp: Systems::set_gear(gear, false); return true;
-	case GearHandleDown: Systems::set_gear(gear, true); return true;
-	default: return false;
-	}
-}
-
-bool route_nose_wheel_command(Systems::WheelState& wheels, int command, float value)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case NoseTurnToggle: Systems::toggle_nose_turn_enabled(wheels, command_pressed(value)); return true;
-	case NoseTurnUp: Systems::set_nose_turn_enabled(wheels, false); return true;
-	case NoseTurnAuto: Systems::set_nose_turn_enabled(wheels, false); return true;
-	case NoseTurnDown: Systems::set_nose_turn_enabled(wheels, true); return true;
-	default: return false;
-	}
-}
-
-bool route_brake_command(Systems::WheelState& wheels, int command, float value)
-{
-	using namespace DcsIds::Commands;
-	switch (command)
-	{
-	case WheelBrakeAxis: Systems::set_brake_axis(wheels, Systems::normalize_brake_axis(value)); return true;
-	case WheelBrakeAxisLeft: Systems::set_left_brake(wheels, Systems::normalize_brake_axis(value)); return true;
-	case WheelBrakeAxisRight: Systems::set_right_brake(wheels, Systems::normalize_brake_axis(value)); return true;
-	case WheelBrakeOn: Systems::set_brake_axis(wheels, 1.0); return true;
-	case WheelBrakeOff: Systems::set_brake_axis(wheels, 0.0); return true;
-	case WheelBrakeLeftOn: Systems::set_left_brake(wheels, 1.0); return true;
-	case WheelBrakeLeftOff: Systems::set_left_brake(wheels, 0.0); return true;
-	case WheelBrakeRightOn: Systems::set_right_brake(wheels, 1.0); return true;
-	case WheelBrakeRightOff: Systems::set_right_brake(wheels, 0.0); return true;
-	default: return false;
-	}
-}
-
-bool route_flight_control_command(Core::Fck1cEfmSystems& systems, int command, float value)
-{
-	return route_pitch_command(systems.primary_controls, command, value) ||
-		route_roll_command(systems.primary_controls, command, value) ||
-		route_yaw_command(systems.primary_controls, command, value) ||
-		route_fbw_command(systems.fbw, command, value);
-}
-
-void route_aircraft_command(Core::Fck1cEfmSystems& systems, int command, float value)
-{
-	if (route_engine_command(systems.engines, command) ||
-		route_throttle_command(systems.throttle_inputs, command, value) ||
-		route_airbrake_command(systems.airframe_devices, command) ||
-		route_flap_command(systems.airframe_devices, command) ||
-		route_gear_command(systems.landing_gear, command) ||
-		route_nose_wheel_command(systems.landing_gear.wheels, command, value))
-	{
-		return;
-	}
-	route_brake_command(systems.landing_gear.wheels, command, value);
+	return 0.0;
 }
 }
 
 namespace DcsBridge
 {
-void route_command(Core::Fck1cEfmSystems& systems, int command, float value)
+DcsCommandMapping map_command(int command, float value)
 {
-	if (!route_flight_control_command(systems, command, value))
+	for (std::size_t index = 0; index < sizeof(kBindings) / sizeof(kBindings[0]); ++index)
 	{
-		route_aircraft_command(systems, command, value);
+		const CommandBinding& binding = kBindings[index];
+		if (binding.dcs_id == command)
+		{
+			return {
+				true,
+				{ binding.group, binding.action, mapped_value(binding, value) }
+			};
+		}
 	}
+	return {};
 }
 }

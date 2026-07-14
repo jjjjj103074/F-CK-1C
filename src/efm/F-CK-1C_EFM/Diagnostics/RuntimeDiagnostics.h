@@ -5,6 +5,44 @@
 
 namespace Diagnostics
 {
+struct DiagnosticOutput
+{
+	char* data = nullptr;
+	size_t capacity = 0;
+};
+
+struct DamageEventSnapshot
+{
+	int element = 0;
+	double integrity = 0.0;
+	bool invincible = false;
+};
+
+struct EngineShutdownSnapshot
+{
+	double internal_fuel = 0.0;
+	double altitude_asl = 0.0;
+	bool left_switch = false;
+	bool right_switch = false;
+};
+
+struct SuspensionFeedbackSnapshot
+{
+	int index = 0;
+	double compression = 0.0;
+	Common::Vec3 force;
+	double force_magnitude = 0.0;
+	bool wow = false;
+};
+
+struct SuspensionAnimationSnapshot
+{
+	int index = 0;
+	double compression = 0.0;
+	double draw_arg = 0.0;
+	double wheel_speed = 0.0;
+};
+
 struct ThrustDiagnosticsSnapshot
 {
 	double left_thrust = 0.0;
@@ -29,47 +67,39 @@ struct ThrustDiagnosticsSnapshot
 };
 
 inline void format_damage_event(
-	char* buffer,
-	size_t buffer_size,
-	int element,
-	double integrity,
-	bool invincible)
+	const DiagnosticOutput& output,
+	const DamageEventSnapshot& snapshot)
 {
 	snprintf(
-		buffer,
-		buffer_size,
+		output.data,
+		output.capacity,
 		"damage element=%d integrity=%.3f invincible=%d",
-		element,
-		integrity,
-		invincible ? 1 : 0);
+		snapshot.element,
+		snapshot.integrity,
+		snapshot.invincible ? 1 : 0);
 }
 
 inline void format_engine_shutdown(
-	char* buffer,
-	size_t buffer_size,
-	double internal_fuel,
-	double altitude_asl,
-	bool left_switch,
-	bool right_switch)
+	const DiagnosticOutput& output,
+	const EngineShutdownSnapshot& snapshot)
 {
 	snprintf(
-		buffer,
-		buffer_size,
+		output.data,
+		output.capacity,
 		"ENG_SHUTDOWN fuel=%.3f asl=%.3f left_sw=%d right_sw=%d",
-		internal_fuel,
-		altitude_asl,
-		left_switch ? 1 : 0,
-		right_switch ? 1 : 0);
+		snapshot.internal_fuel,
+		snapshot.altitude_asl,
+		snapshot.left_switch ? 1 : 0,
+		snapshot.right_switch ? 1 : 0);
 }
 
 inline void format_thrust_diagnostics(
-	char* buffer,
-	size_t buffer_size,
+	const DiagnosticOutput& output,
 	const ThrustDiagnosticsSnapshot& snapshot)
 {
 	snprintf(
-		buffer,
-		buffer_size,
+		output.data,
+		output.capacity,
 		"THRUST L=%.3f R=%.3f NETM=(%.3f,%.3f,%.3f) SUSP=(%.3f,%.3f,%.3f) MAXPWR ready=%.1f sw=%.1f ENGSW=(%d,%d) THRIN=(%.3f,%.3f) THROUT=(%.3f,%.3f) CORE=(%.3f,%.3f) INTEG wing=(%.3f,%.3f) eng=(%.3f,%.3f) FUEL=%.1f",
 		snapshot.left_thrust,
 		snapshot.right_thrust,
@@ -97,44 +127,33 @@ inline void format_thrust_diagnostics(
 }
 
 inline void format_suspension_feedback(
-	char* buffer,
-	size_t buffer_size,
-	int index,
-	double compression,
-	double fx,
-	double fy,
-	double fz,
-	double force_magnitude,
-	bool wow)
+	const DiagnosticOutput& output,
+	const SuspensionFeedbackSnapshot& snapshot)
 {
 	snprintf(
-		buffer,
-		buffer_size,
+		output.data,
+		output.capacity,
 		"idx=%d comp=%.6f force=(%.3f, %.3f, %.3f) mag=%.3f wow=%d",
-		index,
-		compression,
-		fx,
-		fy,
-		fz,
-		force_magnitude,
-		wow ? 1 : 0);
+		snapshot.index,
+		snapshot.compression,
+		snapshot.force.x,
+		snapshot.force.y,
+		snapshot.force.z,
+		snapshot.force_magnitude,
+		snapshot.wow ? 1 : 0);
 }
 
 inline void format_suspension_animation(
-	char* buffer,
-	size_t buffer_size,
-	int index,
-	double compression,
-	double draw_arg,
-	double wheel_speed)
+	const DiagnosticOutput& output,
+	const SuspensionAnimationSnapshot& snapshot)
 {
 	snprintf(
-		buffer,
-		buffer_size,
+		output.data,
+		output.capacity,
 		"susp idx=%d comp_norm=%.6f arg_val=%.3f speed=%.3f",
-		index,
-		compression,
-		draw_arg,
-		wheel_speed);
+		snapshot.index,
+		snapshot.compression,
+		snapshot.draw_arg,
+		snapshot.wheel_speed);
 }
 }
