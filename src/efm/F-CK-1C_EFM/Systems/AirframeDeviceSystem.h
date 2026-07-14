@@ -87,17 +87,19 @@ inline void update_airframe_device_positions(
 	const AirframeDeviceUpdateInput& input)
 {
 	devices.airbrake_pos = Common::limit(
-		Common::actuator(devices.airbrake_pos, devices.airbrake_switch, -0.003, 0.004),
+		Common::actuator(
+			devices.airbrake_pos,
+			{ devices.airbrake_switch ? 1.0 : 0.0, -0.003, 0.004 }),
 		0.0,
 		1.0);
 
 	const double flap_target = compute_flap_target(devices, input);
 	devices.flaps_pos = Common::limit(
-		Common::actuator(devices.flaps_pos, flap_target, -0.002, 0.002),
+		Common::actuator(devices.flaps_pos, { flap_target, -0.002, 0.002 }),
 		0.0,
 		1.0);
 	devices.slats_pos = Common::limit(
-		Common::actuator(devices.slats_pos, flap_target, -0.003, 0.003),
+		Common::actuator(devices.slats_pos, { flap_target, -0.003, 0.003 }),
 		0.0,
 		1.0);
 }

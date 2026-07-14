@@ -48,7 +48,9 @@ inline void set_gear(LandingGearSystemState& landing_gear, bool down)
 inline void update_gear_position(LandingGearSystemState& landing_gear)
 {
 	landing_gear.position = Common::limit(
-		Common::actuator(landing_gear.position, landing_gear.switch_down, -0.001, 0.001),
+		Common::actuator(
+			landing_gear.position,
+			{ landing_gear.switch_down ? 1.0 : 0.0, -0.001, 0.001 }),
 		0.0,
 		1.0);
 }
@@ -89,7 +91,7 @@ inline void update_nose_wheel_steering(
 	double target_steering)
 {
 	wheels.nose_steering = Common::limit(
-		Common::actuator(wheels.nose_steering, target_steering, -0.06, 0.06),
+		Common::actuator(wheels.nose_steering, { target_steering, -0.06, 0.06 }),
 		-1.0,
 		1.0);
 }
@@ -103,15 +105,17 @@ inline void update_wheel_spin(
 	for (unsigned i = 0; i < kLandingGearWheelCount; ++i)
 	{
 		const double wheel_circumference = 2.0 * Common::kPi * input.wheel_radius[i];
-		if (wheel_circumference > 1e-6)
+		if (wheel_circumference <= 1e-6)
 		{
-			wheels.spin[i] = std::fmod(
-				wheels.spin[i] + (input.ground_speed / wheel_circumference) * input.dt * spin_enable,
-				1.0);
-			if (wheels.spin[i] < 0.0)
-			{
-				wheels.spin[i] += 1.0;
-			}
+			continue;
+		}
+		wheels.spin[i] = std::fmod(
+			wheels.spin[i] +
+				(input.ground_speed / wheel_circumference) * input.dt * spin_enable,
+			1.0);
+		if (wheels.spin[i] < 0.0)
+		{
+			wheels.spin[i] += 1.0;
 		}
 	}
 }

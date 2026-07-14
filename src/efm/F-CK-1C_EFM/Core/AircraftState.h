@@ -7,6 +7,41 @@
 
 namespace Core
 {
+struct AtmosphereInput
+{
+	double altitude_asl = 0.0;
+	double temperature = 0.0;
+	double speed_of_sound = 0.0;
+	double density = 0.0;
+	Common::Vec3 wind;
+};
+
+struct SurfaceInput
+{
+	double surface_height = 0.0;
+	double surface_height_with_objects = 0.0;
+	unsigned surface_type = 0;
+};
+
+struct WorldKinematicsInput
+{
+	Common::Vec3 velocity;
+	Common::Vec3 angular_velocity;
+	double position_z = 0.0;
+};
+
+struct BodyKinematicsInput
+{
+	Common::Vec3 velocity;
+	Common::Vec3 angular_velocity;
+	double heading = 0.0;
+	double pitch = 0.0;
+	double roll = 0.0;
+	double angle_of_attack = 0.0;
+	double angle_of_slide = 0.0;
+	double acceleration_y = 0.0;
+};
+
 struct AircraftState
 {
 	Common::Vec3 wind;
@@ -46,34 +81,25 @@ struct AircraftState
 
 inline void set_atmosphere(
 	AircraftState& state,
-	double altitude_asl,
-	double temperature,
-	double speed_of_sound,
-	double density,
-	double wind_vx,
-	double wind_vy,
-	double wind_vz)
+	const AtmosphereInput& input)
 {
-	state.wind.x = wind_vx;
-	state.wind.y = wind_vy;
-	state.wind.z = wind_vz;
-	state.atmosphere_density = density;
-	state.speed_of_sound = speed_of_sound;
-	state.altitude_asl = altitude_asl;
-	state.engine_alt_effect = Common::limit(std::pow(1.0 - (altitude_asl / 30000.0), 0.3), 0.1, 1.0);
-	state.atmosphere_temperature = temperature;
+	state.wind = input.wind;
+	state.atmosphere_density = input.density;
+	state.speed_of_sound = input.speed_of_sound;
+	state.altitude_asl = input.altitude_asl;
+	state.engine_alt_effect = Common::limit(
+		std::pow(1.0 - (input.altitude_asl / 30000.0), 0.3), 0.1, 1.0);
+	state.atmosphere_temperature = input.temperature;
 }
 
 inline void set_surface(
 	AircraftState& state,
-	double surface_height,
-	double surface_height_with_objects,
-	unsigned surface_type)
+	const SurfaceInput& input)
 {
-	state.surface_height_raw = surface_height;
-	state.surface_height_with_objects = surface_height_with_objects;
-	state.surface_type_raw = surface_type;
-	state.altitude_agl = state.altitude_asl - surface_height;
+	state.surface_height_raw = input.surface_height;
+	state.surface_height_with_objects = input.surface_height_with_objects;
+	state.surface_type_raw = input.surface_type;
+	state.altitude_agl = state.altitude_asl - input.surface_height;
 }
 
 inline void set_current_mass(AircraftState& state, double mass)
@@ -83,57 +109,32 @@ inline void set_current_mass(AircraftState& state, double mass)
 
 inline void set_world_kinematics(
 	AircraftState& state,
-	double vx,
-	double vy,
-	double vz,
-	double omegax,
-	double omegay,
-	double omegaz,
-	double position_z)
+	const WorldKinematicsInput& input)
 {
-	state.velocity_world.x = vx;
-	state.velocity_world.y = vy;
-	state.velocity_world.z = vz;
-	state.angular_velocity_world.x = omegax;
-	state.angular_velocity_world.y = omegay;
-	state.angular_velocity_world.z = omegaz;
-	state.position_world_z = position_z;
+	state.velocity_world = input.velocity;
+	state.angular_velocity_world = input.angular_velocity;
+	state.position_world_z = input.position_z;
 }
 
 inline void set_body_kinematics(
 	AircraftState& state,
-	double vx,
-	double vy,
-	double vz,
-	double omegax,
-	double omegay,
-	double omegaz,
-	double heading,
-	double pitch,
-	double roll,
-	double angle_of_attack,
-	double angle_of_slide,
-	double acceleration_y)
+	const BodyKinematicsInput& input)
 {
-	state.velocity_body.x = vx;
-	state.velocity_body.y = vy;
-	state.velocity_body.z = vz;
-	state.angular_velocity_body.x = omegax;
-	state.angular_velocity_body.y = omegay;
-	state.angular_velocity_body.z = omegaz;
+	state.velocity_body = input.velocity;
+	state.angular_velocity_body = input.angular_velocity;
 
-	state.aoa = angle_of_attack;
-	state.alpha = Common::deg(angle_of_attack);
-	state.aos = angle_of_slide;
-	state.beta = Common::deg(angle_of_slide);
-	state.g = (acceleration_y / 9.81) + 1.0;
+	state.aoa = input.angle_of_attack;
+	state.alpha = Common::deg(input.angle_of_attack);
+	state.aos = input.angle_of_slide;
+	state.beta = Common::deg(input.angle_of_slide);
+	state.g = (input.acceleration_y / 9.81) + 1.0;
 
-	state.pitch = pitch;
-	state.roll = roll;
-	state.heading = heading;
-	state.roll_rate = omegax;
-	state.yaw_rate = omegay;
-	state.pitch_rate = omegaz;
+	state.pitch = input.pitch;
+	state.roll = input.roll;
+	state.heading = input.heading;
+	state.roll_rate = input.angular_velocity.x;
+	state.yaw_rate = input.angular_velocity.y;
+	state.pitch_rate = input.angular_velocity.z;
 }
 
 inline void update_airspeed(AircraftState& state)

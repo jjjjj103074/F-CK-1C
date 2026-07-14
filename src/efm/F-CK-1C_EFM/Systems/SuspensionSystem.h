@@ -65,6 +65,30 @@ struct SuspensionFallbackInput
 	double wheel_brake_right = 0.0;
 };
 
+struct SuspensionFeedback
+{
+	int index = 0;
+	double compression = 0.0;
+	Common::Vec3 force;
+};
+
+struct SuspensionFallbackContext
+{
+	const SuspensionSystemConfig& config;
+	const SuspensionFallbackInput& input;
+	double sink_rate = 0.0;
+	double gear_support = 0.0;
+};
+
+struct FallbackGearLoads
+{
+	double total_force = 0.0;
+	double total_main_normal = 0.0;
+	double left_main_normal = 0.0;
+	double right_main_normal = 0.0;
+	bool gear_contact = false;
+};
+
 inline bool valid_suspension_index(int idx)
 {
 	return idx >= 0 && idx < kSuspensionWheelCount;
@@ -158,22 +182,22 @@ inline void reset_suspension_feedback_state(SuspensionSystemState& state)
 
 inline bool update_suspension_feedback(
 	SuspensionSystemState& state,
-	int idx,
-	double compression,
-	double force_x,
-	double force_y,
-	double force_z)
+	const SuspensionFeedback& feedback)
 {
-	if (!valid_suspension_index(idx))
+	if (!valid_suspension_index(feedback.index))
 	{
 		return false;
 	}
-
-	state.feedback_valid[idx] = true;
-	state.compression[idx] = compression;
-	state.force_vec[idx] = Common::Vec3(force_x, force_y, force_z);
-	state.force_mag[idx] = std::sqrt(force_x * force_x + force_y * force_y + force_z * force_z);
-	state.wow[idx] = (state.compression[idx] > 1e-4) || (state.force_mag[idx] > 50.0);
+	const int index = feedback.index;
+	state.feedback_valid[index] = true;
+	state.compression[index] = feedback.compression;
+	state.force_vec[index] = feedback.force;
+	state.force_mag[index] = std::sqrt(
+		feedback.force.x * feedback.force.x +
+		feedback.force.y * feedback.force.y +
+		feedback.force.z * feedback.force.z);
+	state.wow[index] = (state.compression[index] > 1e-4) ||
+		(state.force_mag[index] > 50.0);
 	return true;
 }
 
@@ -183,128 +207,157 @@ inline bool update_on_ground(SuspensionSystemState& state, double gear_pos)
 	return state.on_ground;
 }
 
+inline SuspensionFallbackContext make_suspension_fallback_context(
+	const SuspensionSystemConfig& config,
+	const SuspensionFallbackInput& input)
+{
+	return {
+		config,
+		input,
+		Common::limit(-input.velocity_world_y, 0.0, 80.0),
+		Common::limit((input.gear_pos - 0.2) / 0.8, 0.0, 1.0)
+	};
+}
+
+inline double fallback_wheel_force(
+	const SuspensionFallbackContext& context,
+	int index,
+	double compression)
+{
+	double force = compression * context.config.fallback_spring[index] *
+		context.gear_support;
+	force += context.sink_rate * context.config.fallback_damping[index] *
+		context.gear_support;
+	const double weight = context.input.current_mass * 9.81;
+	const double force_limit = index == 0 ? weight * 0.45 : weight * 1.15;
+	return Common::limit(force, 0.0, force_limit);
+}
+
+template <typename AddLocalForce>
+inline FallbackGearLoads apply_fallback_wheel_contacts(
+	SuspensionSystemState& state,
+	const SuspensionFallbackContext& context,
+	AddLocalForce& add_local_force)
+{
+	FallbackGearLoads loads;
+	if (context.gear_support <= 0.0)
+	{
+		return loads;
+	}
+	for (int index = 0; index < kSuspensionWheelCount; ++index)
+	{
+		const double wheel_bottom_agl = context.input.altitude_agl +
+			fallback_world_vertical_offset(
+				context.config.fallback_gear_points[index],
+				context.input.pitch,
+				context.input.roll) - context.config.fallback_wheel_radius[index];
+		const double compression =
+			context.config.fallback_contact_band[index] - wheel_bottom_agl;
+		if (compression <= 0.0)
+		{
+			continue;
+		}
+		const double force = fallback_wheel_force(context, index, compression);
+		add_local_force(
+			Common::Vec3(0.0, force, 0.0), context.config.fallback_gear_points[index]);
+		state.fallback_compression[index] = compression;
+		state.fallback_force_mag[index] = force;
+		state.fallback_wow[index] = true;
+		loads.total_force += force;
+		loads.gear_contact = true;
+		if (index == 1) loads.left_main_normal = force;
+		if (index == 2) loads.right_main_normal = force;
+	}
+	loads.total_main_normal = loads.left_main_normal + loads.right_main_normal;
+	return loads;
+}
+
+template <typename AddLocalForce>
+inline void apply_fallback_longitudinal_resistance(
+	const FallbackGearLoads& loads,
+	const SuspensionFallbackContext& context,
+	AddLocalForce& add_local_force)
+{
+	if (loads.total_main_normal <= 1.0)
+	{
+		return;
+	}
+	const SuspensionFallbackInput& input = context.input;
+	const double forward_speed = input.velocity_body_x;
+	const double speed_abs = std::fabs(forward_speed);
+	const double speed_sign = forward_speed >= 0.0 ? 1.0 : -1.0;
+	const double avg_throttle = 0.5 *
+		(input.left_throttle_input + input.right_throttle_input);
+	const double brake_norm =
+		loads.left_main_normal * Common::limit(input.wheel_brake_left, 0.0, 1.0) +
+		loads.right_main_normal * Common::limit(input.wheel_brake_right, 0.0, 1.0);
+	double resistance = loads.total_main_normal * 0.035 + brake_norm * 0.85;
+	if (speed_abs < 1.5 && avg_throttle < 0.05)
+	{
+		resistance += Common::limit(
+			input.left_thrust_force + input.right_thrust_force,
+			0.0,
+			loads.total_main_normal * 0.12);
+	}
+	if (speed_abs > 0.05)
+	{
+		add_local_force(
+			Common::Vec3(-speed_sign * resistance, 0.0, 0.0),
+			Common::Vec3(-0.9, -1.6, 0.0));
+	}
+	else if (avg_throttle < 0.05 || brake_norm > 1.0)
+	{
+		add_local_force(
+			Common::Vec3(-resistance, 0.0, 0.0),
+			Common::Vec3(-0.9, -1.6, 0.0));
+	}
+}
+
+template <typename AddLocalForce>
+inline double apply_fallback_belly_force(
+	bool gear_contact,
+	const SuspensionFallbackContext& context,
+	AddLocalForce& add_local_force)
+{
+	if (gear_contact)
+	{
+		return 0.0;
+	}
+	const double belly_bottom_agl = context.input.altitude_agl +
+		fallback_world_vertical_offset(
+			context.config.fallback_belly_point,
+			context.input.pitch,
+			context.input.roll);
+	const double compression = 0.03 - belly_bottom_agl;
+	if (compression <= 0.0)
+	{
+		return 0.0;
+	}
+	double force = compression * 260000.0 + context.sink_rate * 40000.0;
+	force = Common::limit(force, 0.0, context.input.current_mass * 9.81 * 2.0);
+	add_local_force(
+		Common::Vec3(0.0, force, 0.0), context.config.fallback_belly_point);
+	return force;
+}
+
 template <typename AddLocalForce>
 inline double apply_fallback_ground_forces(
 	SuspensionSystemState& state,
-	const SuspensionSystemConfig& config,
-	const SuspensionFallbackInput& input,
+	const SuspensionFallbackContext& context,
 	AddLocalForce add_local_force)
 {
 	clear_fallback_state(state);
-
-	if (!config.enable_fallback_ground_forces)
+	if (!context.config.enable_fallback_ground_forces)
 	{
 		state.fallback_ground_force = 0.0;
 		return 0.0;
 	}
-
-	double total_force = 0.0;
-	double total_main_normal = 0.0;
-	double left_main_normal = 0.0;
-	double right_main_normal = 0.0;
-	const double sink_rate = Common::limit(-input.velocity_world_y, 0.0, 80.0);
-	const double gear_support = Common::limit((input.gear_pos - 0.2) / 0.8, 0.0, 1.0);
-	bool gear_contact = false;
-
-	if (gear_support > 0.0)
-	{
-		for (int i = 0; i < kSuspensionWheelCount; ++i)
-		{
-			const double wheel_bottom_agl =
-				input.altitude_agl +
-				fallback_world_vertical_offset(config.fallback_gear_points[i], input.pitch, input.roll) -
-				config.fallback_wheel_radius[i];
-			const double compression = config.fallback_contact_band[i] - wheel_bottom_agl;
-
-			if (compression > 0.0)
-			{
-				double force_mag =
-					(compression * config.fallback_spring[i] * gear_support) +
-					(sink_rate * config.fallback_damping[i] * gear_support);
-
-				if (i == 0)
-				{
-					force_mag = Common::limit(force_mag, 0.0, input.current_mass * 9.81 * 0.45);
-				}
-				else
-				{
-					force_mag = Common::limit(force_mag, 0.0, input.current_mass * 9.81 * 1.15);
-				}
-
-				add_local_force(Common::Vec3(0.0, force_mag, 0.0), config.fallback_gear_points[i]);
-
-				state.fallback_compression[i] = compression;
-				state.fallback_force_mag[i] = force_mag;
-				state.fallback_wow[i] = true;
-
-				total_force += force_mag;
-				if (i == 1)
-				{
-					left_main_normal = force_mag;
-					total_main_normal += force_mag;
-				}
-				else if (i == 2)
-				{
-					right_main_normal = force_mag;
-					total_main_normal += force_mag;
-				}
-				gear_contact = true;
-			}
-		}
-	}
-
-	if (total_main_normal > 1.0)
-	{
-		const double forward_speed = input.velocity_body_x;
-		const double speed_abs = std::fabs(forward_speed);
-		const double speed_sign = (forward_speed >= 0.0) ? 1.0 : -1.0;
-		const double avg_throttle = 0.5 * (input.left_throttle_input + input.right_throttle_input);
-		const double brake_norm =
-			(left_main_normal * Common::limit(input.wheel_brake_left, 0.0, 1.0)) +
-			(right_main_normal * Common::limit(input.wheel_brake_right, 0.0, 1.0));
-
-		double longitudinal_resist =
-			(total_main_normal * 0.035) +
-			(brake_norm * 0.85);
-
-		if (speed_abs < 1.5 && avg_throttle < 0.05)
-		{
-			longitudinal_resist += Common::limit(
-				input.left_thrust_force + input.right_thrust_force,
-				0.0,
-				total_main_normal * 0.12);
-		}
-
-		if (speed_abs > 0.05)
-		{
-			add_local_force(Common::Vec3(-speed_sign * longitudinal_resist, 0.0, 0.0), Common::Vec3(-0.9, -1.6, 0.0));
-		}
-		else if (avg_throttle < 0.05 || brake_norm > 1.0)
-		{
-			add_local_force(Common::Vec3(-longitudinal_resist, 0.0, 0.0), Common::Vec3(-0.9, -1.6, 0.0));
-		}
-	}
-
-	if (!gear_contact)
-	{
-		const double belly_bottom_agl =
-			input.altitude_agl +
-			fallback_world_vertical_offset(config.fallback_belly_point, input.pitch, input.roll);
-		const double belly_compression = 0.03 - belly_bottom_agl;
-
-		if (belly_compression > 0.0)
-		{
-			double belly_force =
-				(belly_compression * 260000.0) +
-				(sink_rate * 40000.0);
-
-			belly_force = Common::limit(belly_force, 0.0, input.current_mass * 9.81 * 2.0);
-			add_local_force(Common::Vec3(0.0, belly_force, 0.0), config.fallback_belly_point);
-			total_force += belly_force;
-		}
-	}
-
-	state.fallback_ground_force = total_force;
-	return total_force;
+	FallbackGearLoads loads = apply_fallback_wheel_contacts(
+		state, context, add_local_force);
+	apply_fallback_longitudinal_resistance(loads, context, add_local_force);
+	loads.total_force += apply_fallback_belly_force(
+		loads.gear_contact, context, add_local_force);
+	state.fallback_ground_force = loads.total_force;
+	return loads.total_force;
 }
 }

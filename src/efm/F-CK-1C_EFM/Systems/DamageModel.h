@@ -1,12 +1,20 @@
 #pragma once
 
-#include "../DcsIds/DamageIds.h"
+#include <cstddef>
 
 namespace Systems
 {
+constexpr std::size_t kWingDamageSegmentCount = 3;
+constexpr std::size_t kTailDamageSegmentCount = 5;
+constexpr std::size_t kEngineDamageSegmentCount = 3;
+
 struct DamageModel
 {
-	double element_integrity[DcsIds::Damage::ElementCount] = {};
+	double left_wing_segments[kWingDamageSegmentCount] = { 1.0, 1.0, 1.0 };
+	double right_wing_segments[kWingDamageSegmentCount] = { 1.0, 1.0, 1.0 };
+	double tail_segments[kTailDamageSegmentCount] = { 1.0, 1.0, 1.0, 1.0, 1.0 };
+	double left_engine_segments[kEngineDamageSegmentCount] = { 1.0, 1.0, 1.0 };
+	double right_engine_segments[kEngineDamageSegmentCount] = { 1.0, 1.0, 1.0 };
 	double left_wing_integrity = 1.0;
 	double right_wing_integrity = 1.0;
 	double tail_integrity = 1.0;
@@ -15,62 +23,55 @@ struct DamageModel
 	double total_damage = 0.0;
 };
 
+template <std::size_t Size>
+inline void reset_damage_segments(double (&segments)[Size])
+{
+	for (std::size_t index = 0; index < Size; ++index)
+	{
+		segments[index] = 1.0;
+	}
+}
+
+template <std::size_t Size>
+inline double combined_integrity(const double (&segments)[Size])
+{
+	double integrity = 1.0;
+	for (std::size_t index = 0; index < Size; ++index)
+	{
+		integrity *= segments[index];
+	}
+	return integrity;
+}
+
+inline void refresh_damage_integrity(DamageModel& damage)
+{
+	damage.left_wing_integrity = combined_integrity(damage.left_wing_segments);
+	damage.right_wing_integrity = combined_integrity(damage.right_wing_segments);
+	damage.tail_integrity = combined_integrity(damage.tail_segments);
+	damage.left_engine_integrity = combined_integrity(damage.left_engine_segments);
+	damage.right_engine_integrity = combined_integrity(damage.right_engine_segments);
+}
+
 inline void reset_damage_model(DamageModel& damage)
 {
-	for (int i = 0; i < DcsIds::Damage::ElementCount; ++i)
-	{
-		damage.element_integrity[i] = 1.0;
-	}
-
-	damage.left_wing_integrity = 1.0;
-	damage.right_wing_integrity = 1.0;
-	damage.tail_integrity = 1.0;
-	damage.left_engine_integrity = 1.0;
-	damage.right_engine_integrity = 1.0;
+	reset_damage_segments(damage.left_wing_segments);
+	reset_damage_segments(damage.right_wing_segments);
+	reset_damage_segments(damage.tail_segments);
+	reset_damage_segments(damage.left_engine_segments);
+	reset_damage_segments(damage.right_engine_segments);
+	refresh_damage_integrity(damage);
 	damage.total_damage = 0.0;
 }
 
-inline void apply_damage(DamageModel& damage, int element, double element_integrity_factor, bool invincible)
+template <std::size_t Size>
+inline void apply_damage_segment(
+	double (&segments)[Size],
+	std::size_t segment,
+	double integrity)
 {
-	if (element >= 0 && element < DcsIds::Damage::ElementCount)
+	if (segment < Size)
 	{
-		damage.element_integrity[element] = element_integrity_factor;
-	}
-
-	// Element integrity uses 0.0 = destroyed and 1.0 = intact.
-	if (invincible == false)
-	{
-		// Left wing
-		damage.left_wing_integrity =
-			damage.element_integrity[DcsIds::Damage::LeftWing[0]] *
-			damage.element_integrity[DcsIds::Damage::LeftWing[1]] *
-			damage.element_integrity[DcsIds::Damage::LeftWing[2]];
-
-		// Right wing
-		damage.right_wing_integrity =
-			damage.element_integrity[DcsIds::Damage::RightWing[0]] *
-			damage.element_integrity[DcsIds::Damage::RightWing[1]] *
-			damage.element_integrity[DcsIds::Damage::RightWing[2]];
-
-		// Tail
-		damage.tail_integrity =
-			damage.element_integrity[DcsIds::Damage::Tail[0]] *
-			damage.element_integrity[DcsIds::Damage::Tail[1]] *
-			damage.element_integrity[DcsIds::Damage::Tail[2]] *
-			damage.element_integrity[DcsIds::Damage::Tail[3]] *
-			damage.element_integrity[DcsIds::Damage::Tail[4]];
-
-		// Left engine
-		damage.left_engine_integrity =
-			damage.element_integrity[DcsIds::Damage::LeftEngine[0]] *
-			damage.element_integrity[DcsIds::Damage::LeftEngine[1]] *
-			damage.element_integrity[DcsIds::Damage::LeftEngine[2]];
-
-		// Right engine
-		damage.right_engine_integrity =
-			damage.element_integrity[DcsIds::Damage::RightEngine[0]] *
-			damage.element_integrity[DcsIds::Damage::RightEngine[1]] *
-			damage.element_integrity[DcsIds::Damage::RightEngine[2]];
+		segments[segment] = integrity;
 	}
 }
 }

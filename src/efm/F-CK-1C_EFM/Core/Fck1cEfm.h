@@ -14,10 +14,10 @@
 #include "../Systems/StartupSystem.h"
 #include "../Systems/SuspensionSystem.h"
 
+#include <cstddef>
+
 namespace Core
 {
-class Fck1cEfm;
-
 struct AutopilotCommand
 {
 	bool master = false;
@@ -32,19 +32,6 @@ struct MaxPowerCommand
 {
 	double ready = 0.0;
 	double value = 1.0;
-};
-
-class Fck1cEfmRuntime
-{
-public:
-	virtual ~Fck1cEfmRuntime() = default;
-	virtual AutopilotCommand read_autopilot() = 0;
-	virtual MaxPowerCommand read_max_power() = 0;
-	virtual void on_first_frame(const Fck1cEfm& efm) = 0;
-	virtual void on_engine_shutdown(const Fck1cEfm& efm) = 0;
-	virtual void on_thrust_updated(const Fck1cEfm& efm, const MaxPowerCommand& command) = 0;
-	virtual void on_ground_diagnostics(const Fck1cEfm& efm, double dt) = 0;
-	virtual void on_release(const Fck1cEfm& efm) = 0;
 };
 
 struct ForceMomentFrame
@@ -84,25 +71,187 @@ struct Fck1cEfmSystems
 	Systems::FBWControllerState fbw;
 };
 
+struct SuspensionConfigurationSnapshot
+{
+	double wheel_radius[3] = {};
+	Common::Vec3 wheel_position[3];
+	const char* active_collision_shell = "";
+	const char* mode_name = "";
+	bool fallback_enabled = false;
+};
+
+struct Fck1cEfmSnapshot
+{
+	AircraftState aircraft;
+	ForceMomentFrame force_moment;
+	ControlSurfaceState control_surfaces;
+	GameplayState gameplay;
+	Fck1cEfmSystems systems;
+	SuspensionConfigurationSnapshot suspension_configuration;
+	Common::Vec3 left_engine_position;
+	Common::Vec3 right_engine_position;
+	double suspension_visual_arg[3] = {};
+	double nose_wheel_command = 0.0;
+	bool suspension_feedback_available = false;
+	bool any_weight_on_wheels = false;
+};
+
+enum class CommandGroup
+{
+	PitchRoll,
+	Yaw,
+	Fbw,
+	Engine,
+	Throttle,
+	Airframe,
+	LandingGear,
+	None
+};
+
+enum class CommandAction
+{
+	NoOp,
+	SetPitchAxis,
+	SetPitchDiscrete,
+	AdjustPitchTrim,
+	SetRollAxis,
+	SetRollDiscrete,
+	AdjustRollTrim,
+	SetYawAxis,
+	SetYawDiscrete,
+	AdjustYawTrim,
+	ResetTrim,
+	ToggleFbwCat,
+	SetFbwCat1,
+	SetFbwCat3,
+	SetGLimiterOverride,
+	ToggleGLimiterOverride,
+	SetBothEngines,
+	SetLeftEngine,
+	SetRightEngine,
+	SetCommonThrottleAxis,
+	SetLeftThrottleAxis,
+	SetRightThrottleAxis,
+	StepCommonThrottle,
+	StepLeftThrottle,
+	StepRightThrottle,
+	ToggleAirbrake,
+	SetAirbrake,
+	ToggleFlaps,
+	SetFlapsUp,
+	SetFlapsAuto,
+	SetFlapsDown,
+	ToggleGear,
+	SetGear,
+	ToggleNoseWheelSteering,
+	SetNoseWheelSteering,
+	SetBrake,
+	SetLeftBrake,
+	SetRightBrake
+};
+
+struct EfmCommand
+{
+	CommandGroup group = CommandGroup::None;
+	CommandAction action = CommandAction::NoOp;
+	double value = 0.0;
+};
+
+struct MassStateInput
+{
+	double mass = 0.0;
+	Common::Vec3 center_of_mass;
+};
+
+struct ExternalFuelInput
+{
+	int station = 0;
+	double fuel = 0.0;
+	Common::Vec3 position;
+};
+
+struct SuspensionFeedbackInput
+{
+	int index = 0;
+	double compression = 0.0;
+	Common::Vec3 force;
+};
+
+enum class DamageArea
+{
+	LeftWing,
+	RightWing,
+	Tail,
+	LeftEngine,
+	RightEngine
+};
+
+struct DamageEvent
+{
+	DamageArea area = DamageArea::LeftWing;
+	std::size_t segment = 0;
+	double integrity = 1.0;
+};
+
+struct MassDelta
+{
+	double mass = 0.0;
+	Common::Vec3 position;
+	Common::Vec3 moment_of_inertia;
+};
+
+struct MassDeltaResult
+{
+	bool available = false;
+	MassDelta delta;
+};
+
+class Fck1cEfmRuntime
+{
+public:
+	virtual ~Fck1cEfmRuntime() = default;
+	virtual AutopilotCommand read_autopilot() = 0;
+	virtual MaxPowerCommand read_max_power() = 0;
+	virtual void on_first_frame(const Fck1cEfmSnapshot& snapshot) = 0;
+	virtual void on_engine_shutdown(const Fck1cEfmSnapshot& snapshot) = 0;
+	virtual void on_thrust_updated(
+		const Fck1cEfmSnapshot& snapshot,
+		const MaxPowerCommand& command) = 0;
+	virtual void on_ground_diagnostics(const Fck1cEfmSnapshot& snapshot, double dt) = 0;
+	virtual void on_release(const Fck1cEfmSnapshot& snapshot) = 0;
+};
+
 class Fck1cEfm
 {
 public:
 	Fck1cEfm(const Data::AircraftConfig& config, Fck1cEfmRuntime& runtime);
-
 	Fck1cEfm(const Fck1cEfm&) = delete;
 	Fck1cEfm& operator=(const Fck1cEfm&) = delete;
 
 	const Data::AircraftConfig& config() const;
-	AircraftState& aircraft_state();
-	const AircraftState& aircraft_state() const;
-	ForceMomentFrame& force_moment();
-	const ForceMomentFrame& force_moment() const;
-	ControlSurfaceState& control_surfaces();
-	const ControlSurfaceState& control_surfaces() const;
-	GameplayState& gameplay();
-	const GameplayState& gameplay() const;
-	Fck1cEfmSystems& systems();
-	const Fck1cEfmSystems& systems() const;
+	Fck1cEfmSnapshot snapshot() const;
+	ForceMomentFrame force_moment_output() const;
+	double max_dry_thrust_at(double mach) const;
+	double internal_fuel() const;
+	double external_fuel() const;
+	double shake_amplitude() const;
+
+	void set_atmosphere(const AtmosphereInput& input);
+	void set_surface(const SurfaceInput& input);
+	void set_mass_state(const MassStateInput& input);
+	void set_world_kinematics(const WorldKinematicsInput& input);
+	void set_body_kinematics(const BodyKinematicsInput& input);
+	void handle_command(const EfmCommand& command);
+	MassDeltaResult take_mass_delta();
+	void set_internal_fuel(double fuel);
+	void set_external_fuel(const ExternalFuelInput& input);
+	void add_refueling_fuel(double fuel);
+	void set_infinite_fuel(bool enabled);
+	void set_easy_flight(bool enabled);
+	void set_invincible(bool enabled);
+	void apply_damage(const DamageEvent& event);
+	bool update_suspension_feedback(const SuspensionFeedbackInput& input);
+
 	void simulate(double dt);
 	void cold_start();
 	void hot_ground_start();
@@ -111,6 +260,13 @@ public:
 	void repair();
 
 private:
+	void handle_pitch_roll_command(const EfmCommand& command);
+	void handle_yaw_command(const EfmCommand& command);
+	void handle_fbw_command(const EfmCommand& command);
+	void handle_engine_command(const EfmCommand& command);
+	void handle_throttle_command(const EfmCommand& command);
+	void handle_airframe_command(const EfmCommand& command);
+	void handle_landing_gear_command(const EfmCommand& command);
 	void begin_frame(double dt);
 	void update_airframe(double dt);
 	void update_autopilot();

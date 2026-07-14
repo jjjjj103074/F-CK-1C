@@ -32,54 +32,162 @@ const Data::AircraftConfig& Fck1cEfm::config() const
 	return config_;
 }
 
-AircraftState& Fck1cEfm::aircraft_state()
+Fck1cEfmSnapshot Fck1cEfm::snapshot() const
 {
-	return aircraft_state_;
+	Fck1cEfmSnapshot result;
+	result.aircraft = aircraft_state_;
+	result.force_moment = force_moment_;
+	result.control_surfaces = control_surfaces_;
+	result.gameplay = gameplay_;
+	result.systems = systems_;
+	result.left_engine_position = config_.left_engine_position;
+	result.right_engine_position = config_.right_engine_position;
+	for (int index = 0; index < Systems::kSuspensionWheelCount; ++index)
+	{
+		result.suspension_configuration.wheel_radius[index] =
+			config_.suspension.fallback_wheel_radius[index];
+		result.suspension_configuration.wheel_position[index] =
+			config_.suspension.fallback_gear_points[index];
+		result.suspension_visual_arg[index] = Systems::suspension_visual_arg(
+			systems_.suspension, index, systems_.landing_gear.position);
+	}
+	result.suspension_configuration.active_collision_shell =
+		config_.suspension.active_collision_shell_name;
+	result.suspension_configuration.mode_name = config_.suspension.suspension_mode_name;
+	result.suspension_configuration.fallback_enabled =
+		config_.suspension.enable_fallback_ground_forces;
+	result.nose_wheel_command = nose_wheel_steering();
+	result.suspension_feedback_available =
+		Systems::has_suspension_feedback(systems_.suspension);
+	result.any_weight_on_wheels = Systems::any_wow(systems_.suspension);
+	return result;
 }
 
-const AircraftState& Fck1cEfm::aircraft_state() const
-{
-	return aircraft_state_;
-}
-
-ForceMomentFrame& Fck1cEfm::force_moment()
+ForceMomentFrame Fck1cEfm::force_moment_output() const
 {
 	return force_moment_;
 }
 
-const ForceMomentFrame& Fck1cEfm::force_moment() const
+double Fck1cEfm::max_dry_thrust_at(double mach) const
 {
-	return force_moment_;
+	return Systems::max_dry_thrust(config_.engine, mach);
 }
 
-ControlSurfaceState& Fck1cEfm::control_surfaces()
+double Fck1cEfm::internal_fuel() const
 {
-	return control_surfaces_;
+	return Systems::get_internal_fuel(systems_.fuel);
 }
 
-const ControlSurfaceState& Fck1cEfm::control_surfaces() const
+double Fck1cEfm::external_fuel() const
 {
-	return control_surfaces_;
+	return Systems::get_external_fuel(systems_.fuel);
 }
 
-GameplayState& Fck1cEfm::gameplay()
+double Fck1cEfm::shake_amplitude() const
 {
-	return gameplay_;
+	return gameplay_.shake_amplitude;
 }
 
-const GameplayState& Fck1cEfm::gameplay() const
+void Fck1cEfm::set_atmosphere(const AtmosphereInput& input)
 {
-	return gameplay_;
+	Core::set_atmosphere(aircraft_state_, input);
 }
 
-Fck1cEfmSystems& Fck1cEfm::systems()
+void Fck1cEfm::set_surface(const SurfaceInput& input)
 {
-	return systems_;
+	Core::set_surface(aircraft_state_, input);
 }
 
-const Fck1cEfmSystems& Fck1cEfm::systems() const
+void Fck1cEfm::set_mass_state(const MassStateInput& input)
 {
-	return systems_;
+	Core::set_current_mass(aircraft_state_, input.mass);
+	force_moment_.center_of_mass = input.center_of_mass;
+}
+
+void Fck1cEfm::set_world_kinematics(const WorldKinematicsInput& input)
+{
+	Core::set_world_kinematics(aircraft_state_, input);
+}
+
+void Fck1cEfm::set_body_kinematics(const BodyKinematicsInput& input)
+{
+	Core::set_body_kinematics(aircraft_state_, input);
+}
+
+MassDeltaResult Fck1cEfm::take_mass_delta()
+{
+	const Systems::FuelMassDeltaResult source = Systems::take_fuel_mass_delta(systems_.fuel);
+	MassDeltaResult result;
+	result.available = source.available;
+	result.delta.mass = source.delta.mass;
+	result.delta.position = source.delta.position;
+	result.delta.moment_of_inertia = source.delta.moment_of_inertia;
+	return result;
+}
+
+void Fck1cEfm::set_internal_fuel(double fuel)
+{
+	Systems::set_internal_fuel(systems_.fuel, fuel);
+}
+
+void Fck1cEfm::set_external_fuel(const ExternalFuelInput& input)
+{
+	Systems::set_external_fuel(
+		systems_.fuel,
+		{ input.station, input.fuel, input.position });
+}
+
+void Fck1cEfm::add_refueling_fuel(double fuel)
+{
+	(void)fuel;
+}
+
+void Fck1cEfm::set_infinite_fuel(bool enabled)
+{
+	gameplay_.infinite_fuel = enabled;
+}
+
+void Fck1cEfm::set_easy_flight(bool enabled)
+{
+	gameplay_.easy_flight = enabled;
+}
+
+void Fck1cEfm::set_invincible(bool enabled)
+{
+	gameplay_.invincible = enabled;
+}
+
+void Fck1cEfm::apply_damage(const DamageEvent& event)
+{
+	switch (event.area)
+	{
+	case DamageArea::LeftWing:
+		Systems::apply_damage_segment(systems_.damage.left_wing_segments, event.segment, event.integrity);
+		break;
+	case DamageArea::RightWing:
+		Systems::apply_damage_segment(systems_.damage.right_wing_segments, event.segment, event.integrity);
+		break;
+	case DamageArea::Tail:
+		Systems::apply_damage_segment(systems_.damage.tail_segments, event.segment, event.integrity);
+		break;
+	case DamageArea::LeftEngine:
+		Systems::apply_damage_segment(systems_.damage.left_engine_segments, event.segment, event.integrity);
+		break;
+	case DamageArea::RightEngine:
+		Systems::apply_damage_segment(systems_.damage.right_engine_segments, event.segment, event.integrity);
+		break;
+	}
+	if (!gameplay_.invincible)
+	{
+		Systems::refresh_damage_integrity(systems_.damage);
+	}
+}
+
+bool Fck1cEfm::update_suspension_feedback(const SuspensionFeedbackInput& input)
+{
+	return Systems::update_suspension_feedback(
+		systems_.suspension,
+		{ input.index, input.compression, input.force });
 }
 
 void Fck1cEfm::simulate(double dt)
@@ -109,7 +217,7 @@ void Fck1cEfm::begin_frame(double dt)
 		systems_.aerodynamics,
 		config_.aerodynamics,
 		force_moment_.center_of_mass);
-	runtime_.on_first_frame(*this);
+	runtime_.on_first_frame(snapshot());
 }
 
 void Fck1cEfm::update_airframe(double dt)
@@ -143,13 +251,15 @@ void Fck1cEfm::update_airframe(double dt)
 	Systems::update_aerodynamic_conditions(
 		systems_.aerodynamics,
 		config_.aerodynamics,
-		force_moment_.center_of_mass,
-		aircraft_state_.atmosphere_density,
-		aircraft_state_.speed_scalar,
-		aircraft_state_.mach,
-		aircraft_state_.alpha,
-		aircraft_state_.beta,
-		systems_.airframe_devices.slats_pos);
+		{
+			force_moment_.center_of_mass,
+			aircraft_state_.atmosphere_density,
+			aircraft_state_.speed_scalar,
+			aircraft_state_.mach,
+			aircraft_state_.alpha,
+			aircraft_state_.beta,
+			systems_.airframe_devices.slats_pos
+		});
 }
 
 void Fck1cEfm::update_autopilot()
@@ -244,8 +354,7 @@ void Fck1cEfm::update_primary_aerodynamics(const Systems::AerodynamicsFrameInput
 {
 	Systems::apply_primary_aerodynamics(
 		systems_.aerodynamics,
-		config_.aerodynamics,
-		input,
+		{ config_.aerodynamics, input },
 		[this](const Common::Vec3& force, const Common::Vec3& position)
 		{
 			add_force(force, position);
@@ -259,15 +368,19 @@ void Fck1cEfm::update_engines_and_fuel(double dt)
 	Systems::apply_engine_throttle_commands(
 		systems_.engines,
 		Systems::compose_engine_throttle_cmd(
-			systems_.throttle_inputs.left.pilot_cmd,
-			systems_.fbw.throttle_cmd_left,
-			systems_.fbw.throttle_override,
-			systems_.fbw.throttle_blend),
+			{
+				systems_.throttle_inputs.left.pilot_cmd,
+				systems_.fbw.throttle_cmd_left,
+				systems_.fbw.throttle_blend,
+				systems_.fbw.throttle_override
+			}),
 		Systems::compose_engine_throttle_cmd(
-			systems_.throttle_inputs.right.pilot_cmd,
-			systems_.fbw.throttle_cmd_right,
-			systems_.fbw.throttle_override,
-			systems_.fbw.throttle_blend));
+			{
+				systems_.throttle_inputs.right.pilot_cmd,
+				systems_.fbw.throttle_cmd_right,
+				systems_.fbw.throttle_blend,
+				systems_.fbw.throttle_override
+			}));
 	update_engine_state(dt, dry_thrust);
 	handle_engine_shutdown(dt);
 	apply_thrust_and_observe();
@@ -286,14 +399,17 @@ void Fck1cEfm::update_engine_state(double dt, double dry_thrust)
 		systems_.engines,
 		config_.engine,
 		dt);
-	Systems::update_afterburners(systems_.engines, dt);
-	Systems::update_nozzle_apertures(systems_.engines, dt);
+	Systems::update_afterburners(systems_.engines, config_.engine, dt);
+	Systems::update_nozzle_apertures(systems_.engines, config_.engine, dt);
 	Systems::update_engine_thrust_outputs(
 		systems_.engines,
-		dry_thrust,
-		aircraft_state_.engine_alt_effect,
-		systems_.damage.left_engine_integrity,
-		systems_.damage.right_engine_integrity);
+		config_.engine,
+		{
+			dry_thrust,
+			aircraft_state_.engine_alt_effect,
+			systems_.damage.left_engine_integrity,
+			systems_.damage.right_engine_integrity
+		});
 	Systems::apply_engine_readout_integrity(
 		systems_.engines,
 		systems_.damage.left_engine_integrity,
@@ -307,7 +423,7 @@ void Fck1cEfm::handle_engine_shutdown(double dt)
 		return;
 	}
 
-	runtime_.on_engine_shutdown(*this);
+	runtime_.on_engine_shutdown(snapshot());
 	Systems::shutdown_engines(systems_.engines, dt);
 }
 
@@ -317,7 +433,7 @@ void Fck1cEfm::apply_thrust_and_observe()
 	Systems::apply_thrust_cut(systems_.engines, command.ready > 0.5 && command.value < 0.5);
 	add_force(Common::Vec3(systems_.engines.left.thrust_force, 0.0, 0.0), config_.left_engine_position);
 	add_force(Common::Vec3(systems_.engines.right.thrust_force, 0.0, 0.0), config_.right_engine_position);
-	runtime_.on_thrust_updated(*this, command);
+	runtime_.on_thrust_updated(snapshot(), command);
 }
 
 void Fck1cEfm::update_fuel(double dt)
@@ -333,7 +449,7 @@ void Fck1cEfm::update_fuel(double dt)
 		systems_.engines.right.throttle_output,
 		systems_.engines.left.afterburner_ratio,
 		systems_.engines.right.afterburner_ratio,
-		systems_.engines.afterburner.fuel_factor
+		config_.engine.afterburner.fuel_factor
 	};
 	Systems::simulate_fuel_consumption(systems_.fuel, config_.fuel, input);
 }
@@ -342,27 +458,30 @@ void Fck1cEfm::update_ground_and_suspension(
 	double dt,
 	const Systems::AerodynamicsFrameInput& input)
 {
+	auto add_force_sink = [this](
+		const Common::Vec3& force,
+		const Common::Vec3& position)
+	{
+		add_force(force, position);
+	};
+	auto add_moment_sink = [this](const Common::Vec3& moment)
+	{
+		add_moment(moment);
+	};
 	Systems::apply_aerodynamic_limiters(
 		systems_.aerodynamics,
-		config_.aerodynamics,
-		input,
-		[this](const Common::Vec3& force, const Common::Vec3& position)
-		{
-			add_force(force, position);
-		},
-		[this](const Common::Vec3& moment)
-		{
-			add_moment(moment);
-		});
+		{ config_.aerodynamics, input },
+		Systems::make_aerodynamic_sinks(add_force_sink, add_moment_sink));
 	apply_fallback_ground_forces();
-	runtime_.on_ground_diagnostics(*this, dt);
+	runtime_.on_ground_diagnostics(snapshot(), dt);
 	Systems::update_on_ground(systems_.suspension, systems_.landing_gear.position);
+	Systems::AerodynamicsFrameInput shake_input = input;
+	shake_input.on_ground = systems_.suspension.on_ground;
+	shake_input.g_force = aircraft_state_.g;
 	gameplay_.shake_amplitude = Systems::update_aerodynamic_shake(
 		systems_.aerodynamics,
 		config_.aerodynamics,
-		input,
-		systems_.suspension.on_ground,
-		aircraft_state_.g);
+		shake_input);
 }
 
 void Fck1cEfm::apply_fallback_ground_forces()
@@ -384,8 +503,7 @@ void Fck1cEfm::apply_fallback_ground_forces()
 	};
 	systems_.suspension.fallback_ground_force = Systems::apply_fallback_ground_forces(
 		systems_.suspension,
-		config_.suspension,
-		input,
+		Systems::make_suspension_fallback_context(config_.suspension, input),
 		[this](const Common::Vec3& force, const Common::Vec3& position)
 		{
 			add_force(force, position);
@@ -405,9 +523,7 @@ void Fck1cEfm::add_force(const Common::Vec3& force, const Common::Vec3& position
 	Core::add_local_force(
 		force_moment_.force,
 		force_moment_.moment,
-		force_moment_.center_of_mass,
-		force,
-		position);
+		{ force_moment_.center_of_mass, force, position });
 }
 
 void Fck1cEfm::add_moment(const Common::Vec3& moment)
@@ -443,7 +559,7 @@ void Fck1cEfm::cold_start()
 		systems_.throttle_inputs,
 		kColdStartThrottle,
 		kColdStartThrottle);
-	Systems::configure_cold_start_engines(systems_.engines);
+	Systems::configure_cold_start_engines(systems_.engines, config_.engine);
 }
 
 void Fck1cEfm::hot_ground_start()
@@ -455,7 +571,7 @@ void Fck1cEfm::hot_ground_start()
 		systems_.throttle_inputs,
 		kColdStartThrottle,
 		kColdStartThrottle);
-	Systems::configure_hot_ground_start_engines(systems_.engines);
+	Systems::configure_hot_ground_start_engines(systems_.engines, config_.engine);
 }
 
 void Fck1cEfm::hot_air_start()
@@ -466,7 +582,7 @@ void Fck1cEfm::hot_air_start()
 		systems_.throttle_inputs,
 		kHotAirStartThrottle,
 		kHotAirStartThrottle);
-	Systems::configure_hot_air_start_engines(systems_.engines);
+	Systems::configure_hot_air_start_engines(systems_.engines, config_.engine);
 }
 
 void Fck1cEfm::reset_control_outputs()
@@ -494,7 +610,7 @@ void Fck1cEfm::release()
 	Systems::reset_throttle_inputs(systems_.throttle_inputs, 0.0, 0.0);
 	Systems::reset_fbw_throttle_interface(systems_.fbw);
 	Systems::reset_engine_release_state(systems_.engines);
-	runtime_.on_release(*this);
+	runtime_.on_release(snapshot());
 	repair();
 }
 

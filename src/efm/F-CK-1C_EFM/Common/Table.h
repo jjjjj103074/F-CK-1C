@@ -2,20 +2,38 @@
 
 namespace Common
 {
-inline double lerp(const double* x, const double* f, unsigned sz, double t)
+struct LinearTable
 {
-	for (unsigned i = 0; i < sz; i++)
+	const double* x = nullptr;
+	const double* values = nullptr;
+	unsigned size = 0;
+};
+
+inline double interpolate_segment(
+	const LinearTable& table,
+	unsigned index,
+	double input)
+{
+	const double denominator = table.x[index] - table.x[index - 1];
+	return ((table.values[index] - table.values[index - 1]) / denominator * input) +
+		(table.x[index] * table.values[index - 1] -
+			table.x[index - 1] * table.values[index]) / denominator;
+}
+
+inline double lerp(const LinearTable& table, double input)
+{
+	for (unsigned index = 0; index < table.size; ++index)
 	{
-		if (t <= x[i])
+		if (!(input <= table.x[index]))
 		{
-			if (i > 0)
-			{
-				return ((f[i] - f[i - 1]) / (x[i] - x[i - 1]) * t +
-					(x[i] * f[i - 1] - x[i - 1] * f[i]) / (x[i] - x[i - 1]));
-			}
-			return f[0];
+			continue;
 		}
+		if (index == 0)
+		{
+			return table.values[0];
+		}
+		return interpolate_segment(table, index, input);
 	}
-	return f[sz - 1];
+	return table.values[table.size - 1];
 }
 }

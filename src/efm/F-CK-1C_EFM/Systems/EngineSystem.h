@@ -8,6 +8,18 @@
 
 namespace Systems
 {
+struct AfterburnerConfig
+{
+	double detent = 0.70;
+	double thrust_factor = 1.73;
+	double fuel_factor = 2.2;
+	double core_rpm = 0.94;
+	double core_drop_time = 0.80;
+	double spool_in_tau = 2.0;
+	double spool_out_tau = 0.6;
+	double light_throttle_output_min = 0.88;
+};
+
 struct EngineSystemConfig
 {
 	double start_time = 0.0;
@@ -17,6 +29,7 @@ struct EngineSystemConfig
 	std::vector<double> max_thrust_table;
 	std::vector<double> throttle_input_table;
 	std::vector<double> power_table;
+	AfterburnerConfig afterburner;
 };
 
 struct EngineChannelState
@@ -31,25 +44,60 @@ struct EngineChannelState
 	double nozzle_aperture = 0.80;
 };
 
-struct AfterburnerConfig
-{
-	double detent = 0.70;
-	double thrust_factor = 1.73;
-	double fuel_factor = 2.2;
-	double core_rpm = 0.94;
-	double core_drop_time = 0.80;
-	double spool_in_tau = 2.0;
-	double spool_out_tau = 0.6;
-	double light_throttle_output_min = 0.88;
-};
-
 struct EngineSystemState
 {
 	EngineChannelState left;
 	EngineChannelState right;
 	double throttle_cmd_left = 0.0;
 	double throttle_cmd_right = 0.0;
-	AfterburnerConfig afterburner;
+};
+
+struct FirstOrderInput
+{
+	double target = 0.0;
+	double tau = 0.0;
+	double dt = 0.0;
+};
+
+struct EngineThrustInput
+{
+	double max_dry_thrust = 0.0;
+	double altitude_effect = 0.0;
+	double left_integrity = 1.0;
+	double right_integrity = 1.0;
+};
+
+struct RangeRemap
+{
+	double input_min = 0.0;
+	double input_max = 0.0;
+	double output_min = 0.0;
+	double output_max = 0.0;
+};
+
+struct NozzleTargetInput
+{
+	double throttle_input = 0.0;
+	double power_readout = 0.0;
+	double afterburner_ratio = 0.0;
+	bool engine_on = false;
+};
+
+struct EngineStartState
+{
+	bool engine_on = false;
+	double throttle_input = 0.0;
+	double throttle_output = 0.0;
+	double power_readout = 0.0;
+};
+
+struct NozzleUpdateInput
+{
+	double target = 0.0;
+	double power_readout = 0.0;
+	double afterburner_ratio = 0.0;
+	bool engine_on = false;
+	double dt = 0.0;
 };
 
 inline bool has_valid_engine_tables(const EngineSystemConfig& config)
@@ -65,9 +113,11 @@ inline bool has_valid_engine_tables(const EngineSystemConfig& config)
 inline double max_dry_thrust(const EngineSystemConfig& config, double mach)
 {
 	return Common::lerp(
-		config.mach_table.data(),
-		config.max_thrust_table.data(),
-		static_cast<unsigned>(config.mach_table.size()),
+		{
+			config.mach_table.data(),
+			config.max_thrust_table.data(),
+			static_cast<unsigned>(config.mach_table.size())
+		},
 		mach);
 }
 
@@ -103,14 +153,15 @@ inline void apply_engine_throttle_commands(
 	engines.right.throttle_input = engines.throttle_cmd_right;
 }
 
-inline double engine_first_order(double current, double target, double tau, double dt)
+inline double engine_first_order(double current, const FirstOrderInput& input)
 {
-	if (tau <= 1e-6)
+	if (input.tau <= 1e-6)
 	{
-		return target;
+		return input.target;
 	}
-	const double k = Common::limit(dt / (tau + dt), 0.0, 1.0);
-	return current + (target - current) * k;
+	const double k = Common::limit(
+		input.dt / (input.tau + input.dt), 0.0, 1.0);
+	return current + (input.target - current) * k;
 }
 
 inline void update_afterburner(EngineChannelState& engine, const AfterburnerConfig& afterburner, double dt)
@@ -134,74 +185,98 @@ inline void update_afterburner(EngineChannelState& engine, const AfterburnerConf
 	const double target = engine.afterburner_lit ? demand : 0.0;
 	const double tau = (target > engine.afterburner_ratio) ? afterburner.spool_in_tau : afterburner.spool_out_tau;
 	engine.afterburner_ratio = Common::limit(
-		engine_first_order(engine.afterburner_ratio, target, tau, dt),
+		engine_first_order(engine.afterburner_ratio, { target, tau, dt }),
 		0.0,
 		1.0);
 }
 
-inline void update_afterburners(EngineSystemState& engines, double dt)
+inline void update_afterburners(
+	EngineSystemState& engines,
+	const EngineSystemConfig& config,
+	double dt)
 {
-	update_afterburner(engines.left, engines.afterburner, dt);
-	update_afterburner(engines.right, engines.afterburner, dt);
+	update_afterburner(engines.left, config.afterburner, dt);
+	update_afterburner(engines.right, config.afterburner, dt);
+}
+
+inline void update_stopped_engine(
+	EngineChannelState& engine,
+	const EngineSystemConfig& config,
+	double dt)
+{
+	engine.throttle_output = Common::actuator(
+		engine.throttle_output, { 0.0, -0.01, 0.01 });
+	engine.power_readout = Common::actuator(
+		engine.power_readout,
+		{ 0.0, -dt / (config.start_time / 2), dt / (config.start_time / 2) });
+	engine.throttle_input = Common::limit(engine.throttle_input, 0.0, 0.0);
+}
+
+inline void update_starting_engine(
+	EngineChannelState& engine,
+	const EngineSystemConfig& config,
+	double dt)
+{
+	engine.power_readout = Common::actuator(
+		engine.power_readout,
+		{ 0.5, -dt / (config.start_time / 2), dt / (config.start_time / 2) });
+	engine.throttle_input = Common::limit(engine.throttle_input, 0.0, 0.1);
+}
+
+inline void update_running_dry_engine(
+	EngineChannelState& engine,
+	const EngineSystemConfig& config,
+	double dt)
+{
+	const AfterburnerConfig& afterburner = config.afterburner;
+	const double mil_cmd = Common::limit(
+		engine.throttle_input / afterburner.detent, 0.0, 1.0);
+	const double throttle_target = Common::limit(
+		Common::lerp(
+			{
+				config.throttle_input_table.data(),
+				config.power_table.data(),
+				static_cast<unsigned>(config.throttle_input_table.size())
+			},
+			mil_cmd),
+		0.1,
+		1.0);
+	const double spool_tau = throttle_target > engine.throttle_output
+		? config.spool_up_tau : config.spool_down_tau;
+	engine.throttle_output = engine_first_order(
+		engine.throttle_output, { throttle_target, spool_tau, dt });
+	engine.throttle_output = Common::limit(engine.throttle_output, 0.1, 1.0);
+	double target_core = 0.5 + 0.5 * mil_cmd;
+	if (engine.throttle_input <= afterburner.detent)
+	{
+		target_core = Common::limit(target_core, 0.0, 1.0);
+	}
+	else
+	{
+		target_core = afterburner.core_rpm;
+	}
+	const double core_step = dt *
+		((1.0 - afterburner.core_rpm) / afterburner.core_drop_time);
+	engine.power_readout = Common::actuator(
+		engine.power_readout, { target_core, -core_step, core_step });
 }
 
 inline void update_dry_engine_channel(
 	EngineChannelState& engine,
-	double dt,
-	double engine_start_time,
-	const double* throttle_input_table,
-	const double* engine_power_table,
-	unsigned engine_table_size,
-	double engine_spool_up_tau,
-	double engine_spool_down_tau,
-	const AfterburnerConfig& afterburner)
+	const EngineSystemConfig& config,
+	double dt)
 {
-	if (engine.switch_on == false)
+	if (!engine.switch_on)
 	{
-		engine.throttle_output = Common::actuator(engine.throttle_output, 0.0, -0.01, 0.01);
-		engine.power_readout = Common::actuator(
-			engine.power_readout,
-			0.0,
-			-dt / (engine_start_time / 2),
-			dt / (engine_start_time / 2));
-		engine.throttle_input = Common::limit(engine.throttle_input, 0.0, 0.0);
+		update_stopped_engine(engine, config, dt);
 	}
-
-	if (engine.switch_on == true && engine.power_readout < 0.5)
+	if (engine.switch_on && engine.power_readout < 0.5)
 	{
-		engine.power_readout = Common::actuator(
-			engine.power_readout,
-			0.5,
-			-dt / (engine_start_time / 2),
-			dt / (engine_start_time / 2));
-		engine.throttle_input = Common::limit(engine.throttle_input, 0.0, 0.1);
+		update_starting_engine(engine, config, dt);
 	}
-
-	if (engine.switch_on == true && engine.power_readout >= 0.5)
+	if (engine.switch_on && engine.power_readout >= 0.5)
 	{
-		const double mil_cmd = Common::limit(engine.throttle_input / afterburner.detent, 0.0, 1.0);
-		const double throttle_target = Common::limit(
-			Common::lerp(throttle_input_table, engine_power_table, engine_table_size, mil_cmd),
-			0.1,
-			1.0);
-		const double spool_tau = (throttle_target > engine.throttle_output)
-			? engine_spool_up_tau
-			: engine_spool_down_tau;
-		engine.throttle_output = engine_first_order(engine.throttle_output, throttle_target, spool_tau, dt);
-		engine.throttle_output = Common::limit(engine.throttle_output, 0.1, 1.0);
-
-		double target_core = 0.5 + 0.5 * mil_cmd;
-		if (engine.throttle_input <= afterburner.detent)
-		{
-			target_core = Common::limit(target_core, 0.0, 1.0);
-		}
-		else
-		{
-			target_core = afterburner.core_rpm;
-		}
-
-		const double core_step = dt * ((1.0 - afterburner.core_rpm) / afterburner.core_drop_time);
-		engine.power_readout = Common::actuator(engine.power_readout, target_core, -core_step, core_step);
+		update_running_dry_engine(engine, config, dt);
 	}
 }
 
@@ -210,26 +285,8 @@ inline void update_dry_engine_channels(
 	const EngineSystemConfig& config,
 	double dt)
 {
-	update_dry_engine_channel(
-		engines.left,
-		dt,
-		config.start_time,
-		config.throttle_input_table.data(),
-		config.power_table.data(),
-		static_cast<unsigned>(config.throttle_input_table.size()),
-		config.spool_up_tau,
-		config.spool_down_tau,
-		engines.afterburner);
-	update_dry_engine_channel(
-		engines.right,
-		dt,
-		config.start_time,
-		config.throttle_input_table.data(),
-		config.power_table.data(),
-		static_cast<unsigned>(config.throttle_input_table.size()),
-		config.spool_up_tau,
-		config.spool_down_tau,
-		engines.afterburner);
+	update_dry_engine_channel(engines.left, config, dt);
+	update_dry_engine_channel(engines.right, config, dt);
 }
 
 inline void clamp_engine_throttle_inputs(EngineSystemState& engines)
@@ -240,32 +297,31 @@ inline void clamp_engine_throttle_inputs(EngineSystemState& engines)
 
 inline void update_engine_thrust_outputs(
 	EngineSystemState& engines,
-	double max_dry_thrust,
-	double engine_alt_effect,
-	double left_engine_integrity,
-	double right_engine_integrity)
+	const EngineSystemConfig& config,
+	const EngineThrustInput& input)
 {
-	const double max_ab_thrust = max_dry_thrust * engines.afterburner.thrust_factor;
+	const double max_ab_thrust =
+		input.max_dry_thrust * config.afterburner.thrust_factor;
 
 	const double left_dry_force = engines.left.throttle_output
-		* max_dry_thrust
-		* engine_alt_effect
-		* left_engine_integrity
+		* input.max_dry_thrust
+		* input.altitude_effect
+		* input.left_integrity
 		* 0.5;
 	const double right_dry_force = engines.right.throttle_output
-		* max_dry_thrust
-		* engine_alt_effect
-		* right_engine_integrity
+		* input.max_dry_thrust
+		* input.altitude_effect
+		* input.right_integrity
 		* 0.5;
 	const double left_ab_extra = engines.left.afterburner_ratio
-		* (max_ab_thrust - max_dry_thrust)
-		* engine_alt_effect
-		* left_engine_integrity
+		* (max_ab_thrust - input.max_dry_thrust)
+		* input.altitude_effect
+		* input.left_integrity
 		* 0.5;
 	const double right_ab_extra = engines.right.afterburner_ratio
-		* (max_ab_thrust - max_dry_thrust)
-		* engine_alt_effect
-		* right_engine_integrity
+		* (max_ab_thrust - input.max_dry_thrust)
+		* input.altitude_effect
+		* input.right_integrity
 		* 0.5;
 
 	engines.left.thrust_force = left_dry_force + left_ab_extra;
@@ -296,8 +352,10 @@ inline void shutdown_engines(EngineSystemState& engines, double dt)
 	engines.right.afterburner_lit = false;
 	engines.left.switch_on = false;
 	engines.right.switch_on = false;
-	engines.left.power_readout = Common::actuator(engines.left.power_readout, 0.0, -dt / 10, dt / 10);
-	engines.right.power_readout = Common::actuator(engines.right.power_readout, 0.0, -dt / 10, dt / 10);
+	engines.left.power_readout = Common::actuator(
+		engines.left.power_readout, { 0.0, -dt / 10, dt / 10 });
+	engines.right.power_readout = Common::actuator(
+		engines.right.power_readout, { 0.0, -dt / 10, dt / 10 });
 }
 
 inline void apply_thrust_cut(EngineSystemState& engines, bool cut_thrust)
@@ -311,106 +369,122 @@ inline void apply_thrust_cut(EngineSystemState& engines, bool cut_thrust)
 	engines.right.thrust_force = 0.0;
 }
 
-inline double remap_engine_range(double value, double in_min, double in_max, double out_min, double out_max)
+inline double remap_engine_range(double value, const RangeRemap& range)
 {
-	if (in_max <= in_min)
+	if (range.input_max <= range.input_min)
 	{
-		return out_max;
+		return range.output_max;
 	}
+	const double normalized = Common::limit(
+		(value - range.input_min) / (range.input_max - range.input_min),
+		0.0,
+		1.0);
+	return range.output_min +
+		(range.output_max - range.output_min) * normalized;
+}
 
-	const double normalized = Common::limit((value - in_min) / (in_max - in_min), 0.0, 1.0);
-	return out_min + (out_max - out_min) * normalized;
+inline double estimate_dry_nozzle_aperture(
+	double limited_power,
+	double limited_throttle,
+	const AfterburnerConfig& afterburner)
+{
+	if (limited_power < 0.50)
+	{
+		return remap_engine_range(limited_power, { 0.0, 0.50, 0.80, 0.40 });
+	}
+	const double dry_ratio = Common::limit(
+		limited_throttle / afterburner.detent, 0.0, 1.0);
+	if (dry_ratio <= 0.15)
+	{
+		return remap_engine_range(dry_ratio, { 0.0, 0.15, 0.40, 0.30 });
+	}
+	if (dry_ratio <= 0.45)
+	{
+		return remap_engine_range(dry_ratio, { 0.15, 0.45, 0.30, 0.18 });
+	}
+	if (dry_ratio <= 0.75)
+	{
+		return remap_engine_range(dry_ratio, { 0.45, 0.75, 0.18, 0.08 });
+	}
+	return remap_engine_range(dry_ratio, { 0.75, 1.0, 0.08, 0.00 });
+}
+
+inline double estimate_afterburner_nozzle_aperture(double limited_afterburner)
+{
+	if (limited_afterburner <= 0.25)
+	{
+		return remap_engine_range(
+			limited_afterburner, { 0.0, 0.25, 0.00, 0.18 });
+	}
+	if (limited_afterburner <= 0.60)
+	{
+		return remap_engine_range(
+			limited_afterburner, { 0.25, 0.60, 0.18, 0.55 });
+	}
+	return remap_engine_range(
+		limited_afterburner, { 0.60, 1.0, 0.55, 1.0 });
 }
 
 inline double estimate_nozzle_aperture_target(
-	double throttle_input,
-	double engine_power_readout,
-	double afterburner_ratio,
-	bool engine_on,
+	const NozzleTargetInput& input,
 	const AfterburnerConfig& afterburner)
 {
-	if (!engine_on)
+	if (!input.engine_on)
 	{
 		return 0.80;
 	}
-
-	const double limited_power = Common::limit(engine_power_readout, 0.0, 1.0);
-	const double limited_throttle = Common::limit(throttle_input, 0.0, 1.0);
-	const double limited_ab = Common::limit(afterburner_ratio, 0.0, 1.0);
-
-	if (limited_power < 0.50)
-	{
-		return remap_engine_range(limited_power, 0.0, 0.50, 0.80, 0.40);
-	}
-
-	if (limited_ab <= 0.0)
-	{
-		const double dry_ratio = Common::limit(limited_throttle / afterburner.detent, 0.0, 1.0);
-
-		if (dry_ratio <= 0.15)
-		{
-			return remap_engine_range(dry_ratio, 0.0, 0.15, 0.40, 0.30);
-		}
-		if (dry_ratio <= 0.45)
-		{
-			return remap_engine_range(dry_ratio, 0.15, 0.45, 0.30, 0.18);
-		}
-		if (dry_ratio <= 0.75)
-		{
-			return remap_engine_range(dry_ratio, 0.45, 0.75, 0.18, 0.08);
-		}
-
-		return remap_engine_range(dry_ratio, 0.75, 1.0, 0.08, 0.00);
-	}
-
-	if (limited_ab <= 0.25)
-	{
-		return remap_engine_range(limited_ab, 0.0, 0.25, 0.00, 0.18);
-	}
-	if (limited_ab <= 0.60)
-	{
-		return remap_engine_range(limited_ab, 0.25, 0.60, 0.18, 0.55);
-	}
-
-	return remap_engine_range(limited_ab, 0.60, 1.0, 0.55, 1.0);
+	const double limited_power = Common::limit(input.power_readout, 0.0, 1.0);
+	const double limited_throttle = Common::limit(input.throttle_input, 0.0, 1.0);
+	const double limited_afterburner = Common::limit(
+		input.afterburner_ratio, 0.0, 1.0);
+	return limited_afterburner <= 0.0
+		? estimate_dry_nozzle_aperture(
+			limited_power, limited_throttle, afterburner)
+		: estimate_afterburner_nozzle_aperture(limited_afterburner);
 }
 
 inline void configure_engine_start_channel(
 	EngineChannelState& engine,
-	bool engine_on,
-	double throttle_input,
-	double throttle_output,
-	double power_readout,
+	const EngineStartState& start,
 	const AfterburnerConfig& afterburner)
 {
-	engine.switch_on = engine_on;
-	engine.throttle_input = throttle_input;
-	engine.throttle_output = throttle_output;
-	engine.power_readout = power_readout;
+	engine.switch_on = start.engine_on;
+	engine.throttle_input = start.throttle_input;
+	engine.throttle_output = start.throttle_output;
+	engine.power_readout = start.power_readout;
 	engine.nozzle_aperture = estimate_nozzle_aperture_target(
-		throttle_input,
-		power_readout,
-		0.0,
-		engine_on,
+		{ start.throttle_input, start.power_readout, 0.0, start.engine_on },
 		afterburner);
 }
 
-inline void configure_cold_start_engines(EngineSystemState& engines)
+inline void configure_cold_start_engines(
+	EngineSystemState& engines,
+	const EngineSystemConfig& config)
 {
-	configure_engine_start_channel(engines.left, false, 0.0, 0.0, 0.0, engines.afterburner);
-	configure_engine_start_channel(engines.right, false, 0.0, 0.0, 0.0, engines.afterburner);
+	configure_engine_start_channel(
+		engines.left, { false, 0.0, 0.0, 0.0 }, config.afterburner);
+	configure_engine_start_channel(
+		engines.right, { false, 0.0, 0.0, 0.0 }, config.afterburner);
 }
 
-inline void configure_hot_ground_start_engines(EngineSystemState& engines)
+inline void configure_hot_ground_start_engines(
+	EngineSystemState& engines,
+	const EngineSystemConfig& config)
 {
-	configure_engine_start_channel(engines.left, true, 0.0, 0.5, 0.5, engines.afterburner);
-	configure_engine_start_channel(engines.right, true, 0.0, 0.5, 0.5, engines.afterburner);
+	configure_engine_start_channel(
+		engines.left, { true, 0.0, 0.5, 0.5 }, config.afterburner);
+	configure_engine_start_channel(
+		engines.right, { true, 0.0, 0.5, 0.5 }, config.afterburner);
 }
 
-inline void configure_hot_air_start_engines(EngineSystemState& engines)
+inline void configure_hot_air_start_engines(
+	EngineSystemState& engines,
+	const EngineSystemConfig& config)
 {
-	configure_engine_start_channel(engines.left, true, 0.5, 0.5, 0.5, engines.afterburner);
-	configure_engine_start_channel(engines.right, true, 0.5, 0.5, 0.5, engines.afterburner);
+	configure_engine_start_channel(
+		engines.left, { true, 0.5, 0.5, 0.5 }, config.afterburner);
+	configure_engine_start_channel(
+		engines.right, { true, 0.5, 0.5, 0.5 }, config.afterburner);
 }
 
 inline void reset_engine_release_state(EngineSystemState& engines)
@@ -425,28 +499,26 @@ inline void reset_engine_release_state(EngineSystemState& engines)
 
 inline double update_nozzle_aperture(
 	double current,
-	double target,
-	double engine_power_readout,
-	double afterburner_ratio,
-	bool engine_on,
-	double dt)
+	const NozzleUpdateInput& input)
 {
 	double aperture_rate = 0.50;
 
-	if (!engine_on || engine_power_readout < 0.50)
+	if (!input.engine_on || input.power_readout < 0.50)
 	{
 		aperture_rate = 0.40;
 	}
-	else if (afterburner_ratio > 0.0 && target > current)
+	else if (input.afterburner_ratio > 0.0 && input.target > current)
 	{
 		aperture_rate = 0.45;
 	}
-	else if (target < current)
+	else if (input.target < current)
 	{
 		aperture_rate = 0.35;
 	}
 
-	return Common::actuator(current, target, -aperture_rate * dt, aperture_rate * dt);
+	return Common::actuator(
+		current,
+		{ input.target, -aperture_rate * input.dt, aperture_rate * input.dt });
 }
 
 inline void update_nozzle_aperture(
@@ -456,23 +528,30 @@ inline void update_nozzle_aperture(
 {
 	const double nozzle_throttle = engine.throttle_output * afterburner.detent;
 	const double target = estimate_nozzle_aperture_target(
-		nozzle_throttle,
-		engine.power_readout,
-		engine.afterburner_ratio,
-		engine.switch_on,
+		{
+			nozzle_throttle,
+			engine.power_readout,
+			engine.afterburner_ratio,
+			engine.switch_on
+		},
 		afterburner);
 	engine.nozzle_aperture = update_nozzle_aperture(
 		engine.nozzle_aperture,
-		target,
-		engine.power_readout,
-		engine.afterburner_ratio,
-		engine.switch_on,
-		dt);
+		{
+			target,
+			engine.power_readout,
+			engine.afterburner_ratio,
+			engine.switch_on,
+			dt
+		});
 }
 
-inline void update_nozzle_apertures(EngineSystemState& engines, double dt)
+inline void update_nozzle_apertures(
+	EngineSystemState& engines,
+	const EngineSystemConfig& config,
+	double dt)
 {
-	update_nozzle_aperture(engines.left, engines.afterburner, dt);
-	update_nozzle_aperture(engines.right, engines.afterburner, dt);
+	update_nozzle_aperture(engines.left, config.afterburner, dt);
+	update_nozzle_aperture(engines.right, config.afterburner, dt);
 }
 }

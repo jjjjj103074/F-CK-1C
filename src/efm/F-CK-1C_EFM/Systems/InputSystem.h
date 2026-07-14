@@ -34,6 +34,14 @@ struct ThrottleInputState
 	ThrottleChannelState right;
 };
 
+struct ThrottleCompositionInput
+{
+	double pilot_command = 0.0;
+	double fbw_command = 0.0;
+	double fbw_blend = 0.0;
+	bool fbw_override = false;
+};
+
 inline void reset_throttle_channel(ThrottleChannelState& channel, double command)
 {
 	channel.axis_cmd = command;
@@ -135,42 +143,24 @@ inline void reset_primary_commands(PrimaryControlState& controls)
 
 inline double update_pitch_axis_input(double input, int discrete, bool analog)
 {
-	if (analog == true)
+	if (analog)
 	{
 		return Common::limit(input, -1.0, 1.0);
 	}
-
 	if (discrete > 0.1)
 	{
-		input += 0.0035;
-		if (input > 1.0)
-		{
-			input = 1.0;
-		}
-	}
-	if (discrete == 0 && input > 0.5)
-	{
-		if (input > 0.7)
-		{
-			input *= 0.98;
-		}
+		const double next = input + 0.0035;
+		return next > 1.0 ? 1.0 : next;
 	}
 	if (discrete < -0.1)
 	{
-		input -= 0.0035;
-		if (input < -1.0)
-		{
-			input = -1.0;
-		}
+		const double next = input - 0.0035;
+		return next < -1.0 ? -1.0 : next;
 	}
-	if (discrete == 0 && input < -0.5)
+	if (discrete == 0 && (input > 0.7 || input < -0.5))
 	{
-		if (input < -0.5)
-		{
-			input *= 0.98;
-		}
+		return input * 0.98;
 	}
-
 	return input;
 }
 
@@ -350,20 +340,17 @@ inline void update_pilot_throttle_cmds(ThrottleInputState& throttles)
 }
 
 inline double compose_engine_throttle_cmd(
-	double pilot_cmd,
-	double fbw_cmd,
-	bool fbw_throttle_override,
-	double fbw_throttle_blend)
+	const ThrottleCompositionInput& input)
 {
-	const double pilot = Common::limit(pilot_cmd, 0.0, 1.0);
-	const double fbw = Common::limit(fbw_cmd, 0.0, 1.0);
+	const double pilot = Common::limit(input.pilot_command, 0.0, 1.0);
+	const double fbw = Common::limit(input.fbw_command, 0.0, 1.0);
 
-	if (fbw_throttle_override)
+	if (input.fbw_override)
 	{
 		return fbw;
 	}
 
-	const double blend = Common::limit(fbw_throttle_blend, 0.0, 1.0);
+	const double blend = Common::limit(input.fbw_blend, 0.0, 1.0);
 	return Common::limit((1.0 - blend) * pilot + blend * fbw, 0.0, 1.0);
 }
 }

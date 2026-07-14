@@ -2,16 +2,23 @@
 
 namespace Common
 {
-inline double actuator(double value, double target, double down_speed, double up_speed)
+struct ActuatorInput
 {
-	if ((value + up_speed) < target)
+	double target = 0.0;
+	double down_speed = 0.0;
+	double up_speed = 0.0;
+};
+
+inline double actuator(double value, const ActuatorInput& input)
+{
+	if ((value + input.up_speed) < input.target)
 	{
-		return value + up_speed;
+		return value + input.up_speed;
 	}
-	if ((value + down_speed) > target)
+	if ((value + input.down_speed) > input.target)
 	{
-		return value + down_speed;
+		return value + input.down_speed;
 	}
-	return target;
+	return input.target;
 }
 }

@@ -4,6 +4,13 @@
 
 namespace Core
 {
+struct LocalForceApplication
+{
+	Common::Vec3 center_of_mass;
+	Common::Vec3 force;
+	Common::Vec3 position;
+};
+
 inline void reset_force_moment(Common::Vec3& force, Common::Vec3& moment)
 {
 	force = Common::Vec3();
@@ -13,20 +20,18 @@ inline void reset_force_moment(Common::Vec3& force, Common::Vec3& moment)
 inline void add_local_force(
 	Common::Vec3& force_accum,
 	Common::Vec3& moment_accum,
-	const Common::Vec3& center_of_mass,
-	const Common::Vec3& force,
-	const Common::Vec3& force_pos)
+	const LocalForceApplication& application)
 {
-	force_accum.x += force.x;
-	force_accum.y += force.y;
-	force_accum.z += force.z;
+	force_accum.x += application.force.x;
+	force_accum.y += application.force.y;
+	force_accum.z += application.force.z;
 
 	const Common::Vec3 delta_pos(
-		force_pos.x - center_of_mass.x,
-		force_pos.y - center_of_mass.y,
-		force_pos.z - center_of_mass.z);
+		application.position.x - application.center_of_mass.x,
+		application.position.y - application.center_of_mass.y,
+		application.position.z - application.center_of_mass.z);
 
-	const Common::Vec3 delta_moment = Common::cross(delta_pos, force);
+	const Common::Vec3 delta_moment = Common::cross(delta_pos, application.force);
 
 	moment_accum.x += delta_moment.x;
 	moment_accum.y += delta_moment.y;

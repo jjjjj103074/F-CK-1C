@@ -113,16 +113,22 @@ private:
 	Systems::FBWControllerOutput update_direct_mode()
 	{
 		output_.elevator_command = Common::limit(
-			Common::actuator(output_.elevator_command, input_.pitch_input + input_.pitch_trim,
-				-kDirectElevatorStep, kDirectElevatorStep),
+			Common::actuator(
+				output_.elevator_command,
+				{ input_.pitch_input + input_.pitch_trim,
+					-kDirectElevatorStep, kDirectElevatorStep }),
 			-1.0, 1.0);
 		output_.aileron_command = Common::limit(
-			Common::actuator(output_.aileron_command, input_.roll_input + input_.roll_trim,
-				-kDirectAileronStep, kDirectAileronStep),
+			Common::actuator(
+				output_.aileron_command,
+				{ input_.roll_input + input_.roll_trim,
+					-kDirectAileronStep, kDirectAileronStep }),
 			-1.0, 1.0);
 		output_.rudder_command = Common::limit(
-			Common::actuator(output_.rudder_command, input_.yaw_input + input_.yaw_trim,
-				-kDirectRudderStep, kDirectRudderStep),
+			Common::actuator(
+				output_.rudder_command,
+				{ input_.yaw_input + input_.yaw_trim,
+					-kDirectRudderStep, kDirectRudderStep }),
 			-1.0, 1.0);
 		return output_;
 	}
@@ -422,8 +428,7 @@ private:
 		{
 			state_.control_state = Systems::FBW_STATE_DEGRADE;
 			state_.hold_active = false;
-			state_.hold_exit_reason = aoa ? Systems::FBW_HOLD_EXIT_AOA :
-				(qbar ? Systems::FBW_HOLD_EXIT_QBAR : Systems::FBW_HOLD_EXIT_HOLD_CMD);
+			state_.hold_exit_reason = hold_degrade_reason(aoa, qbar);
 		}
 		if (state_.control_state != Systems::FBW_STATE_DEGRADE)
 		{
@@ -435,6 +440,17 @@ private:
 		{
 			state_.hold_gain_scale = 0.0;
 		}
+	}
+
+	static Systems::FBWHoldExitReason hold_degrade_reason(bool aoa, bool qbar)
+	{
+		if (aoa)
+		{
+			return Systems::FBW_HOLD_EXIT_AOA;
+		}
+		return qbar
+			? Systems::FBW_HOLD_EXIT_QBAR
+			: Systems::FBW_HOLD_EXIT_HOLD_CMD;
 	}
 
 	void select_rate_commands()

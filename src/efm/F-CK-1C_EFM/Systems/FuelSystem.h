@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../Common/Vec3.h"
+
 namespace Systems
 {
 struct FuelSystemConfig
@@ -17,12 +19,32 @@ struct FuelConsumptionInput
 	double afterburner_fuel_factor = 0.0;
 };
 
+struct ExternalFuelState
+{
+	int station = 0;
+	double value = 0.0;
+	Common::Vec3 position;
+};
+
 struct FuelSystem
 {
 	double internal_fuel = 0.0;
 	double external_fuel = 0.0;
 	double total_fuel = 0.0;
 	double fuel_consumption_since_last_time = 0.0;
+};
+
+struct FuelMassDelta
+{
+	double mass = 0.0;
+	Common::Vec3 position;
+	Common::Vec3 moment_of_inertia;
+};
+
+struct FuelMassDeltaResult
+{
+	bool available = false;
+	FuelMassDelta delta;
 };
 
 inline void simulate_fuel_consumption(
@@ -54,35 +76,19 @@ inline void simulate_fuel_consumption(
 	};
 }
 
-inline bool change_mass(
-	FuelSystem& fuel,
-	double& delta_mass,
-	double& delta_mass_pos_x,
-	double& delta_mass_pos_y,
-	double& delta_mass_pos_z,
-	double& delta_mass_moment_of_inertia_x,
-	double& delta_mass_moment_of_inertia_y,
-	double& delta_mass_moment_of_inertia_z)
+inline FuelMassDeltaResult take_fuel_mass_delta(FuelSystem& fuel)
 {
-	if (fuel.fuel_consumption_since_last_time > 0)
+	FuelMassDeltaResult result;
+	if (fuel.fuel_consumption_since_last_time <= 0.0)
 	{
-		delta_mass = fuel.fuel_consumption_since_last_time;
-		delta_mass_pos_x = -1.0;
-		delta_mass_pos_y = 1.0;
-		delta_mass_pos_z = 0;
-
-		delta_mass_moment_of_inertia_x = 0;
-		delta_mass_moment_of_inertia_y = 0;
-		delta_mass_moment_of_inertia_z = 0;
-
-		fuel.fuel_consumption_since_last_time = 0; // set it 0 to avoid infinite loop, because it called in cycle
-		// better to use stack like structure for mass changing
-		return true;
+		return result;
 	}
-	else
-	{
-		return false;
-	}
+
+	result.available = true;
+	result.delta.mass = fuel.fuel_consumption_since_last_time;
+	result.delta.position = Common::Vec3(-1.0, 1.0, 0.0);
+	fuel.fuel_consumption_since_last_time = 0.0;
+	return result;
 }
 
 inline void set_internal_fuel(FuelSystem& fuel, double value)
@@ -95,14 +101,12 @@ inline double get_internal_fuel(const FuelSystem& fuel)
 	return fuel.internal_fuel;
 }
 
-inline void set_external_fuel(FuelSystem& fuel, int station, double value, double x, double y, double z)
+inline void set_external_fuel(
+	FuelSystem& fuel,
+	const ExternalFuelState& external)
 {
 	(void)fuel;
-	(void)station;
-	(void)value;
-	(void)x;
-	(void)y;
-	(void)z;
+	(void)external;
 	// Not sure how to work with this.
 }
 

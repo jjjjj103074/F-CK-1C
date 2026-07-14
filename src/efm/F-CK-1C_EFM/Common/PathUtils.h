@@ -6,6 +6,18 @@
 
 namespace Common
 {
+struct PathTarget
+{
+	char* data = nullptr;
+	size_t capacity = 0;
+};
+
+struct PathParts
+{
+	const char* base = nullptr;
+	const char* relative = nullptr;
+};
+
 inline void copy_path(char* out, size_t out_size, const char* value)
 {
 	if (!out || out_size == 0)
@@ -109,25 +121,31 @@ inline bool path_has_component_suffix(const char* path, const char* component)
 	return suffix == path || is_path_separator(*(suffix - 1));
 }
 
-inline void build_path(char* out, size_t out_size, const char* base, const char* relative)
+inline void build_path(const PathTarget& target, const PathParts& parts)
 {
-	if (!out || out_size == 0)
+	if (!target.data || target.capacity == 0)
 	{
 		return;
 	}
-
-	if (!base || base[0] == '\0' || strcmp(base, ".") == 0)
+	const char* relative = parts.relative ? parts.relative : "";
+	if (!parts.base || parts.base[0] == '\0' || strcmp(parts.base, ".") == 0)
 	{
-		snprintf(out, out_size, "%s", relative ? relative : "");
+		snprintf(target.data, target.capacity, "%s", relative);
 	}
 	else
 	{
-		const size_t base_len = strlen(base);
-		const bool needs_sep = base_len > 0 && !is_path_separator(base[base_len - 1]);
-		snprintf(out, out_size, "%s%s%s", base, needs_sep ? "\\" : "", relative ? relative : "");
+		const size_t base_len = strlen(parts.base);
+		const bool needs_sep =
+			base_len > 0 && !is_path_separator(parts.base[base_len - 1]);
+		snprintf(
+			target.data,
+			target.capacity,
+			"%s%s%s",
+			parts.base,
+			needs_sep ? "\\" : "",
+			relative);
 	}
-
-	normalize_path_separators(out);
+	normalize_path_separators(target.data);
 }
 
 inline bool resolve_saved_games_logs_dir(char* out, size_t out_size)
@@ -141,14 +159,16 @@ inline bool resolve_saved_games_logs_dir(char* out, size_t out_size)
 		{
 			char home[1024];
 			snprintf(home, sizeof(home), "%s%s", home_drive, home_path);
-			build_path(out, out_size, home, "Saved Games\\DCS\\Logs");
+			build_path(
+				{ out, out_size }, { home, "Saved Games\\DCS\\Logs" });
 			return true;
 		}
 
 		return false;
 	}
 
-	build_path(out, out_size, userprofile, "Saved Games\\DCS\\Logs");
+	build_path(
+		{ out, out_size }, { userprofile, "Saved Games\\DCS\\Logs" });
 	return true;
 }
 }
