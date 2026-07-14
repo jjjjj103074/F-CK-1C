@@ -35,7 +35,7 @@ jobs:
         shell: pwsh
         env:
           PACKAGE_VERSION: ${{ inputs.version }}
-        run: .\tools\package_release.ps1 -Version $env:PACKAGE_VERSION
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\package_release.ps1 -Version $env:PACKAGE_VERSION
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4

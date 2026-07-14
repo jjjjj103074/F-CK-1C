@@ -1,0 +1,76 @@
+name: Draft Release
+
+run-name: Draft release from ${{ github.ref_name }}
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    name: Create draft release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read module version
+        id: version
+        shell: pwsh
+        run: |
+          $version = powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\get_release_version.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = $version.Trim()
+          if ($version -match '-dev$') {
+              throw "Refusing to create a release from development version '$version'. Update FCK1C_VERSION before merging to main."
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Check release tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          git fetch --tags --force
+          if (git tag --list $env:RELEASE_VERSION) {
+              throw "Tag already exists: $env:RELEASE_VERSION"
+          }
+
+          gh release view $env:RELEASE_VERSION *> $null
+          if ($LASTEXITCODE -eq 0) {
+              throw "Release already exists: $env:RELEASE_VERSION"
+          }
+
+      - name: Create package
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\package_release.ps1 -Version $env:RELEASE_VERSION
+
+      - name: Prepare release notes
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\prepare_release_notes.ps1 -Version $env:RELEASE_VERSION -OutputPath dist\release-notes.md
+
+      - name: Create draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          gh release create $env:RELEASE_VERSION `
+              "dist/F-CK-1C-$env:RELEASE_VERSION.zip" `
+              "dist/F-CK-1C-$env:RELEASE_VERSION.zip.sha256" `
+              --draft `
+              --target $env:GITHUB_SHA `
+              --title "F-CK-1C $env:RELEASE_VERSION" `
+              --notes-file dist\release-notes.md
