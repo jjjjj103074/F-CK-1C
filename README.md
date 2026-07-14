@@ -29,6 +29,12 @@ To try the latest unstable development build, switch to the [`dev`](../../tree/d
    Saved Games\DCS\Mods\aircraft\F-CK-1C\
    ```
 
+If your Saved Games folder is not in the default location, pass the DCS Saved Games root to the installer:
+
+```bat
+install.bat "D:\Saved Games\DCS"
+```
+
 ## Reporting Issues
 
 Please use the [Issues](../../issues) tab with the provided templates:

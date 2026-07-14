@@ -29,6 +29,12 @@ DCS World 社群模組，重現中華民國空軍輕型多功能戰鬥機 AIDC F
    Saved Games\DCS\Mods\aircraft\F-CK-1C\
    ```
 
+如果你的 Saved Games 不是預設位置，可以把 DCS Saved Games 根目錄傳給安裝器：
+
+```bat
+install.bat "D:\Saved Games\DCS"
+```
+
 ## 回報問題
 
 請使用 [Issues](../../issues) 頁面並套用對應的模板：
