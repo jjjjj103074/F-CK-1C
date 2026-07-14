@@ -7,21 +7,7 @@ local function log_error(msg)
     if logger and logger.error then logger.error(msg) end
 end
 
--- Module version metadata.
-local FCK1C_BUILD_VERSION = "v0.1.3-april-fools"
-local FCK1C_BUILD_DATE = "2026-04-01"
-local FCK1C_CHANGELOG = {
-    "April Fools build: experimental ground-contact tuning",
-    "Added EFM mode switch: baseline / efm_min / efm_full",
-    "Integrated EFM DLL path and FM config handoff",
-    "Added local design/progress report with version iteration section",
-}
-local FCK1C_VERSION_HISTORY = {
-    { version = "v0.1.0", note = "Initial module load and base structure" },
-    { version = "v0.1.1", note = "EFM integration and diagnostic EFM mode switch" },
-    { version = "v0.1.2-dev", note = "Version metadata and iteration tracking" },
-    { version = "v0.1.3-april-fools", note = "April Fools build with experimental ground-contact tuning" },
-}
+local FCK1C_VERSION = "v0.2.1-dev"
 
 declare_plugin(self_ID, {
     -- Module identity.
@@ -34,7 +20,7 @@ declare_plugin(self_ID, {
     -- Version and menu metadata.
     fileMenuName = _("F-CK-1C"),
     update_id = "F-CK-1C_Mod",
-    version = FCK1C_BUILD_VERSION,
+    version = FCK1C_VERSION,
     state = "installed",
     info = _("F-CK-1C multirole fighter module. Contains aircraft configuration, liveries and mission samples for testing and AI use."),
 
@@ -95,7 +81,7 @@ dofile(current_mod_path .. "/F-CK-1C.lua")
 -- efm_min : EFM without FM/config.lua.
 -- efm_full: EFM with FM/config.lua.
 local EFM_MODE = "efm_full"
-log_info("FCK1C: entry.lua loaded, version=" .. tostring(FCK1C_BUILD_VERSION) .. ", date=" .. tostring(FCK1C_BUILD_DATE) .. ", EFM_MODE=" .. tostring(EFM_MODE))
+log_info("FCK1C: entry.lua loaded, version=" .. tostring(FCK1C_VERSION) .. ", EFM_MODE=" .. tostring(EFM_MODE))
 
 local cfg_path = current_mod_path .. "/FM/config.lua"
 if EFM_MODE == "efm_min" or EFM_MODE == "efm_full" then
