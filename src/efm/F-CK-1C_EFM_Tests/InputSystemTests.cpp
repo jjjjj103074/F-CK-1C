@@ -46,8 +46,12 @@ void test_throttle_arbitration(Tests::Context& context)
 
 void test_fbw_throttle_composition(Tests::Context& context)
 {
-	TEST_EXPECT_NEAR(context, Systems::compose_engine_throttle_cmd(0.2, 0.8, true, 0.0), 0.8, kTolerance);
-	TEST_EXPECT_NEAR(context, Systems::compose_engine_throttle_cmd(0.2, 0.8, false, 0.5), 0.5, kTolerance);
+	TEST_EXPECT_NEAR(context,
+		Systems::compose_engine_throttle_cmd({ 0.2, 0.8, 0.0, true }),
+		0.8, kTolerance);
+	TEST_EXPECT_NEAR(context,
+		Systems::compose_engine_throttle_cmd({ 0.2, 0.8, 0.5, false }),
+		0.5, kTolerance);
 }
 }
 
