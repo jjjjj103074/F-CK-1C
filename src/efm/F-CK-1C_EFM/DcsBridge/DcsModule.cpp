@@ -9,7 +9,7 @@ class DcsModuleState
 {
 public:
 	DcsModuleState()
-		: efm_(Data::fck1c_aircraft_config(), runtime_)
+		: efm_(Data::fck1c_aircraft_config())
 	{
 	}
 

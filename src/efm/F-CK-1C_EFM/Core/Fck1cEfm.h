@@ -164,16 +164,10 @@ struct MassDeltaResult
 	MassDelta delta;
 };
 
-class Fck1cEfmRuntime
-{
-public:
-	virtual ~Fck1cEfmRuntime() = default;
-};
-
 class Fck1cEfm
 {
 public:
-	Fck1cEfm(const Data::AircraftConfig& config, Fck1cEfmRuntime& runtime);
+	explicit Fck1cEfm(const Data::AircraftConfig& config);
 	Fck1cEfm(const Fck1cEfm&) = delete;
 	Fck1cEfm& operator=(const Fck1cEfm&) = delete;
 
@@ -243,7 +237,6 @@ private:
 	void reset_control_outputs();
 
 	const Data::AircraftConfig config_;
-	Fck1cEfmRuntime& runtime_;
 	AircraftState aircraft_state_;
 	ForceMomentFrame force_moment_;
 	ControlSurfaceState control_surfaces_;

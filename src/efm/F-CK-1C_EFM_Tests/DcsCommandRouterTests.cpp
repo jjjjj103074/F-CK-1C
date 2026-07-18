@@ -13,8 +13,6 @@ struct DcsCommandInput
 	float value = 0.0f;
 };
 
-class NullRuntime final : public Core::Fck1cEfmRuntime {};
-
 void route(
 	Tests::Context& context,
 	Core::Fck1cEfm& efm,
@@ -31,8 +29,7 @@ void route(
 
 void test_primary_controls(Tests::Context& context)
 {
-	NullRuntime runtime;
-	Core::Fck1cEfm efm(Data::fck1c_aircraft_config(), runtime);
+	Core::Fck1cEfm efm(Data::fck1c_aircraft_config());
 	route(context, efm, { DcsIds::Commands::JoystickPitch, 0.4f });
 	route(context, efm, { DcsIds::Commands::JoystickRoll, -0.3f });
 	route(context, efm, { DcsIds::Commands::PedalYaw, 0.2f });
@@ -50,8 +47,7 @@ void test_primary_controls(Tests::Context& context)
 
 void test_fbw_and_engine_commands(Tests::Context& context)
 {
-	NullRuntime runtime;
-	Core::Fck1cEfm efm(Data::fck1c_aircraft_config(), runtime);
+	Core::Fck1cEfm efm(Data::fck1c_aircraft_config());
 	route(context, efm, { DcsIds::Commands::FBWCat3, 1.0f });
 	route(context, efm, { DcsIds::Commands::FBWGLimiterOverride, 1.0f });
 	route(context, efm, { DcsIds::Commands::EnginesOn, 1.0f });
@@ -65,8 +61,7 @@ void test_fbw_and_engine_commands(Tests::Context& context)
 
 void test_throttle_and_airframe_commands(Tests::Context& context)
 {
-	NullRuntime runtime;
-	Core::Fck1cEfm efm(Data::fck1c_aircraft_config(), runtime);
+	Core::Fck1cEfm efm(Data::fck1c_aircraft_config());
 	route(context, efm, { DcsIds::Commands::ThrottleAxis, -1.0f });
 	route(context, efm, { DcsIds::Commands::ThrottleDecrease, 1.0f });
 	route(context, efm, { DcsIds::Commands::AirBrakesOn, 1.0f });
@@ -83,8 +78,7 @@ void test_throttle_and_airframe_commands(Tests::Context& context)
 
 void test_wheel_commands(Tests::Context& context)
 {
-	NullRuntime runtime;
-	Core::Fck1cEfm efm(Data::fck1c_aircraft_config(), runtime);
+	Core::Fck1cEfm efm(Data::fck1c_aircraft_config());
 	route(context, efm, { DcsIds::Commands::NoseTurnDown, 1.0f });
 	route(context, efm, { DcsIds::Commands::WheelBrakeLeftOn, 1.0f });
 	route(context, efm, { DcsIds::Commands::WheelBrakeRightOn, 1.0f });

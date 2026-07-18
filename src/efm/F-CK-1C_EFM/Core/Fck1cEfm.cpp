@@ -13,9 +13,8 @@ constexpr double kHotAirStartThrottle = 0.5;
 
 namespace Core
 {
-Fck1cEfm::Fck1cEfm(const Data::AircraftConfig& config, Fck1cEfmRuntime& runtime)
-	: config_(config),
-	runtime_(runtime)
+Fck1cEfm::Fck1cEfm(const Data::AircraftConfig& config)
+	: config_(config)
 {
 	if (!Systems::has_valid_aerodynamics_tables(config_.aerodynamics))
 	{

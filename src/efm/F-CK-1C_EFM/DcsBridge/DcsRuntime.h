@@ -10,7 +10,7 @@
 
 namespace DcsBridge
 {
-class DcsRuntime final : public Core::Fck1cEfmRuntime
+class DcsRuntime final
 {
 public:
 	DcsRuntime();

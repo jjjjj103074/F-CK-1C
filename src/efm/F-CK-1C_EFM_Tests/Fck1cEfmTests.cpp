@@ -9,8 +9,6 @@ namespace
 {
 constexpr double kTolerance = 1e-9;
 
-class TestRuntime final : public Core::Fck1cEfmRuntime {};
-
 Data::AircraftConfig make_test_config()
 {
 	Data::AircraftConfig config;
@@ -331,8 +329,7 @@ void test_all_start_mode_frame_outputs(Tests::Context& context)
 	};
 	for (Core::StartMode mode : modes)
 	{
-		TestRuntime runtime;
-		Core::Fck1cEfm efm(make_test_config(), runtime);
+		Core::Fck1cEfm efm(make_test_config());
 		start_legacy(efm, mode);
 		const Core::FrameDataAvailability unavailable;
 		const Core::FrameOutput output = efm.frame_output(unavailable);
@@ -344,8 +341,7 @@ void test_all_start_mode_frame_outputs(Tests::Context& context)
 
 void test_frame_output_matches_existing_outputs(Tests::Context& context)
 {
-	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.hot_ground_start();
 	efm.set_internal_fuel(500.0);
 	efm.set_external_fuel({ 1, 120.0, Common::Vec3(0.5, -0.2, 0.1) });
@@ -364,9 +360,8 @@ void test_frame_output_matches_existing_outputs(Tests::Context& context)
 
 void test_config_ownership(Tests::Context& context)
 {
-	TestRuntime runtime;
 	Data::AircraftConfig source = make_test_config();
-	Core::Fck1cEfm efm(source, runtime);
+	Core::Fck1cEfm efm(source);
 	source.aerodynamics.mach_table[0] = 99.0;
 	source.engine.max_thrust_table[0] = 0.0;
 	TEST_EXPECT_NEAR(context, efm.config().aerodynamics.wing_area, 24.26, kTolerance);
@@ -378,11 +373,10 @@ void test_config_ownership(Tests::Context& context)
 
 void test_invalid_config_rejected(Tests::Context& context)
 {
-	TestRuntime runtime;
 	bool rejected = false;
 	try
 	{
-		Core::Fck1cEfm efm(Data::AircraftConfig(), runtime);
+		Core::Fck1cEfm efm(Data::AircraftConfig{});
 	}
 	catch (const std::invalid_argument&)
 	{
@@ -393,8 +387,7 @@ void test_invalid_config_rejected(Tests::Context& context)
 
 void test_snapshot_isolation(Tests::Context& context)
 {
-	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.set_mass_state({ 9100.0, Common::Vec3(1.0, 2.0, 3.0) });
 	efm.set_internal_fuel(1200.0);
 	efm.set_easy_flight(true);
@@ -410,7 +403,6 @@ void test_snapshot_isolation(Tests::Context& context)
 
 void test_simulation_pipeline(Tests::Context& context)
 {
-	TestRuntime runtime;
 	Core::AutopilotCommand autopilot;
 	autopilot.master = true;
 	autopilot.pitch_command = 0.2;
@@ -418,7 +410,7 @@ void test_simulation_pipeline(Tests::Context& context)
 	autopilot.auto_throttle_engaged = true;
 	autopilot.throttle_command = 0.4;
 	const Core::MaxPowerCommand max_power;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.set_internal_fuel(100.0);
 	efm.simulate(0.01, autopilot, max_power);
 	Core::Fck1cEfmSnapshot state = efm.snapshot();
@@ -433,8 +425,7 @@ void test_simulation_pipeline(Tests::Context& context)
 
 void test_cockpit_inputs_drive_core_outputs(Tests::Context& context)
 {
-	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.hot_ground_start();
 	efm.set_internal_fuel(100.0);
 	const Core::AutopilotCommand autopilot = {
@@ -461,8 +452,7 @@ void test_cockpit_inputs_drive_core_outputs(Tests::Context& context)
 
 void test_neutral_cockpit_inputs_complete_step(Tests::Context& context)
 {
-	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.hot_ground_start();
 	efm.set_internal_fuel(100.0);
 	send_command(efm,
@@ -478,8 +468,7 @@ void test_neutral_cockpit_inputs_complete_step(Tests::Context& context)
 
 void test_ground_start_lifecycle(Tests::Context& context)
 {
-	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.apply_damage({ Core::DamageArea::LeftWing, 0, 0.2 });
 	efm.cold_start();
 	Core::Fck1cEfmSnapshot state = efm.snapshot();
@@ -499,8 +488,7 @@ void test_ground_start_lifecycle(Tests::Context& context)
 
 void test_air_start_lifecycle(Tests::Context& context)
 {
-	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.hot_air_start();
 	const Core::Fck1cEfmSystems systems = efm.snapshot().systems;
 	TEST_EXPECT(context, systems.startup.mode == Systems::STARTUP_MODE_HOT_AIR);
@@ -514,8 +502,7 @@ void test_air_start_lifecycle(Tests::Context& context)
 
 void test_release_lifecycle(Tests::Context& context)
 {
-	TestRuntime runtime;
-	Core::Fck1cEfm efm(make_test_config(), runtime);
+	Core::Fck1cEfm efm(make_test_config());
 	efm.hot_ground_start();
 	efm.simulate(0.01, {}, {});
 	efm.apply_damage({ Core::DamageArea::LeftEngine, 0, 0.2 });
