@@ -56,15 +56,6 @@ struct Fck1cEfmSystems
 	Systems::FBWControllerState fbw;
 };
 
-struct SuspensionConfigurationSnapshot
-{
-	double wheel_radius[3] = {};
-	Common::Vec3 wheel_position[3];
-	const char* active_collision_shell = "";
-	const char* mode_name = "";
-	bool fallback_enabled = false;
-};
-
 struct Fck1cEfmSnapshot
 {
 	AircraftState aircraft;
@@ -72,11 +63,6 @@ struct Fck1cEfmSnapshot
 	ControlSurfaceState control_surfaces;
 	GameplayState gameplay;
 	Fck1cEfmSystems systems;
-	SuspensionConfigurationSnapshot suspension_configuration;
-	Common::Vec3 left_engine_position;
-	Common::Vec3 right_engine_position;
-	double suspension_visual_arg[3] = {};
-	double nose_wheel_command = 0.0;
 	bool suspension_feedback_available = false;
 	bool any_weight_on_wheels = false;
 };
@@ -182,13 +168,6 @@ class Fck1cEfmRuntime
 {
 public:
 	virtual ~Fck1cEfmRuntime() = default;
-	virtual void on_first_frame(const Fck1cEfmSnapshot& snapshot) = 0;
-	virtual void on_engine_shutdown(const Fck1cEfmSnapshot& snapshot) = 0;
-	virtual void on_thrust_updated(
-		const Fck1cEfmSnapshot& snapshot,
-		const MaxPowerCommand& command) = 0;
-	virtual void on_ground_diagnostics(const Fck1cEfmSnapshot& snapshot, double dt) = 0;
-	virtual void on_release(const Fck1cEfmSnapshot& snapshot) = 0;
 };
 
 class Fck1cEfm
@@ -252,7 +231,7 @@ private:
 	double max_dry_thrust() const;
 	void update_engine_state(double dt, double dry_thrust);
 	void handle_engine_shutdown(double dt);
-	void apply_thrust_and_observe(const MaxPowerCommand& command);
+	void apply_thrust(const MaxPowerCommand& command);
 	void update_fuel(double dt);
 	void update_ground_and_suspension(double dt, const Systems::AerodynamicsFrameInput& input);
 	void apply_fallback_ground_forces();

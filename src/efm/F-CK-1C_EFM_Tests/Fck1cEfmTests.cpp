@@ -9,30 +9,7 @@ namespace
 {
 constexpr double kTolerance = 1e-9;
 
-class TestRuntime final : public Core::Fck1cEfmRuntime
-{
-public:
-	void on_first_frame(const Core::Fck1cEfmSnapshot&) override { ++first_frames; }
-	void on_engine_shutdown(const Core::Fck1cEfmSnapshot&) override { ++engine_shutdowns; }
-	void on_thrust_updated(
-		const Core::Fck1cEfmSnapshot&,
-		const Core::MaxPowerCommand&) override { ++thrust_updates; }
-	void on_ground_diagnostics(
-		const Core::Fck1cEfmSnapshot&,
-		double) override { ++ground_updates; }
-	void on_release(const Core::Fck1cEfmSnapshot& snapshot) override
-	{
-		++release_notifications;
-		release_damage_integrity = snapshot.systems.damage.left_engine_integrity;
-	}
-
-	int first_frames = 0;
-	int engine_shutdowns = 0;
-	int thrust_updates = 0;
-	int ground_updates = 0;
-	int release_notifications = 0;
-	double release_damage_integrity = 0.0;
-};
+class TestRuntime final : public Core::Fck1cEfmRuntime {};
 
 Data::AircraftConfig make_test_config()
 {
@@ -445,19 +422,12 @@ void test_simulation_pipeline(Tests::Context& context)
 	efm.set_internal_fuel(100.0);
 	efm.simulate(0.01, autopilot, max_power);
 	Core::Fck1cEfmSnapshot state = efm.snapshot();
-	TEST_EXPECT(context, runtime.first_frames == 1);
-	TEST_EXPECT(context, runtime.thrust_updates == 1);
-	TEST_EXPECT(context, runtime.ground_updates == 1);
-	TEST_EXPECT(context, runtime.engine_shutdowns == 0);
 	TEST_EXPECT(context, state.systems.startup.first_frame_completed);
 	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.01, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.pitch.input, 0.2, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.roll.input, -0.3, kTolerance);
 	efm.simulate(0.01, autopilot, max_power);
 	state = efm.snapshot();
-	TEST_EXPECT(context, runtime.first_frames == 1);
-	TEST_EXPECT(context, runtime.thrust_updates == 2);
-	TEST_EXPECT(context, runtime.ground_updates == 2);
 	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.02, kTolerance);
 }
 
@@ -562,8 +532,6 @@ void test_release_lifecycle(Tests::Context& context)
 	TEST_EXPECT(context, !state.systems.landing_gear.wheels.nose_turn_enabled);
 	TEST_EXPECT_NEAR(context, state.systems.landing_gear.wheels.brake_left, 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.engines.left.nozzle_aperture, 0.8, kTolerance);
-	TEST_EXPECT(context, runtime.release_notifications == 1);
-	TEST_EXPECT_NEAR(context, runtime.release_damage_integrity, 0.2, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.damage.left_engine_integrity, 1.0, kTolerance);
 }
 }

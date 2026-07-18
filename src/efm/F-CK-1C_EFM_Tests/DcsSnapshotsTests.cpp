@@ -2,8 +2,6 @@
 
 #include "DcsBridge/DcsSnapshots.h"
 
-#include <cstring>
-
 namespace
 {
 constexpr double kTolerance = 1e-9;
@@ -57,43 +55,10 @@ void test_param_snapshot(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, state.total_fuel, 1100.0, kTolerance);
 }
 
-void test_debug_watch_snapshot(Tests::Context& context)
-{
-	Core::Fck1cEfmSnapshot source = make_snapshot();
-	source.aircraft.altitude_asl = 1200.0;
-	source.systems.landing_gear.position = 1.0;
-	source.systems.suspension.wow[1] = true;
-	const Diagnostics::DebugWatchSnapshot state =
-		DcsBridge::make_debug_watch_snapshot(source, "test", "date");
-	TEST_EXPECT(context, std::strcmp(state.version, "test") == 0);
-	TEST_EXPECT_NEAR(context, state.altitude_asl, 1200.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.gear_pos, 1.0, kTolerance);
-	TEST_EXPECT(context, state.wow[1]);
-	TEST_EXPECT(context, state.fbw.mode_target == source.systems.fbw.mode_target);
-}
-
-void test_debug_watch_formatting(Tests::Context& context)
-{
-	Diagnostics::DebugWatchSnapshot snapshot;
-	snapshot.version = "test";
-	snapshot.version_date = "date";
-	char compact[2048];
-	char detailed[4096];
-	const size_t compact_size = Diagnostics::format_debug_watch(
-		0, snapshot, { compact, sizeof(compact) });
-	const size_t detailed_size = Diagnostics::format_debug_watch(
-		1, snapshot, { detailed, sizeof(detailed) });
-	TEST_EXPECT(context, compact_size > 0);
-	TEST_EXPECT(context, detailed_size > compact_size);
-	TEST_EXPECT(context, std::strstr(compact, "VER:test DATE:date") != nullptr);
-	TEST_EXPECT(context, std::strstr(detailed, "ACT_E:") != nullptr);
-}
 }
 
 void run_dcs_snapshots_tests(Tests::Context& context)
 {
 	test_draw_arg_snapshot(context);
 	test_param_snapshot(context);
-	test_debug_watch_snapshot(context);
-	test_debug_watch_formatting(context);
 }

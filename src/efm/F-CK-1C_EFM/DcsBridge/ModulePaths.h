@@ -136,12 +136,6 @@ inline void initialize_project_paths(ModulePaths& paths)
 	(void)try_module_directory_candidates(paths, module_dir);
 }
 
-inline const char* active_fm_config_path(ModulePaths& paths)
-{
-	initialize_project_paths(paths);
-	return paths.fm_config_path;
-}
-
 inline void build_mod_path(
 	ModulePaths& paths,
 	const Common::PathTarget& target,

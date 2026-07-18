@@ -40,23 +40,6 @@ Fck1cEfmSnapshot Fck1cEfm::snapshot() const
 	result.control_surfaces = control_surfaces_;
 	result.gameplay = gameplay_;
 	result.systems = systems_;
-	result.left_engine_position = config_.left_engine_position;
-	result.right_engine_position = config_.right_engine_position;
-	for (int index = 0; index < Systems::kSuspensionWheelCount; ++index)
-	{
-		result.suspension_configuration.wheel_radius[index] =
-			config_.suspension.fallback_wheel_radius[index];
-		result.suspension_configuration.wheel_position[index] =
-			config_.suspension.fallback_gear_points[index];
-		result.suspension_visual_arg[index] = Systems::suspension_visual_arg(
-			systems_.suspension, index, systems_.landing_gear.position);
-	}
-	result.suspension_configuration.active_collision_shell =
-		config_.suspension.active_collision_shell_name;
-	result.suspension_configuration.mode_name = config_.suspension.suspension_mode_name;
-	result.suspension_configuration.fallback_enabled =
-		config_.suspension.enable_fallback_ground_forces;
-	result.nose_wheel_command = nose_wheel_steering();
 	result.suspension_feedback_available =
 		Systems::has_suspension_feedback(systems_.suspension);
 	result.any_weight_on_wheels = Systems::any_wow(systems_.suspension);
@@ -220,7 +203,6 @@ void Fck1cEfm::begin_frame(double dt)
 		systems_.aerodynamics,
 		config_.aerodynamics,
 		force_moment_.center_of_mass);
-	runtime_.on_first_frame(snapshot());
 }
 
 void Fck1cEfm::update_airframe(double dt)
@@ -387,7 +369,7 @@ void Fck1cEfm::update_engines_and_fuel(
 			}));
 	update_engine_state(dt, dry_thrust);
 	handle_engine_shutdown(dt);
-	apply_thrust_and_observe(max_power);
+	apply_thrust(max_power);
 	update_fuel(dt);
 }
 
@@ -427,16 +409,14 @@ void Fck1cEfm::handle_engine_shutdown(double dt)
 		return;
 	}
 
-	runtime_.on_engine_shutdown(snapshot());
 	Systems::shutdown_engines(systems_.engines, dt);
 }
 
-void Fck1cEfm::apply_thrust_and_observe(const MaxPowerCommand& command)
+void Fck1cEfm::apply_thrust(const MaxPowerCommand& command)
 {
 	Systems::apply_thrust_cut(systems_.engines, command.ready > 0.5 && command.value < 0.5);
 	add_force(Common::Vec3(systems_.engines.left.thrust_force, 0.0, 0.0), config_.left_engine_position);
 	add_force(Common::Vec3(systems_.engines.right.thrust_force, 0.0, 0.0), config_.right_engine_position);
-	runtime_.on_thrust_updated(snapshot(), command);
 }
 
 void Fck1cEfm::update_fuel(double dt)
@@ -476,7 +456,6 @@ void Fck1cEfm::update_ground_and_suspension(
 		{ config_.aerodynamics, input },
 		Systems::make_aerodynamic_sinks(add_force_sink, add_moment_sink));
 	apply_fallback_ground_forces();
-	runtime_.on_ground_diagnostics(snapshot(), dt);
 	Systems::update_on_ground(systems_.suspension, systems_.landing_gear.position);
 	Systems::AerodynamicsFrameInput shake_input = input;
 	shake_input.on_ground = systems_.suspension.on_ground;
@@ -613,7 +592,6 @@ void Fck1cEfm::release()
 	Systems::reset_throttle_inputs(systems_.throttle_inputs, 0.0, 0.0);
 	Systems::reset_fbw_throttle_interface(systems_.fbw);
 	Systems::reset_engine_release_state(systems_.engines);
-	runtime_.on_release(snapshot());
 	repair();
 }
 

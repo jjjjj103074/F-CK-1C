@@ -245,7 +245,7 @@ void ed_fm_set_draw_args(EdDrawArgument* drawargs, size_t size)
 
 void ed_fm_configure(const char* cfg_path)
 {
-	runtime().configure(cfg_path, efm().snapshot());
+	runtime().configure(cfg_path);
 }
 
 double ed_fm_get_param(unsigned index)
@@ -308,21 +308,18 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 
 void ed_fm_cold_start()
 {
-	runtime().reset_startup_suspension_probe();
 	efm().cold_start();
 	runtime().reset_carrier_launch();
 }
 
 void ed_fm_hot_start()
 {
-	runtime().reset_startup_suspension_probe();
 	efm().hot_ground_start();
 	runtime().reset_carrier_launch();
 }
 
 void ed_fm_hot_start_in_air()
 {
-	runtime().reset_startup_suspension_probe();
 	efm().hot_air_start();
 	runtime().reset_carrier_launch();
 }
@@ -396,5 +393,10 @@ bool ed_fm_enable_debug_info()
 
 size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 {
-	return runtime().debug_watch(efm().snapshot(), level, { buffer, maxlen });
+	(void)level;
+	if (buffer != nullptr && maxlen > 0)
+	{
+		buffer[0] = '\0';
+	}
+	return 0;
 }

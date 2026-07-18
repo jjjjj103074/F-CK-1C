@@ -13,17 +13,7 @@ struct DcsCommandInput
 	float value = 0.0f;
 };
 
-class NullRuntime final : public Core::Fck1cEfmRuntime
-{
-public:
-	void on_first_frame(const Core::Fck1cEfmSnapshot&) override {}
-	void on_engine_shutdown(const Core::Fck1cEfmSnapshot&) override {}
-	void on_thrust_updated(
-		const Core::Fck1cEfmSnapshot&,
-		const Core::MaxPowerCommand&) override {}
-	void on_ground_diagnostics(const Core::Fck1cEfmSnapshot&, double) override {}
-	void on_release(const Core::Fck1cEfmSnapshot&) override {}
-};
+class NullRuntime final : public Core::Fck1cEfmRuntime {};
 
 void route(
 	Tests::Context& context,

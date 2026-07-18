@@ -22,10 +22,6 @@ struct SuspensionSystemConfig
 	double fallback_contact_band[kSuspensionWheelCount] = { 0.015, 0.055, 0.055 };
 	Common::Vec3 fallback_belly_point = Common::Vec3(0.0, -1.05, 0.0);
 	bool enable_fallback_ground_forces = false;
-
-	const char* active_collision_shell_name = "F-CK-1C-box.edm";
-	const char* active_gear_shell_nodes = "F-CK-1C-F_W/F-CK-1C-LBW/F-CK-1C-RBW";
-	const char* suspension_mode_name = "native_collision_shell_name";
 };
 
 struct SuspensionSystemState
@@ -102,26 +98,6 @@ inline bool has_suspension_feedback(const SuspensionSystemState& state)
 inline bool any_wow(const SuspensionSystemState& state)
 {
 	return state.wow[0] || state.wow[1] || state.wow[2];
-}
-
-inline bool any_fallback_wow(const SuspensionSystemState& state)
-{
-	return state.fallback_wow[0] || state.fallback_wow[1] || state.fallback_wow[2];
-}
-
-inline double suspension_total_force_mag(const SuspensionSystemState& state)
-{
-	return state.force_mag[0] + state.force_mag[1] + state.force_mag[2];
-}
-
-inline double suspension_visual_arg(const SuspensionSystemState& state, int idx, double gear_pos)
-{
-	if (!valid_suspension_index(idx) || !state.feedback_valid[idx])
-	{
-		return 0.0;
-	}
-
-	return Common::limit(state.compression[idx], 0.0, 1.0) * Common::limit(gear_pos, 0.0, 1.0);
 }
 
 inline Common::Vec3 active_susp_wheel_pos(

@@ -1,7 +1,5 @@
 #include "DcsSnapshots.h"
 
-#include "../Diagnostics/SuspensionDiagnostics.h"
-
 namespace DcsBridge
 {
 DrawArgState make_draw_arg_state(const Core::Fck1cEfmSnapshot& snapshot)
@@ -64,29 +62,4 @@ ParamExportState make_param_export_state(const Core::Fck1cEfmSnapshot& snapshot)
 	};
 }
 
-Diagnostics::DebugWatchSnapshot make_debug_watch_snapshot(
-	const Core::Fck1cEfmSnapshot& efm,
-	const char* version,
-	const char* version_date)
-{
-	const Core::AircraftState& aircraft = efm.aircraft;
-	const Core::Fck1cEfmSystems& systems = efm.systems;
-	Diagnostics::DebugWatchSnapshot snapshot;
-	snapshot.version = version;
-	snapshot.version_date = version_date;
-	snapshot.altitude_asl = aircraft.altitude_asl;
-	snapshot.altitude_agl = aircraft.altitude_agl;
-	snapshot.position_world_z = aircraft.position_world_z;
-	snapshot.gear_pos = systems.landing_gear.position;
-	for (int index = 0; index < Diagnostics::kDiagnosticWheelCount; ++index)
-	{
-		snapshot.wow[index] = systems.suspension.wow[index];
-	}
-	snapshot.wow_any = efm.any_weight_on_wheels;
-	snapshot.wow_valid = efm.suspension_feedback_available;
-	snapshot.on_ground = systems.suspension.on_ground;
-	snapshot.fallback_ground_force = systems.suspension.fallback_ground_force;
-	snapshot.fbw = systems.fbw;
-	return snapshot;
-}
 }

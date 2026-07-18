@@ -81,7 +81,6 @@
     <ClInclude Include="Data\AircraftConfig.h" />
     <ClInclude Include="Data\EngineTables.h" />
     <ClInclude Include="DcsBridge\AutopilotBridge.h" />
-    <ClInclude Include="DcsBridge\ConfigReader.h" />
     <ClInclude Include="DcsBridge\CockpitParams.h" />
     <ClInclude Include="DcsBridge\DcsCommandRouter.h" />
     <ClInclude Include="DcsBridge\DcsDamageMapper.h" />
@@ -99,10 +98,7 @@
     <ClInclude Include="DcsIds\DrawArgs.h" />
     <ClInclude Include="DcsIds\ParamIds.h" />
     <ClInclude Include="Diagnostics\DebugLogger.h" />
-    <ClInclude Include="Diagnostics\DebugWatch.h" />
     <ClInclude Include="Diagnostics\RuntimeDiagnostics.h" />
-    <ClInclude Include="Diagnostics\SuspensionDiagnostics.h" />
-    <ClInclude Include="Diagnostics\TextBuffer.h" />
     <ClInclude Include="F-CK-1C_EFM.h" />
     <ClInclude Include="F-CK-1C_EFM_API.h" />
     <ClInclude Include="include\Cockpit\ccParametersAPI.h" />
