@@ -176,11 +176,17 @@ void DcsRuntime::update_suspension_feedback(
 	}
 	const Core::SuspensionFeedbackInput feedback = {
 		index,
-		info->struct_compression,
 		Common::Vec3(
 			info->acting_force[0],
 			info->acting_force[1],
-			info->acting_force[2])
+			info->acting_force[2]),
+		Common::Vec3(
+			info->acting_force_point[0],
+			info->acting_force_point[1],
+			info->acting_force_point[2]),
+		info->integrity_factor,
+		info->struct_compression,
+		info->wheel_speed_X
 	};
 	if (!efm.update_suspension_feedback(feedback))
 	{
@@ -198,7 +204,7 @@ void DcsRuntime::update_suspension_feedback(
 		{
 			index,
 			suspension.compression[index],
-			feedback.force,
+			feedback.acting_force,
 			suspension.force_mag[index],
 			suspension.wow[index]
 		});

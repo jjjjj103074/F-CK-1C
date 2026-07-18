@@ -75,6 +75,7 @@
     <ClInclude Include="Common\Vec3.h" />
     <ClInclude Include="Core\AircraftState.h" />
     <ClInclude Include="Core\Fck1cEfm.h" />
+    <ClInclude Include="Core\FrameContracts.h" />
     <ClInclude Include="Core\ForceMoment.h" />
     <ClInclude Include="Data\AeroTables.h" />
     <ClInclude Include="Data\AircraftConfig.h" />
@@ -131,6 +132,9 @@
       </PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Core\Fck1cEfm.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Core\Fck1cEfmFrameOutput.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Core\Fck1cEfmCommands.cpp">

@@ -74,6 +74,7 @@
     <ClCompile Include="SuspensionSystemTests.cpp" />
     <ClCompile Include="TestMain.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Core\Fck1cEfm.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\Core\Fck1cEfmFrameOutput.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Core\Fck1cEfmCommands.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Data\AeroTables.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Data\AircraftConfig.cpp" />

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AircraftState.h"
+#include "FrameContracts.h"
 #include "../Common/Vec3.h"
 #include "../Data/AircraftConfig.h"
 #include "../Systems/AerodynamicsSystem.h"
@@ -18,22 +19,6 @@
 
 namespace Core
 {
-struct AutopilotCommand
-{
-	bool master = false;
-	bool bypass = false;
-	bool auto_throttle_engaged = false;
-	double pitch_command = 0.0;
-	double roll_command = 0.0;
-	double throttle_command = 0.0;
-};
-
-struct MaxPowerCommand
-{
-	double ready = 0.0;
-	double value = 1.0;
-};
-
 struct ForceMomentFrame
 {
 	Common::Vec3 force;
@@ -157,24 +142,11 @@ struct EfmCommand
 	double value = 0.0;
 };
 
-struct MassStateInput
-{
-	double mass = 0.0;
-	Common::Vec3 center_of_mass;
-};
-
 struct ExternalFuelInput
 {
 	int station = 0;
 	double fuel = 0.0;
 	Common::Vec3 position;
-};
-
-struct SuspensionFeedbackInput
-{
-	int index = 0;
-	double compression = 0.0;
-	Common::Vec3 force;
 };
 
 enum class DamageArea
@@ -230,6 +202,7 @@ public:
 
 	const Data::AircraftConfig& config() const;
 	Fck1cEfmSnapshot snapshot() const;
+	FrameOutput frame_output(const FrameDataAvailability& availability) const;
 	ForceMomentFrame force_moment_output() const;
 	double max_dry_thrust_at(double mach) const;
 	double internal_fuel() const;

@@ -67,8 +67,14 @@ void ed_fm_set_atmosphere(
 	double wind_vy,
 	double wind_vz)
 {
-	(void)p;
-	efm().set_atmosphere({ h, t, a, ro, Common::Vec3(wind_vx, wind_vy, wind_vz) });
+	efm().set_atmosphere({
+		h,
+		t,
+		a,
+		ro,
+		p,
+		Common::Vec3(wind_vx, wind_vy, wind_vz)
+	});
 	runtime().export_temperature(t);
 }
 
@@ -81,10 +87,12 @@ void ed_fm_set_surface(
 	double normal_y,
 	double normal_z)
 {
-	(void)normal_x;
-	(void)normal_y;
-	(void)normal_z;
-	efm().set_surface({ h, h_obj, surface_type });
+	efm().set_surface({
+		h,
+		h_obj,
+		surface_type,
+		Common::Vec3(normal_x, normal_y, normal_z)
+	});
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -97,12 +105,10 @@ void ed_fm_set_current_mass_state(
 	double moment_of_inertia_y,
 	double moment_of_inertia_z)
 {
-	(void)moment_of_inertia_x;
-	(void)moment_of_inertia_y;
-	(void)moment_of_inertia_z;
 	efm().set_mass_state({
 		mass,
-		Common::Vec3(center_of_mass_x, center_of_mass_y, center_of_mass_z)
+		Common::Vec3(center_of_mass_x, center_of_mass_y, center_of_mass_z),
+		Common::Vec3(moment_of_inertia_x, moment_of_inertia_y, moment_of_inertia_z)
 	});
 }
 
@@ -128,22 +134,13 @@ void ed_fm_set_current_state(
 	double quaternion_z,
 	double quaternion_w)
 {
-	(void)ax;
-	(void)ay;
-	(void)az;
-	(void)px;
-	(void)py;
-	(void)omegadotx;
-	(void)omegadoty;
-	(void)omegadotz;
-	(void)quaternion_x;
-	(void)quaternion_y;
-	(void)quaternion_z;
-	(void)quaternion_w;
 	efm().set_world_kinematics({
+		Common::Vec3(ax, ay, az),
 		Common::Vec3(vx, vy, vz),
+		Common::Vec3(px, py, pz),
+		Common::Vec3(omegadotx, omegadoty, omegadotz),
 		Common::Vec3(omegax, omegay, omegaz),
-		pz
+		{ quaternion_x, quaternion_y, quaternion_z, quaternion_w }
 	});
 }
 
@@ -170,23 +167,17 @@ void ed_fm_set_current_state_body_axis(
 	double common_angle_of_attack,
 	double common_angle_of_slide)
 {
-	(void)ax;
-	(void)az;
-	(void)wind_vx;
-	(void)wind_vy;
-	(void)wind_vz;
-	(void)omegadotx;
-	(void)omegadoty;
-	(void)omegadotz;
 	efm().set_body_kinematics({
+		Common::Vec3(ax, ay, az),
 		Common::Vec3(vx, vy, vz),
+		Common::Vec3(wind_vx, wind_vy, wind_vz),
+		Common::Vec3(omegadotx, omegadoty, omegadotz),
 		Common::Vec3(omegax, omegay, omegaz),
 		yaw,
 		pitch,
 		roll,
 		common_angle_of_attack,
-		common_angle_of_slide,
-		ay
+		common_angle_of_slide
 	});
 }
 

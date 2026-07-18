@@ -3,45 +3,11 @@
 #include "../Common/Clamp.h"
 #include "../Common/Units.h"
 #include "../Common/Vec3.h"
+#include "FrameContracts.h"
 #include <cmath>
 
 namespace Core
 {
-struct AtmosphereInput
-{
-	double altitude_asl = 0.0;
-	double temperature = 0.0;
-	double speed_of_sound = 0.0;
-	double density = 0.0;
-	Common::Vec3 wind;
-};
-
-struct SurfaceInput
-{
-	double surface_height = 0.0;
-	double surface_height_with_objects = 0.0;
-	unsigned surface_type = 0;
-};
-
-struct WorldKinematicsInput
-{
-	Common::Vec3 velocity;
-	Common::Vec3 angular_velocity;
-	double position_z = 0.0;
-};
-
-struct BodyKinematicsInput
-{
-	Common::Vec3 velocity;
-	Common::Vec3 angular_velocity;
-	double heading = 0.0;
-	double pitch = 0.0;
-	double roll = 0.0;
-	double angle_of_attack = 0.0;
-	double angle_of_slide = 0.0;
-	double acceleration_y = 0.0;
-};
-
 struct AircraftState
 {
 	Common::Vec3 wind;
@@ -113,7 +79,7 @@ inline void set_world_kinematics(
 {
 	state.velocity_world = input.velocity;
 	state.angular_velocity_world = input.angular_velocity;
-	state.position_world_z = input.position_z;
+	state.position_world_z = input.position.z;
 }
 
 inline void set_body_kinematics(
@@ -127,7 +93,7 @@ inline void set_body_kinematics(
 	state.alpha = Common::deg(input.angle_of_attack);
 	state.aos = input.angle_of_slide;
 	state.beta = Common::deg(input.angle_of_slide);
-	state.g = (input.acceleration_y / 9.81) + 1.0;
+	state.g = (input.acceleration.y / 9.81) + 1.0;
 
 	state.pitch = input.pitch;
 	state.roll = input.roll;

@@ -153,17 +153,16 @@ DCS 已提供但 Core 尚未實作的欄位仍要翻譯並放入 `FrameInput`，
 
 ### Suspension
 
-- 每個 wheel 的 `acting_force`、`acting_force_point`、`integrity_factor`、`struct_compression` 與 `wheel_speed_X` 是一筆完整 sample，一起發布與保存。
+- 每個 wheel 的 `acting_force`、`acting_force_point`、`integrity_factor`、`struct_compression` 與 `wheel_speed_X` 是一筆完整輸入 sample，由 `FrameInputCollector` 一起發布並放入 `FrameInput`。
 - Suspension vector 採用 DCS local/body 右手座標系：`+x` 向機鼻、`+y` 向上、`+z` 向右翼；作用位置原點是模型中心。
 - `acting_force` 是 local/body force，單位 N；CSV 展開為 `acting_force_x_N`、`acting_force_y_N`、`acting_force_z_N`。
-- `acting_force_point` 是該力的 local/body 作用位置，單位 m；CSV 展開為 `acting_force_point_x_m`、`acting_force_point_y_m`、`acting_force_point_z_m`。
-- `struct_compression` 單位 m，CSV 使用 `compression_m`；`wheel_speed_X` 按 DCS 的 SI 慣例視為 local x 方向線速度，單位 m/s，CSV 使用 `wheel_speed_x_mps`。
-- `integrity_factor` 是無因次結構完整度。現有 suspension struct 沒有明定有效範圍，因此保留欄名 `integrity_factor`，只保存並輸出 DCS 原始值，不 clamp，也不參與新的計算。
+- `acting_force_point` 是該力的 local/body 作用位置，單位 m；`wheel_speed_X` 按 DCS 的 SI 慣例視為 local x 方向線速度，單位 m/s；`integrity_factor` 是無因次結構完整度。三者目前沒有 Core、DCS output callback 或 CSV consumer，只保留在完整 `FrameInput`，不放入 `FrameOutput`，也不建立空白 CSV 欄位。
+- `struct_compression` 單位 m，`FrameOutput` 與 CSV 使用 `compression`／`compression_m`。
 - 上述座標與單位依專案附帶 SDK 對 body coordinate 的宣告、[DCS EFM API reference frames](https://modding.caffeinesimulations.com/Aircraft/EFM/EFM_API/#dcs-reference-frames) 與 [Eagle Dynamics basic types](https://www.digitalcombatsimulator.com/en/support/faq/1256/)；Core／CSV 不做額外座標或單位轉換。
 - 初始/reset 的 Core 計算狀態為無 acting force、compression 0，懸吊回到預設伸展位置；在第一筆 DCS suspension sample 到達前，該輪 raw sample 的 availability 為 false，CSV 對應欄位輸出 `-`。
 - 收到 feedback 後保留最後一筆完整 sample，直到下一筆更新或 lifecycle reset。
 - 本 step 沒收到新 feedback 不代表 force 變成 0，也不清除 compression。
-- `FrameOutput` 與 CSV 每次都輸出目前完整 suspension state，不加入 `updated_this_step`。
+- `FrameOutput` 與 CSV 每次都輸出 Core 目前使用或計算的 suspension state，不加入 `updated_this_step`。若日後 `acting_force_point`、`integrity_factor` 或 `wheel_speed_X` 出現實際 output consumer，再連同測試與 CSV schema 一起加入，不預先保留 placeholder。
 - 移除 DCSBridge 既有 suspension diagnostics、startup probe、periodic probe、ground probe、相關設定與 `fck_susp_debug.log`。
 
 ### Cockpit continuous state
@@ -400,7 +399,7 @@ struct FrameOutput
 | 每具 `EngineOutput` | `switch_on`、`throttle_input`、`throttle_output`、`power_readout`、`thrust_force`、`afterburner_ratio`、`afterburner_lit`、`nozzle_aperture` | draw args、param、carrier launch 與 CSV |
 | `ControlOutput` | `pitch_input`、`roll_input`、`yaw_input`、`elevator_command`、`aileron_command`、`rudder_command`、`flaps_position`、`slats_position`、`airbrake_position` | draw args、param 與 CSV |
 | `LandingGearOutput` | `gear_position`、`nose_wheel_steering`、`brake_left`、`brake_right`、三輪 `wheel_spin` | draw args、param 與 CSV |
-| 每輪 `SuspensionWheelOutput` | `acting_force`、`acting_force_point`、`integrity_factor`、`compression`、`wheel_speed_x`、`force_magnitude`、`weight_on_wheel` | 保留 DCS suspension callback 的完整最新 sample，加上 Core 實際使用的少量衍生結果；是否已有 sample 由 `FrameDataAvailability::suspension` 表達，不新增 CSV validity 欄位 |
+| 每輪 `SuspensionWheelOutput` | `acting_force`、`compression`、`force_magnitude`、`weight_on_wheel` | 只發布 Core 目前使用或計算、且供 CSV debug 的 suspension 結果；完整 DCS raw sample 留在 `FrameInput`，是否已有 sample 由 `FrameDataAvailability::suspension` 表達，不新增 CSV validity 欄位 |
 | `SuspensionOutput` | 三輪輸出、`any_weight_on_wheels`、`on_ground` | param 與 CSV |
 | `FuelOutput` | `internal_fuel`、`external_fuel`、`total_fuel` | param 與 CSV；DCS fuel getter 仍走立即查詢的非 frame 介面 |
 | top-level | `shake_amplitude` | `ed_fm_get_shake_amplitude` 與 CSV |
@@ -580,7 +579,7 @@ Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合
 目前沒有尚未回答、會阻擋架構實作的問題。
 
 - CSV 的逐欄 header 與順序由最終 `FrameOutput` 宣告機械式展開，並以 schema 測試鎖定；這是實作工作，不再建立另一份人工挑選清單。
-- Suspension 的座標系與單位已依 DCS reference 固定；只有 `integrity_factor` 的精確有效範圍與損壞語意未明定，但它只做 raw pass-through，因此不阻擋本輪。
+- Suspension 的座標系與單位已依 DCS reference 固定；`acting_force_point`、`integrity_factor` 與 `wheel_speed_X` 目前只保留在完整 `FrameInput`，沒有 output consumer，因此不阻擋本輪，也不加入 `FrameOutput`／CSV。
 - 效能與 DCS callback cadence 在實作後用整合測試確認；真正需要觀察的是 `simulate` 未被檔案 I/O 阻塞，以及 CSV 落後時可由 sequence 跳號看見。
 - 實作與 commit 順序已列在下一節，等待審核。
 - 若實作時發現現有程式碼或 SDK 與本文件矛盾，必須帶著具體檔案、symbol 與影響回來討論，不預先為假想情況增加 abstraction 或 fallback。
@@ -608,6 +607,7 @@ Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合
 - `FrameInput` 納入所有 DCS 已提供的 atmosphere、surface、mass、world/body kinematics、三輪完整 suspension、autopilot、max-power 與實際 `dt`，即使部分欄位目前尚未被公式使用。
 - `FrameOutput` 只包含已確認的 DCS/CSV consumer 所需輸出，不包含 logger、CSV sequence 或完整 implementation snapshot。
 - 先增加由現有 Core state 產生 `FrameOutput` 的單一 projection；既有 production callbacks 暫時仍走舊路徑，方便比較新舊結果。
+- 步驟 2 暫時以 `frame_output(const FrameDataAvailability&) const` 暴露唯讀 projection 供新舊輸出比較；它不推進 Core，也不接上 production callbacks。步驟 7 的 `start()`／`step()` 接管發布後，projection 轉為其內部實作，不保留第二條公開輸出路徑。
 - 驗收：用相同 start/input 驗證新 `FrameOutput` 與既有可觀察輸出一致，並驗證所有 StartMode 初始結果。
 
 ### 3. 把 autopilot 與 max-power 讀取移出 Core

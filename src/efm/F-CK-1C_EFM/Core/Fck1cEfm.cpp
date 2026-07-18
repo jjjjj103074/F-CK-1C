@@ -187,7 +187,7 @@ bool Fck1cEfm::update_suspension_feedback(const SuspensionFeedbackInput& input)
 {
 	return Systems::update_suspension_feedback(
 		systems_.suspension,
-		{ input.index, input.compression, input.force });
+		{ input.index, input.compression, input.acting_force });
 }
 
 void Fck1cEfm::simulate(double dt)
