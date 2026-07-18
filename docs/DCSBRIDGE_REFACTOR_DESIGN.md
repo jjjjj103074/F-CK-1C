@@ -631,7 +631,7 @@ Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合
 
 ### 6. 建立 `FrameInputCollector`
 - 在 DCSBridge/Internal 新增 thread-safe latest-known collector；每個 DCS callback 先在 local variable 完成驗證與翻譯，再一次發布整類 sample。
-- StartMode reset 建立既定預設值與 availability；suspension 保存三輪完整 raw sample，未更新的 step 沿用上一筆。
+- Collector reset 清除所有 DCS raw sample 與 availability；依 StartMode 建立飛機內部初始 state 是 `Core::start(StartMode)` 的責任。suspension 保存三輪完整 raw sample，未更新的 step 沿用上一筆。
 - Collector snapshot 不強制不同 callback 分類對齊，只保證每一分類不會出現 torn value。
 - 驗收：測試完整 sample publish/read、sticky suspension、reset、缺失分類及並行讀寫只得到完整舊值或完整新值。
 

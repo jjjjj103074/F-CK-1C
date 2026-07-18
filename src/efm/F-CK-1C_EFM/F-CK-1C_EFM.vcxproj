@@ -88,6 +88,7 @@
     <ClInclude Include="DcsBridge\DcsRuntime.h" />
     <ClInclude Include="DcsBridge\DcsSnapshots.h" />
     <ClInclude Include="DcsBridge\DrawArgs.h" />
+    <ClInclude Include="DcsBridge\Internal\FrameInputCollector.h" />
     <ClInclude Include="DcsBridge\ModulePaths.h" />
     <ClInclude Include="DcsBridge\ParamExport.h" />
     <ClInclude Include="DcsBridge\SimulationEvents.h" />
@@ -149,6 +150,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DcsBridge\DcsDamageMapper.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\Internal\FrameInputCollector.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DcsBridge\DcsModule.cpp">

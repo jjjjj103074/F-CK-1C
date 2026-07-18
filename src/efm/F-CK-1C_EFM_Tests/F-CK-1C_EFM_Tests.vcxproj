@@ -65,6 +65,7 @@
     <ClCompile Include="EngineSystemTests.cpp" />
     <ClCompile Include="FBWControllerTests.cpp" />
     <ClCompile Include="Fck1cEfmTests.cpp" />
+    <ClCompile Include="FrameInputCollectorTests.cpp" />
     <ClCompile Include="ImmutableDataTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />
     <ClCompile Include="LandingGearSystemTests.cpp" />
@@ -81,6 +82,7 @@
     <ClCompile Include="..\F-CK-1C_EFM\Data\EngineTables.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsCommandRouter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsDamageMapper.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsSnapshots.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWController.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWLifecycle.cpp" />
