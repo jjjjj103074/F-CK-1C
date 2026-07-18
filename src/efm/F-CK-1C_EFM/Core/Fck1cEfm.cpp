@@ -190,16 +190,19 @@ bool Fck1cEfm::update_suspension_feedback(const SuspensionFeedbackInput& input)
 		{ input.index, input.compression, input.acting_force });
 }
 
-void Fck1cEfm::simulate(double dt)
+void Fck1cEfm::simulate(
+	double dt,
+	const AutopilotCommand& autopilot,
+	const MaxPowerCommand& max_power)
 {
 	begin_frame(dt);
 	update_airframe(dt);
 	Systems::update_primary_control_inputs(systems_.primary_controls);
-	update_autopilot();
+	update_autopilot(autopilot);
 	update_fbw(dt);
 	const Systems::AerodynamicsFrameInput aerodynamics_input = make_aerodynamics_input();
 	update_primary_aerodynamics(aerodynamics_input);
-	update_engines_and_fuel(dt);
+	update_engines_and_fuel(dt, max_power);
 	update_ground_and_suspension(dt, aerodynamics_input);
 	finish_frame();
 }
@@ -262,9 +265,8 @@ void Fck1cEfm::update_airframe(double dt)
 		});
 }
 
-void Fck1cEfm::update_autopilot()
+void Fck1cEfm::update_autopilot(const AutopilotCommand& command)
 {
-	const AutopilotCommand command = runtime_.read_autopilot();
 	if (command.master && !command.bypass)
 	{
 		systems_.primary_controls.pitch.input = command.pitch_command;
@@ -361,7 +363,9 @@ void Fck1cEfm::update_primary_aerodynamics(const Systems::AerodynamicsFrameInput
 		});
 }
 
-void Fck1cEfm::update_engines_and_fuel(double dt)
+void Fck1cEfm::update_engines_and_fuel(
+	double dt,
+	const MaxPowerCommand& max_power)
 {
 	const double dry_thrust = max_dry_thrust();
 	Systems::update_pilot_throttle_cmds(systems_.throttle_inputs);
@@ -383,7 +387,7 @@ void Fck1cEfm::update_engines_and_fuel(double dt)
 			}));
 	update_engine_state(dt, dry_thrust);
 	handle_engine_shutdown(dt);
-	apply_thrust_and_observe();
+	apply_thrust_and_observe(max_power);
 	update_fuel(dt);
 }
 
@@ -427,9 +431,8 @@ void Fck1cEfm::handle_engine_shutdown(double dt)
 	Systems::shutdown_engines(systems_.engines, dt);
 }
 
-void Fck1cEfm::apply_thrust_and_observe()
+void Fck1cEfm::apply_thrust_and_observe(const MaxPowerCommand& command)
 {
-	const MaxPowerCommand command = runtime_.read_max_power();
 	Systems::apply_thrust_cut(systems_.engines, command.ready > 0.5 && command.value < 0.5);
 	add_force(Common::Vec3(systems_.engines.left.thrust_force, 0.0, 0.0), config_.left_engine_position);
 	add_force(Common::Vec3(systems_.engines.right.thrust_force, 0.0, 0.0), config_.right_engine_position);

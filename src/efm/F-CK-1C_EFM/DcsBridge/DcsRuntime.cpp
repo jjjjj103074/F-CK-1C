@@ -32,6 +32,12 @@ DcsRuntime::DcsRuntime()
 
 Core::AutopilotCommand DcsRuntime::read_autopilot()
 {
+	if (!autopilot_params_available(autopilot_params_))
+	{
+		reset_autopilot_state(autopilot_state_);
+		return {};
+	}
+
 	update_autopilot_from_lua(cockpit_interface_, autopilot_params_, autopilot_state_);
 	Core::AutopilotCommand command;
 	command.master = autopilot_state_.master;

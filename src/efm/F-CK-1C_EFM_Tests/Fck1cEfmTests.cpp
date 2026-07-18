@@ -12,18 +12,6 @@ constexpr double kTolerance = 1e-9;
 class TestRuntime final : public Core::Fck1cEfmRuntime
 {
 public:
-	Core::AutopilotCommand read_autopilot() override
-	{
-		++autopilot_reads;
-		return autopilot;
-	}
-
-	Core::MaxPowerCommand read_max_power() override
-	{
-		++max_power_reads;
-		return max_power;
-	}
-
 	void on_first_frame(const Core::Fck1cEfmSnapshot&) override { ++first_frames; }
 	void on_engine_shutdown(const Core::Fck1cEfmSnapshot&) override { ++engine_shutdowns; }
 	void on_thrust_updated(
@@ -38,10 +26,6 @@ public:
 		release_damage_integrity = snapshot.systems.damage.left_engine_integrity;
 	}
 
-	Core::AutopilotCommand autopilot;
-	Core::MaxPowerCommand max_power;
-	int autopilot_reads = 0;
-	int max_power_reads = 0;
 	int first_frames = 0;
 	int engine_shutdowns = 0;
 	int thrust_updates = 0;
@@ -122,7 +106,6 @@ Core::FrameInput make_frame_input()
 
 void apply_legacy_frame_input(
 	Core::Fck1cEfm& efm,
-	TestRuntime& runtime,
 	const Core::FrameInput& input)
 {
 	efm.set_atmosphere(input.atmosphere);
@@ -134,9 +117,7 @@ void apply_legacy_frame_input(
 	{
 		efm.update_suspension_feedback(wheel);
 	}
-	runtime.autopilot = input.autopilot;
-	runtime.max_power = input.max_power;
-	efm.simulate(input.dt_s);
+	efm.simulate(input.dt_s, input.autopilot, input.max_power);
 }
 
 void expect_vec3(
@@ -394,7 +375,7 @@ void test_frame_output_matches_existing_outputs(Tests::Context& context)
 	send_command(efm, { Core::CommandGroup::LandingGear, Core::CommandAction::SetLeftBrake, 0.4 });
 	send_command(efm, { Core::CommandGroup::LandingGear, Core::CommandAction::SetRightBrake, 0.6 });
 	const Core::FrameInput input = make_frame_input();
-	apply_legacy_frame_input(efm, runtime, input);
+	apply_legacy_frame_input(efm, input);
 	const Core::FrameOutput output = efm.frame_output(input.availability);
 	const Core::Fck1cEfmSnapshot snapshot = efm.snapshot();
 	expect_availability(context, output.availability, input.availability);
@@ -453,18 +434,18 @@ void test_snapshot_isolation(Tests::Context& context)
 void test_simulation_pipeline(Tests::Context& context)
 {
 	TestRuntime runtime;
-	runtime.autopilot.master = true;
-	runtime.autopilot.pitch_command = 0.2;
-	runtime.autopilot.roll_command = -0.3;
-	runtime.autopilot.auto_throttle_engaged = true;
-	runtime.autopilot.throttle_command = 0.4;
+	Core::AutopilotCommand autopilot;
+	autopilot.master = true;
+	autopilot.pitch_command = 0.2;
+	autopilot.roll_command = -0.3;
+	autopilot.auto_throttle_engaged = true;
+	autopilot.throttle_command = 0.4;
+	const Core::MaxPowerCommand max_power;
 	Core::Fck1cEfm efm(make_test_config(), runtime);
 	efm.set_internal_fuel(100.0);
-	efm.simulate(0.01);
+	efm.simulate(0.01, autopilot, max_power);
 	Core::Fck1cEfmSnapshot state = efm.snapshot();
 	TEST_EXPECT(context, runtime.first_frames == 1);
-	TEST_EXPECT(context, runtime.autopilot_reads == 1);
-	TEST_EXPECT(context, runtime.max_power_reads == 1);
 	TEST_EXPECT(context, runtime.thrust_updates == 1);
 	TEST_EXPECT(context, runtime.ground_updates == 1);
 	TEST_EXPECT(context, runtime.engine_shutdowns == 0);
@@ -472,12 +453,57 @@ void test_simulation_pipeline(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.01, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.pitch.input, 0.2, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.roll.input, -0.3, kTolerance);
-	efm.simulate(0.01);
+	efm.simulate(0.01, autopilot, max_power);
 	state = efm.snapshot();
 	TEST_EXPECT(context, runtime.first_frames == 1);
 	TEST_EXPECT(context, runtime.thrust_updates == 2);
 	TEST_EXPECT(context, runtime.ground_updates == 2);
 	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.02, kTolerance);
+}
+
+void test_cockpit_inputs_drive_core_outputs(Tests::Context& context)
+{
+	TestRuntime runtime;
+	Core::Fck1cEfm efm(make_test_config(), runtime);
+	efm.hot_ground_start();
+	efm.set_internal_fuel(100.0);
+	const Core::AutopilotCommand autopilot = {
+		true, false, true, 0.25, -0.35, 0.6
+	};
+	const Core::MaxPowerCommand normal_power = { 1.0, 1.0 };
+	efm.simulate(0.01, autopilot, normal_power);
+	Core::Fck1cEfmSnapshot state = efm.snapshot();
+	TEST_EXPECT_NEAR(context, state.systems.primary_controls.pitch.input, 0.25, kTolerance);
+	TEST_EXPECT_NEAR(context, state.systems.primary_controls.roll.input, -0.35, kTolerance);
+	TEST_EXPECT_NEAR(context, state.systems.engines.left.throttle_input, 0.6, kTolerance);
+	TEST_EXPECT_NEAR(context, state.systems.engines.right.throttle_input, 0.6, kTolerance);
+	TEST_EXPECT(context, state.systems.engines.left.power_readout > 0.0);
+	TEST_EXPECT(context, state.systems.engines.right.power_readout > 0.0);
+	TEST_EXPECT(context, state.systems.engines.left.thrust_force > 0.0);
+	TEST_EXPECT(context, state.systems.engines.right.thrust_force > 0.0);
+
+	const Core::MaxPowerCommand cut_power = { 1.0, 0.0 };
+	efm.simulate(0.01, autopilot, cut_power);
+	state = efm.snapshot();
+	TEST_EXPECT_NEAR(context, state.systems.engines.left.thrust_force, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.systems.engines.right.thrust_force, 0.0, kTolerance);
+}
+
+void test_neutral_cockpit_inputs_complete_step(Tests::Context& context)
+{
+	TestRuntime runtime;
+	Core::Fck1cEfm efm(make_test_config(), runtime);
+	efm.hot_ground_start();
+	efm.set_internal_fuel(100.0);
+	send_command(efm,
+		{ Core::CommandGroup::PitchRoll, Core::CommandAction::SetPitchAxis, 0.3 });
+	efm.simulate(0.01, {}, {});
+	const Core::Fck1cEfmSnapshot state = efm.snapshot();
+	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.01, kTolerance);
+	TEST_EXPECT_NEAR(context, state.systems.primary_controls.pitch.input, 0.3, kTolerance);
+	TEST_EXPECT_NEAR(context, state.systems.fbw.throttle_blend, 0.0, kTolerance);
+	TEST_EXPECT(context, state.systems.engines.left.thrust_force > 0.0);
+	TEST_EXPECT(context, state.systems.engines.right.thrust_force > 0.0);
 }
 
 void test_ground_start_lifecycle(Tests::Context& context)
@@ -521,7 +547,7 @@ void test_release_lifecycle(Tests::Context& context)
 	TestRuntime runtime;
 	Core::Fck1cEfm efm(make_test_config(), runtime);
 	efm.hot_ground_start();
-	efm.simulate(0.01);
+	efm.simulate(0.01, {}, {});
 	efm.apply_damage({ Core::DamageArea::LeftEngine, 0, 0.2 });
 	send_command(efm,
 		{ Core::CommandGroup::PitchRoll, Core::CommandAction::SetPitchAxis, 0.5 });
@@ -551,6 +577,8 @@ void run_fck1c_efm_tests(Tests::Context& context)
 	test_invalid_config_rejected(context);
 	test_snapshot_isolation(context);
 	test_simulation_pipeline(context);
+	test_cockpit_inputs_drive_core_outputs(context);
+	test_neutral_cockpit_inputs_complete_step(context);
 	test_ground_start_lifecycle(context);
 	test_air_start_lifecycle(context);
 	test_release_lifecycle(context);

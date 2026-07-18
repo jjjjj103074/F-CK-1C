@@ -182,8 +182,6 @@ class Fck1cEfmRuntime
 {
 public:
 	virtual ~Fck1cEfmRuntime() = default;
-	virtual AutopilotCommand read_autopilot() = 0;
-	virtual MaxPowerCommand read_max_power() = 0;
 	virtual void on_first_frame(const Fck1cEfmSnapshot& snapshot) = 0;
 	virtual void on_engine_shutdown(const Fck1cEfmSnapshot& snapshot) = 0;
 	virtual void on_thrust_updated(
@@ -225,7 +223,10 @@ public:
 	void apply_damage(const DamageEvent& event);
 	bool update_suspension_feedback(const SuspensionFeedbackInput& input);
 
-	void simulate(double dt);
+	void simulate(
+		double dt,
+		const AutopilotCommand& autopilot,
+		const MaxPowerCommand& max_power);
 	void cold_start();
 	void hot_ground_start();
 	void hot_air_start();
@@ -242,16 +243,16 @@ private:
 	void handle_landing_gear_command(const EfmCommand& command);
 	void begin_frame(double dt);
 	void update_airframe(double dt);
-	void update_autopilot();
+	void update_autopilot(const AutopilotCommand& command);
 	void update_fbw(double dt);
 	Systems::FBWControllerInput make_fbw_input(double dt) const;
 	Systems::AerodynamicsFrameInput make_aerodynamics_input() const;
 	void update_primary_aerodynamics(const Systems::AerodynamicsFrameInput& input);
-	void update_engines_and_fuel(double dt);
+	void update_engines_and_fuel(double dt, const MaxPowerCommand& max_power);
 	double max_dry_thrust() const;
 	void update_engine_state(double dt, double dry_thrust);
 	void handle_engine_shutdown(double dt);
-	void apply_thrust_and_observe();
+	void apply_thrust_and_observe(const MaxPowerCommand& command);
 	void update_fuel(double dt);
 	void update_ground_and_suspension(double dt, const Systems::AerodynamicsFrameInput& input);
 	void apply_fallback_ground_forces();

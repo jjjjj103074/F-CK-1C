@@ -16,8 +16,6 @@ struct DcsCommandInput
 class NullRuntime final : public Core::Fck1cEfmRuntime
 {
 public:
-	Core::AutopilotCommand read_autopilot() override { return {}; }
-	Core::MaxPowerCommand read_max_power() override { return {}; }
 	void on_first_frame(const Core::Fck1cEfmSnapshot&) override {}
 	void on_engine_shutdown(const Core::Fck1cEfmSnapshot&) override {}
 	void on_thrust_updated(

@@ -50,6 +50,16 @@ inline void reset_autopilot_state(AutopilotState& state)
 	state.at_engaged = false;
 }
 
+inline bool autopilot_params_available(const AutopilotParamHandles& handles)
+{
+	return handles.master != nullptr &&
+		handles.pitch_cmd != nullptr &&
+		handles.roll_cmd != nullptr &&
+		handles.throttle_cmd != nullptr &&
+		handles.bypass != nullptr &&
+		handles.at_engaged != nullptr;
+}
+
 inline void update_autopilot_from_lua(
 	EDPARAM& cockpit,
 	const AutopilotParamHandles& handles,

@@ -53,7 +53,9 @@ void ed_fm_add_local_moment(double& x, double& y, double& z)
 
 void ed_fm_simulate(double dt)
 {
-	efm().simulate(dt);
+	const Core::AutopilotCommand autopilot = runtime().read_autopilot();
+	const Core::MaxPowerCommand max_power = runtime().read_max_power();
+	efm().simulate(dt, autopilot, max_power);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.

@@ -29,8 +29,8 @@ class DcsRuntime final : public Core::Fck1cEfmRuntime
 public:
 	DcsRuntime();
 
-	Core::AutopilotCommand read_autopilot() override;
-	Core::MaxPowerCommand read_max_power() override;
+	Core::AutopilotCommand read_autopilot();
+	Core::MaxPowerCommand read_max_power();
 	void on_first_frame(const Core::Fck1cEfmSnapshot& snapshot) override;
 	void on_engine_shutdown(const Core::Fck1cEfmSnapshot& snapshot) override;
 	void on_thrust_updated(
