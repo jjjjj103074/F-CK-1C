@@ -237,14 +237,14 @@ void EfmEventReporter::log_start(
 }
 
 void EfmEventReporter::log_damage(
-	const Core::Fck1cEfmSnapshot& snapshot,
+	const Core::DamageApplyResult& result,
 	int element,
 	double integrity)
 {
 	char message[kEventMessageCapacity];
 	Diagnostics::format_damage_event(
 		{ message, sizeof(message) },
-		{ element, integrity, snapshot.gameplay.invincible });
+		{ element, integrity, result.invincible });
 	write(EventLevel::Info, latest_simulation_time(), message);
 }
 

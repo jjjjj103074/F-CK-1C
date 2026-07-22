@@ -44,7 +44,7 @@ public:
 	void log_cockpit_parameter_events(const CockpitParameterEvents& events);
 	void log_start(Core::StartMode mode, double simulation_time_s);
 	void log_damage(
-		const Core::Fck1cEfmSnapshot& snapshot,
+		const Core::DamageApplyResult& result,
 		int element,
 		double integrity);
 	void log_suspension_feedback_error(int index, bool null_info);

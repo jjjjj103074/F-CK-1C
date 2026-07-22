@@ -40,30 +40,6 @@ Fck1cEfm::Fck1cEfm(const Data::AircraftConfig& config)
 	}
 }
 
-const Data::AircraftConfig& Fck1cEfm::config() const
-{
-	return config_;
-}
-
-Fck1cEfmSnapshot Fck1cEfm::snapshot() const
-{
-	Fck1cEfmSnapshot result;
-	result.aircraft = aircraft_state_;
-	result.force_moment = force_moment_;
-	result.control_surfaces = control_surfaces_;
-	result.gameplay = gameplay_;
-	result.systems = systems_;
-	result.suspension_feedback_available =
-		Systems::has_suspension_feedback(systems_.suspension);
-	result.any_weight_on_wheels = Systems::any_wow(systems_.suspension);
-	return result;
-}
-
-ForceMomentFrame Fck1cEfm::force_moment_output() const
-{
-	return force_moment_;
-}
-
 double Fck1cEfm::internal_fuel() const
 {
 	return Systems::get_internal_fuel(systems_.fuel);
@@ -72,11 +48,6 @@ double Fck1cEfm::internal_fuel() const
 double Fck1cEfm::external_fuel() const
 {
 	return Systems::get_external_fuel(systems_.fuel);
-}
-
-double Fck1cEfm::shake_amplitude() const
-{
-	return gameplay_.shake_amplitude;
 }
 
 MassDeltaResult Fck1cEfm::take_mass_delta()
@@ -122,7 +93,7 @@ void Fck1cEfm::set_invincible(bool enabled)
 	gameplay_.invincible = enabled;
 }
 
-void Fck1cEfm::apply_damage(const DamageEvent& event)
+DamageApplyResult Fck1cEfm::apply_damage(const DamageEvent& event)
 {
 	switch (event.area)
 	{
@@ -146,6 +117,7 @@ void Fck1cEfm::apply_damage(const DamageEvent& event)
 	{
 		Systems::refresh_damage_integrity(systems_.damage);
 	}
+	return { gameplay_.invincible };
 }
 
 void Fck1cEfm::apply_mass_input(const MassStateInput& input)

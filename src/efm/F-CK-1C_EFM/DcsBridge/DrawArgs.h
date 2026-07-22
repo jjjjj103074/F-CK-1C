@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Common/Clamp.h"
+#include "../Core/FrameContracts.h"
 #include "../DcsIds/DrawArgs.h"
 #include "../include/FM/wHumanCustomPhysicsAPI.h"
 #include <stddef.h>
@@ -23,6 +24,29 @@ struct DrawArgState
 	double slats_pos;
 	double wheel_spin[3];
 };
+
+inline DrawArgState make_draw_arg_state(const Core::FrameOutput& output)
+{
+	return {
+		output.landing_gear.gear_position,
+		output.landing_gear.nose_wheel_steering,
+		output.controls.elevator_command,
+		output.controls.flaps_position,
+		output.controls.aileron_command,
+		output.controls.rudder_command,
+		output.controls.airbrake_position,
+		output.engines[0].afterburner_ratio,
+		output.engines[1].afterburner_ratio,
+		output.engines[1].nozzle_aperture,
+		output.engines[0].nozzle_aperture,
+		output.controls.slats_position,
+		{
+			output.landing_gear.wheel_spin[0],
+			output.landing_gear.wheel_spin[1],
+			output.landing_gear.wheel_spin[2]
+		}
+	};
+}
 
 inline void set_draw_args(EdDrawArgument* drawargs, size_t size, const DrawArgState& state)
 {

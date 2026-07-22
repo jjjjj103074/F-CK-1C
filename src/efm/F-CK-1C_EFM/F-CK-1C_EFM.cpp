@@ -1,52 +1,32 @@
 // DCS EFM ABI callbacks. Keep this file limited to contract adaptation.
 #include "stdafx.h"
 #include "F-CK-1C_EFM.h"
+#include "Data/AircraftConfig.h"
 #include "DcsBridge/DcsCommandRouter.h"
 #include "DcsBridge/DcsDamageMapper.h"
-#include "DcsBridge/DcsModule.h"
-#include "DcsBridge/DcsRuntime.h"
-#include "DcsBridge/DcsSnapshots.h"
 #include "DcsBridge/DrawArgs.h"
 #include "DcsBridge/Internal/BoundaryValidator.h"
+#include "DcsBridge/Internal/BridgeContext.h"
 #include "DcsBridge/ParamExport.h"
 #include "include/FM/API_Declare.h"
 
 namespace
 {
-using DcsBridge::carrier_bridge;
-using DcsBridge::cockpit_bridge;
-using DcsBridge::efm;
-using DcsBridge::event_reporter;
-using DcsBridge::execution_mutex;
-using DcsBridge::input_collector;
-using DcsBridge::output_store;
-using DcsBridge::runtime;
-using DcsBridge::state_csv_writer;
+DcsBridge::Internal::BridgeContext& bridge(const char* initial_config_path = nullptr)
+{
+	static const int module_address_anchor = 0;
+	// Process lifetime prevents destructor I/O and thread joins under loader lock.
+	static auto* owner = new DcsBridge::Internal::BridgeContextOwner({
+		ed_get_cockpit_param_api,
+		Data::fck1c_aircraft_config(),
+		&module_address_anchor
+	});
+	return owner->get(initial_config_path);
+}
 
 void ensure_module_initialized()
 {
-	(void)DcsBridge::event_log();
-}
-
-template <typename Action>
-bool perform_core_action(
-	const DcsBridge::Internal::CallbackContext& context,
-	const Action& action)
-{
-	bool released = false;
-	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		released = output_store().is_released();
-		if (!released)
-		{
-			action(efm());
-		}
-	}
-	if (released)
-	{
-		event_reporter().log_callback_lifecycle_error(context, "released");
-	}
-	return !released;
+	(void)bridge();
 }
 
 template <typename Query>
@@ -55,7 +35,7 @@ double query_core_double(
 	const Query& query)
 {
 	double result = 0.0;
-	const bool completed = perform_core_action(
+	const bool completed = bridge().perform_core_action(
 		context,
 		[&result, &query](Core::Fck1cEfm& core) { result = query(core); });
 	return completed ? result : 0.0;
@@ -66,14 +46,29 @@ void start_efm(Core::StartMode mode)
 	ensure_module_initialized();
 	Core::FrameOutput output;
 	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		input_collector().reset();
-		output = efm().start(mode);
-		output_store().publish(output);
-		state_csv_writer().publish_start(output);
+		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
+		bridge().input_collector().reset();
+		output = bridge().core().start(mode);
+		bridge().output_store().publish(output);
+		bridge().state_csv_writer().publish_start(output);
 	}
-	carrier_bridge().reset();
-	event_reporter().log_start(mode, output.simulation_time_s);
+	bridge().carrier_bridge().reset();
+	bridge().event_reporter().log_start(mode, output.simulation_time_s);
+}
+
+Core::SuspensionFeedbackInput make_suspension_feedback(
+	int index,
+	const ed_fm_suspension_info& info)
+{
+	return {
+		index,
+		{ info.acting_force[0], info.acting_force[1], info.acting_force[2] },
+		{ info.acting_force_point[0], info.acting_force_point[1],
+			info.acting_force_point[2] },
+		info.integrity_factor,
+		info.struct_compression,
+		info.wheel_speed_X
+	};
 }
 
 }
@@ -88,7 +83,7 @@ void ed_fm_add_local_force(
 	double& pos_z)
 {
 	ensure_module_initialized();
-	const std::optional<Core::FrameOutput> output = output_store().read();
+	const std::optional<Core::FrameOutput> output = bridge().output_store().read();
 	if (!output)
 	{
 		x = 0.0;
@@ -97,7 +92,7 @@ void ed_fm_add_local_force(
 		pos_x = 0.0;
 		pos_y = 0.0;
 		pos_z = 0.0;
-		event_reporter().log_unavailable_output({ "ed_fm_add_local_force" });
+		bridge().event_reporter().log_unavailable_output({ "ed_fm_add_local_force" });
 		return;
 	}
 	const Core::ForceMomentOutput& frame = output->force_moment;
@@ -112,13 +107,13 @@ void ed_fm_add_local_force(
 void ed_fm_add_local_moment(double& x, double& y, double& z)
 {
 	ensure_module_initialized();
-	const std::optional<Core::FrameOutput> output = output_store().read();
+	const std::optional<Core::FrameOutput> output = bridge().output_store().read();
 	if (!output)
 	{
 		x = 0.0;
 		y = 0.0;
 		z = 0.0;
-		event_reporter().log_unavailable_output({ "ed_fm_add_local_moment" });
+		bridge().event_reporter().log_unavailable_output({ "ed_fm_add_local_moment" });
 		return;
 	}
 	const Core::ForceMomentOutput& frame = output->force_moment;
@@ -132,38 +127,39 @@ void ed_fm_simulate(double dt)
 	ensure_module_initialized();
 	if (!Core::is_valid_frame_dt(dt))
 	{
-		event_reporter().log_invalid_frame_dt(dt);
+		bridge().event_reporter().log_invalid_frame_dt(dt);
 		return;
 	}
-	if (!output_store().read())
+	if (!bridge().output_store().read())
 	{
-		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
+		bridge().event_reporter().log_unavailable_output({ "ed_fm_simulate" });
 		return;
 	}
 	const DcsBridge::Internal::CockpitStepInput cockpit =
-		cockpit_bridge().read_step_input();
-	event_reporter().log_cockpit_parameter_events(cockpit.events);
+		bridge().cockpit_bridge().read_step_input();
+	bridge().event_reporter().log_cockpit_parameter_events(cockpit.events);
 	Core::FrameOutput output;
 	bool output_available = false;
 	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		output_available = output_store().read().has_value();
+		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
+		output_available = bridge().output_store().read().has_value();
 		if (output_available)
 		{
-			input_collector().publish_autopilot(cockpit.autopilot);
-			input_collector().publish_max_power(cockpit.max_power);
-			output = efm().step(input_collector().snapshot(dt));
-			output_store().publish(output);
-			state_csv_writer().publish_step(output);
+			bridge().input_collector().publish_autopilot(cockpit.autopilot);
+			bridge().input_collector().publish_max_power(cockpit.max_power);
+			output = bridge().core().step(bridge().input_collector().snapshot(dt));
+			bridge().output_store().publish(output);
+			bridge().state_csv_writer().publish_step(output);
 		}
 	}
 	if (!output_available)
 	{
-		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
+		bridge().event_reporter().log_unavailable_output({ "ed_fm_simulate" });
 		return;
 	}
-	event_reporter().log_cockpit_parameter_events(
-		cockpit_bridge().export_temperature(output.flight.atmosphere_temperature_k));
+	bridge().event_reporter().log_cockpit_parameter_events(
+		bridge().cockpit_bridge().export_temperature(
+			output.flight.atmosphere_temperature_k));
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -186,8 +182,9 @@ void ed_fm_set_atmosphere(
 		p,
 		Common::Vec3(wind_vx, wind_vy, wind_vz)
 	};
-	if (!DcsBridge::Internal::validate_atmosphere_input(input, event_reporter())) return;
-	input_collector().publish_atmosphere(input);
+	if (!DcsBridge::Internal::validate_atmosphere_input(
+		input, bridge().event_reporter())) return;
+	bridge().input_collector().publish_atmosphere(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -206,8 +203,9 @@ void ed_fm_set_surface(
 		surface_type,
 		Common::Vec3(normal_x, normal_y, normal_z)
 	};
-	if (!DcsBridge::Internal::validate_surface_input(input, event_reporter())) return;
-	input_collector().publish_surface(input);
+	if (!DcsBridge::Internal::validate_surface_input(
+		input, bridge().event_reporter())) return;
+	bridge().input_collector().publish_surface(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -226,8 +224,9 @@ void ed_fm_set_current_mass_state(
 		Common::Vec3(center_of_mass_x, center_of_mass_y, center_of_mass_z),
 		Common::Vec3(moment_of_inertia_x, moment_of_inertia_y, moment_of_inertia_z)
 	};
-	if (!DcsBridge::Internal::validate_mass_input(input, event_reporter())) return;
-	input_collector().publish_mass(input);
+	if (!DcsBridge::Internal::validate_mass_input(
+		input, bridge().event_reporter())) return;
+	bridge().input_collector().publish_mass(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -262,8 +261,8 @@ void ed_fm_set_current_state(
 		{ quaternion_x, quaternion_y, quaternion_z, quaternion_w }
 	};
 	if (!DcsBridge::Internal::validate_world_kinematics_input(
-		input, event_reporter())) return;
-	input_collector().publish_world_kinematics(input);
+		input, bridge().event_reporter())) return;
+	bridge().input_collector().publish_world_kinematics(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -303,8 +302,8 @@ void ed_fm_set_current_state_body_axis(
 		common_angle_of_slide
 	};
 	if (!DcsBridge::Internal::validate_body_kinematics_input(
-		input, event_reporter())) return;
-	input_collector().publish_body_kinematics(input);
+		input, bridge().event_reporter())) return;
+	bridge().input_collector().publish_body_kinematics(input);
 }
 
 void ed_fm_set_command(int command, float value)
@@ -312,8 +311,8 @@ void ed_fm_set_command(int command, float value)
 	ensure_module_initialized();
 	const DcsBridge::DcsCommandMapping mapping = DcsBridge::map_command(command, value);
 	if (!DcsBridge::Internal::validate_command_mapping(
-		{ command, value, mapping }, event_reporter())) return;
-	(void)perform_core_action(
+		{ command, value, mapping }, bridge().event_reporter())) return;
+	(void)bridge().perform_core_action(
 		{ "ed_fm_set_command", "command", command },
 		[&mapping](Core::Fck1cEfm& core) { core.handle_command(mapping.command); });
 }
@@ -335,16 +334,16 @@ bool ed_fm_change_mass(
 	Core::MassDeltaResult result;
 	bool released = false;
 	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		released = output_store().is_released();
+		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
+		released = bridge().output_store().is_released();
 		if (!released)
 		{
-			result = efm().take_mass_delta();
+			result = bridge().core().take_mass_delta();
 		}
 	}
 	if (released)
 	{
-		event_reporter().log_callback_lifecycle_error(
+		bridge().event_reporter().log_callback_lifecycle_error(
 			{ "ed_fm_change_mass" },
 			"released");
 		return false;
@@ -367,8 +366,8 @@ void ed_fm_set_internal_fuel(double fuel)
 {
 	ensure_module_initialized();
 	if (!DcsBridge::Internal::validate_internal_fuel_input(
-		fuel, event_reporter())) return;
-	(void)perform_core_action(
+		fuel, bridge().event_reporter())) return;
+	(void)bridge().perform_core_action(
 		{ "ed_fm_set_internal_fuel" },
 		[fuel](Core::Fck1cEfm& core) { core.set_internal_fuel(fuel); });
 }
@@ -391,8 +390,8 @@ void ed_fm_set_external_fuel(int station, double fuel, double x, double y, doubl
 		Common::Vec3(x, y, z)
 	};
 	if (!DcsBridge::Internal::validate_external_fuel_input(
-		command, event_reporter())) return;
-	(void)perform_core_action(
+		command, bridge().event_reporter())) return;
+	(void)bridge().perform_core_action(
 		{ "ed_fm_set_external_fuel", "station", station },
 		[&command](Core::Fck1cEfm& core) { core.set_external_fuel(command); });
 }
@@ -408,30 +407,29 @@ double ed_fm_get_external_fuel()
 void ed_fm_set_draw_args(EdDrawArgument* drawargs, size_t size)
 {
 	ensure_module_initialized();
-	const std::optional<Core::FrameOutput> output = output_store().read();
+	const std::optional<Core::FrameOutput> output = bridge().output_store().read();
 	if (!output)
 	{
-		event_reporter().log_unavailable_output({ "ed_fm_set_draw_args" });
+		bridge().event_reporter().log_unavailable_output({ "ed_fm_set_draw_args" });
 		return;
 	}
 	if (!DcsBridge::Internal::validate_draw_args_buffer(
-		drawargs, size, event_reporter())) return;
+		drawargs, size, bridge().event_reporter())) return;
 	DcsBridge::set_draw_args(drawargs, size, DcsBridge::make_draw_arg_state(*output));
 }
 
 void ed_fm_configure(const char* cfg_path)
 {
-	DcsBridge::configure_module(cfg_path);
-	event_reporter().log_configure(cfg_path);
+	bridge(cfg_path).event_reporter().log_configure(cfg_path);
 }
 
 double ed_fm_get_param(unsigned index)
 {
 	ensure_module_initialized();
-	const std::optional<Core::FrameOutput> output = output_store().read();
+	const std::optional<Core::FrameOutput> output = bridge().output_store().read();
 	if (!output)
 	{
-		event_reporter().log_unavailable_output(
+		bridge().event_reporter().log_unavailable_output(
 			{ "ed_fm_get_param", "index", index });
 		return 0.0;
 	}
@@ -440,14 +438,14 @@ double ed_fm_get_param(unsigned index)
 		DcsBridge::missing_param_data(index, state);
 	if (missing_data)
 	{
-		event_reporter().log_missing_param_data(
+		bridge().event_reporter().log_missing_param_data(
 			index, DcsBridge::param_data_category_name(*missing_data));
 		return 0.0;
 	}
 	const std::optional<double> value = DcsBridge::get_param(index, state);
 	if (!value)
 	{
-		event_reporter().log_missing_param(index);
+		bridge().event_reporter().log_missing_param(index);
 		return 0.0;
 	}
 	return *value;
@@ -457,8 +455,8 @@ void ed_fm_refueling_add_fuel(double fuel)
 {
 	ensure_module_initialized();
 	if (!DcsBridge::Internal::validate_refueling_fuel_input(
-		fuel, event_reporter())) return;
-	(void)perform_core_action(
+		fuel, bridge().event_reporter())) return;
+	(void)bridge().perform_core_action(
 		{ "ed_fm_refueling_add_fuel" },
 		[fuel](Core::Fck1cEfm& core) { core.add_refueling_fuel(fuel); });
 }
@@ -466,7 +464,7 @@ void ed_fm_refueling_add_fuel(double fuel)
 void ed_fm_unlimited_fuel(bool value)
 {
 	ensure_module_initialized();
-	(void)perform_core_action(
+	(void)bridge().perform_core_action(
 		{ "ed_fm_unlimited_fuel" },
 		[value](Core::Fck1cEfm& core) { core.set_infinite_fuel(value); });
 }
@@ -474,7 +472,7 @@ void ed_fm_unlimited_fuel(bool value)
 void ed_fm_set_easy_flight(bool value)
 {
 	ensure_module_initialized();
-	(void)perform_core_action(
+	(void)bridge().perform_core_action(
 		{ "ed_fm_set_easy_flight" },
 		[value](Core::Fck1cEfm& core) { core.set_easy_flight(value); });
 }
@@ -482,7 +480,7 @@ void ed_fm_set_easy_flight(bool value)
 void ed_fm_set_immortal(bool value)
 {
 	ensure_module_initialized();
-	(void)perform_core_action(
+	(void)bridge().perform_core_action(
 		{ "ed_fm_set_immortal" },
 		[value](Core::Fck1cEfm& core) { core.set_invincible(value); });
 }
@@ -491,24 +489,23 @@ void ed_fm_on_damage(int element, double integrity)
 {
 	ensure_module_initialized();
 	if (!DcsBridge::Internal::validate_damage_input(
-		integrity, event_reporter())) return;
+		integrity, bridge().event_reporter())) return;
 	const DcsBridge::DcsDamageMapping mapping = DcsBridge::map_damage(element, integrity);
 	if (!mapping.mapped)
 	{
-		event_reporter().log_invalid_index("ed_fm_on_damage", element);
+		bridge().event_reporter().log_invalid_index("ed_fm_on_damage", element);
 		return;
 	}
-	Core::Fck1cEfmSnapshot snapshot;
-	const bool completed = perform_core_action(
+	Core::DamageApplyResult result;
+	const bool completed = bridge().perform_core_action(
 		{ "ed_fm_on_damage", "element", element },
-		[&mapping, &snapshot](Core::Fck1cEfm& core)
+		[&mapping, &result](Core::Fck1cEfm& core)
 		{
-			core.apply_damage(mapping.event);
-			snapshot = core.snapshot();
+			result = core.apply_damage(mapping.event);
 		});
 	if (completed)
 	{
-		event_reporter().log_damage(snapshot, element, integrity);
+		bridge().event_reporter().log_damage(result, element, integrity);
 	}
 }
 
@@ -516,17 +513,19 @@ void ed_fm_suspension_feedback(int index, const ed_fm_suspension_info* info)
 {
 	ensure_module_initialized();
 	if (!DcsBridge::Internal::validate_suspension_feedback(
-		index, info, event_reporter())) return;
-	if (!runtime().publish_suspension_feedback(input_collector(), index, info))
+		index, info, bridge().event_reporter())) return;
+	const Core::SuspensionFeedbackInput feedback =
+		make_suspension_feedback(index, *info);
+	if (!bridge().input_collector().publish_suspension(feedback))
 	{
-		event_reporter().log_suspension_feedback_error(index, info == nullptr);
+		bridge().event_reporter().log_suspension_feedback_error(index, false);
 	}
 }
 
 void ed_fm_repair()
 {
 	ensure_module_initialized();
-	(void)perform_core_action(
+	(void)bridge().perform_core_action(
 		{ "ed_fm_repair" },
 		[](Core::Fck1cEfm& core) { core.repair(); });
 }
@@ -537,17 +536,17 @@ bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 	std::optional<Core::FrameOutput> output;
 	bool released = false;
 	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		released = output_store().is_released();
+		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
+		released = bridge().output_store().is_released();
 		if (!released)
 		{
-			output = output_store().read();
+			output = bridge().output_store().read();
 		}
 	}
 	if (released)
 	{
 		out = {};
-		event_reporter().log_callback_lifecycle_error(
+		bridge().event_reporter().log_callback_lifecycle_error(
 			{ "ed_fm_pop_simulation_event" },
 			"released");
 		return false;
@@ -556,7 +555,7 @@ bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 	{
 		return false;
 	}
-	return carrier_bridge().pop_event(
+	return bridge().carrier_bridge().pop_event(
 		{ output->engines[0].throttle_output },
 		out);
 }
@@ -565,8 +564,8 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 {
 	ensure_module_initialized();
 	if (!DcsBridge::Internal::validate_simulation_event_input(
-		in, event_reporter())) return false;
-	return carrier_bridge().push_event(in);
+		in, bridge().event_reporter())) return false;
+	return bridge().carrier_bridge().push_event(in);
 }
 
 void ed_fm_cold_start()
@@ -590,36 +589,37 @@ void ed_fm_release()
 	std::optional<double> final_simulation_time;
 	bool released = false;
 	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		released = output_store().is_released();
+		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
+		released = bridge().output_store().is_released();
 		if (!released)
 		{
-			const std::optional<Core::FrameOutput> output = output_store().read();
+			const std::optional<Core::FrameOutput> output =
+				bridge().output_store().read();
 			if (output)
 			{
 				final_simulation_time = output->simulation_time_s;
 			}
-			efm().release();
-			output_store().mark_released();
+			bridge().core().release();
+			bridge().output_store().mark_released();
 		}
 	}
 	if (released)
 	{
-		event_reporter().log_callback_lifecycle_error(
+		bridge().event_reporter().log_callback_lifecycle_error(
 			{ "ed_fm_release" },
 			"released");
 		return;
 	}
-	event_reporter().log_release(final_simulation_time);
+	bridge().event_reporter().log_release(final_simulation_time);
 }
 
 double ed_fm_get_shake_amplitude()
 {
 	ensure_module_initialized();
-	const std::optional<Core::FrameOutput> output = output_store().read();
+	const std::optional<Core::FrameOutput> output = bridge().output_store().read();
 	if (!output)
 	{
-		event_reporter().log_unavailable_output(
+		bridge().event_reporter().log_unavailable_output(
 			{ "ed_fm_get_shake_amplitude" });
 		return 0.0;
 	}

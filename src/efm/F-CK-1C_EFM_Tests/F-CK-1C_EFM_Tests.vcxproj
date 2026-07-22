@@ -66,7 +66,7 @@
     <ClCompile Include="CockpitBridgeTests.cpp" />
     <ClCompile Include="DcsCommandRouterTests.cpp" />
     <ClCompile Include="DcsDamageMapperTests.cpp" />
-    <ClCompile Include="DcsSnapshotsTests.cpp" />
+    <ClCompile Include="OutputAdapterTests.cpp" />
     <ClCompile Include="EngineSystemTests.cpp" />
 	<ClCompile Include="EventLogTests.cpp" />
 	<ClCompile Include="StateCsvWriterTests.cpp" />
@@ -99,8 +99,6 @@
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\OutputStore.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\StateCsvWriter.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsRuntime.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsSnapshots.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWController.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWLifecycle.cpp" />
   </ItemGroup>

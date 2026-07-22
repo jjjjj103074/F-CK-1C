@@ -1,6 +1,7 @@
 #include "TestHarness.h"
 
-#include "DcsBridge/DcsSnapshots.h"
+#include "DcsBridge/DrawArgs.h"
+#include "DcsBridge/ParamExport.h"
 
 namespace
 {
@@ -25,7 +26,7 @@ Core::FrameOutput make_frame_output()
 	return output;
 }
 
-void test_draw_arg_snapshot(Tests::Context& context)
+void test_draw_arg_projection(Tests::Context& context)
 {
 	const DcsBridge::DrawArgState state =
 		DcsBridge::make_draw_arg_state(make_frame_output());
@@ -46,7 +47,7 @@ void test_draw_arg_snapshot(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, state.wheel_spin[2], 3.0, kTolerance);
 }
 
-void test_param_snapshot(Tests::Context& context)
+void test_param_projection(Tests::Context& context)
 {
 	const DcsBridge::ParamExportState state =
 		DcsBridge::make_param_export_state(make_frame_output());
@@ -76,19 +77,18 @@ void test_param_snapshot(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, state.total_fuel, 1100.0, kTolerance);
 }
 
-void test_param_snapshot_without_suspension(Tests::Context& context)
+void test_unavailable_projection_metadata(Tests::Context& context)
 {
 	const DcsBridge::ParamExportState state =
 		DcsBridge::make_param_export_state(Core::FrameOutput());
 	TEST_EXPECT(context, !state.suspension_feedback_available);
 	TEST_EXPECT(context, !state.atmosphere_available);
 }
-
 }
 
-void run_dcs_snapshots_tests(Tests::Context& context)
+void run_output_adapter_tests(Tests::Context& context)
 {
-	test_draw_arg_snapshot(context);
-	test_param_snapshot(context);
-	test_param_snapshot_without_suspension(context);
+	test_draw_arg_projection(context);
+	test_param_projection(context);
+	test_unavailable_projection_metadata(context);
 }

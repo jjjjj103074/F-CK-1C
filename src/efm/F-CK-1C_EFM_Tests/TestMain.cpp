@@ -8,7 +8,7 @@ void run_cockpit_bridge_tests(Tests::Context& context);
 void run_aerodynamics_system_tests(Tests::Context& context);
 void run_dcs_command_router_tests(Tests::Context& context);
 void run_dcs_damage_mapper_tests(Tests::Context& context);
-void run_dcs_snapshots_tests(Tests::Context& context);
+void run_output_adapter_tests(Tests::Context& context);
 void run_airframe_device_system_tests(Tests::Context& context);
 void run_engine_system_tests(Tests::Context& context);
 void run_event_log_tests(Tests::Context& context);
@@ -38,7 +38,7 @@ int main()
 	run_landing_gear_system_tests(context);
 	run_dcs_command_router_tests(context);
 	run_dcs_damage_mapper_tests(context);
-	run_dcs_snapshots_tests(context);
+	run_output_adapter_tests(context);
 	run_mass_delta_tests(context);
 	run_output_store_tests(context);
 	run_param_export_tests(context);

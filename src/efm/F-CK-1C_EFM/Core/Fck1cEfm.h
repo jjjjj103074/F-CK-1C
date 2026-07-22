@@ -56,17 +56,6 @@ struct Fck1cEfmSystems
 	Systems::FBWControllerState fbw;
 };
 
-struct Fck1cEfmSnapshot
-{
-	AircraftState aircraft;
-	ForceMomentFrame force_moment;
-	ControlSurfaceState control_surfaces;
-	GameplayState gameplay;
-	Fck1cEfmSystems systems;
-	bool suspension_feedback_available = false;
-	bool any_weight_on_wheels = false;
-};
-
 enum class CommandGroup
 {
 	PitchRoll,
@@ -151,6 +140,11 @@ struct DamageEvent
 	double integrity = 1.0;
 };
 
+struct DamageApplyResult
+{
+	bool invincible = false;
+};
+
 struct MassDelta
 {
 	double mass = 0.0;
@@ -171,14 +165,10 @@ public:
 	Fck1cEfm(const Fck1cEfm&) = delete;
 	Fck1cEfm& operator=(const Fck1cEfm&) = delete;
 
-	const Data::AircraftConfig& config() const;
-	Fck1cEfmSnapshot snapshot() const;
 	FrameOutput start(StartMode mode);
 	FrameOutput step(const FrameInput& input);
-	ForceMomentFrame force_moment_output() const;
 	double internal_fuel() const;
 	double external_fuel() const;
-	double shake_amplitude() const;
 
 	void handle_command(const EfmCommand& command);
 	MassDeltaResult take_mass_delta();
@@ -188,7 +178,7 @@ public:
 	void set_infinite_fuel(bool enabled);
 	void set_easy_flight(bool enabled);
 	void set_invincible(bool enabled);
-	void apply_damage(const DamageEvent& event);
+	DamageApplyResult apply_damage(const DamageEvent& event);
 	void release();
 	void repair();
 

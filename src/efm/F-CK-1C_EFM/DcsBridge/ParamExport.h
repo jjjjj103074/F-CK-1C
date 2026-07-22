@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Common/Clamp.h"
+#include "../Core/FrameContracts.h"
 #include "../DcsIds/ParamIds.h"
 #include <cmath>
 #include <optional>
@@ -34,6 +35,44 @@ struct ParamExportState
 	double internal_fuel;
 	double total_fuel;
 };
+
+inline ParamExportState make_param_export_state(const Core::FrameOutput& output)
+{
+	const bool suspension_available =
+		output.availability.suspension[0] ||
+		output.availability.suspension[1] ||
+		output.availability.suspension[2];
+	return {
+		suspension_available,
+		output.availability.atmosphere,
+		output.suspension.any_weight_on_wheels,
+		output.landing_gear.gear_position,
+		output.landing_gear.nose_wheel_steering,
+		{
+			output.landing_gear.wheel_spin[0],
+			output.landing_gear.wheel_spin[1],
+			output.landing_gear.wheel_spin[2]
+		},
+		output.landing_gear.brake_left,
+		output.landing_gear.brake_right,
+		output.controls.pitch_input,
+		output.controls.roll_input,
+		output.controls.yaw_input,
+		output.engines[0].switch_on,
+		output.engines[1].switch_on,
+		output.engines[0].throttle_input,
+		output.engines[1].throttle_input,
+		output.engines[0].throttle_output,
+		output.engines[1].throttle_output,
+		output.engines[0].power_readout,
+		output.engines[1].power_readout,
+		output.engines[0].thrust_force,
+		output.engines[1].thrust_force,
+		output.flight.atmosphere_temperature_k,
+		output.fuel.internal_fuel,
+		output.fuel.total_fuel
+	};
+}
 
 enum class ParamDataCategory
 {

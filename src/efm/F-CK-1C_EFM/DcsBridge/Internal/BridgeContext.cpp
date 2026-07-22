@@ -80,11 +80,6 @@ CarrierBridge& BridgeContext::carrier_bridge()
 	return carrier_bridge_;
 }
 
-DcsRuntime& BridgeContext::runtime()
-{
-	return runtime_;
-}
-
 std::mutex& BridgeContext::execution_mutex()
 {
 	return execution_mutex_;

@@ -200,12 +200,17 @@ void test_execution_mutex_serializes_core_actions(Tests::Context& tests)
 		{
 			for (int action = 0; action < kCoreActionsPerCallback; ++action)
 			{
-				const std::lock_guard<std::mutex> lock(context.execution_mutex());
-				const int active = ++active_actions;
-				peak_actions.store((std::max)(peak_actions.load(), active));
-				context.core().set_easy_flight((action % 2) == 0);
-				++completed_actions;
-				--active_actions;
+				(void)context.perform_core_action(
+					{ "test_execution_mutex_serializes_core_actions" },
+					[&active_actions, &peak_actions, &completed_actions, action](
+						Core::Fck1cEfm& core)
+					{
+						const int active = ++active_actions;
+						peak_actions.store((std::max)(peak_actions.load(), active));
+						core.set_easy_flight((action % 2) == 0);
+						++completed_actions;
+						--active_actions;
+					});
 			}
 		});
 	}
@@ -219,6 +224,28 @@ void test_execution_mutex_serializes_core_actions(Tests::Context& tests)
 		completed_actions.load() ==
 			static_cast<int>(kConcurrentCallbackCount) * kCoreActionsPerCallback);
 }
+
+void test_core_action_rejects_released_flight(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcr");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotGround);
+	release_flight(context);
+	bool action_executed = false;
+	const bool completed = context.perform_core_action(
+		{ "test_released_action" },
+		[&action_executed](Core::Fck1cEfm&) { action_executed = true; });
+	TEST_EXPECT(tests, !completed);
+	TEST_EXPECT(tests, !action_executed);
+	const std::string log = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(tests, log.find(
+		"callback=test_released_action invalid lifecycle state=released") !=
+		std::string::npos);
+}
 }
 
 void run_bridge_context_tests(Tests::Context& context)
@@ -228,4 +255,5 @@ void run_bridge_context_tests(Tests::Context& context)
 	test_release_then_start_reuses_context(context);
 	test_concurrent_first_callbacks_share_context(context);
 	test_execution_mutex_serializes_core_actions(context);
+	test_core_action_rejects_released_flight(context);
 }

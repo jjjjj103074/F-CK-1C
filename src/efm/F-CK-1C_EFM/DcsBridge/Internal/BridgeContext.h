@@ -7,7 +7,6 @@
 #include "FrameInputCollector.h"
 #include "OutputStore.h"
 #include "StateCsvWriter.h"
-#include "../DcsRuntime.h"
 #include "../ModulePaths.h"
 #include "../../Core/Fck1cEfm.h"
 
@@ -43,9 +42,29 @@ public:
 	EfmEventReporter& event_reporter();
 	CockpitBridge& cockpit_bridge();
 	CarrierBridge& carrier_bridge();
-	DcsRuntime& runtime();
 	std::mutex& execution_mutex();
 	Core::Fck1cEfm& core();
+
+	template <typename Action>
+	bool perform_core_action(
+		const CallbackContext& context,
+		const Action& action)
+	{
+		bool released = false;
+		{
+			const std::lock_guard<std::mutex> lock(execution_mutex_);
+			released = output_store_.is_released();
+			if (!released)
+			{
+				action(core_);
+			}
+		}
+		if (released)
+		{
+			event_reporter_.log_callback_lifecycle_error(context, "released");
+		}
+		return !released;
+	}
 
 private:
 	ModulePaths module_paths_;
@@ -56,7 +75,6 @@ private:
 	EfmEventReporter event_reporter_;
 	CockpitBridge cockpit_bridge_;
 	CarrierBridge carrier_bridge_;
-	DcsRuntime runtime_;
 	std::mutex execution_mutex_;
 	Core::Fck1cEfm core_;
 };
