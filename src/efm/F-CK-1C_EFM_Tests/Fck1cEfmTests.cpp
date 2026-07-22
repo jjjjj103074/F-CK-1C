@@ -1,7 +1,6 @@
 #include "TestHarness.h"
 
 #include "Core/Fck1cEfm.h"
-#include "DcsBridge/DcsSnapshots.h"
 
 #include <limits>
 #include <stdexcept>
@@ -204,53 +203,6 @@ void expect_availability(
 	}
 }
 
-void expect_existing_draw_output(
-	Tests::Context& context,
-	const Core::FrameOutput& actual,
-	const Core::Fck1cEfmSnapshot& snapshot)
-{
-	const DcsBridge::DrawArgState expected = DcsBridge::make_draw_arg_state(snapshot);
-	TEST_EXPECT_NEAR(context, actual.landing_gear.gear_position, expected.gear_pos, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.landing_gear.nose_wheel_steering, expected.nose_wheel_steering, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.elevator_command, expected.elevator_command, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.flaps_position, expected.flaps_pos, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.aileron_command, expected.aileron_command, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.rudder_command, expected.rudder_command, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.airbrake_position, expected.airbrake_pos, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.engines[0].afterburner_ratio, expected.left_afterburner_ratio, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.engines[1].afterburner_ratio, expected.right_afterburner_ratio, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.engines[0].nozzle_aperture, expected.left_nozzle_aperture, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.engines[1].nozzle_aperture, expected.right_nozzle_aperture, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.slats_position, expected.slats_pos, kTolerance);
-	for (std::size_t index = 0; index < actual.landing_gear.wheel_spin.size(); ++index)
-	{
-		TEST_EXPECT_NEAR(context, actual.landing_gear.wheel_spin[index], expected.wheel_spin[index], kTolerance);
-	}
-}
-
-void expect_existing_param_output(
-	Tests::Context& context,
-	const Core::FrameOutput& actual,
-	const Core::Fck1cEfmSnapshot& snapshot)
-{
-	const DcsBridge::ParamExportState expected = DcsBridge::make_param_export_state(snapshot);
-	TEST_EXPECT(context, actual.suspension.any_weight_on_wheels == expected.any_weight_on_wheels);
-	TEST_EXPECT_NEAR(context, actual.landing_gear.brake_left, expected.wheel_brake_left, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.landing_gear.brake_right, expected.wheel_brake_right, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.pitch_input, expected.pitch_input, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.roll_input, expected.roll_input, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.controls.yaw_input, expected.yaw_input, kTolerance);
-	TEST_EXPECT(context, actual.engines[0].switch_on == expected.left_engine_switch);
-	TEST_EXPECT(context, actual.engines[1].switch_on == expected.right_engine_switch);
-	TEST_EXPECT_NEAR(context, actual.engines[0].throttle_input, expected.left_throttle_input, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.engines[1].throttle_input, expected.right_throttle_input, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.engines[0].power_readout, expected.left_engine_power_readout, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.engines[1].power_readout, expected.right_engine_power_readout, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.flight.atmosphere_temperature_k, expected.atmosphere_temperature, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.fuel.internal_fuel, expected.internal_fuel, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel, expected.total_fuel, kTolerance);
-}
-
 void expect_start_specific_output(
 	Tests::Context& context,
 	const Core::FrameOutput& output,
@@ -414,8 +366,6 @@ void test_frame_output_matches_existing_outputs(Tests::Context& context)
 	const Core::Fck1cEfmSnapshot snapshot = efm.snapshot();
 	expect_availability(context, output.availability, input.availability);
 	expect_frame_matches_snapshot(context, output, snapshot);
-	expect_existing_draw_output(context, output, snapshot);
-	expect_existing_param_output(context, output, snapshot);
 	TEST_EXPECT_NEAR(context, output.simulation_time_s, input.dt_s, kTolerance);
 }
 

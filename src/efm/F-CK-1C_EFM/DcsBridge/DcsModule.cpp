@@ -15,6 +15,8 @@ public:
 
 	DcsBridge::DcsRuntime runtime_;
 	DcsBridge::Internal::FrameInputCollector input_collector_;
+	DcsBridge::Internal::OutputStore output_store_;
+	std::mutex execution_mutex_;
 	Core::Fck1cEfm efm_;
 };
 
@@ -40,5 +42,15 @@ DcsRuntime& runtime()
 Internal::FrameInputCollector& input_collector()
 {
 	return module_state().input_collector_;
+}
+
+Internal::OutputStore& output_store()
+{
+	return module_state().output_store_;
+}
+
+std::mutex& execution_mutex()
+{
+	return module_state().execution_mutex_;
 }
 }

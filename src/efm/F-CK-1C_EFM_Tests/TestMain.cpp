@@ -14,6 +14,7 @@ void run_immutable_data_tests(Tests::Context& context);
 void run_input_system_tests(Tests::Context& context);
 void run_landing_gear_system_tests(Tests::Context& context);
 void run_mass_delta_tests(Tests::Context& context);
+void run_output_store_tests(Tests::Context& context);
 void run_param_export_tests(Tests::Context& context);
 void run_simulation_event_tests(Tests::Context& context);
 void run_suspension_system_tests(Tests::Context& context);
@@ -30,6 +31,7 @@ int main()
 	run_dcs_damage_mapper_tests(context);
 	run_dcs_snapshots_tests(context);
 	run_mass_delta_tests(context);
+	run_output_store_tests(context);
 	run_param_export_tests(context);
 	run_simulation_event_tests(context);
 	run_suspension_system_tests(context);

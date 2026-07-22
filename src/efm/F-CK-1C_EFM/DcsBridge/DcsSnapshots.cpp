@@ -2,63 +2,63 @@
 
 namespace DcsBridge
 {
-DrawArgState make_draw_arg_state(const Core::Fck1cEfmSnapshot& snapshot)
+DrawArgState make_draw_arg_state(const Core::FrameOutput& output)
 {
-	const Core::Fck1cEfmSystems& systems = snapshot.systems;
-	const Core::ControlSurfaceState& controls = snapshot.control_surfaces;
 	return {
-		systems.landing_gear.position,
-		systems.landing_gear.wheels.nose_steering,
-		controls.elevator_command,
-		systems.airframe_devices.flaps_pos,
-		controls.aileron_command,
-		controls.rudder_command,
-		systems.airframe_devices.airbrake_pos,
-		systems.engines.left.afterburner_ratio,
-		systems.engines.right.afterburner_ratio,
-		systems.engines.right.nozzle_aperture,
-		systems.engines.left.nozzle_aperture,
-		systems.airframe_devices.slats_pos,
+		output.landing_gear.gear_position,
+		output.landing_gear.nose_wheel_steering,
+		output.controls.elevator_command,
+		output.controls.flaps_position,
+		output.controls.aileron_command,
+		output.controls.rudder_command,
+		output.controls.airbrake_position,
+		output.engines[0].afterburner_ratio,
+		output.engines[1].afterburner_ratio,
+		output.engines[1].nozzle_aperture,
+		output.engines[0].nozzle_aperture,
+		output.controls.slats_position,
 		{
-			systems.landing_gear.wheels.spin[0],
-			systems.landing_gear.wheels.spin[1],
-			systems.landing_gear.wheels.spin[2]
+			output.landing_gear.wheel_spin[0],
+			output.landing_gear.wheel_spin[1],
+			output.landing_gear.wheel_spin[2]
 		}
 	};
 }
 
-ParamExportState make_param_export_state(const Core::Fck1cEfmSnapshot& snapshot)
+ParamExportState make_param_export_state(const Core::FrameOutput& output)
 {
-	const Core::AircraftState& aircraft = snapshot.aircraft;
-	const Core::Fck1cEfmSystems& systems = snapshot.systems;
+	const bool suspension_available =
+		output.availability.suspension[0] ||
+		output.availability.suspension[1] ||
+		output.availability.suspension[2];
 	return {
-		snapshot.suspension_feedback_available,
-		snapshot.any_weight_on_wheels,
-		systems.landing_gear.position,
-		systems.landing_gear.wheels.nose_steering,
+		suspension_available,
+		output.suspension.any_weight_on_wheels,
+		output.landing_gear.gear_position,
+		output.landing_gear.nose_wheel_steering,
 		{
-			systems.landing_gear.wheels.spin[0],
-			systems.landing_gear.wheels.spin[1],
-			systems.landing_gear.wheels.spin[2]
+			output.landing_gear.wheel_spin[0],
+			output.landing_gear.wheel_spin[1],
+			output.landing_gear.wheel_spin[2]
 		},
-		systems.landing_gear.wheels.brake_left,
-		systems.landing_gear.wheels.brake_right,
-		systems.primary_controls.pitch.input,
-		systems.primary_controls.roll.input,
-		systems.primary_controls.yaw.input,
-		systems.engines.left.switch_on,
-		systems.engines.right.switch_on,
-		systems.engines.left.throttle_input,
-		systems.engines.right.throttle_input,
-		systems.engines.left.throttle_output,
-		systems.engines.right.throttle_output,
-		systems.engines.left.power_readout,
-		systems.engines.right.power_readout,
-		systems.engines.left.thrust_force,
-		systems.engines.right.thrust_force,
-		aircraft.atmosphere_temperature,
-		systems.fuel.internal_fuel,
-		systems.fuel.total_fuel
+		output.landing_gear.brake_left,
+		output.landing_gear.brake_right,
+		output.controls.pitch_input,
+		output.controls.roll_input,
+		output.controls.yaw_input,
+		output.engines[0].switch_on,
+		output.engines[1].switch_on,
+		output.engines[0].throttle_input,
+		output.engines[1].throttle_input,
+		output.engines[0].throttle_output,
+		output.engines[1].throttle_output,
+		output.engines[0].power_readout,
+		output.engines[1].power_readout,
+		output.engines[0].thrust_force,
+		output.engines[1].thrust_force,
+		output.flight.atmosphere_temperature_k,
+		output.fuel.internal_fuel,
+		output.fuel.total_fuel
 	};
 }
 
