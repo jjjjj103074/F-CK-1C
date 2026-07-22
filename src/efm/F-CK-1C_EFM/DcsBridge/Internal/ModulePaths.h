@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Common/PathUtils.h"
+#include "../../Common/PathUtils.h"
 #include <windows.h>
 
 namespace DcsBridge

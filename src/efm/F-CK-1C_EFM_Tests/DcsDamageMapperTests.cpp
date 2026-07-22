@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "DcsBridge/DcsDamageMapper.h"
+#include "DcsBridge/Internal/DcsDamageMapper.h"
 #include "DcsIds/DamageIds.h"
 
 namespace

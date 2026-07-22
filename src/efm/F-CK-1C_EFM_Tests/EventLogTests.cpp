@@ -3,7 +3,7 @@
 
 #include "DcsBridge/Internal/EfmEventReporter.h"
 #include "DcsBridge/Internal/EventLog.h"
-#include "Diagnostics/RuntimeDiagnostics.h"
+#include "DcsBridge/Internal/RuntimeDiagnostics.h"
 
 #include <atomic>
 #include <cctype>

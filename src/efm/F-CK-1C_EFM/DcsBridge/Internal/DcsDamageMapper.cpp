@@ -1,6 +1,6 @@
 #include "DcsDamageMapper.h"
 
-#include "../DcsIds/DamageIds.h"
+#include "../../DcsIds/DamageIds.h"
 
 #include <cstddef>
 

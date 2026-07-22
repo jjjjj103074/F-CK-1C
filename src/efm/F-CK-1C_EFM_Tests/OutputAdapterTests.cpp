@@ -1,7 +1,7 @@
 #include "TestHarness.h"
 
-#include "DcsBridge/DrawArgs.h"
-#include "DcsBridge/ParamExport.h"
+#include "DcsBridge/Internal/DrawArgs.h"
+#include "DcsBridge/Internal/ParamExport.h"
 
 namespace
 {

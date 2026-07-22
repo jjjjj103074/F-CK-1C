@@ -2,7 +2,7 @@
 
 #include "../../Core/Fck1cEfm.h"
 #include "../../include/FM/wHumanCustomPhysicsAPI.h"
-#include "../DcsCommandRouter.h"
+#include "DcsCommandRouter.h"
 
 #include <cstddef>
 

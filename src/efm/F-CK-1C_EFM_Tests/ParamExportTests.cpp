@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "DcsBridge/ParamExport.h"
+#include "DcsBridge/Internal/ParamExport.h"
 
 namespace
 {

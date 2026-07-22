@@ -1,6 +1,6 @@
 #include "DcsCommandRouter.h"
 
-#include "../DcsIds/Commands.h"
+#include "../../DcsIds/Commands.h"
 
 #include <cmath>
 #include <cstddef>

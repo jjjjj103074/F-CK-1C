@@ -7,10 +7,12 @@ DCS module.
 
 - `F-CK-1C_EFM.sln` - Visual Studio solution.
 - `F-CK-1C_EFM/F-CK-1C_EFM.vcxproj` - C++ dynamic library project.
-- `F-CK-1C_EFM/F-CK-1C_EFM.cpp` - main EFM implementation.
+- `F-CK-1C_EFM/DcsBridge/EfmExports.cpp` - DCS callback composition root.
+- `F-CK-1C_EFM/DcsBridge/README.md` - boundary data flow and contributor guide.
 - `F-CK-1C_EFM/Core/` - DCS-neutral simulation owner and pipeline.
 - `F-CK-1C_EFM/Systems/` - flight systems, including the active FBW controller.
 - `F-CK-1C_EFM/Data/` - immutable aircraft configuration and lookup tables.
+- `F-CK-1C_EFM/DcsBridge/Internal/` - private DCS adapters, lifecycle, log, and CSV implementation.
 - `F-CK-1C_EFM/include/` - DCS cockpit and flight model API headers.
 
 ## Build

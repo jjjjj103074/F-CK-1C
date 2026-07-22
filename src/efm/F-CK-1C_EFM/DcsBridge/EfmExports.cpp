@@ -1,14 +1,14 @@
 // DCS EFM ABI callbacks. Keep this file limited to contract adaptation.
-#include "stdafx.h"
-#include "F-CK-1C_EFM.h"
-#include "Data/AircraftConfig.h"
-#include "DcsBridge/DcsCommandRouter.h"
-#include "DcsBridge/DcsDamageMapper.h"
-#include "DcsBridge/DrawArgs.h"
-#include "DcsBridge/Internal/BoundaryValidator.h"
-#include "DcsBridge/Internal/BridgeContext.h"
-#include "DcsBridge/ParamExport.h"
-#include "include/FM/API_Declare.h"
+#include "../stdafx.h"
+#include "../F-CK-1C_EFM.h"
+#include "../Data/AircraftConfig.h"
+#include "Internal/BoundaryValidator.h"
+#include "Internal/BridgeContext.h"
+#include "Internal/DcsCommandRouter.h"
+#include "Internal/DcsDamageMapper.h"
+#include "Internal/DrawArgs.h"
+#include "Internal/ParamExport.h"
+#include "../include/FM/API_Declare.h"
 
 namespace
 {

@@ -7,12 +7,14 @@ module runtime.
 Important files:
 
 - F-CK-1C_EFM.vcxproj: Visual Studio C++ dynamic library project.
-- F-CK-1C_EFM.cpp: main EFM implementation.
+- DcsBridge/EfmExports.cpp: DCS callback composition root.
+- DcsBridge/README.md: boundary data flow and contributor guide.
 - F-CK-1C_EFM.h: exported DCS EFM function declarations.
 - F-CK-1C_EFM_API.h: DLL export/import macro.
 - Core/: DCS-neutral simulation owner and pipeline.
 - Systems/: active aircraft systems, including FBWController.
 - Data/: immutable aircraft configuration and aerodynamic/engine tables.
+- DcsBridge/Internal/: private DCS adapters, lifecycle, log, and CSV implementation.
 
 Build from the repository root with:
 

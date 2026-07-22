@@ -2,7 +2,7 @@
 
 #include "Core/Fck1cEfm.h"
 #include "Data/AircraftConfig.h"
-#include "DcsBridge/DcsCommandRouter.h"
+#include "DcsBridge/Internal/DcsCommandRouter.h"
 #include "DcsIds/Commands.h"
 
 #include <limits>

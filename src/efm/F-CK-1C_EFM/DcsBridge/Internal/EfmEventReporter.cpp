@@ -1,6 +1,6 @@
 #include "EfmEventReporter.h"
 
-#include "../../Diagnostics/RuntimeDiagnostics.h"
+#include "RuntimeDiagnostics.h"
 
 #include <cstdio>
 #include <limits>

@@ -62,6 +62,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
+    <None Include="DcsBridge\README.md" />
     <None Include="DcsIds\CommandIds.json" />
     <None Include="DcsIds\README.md" />
   </ItemGroup>
@@ -80,9 +81,9 @@
     <ClInclude Include="Data\AeroTables.h" />
     <ClInclude Include="Data\AircraftConfig.h" />
     <ClInclude Include="Data\EngineTables.h" />
-    <ClInclude Include="DcsBridge\DcsCommandRouter.h" />
-    <ClInclude Include="DcsBridge\DcsDamageMapper.h" />
-    <ClInclude Include="DcsBridge\DrawArgs.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsCommandRouter.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsDamageMapper.h" />
+	<ClInclude Include="DcsBridge\Internal\DrawArgs.h" />
 	<ClInclude Include="DcsBridge\Internal\BoundaryValidator.h" />
 	<ClInclude Include="DcsBridge\Internal\EfmEventReporter.h" />
 	<ClInclude Include="DcsBridge\Internal\EventLog.h" />
@@ -93,15 +94,15 @@
     <ClInclude Include="DcsBridge\Internal\FrameInputCollector.h" />
     <ClInclude Include="DcsBridge\Internal\OutputStore.h" />
     <ClInclude Include="DcsBridge\Internal\StateCsvWriter.h" />
-    <ClInclude Include="DcsBridge\ModulePaths.h" />
-    <ClInclude Include="DcsBridge\ParamExport.h" />
+	<ClInclude Include="DcsBridge\Internal\ModulePaths.h" />
+	<ClInclude Include="DcsBridge\Internal\ParamExport.h" />
+	<ClInclude Include="DcsBridge\Internal\RuntimeDiagnostics.h" />
     <ClInclude Include="DcsIds\CockpitParams.g.h" />
     <ClInclude Include="DcsIds\Commands.h" />
     <ClInclude Include="DcsIds\CustomCommands.g.h" />
     <ClInclude Include="DcsIds\DamageIds.h" />
     <ClInclude Include="DcsIds\DrawArgs.h" />
     <ClInclude Include="DcsIds\ParamIds.h" />
-    <ClInclude Include="Diagnostics\RuntimeDiagnostics.h" />
     <ClInclude Include="F-CK-1C_EFM.h" />
     <ClInclude Include="F-CK-1C_EFM_API.h" />
     <ClInclude Include="include\Cockpit\ccParametersAPI.h" />
@@ -148,10 +149,10 @@
     <ClCompile Include="Data\EngineTables.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="DcsBridge\DcsCommandRouter.cpp">
+	<ClCompile Include="DcsBridge\Internal\DcsCommandRouter.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="DcsBridge\DcsDamageMapper.cpp">
+	<ClCompile Include="DcsBridge\Internal\DcsDamageMapper.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
 	<ClCompile Include="DcsBridge\Internal\BoundaryValidator.cpp">
@@ -190,7 +191,9 @@
     <ClCompile Include="Systems\FBWLifecycle.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="F-CK-1C_EFM.cpp" />
+	<ClCompile Include="DcsBridge\EfmExports.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
     <ClCompile Include="include\FM\API_Declare.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

@@ -7,7 +7,7 @@
 #include "FrameInputCollector.h"
 #include "OutputStore.h"
 #include "StateCsvWriter.h"
-#include "../ModulePaths.h"
+#include "ModulePaths.h"
 #include "../../Core/Fck1cEfm.h"
 
 #include <memory>

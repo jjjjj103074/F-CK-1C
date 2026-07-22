@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <limits>
 
+// Formatting helpers used only by the DCSBridge event reporter and its tests.
 namespace Diagnostics
 {
 struct DiagnosticOutput

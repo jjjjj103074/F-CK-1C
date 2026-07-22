@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Common/Clamp.h"
-#include "../Core/FrameContracts.h"
-#include "../DcsIds/ParamIds.h"
+#include "../../Common/Clamp.h"
+#include "../../Core/FrameContracts.h"
+#include "../../DcsIds/ParamIds.h"
 #include <cmath>
 #include <optional>
 
