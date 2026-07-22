@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstring>
+#include <limits>
 
 namespace
 {
@@ -113,7 +114,7 @@ void test_autopilot_typed_values(Tests::Context& context)
 	cockpit.set(DcsIds::CockpitParams::ApThrottleCommand, 0.4);
 	cockpit.set(DcsIds::CockpitParams::ApAutoThrottleEngaged, 1.0);
 	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	const Core::AutopilotCommand command = bridge.read_autopilot();
+	const Core::AutopilotCommand command = bridge.read_step_input().autopilot;
 	TEST_EXPECT(context, command.master);
 	TEST_EXPECT(context, !command.bypass);
 	TEST_EXPECT(context, command.auto_throttle_engaged);
@@ -130,7 +131,7 @@ void test_autopilot_neutral_rules(Tests::Context& context)
 	cockpit.set(DcsIds::CockpitParams::ApPitchCommand, 0.8);
 	cockpit.set(DcsIds::CockpitParams::ApThrottleCommand, 0.7);
 	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	const Core::AutopilotCommand command = bridge.read_autopilot();
+	const Core::AutopilotCommand command = bridge.read_step_input().autopilot;
 	TEST_EXPECT(context, command.master && command.bypass);
 	TEST_EXPECT_NEAR(context, command.pitch_command, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, command.roll_command, 0.0, kTolerance);
@@ -142,31 +143,74 @@ void test_missing_autopilot_parameter_is_neutral(Tests::Context& context)
 	FakeCockpit cockpit;
 	cockpit.set_available(DcsIds::CockpitParams::ApRollCommand, false);
 	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	const Core::AutopilotCommand command = bridge.read_autopilot();
+	const DcsBridge::Internal::CockpitStepInput first = bridge.read_step_input();
+	const Core::AutopilotCommand command = first.autopilot;
 	TEST_EXPECT(context, !command.master);
 	TEST_EXPECT(context, !command.auto_throttle_engaged);
 	TEST_EXPECT_NEAR(context, command.pitch_command, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, command.throttle_command, 0.0, kTolerance);
+	TEST_EXPECT(context, first.events.count == 1);
+	TEST_EXPECT(context, std::strcmp(
+		first.events.items[0].parameter_name,
+		DcsIds::CockpitParams::ApRollCommand) == 0);
+	TEST_EXPECT(
+		context,
+		first.events.items[0].type ==
+			DcsBridge::Internal::CockpitParameterEventType::Error);
+	TEST_EXPECT(context, bridge.read_step_input().events.count == 0);
+	cockpit.set_available(DcsIds::CockpitParams::ApRollCommand, true);
+	const DcsBridge::Internal::CockpitStepInput recovered = bridge.read_step_input();
+	TEST_EXPECT(context, recovered.events.count == 1);
+	TEST_EXPECT(
+		context,
+		recovered.events.items[0].type ==
+			DcsBridge::Internal::CockpitParameterEventType::Recovery);
 }
 
 void test_max_power_and_temperature(Tests::Context& context)
 {
 	FakeCockpit cockpit;
 	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	Core::MaxPowerCommand max_power = bridge.read_max_power();
+	Core::MaxPowerCommand max_power = bridge.read_step_input().max_power;
 	TEST_EXPECT_NEAR(context, max_power.ready, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, max_power.value, 1.0, kTolerance);
 	cockpit.set(DcsIds::CockpitParams::MaxPowerReady, 1.0);
 	cockpit.set(DcsIds::CockpitParams::MaxPowerSwitch, 0.0);
-	max_power = bridge.read_max_power();
+	max_power = bridge.read_step_input().max_power;
 	TEST_EXPECT_NEAR(context, max_power.ready, 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, max_power.value, 0.0, kTolerance);
 	cockpit.set(DcsIds::CockpitParams::MaxPowerSwitch, 1.0);
-	max_power = bridge.read_max_power();
+	max_power = bridge.read_step_input().max_power;
 	TEST_EXPECT_NEAR(context, max_power.value, 1.0, kTolerance);
-	bridge.export_temperature(15.0);
+	TEST_EXPECT(context, bridge.export_temperature(15.0).count == 0);
 	TEST_EXPECT_NEAR(context, cockpit.value(
 		DcsIds::CockpitParams::TemperatureC), 288.0, kTolerance);
+}
+
+void test_invalid_numeric_is_neutral_then_recovers(Tests::Context& context)
+{
+	FakeCockpit cockpit;
+	cockpit.set(DcsIds::CockpitParams::ApMasterEngaged, 1.0);
+	cockpit.set(
+		DcsIds::CockpitParams::ApPitchCommand,
+		std::numeric_limits<double>::infinity());
+	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
+	const DcsBridge::Internal::CockpitStepInput invalid = bridge.read_step_input();
+	TEST_EXPECT(context, !invalid.autopilot.master);
+	TEST_EXPECT(context, invalid.events.count == 1);
+	TEST_EXPECT(context, invalid.events.items[0].has_value);
+	TEST_EXPECT(context, std::strcmp(
+		invalid.events.items[0].reason,
+		"invalid_numeric") == 0);
+	cockpit.set(DcsIds::CockpitParams::ApPitchCommand, 0.25);
+	const DcsBridge::Internal::CockpitStepInput recovered = bridge.read_step_input();
+	TEST_EXPECT(context, recovered.autopilot.master);
+	TEST_EXPECT_NEAR(context, recovered.autopilot.pitch_command, 0.25, kTolerance);
+	TEST_EXPECT(context, recovered.events.count == 1);
+	TEST_EXPECT(
+		context,
+		recovered.events.items[0].type ==
+			DcsBridge::Internal::CockpitParameterEventType::Recovery);
 }
 }
 
@@ -176,4 +220,5 @@ void run_cockpit_bridge_tests(Tests::Context& context)
 	test_autopilot_neutral_rules(context);
 	test_missing_autopilot_parameter_is_neutral(context);
 	test_max_power_and_temperature(context);
+	test_invalid_numeric_is_neutral_then_recovers(context);
 }

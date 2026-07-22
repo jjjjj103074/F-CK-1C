@@ -10,6 +10,7 @@ Core::FrameOutput make_frame_output()
 {
 	Core::FrameOutput output;
 	output.availability.suspension = { true, false, false };
+	output.availability.atmosphere = true;
 	output.landing_gear.gear_position = 0.8;
 	output.landing_gear.nose_wheel_steering = -0.25;
 	output.landing_gear.brake_left = 0.35;
@@ -50,6 +51,7 @@ void test_param_snapshot(Tests::Context& context)
 	const DcsBridge::ParamExportState state =
 		DcsBridge::make_param_export_state(make_frame_output());
 	TEST_EXPECT(context, state.suspension_feedback_available);
+	TEST_EXPECT(context, state.atmosphere_available);
 	TEST_EXPECT(context, state.any_weight_on_wheels);
 	TEST_EXPECT_NEAR(context, state.gear_pos, 0.8, kTolerance);
 	TEST_EXPECT_NEAR(context, state.nose_wheel_steering, -0.25, kTolerance);
@@ -79,6 +81,7 @@ void test_param_snapshot_without_suspension(Tests::Context& context)
 	const DcsBridge::ParamExportState state =
 		DcsBridge::make_param_export_state(Core::FrameOutput());
 	TEST_EXPECT(context, !state.suspension_feedback_available);
+	TEST_EXPECT(context, !state.atmosphere_available);
 }
 
 }

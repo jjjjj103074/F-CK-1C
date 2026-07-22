@@ -3,6 +3,7 @@
 #include "../../Diagnostics/RuntimeDiagnostics.h"
 
 #include <cstdio>
+#include <limits>
 
 namespace
 {
@@ -81,6 +82,149 @@ void EfmEventReporter::log_invalid_frame_dt(double dt_s)
 		{ message, sizeof(message) },
 		{ dt_s });
 	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_invalid_numeric(
+	const char* callback,
+	const char* field,
+	double value)
+{
+	constexpr int kRoundTripDoubleDigits = std::numeric_limits<double>::max_digits10;
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=%s field=%s invalid numeric value=%.*g",
+		callback,
+		field,
+		kRoundTripDoubleDigits,
+		value);
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_unknown_command(int command, float value)
+{
+	constexpr int kRoundTripFloatDigits = std::numeric_limits<float>::max_digits10;
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=ed_fm_set_command command=%d unknown value=%.*g",
+		command,
+		kRoundTripFloatDigits,
+		static_cast<double>(value));
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_command_binding_error(
+	const char* reason,
+	int command)
+{
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=ed_fm_set_command binding_table_error=%s command=%d",
+		reason,
+		command);
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_missing_param(unsigned index)
+{
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=ed_fm_get_param index=%u missing mapping",
+		index);
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_missing_param_data(
+	unsigned index,
+	const char* category)
+{
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=ed_fm_get_param index=%u missing data=%s",
+		index,
+		category);
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_invalid_index(
+	const char* callback,
+	int index)
+{
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=%s invalid index=%d",
+		callback,
+		index);
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_draw_args_buffer_error(
+	bool null_pointer,
+	std::size_t size,
+	std::size_t required)
+{
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=ed_fm_set_draw_args pointer_null=%s size=%zu required=%zu",
+		null_pointer ? "true" : "false",
+		size,
+		required);
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
+void EfmEventReporter::log_cockpit_parameter_events(
+	const CockpitParameterEvents& events)
+{
+	constexpr int kRoundTripDoubleDigits = std::numeric_limits<double>::max_digits10;
+	for (std::size_t index = 0; index < events.count; ++index)
+	{
+		const CockpitParameterEvent& event = events.items[index];
+		char message[kEventMessageCapacity];
+		if (event.type == CockpitParameterEventType::Recovery)
+		{
+			snprintf(
+				message,
+				sizeof(message),
+				"cockpit parameter=%s recovered",
+				event.parameter_name);
+			write(EventLevel::Info, latest_simulation_time(), message);
+			continue;
+		}
+		if (event.has_value)
+		{
+			snprintf(
+				message,
+				sizeof(message),
+				"cockpit parameter=%s unavailable reason=%s value=%.*g",
+				event.parameter_name,
+				event.reason,
+				kRoundTripDoubleDigits,
+				event.value);
+		}
+		else
+		{
+			snprintf(
+				message,
+				sizeof(message),
+				"cockpit parameter=%s unavailable reason=%s",
+				event.parameter_name,
+				event.reason);
+		}
+		write(EventLevel::Error, latest_simulation_time(), message);
+	}
 }
 
 void EfmEventReporter::log_start(

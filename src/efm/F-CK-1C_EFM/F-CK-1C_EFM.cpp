@@ -7,55 +7,21 @@
 #include "DcsBridge/DcsRuntime.h"
 #include "DcsBridge/DcsSnapshots.h"
 #include "DcsBridge/DrawArgs.h"
+#include "DcsBridge/Internal/BoundaryValidator.h"
 #include "DcsBridge/ParamExport.h"
 #include "include/FM/API_Declare.h"
 
 namespace
 {
-Core::Fck1cEfm& efm()
-{
-	return DcsBridge::efm();
-}
-
-DcsBridge::DcsRuntime& runtime()
-{
-	return DcsBridge::runtime();
-}
-
-DcsBridge::Internal::FrameInputCollector& input_collector()
-{
-	return DcsBridge::input_collector();
-}
-
-DcsBridge::Internal::OutputStore& output_store()
-{
-	return DcsBridge::output_store();
-}
-
-DcsBridge::Internal::StateCsvWriter& state_csv_writer()
-{
-	return DcsBridge::state_csv_writer();
-}
-
-DcsBridge::Internal::EfmEventReporter& event_reporter()
-{
-	return DcsBridge::event_reporter();
-}
-
-DcsBridge::Internal::CockpitBridge& cockpit_bridge()
-{
-	return DcsBridge::cockpit_bridge();
-}
-
-DcsBridge::Internal::CarrierBridge& carrier_bridge()
-{
-	return DcsBridge::carrier_bridge();
-}
-
-std::mutex& execution_mutex()
-{
-	return DcsBridge::execution_mutex();
-}
+using DcsBridge::carrier_bridge;
+using DcsBridge::cockpit_bridge;
+using DcsBridge::efm;
+using DcsBridge::event_reporter;
+using DcsBridge::execution_mutex;
+using DcsBridge::input_collector;
+using DcsBridge::output_store;
+using DcsBridge::runtime;
+using DcsBridge::state_csv_writer;
 
 void ensure_module_initialized()
 {
@@ -174,8 +140,9 @@ void ed_fm_simulate(double dt)
 		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
 		return;
 	}
-	const Core::AutopilotCommand autopilot = cockpit_bridge().read_autopilot();
-	const Core::MaxPowerCommand max_power = cockpit_bridge().read_max_power();
+	const DcsBridge::Internal::CockpitStepInput cockpit =
+		cockpit_bridge().read_step_input();
+	event_reporter().log_cockpit_parameter_events(cockpit.events);
 	Core::FrameOutput output;
 	bool output_available = false;
 	{
@@ -183,8 +150,8 @@ void ed_fm_simulate(double dt)
 		output_available = output_store().read().has_value();
 		if (output_available)
 		{
-			input_collector().publish_autopilot(autopilot);
-			input_collector().publish_max_power(max_power);
+			input_collector().publish_autopilot(cockpit.autopilot);
+			input_collector().publish_max_power(cockpit.max_power);
 			output = efm().step(input_collector().snapshot(dt));
 			output_store().publish(output);
 			state_csv_writer().publish_step(output);
@@ -195,7 +162,8 @@ void ed_fm_simulate(double dt)
 		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
 		return;
 	}
-	cockpit_bridge().export_temperature(output.flight.atmosphere_temperature_k);
+	event_reporter().log_cockpit_parameter_events(
+		cockpit_bridge().export_temperature(output.flight.atmosphere_temperature_k));
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -218,6 +186,7 @@ void ed_fm_set_atmosphere(
 		p,
 		Common::Vec3(wind_vx, wind_vy, wind_vz)
 	};
+	if (!DcsBridge::Internal::validate_atmosphere_input(input, event_reporter())) return;
 	input_collector().publish_atmosphere(input);
 }
 
@@ -237,6 +206,7 @@ void ed_fm_set_surface(
 		surface_type,
 		Common::Vec3(normal_x, normal_y, normal_z)
 	};
+	if (!DcsBridge::Internal::validate_surface_input(input, event_reporter())) return;
 	input_collector().publish_surface(input);
 }
 
@@ -256,6 +226,7 @@ void ed_fm_set_current_mass_state(
 		Common::Vec3(center_of_mass_x, center_of_mass_y, center_of_mass_z),
 		Common::Vec3(moment_of_inertia_x, moment_of_inertia_y, moment_of_inertia_z)
 	};
+	if (!DcsBridge::Internal::validate_mass_input(input, event_reporter())) return;
 	input_collector().publish_mass(input);
 }
 
@@ -290,6 +261,8 @@ void ed_fm_set_current_state(
 		Common::Vec3(omegax, omegay, omegaz),
 		{ quaternion_x, quaternion_y, quaternion_z, quaternion_w }
 	};
+	if (!DcsBridge::Internal::validate_world_kinematics_input(
+		input, event_reporter())) return;
 	input_collector().publish_world_kinematics(input);
 }
 
@@ -329,6 +302,8 @@ void ed_fm_set_current_state_body_axis(
 		common_angle_of_attack,
 		common_angle_of_slide
 	};
+	if (!DcsBridge::Internal::validate_body_kinematics_input(
+		input, event_reporter())) return;
 	input_collector().publish_body_kinematics(input);
 }
 
@@ -336,10 +311,8 @@ void ed_fm_set_command(int command, float value)
 {
 	ensure_module_initialized();
 	const DcsBridge::DcsCommandMapping mapping = DcsBridge::map_command(command, value);
-	if (!mapping.mapped)
-	{
-		return;
-	}
+	if (!DcsBridge::Internal::validate_command_mapping(
+		{ command, value, mapping }, event_reporter())) return;
 	(void)perform_core_action(
 		{ "ed_fm_set_command", "command", command },
 		[&mapping](Core::Fck1cEfm& core) { core.handle_command(mapping.command); });
@@ -393,6 +366,8 @@ bool ed_fm_change_mass(
 void ed_fm_set_internal_fuel(double fuel)
 {
 	ensure_module_initialized();
+	if (!DcsBridge::Internal::validate_internal_fuel_input(
+		fuel, event_reporter())) return;
 	(void)perform_core_action(
 		{ "ed_fm_set_internal_fuel" },
 		[fuel](Core::Fck1cEfm& core) { core.set_internal_fuel(fuel); });
@@ -415,6 +390,8 @@ void ed_fm_set_external_fuel(int station, double fuel, double x, double y, doubl
 		fuel,
 		Common::Vec3(x, y, z)
 	};
+	if (!DcsBridge::Internal::validate_external_fuel_input(
+		command, event_reporter())) return;
 	(void)perform_core_action(
 		{ "ed_fm_set_external_fuel", "station", station },
 		[&command](Core::Fck1cEfm& core) { core.set_external_fuel(command); });
@@ -437,6 +414,8 @@ void ed_fm_set_draw_args(EdDrawArgument* drawargs, size_t size)
 		event_reporter().log_unavailable_output({ "ed_fm_set_draw_args" });
 		return;
 	}
+	if (!DcsBridge::Internal::validate_draw_args_buffer(
+		drawargs, size, event_reporter())) return;
 	DcsBridge::set_draw_args(drawargs, size, DcsBridge::make_draw_arg_state(*output));
 }
 
@@ -456,12 +435,29 @@ double ed_fm_get_param(unsigned index)
 			{ "ed_fm_get_param", "index", index });
 		return 0.0;
 	}
-	return DcsBridge::get_param(index, DcsBridge::make_param_export_state(*output));
+	const DcsBridge::ParamExportState state = DcsBridge::make_param_export_state(*output);
+	const std::optional<DcsBridge::ParamDataCategory> missing_data =
+		DcsBridge::missing_param_data(index, state);
+	if (missing_data)
+	{
+		event_reporter().log_missing_param_data(
+			index, DcsBridge::param_data_category_name(*missing_data));
+		return 0.0;
+	}
+	const std::optional<double> value = DcsBridge::get_param(index, state);
+	if (!value)
+	{
+		event_reporter().log_missing_param(index);
+		return 0.0;
+	}
+	return *value;
 }
 
 void ed_fm_refueling_add_fuel(double fuel)
 {
 	ensure_module_initialized();
+	if (!DcsBridge::Internal::validate_refueling_fuel_input(
+		fuel, event_reporter())) return;
 	(void)perform_core_action(
 		{ "ed_fm_refueling_add_fuel" },
 		[fuel](Core::Fck1cEfm& core) { core.add_refueling_fuel(fuel); });
@@ -494,16 +490,20 @@ void ed_fm_set_immortal(bool value)
 void ed_fm_on_damage(int element, double integrity)
 {
 	ensure_module_initialized();
+	if (!DcsBridge::Internal::validate_damage_input(
+		integrity, event_reporter())) return;
 	const DcsBridge::DcsDamageMapping mapping = DcsBridge::map_damage(element, integrity);
+	if (!mapping.mapped)
+	{
+		event_reporter().log_invalid_index("ed_fm_on_damage", element);
+		return;
+	}
 	Core::Fck1cEfmSnapshot snapshot;
 	const bool completed = perform_core_action(
 		{ "ed_fm_on_damage", "element", element },
 		[&mapping, &snapshot](Core::Fck1cEfm& core)
 		{
-			if (mapping.mapped)
-			{
-				core.apply_damage(mapping.event);
-			}
+			core.apply_damage(mapping.event);
 			snapshot = core.snapshot();
 		});
 	if (completed)
@@ -515,6 +515,8 @@ void ed_fm_on_damage(int element, double integrity)
 void ed_fm_suspension_feedback(int index, const ed_fm_suspension_info* info)
 {
 	ensure_module_initialized();
+	if (!DcsBridge::Internal::validate_suspension_feedback(
+		index, info, event_reporter())) return;
 	if (!runtime().publish_suspension_feedback(input_collector(), index, info))
 	{
 		event_reporter().log_suspension_feedback_error(index, info == nullptr);
@@ -562,6 +564,8 @@ bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 {
 	ensure_module_initialized();
+	if (!DcsBridge::Internal::validate_simulation_event_input(
+		in, event_reporter())) return false;
 	return carrier_bridge().push_event(in);
 }
 

@@ -15,6 +15,9 @@
 
 namespace
 {
+constexpr int kUnknownCommandId = 404;
+constexpr unsigned kMissingParamId = 999;
+constexpr float kUnknownCommandValue = 0.5F;
 constexpr int kWritesPerThread = 40;
 constexpr int kWriterThreadCount = 2;
 
@@ -200,6 +203,42 @@ void test_reporter_writes_required_error_context(Tests::Context& context)
 		"][-][ERROR] callback=ed_fm_get_shake_amplitude invalid lifecycle state=released\n") !=
 		std::string::npos);
 }
+
+void test_reporter_writes_boundary_and_recovery_events(Tests::Context& context)
+{
+	TestFiles::TemporaryDirectory root;
+	DcsBridge::Internal::EventLog log(root.path().string().c_str());
+	DcsBridge::Internal::OutputStore output_store;
+	DcsBridge::Internal::EfmEventReporter reporter(log, output_store);
+	reporter.log_unknown_command(kUnknownCommandId, kUnknownCommandValue);
+	reporter.log_missing_param(kMissingParamId);
+	reporter.log_missing_param_data(kMissingParamId, "atmosphere");
+	DcsBridge::Internal::CockpitParameterEvents events;
+	events.items[0] = {
+		DcsBridge::Internal::CockpitParameterEventType::Error,
+		"TEST_PARAM", "missing_handle" };
+	events.items[1] = {
+		DcsBridge::Internal::CockpitParameterEventType::Recovery,
+		"TEST_PARAM" };
+	events.count = 2;
+	reporter.log_cockpit_parameter_events(events);
+	const std::string content = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	const std::string unknown_command = "callback=ed_fm_set_command command=" +
+		std::to_string(kUnknownCommandId) + " unknown value=0.5";
+	const std::string missing_param = "callback=ed_fm_get_param index=" +
+		std::to_string(kMissingParamId) + " missing mapping";
+	const std::string missing_data = "callback=ed_fm_get_param index=" +
+		std::to_string(kMissingParamId) + " missing data=atmosphere";
+	TEST_EXPECT(context, content.find(unknown_command) != std::string::npos);
+	TEST_EXPECT(context, content.find(missing_param) != std::string::npos);
+	TEST_EXPECT(context, content.find(missing_data) != std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"cockpit parameter=TEST_PARAM unavailable reason=missing_handle") !=
+		std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"][INFO] cockpit parameter=TEST_PARAM recovered") != std::string::npos);
+}
 }
 
 void run_event_log_tests(Tests::Context& context)
@@ -209,4 +248,5 @@ void run_event_log_tests(Tests::Context& context)
 	test_open_failure_is_exposed(context);
 	test_error_messages_include_required_parameters(context);
 	test_reporter_writes_required_error_context(context);
+	test_reporter_writes_boundary_and_recovery_events(context);
 }

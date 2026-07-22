@@ -33,6 +33,7 @@ ParamExportState make_param_export_state(const Core::FrameOutput& output)
 		output.availability.suspension[2];
 	return {
 		suspension_available,
+		output.availability.atmosphere,
 		output.suspension.any_weight_on_wheels,
 		output.landing_gear.gear_position,
 		output.landing_gear.nose_wheel_steering,

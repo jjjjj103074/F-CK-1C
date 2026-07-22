@@ -3,10 +3,44 @@
 #include "../../Core/FrameContracts.h"
 #include "../../include/Cockpit/ccParametersAPI.h"
 
+#include <array>
+#include <cstddef>
+#include <mutex>
+
 namespace DcsBridge
 {
 namespace Internal
 {
+enum class CockpitParameterEventType
+{
+	Error,
+	Recovery
+};
+
+struct CockpitParameterEvent
+{
+	CockpitParameterEventType type = CockpitParameterEventType::Error;
+	const char* parameter_name = nullptr;
+	const char* reason = nullptr;
+	double value = 0.0;
+	bool has_value = false;
+};
+
+inline constexpr std::size_t kCockpitParameterEventCapacity = 9;
+
+struct CockpitParameterEvents
+{
+	std::array<CockpitParameterEvent, kCockpitParameterEventCapacity> items = {};
+	std::size_t count = 0;
+};
+
+struct CockpitStepInput
+{
+	Core::AutopilotCommand autopilot;
+	Core::MaxPowerCommand max_power;
+	CockpitParameterEvents events;
+};
+
 class CockpitBridge final
 {
 public:
@@ -15,29 +49,57 @@ public:
 	CockpitBridge(const CockpitBridge&) = delete;
 	CockpitBridge& operator=(const CockpitBridge&) = delete;
 
-	Core::AutopilotCommand read_autopilot() const;
-	Core::MaxPowerCommand read_max_power() const;
-	void export_temperature(double dcs_temperature) const;
+	CockpitStepInput read_step_input();
+	CockpitParameterEvents export_temperature(double dcs_temperature);
 
 private:
-	struct ParameterHandles
+	enum class Parameter : std::size_t
 	{
-		void* temperature;
-		void* max_power_switch;
-		void* max_power_ready;
-		void* autopilot_master;
-		void* autopilot_pitch;
-		void* autopilot_roll;
-		void* autopilot_throttle;
-		void* autopilot_bypass;
-		void* autopilot_auto_throttle;
+		Temperature,
+		MaxPowerSwitch,
+		MaxPowerReady,
+		AutopilotMaster,
+		AutopilotPitch,
+		AutopilotRoll,
+		AutopilotThrottle,
+		AutopilotBypass,
+		AutopilotAutoThrottle,
+		Count
 	};
 
-	bool autopilot_parameters_available() const;
-	double read_number(void* handle) const;
+	enum class Availability
+	{
+		Unknown,
+		Available,
+		Unavailable
+	};
+
+	struct ParameterSlot
+	{
+		const char* name = nullptr;
+		void* handle = nullptr;
+		Availability availability = Availability::Unknown;
+		const char* failure_reason = nullptr;
+	};
+
+	bool read_parameter(
+		Parameter parameter,
+		double& value,
+		CockpitParameterEvents& events);
+	bool ensure_handle(ParameterSlot& slot);
+	void record_failure(
+		ParameterSlot& slot,
+		const CockpitParameterEvent& event,
+		CockpitParameterEvents& events);
+	void record_available(
+		ParameterSlot& slot,
+		CockpitParameterEvents& events);
+	Core::AutopilotCommand read_autopilot(CockpitParameterEvents& events);
+	Core::MaxPowerCommand read_max_power(CockpitParameterEvents& events);
 
 	const cockpit_param_api api_;
-	const ParameterHandles handles_;
+	std::array<ParameterSlot, static_cast<std::size_t>(Parameter::Count)> slots_;
+	std::mutex mutex_;
 };
 }
 }

@@ -3,6 +3,8 @@
 #include "DcsBridge/DcsCommandRouter.h"
 #include "DcsIds/Commands.h"
 
+#include <limits>
+
 namespace
 {
 constexpr double kTolerance = 1e-6;
@@ -20,8 +22,8 @@ void route(
 {
 	const DcsBridge::DcsCommandMapping mapping =
 		DcsBridge::map_command(input.command, input.value);
-	TEST_EXPECT(context, mapping.mapped);
-	if (mapping.mapped)
+	TEST_EXPECT(context, mapping.should_dispatch());
+	if (mapping.should_dispatch())
 	{
 		efm.handle_command(mapping.command);
 	}
@@ -90,6 +92,40 @@ void test_wheel_commands(Tests::Context& context)
 	systems = efm.snapshot().systems;
 	TEST_EXPECT_NEAR(context, systems.landing_gear.wheels.brake, 0.0, kTolerance);
 }
+
+void test_mapping_rules_and_errors(Tests::Context& context)
+{
+	const DcsBridge::CommandTableValidation table =
+		DcsBridge::validate_command_bindings();
+	TEST_EXPECT(context, table.error == DcsBridge::CommandBindingError::None);
+	const DcsBridge::DcsCommandMapping pass_through =
+		DcsBridge::map_command(DcsIds::Commands::JoystickPitch, -0.25f);
+	TEST_EXPECT(context, pass_through.should_dispatch());
+	TEST_EXPECT_NEAR(context, pass_through.command.value, -0.25, kTolerance);
+	const DcsBridge::DcsCommandMapping constant =
+		DcsBridge::map_command(DcsIds::Commands::GearDown, -0.5f);
+	TEST_EXPECT(context, constant.should_dispatch());
+	TEST_EXPECT_NEAR(context, constant.command.value, 1.0, kTolerance);
+	const DcsBridge::DcsCommandMapping press =
+		DcsBridge::map_command(DcsIds::Commands::FBWCatToggle, 0.1f);
+	TEST_EXPECT(context, press.should_dispatch());
+	TEST_EXPECT_NEAR(context, press.command.value, 1.0, kTolerance);
+	const DcsBridge::DcsCommandMapping release =
+		DcsBridge::map_command(DcsIds::Commands::FBWCatToggle, 0.0f);
+	TEST_EXPECT(
+		context,
+		release.status == DcsBridge::DcsCommandMappingStatus::IgnoredRelease);
+	const DcsBridge::DcsCommandMapping unknown = DcsBridge::map_command(-1, 0.5f);
+	TEST_EXPECT(
+		context,
+		unknown.status == DcsBridge::DcsCommandMappingStatus::UnknownCommand);
+	const DcsBridge::DcsCommandMapping invalid = DcsBridge::map_command(
+		DcsIds::Commands::JoystickPitch,
+		std::numeric_limits<float>::infinity());
+	TEST_EXPECT(
+		context,
+		invalid.status == DcsBridge::DcsCommandMappingStatus::InvalidValue);
+}
 }
 
 void run_dcs_command_router_tests(Tests::Context& context)
@@ -98,4 +134,5 @@ void run_dcs_command_router_tests(Tests::Context& context)
 	test_fbw_and_engine_commands(context);
 	test_throttle_and_airframe_commands(context);
 	test_wheel_commands(context);
+	test_mapping_rules_and_errors(context);
 }

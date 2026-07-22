@@ -10,6 +10,7 @@ DcsBridge::ParamExportState make_state()
 {
 	DcsBridge::ParamExportState state = {};
 	state.suspension_feedback_available = true;
+	state.atmosphere_available = true;
 	state.any_weight_on_wheels = true;
 	state.gear_pos = 1.0;
 	state.nose_wheel_steering = -0.25;
@@ -32,31 +33,58 @@ DcsBridge::ParamExportState make_state()
 	return state;
 }
 
+double require_param(
+	Tests::Context& context,
+	unsigned index,
+	const DcsBridge::ParamExportState& state)
+{
+	const std::optional<double> value = DcsBridge::get_param(index, state);
+	TEST_EXPECT(context, value.has_value());
+	return value.value_or(0.0);
+}
+
 void test_wheel_and_control_params(Tests::Context& context)
 {
 	using namespace DcsIds::Params;
 	const DcsBridge::ParamExportState state = make_state();
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(NoseWheelYaw, state), -0.25, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(RightWheelSpin, state), 3.0, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(LeftBrakeMoment, state), 0.6, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(StickPitch, state), 0.2, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(StickRoll, state), -0.3, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(RudderPedals, state), -0.4, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(ThrottleLeft, state), 0.8, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, NoseWheelYaw, state), -0.25, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, RightWheelSpin, state), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, LeftBrakeMoment, state), 0.6, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, StickPitch, state), 0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, StickRoll, state), -0.3, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, RudderPedals, state), -0.4, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, ThrottleLeft, state), 0.8, kTolerance);
 }
 
 void test_service_and_engine_params(Tests::Context& context)
 {
 	using namespace DcsIds::Params;
 	const DcsBridge::ParamExportState state = make_state();
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(InternalFuel, state), 900.0, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(TotalFuel, state), 1100.0, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(ApuRelatedRpm, state), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(LeftEngineCoreRpm, state), 9929.25, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(LeftEngineRpm, state), 5545.125, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(LeftEngineCombustion, state), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(LeftEngineThrust, state), 12000.0, kTolerance);
-	TEST_EXPECT_NEAR(context, DcsBridge::get_param(999999, state), 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, InternalFuel, state), 900.0, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, TotalFuel, state), 1100.0, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, ApuRelatedRpm, state), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineCoreRpm, state), 9929.25, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineRpm, state), 5545.125, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineCombustion, state), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineThrust, state), 12000.0, kTolerance);
+	TEST_EXPECT(context, !DcsBridge::get_param(999999, state).has_value());
+}
+
+void test_missing_required_data_is_identified(Tests::Context& context)
+{
+	using namespace DcsIds::Params;
+	DcsBridge::ParamExportState state = make_state();
+	state.suspension_feedback_available = false;
+	const std::optional<DcsBridge::ParamDataCategory> suspension =
+		DcsBridge::missing_param_data(NoseWheelYaw, state);
+	TEST_EXPECT(context, suspension == DcsBridge::ParamDataCategory::Suspension);
+	TEST_EXPECT(context, !DcsBridge::missing_param_data(NoseWheelSpin, state));
+	state.suspension_feedback_available = true;
+	state.atmosphere_available = false;
+	const std::optional<DcsBridge::ParamDataCategory> atmosphere =
+		DcsBridge::missing_param_data(LeftEngineTemperature, state);
+	TEST_EXPECT(context, atmosphere == DcsBridge::ParamDataCategory::Atmosphere);
+	TEST_EXPECT(context, !DcsBridge::missing_param_data(InternalFuel, state));
 }
 }
 
@@ -64,4 +92,5 @@ void run_param_export_tests(Tests::Context& context)
 {
 	test_wheel_and_control_params(context);
 	test_service_and_engine_params(context);
+	test_missing_required_data_is_identified(context);
 }

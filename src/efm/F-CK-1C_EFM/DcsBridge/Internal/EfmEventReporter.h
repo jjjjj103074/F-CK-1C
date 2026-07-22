@@ -1,8 +1,11 @@
 #pragma once
 
+#include "CockpitBridge.h"
 #include "EventLog.h"
 #include "OutputStore.h"
 #include "../../Core/Fck1cEfm.h"
+
+#include <cstddef>
 
 namespace DcsBridge
 {
@@ -25,6 +28,20 @@ public:
 		const char* state);
 	void log_unavailable_output(const CallbackContext& context);
 	void log_invalid_frame_dt(double dt_s);
+	void log_invalid_numeric(
+		const char* callback,
+		const char* field,
+		double value);
+	void log_unknown_command(int command, float value);
+	void log_command_binding_error(const char* reason, int command);
+	void log_missing_param(unsigned index);
+	void log_missing_param_data(unsigned index, const char* category);
+	void log_invalid_index(const char* callback, int index);
+	void log_draw_args_buffer_error(
+		bool null_pointer,
+		std::size_t size,
+		std::size_t required);
+	void log_cockpit_parameter_events(const CockpitParameterEvents& events);
 	void log_start(Core::StartMode mode, double simulation_time_s);
 	void log_damage(
 		const Core::Fck1cEfmSnapshot& snapshot,

@@ -2,7 +2,9 @@
 
 #include "../DcsIds/Commands.h"
 
+#include <cmath>
 #include <cstddef>
+#include <iterator>
 
 namespace
 {
@@ -10,13 +12,12 @@ constexpr double kPitchTrimStep = 0.0015;
 constexpr double kRollTrimStep = 0.001;
 constexpr double kYawTrimStep = 0.001;
 constexpr double kThrottleStep = 0.0075;
-constexpr float kCommandPressedThreshold = 0.5f;
 
-enum class ValueSource
+enum class ValueRule
 {
-	Input,
+	PassThrough,
 	Constant,
-	Pressed
+	PressOnly
 };
 
 struct CommandBinding
@@ -24,16 +25,16 @@ struct CommandBinding
 	int dcs_id;
 	Core::CommandGroup group;
 	Core::CommandAction action;
-	ValueSource value_source;
+	ValueRule value_rule;
 	double constant;
 };
 
 #define BIND_INPUT(id, group, action) \
-	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueSource::Input, 0.0 }
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueRule::PassThrough, 0.0 }
 #define BIND_CONST(id, group, action, value) \
-	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueSource::Constant, value }
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueRule::Constant, value }
 #define BIND_PRESS(id, group, action) \
-	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueSource::Pressed, 0.0 }
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueRule::PressOnly, 0.0 }
 
 constexpr CommandBinding kBindings[] = {
 	BIND_INPUT(JoystickPitch, PitchRoll, SetPitchAxis),
@@ -118,31 +119,93 @@ constexpr CommandBinding kBindings[] = {
 
 double mapped_value(const CommandBinding& binding, float input)
 {
-	switch (binding.value_source)
+	switch (binding.value_rule)
 	{
-	case ValueSource::Input: return input;
-	case ValueSource::Pressed: return input > kCommandPressedThreshold ? 1.0 : 0.0;
-	case ValueSource::Constant: return binding.constant;
+	case ValueRule::PassThrough: return input;
+	case ValueRule::PressOnly: return 1.0;
+	case ValueRule::Constant: return binding.constant;
 	}
 	return 0.0;
+}
+
+bool has_valid_rule(const CommandBinding& binding)
+{
+	switch (binding.value_rule)
+	{
+	case ValueRule::PassThrough:
+	case ValueRule::PressOnly:
+		return true;
+	case ValueRule::Constant:
+		return std::isfinite(binding.constant);
+	}
+	return false;
+}
+
+DcsBridge::CommandTableValidation find_duplicate_binding()
+{
+	for (std::size_t index = 0; index < std::size(kBindings); ++index)
+	{
+		for (std::size_t other = index + 1; other < std::size(kBindings); ++other)
+		{
+			if (kBindings[index].dcs_id == kBindings[other].dcs_id)
+			{
+				return { DcsBridge::CommandBindingError::DuplicateId, kBindings[index].dcs_id };
+			}
+		}
+	}
+	return {};
+}
+
+DcsBridge::CommandTableValidation inspect_command_bindings()
+{
+	for (const CommandBinding& binding : kBindings)
+	{
+		if (!has_valid_rule(binding))
+		{
+			return { DcsBridge::CommandBindingError::InvalidRule, binding.dcs_id };
+		}
+	}
+	return find_duplicate_binding();
 }
 }
 
 namespace DcsBridge
 {
+CommandTableValidation validate_command_bindings()
+{
+	static const CommandTableValidation validation = inspect_command_bindings();
+	return validation;
+}
+
 DcsCommandMapping map_command(int command, float value)
 {
-	for (std::size_t index = 0; index < sizeof(kBindings) / sizeof(kBindings[0]); ++index)
+	if (!std::isfinite(value))
 	{
-		const CommandBinding& binding = kBindings[index];
+		return { DcsCommandMappingStatus::InvalidValue };
+	}
+	const CommandTableValidation validation = validate_command_bindings();
+	if (validation.error != CommandBindingError::None)
+	{
+		return {
+			DcsCommandMappingStatus::InvalidBindingTable,
+			{},
+			validation
+		};
+	}
+	for (const CommandBinding& binding : kBindings)
+	{
 		if (binding.dcs_id == command)
 		{
+			if (binding.value_rule == ValueRule::PressOnly && value <= 0.0f)
+			{
+				return { DcsCommandMappingStatus::IgnoredRelease };
+			}
 			return {
-				true,
+				DcsCommandMappingStatus::Mapped,
 				{ binding.group, binding.action, mapped_value(binding, value) }
 			};
 		}
 	}
-	return {};
+	return { DcsCommandMappingStatus::UnknownCommand };
 }
 }
