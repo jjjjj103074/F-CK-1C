@@ -1,4 +1,5 @@
 #include "TestHarness.h"
+#include "TestFileUtils.h"
 
 #include "DcsBridge/Internal/EfmEventReporter.h"
 #include "DcsBridge/Internal/EventLog.h"
@@ -11,57 +12,11 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include <windows.h>
 
 namespace
 {
 constexpr int kWritesPerThread = 40;
 constexpr int kWriterThreadCount = 2;
-
-class TemporaryDirectory final
-{
-public:
-	TemporaryDirectory()
-	{
-		char temp_directory[MAX_PATH];
-		char unique_path[MAX_PATH];
-		if (GetTempPathA(MAX_PATH, temp_directory) == 0 ||
-			GetTempFileNameA(temp_directory, "efm", 0, unique_path) == 0)
-		{
-			return;
-		}
-		DeleteFileA(unique_path);
-		if (CreateDirectoryA(unique_path, nullptr) != 0)
-		{
-			path_ = unique_path;
-		}
-	}
-
-	~TemporaryDirectory()
-	{
-		std::error_code error;
-		std::filesystem::remove_all(path_, error);
-	}
-
-	const std::filesystem::path& path() const
-	{
-		return path_;
-	}
-
-	bool valid() const
-	{
-		return !path_.empty();
-	}
-
-private:
-	std::filesystem::path path_;
-};
-
-void write_text(const std::filesystem::path& path, const char* text)
-{
-	std::ofstream output(path, std::ios::binary);
-	output << text;
-}
 
 std::string read_text(const std::filesystem::path& path)
 {
@@ -69,39 +24,6 @@ std::string read_text(const std::filesystem::path& path)
 	return std::string(
 		std::istreambuf_iterator<char>(input),
 		std::istreambuf_iterator<char>());
-}
-
-std::string read_text_while_open(const std::filesystem::path& path)
-{
-	const HANDLE file = CreateFileA(
-		path.string().c_str(),
-		GENERIC_READ,
-		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-		nullptr,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		nullptr);
-	if (file == INVALID_HANDLE_VALUE)
-	{
-		return {};
-	}
-	LARGE_INTEGER size = {};
-	if (!GetFileSizeEx(file, &size) || size.QuadPart < 0)
-	{
-		CloseHandle(file);
-		return {};
-	}
-	std::string content(static_cast<size_t>(size.QuadPart), '\0');
-	DWORD bytes_read = 0;
-	const bool read = content.empty() || ReadFile(
-		file,
-		content.data(),
-		static_cast<DWORD>(content.size()),
-		&bytes_read,
-		nullptr);
-	CloseHandle(file);
-	content.resize(read ? bytes_read : 0);
-	return content;
 }
 
 bool all_digits(const std::string& text, size_t start, size_t count)
@@ -132,18 +54,18 @@ bool has_wall_clock_prefix(const std::string& text)
 		all_digits(text, 21, 3);
 }
 
-void prepare_rotation_files(const TemporaryDirectory& root)
+void prepare_rotation_files(const TestFiles::TemporaryDirectory& root)
 {
 	const std::filesystem::path log_directory = root.path() / "log";
 	std::error_code error;
 	std::filesystem::create_directory(log_directory, error);
-	write_text(log_directory / "fck1c_efm.log", "previous active\n");
-	write_text(log_directory / "fck1c_efm.log.old", "obsolete old\n");
+	TestFiles::write_text(log_directory / "fck1c_efm.log", "previous active\n");
+	TestFiles::write_text(log_directory / "fck1c_efm.log.old", "obsolete old\n");
 }
 
 void test_rotation_format_and_external_read(Tests::Context& context)
 {
-	TemporaryDirectory root;
+	TestFiles::TemporaryDirectory root;
 	TEST_EXPECT(context, root.valid());
 	prepare_rotation_files(root);
 	const std::filesystem::path active = root.path() / "log" / "fck1c_efm.log";
@@ -160,7 +82,7 @@ void test_rotation_format_and_external_read(Tests::Context& context)
 			DcsBridge::Internal::EventLevel::Error,
 			std::nullopt,
 			"second event" }));
-		const std::string content = read_text_while_open(active);
+		const std::string content = TestFiles::read_text_while_open(active);
 		TEST_EXPECT(context, has_wall_clock_prefix(content));
 		TEST_EXPECT(context, content.find("][12.5][INFO] first event\n") != std::string::npos);
 		TEST_EXPECT(context, content.find("][-][ERROR] second event\n") != std::string::npos);
@@ -202,7 +124,7 @@ void verify_complete_concurrent_lines(
 
 void test_concurrent_writes_are_complete(Tests::Context& context)
 {
-	TemporaryDirectory root;
+	TestFiles::TemporaryDirectory root;
 	DcsBridge::Internal::EventLog log(root.path().string().c_str());
 	std::atomic<int> successes = 0;
 	std::thread first(write_concurrent_events, std::ref(log), "worker=a", std::ref(successes));
@@ -211,12 +133,12 @@ void test_concurrent_writes_are_complete(Tests::Context& context)
 	second.join();
 	TEST_EXPECT(context, successes == kWritesPerThread * kWriterThreadCount);
 	const std::filesystem::path active = root.path() / "log" / "fck1c_efm.log";
-	verify_complete_concurrent_lines(context, read_text_while_open(active));
+	verify_complete_concurrent_lines(context, TestFiles::read_text_while_open(active));
 }
 
 void test_open_failure_is_exposed(Tests::Context& context)
 {
-	TemporaryDirectory root;
+	TestFiles::TemporaryDirectory root;
 	const std::filesystem::path invalid_root = root.path() / "missing" / "child";
 	DcsBridge::Internal::EventLog log(invalid_root.string().c_str());
 	TEST_EXPECT(context, !log.is_open());
@@ -251,7 +173,7 @@ void test_error_messages_include_required_parameters(Tests::Context& context)
 
 void test_reporter_writes_required_error_context(Tests::Context& context)
 {
-	TemporaryDirectory root;
+	TestFiles::TemporaryDirectory root;
 	DcsBridge::Internal::EventLog log(root.path().string().c_str());
 	DcsBridge::Internal::OutputStore output_store;
 	DcsBridge::Internal::EfmEventReporter reporter(log, output_store);
@@ -264,7 +186,7 @@ void test_reporter_writes_required_error_context(Tests::Context& context)
 	output_store.mark_released();
 	reporter.log_unavailable_output({ "ed_fm_get_shake_amplitude" });
 	const std::filesystem::path active = root.path() / "log" / "fck1c_efm.log";
-	const std::string content = read_text_while_open(active);
+	const std::string content = TestFiles::read_text_while_open(active);
 	TEST_EXPECT(context, content.find(
 		"][-][ERROR] callback=ed_fm_get_param index=42 invalid lifecycle state=before_start\n") !=
 		std::string::npos);

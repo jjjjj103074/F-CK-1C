@@ -1,22 +1,18 @@
 #include "EventLog.h"
 
-#include "../../Common/PathUtils.h"
+#include "LogFileLifecycle.h"
 
 #include <cerrno>
 #include <cstring>
-#include <direct.h>
 #include <limits>
 #include <share.h>
 #include <windows.h>
 
 namespace
 {
-constexpr size_t kPathCapacity = 1024;
 constexpr size_t kLineCapacity = 2048;
 constexpr int kRoundTripDoubleDigits = std::numeric_limits<double>::max_digits10;
-constexpr const char* kLogDirectoryName = "log";
 constexpr const char* kActiveFileName = "fck1c_efm.log";
-constexpr const char* kOldFileName = "fck1c_efm.log.old";
 
 const char* level_name(DcsBridge::Internal::EventLevel level)
 {
@@ -63,33 +59,14 @@ EventLog::~EventLog()
 
 bool EventLog::initialize(const char* module_root)
 {
-	if (module_root == nullptr || module_root[0] == '\0')
+	const LogFilePreparation location =
+		prepare_rotating_log_file(module_root, kActiveFileName);
+	if (!location.ready)
 	{
-		set_error(EINVAL);
+		set_error(location.error_code);
 		return false;
 	}
-	char log_directory[kPathCapacity];
-	char active_path[kPathCapacity];
-	char old_path[kPathCapacity];
-	Common::build_path(
-		{ log_directory, sizeof(log_directory) },
-		{ module_root, kLogDirectoryName });
-	if (_mkdir(log_directory) != 0 && errno != EEXIST)
-	{
-		set_error(errno);
-		return false;
-	}
-	Common::build_path(
-		{ active_path, sizeof(active_path) },
-		{ log_directory, kActiveFileName });
-	Common::build_path(
-		{ old_path, sizeof(old_path) },
-		{ log_directory, kOldFileName });
-	if (!rotate_files(active_path, old_path))
-	{
-		return false;
-	}
-	file_ = _fsopen(active_path, "wb", _SH_DENYNO);
+	file_ = _fsopen(location.active_path, "wb", _SH_DENYNO);
 	if (file_ == nullptr)
 	{
 		set_error(errno);
@@ -97,22 +74,6 @@ bool EventLog::initialize(const char* module_root)
 	}
 	return true;
 }
-
-bool EventLog::rotate_files(const char* active_path, const char* old_path)
-{
-	if (remove(old_path) != 0 && errno != ENOENT)
-	{
-		set_error(errno);
-		return false;
-	}
-	if (rename(active_path, old_path) != 0 && errno != ENOENT)
-	{
-		set_error(errno);
-		return false;
-	}
-	return true;
-}
-
 bool EventLog::format_line(
 	const EventRecord& record,
 	char* output,

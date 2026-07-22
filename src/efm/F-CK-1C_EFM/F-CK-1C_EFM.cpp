@@ -34,6 +34,11 @@ DcsBridge::Internal::OutputStore& output_store()
 	return DcsBridge::output_store();
 }
 
+DcsBridge::Internal::StateCsvWriter& state_csv_writer()
+{
+	return DcsBridge::state_csv_writer();
+}
+
 DcsBridge::Internal::EfmEventReporter& event_reporter()
 {
 	return DcsBridge::event_reporter();
@@ -91,6 +96,7 @@ void start_efm(Core::StartMode mode)
 		input_collector().reset();
 		output = efm().start(mode);
 		output_store().publish(output);
+		state_csv_writer().publish_start(output);
 	}
 	runtime().reset_carrier_launch();
 	event_reporter().log_start(mode, output.simulation_time_s);
@@ -173,6 +179,7 @@ void ed_fm_simulate(double dt)
 			input_collector().publish_max_power(max_power);
 			output = efm().step(input_collector().snapshot(dt));
 			output_store().publish(output);
+			state_csv_writer().publish_step(output);
 		}
 	}
 	if (!output_available)

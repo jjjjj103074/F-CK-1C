@@ -36,7 +36,6 @@ public:
 
 private:
 	bool initialize(const char* module_root);
-	bool rotate_files(const char* active_path, const char* old_path);
 	bool format_line(
 		const EventRecord& record,
 		char* output,

@@ -23,6 +23,7 @@ public:
 	explicit DcsModuleState(const char* config_path)
 		: module_paths_(make_module_paths(config_path)),
 		event_log_(module_paths_.mod_root_path),
+		state_csv_writer_(module_paths_.mod_root_path, event_log_),
 		event_reporter_(event_log_, output_store_),
 		efm_(Data::fck1c_aircraft_config())
 	{
@@ -30,6 +31,7 @@ public:
 
 	DcsBridge::ModulePaths module_paths_;
 	DcsBridge::Internal::EventLog event_log_;
+	DcsBridge::Internal::StateCsvWriter state_csv_writer_;
 	DcsBridge::Internal::FrameInputCollector input_collector_;
 	DcsBridge::Internal::OutputStore output_store_;
 	DcsBridge::Internal::EfmEventReporter event_reporter_;
@@ -77,6 +79,11 @@ Internal::FrameInputCollector& input_collector()
 Internal::OutputStore& output_store()
 {
 	return module_state().output_store_;
+}
+
+Internal::StateCsvWriter& state_csv_writer()
+{
+	return module_state().state_csv_writer_;
 }
 
 std::mutex& execution_mutex()
