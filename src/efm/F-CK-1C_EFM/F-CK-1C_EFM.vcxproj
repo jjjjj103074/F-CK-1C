@@ -89,6 +89,7 @@
 	<ClInclude Include="DcsBridge\Internal\EfmEventReporter.h" />
 	<ClInclude Include="DcsBridge\Internal\EventLog.h" />
 	<ClInclude Include="DcsBridge\Internal\LogFileLifecycle.h" />
+    <ClInclude Include="DcsBridge\Internal\BridgeContext.h" />
     <ClInclude Include="DcsBridge\Internal\CarrierBridge.h" />
     <ClInclude Include="DcsBridge\Internal\CockpitBridge.h" />
     <ClInclude Include="DcsBridge\Internal\FrameInputCollector.h" />
@@ -164,6 +165,9 @@
 	<ClCompile Include="DcsBridge\Internal\LogFileLifecycle.cpp">
 	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
 	</ClCompile>
+    <ClCompile Include="DcsBridge\Internal\BridgeContext.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="DcsBridge\Internal\CarrierBridge.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>

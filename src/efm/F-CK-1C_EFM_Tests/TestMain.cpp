@@ -1,6 +1,7 @@
 #include "TestHarness.h"
 
 void run_common_tests(Tests::Context& context);
+void run_bridge_context_tests(Tests::Context& context);
 void run_carrier_bridge_tests(Tests::Context& context);
 void run_cockpit_bridge_tests(Tests::Context& context);
 void run_aerodynamics_system_tests(Tests::Context& context);
@@ -26,6 +27,7 @@ int main()
 {
 	Tests::Context context;
 	run_common_tests(context);
+	run_bridge_context_tests(context);
 	run_carrier_bridge_tests(context);
 	run_cockpit_bridge_tests(context);
 	run_aerodynamics_system_tests(context);
