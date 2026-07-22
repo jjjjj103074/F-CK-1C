@@ -12,8 +12,6 @@
 
 namespace
 {
-constexpr double kCarrierLaunchReferenceMach = 0.1;
-
 Core::Fck1cEfm& efm()
 {
 	return DcsBridge::efm();
@@ -42,6 +40,16 @@ DcsBridge::Internal::StateCsvWriter& state_csv_writer()
 DcsBridge::Internal::EfmEventReporter& event_reporter()
 {
 	return DcsBridge::event_reporter();
+}
+
+DcsBridge::Internal::CockpitBridge& cockpit_bridge()
+{
+	return DcsBridge::cockpit_bridge();
+}
+
+DcsBridge::Internal::CarrierBridge& carrier_bridge()
+{
+	return DcsBridge::carrier_bridge();
 }
 
 std::mutex& execution_mutex()
@@ -98,7 +106,7 @@ void start_efm(Core::StartMode mode)
 		output_store().publish(output);
 		state_csv_writer().publish_start(output);
 	}
-	runtime().reset_carrier_launch();
+	carrier_bridge().reset();
 	event_reporter().log_start(mode, output.simulation_time_s);
 }
 
@@ -166,8 +174,8 @@ void ed_fm_simulate(double dt)
 		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
 		return;
 	}
-	const Core::AutopilotCommand autopilot = runtime().read_autopilot();
-	const Core::MaxPowerCommand max_power = runtime().read_max_power();
+	const Core::AutopilotCommand autopilot = cockpit_bridge().read_autopilot();
+	const Core::MaxPowerCommand max_power = cockpit_bridge().read_max_power();
 	Core::FrameOutput output;
 	bool output_available = false;
 	{
@@ -187,7 +195,7 @@ void ed_fm_simulate(double dt)
 		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
 		return;
 	}
-	runtime().export_temperature(output.flight.atmosphere_temperature_k);
+	cockpit_bridge().export_temperature(output.flight.atmosphere_temperature_k);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -524,16 +532,14 @@ void ed_fm_repair()
 bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 {
 	ensure_module_initialized();
-	Core::Fck1cEfmSnapshot snapshot;
-	double max_dry_thrust = 0.0;
+	std::optional<Core::FrameOutput> output;
 	bool released = false;
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex());
 		released = output_store().is_released();
 		if (!released)
 		{
-			snapshot = efm().snapshot();
-			max_dry_thrust = efm().max_dry_thrust_at(kCarrierLaunchReferenceMach);
+			output = output_store().read();
 		}
 	}
 	if (released)
@@ -544,13 +550,19 @@ bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 			"released");
 		return false;
 	}
-	return runtime().pop_simulation_event(snapshot, max_dry_thrust, out);
+	if (!output)
+	{
+		return false;
+	}
+	return carrier_bridge().pop_event(
+		{ output->engines[0].throttle_output },
+		out);
 }
 
 bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 {
 	ensure_module_initialized();
-	return runtime().push_simulation_event(in);
+	return carrier_bridge().push_event(in);
 }
 
 void ed_fm_cold_start()

@@ -60,6 +60,8 @@
     <ClCompile Include="AerodynamicsSystemTests.cpp" />
     <ClCompile Include="AirframeDeviceSystemTests.cpp" />
     <ClCompile Include="CommonTests.cpp" />
+    <ClCompile Include="CarrierBridgeTests.cpp" />
+    <ClCompile Include="CockpitBridgeTests.cpp" />
     <ClCompile Include="DcsCommandRouterTests.cpp" />
     <ClCompile Include="DcsDamageMapperTests.cpp" />
     <ClCompile Include="DcsSnapshotsTests.cpp" />
@@ -75,7 +77,6 @@
     <ClCompile Include="MassDeltaTests.cpp" />
     <ClCompile Include="OutputStoreTests.cpp" />
     <ClCompile Include="ParamExportTests.cpp" />
-    <ClCompile Include="SimulationEventsTests.cpp" />
     <ClCompile Include="SuspensionSystemTests.cpp" />
     <ClCompile Include="TestMain.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Core\Fck1cEfm.cpp" />
@@ -89,6 +90,8 @@
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EfmEventReporter.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EventLog.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\LogFileLifecycle.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CarrierBridge.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\OutputStore.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\StateCsvWriter.cpp" />

@@ -176,7 +176,6 @@ public:
 	FrameOutput start(StartMode mode);
 	FrameOutput step(const FrameInput& input);
 	ForceMomentFrame force_moment_output() const;
-	double max_dry_thrust_at(double mach) const;
 	double internal_fuel() const;
 	double external_fuel() const;
 	double shake_amplitude() const;

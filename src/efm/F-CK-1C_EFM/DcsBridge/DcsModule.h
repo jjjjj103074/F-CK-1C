@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Internal/CarrierBridge.h"
+#include "Internal/CockpitBridge.h"
 #include "Internal/EventLog.h"
 #include "Internal/EfmEventReporter.h"
 #include "Internal/FrameInputCollector.h"
@@ -17,6 +19,8 @@ Core::Fck1cEfm& efm();
 DcsRuntime& runtime();
 Internal::EventLog& event_log();
 Internal::EfmEventReporter& event_reporter();
+Internal::CockpitBridge& cockpit_bridge();
+Internal::CarrierBridge& carrier_bridge();
 Internal::FrameInputCollector& input_collector();
 Internal::OutputStore& output_store();
 Internal::StateCsvWriter& state_csv_writer();

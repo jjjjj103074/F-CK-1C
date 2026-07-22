@@ -64,11 +64,6 @@ ForceMomentFrame Fck1cEfm::force_moment_output() const
 	return force_moment_;
 }
 
-double Fck1cEfm::max_dry_thrust_at(double mach) const
-{
-	return Systems::max_dry_thrust(config_.engine, mach);
-}
-
 double Fck1cEfm::internal_fuel() const
 {
 	return Systems::get_internal_fuel(systems_.fuel);

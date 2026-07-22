@@ -7,6 +7,7 @@
 namespace
 {
 const int kDcsModuleAddressAnchor = 0;
+constexpr double kCarrierLaunchReferenceMach = 0.1;
 
 DcsBridge::ModulePaths make_module_paths(const char* config_path)
 {
@@ -17,6 +18,14 @@ DcsBridge::ModulePaths make_module_paths(const char* config_path)
 	return paths;
 }
 
+DcsBridge::Internal::CarrierBridgeConfig make_carrier_bridge_config()
+{
+	const Data::AircraftConfig& config = Data::fck1c_aircraft_config();
+	return {
+		Systems::max_dry_thrust(config.engine, kCarrierLaunchReferenceMach)
+	};
+}
+
 class DcsModuleState
 {
 public:
@@ -25,6 +34,8 @@ public:
 		event_log_(module_paths_.mod_root_path),
 		state_csv_writer_(module_paths_.mod_root_path, event_log_),
 		event_reporter_(event_log_, output_store_),
+		cockpit_bridge_(ed_get_cockpit_param_api()),
+		carrier_bridge_(make_carrier_bridge_config()),
 		efm_(Data::fck1c_aircraft_config())
 	{
 	}
@@ -35,6 +46,8 @@ public:
 	DcsBridge::Internal::FrameInputCollector input_collector_;
 	DcsBridge::Internal::OutputStore output_store_;
 	DcsBridge::Internal::EfmEventReporter event_reporter_;
+	DcsBridge::Internal::CockpitBridge cockpit_bridge_;
+	DcsBridge::Internal::CarrierBridge carrier_bridge_;
 	DcsBridge::DcsRuntime runtime_;
 	std::mutex execution_mutex_;
 	Core::Fck1cEfm efm_;
@@ -69,6 +82,16 @@ Internal::EventLog& event_log()
 Internal::EfmEventReporter& event_reporter()
 {
 	return module_state().event_reporter_;
+}
+
+Internal::CockpitBridge& cockpit_bridge()
+{
+	return module_state().cockpit_bridge_;
+}
+
+Internal::CarrierBridge& carrier_bridge()
+{
+	return module_state().carrier_bridge_;
 }
 
 Internal::FrameInputCollector& input_collector()
