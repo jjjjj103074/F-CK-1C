@@ -14,6 +14,12 @@ struct ModulePaths
 	bool initialized;
 };
 
+struct ModulePathSource
+{
+	const char* config_path;
+	const void* module_address;
+};
+
 inline void set_project_paths_from_config(ModulePaths& paths, const char* cfg_path)
 {
 	if (!cfg_path || cfg_path[0] == '\0')
@@ -116,7 +122,9 @@ inline bool try_module_directory_candidates(
 	return try_set_mod_root(paths, root);
 }
 
-inline void initialize_project_paths(ModulePaths& paths)
+inline void initialize_project_paths(
+	ModulePaths& paths,
+	const void* module_address)
 {
 	if (paths.initialized)
 	{
@@ -129,31 +137,24 @@ inline void initialize_project_paths(ModulePaths& paths)
 		return;
 	}
 	char module_dir[kModulePathMax];
-	if (!current_module_directory(module_dir, &paths.initialized))
+	if (!module_address || !current_module_directory(module_dir, module_address))
 	{
 		return;
 	}
 	(void)try_module_directory_candidates(paths, module_dir);
 }
 
-inline void build_mod_path(
+inline void configure_module_paths(
 	ModulePaths& paths,
-	const Common::PathTarget& target,
-	const char* relative)
+	const ModulePathSource& source)
 {
-	initialize_project_paths(paths);
-	Common::build_path(target, { paths.mod_root_path, relative });
-}
-
-inline void configure_module_paths(ModulePaths& paths, const char* cfg_path)
-{
-	if (cfg_path && cfg_path[0] != '\0')
+	if (source.config_path && source.config_path[0] != '\0')
 	{
-		set_project_paths_from_config(paths, cfg_path);
+		set_project_paths_from_config(paths, source.config_path);
 		paths.initialized = true;
 		return;
 	}
 
-	initialize_project_paths(paths);
+	initialize_project_paths(paths, source.module_address);
 }
 }

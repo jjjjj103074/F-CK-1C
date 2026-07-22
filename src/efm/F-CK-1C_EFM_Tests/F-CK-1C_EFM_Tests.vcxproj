@@ -63,6 +63,7 @@
     <ClCompile Include="DcsDamageMapperTests.cpp" />
     <ClCompile Include="DcsSnapshotsTests.cpp" />
     <ClCompile Include="EngineSystemTests.cpp" />
+	<ClCompile Include="EventLogTests.cpp" />
     <ClCompile Include="FBWControllerTests.cpp" />
     <ClCompile Include="Fck1cEfmTests.cpp" />
     <ClCompile Include="FrameInputCollectorTests.cpp" />
@@ -83,6 +84,8 @@
     <ClCompile Include="..\F-CK-1C_EFM\Data\EngineTables.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsCommandRouter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsDamageMapper.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EfmEventReporter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EventLog.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\OutputStore.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\DcsSnapshots.cpp" />

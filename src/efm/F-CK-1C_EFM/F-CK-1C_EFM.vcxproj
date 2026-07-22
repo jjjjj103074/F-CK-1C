@@ -88,6 +88,8 @@
     <ClInclude Include="DcsBridge\DcsRuntime.h" />
     <ClInclude Include="DcsBridge\DcsSnapshots.h" />
     <ClInclude Include="DcsBridge\DrawArgs.h" />
+	<ClInclude Include="DcsBridge\Internal\EfmEventReporter.h" />
+	<ClInclude Include="DcsBridge\Internal\EventLog.h" />
     <ClInclude Include="DcsBridge\Internal\FrameInputCollector.h" />
     <ClInclude Include="DcsBridge\Internal\OutputStore.h" />
     <ClInclude Include="DcsBridge\ModulePaths.h" />
@@ -99,7 +101,6 @@
     <ClInclude Include="DcsIds\DamageIds.h" />
     <ClInclude Include="DcsIds\DrawArgs.h" />
     <ClInclude Include="DcsIds\ParamIds.h" />
-    <ClInclude Include="Diagnostics\DebugLogger.h" />
     <ClInclude Include="Diagnostics\RuntimeDiagnostics.h" />
     <ClInclude Include="F-CK-1C_EFM.h" />
     <ClInclude Include="F-CK-1C_EFM_API.h" />
@@ -153,6 +154,12 @@
     <ClCompile Include="DcsBridge\DcsDamageMapper.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+	<ClCompile Include="DcsBridge\Internal\EfmEventReporter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\EventLog.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
     <ClCompile Include="DcsBridge\Internal\FrameInputCollector.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>

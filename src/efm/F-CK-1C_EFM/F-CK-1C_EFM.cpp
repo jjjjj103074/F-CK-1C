@@ -34,19 +34,66 @@ DcsBridge::Internal::OutputStore& output_store()
 	return DcsBridge::output_store();
 }
 
+DcsBridge::Internal::EfmEventReporter& event_reporter()
+{
+	return DcsBridge::event_reporter();
+}
+
 std::mutex& execution_mutex()
 {
 	return DcsBridge::execution_mutex();
 }
 
+void ensure_module_initialized()
+{
+	(void)DcsBridge::event_log();
+}
+
+template <typename Action>
+bool perform_core_action(
+	const DcsBridge::Internal::CallbackContext& context,
+	const Action& action)
+{
+	bool released = false;
+	{
+		const std::lock_guard<std::mutex> lock(execution_mutex());
+		released = output_store().is_released();
+		if (!released)
+		{
+			action(efm());
+		}
+	}
+	if (released)
+	{
+		event_reporter().log_callback_lifecycle_error(context, "released");
+	}
+	return !released;
+}
+
+template <typename Query>
+double query_core_double(
+	const DcsBridge::Internal::CallbackContext& context,
+	const Query& query)
+{
+	double result = 0.0;
+	const bool completed = perform_core_action(
+		context,
+		[&result, &query](Core::Fck1cEfm& core) { result = query(core); });
+	return completed ? result : 0.0;
+}
+
 void start_efm(Core::StartMode mode)
 {
+	ensure_module_initialized();
+	Core::FrameOutput output;
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex());
 		input_collector().reset();
-		output_store().publish(efm().start(mode));
+		output = efm().start(mode);
+		output_store().publish(output);
 	}
 	runtime().reset_carrier_launch();
+	event_reporter().log_start(mode, output.simulation_time_s);
 }
 
 }
@@ -60,6 +107,7 @@ void ed_fm_add_local_force(
 	double& pos_y,
 	double& pos_z)
 {
+	ensure_module_initialized();
 	const std::optional<Core::FrameOutput> output = output_store().read();
 	if (!output)
 	{
@@ -69,6 +117,7 @@ void ed_fm_add_local_force(
 		pos_x = 0.0;
 		pos_y = 0.0;
 		pos_z = 0.0;
+		event_reporter().log_unavailable_output({ "ed_fm_add_local_force" });
 		return;
 	}
 	const Core::ForceMomentOutput& frame = output->force_moment;
@@ -82,12 +131,14 @@ void ed_fm_add_local_force(
 
 void ed_fm_add_local_moment(double& x, double& y, double& z)
 {
+	ensure_module_initialized();
 	const std::optional<Core::FrameOutput> output = output_store().read();
 	if (!output)
 	{
 		x = 0.0;
 		y = 0.0;
 		z = 0.0;
+		event_reporter().log_unavailable_output({ "ed_fm_add_local_moment" });
 		return;
 	}
 	const Core::ForceMomentOutput& frame = output->force_moment;
@@ -98,23 +149,36 @@ void ed_fm_add_local_moment(double& x, double& y, double& z)
 
 void ed_fm_simulate(double dt)
 {
+	ensure_module_initialized();
 	if (!Core::is_valid_frame_dt(dt))
 	{
+		event_reporter().log_invalid_frame_dt(dt);
+		return;
+	}
+	if (!output_store().read())
+	{
+		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
 		return;
 	}
 	const Core::AutopilotCommand autopilot = runtime().read_autopilot();
 	const Core::MaxPowerCommand max_power = runtime().read_max_power();
 	Core::FrameOutput output;
+	bool output_available = false;
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex());
-		if (!output_store().read())
+		output_available = output_store().read().has_value();
+		if (output_available)
 		{
-			return;
+			input_collector().publish_autopilot(autopilot);
+			input_collector().publish_max_power(max_power);
+			output = efm().step(input_collector().snapshot(dt));
+			output_store().publish(output);
 		}
-		input_collector().publish_autopilot(autopilot);
-		input_collector().publish_max_power(max_power);
-		output = efm().step(input_collector().snapshot(dt));
-		output_store().publish(output);
+	}
+	if (!output_available)
+	{
+		event_reporter().log_unavailable_output({ "ed_fm_simulate" });
+		return;
 	}
 	runtime().export_temperature(output.flight.atmosphere_temperature_k);
 }
@@ -130,6 +194,7 @@ void ed_fm_set_atmosphere(
 	double wind_vy,
 	double wind_vz)
 {
+	ensure_module_initialized();
 	const Core::AtmosphereInput input = {
 		h,
 		t,
@@ -150,6 +215,7 @@ void ed_fm_set_surface(
 	double normal_y,
 	double normal_z)
 {
+	ensure_module_initialized();
 	const Core::SurfaceInput input = {
 		h,
 		h_obj,
@@ -169,6 +235,7 @@ void ed_fm_set_current_mass_state(
 	double moment_of_inertia_y,
 	double moment_of_inertia_z)
 {
+	ensure_module_initialized();
 	const Core::MassStateInput input = {
 		mass,
 		Common::Vec3(center_of_mass_x, center_of_mass_y, center_of_mass_z),
@@ -199,6 +266,7 @@ void ed_fm_set_current_state(
 	double quaternion_z,
 	double quaternion_w)
 {
+	ensure_module_initialized();
 	const Core::WorldKinematicsInput input = {
 		Common::Vec3(ax, ay, az),
 		Common::Vec3(vx, vy, vz),
@@ -233,6 +301,7 @@ void ed_fm_set_current_state_body_axis(
 	double common_angle_of_attack,
 	double common_angle_of_slide)
 {
+	ensure_module_initialized();
 	const Core::BodyKinematicsInput input = {
 		Common::Vec3(ax, ay, az),
 		Common::Vec3(vx, vy, vz),
@@ -250,16 +319,15 @@ void ed_fm_set_current_state_body_axis(
 
 void ed_fm_set_command(int command, float value)
 {
+	ensure_module_initialized();
 	const DcsBridge::DcsCommandMapping mapping = DcsBridge::map_command(command, value);
-	if (mapping.mapped)
+	if (!mapping.mapped)
 	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		if (output_store().is_released())
-		{
-			return;
-		}
-		efm().handle_command(mapping.command);
+		return;
 	}
+	(void)perform_core_action(
+		{ "ed_fm_set_command", "command", command },
+		[&mapping](Core::Fck1cEfm& core) { core.handle_command(mapping.command); });
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -272,19 +340,27 @@ bool ed_fm_change_mass(
 	double& delta_mass_moment_of_inertia_y,
 	double& delta_mass_moment_of_inertia_z)
 {
-	delta_mass = 0.0;
-	delta_mass_pos_x = 0.0;
-	delta_mass_pos_y = 0.0;
-	delta_mass_pos_z = 0.0;
-	delta_mass_moment_of_inertia_x = 0.0;
-	delta_mass_moment_of_inertia_y = 0.0;
+	ensure_module_initialized();
+	delta_mass = delta_mass_pos_x = delta_mass_pos_y = delta_mass_pos_z = 0.0;
+	delta_mass_moment_of_inertia_x = delta_mass_moment_of_inertia_y = 0.0;
 	delta_mass_moment_of_inertia_z = 0.0;
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (!output_store().read())
+	Core::MassDeltaResult result;
+	bool released = false;
 	{
+		const std::lock_guard<std::mutex> lock(execution_mutex());
+		released = output_store().is_released();
+		if (!released)
+		{
+			result = efm().take_mass_delta();
+		}
+	}
+	if (released)
+	{
+		event_reporter().log_callback_lifecycle_error(
+			{ "ed_fm_change_mass" },
+			"released");
 		return false;
 	}
-	const Core::MassDeltaResult result = efm().take_mass_delta();
 	if (!result.available)
 	{
 		return false;
@@ -301,64 +377,68 @@ bool ed_fm_change_mass(
 
 void ed_fm_set_internal_fuel(double fuel)
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
-	{
-		return;
-	}
-	efm().set_internal_fuel(fuel);
+	ensure_module_initialized();
+	(void)perform_core_action(
+		{ "ed_fm_set_internal_fuel" },
+		[fuel](Core::Fck1cEfm& core) { core.set_internal_fuel(fuel); });
 }
 
 double ed_fm_get_internal_fuel()
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (!output_store().read())
-	{
-		return 0.0;
-	}
-	return efm().internal_fuel();
+	ensure_module_initialized();
+	return query_core_double(
+		{ "ed_fm_get_internal_fuel" },
+		[](const Core::Fck1cEfm& core) { return core.internal_fuel(); });
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
 void ed_fm_set_external_fuel(int station, double fuel, double x, double y, double z)
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
-	{
-		return;
-	}
-	efm().set_external_fuel({ station, fuel, Common::Vec3(x, y, z) });
+	ensure_module_initialized();
+	const Core::ExternalFuelInput command = {
+		station,
+		fuel,
+		Common::Vec3(x, y, z)
+	};
+	(void)perform_core_action(
+		{ "ed_fm_set_external_fuel", "station", station },
+		[&command](Core::Fck1cEfm& core) { core.set_external_fuel(command); });
 }
 
 double ed_fm_get_external_fuel()
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (!output_store().read())
-	{
-		return 0.0;
-	}
-	return efm().external_fuel();
+	ensure_module_initialized();
+	return query_core_double(
+		{ "ed_fm_get_external_fuel" },
+		[](const Core::Fck1cEfm& core) { return core.external_fuel(); });
 }
 
 void ed_fm_set_draw_args(EdDrawArgument* drawargs, size_t size)
 {
+	ensure_module_initialized();
 	const std::optional<Core::FrameOutput> output = output_store().read();
-	if (output)
+	if (!output)
 	{
-		DcsBridge::set_draw_args(drawargs, size, DcsBridge::make_draw_arg_state(*output));
+		event_reporter().log_unavailable_output({ "ed_fm_set_draw_args" });
+		return;
 	}
+	DcsBridge::set_draw_args(drawargs, size, DcsBridge::make_draw_arg_state(*output));
 }
 
 void ed_fm_configure(const char* cfg_path)
 {
-	runtime().configure(cfg_path);
+	DcsBridge::configure_module(cfg_path);
+	event_reporter().log_configure(cfg_path);
 }
 
 double ed_fm_get_param(unsigned index)
 {
+	ensure_module_initialized();
 	const std::optional<Core::FrameOutput> output = output_store().read();
 	if (!output)
 	{
+		event_reporter().log_unavailable_output(
+			{ "ed_fm_get_param", "index", index });
 		return 0.0;
 	}
 	return DcsBridge::get_param(index, DcsBridge::make_param_export_state(*output));
@@ -366,97 +446,103 @@ double ed_fm_get_param(unsigned index)
 
 void ed_fm_refueling_add_fuel(double fuel)
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
-	{
-		return;
-	}
-	efm().add_refueling_fuel(fuel);
+	ensure_module_initialized();
+	(void)perform_core_action(
+		{ "ed_fm_refueling_add_fuel" },
+		[fuel](Core::Fck1cEfm& core) { core.add_refueling_fuel(fuel); });
 }
 
 void ed_fm_unlimited_fuel(bool value)
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
-	{
-		return;
-	}
-	efm().set_infinite_fuel(value);
+	ensure_module_initialized();
+	(void)perform_core_action(
+		{ "ed_fm_unlimited_fuel" },
+		[value](Core::Fck1cEfm& core) { core.set_infinite_fuel(value); });
 }
 
 void ed_fm_set_easy_flight(bool value)
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
-	{
-		return;
-	}
-	efm().set_easy_flight(value);
+	ensure_module_initialized();
+	(void)perform_core_action(
+		{ "ed_fm_set_easy_flight" },
+		[value](Core::Fck1cEfm& core) { core.set_easy_flight(value); });
 }
 
 void ed_fm_set_immortal(bool value)
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
-	{
-		return;
-	}
-	efm().set_invincible(value);
+	ensure_module_initialized();
+	(void)perform_core_action(
+		{ "ed_fm_set_immortal" },
+		[value](Core::Fck1cEfm& core) { core.set_invincible(value); });
 }
 
 void ed_fm_on_damage(int element, double integrity)
 {
+	ensure_module_initialized();
 	const DcsBridge::DcsDamageMapping mapping = DcsBridge::map_damage(element, integrity);
 	Core::Fck1cEfmSnapshot snapshot;
+	const bool completed = perform_core_action(
+		{ "ed_fm_on_damage", "element", element },
+		[&mapping, &snapshot](Core::Fck1cEfm& core)
+		{
+			if (mapping.mapped)
+			{
+				core.apply_damage(mapping.event);
+			}
+			snapshot = core.snapshot();
+		});
+	if (completed)
 	{
-		const std::lock_guard<std::mutex> lock(execution_mutex());
-		if (output_store().is_released())
-		{
-			return;
-		}
-		if (mapping.mapped)
-		{
-			efm().apply_damage(mapping.event);
-		}
-		snapshot = efm().snapshot();
+		event_reporter().log_damage(snapshot, element, integrity);
 	}
-	runtime().log_damage(snapshot, element, integrity);
 }
 
 void ed_fm_suspension_feedback(int index, const ed_fm_suspension_info* info)
 {
-	runtime().publish_suspension_feedback(input_collector(), index, info);
+	ensure_module_initialized();
+	if (!runtime().publish_suspension_feedback(input_collector(), index, info))
+	{
+		event_reporter().log_suspension_feedback_error(index, info == nullptr);
+	}
 }
 
 void ed_fm_repair()
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
-	{
-		return;
-	}
-	efm().repair();
+	ensure_module_initialized();
+	(void)perform_core_action(
+		{ "ed_fm_repair" },
+		[](Core::Fck1cEfm& core) { core.repair(); });
 }
 
 bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out)
 {
+	ensure_module_initialized();
 	Core::Fck1cEfmSnapshot snapshot;
 	double max_dry_thrust = 0.0;
+	bool released = false;
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex());
-		if (output_store().is_released())
+		released = output_store().is_released();
+		if (!released)
 		{
-			out = {};
-			return false;
+			snapshot = efm().snapshot();
+			max_dry_thrust = efm().max_dry_thrust_at(kCarrierLaunchReferenceMach);
 		}
-		snapshot = efm().snapshot();
-		max_dry_thrust = efm().max_dry_thrust_at(kCarrierLaunchReferenceMach);
+	}
+	if (released)
+	{
+		out = {};
+		event_reporter().log_callback_lifecycle_error(
+			{ "ed_fm_pop_simulation_event" },
+			"released");
+		return false;
 	}
 	return runtime().pop_simulation_event(snapshot, max_dry_thrust, out);
 }
 
 bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 {
+	ensure_module_initialized();
 	return runtime().push_simulation_event(in);
 }
 
@@ -477,19 +563,44 @@ void ed_fm_hot_start_in_air()
 
 void ed_fm_release()
 {
-	const std::lock_guard<std::mutex> lock(execution_mutex());
-	if (output_store().is_released())
+	ensure_module_initialized();
+	std::optional<double> final_simulation_time;
+	bool released = false;
 	{
+		const std::lock_guard<std::mutex> lock(execution_mutex());
+		released = output_store().is_released();
+		if (!released)
+		{
+			const std::optional<Core::FrameOutput> output = output_store().read();
+			if (output)
+			{
+				final_simulation_time = output->simulation_time_s;
+			}
+			efm().release();
+			output_store().mark_released();
+		}
+	}
+	if (released)
+	{
+		event_reporter().log_callback_lifecycle_error(
+			{ "ed_fm_release" },
+			"released");
 		return;
 	}
-	efm().release();
-	output_store().mark_released();
+	event_reporter().log_release(final_simulation_time);
 }
 
 double ed_fm_get_shake_amplitude()
 {
+	ensure_module_initialized();
 	const std::optional<Core::FrameOutput> output = output_store().read();
-	return output ? output->shake_amplitude : 0.0;
+	if (!output)
+	{
+		event_reporter().log_unavailable_output(
+			{ "ed_fm_get_shake_amplitude" });
+		return 0.0;
+	}
+	return output->shake_amplitude;
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -501,6 +612,7 @@ bool ed_fm_add_local_force_component(
 	double& pos_y,
 	double& pos_z)
 {
+	ensure_module_initialized();
 	x = 0.0;
 	y = 0.0;
 	z = 0.0;
@@ -519,6 +631,7 @@ bool ed_fm_add_global_force_component(
 	double& pos_y,
 	double& pos_z)
 {
+	ensure_module_initialized();
 	x = 0.0;
 	y = 0.0;
 	z = 0.0;
@@ -530,6 +643,7 @@ bool ed_fm_add_global_force_component(
 
 bool ed_fm_add_local_moment_component(double& x, double& y, double& z)
 {
+	ensure_module_initialized();
 	x = 0.0;
 	y = 0.0;
 	z = 0.0;
@@ -538,6 +652,7 @@ bool ed_fm_add_local_moment_component(double& x, double& y, double& z)
 
 bool ed_fm_add_global_moment_component(double& x, double& y, double& z)
 {
+	ensure_module_initialized();
 	x = 0.0;
 	y = 0.0;
 	z = 0.0;
@@ -546,11 +661,13 @@ bool ed_fm_add_global_moment_component(double& x, double& y, double& z)
 
 bool ed_fm_enable_debug_info()
 {
+	ensure_module_initialized();
 	return false;
 }
 
 size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen)
 {
+	ensure_module_initialized();
 	(void)level;
 	if (buffer != nullptr && maxlen > 0)
 	{

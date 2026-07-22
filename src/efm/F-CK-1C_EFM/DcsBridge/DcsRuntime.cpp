@@ -1,17 +1,12 @@
 #include "DcsRuntime.h"
 
 #include "Internal/FrameInputCollector.h"
-#include "../Diagnostics/DebugLogger.h"
-#include "../Diagnostics/RuntimeDiagnostics.h"
 
 namespace
 {
-constexpr size_t kModulePathBufferSize = DcsBridge::kModulePathMax;
 constexpr double kLegacyCockpitTemperatureOffset = 273.0;
 constexpr double kCarrierLaunchEngineShare = 0.5;
 constexpr double kCarrierLaunchEngineCount = 2.0;
-constexpr const char* kInvalidSuspensionFeedback =
-	"suspension_feedback: invalid idx or null info";
 }
 
 namespace DcsBridge
@@ -50,11 +45,6 @@ Core::MaxPowerCommand DcsRuntime::read_max_power()
 	return command;
 }
 
-void DcsRuntime::configure(const char* config_path)
-{
-	configure_module_paths(module_paths_, config_path);
-}
-
 void DcsRuntime::export_temperature(double dcs_temperature)
 {
 	export_temperature_param(
@@ -68,27 +58,14 @@ void DcsRuntime::reset_carrier_launch()
 	reset_carrier_launch_state(carrier_launch_);
 }
 
-void DcsRuntime::log_damage(
-	const Core::Fck1cEfmSnapshot& snapshot,
-	int element,
-	double integrity)
-{
-	char message[160];
-	Diagnostics::format_damage_event(
-		{ message, sizeof(message) },
-		{ element, integrity, snapshot.gameplay.invincible });
-	write_module_log(message);
-}
-
-void DcsRuntime::publish_suspension_feedback(
+bool DcsRuntime::publish_suspension_feedback(
 	Internal::FrameInputCollector& collector,
 	int index,
 	const ed_fm_suspension_info* info)
 {
 	if (info == nullptr)
 	{
-		write_module_log(kInvalidSuspensionFeedback);
-		return;
+		return false;
 	}
 	const Core::SuspensionFeedbackInput feedback = {
 		index,
@@ -104,10 +81,7 @@ void DcsRuntime::publish_suspension_feedback(
 		info->struct_compression,
 		info->wheel_speed_X
 	};
-	if (!collector.publish_suspension(feedback))
-	{
-		write_module_log(kInvalidSuspensionFeedback);
-	}
+	return collector.publish_suspension(feedback);
 }
 
 bool DcsRuntime::pop_simulation_event(
@@ -130,16 +104,4 @@ bool DcsRuntime::push_simulation_event(const ed_fm_simulation_event& in)
 	return push_carrier_launch_event(carrier_launch_, in);
 }
 
-void DcsRuntime::build_mod_path(char* output, size_t output_size, const char* relative_path)
-{
-	DcsBridge::build_mod_path(
-		module_paths_, { output, output_size }, relative_path);
-}
-
-void DcsRuntime::write_module_log(const char* message)
-{
-	char debug_directory[kModulePathBufferSize];
-	build_mod_path(debug_directory, sizeof(debug_directory), "debug");
-	Diagnostics::write_module_debug_log(debug_directory, message);
-}
 }

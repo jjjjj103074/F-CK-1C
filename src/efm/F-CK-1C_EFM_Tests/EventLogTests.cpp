@@ -1,0 +1,290 @@
+#include "TestHarness.h"
+
+#include "DcsBridge/Internal/EfmEventReporter.h"
+#include "DcsBridge/Internal/EventLog.h"
+#include "Diagnostics/RuntimeDiagnostics.h"
+
+#include <atomic>
+#include <cctype>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <windows.h>
+
+namespace
+{
+constexpr int kWritesPerThread = 40;
+constexpr int kWriterThreadCount = 2;
+
+class TemporaryDirectory final
+{
+public:
+	TemporaryDirectory()
+	{
+		char temp_directory[MAX_PATH];
+		char unique_path[MAX_PATH];
+		if (GetTempPathA(MAX_PATH, temp_directory) == 0 ||
+			GetTempFileNameA(temp_directory, "efm", 0, unique_path) == 0)
+		{
+			return;
+		}
+		DeleteFileA(unique_path);
+		if (CreateDirectoryA(unique_path, nullptr) != 0)
+		{
+			path_ = unique_path;
+		}
+	}
+
+	~TemporaryDirectory()
+	{
+		std::error_code error;
+		std::filesystem::remove_all(path_, error);
+	}
+
+	const std::filesystem::path& path() const
+	{
+		return path_;
+	}
+
+	bool valid() const
+	{
+		return !path_.empty();
+	}
+
+private:
+	std::filesystem::path path_;
+};
+
+void write_text(const std::filesystem::path& path, const char* text)
+{
+	std::ofstream output(path, std::ios::binary);
+	output << text;
+}
+
+std::string read_text(const std::filesystem::path& path)
+{
+	std::ifstream input(path, std::ios::binary);
+	return std::string(
+		std::istreambuf_iterator<char>(input),
+		std::istreambuf_iterator<char>());
+}
+
+std::string read_text_while_open(const std::filesystem::path& path)
+{
+	const HANDLE file = CreateFileA(
+		path.string().c_str(),
+		GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		nullptr);
+	if (file == INVALID_HANDLE_VALUE)
+	{
+		return {};
+	}
+	LARGE_INTEGER size = {};
+	if (!GetFileSizeEx(file, &size) || size.QuadPart < 0)
+	{
+		CloseHandle(file);
+		return {};
+	}
+	std::string content(static_cast<size_t>(size.QuadPart), '\0');
+	DWORD bytes_read = 0;
+	const bool read = content.empty() || ReadFile(
+		file,
+		content.data(),
+		static_cast<DWORD>(content.size()),
+		&bytes_read,
+		nullptr);
+	CloseHandle(file);
+	content.resize(read ? bytes_read : 0);
+	return content;
+}
+
+bool all_digits(const std::string& text, size_t start, size_t count)
+{
+	for (size_t index = start; index < start + count; ++index)
+	{
+		if (!std::isdigit(static_cast<unsigned char>(text[index])))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool has_wall_clock_prefix(const std::string& text)
+{
+	constexpr size_t kWallClockLength = 25;
+	if (text.size() < kWallClockLength)
+	{
+		return false;
+	}
+	return text[0] == '[' && text[5] == '-' && text[8] == '-' &&
+		text[11] == ' ' && text[14] == ':' && text[17] == ':' &&
+		text[20] == '.' && text[24] == ']' &&
+		all_digits(text, 1, 4) && all_digits(text, 6, 2) &&
+		all_digits(text, 9, 2) && all_digits(text, 12, 2) &&
+		all_digits(text, 15, 2) && all_digits(text, 18, 2) &&
+		all_digits(text, 21, 3);
+}
+
+void prepare_rotation_files(const TemporaryDirectory& root)
+{
+	const std::filesystem::path log_directory = root.path() / "log";
+	std::error_code error;
+	std::filesystem::create_directory(log_directory, error);
+	write_text(log_directory / "fck1c_efm.log", "previous active\n");
+	write_text(log_directory / "fck1c_efm.log.old", "obsolete old\n");
+}
+
+void test_rotation_format_and_external_read(Tests::Context& context)
+{
+	TemporaryDirectory root;
+	TEST_EXPECT(context, root.valid());
+	prepare_rotation_files(root);
+	const std::filesystem::path active = root.path() / "log" / "fck1c_efm.log";
+	const std::filesystem::path old = root.path() / "log" / "fck1c_efm.log.old";
+	{
+		DcsBridge::Internal::EventLog log(root.path().string().c_str());
+		TEST_EXPECT(context, log.is_open());
+		TEST_EXPECT(context, read_text(old) == "previous active\n");
+		TEST_EXPECT(context, log.write({
+			DcsBridge::Internal::EventLevel::Info,
+			12.5,
+			"first event" }));
+		TEST_EXPECT(context, log.write({
+			DcsBridge::Internal::EventLevel::Error,
+			std::nullopt,
+			"second event" }));
+		const std::string content = read_text_while_open(active);
+		TEST_EXPECT(context, has_wall_clock_prefix(content));
+		TEST_EXPECT(context, content.find("][12.5][INFO] first event\n") != std::string::npos);
+		TEST_EXPECT(context, content.find("][-][ERROR] second event\n") != std::string::npos);
+	}
+	TEST_EXPECT(context, std::filesystem::is_regular_file(active));
+}
+
+void write_concurrent_events(
+	DcsBridge::Internal::EventLog& log,
+	const char* message,
+	std::atomic<int>& successes)
+{
+	for (int index = 0; index < kWritesPerThread; ++index)
+	{
+		if (log.write({ DcsBridge::Internal::EventLevel::Info, 1.0, message }))
+		{
+			++successes;
+		}
+	}
+}
+
+void verify_complete_concurrent_lines(
+	Tests::Context& context,
+	const std::string& content)
+{
+	std::istringstream lines(content);
+	std::string line;
+	int line_count = 0;
+	while (std::getline(lines, line))
+	{
+		++line_count;
+		const bool known_line =
+			line.find("][1][INFO] worker=a") != std::string::npos ||
+			line.find("][1][INFO] worker=b") != std::string::npos;
+		TEST_EXPECT(context, known_line);
+	}
+	TEST_EXPECT(context, line_count == kWritesPerThread * kWriterThreadCount);
+}
+
+void test_concurrent_writes_are_complete(Tests::Context& context)
+{
+	TemporaryDirectory root;
+	DcsBridge::Internal::EventLog log(root.path().string().c_str());
+	std::atomic<int> successes = 0;
+	std::thread first(write_concurrent_events, std::ref(log), "worker=a", std::ref(successes));
+	std::thread second(write_concurrent_events, std::ref(log), "worker=b", std::ref(successes));
+	first.join();
+	second.join();
+	TEST_EXPECT(context, successes == kWritesPerThread * kWriterThreadCount);
+	const std::filesystem::path active = root.path() / "log" / "fck1c_efm.log";
+	verify_complete_concurrent_lines(context, read_text_while_open(active));
+}
+
+void test_open_failure_is_exposed(Tests::Context& context)
+{
+	TemporaryDirectory root;
+	const std::filesystem::path invalid_root = root.path() / "missing" / "child";
+	DcsBridge::Internal::EventLog log(invalid_root.string().c_str());
+	TEST_EXPECT(context, !log.is_open());
+	TEST_EXPECT(context, log.last_error_code() != 0);
+	TEST_EXPECT(context, !log.write({
+		DcsBridge::Internal::EventLevel::Error,
+		std::nullopt,
+		"cannot be written" }));
+	DcsBridge::Internal::EventLog unresolved_path_log("");
+	TEST_EXPECT(context, !unresolved_path_log.is_open());
+	TEST_EXPECT(context, unresolved_path_log.last_error_code() != 0);
+}
+
+void test_error_messages_include_required_parameters(Tests::Context& context)
+{
+	char message[256];
+	Diagnostics::format_callback_lifecycle_error(
+		{ message, sizeof(message) },
+		{ "ed_fm_get_param", "released", "index", 42 });
+	TEST_EXPECT(context, std::string(message) ==
+		"callback=ed_fm_get_param index=42 invalid lifecycle state=released");
+	Diagnostics::format_invalid_frame_dt_error(
+		{ message, sizeof(message) },
+		{ -0.25 });
+	TEST_EXPECT(context, std::string(message).find("dt=-0.25") != std::string::npos);
+	Diagnostics::format_suspension_feedback_error(
+		{ message, sizeof(message) },
+		{ 7, true });
+	TEST_EXPECT(context, std::string(message).find("index=7 info_null=true") !=
+		std::string::npos);
+}
+
+void test_reporter_writes_required_error_context(Tests::Context& context)
+{
+	TemporaryDirectory root;
+	DcsBridge::Internal::EventLog log(root.path().string().c_str());
+	DcsBridge::Internal::OutputStore output_store;
+	DcsBridge::Internal::EfmEventReporter reporter(log, output_store);
+	reporter.log_unavailable_output({ "ed_fm_get_param", "index", 42 });
+	Core::FrameOutput output;
+	output.simulation_time_s = 8.25;
+	output_store.publish(output);
+	reporter.log_invalid_frame_dt(-0.25);
+	reporter.log_suspension_feedback_error(7, true);
+	output_store.mark_released();
+	reporter.log_unavailable_output({ "ed_fm_get_shake_amplitude" });
+	const std::filesystem::path active = root.path() / "log" / "fck1c_efm.log";
+	const std::string content = read_text_while_open(active);
+	TEST_EXPECT(context, content.find(
+		"][-][ERROR] callback=ed_fm_get_param index=42 invalid lifecycle state=before_start\n") !=
+		std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"][8.25][ERROR] callback=ed_fm_simulate invalid dt=-0.25\n") !=
+		std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"][8.25][ERROR] callback=ed_fm_suspension_feedback index=7 info_null=true\n") !=
+		std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"][-][ERROR] callback=ed_fm_get_shake_amplitude invalid lifecycle state=released\n") !=
+		std::string::npos);
+}
+}
+
+void run_event_log_tests(Tests::Context& context)
+{
+	test_rotation_format_and_external_read(context);
+	test_concurrent_writes_are_complete(context);
+	test_open_failure_is_exposed(context);
+	test_error_messages_include_required_parameters(context);
+	test_reporter_writes_required_error_context(context);
+}
