@@ -3,6 +3,7 @@
 #include "../Common/Vec3.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 
 namespace Core
@@ -16,6 +17,11 @@ enum class StartMode
 	HotGround,
 	HotAir
 };
+
+inline bool is_valid_frame_dt(double dt_s) noexcept
+{
+	return std::isfinite(dt_s) && dt_s > 0.0;
+}
 
 struct Quaternion
 {

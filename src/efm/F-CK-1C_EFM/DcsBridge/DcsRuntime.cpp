@@ -1,5 +1,6 @@
 #include "DcsRuntime.h"
 
+#include "Internal/FrameInputCollector.h"
 #include "../Diagnostics/DebugLogger.h"
 #include "../Diagnostics/RuntimeDiagnostics.h"
 
@@ -79,8 +80,8 @@ void DcsRuntime::log_damage(
 	write_module_log(message);
 }
 
-void DcsRuntime::update_suspension_feedback(
-	Core::Fck1cEfm& efm,
+void DcsRuntime::publish_suspension_feedback(
+	Internal::FrameInputCollector& collector,
 	int index,
 	const ed_fm_suspension_info* info)
 {
@@ -103,7 +104,7 @@ void DcsRuntime::update_suspension_feedback(
 		info->struct_compression,
 		info->wheel_speed_X
 	};
-	if (!efm.update_suspension_feedback(feedback))
+	if (!collector.publish_suspension(feedback))
 	{
 		write_module_log(kInvalidSuspensionFeedback);
 	}

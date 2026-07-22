@@ -173,18 +173,14 @@ public:
 
 	const Data::AircraftConfig& config() const;
 	Fck1cEfmSnapshot snapshot() const;
-	FrameOutput frame_output(const FrameDataAvailability& availability) const;
+	FrameOutput start(StartMode mode);
+	FrameOutput step(const FrameInput& input);
 	ForceMomentFrame force_moment_output() const;
 	double max_dry_thrust_at(double mach) const;
 	double internal_fuel() const;
 	double external_fuel() const;
 	double shake_amplitude() const;
 
-	void set_atmosphere(const AtmosphereInput& input);
-	void set_surface(const SurfaceInput& input);
-	void set_mass_state(const MassStateInput& input);
-	void set_world_kinematics(const WorldKinematicsInput& input);
-	void set_body_kinematics(const BodyKinematicsInput& input);
 	void handle_command(const EfmCommand& command);
 	MassDeltaResult take_mass_delta();
 	void set_internal_fuel(double fuel);
@@ -194,19 +190,16 @@ public:
 	void set_easy_flight(bool enabled);
 	void set_invincible(bool enabled);
 	void apply_damage(const DamageEvent& event);
-	bool update_suspension_feedback(const SuspensionFeedbackInput& input);
-
-	void simulate(
-		double dt,
-		const AutopilotCommand& autopilot,
-		const MaxPowerCommand& max_power);
-	void cold_start();
-	void hot_ground_start();
-	void hot_air_start();
 	void release();
 	void repair();
 
 private:
+	FrameOutput make_frame_output(
+		const FrameDataAvailability& availability) const;
+	void apply_frame_input(const FrameInput& input);
+	void apply_mass_input(const MassStateInput& input);
+	void apply_suspension_input(const FrameInput& input);
+	void configure_start_state(StartMode mode);
 	void handle_pitch_roll_command(const EfmCommand& command);
 	void handle_yaw_command(const EfmCommand& command);
 	void handle_fbw_command(const EfmCommand& command);

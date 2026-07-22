@@ -99,7 +99,7 @@ Core::FuelOutput project_fuel(const Systems::FuelSystem& source)
 
 namespace Core
 {
-FrameOutput Fck1cEfm::frame_output(
+FrameOutput Fck1cEfm::make_frame_output(
 	const FrameDataAvailability& availability) const
 {
 	FrameOutput output;

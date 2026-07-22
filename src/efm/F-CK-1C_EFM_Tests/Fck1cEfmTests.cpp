@@ -3,6 +3,7 @@
 #include "Core/Fck1cEfm.h"
 #include "DcsBridge/DcsSnapshots.h"
 
+#include <limits>
 #include <stdexcept>
 
 namespace
@@ -77,22 +78,6 @@ Core::FrameInput make_frame_input()
 	input.autopilot = { true, false, true, 0.2, -0.3, 0.4 };
 	input.max_power = { 1.0, 1.0 };
 	return input;
-}
-
-void apply_legacy_frame_input(
-	Core::Fck1cEfm& efm,
-	const Core::FrameInput& input)
-{
-	efm.set_atmosphere(input.atmosphere);
-	efm.set_surface(input.surface);
-	efm.set_mass_state(input.mass);
-	efm.set_world_kinematics(input.world_kinematics);
-	efm.set_body_kinematics(input.body_kinematics);
-	for (const Core::SuspensionFeedbackInput& wheel : input.suspension)
-	{
-		efm.update_suspension_feedback(wheel);
-	}
-	efm.simulate(input.dt_s, input.autopilot, input.max_power);
 }
 
 void expect_vec3(
@@ -266,23 +251,6 @@ void expect_existing_param_output(
 	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel, expected.total_fuel, kTolerance);
 }
 
-void start_legacy(Core::Fck1cEfm& efm, Core::StartMode mode)
-{
-	switch (mode)
-	{
-	case Core::StartMode::ColdGround:
-		efm.cold_start();
-		return;
-	case Core::StartMode::HotGround:
-		efm.hot_ground_start();
-		return;
-	case Core::StartMode::HotAir:
-		efm.hot_air_start();
-		return;
-	}
-	throw std::invalid_argument("Unknown Core::StartMode.");
-}
-
 void expect_start_specific_output(
 	Tests::Context& context,
 	const Core::FrameOutput& output,
@@ -298,6 +266,89 @@ void expect_start_specific_output(
 	TEST_EXPECT_NEAR(context, output.engines[1].throttle_input, airborne ? 0.5 : 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.engines[0].throttle_output, hot ? 0.5 : 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.engines[1].throttle_output, hot ? 0.5 : 0.0, kTolerance);
+}
+
+void expect_legacy_engine_baseline(
+	Tests::Context& context,
+	const Core::EngineOutput& actual)
+{
+	TEST_EXPECT(context, actual.switch_on);
+	TEST_EXPECT_NEAR(context, actual.throttle_input, 0.4, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.throttle_output, 0.50224089635854341, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.power_readout, 0.50150000000000006, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.thrust_force, 12959.196801553151, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.afterburner_ratio, 0.0, kTolerance);
+	TEST_EXPECT(context, !actual.afterburner_lit);
+	TEST_EXPECT_NEAR(context, actual.nozzle_aperture, 0.39300000000000002, kTolerance);
+}
+
+void expect_legacy_control_baseline(
+	Tests::Context& context,
+	const Core::ControlOutput& actual)
+{
+	TEST_EXPECT_NEAR(context, actual.pitch_input, 0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.roll_input, -0.3, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.yaw_input, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.elevator_command, -0.0037173599739788294, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.aileron_command, -0.028571428571428571, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.rudder_command, -0.0024916666666666659, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flaps_position, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.slats_position, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.airbrake_position, 0.0, kTolerance);
+}
+
+void expect_legacy_gear_baseline(
+	Tests::Context& context,
+	const Core::LandingGearOutput& actual)
+{
+	TEST_EXPECT_NEAR(context, actual.gear_position, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.nose_wheel_steering, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.brake_left, 0.4, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.brake_right, 0.6, kTolerance);
+	for (double wheel_spin : actual.wheel_spin)
+	{
+		TEST_EXPECT_NEAR(context, wheel_spin, 0.0, kTolerance);
+	}
+}
+
+void expect_legacy_suspension_baseline(
+	Tests::Context& context,
+	const Core::SuspensionOutput& actual)
+{
+	const Common::Vec3 forces[] = {
+		{ 3.0, 4.0, 0.0 }, { 0.0, 80.0, 0.0 }, { 0.0, 90.0, 0.0 }
+	};
+	const double compression[] = { 0.1, 0.2, 0.3 };
+	const double force_magnitude[] = { 5.0, 80.0, 90.0 };
+	for (std::size_t index = 0; index < actual.wheels.size(); ++index)
+	{
+		expect_vec3(context, actual.wheels[index].acting_force, forces[index]);
+		TEST_EXPECT_NEAR(context, actual.wheels[index].compression, compression[index], kTolerance);
+		TEST_EXPECT_NEAR(context, actual.wheels[index].force_magnitude, force_magnitude[index], kTolerance);
+		TEST_EXPECT(context, actual.wheels[index].weight_on_wheel);
+	}
+	TEST_EXPECT(context, actual.any_weight_on_wheels);
+	TEST_EXPECT(context, actual.on_ground);
+}
+
+void expect_step7_legacy_baseline(
+	Tests::Context& context,
+	const Core::FrameOutput& actual)
+{
+	expect_vec3(context, actual.force_moment.force,
+		{ 18282.204829946411, 107068.92218657726, 7465.3009043063385 });
+	expect_vec3(context, actual.force_moment.moment,
+		{ 26922.073608154937, -2421.6993259174328, -43276.793392220876 });
+	expect_vec3(context, actual.force_moment.center_of_mass, { 0.2, -0.1, 0.3 });
+	expect_legacy_engine_baseline(context, actual.engines[0]);
+	expect_legacy_engine_baseline(context, actual.engines[1]);
+	TEST_EXPECT_NEAR(context, actual.fuel.internal_fuel, 500.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.fuel.external_fuel, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel, 0.0, kTolerance);
+	expect_legacy_control_baseline(context, actual.controls);
+	expect_legacy_gear_baseline(context, actual.landing_gear);
+	expect_legacy_suspension_baseline(context, actual.suspension);
+	TEST_EXPECT_NEAR(context, actual.shake_amplitude, 0.0, kTolerance);
 }
 
 void test_complete_frame_input_contract(Tests::Context& context)
@@ -320,6 +371,17 @@ void test_complete_frame_input_contract(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, input.max_power.value, 1.0, kTolerance);
 }
 
+void test_frame_dt_contract(Tests::Context& context)
+{
+	TEST_EXPECT(context, Core::is_valid_frame_dt(0.001));
+	TEST_EXPECT(context, !Core::is_valid_frame_dt(0.0));
+	TEST_EXPECT(context, !Core::is_valid_frame_dt(-0.001));
+	TEST_EXPECT(context, !Core::is_valid_frame_dt(
+		std::numeric_limits<double>::quiet_NaN()));
+	TEST_EXPECT(context, !Core::is_valid_frame_dt(
+		std::numeric_limits<double>::infinity()));
+}
+
 void test_all_start_mode_frame_outputs(Tests::Context& context)
 {
 	const Core::StartMode modes[] = {
@@ -330,10 +392,8 @@ void test_all_start_mode_frame_outputs(Tests::Context& context)
 	for (Core::StartMode mode : modes)
 	{
 		Core::Fck1cEfm efm(make_test_config());
-		start_legacy(efm, mode);
-		const Core::FrameDataAvailability unavailable;
-		const Core::FrameOutput output = efm.frame_output(unavailable);
-		expect_availability(context, output.availability, unavailable);
+		const Core::FrameOutput output = efm.start(mode);
+		expect_availability(context, output.availability, {});
 		expect_frame_matches_snapshot(context, output, efm.snapshot());
 		expect_start_specific_output(context, output, mode);
 	}
@@ -342,20 +402,65 @@ void test_all_start_mode_frame_outputs(Tests::Context& context)
 void test_frame_output_matches_existing_outputs(Tests::Context& context)
 {
 	Core::Fck1cEfm efm(make_test_config());
-	efm.hot_ground_start();
+	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(500.0);
 	efm.set_external_fuel({ 1, 120.0, Common::Vec3(0.5, -0.2, 0.1) });
 	send_command(efm, { Core::CommandGroup::LandingGear, Core::CommandAction::SetLeftBrake, 0.4 });
 	send_command(efm, { Core::CommandGroup::LandingGear, Core::CommandAction::SetRightBrake, 0.6 });
 	const Core::FrameInput input = make_frame_input();
-	apply_legacy_frame_input(efm, input);
-	const Core::FrameOutput output = efm.frame_output(input.availability);
+	const Core::FrameOutput output = efm.step(input);
+	// Golden values captured from 401f44c with this exact translated callback input.
+	expect_step7_legacy_baseline(context, output);
 	const Core::Fck1cEfmSnapshot snapshot = efm.snapshot();
 	expect_availability(context, output.availability, input.availability);
 	expect_frame_matches_snapshot(context, output, snapshot);
 	expect_existing_draw_output(context, output, snapshot);
 	expect_existing_param_output(context, output, snapshot);
 	TEST_EXPECT_NEAR(context, output.simulation_time_s, input.dt_s, kTolerance);
+}
+
+void test_step_preserves_unavailable_continuous_input(Tests::Context& context)
+{
+	Core::Fck1cEfm efm(make_test_config());
+	(void)efm.start(Core::StartMode::HotGround);
+	const Core::FrameOutput first = efm.step(make_frame_input());
+	Core::FrameInput next_input;
+	next_input.dt_s = 0.01;
+	const Core::FrameOutput next = efm.step(next_input);
+	expect_availability(context, next.availability, {});
+	TEST_EXPECT_NEAR(context, next.flight.altitude_asl_m, first.flight.altitude_asl_m, kTolerance);
+	TEST_EXPECT_NEAR(context, next.flight.position_world_z_m, first.flight.position_world_z_m, kTolerance);
+	expect_vec3(context, next.force_moment.center_of_mass, first.force_moment.center_of_mass);
+	for (std::size_t index = 0; index < next.suspension.wheels.size(); ++index)
+	{
+		expect_vec3(
+			context,
+			next.suspension.wheels[index].acting_force,
+			first.suspension.wheels[index].acting_force);
+		TEST_EXPECT_NEAR(
+			context,
+			next.suspension.wheels[index].compression,
+			first.suspension.wheels[index].compression,
+			kTolerance);
+	}
+}
+
+void test_start_reinitializes_frame_state(Tests::Context& context)
+{
+	Core::Fck1cEfm efm(make_test_config());
+	(void)efm.start(Core::StartMode::HotGround);
+	(void)efm.step(make_frame_input());
+	const Core::FrameOutput output = efm.start(Core::StartMode::ColdGround);
+	const Core::Fck1cEfmSnapshot state = efm.snapshot();
+	TEST_EXPECT_NEAR(context, output.simulation_time_s, 0.0, kTolerance);
+	TEST_EXPECT(context, !state.systems.startup.first_frame_completed);
+	TEST_EXPECT_NEAR(context, state.systems.fbw.throttle_blend, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, output.flight.altitude_asl_m, 0.0, kTolerance);
+	expect_vec3(context, output.force_moment.force, {});
+	expect_vec3(context, output.force_moment.moment, {});
+	TEST_EXPECT_NEAR(context, output.controls.flaps_position, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, output.suspension.wheels[0].compression, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, output.engines[0].thrust_force, 0.0, kTolerance);
 }
 
 void test_config_ownership(Tests::Context& context)
@@ -388,7 +493,12 @@ void test_invalid_config_rejected(Tests::Context& context)
 void test_snapshot_isolation(Tests::Context& context)
 {
 	Core::Fck1cEfm efm(make_test_config());
-	efm.set_mass_state({ 9100.0, Common::Vec3(1.0, 2.0, 3.0) });
+	(void)efm.start(Core::StartMode::ColdGround);
+	Core::FrameInput input;
+	input.dt_s = 0.01;
+	input.availability.mass = true;
+	input.mass = { 9100.0, Common::Vec3(1.0, 2.0, 3.0) };
+	(void)efm.step(input);
 	efm.set_internal_fuel(1200.0);
 	efm.set_easy_flight(true);
 	Core::Fck1cEfmSnapshot copy = efm.snapshot();
@@ -411,14 +521,19 @@ void test_simulation_pipeline(Tests::Context& context)
 	autopilot.throttle_command = 0.4;
 	const Core::MaxPowerCommand max_power;
 	Core::Fck1cEfm efm(make_test_config());
+	(void)efm.start(Core::StartMode::ColdGround);
 	efm.set_internal_fuel(100.0);
-	efm.simulate(0.01, autopilot, max_power);
+	Core::FrameInput input;
+	input.dt_s = 0.01;
+	input.autopilot = autopilot;
+	input.max_power = max_power;
+	(void)efm.step(input);
 	Core::Fck1cEfmSnapshot state = efm.snapshot();
 	TEST_EXPECT(context, state.systems.startup.first_frame_completed);
 	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.01, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.pitch.input, 0.2, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.roll.input, -0.3, kTolerance);
-	efm.simulate(0.01, autopilot, max_power);
+	(void)efm.step(input);
 	state = efm.snapshot();
 	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.02, kTolerance);
 }
@@ -426,13 +541,17 @@ void test_simulation_pipeline(Tests::Context& context)
 void test_cockpit_inputs_drive_core_outputs(Tests::Context& context)
 {
 	Core::Fck1cEfm efm(make_test_config());
-	efm.hot_ground_start();
+	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	const Core::AutopilotCommand autopilot = {
 		true, false, true, 0.25, -0.35, 0.6
 	};
 	const Core::MaxPowerCommand normal_power = { 1.0, 1.0 };
-	efm.simulate(0.01, autopilot, normal_power);
+	Core::FrameInput input;
+	input.dt_s = 0.01;
+	input.autopilot = autopilot;
+	input.max_power = normal_power;
+	(void)efm.step(input);
 	Core::Fck1cEfmSnapshot state = efm.snapshot();
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.pitch.input, 0.25, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.roll.input, -0.35, kTolerance);
@@ -444,7 +563,8 @@ void test_cockpit_inputs_drive_core_outputs(Tests::Context& context)
 	TEST_EXPECT(context, state.systems.engines.right.thrust_force > 0.0);
 
 	const Core::MaxPowerCommand cut_power = { 1.0, 0.0 };
-	efm.simulate(0.01, autopilot, cut_power);
+	input.max_power = cut_power;
+	(void)efm.step(input);
 	state = efm.snapshot();
 	TEST_EXPECT_NEAR(context, state.systems.engines.left.thrust_force, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.engines.right.thrust_force, 0.0, kTolerance);
@@ -453,11 +573,13 @@ void test_cockpit_inputs_drive_core_outputs(Tests::Context& context)
 void test_neutral_cockpit_inputs_complete_step(Tests::Context& context)
 {
 	Core::Fck1cEfm efm(make_test_config());
-	efm.hot_ground_start();
+	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	send_command(efm,
 		{ Core::CommandGroup::PitchRoll, Core::CommandAction::SetPitchAxis, 0.3 });
-	efm.simulate(0.01, {}, {});
+	Core::FrameInput input;
+	input.dt_s = 0.01;
+	(void)efm.step(input);
 	const Core::Fck1cEfmSnapshot state = efm.snapshot();
 	TEST_EXPECT_NEAR(context, state.systems.startup.simulation_time, 0.01, kTolerance);
 	TEST_EXPECT_NEAR(context, state.systems.primary_controls.pitch.input, 0.3, kTolerance);
@@ -470,14 +592,14 @@ void test_ground_start_lifecycle(Tests::Context& context)
 {
 	Core::Fck1cEfm efm(make_test_config());
 	efm.apply_damage({ Core::DamageArea::LeftWing, 0, 0.2 });
-	efm.cold_start();
+	(void)efm.start(Core::StartMode::ColdGround);
 	Core::Fck1cEfmSnapshot state = efm.snapshot();
 	TEST_EXPECT(context, state.systems.startup.mode == Systems::STARTUP_MODE_COLD_GROUND);
 	TEST_EXPECT_NEAR(context, state.systems.damage.left_wing_integrity, 1.0, kTolerance);
 	TEST_EXPECT(context, state.systems.landing_gear.switch_down);
 	TEST_EXPECT_NEAR(context, state.systems.landing_gear.position, 1.0, kTolerance);
 	TEST_EXPECT(context, !state.systems.engines.left.switch_on);
-	efm.hot_ground_start();
+	(void)efm.start(Core::StartMode::HotGround);
 	state = efm.snapshot();
 	TEST_EXPECT(context, state.systems.startup.mode == Systems::STARTUP_MODE_HOT_GROUND);
 	TEST_EXPECT(context, state.systems.airframe_devices.flap_mode == Systems::FLAP_MODE_DOWN);
@@ -489,7 +611,7 @@ void test_ground_start_lifecycle(Tests::Context& context)
 void test_air_start_lifecycle(Tests::Context& context)
 {
 	Core::Fck1cEfm efm(make_test_config());
-	efm.hot_air_start();
+	(void)efm.start(Core::StartMode::HotAir);
 	const Core::Fck1cEfmSystems systems = efm.snapshot().systems;
 	TEST_EXPECT(context, systems.startup.mode == Systems::STARTUP_MODE_HOT_AIR);
 	TEST_EXPECT(context, !systems.landing_gear.switch_down);
@@ -503,8 +625,10 @@ void test_air_start_lifecycle(Tests::Context& context)
 void test_release_lifecycle(Tests::Context& context)
 {
 	Core::Fck1cEfm efm(make_test_config());
-	efm.hot_ground_start();
-	efm.simulate(0.01, {}, {});
+	(void)efm.start(Core::StartMode::HotGround);
+	Core::FrameInput input;
+	input.dt_s = 0.01;
+	(void)efm.step(input);
 	efm.apply_damage({ Core::DamageArea::LeftEngine, 0, 0.2 });
 	send_command(efm,
 		{ Core::CommandGroup::PitchRoll, Core::CommandAction::SetPitchAxis, 0.5 });
@@ -526,8 +650,11 @@ void test_release_lifecycle(Tests::Context& context)
 void run_fck1c_efm_tests(Tests::Context& context)
 {
 	test_complete_frame_input_contract(context);
+	test_frame_dt_contract(context);
 	test_all_start_mode_frame_outputs(context);
 	test_frame_output_matches_existing_outputs(context);
+	test_step_preserves_unavailable_continuous_input(context);
+	test_start_reinitializes_frame_state(context);
 	test_config_ownership(context);
 	test_invalid_config_rejected(context);
 	test_snapshot_isolation(context);

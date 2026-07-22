@@ -10,6 +10,11 @@
 
 namespace DcsBridge
 {
+namespace Internal
+{
+class FrameInputCollector;
+}
+
 class DcsRuntime final
 {
 public:
@@ -22,8 +27,8 @@ public:
 	void export_temperature(double dcs_temperature);
 	void reset_carrier_launch();
 	void log_damage(const Core::Fck1cEfmSnapshot& snapshot, int element, double integrity);
-	void update_suspension_feedback(
-		Core::Fck1cEfm& efm,
+	void publish_suspension_feedback(
+		Internal::FrameInputCollector& collector,
 		int index,
 		const ed_fm_suspension_info* info);
 	bool pop_simulation_event(

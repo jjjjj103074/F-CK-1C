@@ -30,11 +30,14 @@ inline void mark_first_frame_completed(StartupSystemState& state)
 inline void begin_startup(StartupSystemState& state, StartupMode mode)
 {
 	state.mode = mode;
+	state.simulation_time = 0.0;
+	state.first_frame_completed = false;
 }
 
 inline void configure_release(StartupSystemState& state)
 {
 	state.simulation_time = 0.0;
 	state.mode = STARTUP_MODE_RELEASED;
+	state.first_frame_completed = false;
 }
 }

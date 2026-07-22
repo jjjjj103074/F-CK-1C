@@ -14,6 +14,7 @@ public:
 	}
 
 	DcsBridge::DcsRuntime runtime_;
+	DcsBridge::Internal::FrameInputCollector input_collector_;
 	Core::Fck1cEfm efm_;
 };
 
@@ -34,5 +35,10 @@ Core::Fck1cEfm& efm()
 DcsRuntime& runtime()
 {
 	return module_state().runtime_;
+}
+
+Internal::FrameInputCollector& input_collector()
+{
+	return module_state().input_collector_;
 }
 }

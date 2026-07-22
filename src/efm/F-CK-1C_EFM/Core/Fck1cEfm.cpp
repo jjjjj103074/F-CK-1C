@@ -9,6 +9,20 @@ namespace
 {
 constexpr double kColdStartThrottle = 0.0;
 constexpr double kHotAirStartThrottle = 0.5;
+
+Systems::StartupMode startup_mode(Core::StartMode mode)
+{
+	switch (mode)
+	{
+	case Core::StartMode::ColdGround:
+		return Systems::STARTUP_MODE_COLD_GROUND;
+	case Core::StartMode::HotGround:
+		return Systems::STARTUP_MODE_HOT_GROUND;
+	case Core::StartMode::HotAir:
+		return Systems::STARTUP_MODE_HOT_AIR;
+	}
+	throw std::invalid_argument("Unknown Core::StartMode.");
+}
 }
 
 namespace Core
@@ -68,32 +82,6 @@ double Fck1cEfm::external_fuel() const
 double Fck1cEfm::shake_amplitude() const
 {
 	return gameplay_.shake_amplitude;
-}
-
-void Fck1cEfm::set_atmosphere(const AtmosphereInput& input)
-{
-	Core::set_atmosphere(aircraft_state_, input);
-}
-
-void Fck1cEfm::set_surface(const SurfaceInput& input)
-{
-	Core::set_surface(aircraft_state_, input);
-}
-
-void Fck1cEfm::set_mass_state(const MassStateInput& input)
-{
-	Core::set_current_mass(aircraft_state_, input.mass);
-	force_moment_.center_of_mass = input.center_of_mass;
-}
-
-void Fck1cEfm::set_world_kinematics(const WorldKinematicsInput& input)
-{
-	Core::set_world_kinematics(aircraft_state_, input);
-}
-
-void Fck1cEfm::set_body_kinematics(const BodyKinematicsInput& input)
-{
-	Core::set_body_kinematics(aircraft_state_, input);
 }
 
 MassDeltaResult Fck1cEfm::take_mass_delta()
@@ -165,28 +153,66 @@ void Fck1cEfm::apply_damage(const DamageEvent& event)
 	}
 }
 
-bool Fck1cEfm::update_suspension_feedback(const SuspensionFeedbackInput& input)
+void Fck1cEfm::apply_mass_input(const MassStateInput& input)
 {
-	return Systems::update_suspension_feedback(
-		systems_.suspension,
-		{ input.index, input.compression, input.acting_force });
+	Core::set_current_mass(aircraft_state_, input.mass);
+	force_moment_.center_of_mass = input.center_of_mass;
 }
 
-void Fck1cEfm::simulate(
-	double dt,
-	const AutopilotCommand& autopilot,
-	const MaxPowerCommand& max_power)
+void Fck1cEfm::apply_suspension_input(const FrameInput& input)
 {
-	begin_frame(dt);
-	update_airframe(dt);
+	for (std::size_t index = 0; index < input.suspension.size(); ++index)
+	{
+		if (!input.availability.suspension[index])
+		{
+			continue;
+		}
+		const SuspensionFeedbackInput& wheel = input.suspension[index];
+		Systems::update_suspension_feedback(
+			systems_.suspension,
+			{ wheel.index, wheel.compression, wheel.acting_force });
+	}
+}
+
+void Fck1cEfm::apply_frame_input(const FrameInput& input)
+{
+	if (input.availability.atmosphere)
+	{
+		Core::set_atmosphere(aircraft_state_, input.atmosphere);
+	}
+	if (input.availability.surface)
+	{
+		Core::set_surface(aircraft_state_, input.surface);
+	}
+	if (input.availability.mass)
+	{
+		apply_mass_input(input.mass);
+	}
+	if (input.availability.world_kinematics)
+	{
+		Core::set_world_kinematics(aircraft_state_, input.world_kinematics);
+	}
+	if (input.availability.body_kinematics)
+	{
+		Core::set_body_kinematics(aircraft_state_, input.body_kinematics);
+	}
+	apply_suspension_input(input);
+}
+
+FrameOutput Fck1cEfm::step(const FrameInput& input)
+{
+	apply_frame_input(input);
+	begin_frame(input.dt_s);
+	update_airframe(input.dt_s);
 	Systems::update_primary_control_inputs(systems_.primary_controls);
-	update_autopilot(autopilot);
-	update_fbw(dt);
+	update_autopilot(input.autopilot);
+	update_fbw(input.dt_s);
 	const Systems::AerodynamicsFrameInput aerodynamics_input = make_aerodynamics_input();
 	update_primary_aerodynamics(aerodynamics_input);
-	update_engines_and_fuel(dt, max_power);
-	update_ground_and_suspension(dt, aerodynamics_input);
+	update_engines_and_fuel(input.dt_s, input.max_power);
+	update_ground_and_suspension(input.dt_s, aerodynamics_input);
 	finish_frame();
+	return make_frame_output(input.availability);
 }
 
 void Fck1cEfm::begin_frame(double dt)
@@ -519,6 +545,17 @@ void Fck1cEfm::finish_frame()
 
 void Fck1cEfm::reset_start_state(Systems::StartupMode mode)
 {
+	aircraft_state_ = AircraftState();
+	force_moment_ = ForceMomentFrame();
+	control_surfaces_ = ControlSurfaceState();
+	systems_.aerodynamics = Systems::AerodynamicsSystemState();
+	systems_.primary_controls = Systems::PrimaryControlState();
+	systems_.engines = Systems::EngineSystemState();
+	systems_.throttle_inputs = Systems::ThrottleInputState();
+	systems_.airframe_devices = Systems::AirframeDeviceState();
+	systems_.landing_gear = Systems::LandingGearSystemState();
+	systems_.fbw = Systems::FBWControllerState();
+	gameplay_.shake_amplitude = 0.0;
 	Systems::reset_damage_model(systems_.damage);
 	Systems::reset_suspension_feedback_state(systems_.suspension);
 	Systems::reset_fbw_state(
@@ -532,38 +569,37 @@ void Fck1cEfm::reset_start_state(Systems::StartupMode mode)
 	Systems::begin_startup(systems_.startup, mode);
 }
 
-void Fck1cEfm::cold_start()
+void Fck1cEfm::configure_start_state(StartMode mode)
 {
-	reset_start_state(Systems::STARTUP_MODE_COLD_GROUND);
-	Systems::configure_ground_start_landing_gear(systems_.landing_gear);
-	Systems::reset_throttle_inputs(
-		systems_.throttle_inputs,
-		kColdStartThrottle,
-		kColdStartThrottle);
-	Systems::configure_cold_start_engines(systems_.engines, config_.engine);
+	switch (mode)
+	{
+	case StartMode::ColdGround:
+		Systems::configure_ground_start_landing_gear(systems_.landing_gear);
+		Systems::reset_throttle_inputs(
+			systems_.throttle_inputs, kColdStartThrottle, kColdStartThrottle);
+		Systems::configure_cold_start_engines(systems_.engines, config_.engine);
+		return;
+	case StartMode::HotGround:
+		Systems::configure_ground_start_landing_gear(systems_.landing_gear);
+		Systems::configure_hot_ground_start_devices(systems_.airframe_devices);
+		Systems::reset_throttle_inputs(
+			systems_.throttle_inputs, kColdStartThrottle, kColdStartThrottle);
+		Systems::configure_hot_ground_start_engines(systems_.engines, config_.engine);
+		return;
+	case StartMode::HotAir:
+		Systems::configure_air_start_landing_gear(systems_.landing_gear);
+		Systems::reset_throttle_inputs(
+			systems_.throttle_inputs, kHotAirStartThrottle, kHotAirStartThrottle);
+		Systems::configure_hot_air_start_engines(systems_.engines, config_.engine);
+		return;
+	}
 }
 
-void Fck1cEfm::hot_ground_start()
+FrameOutput Fck1cEfm::start(StartMode mode)
 {
-	reset_start_state(Systems::STARTUP_MODE_HOT_GROUND);
-	Systems::configure_ground_start_landing_gear(systems_.landing_gear);
-	Systems::configure_hot_ground_start_devices(systems_.airframe_devices);
-	Systems::reset_throttle_inputs(
-		systems_.throttle_inputs,
-		kColdStartThrottle,
-		kColdStartThrottle);
-	Systems::configure_hot_ground_start_engines(systems_.engines, config_.engine);
-}
-
-void Fck1cEfm::hot_air_start()
-{
-	reset_start_state(Systems::STARTUP_MODE_HOT_AIR);
-	Systems::configure_air_start_landing_gear(systems_.landing_gear);
-	Systems::reset_throttle_inputs(
-		systems_.throttle_inputs,
-		kHotAirStartThrottle,
-		kHotAirStartThrottle);
-	Systems::configure_hot_air_start_engines(systems_.engines, config_.engine);
+	reset_start_state(startup_mode(mode));
+	configure_start_state(mode);
+	return make_frame_output({});
 }
 
 void Fck1cEfm::reset_control_outputs()

@@ -23,6 +23,18 @@ DcsBridge::DcsRuntime& runtime()
 {
 	return DcsBridge::runtime();
 }
+
+DcsBridge::Internal::FrameInputCollector& input_collector()
+{
+	return DcsBridge::input_collector();
+}
+
+void start_efm(Core::StartMode mode)
+{
+	input_collector().reset();
+	(void)efm().start(mode);
+	runtime().reset_carrier_launch();
+}
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -53,9 +65,15 @@ void ed_fm_add_local_moment(double& x, double& y, double& z)
 
 void ed_fm_simulate(double dt)
 {
-	const Core::AutopilotCommand autopilot = runtime().read_autopilot();
-	const Core::MaxPowerCommand max_power = runtime().read_max_power();
-	efm().simulate(dt, autopilot, max_power);
+	if (!Core::is_valid_frame_dt(dt))
+	{
+		return;
+	}
+	input_collector().publish_autopilot(runtime().read_autopilot());
+	input_collector().publish_max_power(runtime().read_max_power());
+	const Core::FrameInput input = input_collector().snapshot(dt);
+	const Core::FrameOutput output = efm().step(input);
+	runtime().export_temperature(output.flight.atmosphere_temperature_k);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -69,15 +87,15 @@ void ed_fm_set_atmosphere(
 	double wind_vy,
 	double wind_vz)
 {
-	efm().set_atmosphere({
+	const Core::AtmosphereInput input = {
 		h,
 		t,
 		a,
 		ro,
 		p,
 		Common::Vec3(wind_vx, wind_vy, wind_vz)
-	});
-	runtime().export_temperature(t);
+	};
+	input_collector().publish_atmosphere(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -89,12 +107,13 @@ void ed_fm_set_surface(
 	double normal_y,
 	double normal_z)
 {
-	efm().set_surface({
+	const Core::SurfaceInput input = {
 		h,
 		h_obj,
 		surface_type,
 		Common::Vec3(normal_x, normal_y, normal_z)
-	});
+	};
+	input_collector().publish_surface(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -107,11 +126,12 @@ void ed_fm_set_current_mass_state(
 	double moment_of_inertia_y,
 	double moment_of_inertia_z)
 {
-	efm().set_mass_state({
+	const Core::MassStateInput input = {
 		mass,
 		Common::Vec3(center_of_mass_x, center_of_mass_y, center_of_mass_z),
 		Common::Vec3(moment_of_inertia_x, moment_of_inertia_y, moment_of_inertia_z)
-	});
+	};
+	input_collector().publish_mass(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -136,14 +156,15 @@ void ed_fm_set_current_state(
 	double quaternion_z,
 	double quaternion_w)
 {
-	efm().set_world_kinematics({
+	const Core::WorldKinematicsInput input = {
 		Common::Vec3(ax, ay, az),
 		Common::Vec3(vx, vy, vz),
 		Common::Vec3(px, py, pz),
 		Common::Vec3(omegadotx, omegadoty, omegadotz),
 		Common::Vec3(omegax, omegay, omegaz),
 		{ quaternion_x, quaternion_y, quaternion_z, quaternion_w }
-	});
+	};
+	input_collector().publish_world_kinematics(input);
 }
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
@@ -169,7 +190,7 @@ void ed_fm_set_current_state_body_axis(
 	double common_angle_of_attack,
 	double common_angle_of_slide)
 {
-	efm().set_body_kinematics({
+	const Core::BodyKinematicsInput input = {
 		Common::Vec3(ax, ay, az),
 		Common::Vec3(vx, vy, vz),
 		Common::Vec3(wind_vx, wind_vy, wind_vz),
@@ -180,7 +201,8 @@ void ed_fm_set_current_state_body_axis(
 		roll,
 		common_angle_of_attack,
 		common_angle_of_slide
-	});
+	};
+	input_collector().publish_body_kinematics(input);
 }
 
 void ed_fm_set_command(int command, float value)
@@ -285,7 +307,7 @@ void ed_fm_on_damage(int element, double integrity)
 
 void ed_fm_suspension_feedback(int index, const ed_fm_suspension_info* info)
 {
-	runtime().update_suspension_feedback(efm(), index, info);
+	runtime().publish_suspension_feedback(input_collector(), index, info);
 }
 
 void ed_fm_repair()
@@ -308,20 +330,17 @@ bool ed_fm_push_simulation_event(const ed_fm_simulation_event& in)
 
 void ed_fm_cold_start()
 {
-	efm().cold_start();
-	runtime().reset_carrier_launch();
+	start_efm(Core::StartMode::ColdGround);
 }
 
 void ed_fm_hot_start()
 {
-	efm().hot_ground_start();
-	runtime().reset_carrier_launch();
+	start_efm(Core::StartMode::HotGround);
 }
 
 void ed_fm_hot_start_in_air()
 {
-	efm().hot_air_start();
-	runtime().reset_carrier_launch();
+	start_efm(Core::StartMode::HotAir);
 }
 
 void ed_fm_release()

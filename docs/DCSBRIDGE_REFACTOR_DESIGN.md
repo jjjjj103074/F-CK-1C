@@ -651,6 +651,7 @@ Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合
 ### 9. 實作 `EventLog`
 - 實作 `<module-root>/log/fck1c_efm.log` 的目錄建立、active/`.old` 輪替、其他 app 可同時讀取的 share mode、thread-safe write 與每事件 flush。
 - 固定格式為 `[wall-clock][simulation-time][LEVEL] message`；沒有 simulation time 時使用 `[-]`。
+- 補上步驟 7 暫緩的 invalid `dt` ERROR；步驟 8 若遇到同類型、必須依賴正式 EventLog 才能完成的邊界錯誤回報，也集中在本步驟接上。步驟 7、8 不為此寫入舊診斷 log 或建立暫時 logger。
 - 只加入既定 lifecycle、INFO 與 ERROR；不把飛機數值寫成 INFO，不留下 DEBUG instrumentation。
 - 驗收：以 temporary directory 驗證路徑、輪替、格式、simulation time、必要錯誤參數與寫入期間可讀。
 
