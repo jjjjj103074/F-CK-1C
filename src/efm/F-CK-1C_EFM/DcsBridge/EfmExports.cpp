@@ -7,7 +7,6 @@
 #include "Internal/DcsCommandRouter.h"
 #include "Internal/DcsDamageMapper.h"
 #include "Internal/DrawArgs.h"
-#include "Internal/ParamExport.h"
 #include "../include/FM/API_Declare.h"
 
 namespace
@@ -48,8 +47,10 @@ void start_efm(Core::StartMode mode)
 	{
 		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
 		bridge().input_collector().reset();
+		bridge().param_exporter().reset();
 		output = bridge().core().start(mode);
 		bridge().output_store().publish(output);
+		bridge().param_exporter().observe(output);
 		bridge().state_csv_writer().publish_start(output);
 	}
 	bridge().carrier_bridge().reset();
@@ -149,6 +150,7 @@ void ed_fm_simulate(double dt)
 			bridge().input_collector().publish_max_power(cockpit.max_power);
 			output = bridge().core().step(bridge().input_collector().snapshot(dt));
 			bridge().output_store().publish(output);
+			bridge().param_exporter().observe(output);
 			bridge().state_csv_writer().publish_step(output);
 		}
 	}
@@ -433,22 +435,7 @@ double ed_fm_get_param(unsigned index)
 			{ "ed_fm_get_param", "index", index });
 		return 0.0;
 	}
-	const DcsBridge::ParamExportState state = DcsBridge::make_param_export_state(*output);
-	const std::optional<DcsBridge::ParamDataCategory> missing_data =
-		DcsBridge::missing_param_data(index, state);
-	if (missing_data)
-	{
-		bridge().event_reporter().log_missing_param_data(
-			index, DcsBridge::param_data_category_name(*missing_data));
-		return 0.0;
-	}
-	const std::optional<double> value = DcsBridge::get_param(index, state);
-	if (!value)
-	{
-		bridge().event_reporter().log_missing_param(index);
-		return 0.0;
-	}
-	return *value;
+	return bridge().param_exporter().read(index, *output);
 }
 
 void ed_fm_refueling_add_fuel(double fuel)

@@ -6,6 +6,7 @@
 #include "EventLog.h"
 #include "FrameInputCollector.h"
 #include "OutputStore.h"
+#include "ParamExporter.h"
 #include "StateCsvWriter.h"
 #include "ModulePaths.h"
 #include "../../Core/Fck1cEfm.h"
@@ -40,6 +41,7 @@ public:
 	FrameInputCollector& input_collector();
 	OutputStore& output_store();
 	EfmEventReporter& event_reporter();
+	ParamExporter& param_exporter();
 	CockpitBridge& cockpit_bridge();
 	CarrierBridge& carrier_bridge();
 	std::mutex& execution_mutex();
@@ -73,6 +75,7 @@ private:
 	FrameInputCollector input_collector_;
 	OutputStore output_store_;
 	EfmEventReporter event_reporter_;
+	ParamExporter param_exporter_;
 	CockpitBridge cockpit_bridge_;
 	CarrierBridge carrier_bridge_;
 	std::mutex execution_mutex_;

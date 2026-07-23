@@ -143,7 +143,12 @@ void EfmEventReporter::log_missing_param(unsigned index)
 		sizeof(message),
 		"callback=ed_fm_get_param index=%u missing mapping",
 		index);
-	write(EventLevel::Error, latest_simulation_time(), message);
+	(void)event_log_.write_counted_warning({
+		CountedWarningKind::UnknownParam,
+		index,
+		latest_simulation_time(),
+		message
+	});
 }
 
 void EfmEventReporter::log_missing_param_data(

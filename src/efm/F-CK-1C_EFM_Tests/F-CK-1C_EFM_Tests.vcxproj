@@ -93,6 +93,7 @@
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EfmEventReporter.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EventLog.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\LogFileLifecycle.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\ParamExporter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\BridgeContext.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CarrierBridge.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp" />

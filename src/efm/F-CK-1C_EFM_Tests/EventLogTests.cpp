@@ -246,7 +246,11 @@ void test_reporter_writes_boundary_and_recovery_events(Tests::Context& context)
 	TEST_EXPECT(context, content.find("][WARN] " + unknown_command) !=
 		std::string::npos);
 	TEST_EXPECT(context, content.find(missing_param) != std::string::npos);
+	TEST_EXPECT(context, content.find("][WARN] " + missing_param) !=
+		std::string::npos);
 	TEST_EXPECT(context, content.find(missing_data) != std::string::npos);
+	TEST_EXPECT(context, content.find("][ERROR] " + missing_data) !=
+		std::string::npos);
 	TEST_EXPECT(context, content.find(
 		"cockpit parameter=TEST_PARAM unavailable reason=missing_handle") !=
 		std::string::npos);
@@ -266,15 +270,13 @@ void test_counted_warnings_summarize_and_reset(Tests::Context& context)
 	output_store.publish(output);
 	reporter.log_unknown_command(kObservedUnknownCommand, 0.25F);
 	reporter.log_unknown_command(kObservedUnknownCommand, 0.5F);
-	TEST_EXPECT(context, log.write_counted_warning({
-		DcsBridge::Internal::CountedWarningKind::UnknownParam,
-		kObservedUnknownCommand,
-		4.0,
-		"synthetic unknown param" }));
+	reporter.log_missing_param(kObservedUnknownCommand);
+	reporter.log_missing_param(kObservedUnknownCommand);
 	reporter.log_release(4.0);
 	output.simulation_time_s = 8.0;
 	output_store.publish(output);
 	reporter.log_unknown_command(kObservedUnknownCommand, 0.75F);
+	reporter.log_missing_param(kObservedUnknownCommand);
 	reporter.log_release(8.0);
 	const std::string content = TestFiles::read_text_while_open(
 		root.path() / "log" / "fck1c_efm.log");
@@ -291,8 +293,13 @@ void test_counted_warnings_summarize_and_reset(Tests::Context& context)
 		"kind=unknown_command id=2659 total=1 flight_release_summary") == 1);
 	TEST_EXPECT(context, count_occurrences(
 		content,
+		"kind=unknown_param id=2659 total=2 flight_release_summary") == 1);
+	TEST_EXPECT(context, count_occurrences(
+		content,
 		"kind=unknown_param id=2659 total=1 flight_release_summary") == 1);
-	TEST_EXPECT(context, count_occurrences(content, "synthetic unknown param") == 1);
+	TEST_EXPECT(context, count_occurrences(
+		content,
+		"callback=ed_fm_get_param index=2659 missing mapping") == 2);
 }
 }
 

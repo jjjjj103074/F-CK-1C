@@ -85,8 +85,10 @@ void start_flight(
 {
 	const std::lock_guard<std::mutex> lock(context.execution_mutex());
 	context.input_collector().reset();
+	context.param_exporter().reset();
 	const Core::FrameOutput output = context.core().start(mode);
 	context.output_store().publish(output);
+	context.param_exporter().observe(output);
 	context.state_csv_writer().publish_start(output);
 }
 

@@ -34,6 +34,7 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
 	event_log_(module_paths_.mod_root_path),
 	state_csv_writer_(module_paths_.mod_root_path, event_log_),
 	event_reporter_(event_log_, output_store_),
+	param_exporter_(event_reporter_),
 	cockpit_bridge_(config.cockpit_api_provider()),
 	carrier_bridge_(make_carrier_config(config.aircraft_config)),
 	core_(config.aircraft_config)
@@ -68,6 +69,11 @@ OutputStore& BridgeContext::output_store()
 EfmEventReporter& BridgeContext::event_reporter()
 {
 	return event_reporter_;
+}
+
+ParamExporter& BridgeContext::param_exporter()
+{
+	return param_exporter_;
 }
 
 CockpitBridge& BridgeContext::cockpit_bridge()

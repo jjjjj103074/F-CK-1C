@@ -96,6 +96,7 @@
     <ClInclude Include="DcsBridge\Internal\StateCsvWriter.h" />
 	<ClInclude Include="DcsBridge\Internal\ModulePaths.h" />
 	<ClInclude Include="DcsBridge\Internal\ParamExport.h" />
+	<ClInclude Include="DcsBridge\Internal\ParamExporter.h" />
 	<ClInclude Include="DcsBridge\Internal\RuntimeDiagnostics.h" />
     <ClInclude Include="DcsIds\CockpitParams.g.h" />
     <ClInclude Include="DcsIds\Commands.h" />
@@ -165,6 +166,9 @@
 	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
 	</ClCompile>
 	<ClCompile Include="DcsBridge\Internal\LogFileLifecycle.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\ParamExporter.cpp">
 	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
 	</ClCompile>
     <ClCompile Include="DcsBridge\Internal\BridgeContext.cpp">

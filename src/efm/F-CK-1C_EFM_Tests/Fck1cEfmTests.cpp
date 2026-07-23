@@ -179,6 +179,7 @@ void expect_golden_frame(
 	TEST_EXPECT_NEAR(context, actual.fuel.internal_fuel, 500.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.fuel.external_fuel, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel_flow, 0.0, kTolerance);
 	expect_control_baseline(context, actual.controls);
 	TEST_EXPECT_NEAR(context, actual.landing_gear.brake_left, 0.4, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.landing_gear.brake_right, 0.6, kTolerance);
@@ -269,9 +270,12 @@ void test_unavailable_input_preserves_latest_values(Tests::Context& context)
 
 void test_start_reinitializes_output(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
+	Data::AircraftConfig config = make_test_config();
+	config.fuel.consumption_rate = 3.0;
+	Core::Fck1cEfm efm(config);
 	(void)efm.start(Core::StartMode::HotGround);
-	(void)efm.step(make_frame_input());
+	const Core::FrameOutput previous = efm.step(make_frame_input());
+	TEST_EXPECT(context, previous.fuel.total_fuel_flow > 0.0);
 	const Core::FrameOutput output = efm.start(Core::StartMode::ColdGround);
 	TEST_EXPECT_NEAR(context, output.simulation_time_s, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.flight.altitude_asl_m, 0.0, kTolerance);
@@ -280,6 +284,7 @@ void test_start_reinitializes_output(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, output.controls.flaps_position, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.suspension.wheels[0].compression, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.engines[0].thrust_force, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, output.fuel.total_fuel_flow, 0.0, kTolerance);
 }
 
 void test_config_is_owned_by_core(Tests::Context& context)

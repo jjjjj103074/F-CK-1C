@@ -22,7 +22,7 @@ Core::FrameOutput make_frame_output()
 	output.engines[1] = { false, 0.8, 0.81, 0.82, 13000.0, 0.83, false, 0.84 };
 	output.flight.atmosphere_temperature_k = 288.0;
 	output.suspension.any_weight_on_wheels = true;
-	output.fuel = { 900.0, 200.0, 1100.0 };
+	output.fuel = { 900.0, 200.0, 1100.0, 1.5 };
 	return output;
 }
 
@@ -75,6 +75,7 @@ void test_param_projection(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, state.atmosphere_temperature, 288.0, kTolerance);
 	TEST_EXPECT_NEAR(context, state.internal_fuel, 900.0, kTolerance);
 	TEST_EXPECT_NEAR(context, state.total_fuel, 1100.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.total_fuel_flow, 1.5, kTolerance);
 }
 
 void test_unavailable_projection_metadata(Tests::Context& context)

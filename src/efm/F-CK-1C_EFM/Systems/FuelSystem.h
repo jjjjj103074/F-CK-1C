@@ -31,6 +31,7 @@ struct FuelSystem
 	double internal_fuel = 0.0;
 	double external_fuel = 0.0;
 	double total_fuel = 0.0;
+	double total_fuel_flow = 0.0;
 	double fuel_consumption_since_last_time = 0.0;
 };
 
@@ -56,11 +57,11 @@ inline void simulate_fuel_consumption(
 	const double ab_fuel_mult = 1.0 + ab_avg * (input.afterburner_fuel_factor - 1.0);
 
 	// Fuel drain at full throttle in Kg/s.
-	fuel.fuel_consumption_since_last_time =
+	fuel.total_fuel_flow =
 		config.consumption_rate *
 		((input.left_throttle_output + input.right_throttle_output + 1) / 3) *
-		ab_fuel_mult *
-		input.dt;
+		ab_fuel_mult;
+	fuel.fuel_consumption_since_last_time = fuel.total_fuel_flow * input.dt;
 
 	if (fuel.external_fuel >= 0) // Drain external fuel first
 	{

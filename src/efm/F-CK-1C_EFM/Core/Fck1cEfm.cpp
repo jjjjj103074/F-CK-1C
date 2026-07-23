@@ -415,6 +415,7 @@ void Fck1cEfm::update_fuel(double dt)
 {
 	if (gameplay_.infinite_fuel)
 	{
+		systems_.fuel.total_fuel_flow = 0.0;
 		return;
 	}
 
@@ -522,6 +523,7 @@ void Fck1cEfm::reset_start_state(Systems::StartupMode mode)
 	systems_.airframe_devices = Systems::AirframeDeviceState();
 	systems_.landing_gear = Systems::LandingGearSystemState();
 	systems_.fbw = Systems::FBWControllerState();
+	systems_.fuel.total_fuel_flow = 0.0;
 	gameplay_.shake_amplitude = 0.0;
 	Systems::reset_damage_model(systems_.damage);
 	Systems::reset_suspension_feedback_state(systems_.suspension);

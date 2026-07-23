@@ -15,7 +15,7 @@
 
 namespace
 {
-constexpr std::size_t kExpectedColumnCount = 75;
+constexpr std::size_t kExpectedColumnCount = 76;
 constexpr std::chrono::seconds kWriterTimeout(3);
 constexpr std::chrono::milliseconds kPollInterval(10);
 
@@ -44,7 +44,7 @@ std::vector<std::string> expected_header()
 		"suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
 		"suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
 		"suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
-		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal,fuel_external,fuel_total,shake_amplitude",
+		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal,fuel_external,fuel_total,fuel_total_flow_kg_per_s,shake_amplitude",
 		',');
 }
 
@@ -71,8 +71,8 @@ void assign_gear_suspension_and_fuel(Core::FrameOutput& output)
 	output.suspension.wheels[2] = { { 56, 57, 58 }, 59, 60, true };
 	output.suspension.any_weight_on_wheels = true;
 	output.suspension.on_ground = false;
-	output.fuel = { 61, 62, 63 };
-	output.shake_amplitude = 64;
+	output.fuel = { 61, 62, 63, 64 };
+	output.shake_amplitude = 65;
 }
 
 Core::FrameOutput numbered_output()
@@ -93,7 +93,7 @@ std::vector<std::string> expected_numbered_row()
 		"True,18,19,20,21,22,False,23,False,24,25,26,27,28,True,29,"
 		"30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,"
 		"46,47,48,49,50,True,51,52,53,54,55,False,56,57,58,59,60,True,"
-		"True,False,61,62,63,64",
+		"True,False,61,62,63,64,65",
 		',');
 }
 

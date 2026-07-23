@@ -34,6 +34,7 @@ struct ParamExportState
 	double atmosphere_temperature;
 	double internal_fuel;
 	double total_fuel;
+	double total_fuel_flow;
 };
 
 inline ParamExportState make_param_export_state(const Core::FrameOutput& output)
@@ -70,7 +71,8 @@ inline ParamExportState make_param_export_state(const Core::FrameOutput& output)
 		output.engines[1].thrust_force,
 		output.flight.atmosphere_temperature_k,
 		output.fuel.internal_fuel,
-		output.fuel.total_fuel
+		output.fuel.total_fuel,
+		output.fuel.total_fuel_flow
 	};
 }
 
@@ -133,6 +135,7 @@ constexpr double kNominalFanRpm = 8215.0;
 constexpr double kEngineCombustionScale = 2.0;
 constexpr double kEngineTemperatureScale = 500.0;
 constexpr double kEngineTemperatureExponent = 3.0;
+constexpr double kPerEngineFuelFlowShare = 0.5;
 
 inline double engine_display_related_rpm(double core_readout)
 {
@@ -246,6 +249,97 @@ inline std::optional<double> lookup_aircraft_services(
 	}
 }
 
+inline std::optional<double> lookup_engine_compatibility(
+	unsigned index,
+	const ParamExportState& state)
+{
+	using namespace DcsIds::Params;
+	switch (index)
+	{
+	case ApuCoreRelatedRpm:
+		// Compatibility only: F-CK-1C does not model an APU.
+		return 1.0;
+	case LeftEngineFuelFlow:
+	case RightEngineFuelFlow:
+		// Temporary even split until per-engine fuel flow is implemented.
+		return state.total_fuel_flow * kPerEngineFuelFlowShare;
+	case LeftPropellerPitch:
+	case RightPropellerPitch:
+		// The F-CK-1C uses turbofans, not propellers.
+		return 0.0;
+	case LeftEngineFanPhase:
+	case RightEngineFanPhase:
+		// Fan rotational phase is not implemented.
+		return 0.0;
+	case LeftEngineFlowSpeedCompatibility:
+	case RightEngineFlowSpeedCompatibility:
+		// The bundled SDK leaves these engine flow-speed indices unnamed.
+		return 0.0;
+	default: return std::nullopt;
+	}
+}
+
+inline std::optional<double> lookup_wheel_compatibility(unsigned index)
+{
+	using namespace DcsIds::Params;
+	switch (index)
+	{
+	case LeftWheelSpin:
+	case RightWheelSpin:
+		// Main-wheel self-attitude is not implemented as a Param output.
+		return 0.0;
+	default: return std::nullopt;
+	}
+}
+
+inline std::optional<double> lookup_force_feedback_compatibility(unsigned index)
+{
+	using namespace DcsIds::Params;
+	switch (index)
+	{
+	case PitchForceFactor:
+	case PitchForceShakeAmplitude:
+	case PitchForceShakeFrequency:
+	case RollForceCenter:
+	case RollForceFactor:
+	case RollForceShakeAmplitude:
+	case RollForceShakeFrequency:
+		// Force-feedback Param outputs are not implemented.
+		return 0.0;
+	default: return std::nullopt;
+	}
+}
+
+inline std::optional<double> lookup_misc_system_compatibility(unsigned index)
+{
+	using namespace DcsIds::Params;
+	switch (index)
+	{
+	case CockpitPressurization:
+		// The aircraft currently has no cockpit pressurization model.
+		return 0.0;
+	case InterruptRefuel:
+		// The EFM does not request interruption of refueling.
+		return 0.0;
+	case UnknownCompatibility2134:
+	case UnknownCompatibility2135:
+	case UnknownCompatibility2136:
+	case UnknownCompatibility2137:
+		// DCS queries these indices, but the bundled SDK does not define them.
+		return 0.0;
+	default: return std::nullopt;
+	}
+}
+
+inline std::optional<double> lookup_system_compatibility(unsigned index)
+{
+	std::optional<double> result = lookup_wheel_compatibility(index);
+	if (result) return result;
+	result = lookup_force_feedback_compatibility(index);
+	if (result) return result;
+	return lookup_misc_system_compatibility(index);
+}
+
 inline double engine_temperature(double power_readout, double atmosphere_temperature)
 {
 	return std::pow(power_readout, kEngineTemperatureExponent) *
@@ -330,7 +424,11 @@ inline std::optional<double> get_param(
 	unsigned index,
 	const ParamExportState& state)
 {
-	std::optional<double> result = lookup_wheel_motion(index, state);
+	std::optional<double> result = lookup_engine_compatibility(index, state);
+	if (result) return result;
+	result = lookup_system_compatibility(index);
+	if (result) return result;
+	result = lookup_wheel_motion(index, state);
 	if (result) return result;
 	result = lookup_wheel_brakes(index, state);
 	if (result) return result;
@@ -346,5 +444,91 @@ inline std::optional<double> get_param(
 	result = lookup_right_engine_speed(index, display);
 	if (result) return result;
 	return lookup_right_engine_output(index, state);
+}
+
+enum class ParamExportStatus
+{
+	Value,
+	StartCompatibility,
+	Unknown,
+	MissingRuntimeData
+};
+
+struct ParamExportResult
+{
+	ParamExportStatus status = ParamExportStatus::Unknown;
+	double value = 0.0;
+	std::optional<ParamDataCategory> missing_data;
+};
+
+struct ParamExportAvailabilityHistory
+{
+	bool atmosphere_available = false;
+	bool nose_suspension_available = false;
+};
+
+inline void observe_param_export_availability(
+	ParamExportAvailabilityHistory& history,
+	const Core::FrameDataAvailability& availability)
+{
+	history.atmosphere_available =
+		history.atmosphere_available || availability.atmosphere;
+	history.nose_suspension_available =
+		history.nose_suspension_available || availability.suspension[0];
+}
+
+inline bool was_param_data_available(
+	const ParamExportAvailabilityHistory& history,
+	ParamDataCategory category)
+{
+	switch (category)
+	{
+	case ParamDataCategory::Atmosphere:
+		return history.atmosphere_available;
+	case ParamDataCategory::Suspension:
+		return history.nose_suspension_available;
+	default: return false;
+	}
+}
+
+inline std::optional<double> lookup_start_compatibility(unsigned index)
+{
+	using namespace DcsIds::Params;
+	switch (index)
+	{
+	case NoseWheelYaw:
+	case LeftEngineTemperature:
+	case RightEngineTemperature:
+		return 0.0;
+	default: return std::nullopt;
+	}
+}
+
+inline ParamExportResult resolve_param(
+	unsigned index,
+	const Core::FrameOutput& output,
+	const ParamExportAvailabilityHistory& history)
+{
+	const ParamExportState state = make_param_export_state(output);
+	const std::optional<ParamDataCategory> missing =
+		missing_param_data(index, state);
+	if (missing)
+	{
+		const std::optional<double> compatibility =
+			lookup_start_compatibility(index);
+		if (compatibility && !was_param_data_available(history, *missing))
+		{
+			return {
+				ParamExportStatus::StartCompatibility,
+				*compatibility,
+				missing
+			};
+		}
+		return { ParamExportStatus::MissingRuntimeData, 0.0, missing };
+	}
+	const std::optional<double> value = get_param(index, state);
+	return value
+		? ParamExportResult{ ParamExportStatus::Value, *value }
+		: ParamExportResult{};
 }
 }
