@@ -179,7 +179,7 @@ DCS 已提供但 Core 尚未實作的欄位仍要翻譯並放入 `FrameInput`，
 - `DcsIds/CommandIds.json` 為每個 custom command 明確標示 `route`：
   - `efm` 代表 command 由 `ed_fm_set_command` 交給 DcsCommandRouter 與 Core。
   - `cockpit` 代表 command 已指定 `cockpit_device_id` 由 Lua device 處理；即使相同數字進入 EFM callback，DCSBridge 也明確忽略。
-- `efm_ignored_dcs_commands` 明確列出已知會進入 EFM callback、但由 DCS 自己處理且不需要 EFM 動作的 ID。已申報 ignored ID 不寫 log；未出現在 EFM binding、cockpit route 或 ignored 清單的 ID 才是 unknown。
+- `efm_ignored_dcs_commands` 明確列出本模組 Lua 直接使用或 dispatch、但由 DCS 自己處理且不需要 EFM 動作的全部 ID，以及其他實機觀察到會進入 EFM callback 的已知 DCS-owned ID。Generator 同時把這些值輸出成 Lua `dcs_commands`，Cockpit Lua 不再重複硬編碼 raw numeric ID。已申報 ignored ID 不寫 log；未出現在 EFM binding、cockpit route 或 ignored 清單的 ID 才是 unknown。
 - 新增受支援 command 時只新增或修改一筆 binding，不建立第二份平行 map。
 - Value rule 固定為 `PassThrough`、`Constant`、`PressOnly`。
 - `PassThrough` 直接傳遞 DCS value，主要用於 axis 與連續控制。

@@ -14,10 +14,12 @@ Every custom command declares one route:
 Custom command names and numeric IDs are unique. Rename all in-repository
 callers together instead of retaining legacy aliases.
 
-`efm_ignored_dcs_commands` lists DCS-owned command IDs that are known to reach
-the EFM callback but require no EFM action. An incoming ID absent from both the
-supported EFM bindings and the declared ignored IDs remains unknown and must
-produce the counted warning defined by the DCSBridge logging policy.
+`efm_ignored_dcs_commands` lists DCS-owned command IDs that require no EFM
+action. This includes every DCS command directly used or dispatched by this
+module's Lua, plus other runtime commands observed entering the EFM callback.
+An incoming ID absent from both the supported EFM bindings and the declared
+ignored IDs remains unknown and must produce the counted warning defined by
+the DCSBridge logging policy.
 
 Run `tools/generate_dcs_ids.ps1` explicitly after changing it. The DLL build
 does not generate or modify source files. The generator updates:
@@ -28,6 +30,10 @@ does not generate or modify source files. The generator updates:
 - `Cockpit/Scripts/generated/CockpitParams.g.lua`
 
 Do not edit generated files directly.
+
+`command_defs.lua` exposes custom IDs as `device_commands` and declared DCS
+IDs as `dcs_commands`. Cockpit Lua that calls `dispatch_action` must use the
+generated `dcs_commands` value instead of repeating a raw numeric ID.
 
 `Commands.h` contains DCS built-in input command IDs used by Core bindings
 because those values are owned by DCS rather than this module. Known ignored

@@ -12,6 +12,8 @@ namespace
 constexpr double kTolerance = 1e-6;
 constexpr double kSimulationStepS = 0.001;
 constexpr int kUnknownCommandId = 2659;
+constexpr int kDcsRadarOnOffCommandId = 86;
+constexpr int kDcsEosOnOffCommandId = 87;
 
 struct DcsCommandInput
 {
@@ -222,6 +224,16 @@ void test_generated_ignored_dcs_commands(Tests::Context& context)
 			non_finite.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
 	}
 }
+
+void test_sensor_command_id_contract(Tests::Context& context)
+{
+	TEST_EXPECT(context,
+		DcsIds::DcsCommands::iCommandPlaneRadarOnOff ==
+			kDcsRadarOnOffCommandId);
+	TEST_EXPECT(context,
+		DcsIds::DcsCommands::iCommandPlaneEOSOnOff ==
+			kDcsEosOnOffCommandId);
+}
 }
 
 void run_dcs_command_router_tests(Tests::Context& context)
@@ -235,4 +247,5 @@ void run_dcs_command_router_tests(Tests::Context& context)
 	test_mapping_rules_and_errors(context);
 	test_generated_command_routes(context);
 	test_generated_ignored_dcs_commands(context);
+	test_sensor_command_id_contract(context);
 }

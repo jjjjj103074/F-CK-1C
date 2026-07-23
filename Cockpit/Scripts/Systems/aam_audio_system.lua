@@ -3,11 +3,13 @@ local dev = GetSelf()
 local update_rate = 0.05
 make_default_activity(update_rate)
 
+dofile(LockOn_Options.script_path .. "command_defs.lua")
+
 local AIM9_TONE_OFF = 0
 local AIM9_TONE_SEEK = 1
 local AIM9_TONE_ACQUIRE = 2
 local AIM9_TONE_LOCK = 3
-local SOUND_TEST_CYCLE_CMD = 3052
+local SOUND_TEST_CYCLE_CMD = device_commands.SoundTestCycle
 
 local tone_state = get_param_handle("AIM9_TONE_STATE")
 local aim9_weapon_active = get_param_handle("AIM9_WEAPON_ACTIVE")

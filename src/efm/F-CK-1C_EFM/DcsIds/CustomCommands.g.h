@@ -71,6 +71,37 @@ static constexpr int EngineThrustCutTestEnable = 3136;
 static constexpr int EngineThrustCutTestDisable = 3137;
 }
 
+namespace DcsCommands
+{
+static constexpr int iCommandPlaneFire = 84;
+static constexpr int iCommandPlaneFireOff = 85;
+static constexpr int iCommandPlaneRadarOnOff = 86;
+static constexpr int iCommandPlaneEOSOnOff = 87;
+static constexpr int iCommandPlaneChangeLock = 100;
+static constexpr int iCommandPlaneChangeWeapon = 101;
+static constexpr int iCommandPlaneModeBVR = 106;
+static constexpr int iCommandPlaneModeVS = 107;
+static constexpr int iCommandPlaneModeBore = 108;
+static constexpr int iCommandPlaneModeHelmet = 109;
+static constexpr int iCommandPlaneModeFI0 = 110;
+static constexpr int iCommandPlaneModeCannon = 113;
+static constexpr int iCommandPlaneDropSnarOnce = 176;
+static constexpr int iCommandPlaneLaunchPermissionOverride = 349;
+static constexpr int iCommandPlanePickleOn = 350;
+static constexpr int iCommandPlanePickleOff = 351;
+static constexpr int iCommandPlaneDropFlareOnce = 357;
+static constexpr int iCommandPlaneDropChaffOnce = 358;
+static constexpr int iCommandPlaneLockOnStart = 509;
+static constexpr int iCommandPlaneLockOnFinish = 510;
+static constexpr int iCommandPlaneDropSnarOnceOff = 536;
+static constexpr int iCommandPlane_ShowControls = 851;
+static constexpr int iCommandViewPauseOnOff = 1609;
+static constexpr int iCommandPlaneChangeLockUp = 1627;
+static constexpr int iCommandPlaneFeedbackTrimmer = 2035;
+static constexpr int iServiceInformAboutUserHAngle = 2142;
+static constexpr int iServiceInformAboutUserVAngle = 2143;
+}
+
 namespace CommandRouting
 {
 enum class Route
@@ -152,11 +183,33 @@ static constexpr Entry CustomCommands[] = {
 };
 
 static constexpr int IgnoredDcsCommands[] = {
-    851, // iCommandPlane_ShowControls
-    1609, // iCommandViewPauseOnOff
-    2035, // iCommandPlaneFeedbackTrimmer
-    2142, // iServiceInformAboutUserHAngle
-    2143, // iServiceInformAboutUserVAngle
+    DcsCommands::iCommandPlaneFire,
+    DcsCommands::iCommandPlaneFireOff,
+    DcsCommands::iCommandPlaneRadarOnOff,
+    DcsCommands::iCommandPlaneEOSOnOff,
+    DcsCommands::iCommandPlaneChangeLock,
+    DcsCommands::iCommandPlaneChangeWeapon,
+    DcsCommands::iCommandPlaneModeBVR,
+    DcsCommands::iCommandPlaneModeVS,
+    DcsCommands::iCommandPlaneModeBore,
+    DcsCommands::iCommandPlaneModeHelmet,
+    DcsCommands::iCommandPlaneModeFI0,
+    DcsCommands::iCommandPlaneModeCannon,
+    DcsCommands::iCommandPlaneDropSnarOnce,
+    DcsCommands::iCommandPlaneLaunchPermissionOverride,
+    DcsCommands::iCommandPlanePickleOn,
+    DcsCommands::iCommandPlanePickleOff,
+    DcsCommands::iCommandPlaneDropFlareOnce,
+    DcsCommands::iCommandPlaneDropChaffOnce,
+    DcsCommands::iCommandPlaneLockOnStart,
+    DcsCommands::iCommandPlaneLockOnFinish,
+    DcsCommands::iCommandPlaneDropSnarOnceOff,
+    DcsCommands::iCommandPlane_ShowControls,
+    DcsCommands::iCommandViewPauseOnOff,
+    DcsCommands::iCommandPlaneChangeLockUp,
+    DcsCommands::iCommandPlaneFeedbackTrimmer,
+    DcsCommands::iServiceInformAboutUserHAngle,
+    DcsCommands::iServiceInformAboutUserVAngle,
 };
 }
 }

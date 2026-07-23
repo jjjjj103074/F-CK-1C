@@ -68,6 +68,111 @@
   ],
   "efm_ignored_dcs_commands": [
     {
+      "name": "iCommandPlaneFire",
+      "value": 84,
+      "reason": "DCS owns the weapon fire command used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneFireOff",
+      "value": 85,
+      "reason": "DCS owns the weapon fire release command used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneRadarOnOff",
+      "value": 86,
+      "reason": "DCS owns the radar sensor toggle dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneEOSOnOff",
+      "value": 87,
+      "reason": "DCS owns the electro-optical sensor toggle used by the input profiles."
+    },
+    {
+      "name": "iCommandPlaneChangeLock",
+      "value": 100,
+      "reason": "DCS owns target-lock selection dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneChangeWeapon",
+      "value": 101,
+      "reason": "DCS owns weapon selection used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeBVR",
+      "value": 106,
+      "reason": "DCS owns the BVR sensor and weapon mode used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeVS",
+      "value": 107,
+      "reason": "DCS owns the vertical-scan sensor mode dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeBore",
+      "value": 108,
+      "reason": "DCS owns the bore sensor mode used by the input profiles."
+    },
+    {
+      "name": "iCommandPlaneModeHelmet",
+      "value": 109,
+      "reason": "DCS owns the helmet sensor mode used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeFI0",
+      "value": 110,
+      "reason": "DCS owns the longitudinal missile-aiming mode used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeCannon",
+      "value": 113,
+      "reason": "DCS owns cannon mode dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropSnarOnce",
+      "value": 176,
+      "reason": "DCS owns the combined countermeasure release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneLaunchPermissionOverride",
+      "value": 349,
+      "reason": "DCS owns launch-permission override used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlanePickleOn",
+      "value": 350,
+      "reason": "DCS owns weapon release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlanePickleOff",
+      "value": 351,
+      "reason": "DCS owns weapon release termination used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropFlareOnce",
+      "value": 357,
+      "reason": "DCS owns flare release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropChaffOnce",
+      "value": 358,
+      "reason": "DCS owns chaff release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneLockOnStart",
+      "value": 509,
+      "reason": "DCS owns target-lock press handling dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneLockOnFinish",
+      "value": 510,
+      "reason": "DCS owns target-lock release handling dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropSnarOnceOff",
+      "value": 536,
+      "reason": "DCS owns combined countermeasure release termination used by the input profiles and CMS Lua."
+    },
+    {
       "name": "iCommandPlane_ShowControls",
       "value": 851,
       "reason": "DCS owns the Controls Indicator visibility command."
@@ -76,6 +181,11 @@
       "name": "iCommandViewPauseOnOff",
       "value": 1609,
       "reason": "DCS owns the view and pause lifecycle command."
+    },
+    {
+      "name": "iCommandPlaneChangeLockUp",
+      "value": 1627,
+      "reason": "DCS owns target-lock release selection dispatched by CMS Lua."
     },
     {
       "name": "iCommandPlaneFeedbackTrimmer",
