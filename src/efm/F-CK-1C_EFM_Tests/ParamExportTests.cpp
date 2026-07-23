@@ -8,11 +8,35 @@
 namespace
 {
 constexpr double kTolerance = 1e-9;
+constexpr double kStandardAtmosphereMmHg = 760.0;
+constexpr unsigned kObservedLeftMainWheelYawParam = 2015;
+constexpr unsigned kObservedRightMainWheelYawParam = 2025;
+constexpr unsigned kObservedPitchForceCenterParam = 2123;
+constexpr unsigned kObservedAltimeterPressureParam = 2132;
+
+static_assert(
+	DcsIds::Params::LeftMainWheelYawCompatibility ==
+		kObservedLeftMainWheelYawParam);
+static_assert(
+	DcsIds::Params::RightMainWheelYawCompatibility ==
+		kObservedRightMainWheelYawParam);
+static_assert(
+	DcsIds::Params::PitchForceCenter == kObservedPitchForceCenterParam);
+static_assert(
+	DcsIds::Params::CockpitAltimeterPressureSetting ==
+		kObservedAltimeterPressureParam);
 
 struct ParamExpectation
 {
 	unsigned index;
 	double value;
+};
+
+constexpr ParamExpectation kObservedCompatibilityParams[] = {
+	{ kObservedLeftMainWheelYawParam, 0.0 },
+	{ kObservedRightMainWheelYawParam, 0.0 },
+	{ kObservedPitchForceCenterParam, 0.0 },
+	{ kObservedAltimeterPressureParam, kStandardAtmosphereMmHg }
 };
 
 struct ParamExporterFixture
@@ -110,16 +134,33 @@ void test_declared_compatibility_params(Tests::Context& context)
 		{ LeftEngineFanPhase, 0.0 }, { RightEngineFanPhase, 0.0 },
 		{ LeftEngineFlowSpeedCompatibility, 0.0 },
 		{ RightEngineFlowSpeedCompatibility, 0.0 },
+		{ LeftMainWheelYawCompatibility, 0.0 },
+		{ RightMainWheelYawCompatibility, 0.0 },
 		{ LeftWheelSpin, 0.0 }, { RightWheelSpin, 0.0 },
-		{ PitchForceFactor, 0.0 }, { PitchForceShakeAmplitude, 0.0 },
+		{ PitchForceCenter, 0.0 }, { PitchForceFactor, 0.0 },
+		{ PitchForceShakeAmplitude, 0.0 },
 		{ PitchForceShakeFrequency, 0.0 }, { RollForceCenter, 0.0 },
 		{ RollForceFactor, 0.0 }, { RollForceShakeAmplitude, 0.0 },
 		{ RollForceShakeFrequency, 0.0 }, { CockpitPressurization, 0.0 },
+		{ CockpitAltimeterPressureSetting, kStandardAtmosphereMmHg },
 		{ InterruptRefuel, 0.0 },
 		{ UnknownCompatibility2134, 0.0 }, { UnknownCompatibility2135, 0.0 },
 		{ UnknownCompatibility2136, 0.0 }, { UnknownCompatibility2137, 0.0 }
 	};
 	for (const ParamExpectation& item : expected)
+	{
+		TEST_EXPECT_NEAR(
+			context,
+			require_param(context, item.index, state),
+			item.value,
+			kTolerance);
+	}
+}
+
+void test_observed_raw_compatibility_param_ids(Tests::Context& context)
+{
+	const DcsBridge::ParamExportState state = make_state();
+	for (const ParamExpectation& item : kObservedCompatibilityParams)
 	{
 		TEST_EXPECT_NEAR(
 			context,
@@ -210,6 +251,33 @@ void test_param_data_availability_classification(Tests::Context& context)
 			DcsBridge::ParamDataCategory::Suspension);
 }
 
+void expect_observed_raw_param_exports(
+	Tests::Context& context,
+	DcsBridge::Internal::ParamExporter& exporter,
+	const Core::FrameOutput& output)
+{
+	for (const ParamExpectation& item : kObservedCompatibilityParams)
+	{
+		TEST_EXPECT_NEAR(
+			context,
+			exporter.read(item.index, output),
+			item.value,
+			kTolerance);
+	}
+}
+
+void expect_known_param_log_is_clean(
+	Tests::Context& context,
+	const std::string& content)
+{
+	TEST_EXPECT(context, content.find("index=112 missing") == std::string::npos);
+	TEST_EXPECT(context, content.find("index=3 missing") == std::string::npos);
+	TEST_EXPECT(context, content.find("index=2015 missing") == std::string::npos);
+	TEST_EXPECT(context, content.find("index=2025 missing") == std::string::npos);
+	TEST_EXPECT(context, content.find("index=2123 missing") == std::string::npos);
+	TEST_EXPECT(context, content.find("index=2132 missing") == std::string::npos);
+}
+
 void test_param_exporter_known_and_unknown_logging(Tests::Context& context)
 {
 	using namespace DcsIds::Params;
@@ -226,6 +294,7 @@ void test_param_exporter_known_and_unknown_logging(Tests::Context& context)
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context, fixture.exporter.read(ApuCoreRelatedRpm, output), 1.0, kTolerance);
+	expect_observed_raw_param_exports(context, fixture.exporter, output);
 	TEST_EXPECT_NEAR(context, fixture.exporter.read(999999, output), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, fixture.exporter.read(999999, output), 0.0, kTolerance);
 	fixture.event_reporter.log_release(output.simulation_time_s);
@@ -234,8 +303,7 @@ void test_param_exporter_known_and_unknown_logging(Tests::Context& context)
 	const std::string unknown =
 		"callback=ed_fm_get_param index=999999 missing mapping";
 	const std::size_t first_unknown = content.find(unknown);
-	TEST_EXPECT(context, content.find("index=112 missing") == std::string::npos);
-	TEST_EXPECT(context, content.find("index=3 missing") == std::string::npos);
+	expect_known_param_log_is_clean(context, content);
 	TEST_EXPECT(context, first_unknown != std::string::npos);
 	TEST_EXPECT(
 		context,
@@ -283,6 +351,7 @@ void run_param_export_tests(Tests::Context& context)
 	test_wheel_and_control_params(context);
 	test_service_and_engine_params(context);
 	test_declared_compatibility_params(context);
+	test_observed_raw_compatibility_param_ids(context);
 	test_missing_required_data_is_identified(context);
 	test_param_export_values_and_unknown(context);
 	test_param_data_availability_classification(context);

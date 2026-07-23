@@ -198,6 +198,7 @@ DCS 已提供但 Core 尚未實作的欄位仍要翻譯並放入 `FrameInput`，
 - 完全未申報的 param index 第一次寫 WARN，同一 flight 後續只累加動態計數，release 時輸出總次數；DCS ABI 必須回傳 `double`，因此 unknown index 明確回傳 compatibility `0.0`。
 - `start()` 必須先發布一份完整 start `FrameOutput` 給 `OutputStore`。對於 atmosphere、suspension 等尚未收到第一份 DCS sample 的分類，不偽造一份已可用的 input；Param export 依 index 回傳已定義的 start compatibility value，等第一份 sample 到達後改用 latest-known 真實資料。
 - 實機驗證確認 Param 112／212 在每次 flight 的 simulation time 0、第一份 atmosphere sample 前各被查詢一次；這是正常 lifecycle，不寫 WARN 或 ERROR。若某分類已進入可用狀態後違反既定資料契約而缺失，才記錄 ERROR。
+- 實機觀察到的 numeric index 是 DCS ABI 的驗收依據。實作優先使用與該 numeric index 相符的 bundled SDK symbol，但測試不能只重複使用 production symbol；必須另外以實機觀察到的 raw numeric index 驗證，避免規格名稱、SDK symbol 與實際數值彼此錯位卻仍讓測試通過。
 
 本次實機觀察到的 missing indices 必須全部成為已申報 mapping，固定行為如下：
 
@@ -205,13 +206,14 @@ DCS 已提供但 Core 尚未實作的欄位仍要翻譯並放入 `FrameInput`，
 |---:|---:|---|
 | 3 | `1.0` | APU core related RPM compatibility value；F-CK-1C 目前沒有 APU 模型，必須在 mapping 註解這不是實際 APU state |
 | 109、209 | `0.0` | 左右 engine propeller pitch；本機是 turbofan，沒有 propeller pitch |
-| 2015、2025 | `0.0` | 左右 main wheel self-attitude compatibility value；本輪不把它當成新的功能需求 |
+| 2015、2025 | `0.0` | Bundled SDK 中分別是 `ED_FM_SUSPENSION_1_WHEEL_YAW`／`ED_FM_SUSPENSION_2_WHEEL_YAW`；目前沒有左右主輪 yaw 功能。本輪不把它當成新的功能需求，也不能誤用數值為 2016／2026 的 self-attitude symbols |
 | 114、214 | `total_fuel_flow / 2` | 暫時平均分配現有總燃油流量；不宣稱是獨立左右引擎計算，真實 per-engine flow 與燃油同步由 GitHub issue #18 追蹤 |
 | 127、227 | `0.0` | 左右 engine fan phase 尚未實作；mapping 必須明確註解 |
 | 131、231 | `0.0` | 當前 bundled SDK 未命名的相容輸出；真實 engine flow speed 由 GitHub issue #23 追蹤 |
-| 2123–2129 | `0.0` | Bundled SDK 中的 Force Feedback 參數；真實功能由 GitHub issue #24 追蹤 |
-| 2130 | `0.0` | Bundled SDK 中的 cockpit pressurization；目前沒有座艙增壓模型，先使用相容輸出 |
-| 2132 | `0.0` | `ED_FM_INTERRUPT_REFUEL`：表示 EFM 不要求中斷加油 |
+| 2123–2130 | `0.0` | Bundled SDK 中完整的 pitch／roll Force Feedback 參數範圍；2123 是先前實作漏掉的 `ED_FM_STICK_FORCE_CENTRAL_PITCH`。真實功能由 GitHub issue #24 追蹤 |
+| 2131 | `0.0` | `ED_FM_COCKPIT_PRESSURIZATION_OVER_EXTERNAL`；目前沒有座艙增壓模型，先使用相容輸出 |
+| 2132 | `760.0` | `ED_FM_COCKPIT_ALTIMETER_PRESSURE_SETTING_MM_HG`，不是先前文件誤寫的 interrupt-refuel。現有 Cockpit 沒有可讀取的高度表壓力旋鈕，因此明確回傳標準大氣壓 760 mmHg，並在程式碼註解這是不支援動態設定的 compatibility output、不是即時 Cockpit state |
+| 2133 | `0.0` | `ED_FM_INTERRUPT_REFUEL`：表示 EFM 不要求中斷加油 |
 | 2134–2137 | `0.0` | 當前 bundled SDK 未定義、但實機會查詢；明確標註 unknown compatibility，相關功能由 GitHub issue #24 追蹤 |
 
 上述已申報 compatibility mappings 不建立 counted warning。若日後取得更明確的新 SDK 定義或出現實際 consumer，再以對應 issue 改成真實輸出，不在本輪猜測物理語意。
@@ -531,7 +533,7 @@ public:
 - 三個 gameplay callbacks 各自保留明確 bool setter；把它們合成 `GameplayOptions` 反而需要 read-modify-write，容易把未包含的設定蓋掉。
 - `apply_damage` 接受 DCSBridge 已映射完成的 `DamageEvent`；DCS element ID 不進入 Core。
 - `repair()` 立即修改 Core 狀態，但已發布 output 等下一 step 更新。
-- `release()` 與 step、command、fuel 等所有 Core 操作共用 execution mutex；它只結束當前 flight 並清除 flight-only state，不能銷毀 process-lifetime Core，也不能清掉 release 後為下一趟飛行收到的 fuel／gameplay 準備值。完成後 DCSBridge 將 `OutputStore` 標為 released/invalid；CSV writer 不隨它停止。
+- `release()` 與 step、command、fuel 等所有 Core 操作共用 execution mutex；它只結束當前 flight 並清除 flight-only state，不能銷毀 process-lifetime Core。它必須在 flight boundary 清掉上一趟的 `FrameInputCollector` 資料，之後保留 release 後為下一趟飛行收到的 continuous `FrameInput` 與 fuel／gameplay 準備值。完成後 DCSBridge 將 `OutputStore` 標為 released/invalid；CSV writer 不隨它停止。
 - `config()`、`snapshot()`、`force_moment_output()`、`shake_amplitude()`、continuous setters、`max_dry_thrust_at()` 都不再是 Core 對 DCSBridge 的公開介面。Carrier 需要的固定 launch thrust 由 composition root 從既有 config 提供給 `CarrierBridge`。
 - `ed_fm_configure` 仍由 DCSBridge 處理模組路徑與 bridge 工具；Config 架構本輪不重構，也不讓 Core 反向依賴 DCSBridge。
 
@@ -565,9 +567,12 @@ Neutral return 只用在 DCS ABI 必須得到回傳值、但沒有可用結果�
 | Cockpit 必要 parameter 缺失 | 本次使用已定義的 neutral input，step 可繼續 | ERROR，並在恢復時記 recovery |
 | `ed_fm_simulate` 收到非有限值或 `dt <= 0` | 不執行 Core step，保留最後 output | ERROR；此情況理論上不應發生，用假 dt 繼續會破壞 simulation time 與積分結果 |
 | 上一個 flight 的 operational/output callback 在 release 後嘗試讀寫 | 不執行該操作；有 return 的回 neutral，void callback 直接 return | ERROR |
-| 已列入 next-flight preparation 的 callback 在 release 後、下一次 start 前讀寫 | 使用原有 Core state 準備下一趟 flight；OutputStore 保持 invalid | 不寫 |
+| continuous `FrameInput` producer 在 release 後、下一次 start 前送入 surface、mass、world/body state、atmosphere 或 suspension | 驗證並發布到原有 `FrameInputCollector`，視為下一趟 flight 的 latest preparation；不立即執行 Core step，`OutputStore` 保持 invalid | 不寫 |
+| fuel setter/getter、unlimited fuel、immortal、easy flight 或 mass-delta preparation 在 release 後、下一次 start 前讀寫 | 使用原有 Core state 準備下一趟 flight；`OutputStore` 保持 invalid | 不寫 |
 
 「回傳 `false`」有兩種完全不同的意思，必須在程式碼與測試中分清楚：沒有下一筆資料／未提供 component 模式是正常協定結果；只有在該 callback 不屬於 next-flight preparation、卻於 invalid lifecycle 被呼叫時才是錯誤。正常的 `false` 不寫 ERROR。
+
+Bundled SDK 已明確說明 current state、mass state 與 atmosphere callbacks 會在 cold／hot start callback 前發生；第二輪實機也觀察到 `ed_fm_set_surface`、`ed_fm_set_current_mass_state`、`ed_fm_set_current_state`、`ed_fm_set_current_state_body_axis`、`ed_fm_set_atmosphere` 先於 start。這是正常 DCS call order，不是 released flight 的越界寫入。`FrameInputCollector` 必須在 release 時清掉上一趟資料、接受這些 next-flight samples，且 `start_efm()` 不得再把它們 reset；第一個成功 step 使用 start 前已收齊的 latest input。不得為此建立第二份 preflight state。
 
 實機驗證已確認 DCS 會主動查詢一批 EFM params，不能把「被查詢」直接當成已有 Lua 儀表或專案 consumer。已申報 compatibility mapping 是正常相容行為；完全未申報的 index 才記 counted WARN。只有已宣告可用的 mapping 因 runtime data contract 被破壞而無法產生時才是 ERROR。
 
@@ -600,11 +605,11 @@ EFM 與 test 的 Visual Studio projects 已在第一輪重構中明確設定 C++
 - 驗證 command table 的 PassThrough、Constant 與 PressOnly；PressOnly 的按鍵 release value 不 dispatch。
 - 驗證 EFM route 正常 dispatch、Cockpit route 與 DCS-owned ignored ID 靜默忽略、unknown command 第一次 WARN／後續計數／flight release summary 與 reset。
 - 驗證 Cockpit parameter 缺失會產生可追蹤錯誤、使用 neutral input 並允許 step；恢復後產生 recovery。
-- 驗證已實作 param、全部已申報 compatibility param、unknown param counted warning，以及 start 後第一份 atmosphere／suspension sample 前的 compatibility 行為。
+- 驗證已實作 param、全部已申報 compatibility param、unknown param counted warning，以及 start 後第一份 atmosphere／suspension sample 前的 compatibility 行為；對實機觀察到的 `2015`、`2025`、`2123`、`2132` 直接用 raw numeric index 驗證，不只測 production SDK aliases。
 - 驗證 suspension 初始值、完整 sample 更新與 sticky latest-known 行為。
 - 驗證 concurrent input update/read 只得到完整舊值或完整新值。
 - 驗證 concurrent OutputStore publish/read 只得到完整舊 frame 或完整新 frame。
-- 驗證 step 與 release 被序列化；release 後的上一趟 operational/output callback 明確報錯，next-flight fuel／gameplay preparation callback 可使用原有 Core state，mass-delta query 正常回傳沒有資料，下一次 start 保留準備值並重新發布 output。
+- 驗證 step 與 release 被序列化；release 後的上一趟 operational/output callback 明確報錯。另以真實 DCS 順序驗證 `release → surface/mass/world/body/atmosphere input → start → first step`：continuous inputs 寫入同一個已清除舊 flight 資料的 collector、過程不寫 lifecycle ERROR、start 不丟棄準備值、第一個 step 使用該批 latest input。fuel／gameplay preparation callback 可使用原有 Core state，mass-delta query 正常回傳沒有資料。
 - 驗證 EventLog 行格式、simulation time、必要錯誤參數、路徑、rotation，以及 counted-warning 只為實際 ID 配置、第一次即時輸出、release 總數與清除。
 - 驗證 CSV header、欄位順序、單位、精度、`True`／`False`、向量展開、unavailable `-`、sequence reset 與多 flight append。
 - 暫停 CSV writer 後連續發布多筆 record，驗證 writer 只寫最新資料且 sequence 出現跳號。
@@ -616,84 +621,46 @@ EFM 與 test 的 Visual Studio projects 已在第一輪重構中明確設定 C++
 - 驗證 DCS callbacks 的實際並行與順序不會破壞 collector、Core 或 OutputStore。
 - 驗證外部程式能在 DCS 執行中持續讀取 `.log` 與 `.csv`。
 - 驗證 suspension callback 提供的 compression 與 force 在實機中的語意與單位。
-- 驗證 cold、hot ground、hot air、release 與同 execution 多次飛行。
+- 驗證 cold、hot ground、hot air、release 與同 execution 多次飛行，並核對 release 後、下一次 start 前的 continuous input callback 順序與第一個 step 的資料。
 - 驗證 CSV writer 落後時飛行運算不被檔案 I/O 阻塞，且 sequence 跳號可見。
 
 ## 目前狀態
 
-原始重構步驟 0–16 與第一輪 DCS 實機驗證已完成。實機驗證暴露的 release lifecycle、command 分類、param compatibility 與 log 去重修正已完成設計決策，但 runtime 實作、測試與第二輪 DCS 驗證仍待執行。目前沒有尚未回答、會阻擋這批修正實作的問題。
+原始重構步驟 0–16、第一輪 DCS 實機驗證，以及步驟 17–20 的 runtime、測試、code review、DLL 與 commits 都已完成。步驟 21 的第一次 DCS 多 flight 驗證中，CSV／EventLog 檔案生命週期、37,743 筆 CSV 的格式與連續 sequence、四次 flight append，以及 unknown command counted warning 均正常，但暴露出 Param numeric IDs 與 next-flight continuous input 兩項驗收缺口。
+
+兩項缺陷均已在步驟 21 修正：
+
+- `2015`／`2025` 已對應正確 wheel-yaw symbols、`2123` 已補上 pitch force center、`2132` 已改為有明確不支援註解的標準大氣壓 `760.0 mmHg` compatibility output；測試直接使用實機 raw numeric IDs，不再只重複 production symbols。
+- Continuous input callbacks 不經 Core execution mutex，仍可在 step 計算期間更新 thread-safe collector。Collector 在 release boundary 清掉上一趟資料，release 後的 callbacks 準備下一趟 flight，start 不再 reset，第一個 step 使用該批資料且不寫 lifecycle ERROR。
+
+相關 native regression tests、完整 native suite、`tools/build_dll.ps1` 與 code review 已完成；本次修正 commit 後只剩再次安裝到 DCS，重跑同一套多 flight 驗證。DCS 複驗通過前，步驟 21 仍不得標記完成。
 
 - CSV 的逐欄 header 與順序由最終 `FrameOutput` 宣告機械式展開，並以 schema 測試鎖定；這是實作工作，不再建立另一份人工挑選清單。
 - Suspension 的座標系與單位已依 DCS reference 固定；`acting_force_point`、`integrity_factor` 與 `wheel_speed_X` 目前只保留在完整 `FrameInput`，沒有 output consumer，因此不阻擋本輪，也不加入 `FrameOutput`／CSV。
-- 效能與 DCS callback cadence 在實作後用整合測試確認；真正需要觀察的是 `simulate` 未被檔案 I/O 阻塞，以及 CSV 落後時可由 sequence 跳號看見。
-- 第一輪實作與 commit 順序保留在下一節作為重構紀錄；實機驗證後的修正範圍列於文件末段，目前不替尚未討論的執行順序編號。
+- 本次 CSV writer 沒有落後，因此 sequence 沒有跳號；已確認 `simulate` 未被目前檔案 I/O 阻塞，但 latest-only drop 行為仍由既有自動測試保證。
+- 步驟 0–20 的實作與 commit 順序移至獨立歷史文件，保留原始成果與實機發現的缺口，不把已完成紀錄改寫成從未實作。
 - 若實作時發現現有程式碼或 SDK 與本文件矛盾，必須帶著具體檔案、symbol 與影響回來討論，不預先為假想情況增加 abstraction 或 fallback。
 
-## 第一輪實作與 commit 計畫（步驟 0–16 已完成）
+## 已完成實作紀錄
 
-本節保留第一輪重構的簡要紀錄。當時每步原則上一個 commit，每次都執行 native tests，DLL 由 `tools/build_dll.ps1` 建置，並維持 DCS export surface；詳細差異由 git history 與基準文件保存。凡是與前述現行設計不同的 command、param、release 或 WARN 行為，都以「實機驗證後修正計畫」為準。
-
-| 步驟 | 已完成結果 |
-|---:|---|
-| 0 | 建立重構前 tests、DLL、exports 與 SHA256 基準 |
-| 1 | EFM 與 tests 明確啟用 C++17 |
-| 2 | 建立 `StartMode`、`FrameInput`、availability 與 `FrameOutput` contracts |
-| 3 | 把 autopilot／max-power Cockpit 讀取移到 DCSBridge |
-| 4 | 移除 Core 反向通知、舊 Debug Watch implementation 與 suspension diagnostics |
-| 5 | 移除 `Fck1cEfmRuntime` 與 Core 對 DCSBridge 的依賴 |
-| 6 | 建立 thread-safe `FrameInputCollector` |
-| 7 | Core production 入口切換為 `start()`／`step()` |
-| 8 | 建立 `OutputStore`，集中 frame output callbacks |
-| 9 | 建立 process-lifetime、可即時讀取的 `EventLog` |
-| 10 | 建立 latest-only、非阻塞 simulate 的 `StateCsvWriter` |
-| 11 | 拆出精簡 `CockpitBridge`、`CarrierBridge` 與路徑工具 |
-| 12 | 建立唯一 production ownership/composition root `BridgeContext` |
-| 13 | 建立 command binding、`std::optional<double>` param lookup 與 numeric boundary errors；實機後分類修正見下節 |
-| 14 | 刪除 legacy ownership、runtime 與 snapshot 路徑 |
-| 15 | 整理 DCSBridge/Internal、EfmExports 入口與 contributor 文件 |
-| 16 | 完成自動檢查與第一輪 DCS 多 flight 實機驗證 |
-
-## 實機驗證後修正步驟（17–21，待執行）
-
-這批修正拆成五個可獨立 review 與回復的步驟，不建立暫時 adapter、第二份 mapping 或第二份 preflight state。
+步驟 0–20 的 commit 計畫、完成結果與第一次實機驗證後的修正紀錄，保存在 [DCSBridge 重構實作歷史](DCSBRIDGE_REFACTOR_IMPLEMENTATION_HISTORY.md)。本文件只保留目前有效的設計與尚未完成的步驟 21。
 
 ### 實機驗證原則
 
-- 步驟 17–20 每步都執行相關 native tests、完整 native test suite、`tools/build_dll.ps1`、code review 與 commit，但不需要逐步安裝到 DCS。
-- DCS 實機驗證集中在步驟 21；因為 Command、Param、counted WARN 與 release lifecycle 必須在同一 execution、多次 flight 中一起觀察，分階段安裝只會重複測試不完整的中間狀態。
-
-### 17. 固定修正規格與 Command 分類資料
-
-- Commit 本文件、`CommandIds.json`、DcsIds README、generator 驗證、同步更新的 Lua／generated files，以及依專案規範重建的 DLL。
-- `CommandIds.json` 成為 custom command route 與 known ignored DCS command 的單一資料來源；移除舊名稱 fallback，並驗證 route、ID、重複值與 reason。
-- 驗收 generator 可重複產生相同結果，且建置與既有 runtime 行為不變。
-
-### 18. 完成 EventLog counted warnings 與 Command routing
-
-- EventLog 新增 WARN、動態「warning kind + ID」counter、第一次即時輸出及 `release_flight()` 總數／清除；呼叫端不保存去重狀態。
-- Generator 把 Cockpit route 與 ignored IDs 寫入既有 C++ generated header；DLL runtime 不解析 JSON，也不手寫第二份 ignored table。
-- EFM route 正常 dispatch；Cockpit route、`851`、`1609`、`2035`、`2142`、`2143` 與 `3135` 靜默 no-op。
-- 未申報 ID（包含實機出現的 `2659`）no-op 並 counted WARN；測試第一次內容、後續計數、release summary 與 reset。
-
-### 19. 完成 Param export mappings 與分類
-
-- 補齊「Param export」表列的全部 compatibility mappings；已實作 mapping 繼續讀 latest `FrameOutput`。
-- Start 後第一份 atmosphere／suspension sample 前使用 per-param compatibility value；known compatibility 不寫 log，unknown index 回 `0.0` 並 counted WARN。
-- 測試已實作、known compatibility、unknown 與 active-flight runtime data contract error 四種外部結果和 log。
-
-### 20. 修正 release 與 next-flight preparation
-
-- `ed_fm_release` 結束當前 flight、使 OutputStore invalid 並呼叫 `release_flight()`，但保留 process-lifetime `BridgeContext`、Core、logger 與 CSV writer。
-- 上一個 flight 的 operational/output callbacks 維持 lifecycle ERROR；release 後允許 fuel setter/getter、unlimited fuel、immortal、easy flight 與 mass-delta preparation。
-- 準備資料重複使用既有 Core state；下一次 start 保留準備值，只初始化 flight-only state並重新發布 start output。
-- 測試同一 execution 多 flight、禁止與允許的 callbacks、mass-delta `false`、warning 週期及原有 CSV 行為。
+- DCS 實機驗證集中在步驟 21；Command、Param、counted WARN 與 release lifecycle 必須在同一 execution、多次 flight 中一起觀察。
+- 自動測試驗證 BridgeContext 與 collector 的輸入、輸出、並行及 log 規則；真正的 DCS ABI callback 呼叫順序由步驟 21 實機測試驗收，避免為 process-lifetime DLL ownership 建立測試專用 teardown 路徑。
 
 ### 21. 最終文件、自動檢查與 DCS 實機驗證
 
 - 更新 DCSBridge／DcsIds contributor 文件，執行完整 tests、`tools/build_dll.ps1` 並比較 DLL exports。
 - 在同一 DCS execution 驗證 cold、hot ground、hot air 與多次重生；確認 known Command／Param 不污染 log、unknown 仍可追蹤且 next-flight 準備值生效。
 - 確認飛行輸出、CSV、draw args、fuel、mass delta、suspension 與 release 沒有回歸後，完成 code review 與 commit。
+- 第一次實機驗證的 Param raw IDs 與 continuous next-flight input 缺口已完成程式修正、自動測試、`tools/build_dll.ps1`、code review 與含 DLL 的 commit。接著再次安裝到 DCS 執行同一套多 flight 驗證；所有已申報 Param 不再寫 missing mapping、pre-start inputs 不再寫 lifecycle ERROR，步驟 21 才能標記完成。
 
 ## 重構後另案討論
 - Config／FM Data 的責任與檔案結構，以及是否把整台飛機 state management 抽成獨立 Core module。
 - 完成 DCS 實測後重新審視 autopilot、max-power、suspension 與 `FrameOutput` 的分組是否仍合理。
+- Autopilot cockpit device 因單一 `SetCommand` 超過 DCS Lua upvalue 限制而整體無法載入，由 GitHub issue #25 追蹤；不納入 DCSBridge 重構。
+- `actuators_system.lua` 因 `angle_of_draw_left_rudder` 不存在而無法載入，由 GitHub issue #26 追蹤；不納入 DCSBridge 重構。
+- 冷啟動、雙發關閉時仍消耗燃油，以及真實 per-engine fuel flow／內外油箱同步，由既有 GitHub issue #18 追蹤；不納入 DCSBridge 重構。
+- 起落架折斷後的 3D 動畫尚未實作，屬已知模型功能缺口；本次實測的 suspension 與 damage callback 已足以確認事件，不建立 DCSBridge 重構工作。

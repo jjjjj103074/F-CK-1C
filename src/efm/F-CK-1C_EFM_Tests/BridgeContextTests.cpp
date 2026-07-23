@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <filesystem>
+#include <future>
 #include <string>
 #include <thread>
 #include <vector>
@@ -16,6 +18,30 @@ namespace
 {
 constexpr std::size_t kConcurrentCallbackCount = 8;
 constexpr int kCoreActionsPerCallback = 100;
+constexpr double kPreparedStepS = 0.006;
+constexpr double kPreparedAltitudeAslM = 1234.0;
+constexpr double kPreparedTemperatureK = 275.0;
+constexpr double kPreparedSpeedOfSoundMps = 340.0;
+constexpr double kPreparedDensityKgM3 = 1.2;
+constexpr double kPreparedPressurePa = 101325.0;
+constexpr double kPreparedSurfaceHeightM = 100.0;
+constexpr unsigned kPreparedSurfaceType = 0;
+constexpr double kPreparedSurfaceNormalY = 1.0;
+constexpr double kPreparedPositionWorldZM = 321.0;
+constexpr double kPreparedMassKg = 10000.0;
+constexpr double kPreparedCenterOfMassXM = -0.5;
+constexpr double kPreparedInertiaX = 1000.0;
+constexpr double kPreparedInertiaY = 2000.0;
+constexpr double kPreparedInertiaZ = 3000.0;
+constexpr int kPreparedSuspensionIndex = 0;
+constexpr double kPreparedSuspensionForceY = 1000.0;
+constexpr double kPreparedSuspensionIntegrity = 1.0;
+constexpr double kPreparedSuspensionCompressionM = 0.1;
+constexpr double kPreviousFlightAltitudeAslM = 999.0;
+constexpr double kPreparedInternalFuelKg = 300.0;
+constexpr int kPreparedExternalFuelStation = 2;
+constexpr double kPreparedExternalFuelKg = 40.0;
+constexpr auto kInputConcurrencyTimeout = std::chrono::seconds(1);
 std::atomic<int> g_cockpit_api_requests = 0;
 
 void* get_parameter_handle(const char* name)
@@ -79,12 +105,23 @@ DcsBridge::Internal::BridgeContextEnvironment make_environment()
 	};
 }
 
+Core::AtmosphereInput make_prepared_atmosphere(double altitude_asl_m)
+{
+	return {
+		altitude_asl_m,
+		kPreparedTemperatureK,
+		kPreparedSpeedOfSoundMps,
+		kPreparedDensityKgM3,
+		kPreparedPressurePa,
+		{}
+	};
+}
+
 void start_flight(
 	DcsBridge::Internal::BridgeContext& context,
 	Core::StartMode mode)
 {
 	const std::lock_guard<std::mutex> lock(context.execution_mutex());
-	context.input_collector().reset();
 	context.param_exporter().reset();
 	const Core::FrameOutput output = context.core().start(mode);
 	context.output_store().publish(output);
@@ -96,7 +133,55 @@ void release_flight(DcsBridge::Internal::BridgeContext& context)
 {
 	const std::lock_guard<std::mutex> lock(context.execution_mutex());
 	context.core().release();
+	context.input_collector().reset();
 	context.output_store().mark_released();
+}
+
+void publish_prepared_frame_input(DcsBridge::Internal::BridgeContext& context)
+{
+	DcsBridge::Internal::FrameInputCollector& collector = context.input_collector();
+	collector.publish_atmosphere(
+		make_prepared_atmosphere(kPreparedAltitudeAslM));
+	collector.publish_surface({
+		kPreparedSurfaceHeightM,
+		kPreparedSurfaceHeightM,
+		kPreparedSurfaceType,
+		{ 0.0, kPreparedSurfaceNormalY, 0.0 }
+	});
+	collector.publish_mass({
+		kPreparedMassKg, { kPreparedCenterOfMassXM, 0.0, 0.0 },
+		{ kPreparedInertiaX, kPreparedInertiaY, kPreparedInertiaZ }
+	});
+	collector.publish_world_kinematics({
+		{}, {}, { 0.0, kPreparedAltitudeAslM, kPreparedPositionWorldZM }
+	});
+	collector.publish_body_kinematics({});
+	(void)collector.publish_suspension({
+		kPreparedSuspensionIndex,
+		{ 0.0, kPreparedSuspensionForceY, 0.0 },
+		{},
+		kPreparedSuspensionIntegrity,
+		kPreparedSuspensionCompressionM,
+		0.0
+	});
+}
+
+void expect_prepared_frame_input(
+	Tests::Context& tests,
+	const Core::FrameInput& input)
+{
+	TEST_EXPECT(tests, input.availability.atmosphere);
+	TEST_EXPECT(tests, input.availability.surface);
+	TEST_EXPECT(tests, input.availability.mass);
+	TEST_EXPECT(tests, input.availability.world_kinematics);
+	TEST_EXPECT(tests, input.availability.body_kinematics);
+	TEST_EXPECT(
+		tests,
+		input.availability.suspension[kPreparedSuspensionIndex]);
+	TEST_EXPECT_NEAR(
+		tests, input.atmosphere.altitude_asl, kPreparedAltitudeAslM, 0.0);
+	TEST_EXPECT_NEAR(
+		tests, input.world_kinematics.position.z, kPreparedPositionWorldZM, 0.0);
 }
 
 void test_first_callback_initializes_once(Tests::Context& tests)
@@ -227,6 +312,29 @@ void test_execution_mutex_serializes_core_actions(Tests::Context& tests)
 			static_cast<int>(kConcurrentCallbackCount) * kCoreActionsPerCallback);
 }
 
+void test_input_collection_does_not_wait_for_core(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcu");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
+	std::unique_lock<std::mutex> core_lock(context.execution_mutex());
+	auto input_update = std::async(std::launch::async, [&context]()
+		{
+			context.input_collector().publish_atmosphere(
+				make_prepared_atmosphere(kPreparedAltitudeAslM));
+		});
+	const bool completed_while_core_locked =
+		input_update.wait_for(kInputConcurrencyTimeout) == std::future_status::ready;
+	core_lock.unlock();
+	input_update.get();
+	TEST_EXPECT(tests, completed_while_core_locked);
+	TEST_EXPECT(
+		tests,
+		context.input_collector().snapshot(kPreparedStepS).availability.atmosphere);
+}
+
 void test_core_action_rejects_released_flight(Tests::Context& tests)
 {
 	TestFiles::TemporaryDirectory root("bcr");
@@ -249,7 +357,7 @@ void test_core_action_rejects_released_flight(Tests::Context& tests)
 		std::string::npos);
 }
 
-void test_release_allows_next_flight_preparation(Tests::Context& tests)
+void test_release_clears_previous_frame_input(Tests::Context& tests)
 {
 	TestFiles::TemporaryDirectory root("bcp");
 	TEST_EXPECT(tests, root.valid());
@@ -257,38 +365,91 @@ void test_release_allows_next_flight_preparation(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
 	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
 	start_flight(context, Core::StartMode::HotGround);
+	context.input_collector().publish_atmosphere(
+		make_prepared_atmosphere(kPreviousFlightAltitudeAslM));
 	release_flight(context);
-	bool flight_action_executed = false;
-	TEST_EXPECT(tests, !context.perform_flight_action(
-		{ "test_previous_flight_callback" },
-		[&flight_action_executed]() { flight_action_executed = true; }));
-	TEST_EXPECT(tests, !flight_action_executed);
+	TEST_EXPECT(
+		tests,
+		!context.input_collector().snapshot(kPreparedStepS).availability.atmosphere);
+}
+
+void prepare_next_flight_core(DcsBridge::Internal::BridgeContext& context)
+{
 	context.perform_core_preparation([](Core::Fck1cEfm& core)
 		{
-			core.set_internal_fuel(300.0);
-			core.set_external_fuel({ 2, 40.0, {} });
+			core.set_internal_fuel(kPreparedInternalFuelKg);
+			core.set_external_fuel({
+				kPreparedExternalFuelStation, kPreparedExternalFuelKg, {}
+			});
 			core.set_infinite_fuel(true);
 			core.set_easy_flight(true);
 			core.set_invincible(true);
 		});
+}
+
+void expect_first_step_uses_prepared_input(
+	Tests::Context& tests,
+	DcsBridge::Internal::BridgeContext& context)
+{
+	const Core::FrameInput prepared =
+		context.input_collector().snapshot(kPreparedStepS);
+	expect_prepared_frame_input(tests, prepared);
+	Core::FrameOutput first_step;
+	TEST_EXPECT(tests, context.perform_core_action(
+		{ "test_next_flight_first_step" },
+		[&prepared, &first_step](Core::Fck1cEfm& core)
+		{
+			first_step = core.step(prepared);
+		}));
+	TEST_EXPECT_NEAR(
+		tests, first_step.flight.altitude_asl_m, kPreparedAltitudeAslM, 0.0);
+	TEST_EXPECT_NEAR(
+		tests,
+		first_step.flight.position_world_z_m,
+		kPreparedPositionWorldZM,
+		0.0);
+	TEST_EXPECT_NEAR(
+		tests,
+		first_step.force_moment.center_of_mass.x,
+		kPreparedCenterOfMassXM,
+		0.0);
+}
+
+void test_release_allows_next_flight_preparation(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bnp");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotGround);
+	release_flight(context);
+	prepare_next_flight_core(context);
+	publish_prepared_frame_input(context);
+	expect_prepared_frame_input(
+		tests, context.input_collector().snapshot(kPreparedStepS));
 	TEST_EXPECT_NEAR(
 		tests,
 		context.query_core_preparation(
 			[](const Core::Fck1cEfm& core) { return core.internal_fuel(); }),
-		300.0,
+		kPreparedInternalFuelKg,
 		0.0);
 	TEST_EXPECT(tests, !context.take_flight_mass_delta().available);
 	TEST_EXPECT(tests, !context.output_store().read().has_value());
+	const std::string preparation_log = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(
+		tests,
+		preparation_log.find("invalid lifecycle state=released") ==
+			std::string::npos);
 	start_flight(context, Core::StartMode::ColdGround);
 	const std::optional<Core::FrameOutput> output = context.output_store().read();
 	TEST_EXPECT(tests, output.has_value());
-	TEST_EXPECT_NEAR(tests, output->fuel.internal_fuel, 300.0, 0.0);
-	TEST_EXPECT_NEAR(tests, output->fuel.external_fuel, 40.0, 0.0);
-	const std::string log = TestFiles::read_text_while_open(
-		root.path() / "log" / "fck1c_efm.log");
-	TEST_EXPECT(tests, log.find(
-		"callback=test_previous_flight_callback invalid lifecycle state=released") !=
-		std::string::npos);
+	TEST_EXPECT_NEAR(
+		tests, output->fuel.internal_fuel, kPreparedInternalFuelKg, 0.0);
+	TEST_EXPECT_NEAR(
+		tests, output->fuel.external_fuel, kPreparedExternalFuelKg, 0.0);
+	expect_first_step_uses_prepared_input(tests, context);
 }
 
 }
@@ -300,6 +461,8 @@ void run_bridge_context_tests(Tests::Context& context)
 	test_release_then_start_reuses_context(context);
 	test_concurrent_first_callbacks_share_context(context);
 	test_execution_mutex_serializes_core_actions(context);
+	test_input_collection_does_not_wait_for_core(context);
 	test_core_action_rejects_released_flight(context);
+	test_release_clears_previous_frame_input(context);
 	test_release_allows_next_flight_preparation(context);
 }

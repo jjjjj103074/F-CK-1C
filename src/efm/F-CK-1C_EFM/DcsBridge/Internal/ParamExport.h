@@ -136,6 +136,7 @@ constexpr double kEngineCombustionScale = 2.0;
 constexpr double kEngineTemperatureScale = 500.0;
 constexpr double kEngineTemperatureExponent = 3.0;
 constexpr double kPerEngineFuelFlowShare = 0.5;
+constexpr double kUnsupportedAltimeterPressureCompatibilityMmHg = 760.0;
 
 inline double engine_display_related_rpm(double core_readout)
 {
@@ -284,6 +285,10 @@ inline std::optional<double> lookup_wheel_compatibility(unsigned index)
 	using namespace DcsIds::Params;
 	switch (index)
 	{
+	case LeftMainWheelYawCompatibility:
+	case RightMainWheelYawCompatibility:
+		// Compatibility only: independent main-wheel yaw is not implemented.
+		return 0.0;
 	case LeftWheelSpin:
 	case RightWheelSpin:
 		// Main-wheel self-attitude is not implemented as a Param output.
@@ -297,6 +302,7 @@ inline std::optional<double> lookup_force_feedback_compatibility(unsigned index)
 	using namespace DcsIds::Params;
 	switch (index)
 	{
+	case PitchForceCenter:
 	case PitchForceFactor:
 	case PitchForceShakeAmplitude:
 	case PitchForceShakeFrequency:
@@ -318,6 +324,10 @@ inline std::optional<double> lookup_misc_system_compatibility(unsigned index)
 	case CockpitPressurization:
 		// The aircraft currently has no cockpit pressurization model.
 		return 0.0;
+	case CockpitAltimeterPressureSetting:
+		// Unsupported compatibility output: the cockpit has no dynamic
+		// altimeter-pressure setting. Standard atmosphere is not live state.
+		return kUnsupportedAltimeterPressureCompatibilityMmHg;
 	case InterruptRefuel:
 		// The EFM does not request interruption of refueling.
 		return 0.0;

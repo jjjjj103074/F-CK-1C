@@ -8,6 +8,10 @@ namespace Params
 {
 static constexpr unsigned NoseWheelYaw = ED_FM_SUSPENSION_0_WHEEL_YAW;
 static constexpr unsigned NoseWheelSpin = ED_FM_SUSPENSION_0_WHEEL_SELF_ATTITUDE;
+static constexpr unsigned LeftMainWheelYawCompatibility =
+	ED_FM_SUSPENSION_1_WHEEL_YAW;
+static constexpr unsigned RightMainWheelYawCompatibility =
+	ED_FM_SUSPENSION_2_WHEEL_YAW;
 static constexpr unsigned LeftWheelSpin = ED_FM_SUSPENSION_1_WHEEL_SELF_ATTITUDE;
 static constexpr unsigned RightWheelSpin = ED_FM_SUSPENSION_2_WHEEL_SELF_ATTITUDE;
 static constexpr unsigned NoseBrakeMoment = ED_FM_SUSPENSION_0_RELATIVE_BRAKE_MOMENT;
@@ -72,6 +76,7 @@ static constexpr unsigned RightEngineCoreThrust = ED_FM_ENGINE_2_CORE_THRUST;
 static constexpr unsigned RightEngineThrust = ED_FM_ENGINE_2_THRUST;
 static constexpr unsigned RightEngineTemperature = ED_FM_ENGINE_2_TEMPERATURE;
 
+static constexpr unsigned PitchForceCenter = ED_FM_STICK_FORCE_CENTRAL_PITCH;
 static constexpr unsigned PitchForceFactor = ED_FM_STICK_FORCE_FACTOR_PITCH;
 static constexpr unsigned PitchForceShakeAmplitude =
 	ED_FM_STICK_FORCE_SHAKE_AMPLITUDE_PITCH;
@@ -85,6 +90,8 @@ static constexpr unsigned RollForceShakeFrequency =
 	ED_FM_STICK_FORCE_SHAKE_FREQUENCY_ROLL;
 static constexpr unsigned CockpitPressurization =
 	ED_FM_COCKPIT_PRESSURIZATION_OVER_EXTERNAL;
+static constexpr unsigned CockpitAltimeterPressureSetting =
+	ED_FM_COCKPIT_ALTIMETER_PRESSURE_SETTING_MM_HG;
 static constexpr unsigned InterruptRefuel = ED_FM_INTERRUPT_REFUEL;
 
 // DCS queried these indices, but the bundled SDK does not define their meaning.
