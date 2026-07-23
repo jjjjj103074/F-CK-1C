@@ -48,7 +48,7 @@ public:
 	Core::Fck1cEfm& core();
 
 	template <typename Action>
-	bool perform_core_action(
+	bool perform_flight_action(
 		const CallbackContext& context,
 		const Action& action)
 	{
@@ -58,7 +58,7 @@ public:
 			released = output_store_.is_released();
 			if (!released)
 			{
-				action(core_);
+				action();
 			}
 		}
 		if (released)
@@ -67,6 +67,32 @@ public:
 		}
 		return !released;
 	}
+
+	template <typename Action>
+	bool perform_core_action(
+		const CallbackContext& context,
+		const Action& action)
+	{
+		return perform_flight_action(
+			context,
+			[this, &action]() { action(core_); });
+	}
+
+	template <typename Action>
+	void perform_core_preparation(const Action& action)
+	{
+		const std::lock_guard<std::mutex> lock(execution_mutex_);
+		action(core_);
+	}
+
+	template <typename Query>
+	auto query_core_preparation(const Query& query)
+	{
+		const std::lock_guard<std::mutex> lock(execution_mutex_);
+		return query(core_);
+	}
+
+	Core::MassDeltaResult take_flight_mass_delta();
 
 private:
 	ModulePaths module_paths_;

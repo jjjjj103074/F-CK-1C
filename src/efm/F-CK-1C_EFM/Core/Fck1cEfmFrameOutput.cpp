@@ -92,7 +92,7 @@ Core::FuelOutput project_fuel(const Systems::FuelSystem& source)
 	return {
 		source.internal_fuel,
 		source.external_fuel,
-		source.total_fuel,
+		source.internal_fuel + source.external_fuel,
 		source.total_fuel_flow
 	};
 }

@@ -523,7 +523,7 @@ void Fck1cEfm::reset_start_state(Systems::StartupMode mode)
 	systems_.airframe_devices = Systems::AirframeDeviceState();
 	systems_.landing_gear = Systems::LandingGearSystemState();
 	systems_.fbw = Systems::FBWControllerState();
-	systems_.fuel.total_fuel_flow = 0.0;
+	Systems::reset_fuel_transient_state(systems_.fuel);
 	gameplay_.shake_amplitude = 0.0;
 	Systems::reset_damage_model(systems_.damage);
 	Systems::reset_suspension_feedback_state(systems_.suspension);
@@ -596,6 +596,7 @@ void Fck1cEfm::release()
 	Systems::reset_throttle_inputs(systems_.throttle_inputs, 0.0, 0.0);
 	Systems::reset_fbw_throttle_interface(systems_.fbw);
 	Systems::reset_engine_release_state(systems_.engines);
+	Systems::reset_fuel_transient_state(systems_.fuel);
 	repair();
 }
 

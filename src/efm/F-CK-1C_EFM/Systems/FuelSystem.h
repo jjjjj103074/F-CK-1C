@@ -2,6 +2,9 @@
 
 #include "../Common/Vec3.h"
 
+#include <algorithm>
+#include <map>
+
 namespace Systems
 {
 struct FuelSystemConfig
@@ -30,9 +33,9 @@ struct FuelSystem
 {
 	double internal_fuel = 0.0;
 	double external_fuel = 0.0;
-	double total_fuel = 0.0;
 	double total_fuel_flow = 0.0;
 	double fuel_consumption_since_last_time = 0.0;
+	std::map<int, ExternalFuelState> external_fuel_by_station;
 };
 
 struct FuelMassDelta
@@ -48,6 +51,35 @@ struct FuelMassDeltaResult
 	FuelMassDelta delta;
 };
 
+inline double consume_external_fuel(FuelSystem& fuel, double requested)
+{
+	double remaining = requested;
+	for (auto station = fuel.external_fuel_by_station.begin();
+		station != fuel.external_fuel_by_station.end() && remaining > 0.0;)
+	{
+		const double consumed = (std::min)(remaining, station->second.value);
+		station->second.value -= consumed;
+		fuel.external_fuel -= consumed;
+		remaining -= consumed;
+		if (station->second.value <= 0.0)
+		{
+			station = fuel.external_fuel_by_station.erase(station);
+		}
+		else
+		{
+			++station;
+		}
+	}
+	return requested - remaining;
+}
+
+inline double consume_internal_fuel(FuelSystem& fuel, double requested)
+{
+	const double consumed = (std::min)(requested, fuel.internal_fuel);
+	fuel.internal_fuel -= consumed;
+	return consumed;
+}
+
 inline void simulate_fuel_consumption(
 	FuelSystem& fuel,
 	const FuelSystemConfig& config,
@@ -61,20 +93,13 @@ inline void simulate_fuel_consumption(
 		config.consumption_rate *
 		((input.left_throttle_output + input.right_throttle_output + 1) / 3) *
 		ab_fuel_mult;
-	fuel.fuel_consumption_since_last_time = fuel.total_fuel_flow * input.dt;
+	const double requested = fuel.total_fuel_flow * input.dt;
 
-	if (fuel.external_fuel >= 0) // Drain external fuel first
-	{
-		if (fuel.fuel_consumption_since_last_time > fuel.external_fuel)
-			fuel.fuel_consumption_since_last_time = fuel.external_fuel;
-		fuel.external_fuel -= fuel.fuel_consumption_since_last_time;
-	}
-	else // Drain internal fuel
-	{
-		if (fuel.fuel_consumption_since_last_time > fuel.internal_fuel)
-			fuel.fuel_consumption_since_last_time = fuel.internal_fuel;
-		fuel.internal_fuel -= fuel.fuel_consumption_since_last_time;
-	};
+	const double external_consumed = consume_external_fuel(fuel, requested);
+	const double internal_consumed =
+		consume_internal_fuel(fuel, requested - external_consumed);
+	fuel.fuel_consumption_since_last_time =
+		external_consumed + internal_consumed;
 }
 
 inline FuelMassDeltaResult take_fuel_mass_delta(FuelSystem& fuel)
@@ -106,14 +131,29 @@ inline void set_external_fuel(
 	FuelSystem& fuel,
 	const ExternalFuelState& external)
 {
-	(void)fuel;
-	(void)external;
-	// Not sure how to work with this.
+	if (external.value > 0.0)
+	{
+		fuel.external_fuel_by_station[external.station] = external;
+	}
+	else
+	{
+		fuel.external_fuel_by_station.erase(external.station);
+	}
+	fuel.external_fuel = 0.0;
+	for (const auto& station : fuel.external_fuel_by_station)
+	{
+		fuel.external_fuel += station.second.value;
+	}
 }
 
 inline double get_external_fuel(const FuelSystem& fuel)
 {
-	(void)fuel;
-	return 0;
+	return fuel.external_fuel;
+}
+
+inline void reset_fuel_transient_state(FuelSystem& fuel)
+{
+	fuel.total_fuel_flow = 0.0;
+	fuel.fuel_consumption_since_last_time = 0.0;
 }
 }

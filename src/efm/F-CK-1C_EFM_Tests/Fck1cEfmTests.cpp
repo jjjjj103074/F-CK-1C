@@ -177,8 +177,8 @@ void expect_golden_frame(
 	expect_engine_baseline(context, actual.engines[0]);
 	expect_engine_baseline(context, actual.engines[1]);
 	TEST_EXPECT_NEAR(context, actual.fuel.internal_fuel, 500.0, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.fuel.external_fuel, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.fuel.external_fuel, 120.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel, 620.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.fuel.total_fuel_flow, 0.0, kTolerance);
 	expect_control_baseline(context, actual.controls);
 	TEST_EXPECT_NEAR(context, actual.landing_gear.brake_left, 0.4, kTolerance);
@@ -285,6 +285,37 @@ void test_start_reinitializes_output(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, output.suspension.wheels[0].compression, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.engines[0].thrust_force, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.fuel.total_fuel_flow, 0.0, kTolerance);
+}
+
+void test_release_preparation_survives_start(Tests::Context& context)
+{
+	Data::AircraftConfig config = make_test_config();
+	config.fuel.consumption_rate = 3.0;
+	Core::Fck1cEfm efm(config);
+	(void)efm.start(Core::StartMode::ColdGround);
+	efm.set_internal_fuel(100.0);
+	const Core::FrameOutput easy_flight_disabled =
+		efm.step(make_frame_input());
+	efm.release();
+	TEST_EXPECT(context, !efm.take_mass_delta().available);
+	efm.set_internal_fuel(200.0);
+	efm.set_external_fuel({ 1, 30.0, {} });
+	efm.set_infinite_fuel(true);
+	efm.set_easy_flight(true);
+	efm.set_invincible(true);
+	const Core::FrameOutput start = efm.start(Core::StartMode::ColdGround);
+	TEST_EXPECT_NEAR(context, start.fuel.internal_fuel, 200.0, kTolerance);
+	TEST_EXPECT_NEAR(context, start.fuel.external_fuel, 30.0, kTolerance);
+	TEST_EXPECT_NEAR(context, start.fuel.total_fuel, 230.0, kTolerance);
+	const Core::DamageEvent damage = { Core::DamageArea::LeftWing, 0, 0.2 };
+	TEST_EXPECT(context, efm.apply_damage(damage).invincible);
+	const Core::FrameOutput next = efm.step(make_frame_input());
+	TEST_EXPECT_NEAR(context, next.fuel.internal_fuel, 200.0, kTolerance);
+	TEST_EXPECT_NEAR(context, next.fuel.external_fuel, 30.0, kTolerance);
+	TEST_EXPECT(
+		context,
+		std::fabs(next.force_moment.moment.x -
+			easy_flight_disabled.force_moment.moment.x) > kTolerance);
 }
 
 void test_config_is_owned_by_core(Tests::Context& context)
@@ -401,6 +432,7 @@ void run_fck1c_efm_tests(Tests::Context& context)
 	test_frame_output_golden_contract(context);
 	test_unavailable_input_preserves_latest_values(context);
 	test_start_reinitializes_output(context);
+	test_release_preparation_survives_start(context);
 	test_config_is_owned_by_core(context);
 	test_invalid_config_rejected(context);
 	test_frame_output_isolation(context);

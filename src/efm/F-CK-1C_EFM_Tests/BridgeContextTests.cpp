@@ -248,6 +248,49 @@ void test_core_action_rejects_released_flight(Tests::Context& tests)
 		"callback=test_released_action invalid lifecycle state=released") !=
 		std::string::npos);
 }
+
+void test_release_allows_next_flight_preparation(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcp");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotGround);
+	release_flight(context);
+	bool flight_action_executed = false;
+	TEST_EXPECT(tests, !context.perform_flight_action(
+		{ "test_previous_flight_callback" },
+		[&flight_action_executed]() { flight_action_executed = true; }));
+	TEST_EXPECT(tests, !flight_action_executed);
+	context.perform_core_preparation([](Core::Fck1cEfm& core)
+		{
+			core.set_internal_fuel(300.0);
+			core.set_external_fuel({ 2, 40.0, {} });
+			core.set_infinite_fuel(true);
+			core.set_easy_flight(true);
+			core.set_invincible(true);
+		});
+	TEST_EXPECT_NEAR(
+		tests,
+		context.query_core_preparation(
+			[](const Core::Fck1cEfm& core) { return core.internal_fuel(); }),
+		300.0,
+		0.0);
+	TEST_EXPECT(tests, !context.take_flight_mass_delta().available);
+	TEST_EXPECT(tests, !context.output_store().read().has_value());
+	start_flight(context, Core::StartMode::ColdGround);
+	const std::optional<Core::FrameOutput> output = context.output_store().read();
+	TEST_EXPECT(tests, output.has_value());
+	TEST_EXPECT_NEAR(tests, output->fuel.internal_fuel, 300.0, 0.0);
+	TEST_EXPECT_NEAR(tests, output->fuel.external_fuel, 40.0, 0.0);
+	const std::string log = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(tests, log.find(
+		"callback=test_previous_flight_callback invalid lifecycle state=released") !=
+		std::string::npos);
+}
+
 }
 
 void run_bridge_context_tests(Tests::Context& context)
@@ -258,4 +301,5 @@ void run_bridge_context_tests(Tests::Context& context)
 	test_concurrent_first_callbacks_share_context(context);
 	test_execution_mutex_serializes_core_actions(context);
 	test_core_action_rejects_released_flight(context);
+	test_release_allows_next_flight_preparation(context);
 }

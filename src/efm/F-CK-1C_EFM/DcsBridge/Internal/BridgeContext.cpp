@@ -96,6 +96,14 @@ Core::Fck1cEfm& BridgeContext::core()
 	return core_;
 }
 
+Core::MassDeltaResult BridgeContext::take_flight_mass_delta()
+{
+	const std::lock_guard<std::mutex> lock(execution_mutex_);
+	return output_store_.is_released()
+		? Core::MassDeltaResult{}
+		: core_.take_mass_delta();
+}
+
 BridgeContextOwner::BridgeContextOwner(
 	const BridgeContextEnvironment& environment)
 	: cockpit_api_provider_(environment.cockpit_api_provider),
