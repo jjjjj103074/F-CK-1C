@@ -40,7 +40,6 @@ static constexpr int MasterArmSim = 3042;
 static constexpr int DogfightSwitch = 3043;
 static constexpr int MissileUncage = 3044;
 static constexpr int WeaponRelease = 3045;
-static constexpr int TargetLock = 3046;
 static constexpr int TMSUp = 3046;
 static constexpr int TMSDown = 3047;
 static constexpr int TMSLeft = 3048;
@@ -68,7 +67,6 @@ static constexpr int APAutoThrottleOff = 3132;
 static constexpr int APSpeedIncrease = 3133;
 static constexpr int APSpeedDecrease = 3134;
 static constexpr int EngineThrustCutTestToggle = 3135;
-static constexpr int APMaxpowerToggle = 3135;
 static constexpr int EngineThrustCutTestEnable = 3136;
 static constexpr int EngineThrustCutTestDisable = 3137;
 }

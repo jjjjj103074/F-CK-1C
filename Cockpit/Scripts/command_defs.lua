@@ -35,7 +35,6 @@ device_commands = {
     DogfightSwitch = 3043,
     MissileUncage = 3044,
     WeaponRelease = 3045,
-    TargetLock = 3046,
     TMSUp = 3046,
     TMSDown = 3047,
     TMSLeft = 3048,
@@ -63,7 +62,6 @@ device_commands = {
     APSpeedIncrease = 3133,
     APSpeedDecrease = 3134,
     EngineThrustCutTestToggle = 3135,
-    APMaxpowerToggle = 3135,
     EngineThrustCutTestEnable = 3136,
     EngineThrustCutTestDisable = 3137,
 }

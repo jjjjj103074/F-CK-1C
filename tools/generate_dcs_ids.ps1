@@ -17,20 +17,51 @@ if (-not (Test-Path -LiteralPath $sourcePath)) {
 
 $document = Get-Content -LiteralPath $sourcePath -Raw | ConvertFrom-Json
 $seenNames = @{}
+$seenValues = @{}
+$validRoutes = @('efm', 'cockpit')
 $commands = @($document.commands)
 foreach ($command in $commands) {
     $name = [string]$command.name
     $value = [int]$command.value
+    $route = [string]$command.route
     if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
         throw "Invalid command name: $name"
     }
     if ($seenNames.ContainsKey($name)) {
         throw "Duplicate command name: $name"
     }
+    if ($seenValues.ContainsKey($value)) {
+        throw "Duplicate command ID: $name=$value conflicts with $($seenValues[$value])"
+    }
     if ($value -lt 3000 -or $value -gt 3999) {
         throw "Custom command ID outside reserved range 3000-3999: $name=$value"
     }
+    if ($route -notin $validRoutes) {
+        throw "Invalid command route: $name=$route (expected efm or cockpit)"
+    }
     $seenNames[$name] = $value
+    $seenValues[$value] = $name
+}
+
+$seenIgnoredDcsIds = @{}
+$ignoredDcsCommands = @($document.efm_ignored_dcs_commands)
+foreach ($command in $ignoredDcsCommands) {
+    $name = [string]$command.name
+    $value = [int]$command.value
+    $reason = [string]$command.reason
+    if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+        throw "Invalid ignored DCS command name: $name"
+    }
+    if ($value -lt 0) {
+        throw "Invalid ignored DCS command ID: $name=$value"
+    }
+    if ($seenIgnoredDcsIds.ContainsKey($value)) {
+        throw "Duplicate ignored DCS command ID: $name=$value"
+    }
+    if ([string]::IsNullOrWhiteSpace($reason)) {
+        throw "Missing ignored DCS command reason: $name=$value"
+    }
+    $seenIgnoredDcsIds[$value] = $name
 }
 
 $seenParamNames = @{}

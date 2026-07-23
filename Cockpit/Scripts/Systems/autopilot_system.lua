@@ -83,7 +83,7 @@ local CMD_AT_ON = CMD.APAutoThrottleOn
 local CMD_AT_OFF = CMD.APAutoThrottleOff
 local CMD_SPEED_INCREASE = CMD.APSpeedIncrease
 local CMD_SPEED_DECREASE = CMD.APSpeedDecrease
-local CMD_THRUST_TEST_TOGGLE = CMD.EngineThrustCutTestToggle or CMD.APMaxpowerToggle
+local CMD_THRUST_TEST_TOGGLE = CMD.EngineThrustCutTestToggle
 local CMD_THRUST_TEST_ENABLE = CMD.EngineThrustCutTestEnable
 local CMD_THRUST_TEST_DISABLE = CMD.EngineThrustCutTestDisable
 

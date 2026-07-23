@@ -129,11 +129,12 @@ DCS 已提供但 Core 尚未實作的欄位仍要翻譯並放入 `FrameInput`，
 | Damage、gameplay options、repair | 是 | 否，等下一個 step | DCS callback 本身不要求輸出 |
 | Mass delta | 立即 consume | 否 | `ed_fm_change_mass` 直接取得一次性結果 |
 | Start | 是 | 是 | 發布 StartMode 對應的初始 `FrameOutput` |
-| Release | 是 | 使 OutputStore 失效 | Release 後不應再有正常 output read |
+| Release | 是 | 使 OutputStore 失效 | 上一個 flight 的 operational/output callback 不得再讀寫 |
+| Release 後、下一次 start 前的 fuel／gameplay 準備 | 是，沿用既有 Core state | 否，OutputStore 維持失效 | 專用 fuel getter 可直接且序列化地查詢準備中的 Core state |
 | Carrier push/pop | 由 CarrierBridge 立即處理 | 不適用 | CarrierBridge 回傳 DCS event |
 | Configure／module path | 由 DCSBridge 處理 | 不適用 | 不進入 Core frame output |
 
-主要理由是簡化程式碼，以及 DCS setter callback 本身沒有要求立即輸出。其他 mutation 可以立即改變 Core，但不為了刷新快取增加額外更新路徑；需要立即回傳的 fuel 與 mass delta 使用各自明確的 Core query。只有 start 與成功 step 建立新的 `FrameOutput`，release 使 OutputStore 失效。
+主要理由是簡化程式碼，以及 DCS setter callback 本身沒有要求立即輸出。其他 mutation 可以立即改變 Core，但不為了刷新快取增加額外更新路徑；需要立即回傳的 fuel 與 mass delta 使用各自明確的 Core query。只有 start 與成功 step 建立新的 `FrameOutput`，release 使 OutputStore 失效。Release 不銷毀 process-lifetime Core；DCS 在 release 後送入的下一趟 fuel／gameplay 準備值保存在原有 Core state，下一次 start 必須沿用，不能以 StartMode 預設值覆蓋已收到的 DCS 準備資料。
 
 ## FrameInputCollector 的一致性規則
 
@@ -175,16 +176,45 @@ DCS 已提供但 Core 尚未實作的欄位仍要翻譯並放入 `FrameInput`，
 ## Command mapping
 
 - 使用單一 command binding table，把 DCS command ID 對應到 Core `Command` 與 value rule。
+- `DcsIds/CommandIds.json` 為每個 custom command 明確標示 `route`：
+  - `efm` 代表 command 由 `ed_fm_set_command` 交給 DcsCommandRouter 與 Core。
+  - `cockpit` 代表 command 已指定 `cockpit_device_id` 由 Lua device 處理；即使相同數字進入 EFM callback，DCSBridge 也明確忽略。
+- `efm_ignored_dcs_commands` 明確列出已知會進入 EFM callback、但由 DCS 自己處理且不需要 EFM 動作的 ID。已申報 ignored ID 不寫 log；未出現在 EFM binding、cockpit route 或 ignored 清單的 ID 才是 unknown。
 - 新增受支援 command 時只新增或修改一筆 binding，不建立第二份平行 map。
 - Value rule 固定為 `PassThrough`、`Constant`、`PressOnly`。
 - `PassThrough` 直接傳遞 DCS value，主要用於 axis 與連續控制。
 - `Constant` 使用 binding 中指定的固定 value。
-- `PressOnly` 只在 DCS value 大於 0 時 dispatch；release callback 忽略。
+- `PressOnly` 只在 DCS value 大於 0 時 dispatch；按鍵 release value 忽略。
 - `PressOnly` 不快取 pressed state、不做 edge detection。
 - 不建立通用 toggle rule。需要 toggle 的語意由明確的 Core command action 表達。
 - 已知 axis 與 non-axis command ID 不重疊，不為不存在的衝突增加額外狀態機。
-- 收到 binding table 中不存在的 command ID 時，明確寫入 ERROR，至少包含 command ID 與收到的 value；忽略該次 command，不讓它中止後續 step。
+- 收到未申報的 command ID 時，第一次以 WARN 記錄 command ID 與 value；同一 flight 後續只在動態計數器累加，release 時輸出總次數並清除該 flight 計數。該次 command 採 no-op，不讓它中止後續 step。
 - Binding table 自身若出現重複 ID 或無效規則，同樣視為程式錯誤並明確寫入 ERROR。
+
+## Param export
+
+- `ed_fm_get_param` 是 DCS 主動查詢 EFM 的 request/response interface，不與 Cockpit named parameters 混用。
+- 已實作 param 回傳 `FrameOutput` 的最新完整數值；已知不適用或尚未實作但已接受相容行為的 param 回傳明確 compatibility value，兩者都不寫警告。
+- 完全未申報的 param index 第一次寫 WARN，同一 flight 後續只累加動態計數，release 時輸出總次數；DCS ABI 必須回傳 `double`，因此 unknown index 明確回傳 compatibility `0.0`。
+- `start()` 必須先發布一份完整 start `FrameOutput` 給 `OutputStore`。對於 atmosphere、suspension 等尚未收到第一份 DCS sample 的分類，不偽造一份已可用的 input；Param export 依 index 回傳已定義的 start compatibility value，等第一份 sample 到達後改用 latest-known 真實資料。
+- 實機驗證確認 Param 112／212 在每次 flight 的 simulation time 0、第一份 atmosphere sample 前各被查詢一次；這是正常 lifecycle，不寫 WARN 或 ERROR。若某分類已進入可用狀態後違反既定資料契約而缺失，才記錄 ERROR。
+
+本次實機觀察到的 missing indices 必須全部成為已申報 mapping，固定行為如下：
+
+| Param index | 本輪輸出 | 說明 |
+|---:|---:|---|
+| 3 | `1.0` | APU core related RPM compatibility value；F-CK-1C 目前沒有 APU 模型，必須在 mapping 註解這不是實際 APU state |
+| 109、209 | `0.0` | 左右 engine propeller pitch；本機是 turbofan，沒有 propeller pitch |
+| 2015、2025 | `0.0` | 左右 main wheel self-attitude compatibility value；本輪不把它當成新的功能需求 |
+| 114、214 | `total_fuel_flow / 2` | 暫時平均分配現有總燃油流量；不宣稱是獨立左右引擎計算，真實 per-engine flow 與燃油同步由 GitHub issue #18 追蹤 |
+| 127、227 | `0.0` | 左右 engine fan phase 尚未實作；mapping 必須明確註解 |
+| 131、231 | `0.0` | 當前 bundled SDK 未命名的相容輸出；真實 engine flow speed 由 GitHub issue #23 追蹤 |
+| 2123–2129 | `0.0` | Bundled SDK 中的 Force Feedback 參數；真實功能由 GitHub issue #24 追蹤 |
+| 2130 | `0.0` | Bundled SDK 中的 cockpit pressurization；目前沒有座艙增壓模型，先使用相容輸出 |
+| 2132 | `0.0` | `ED_FM_INTERRUPT_REFUEL`：表示 EFM 不要求中斷加油 |
+| 2134–2137 | `0.0` | 當前 bundled SDK 未定義、但實機會查詢；明確標註 unknown compatibility，相關功能由 GitHub issue #24 追蹤 |
+
+上述已申報 compatibility mappings 不建立 counted warning。若日後取得更明確的新 SDK 定義或出現實際 consumer，再以對應 issue 改成真實輸出，不在本輪猜測物理語意。
 
 ## FrameOutput 與 OutputStore
 
@@ -209,7 +239,10 @@ DCS 已提供但 Core 尚未實作的欄位仍要翻譯並放入 `FrameInput`，
 - StartMode 已能決定所有 draw args 依賴的 engine、control、gear 等初始值；continuous input 的個別 unavailable 不會讓整份 `FrameOutput` 失效。
 - 讀取者只能取得完整的上一版或下一版，不能看到發布中的半成品。
 - Core 正在計算時，DCS output callback 可以繼續讀取上一份已完成輸出。
-- Release 後 OutputStore 失效。理論上 DCS 不應再讀取；若仍被呼叫，EventLog 記錄錯誤並依該 ABI callback 回傳明確 neutral value。
+- Release 後 OutputStore 失效，上一個 flight 的 step、command、damage、refueling、repair、carrier 與 output callback 不得繼續操作。若仍被呼叫，EventLog 記錄錯誤並依該 ABI callback 回傳明確 neutral value。
+- DCS 實機行為顯示 release 後、下一次 start 前會先呼叫 internal/external fuel setter/getter、unlimited fuel、immortal、easy flight 與 mass-delta 等準備 callback。這些 callback 使用原有 process-lifetime Core state 準備下一個 flight，不視為對已 release flight 的讀寫，也不建立第二份 preflight state。
+- 下一次 start 重新初始化 flight-only state，但必須保留 release 後已收到的 fuel／gameplay 準備值；start 發布新的初始 output 後，OutputStore 才再次有效。
+- `ed_fm_change_mass` 在 release 後、下一次 start 前允許呼叫，但只能清空輸出 references 並回傳 `false`，表示沒有待處理 mass delta。
 - Draw args callback 是 void 且不需要強迫產生回傳值；若它在 start 前或 release 後違反 lifecycle 被呼叫，記錄 ERROR 並保持 DCS 傳入的 array 不變，不把所有 visual values 歸零。
 
 ## 多執行緒模型
@@ -282,6 +315,11 @@ F-CK-1C_EFM/
 - 每個事件完成後 flush，讓其他程式可即時讀取。
 - EventLog 必須 thread-safe。
 - ERROR 必須明確、可追蹤，並帶上定位問題所需的參數。
+- WARN 用於 DCSBridge 尚未識別、但可安全 no-op 或回 compatibility value 的 command／param；它表示可能遺漏 mapping，不代表 DCS 或 Core 已經執行失敗。
+- EventLog 提供專用 counted-warning 函式；呼叫端只提供 warning 種類、動態 ID 與第一次事件需要的內容，不在 CommandRouter、Param adapter 或 EfmExports 各自保存去重狀態。
+- Counted warning 由 EventLog 依「warning 種類 + ID」動態建立計數器，只為實際發生的項目配置記憶體，不預先註冊固定 ID 表。第一次發生立即寫 WARN，後續只累加。
+- `release_flight()` 對每個已出現項目再寫一筆包含總次數的 WARN，總次數包含第一次；即使只出現一次也輸出 summary。完成後清除計數器，release 後才出現的新 counted warning 留到下一次 `release_flight()` 彙總。
+- 已知且已申報為不需處理的 DCS command，以及已有明確 compatibility value 的 param，不建立計數器也不寫 log。
 - INFO 只用於足夠重要且語意清楚的 lifecycle 或程式事件，不用來輸出一般飛機數據。
 - DEBUG 只允許在當下除錯期間暫時加入；問題確認後必須移除，不在完成的重構中保留長期 DEBUG instrumentation。
 - EventLog 失敗時不能把 logger 狀態標成成功，但本輪不新增 `dcs.log`、`OutputDebugString` 或其他備援輸出路徑；若實際發生，再根據具體失敗原因處理。
@@ -493,44 +531,49 @@ public:
 - 三個 gameplay callbacks 各自保留明確 bool setter；把它們合成 `GameplayOptions` 反而需要 read-modify-write，容易把未包含的設定蓋掉。
 - `apply_damage` 接受 DCSBridge 已映射完成的 `DamageEvent`；DCS element ID 不進入 Core。
 - `repair()` 立即修改 Core 狀態，但已發布 output 等下一 step 更新。
-- `release()` 與 step、command、fuel 等所有 Core 操作共用 execution mutex；完成後 DCSBridge 將 `OutputStore` 標為 released/invalid。CSV writer 不隨它停止。
+- `release()` 與 step、command、fuel 等所有 Core 操作共用 execution mutex；它只結束當前 flight 並清除 flight-only state，不能銷毀 process-lifetime Core，也不能清掉 release 後為下一趟飛行收到的 fuel／gameplay 準備值。完成後 DCSBridge 將 `OutputStore` 標為 released/invalid；CSV writer 不隨它停止。
 - `config()`、`snapshot()`、`force_moment_output()`、`shake_amplitude()`、continuous setters、`max_dry_thrust_at()` 都不再是 Core 對 DCSBridge 的公開介面。Carrier 需要的固定 launch thrust 由 composition root 從既有 config 提供給 `CarrierBridge`。
 - `ed_fm_configure` 仍由 DCSBridge 處理模組路徑與 bridge 工具；Config 架構本輪不重構，也不讓 Core 反向依賴 DCSBridge。
 
 ### 3. DCS callbacks 的 neutral return
 
-Neutral return 只用在 DCS ABI 必須得到回傳值、但沒有可用結果時。它不能取代 ERROR：若狀況違反我們認定的 callback/lifecycle contract，必須先把 callback 名稱、index/ID 與狀態寫進 EventLog。
+Neutral return 只用在 DCS ABI 必須得到回傳值、但沒有可用結果時。它不能取代 EventLog：lifecycle／資料契約違反記 ERROR，安全但未申報的輸入記 counted WARN，已申報的正常相容行為不寫 log。
 
-| 情況 | 建議回應 | 是否 ERROR |
+| 情況 | 建議回應 | Log 行為 |
 |---|---|---|
-| force／moment callback 在 start 前或 release 後讀 output | 所有 force、moment、position 寫 `0` | 是；避免把未初始化或舊資料送回 DCS |
-| active flight 的 draw args callback | 從 `OutputStore` 讀取上一份完整 output，更新本模組擁有的 draw args | 否；Core step 期間舊 output 仍保持有效，不存在暫時空窗 |
-| start 前或 release 後仍收到 draw args callback | 不修改 DCS 傳入的 draw args，直接 return | 是；這是 lifecycle contract 違反，不製造一份假的 neutral visual state |
-| draw args buffer 是 null 或 `size` 不足以容納最大使用 index | 不寫 buffer，直接 return | 是，記錄 pointer 狀態、實際 size、要求 size |
-| `ed_fm_get_param` 查詢本模組明確支援的 index | 從最新 output 計算並回傳 | 否 |
-| 查詢不存在或未映射的 param index | 回傳 `0.0` | 是；DCS 不會主動遍歷查詢，實際 callback 代表已有 consumer 要求該 param，記錄 index |
-| 已映射的 param 卻缺少必要資料 | 回傳 `0.0` | 是，記錄 index 與缺少的資料類別 |
-| fuel getter 在 release 後呼叫 | 回傳 `0.0` | 是 |
-| shake callback 沒有有效 output | 回傳 `0.0` | start 前／release 後是 ERROR |
-| `ed_fm_change_mass` 沒有 pending delta | 將輸出 references 清為 `0`，回傳 `false` | 否，這是正常的「沒有下一筆」 |
-| force/moment component callbacks 未實作 component 模式 | 輸出 references 清為 `0`，回傳 `false` | 否，這是固定能力選擇 |
-| carrier pop 沒有 event | 清空 `out`，回傳 `false` | 否 |
-| carrier pop 在 release 後被呼叫 | 清空 `out`，回傳 `false` | 是 |
-| Production build 的 Debug Watch 未啟用 | `ed_fm_enable_debug_info()` 回傳 `false`；可寫 buffer 清空，`ed_fm_debug_watch()` 回傳 `0` | 否，這是明確的 capability 選擇 |
-| Developer-only Debug Watch 已啟用，但 buffer 無效或 release 後被讀取 | 回傳 `0`；buffer 可寫時清空 | 是，記錄 buffer/lifecycle 狀態 |
-| invalid suspension index 或 null info | 不更新該輪 latest sample，Core 仍可用既有/default sample 執行 step | 是，記錄 index 與 null 狀態 |
-| unknown command ID | 不 dispatch，step 可繼續 | 是，記錄 ID 與 value |
-| Cockpit 必要 parameter 缺失 | 本次使用已定義的 neutral input，step 可繼續 | 是，並在恢復時記 recovery |
-| `ed_fm_simulate` 收到非有限值或 `dt <= 0` | 不執行 Core step，保留最後 output | 是；此情況理論上不應發生，用假 dt 繼續會破壞 simulation time 與積分結果 |
-| 除新一次 start／configure 外，callback 在 release 後嘗試讀寫 Core | 不進入 Core；有 return 的回 neutral，void callback 直接 return | 是；下一次合法 start 會重新建立 active flight state |
+| force／moment callback 在 start 前或 release 後讀 output | 所有 force、moment、position 寫 `0` | ERROR；避免把未初始化或舊資料送回 DCS |
+| active flight 的 draw args callback | 從 `OutputStore` 讀取上一份完整 output，更新本模組擁有的 draw args | 不寫；Core step 期間舊 output 仍保持有效，不存在暫時空窗 |
+| start 前或 release 後仍收到 draw args callback | 不修改 DCS 傳入的 draw args，直接 return | ERROR；這是 lifecycle contract 違反，不製造一份假的 neutral visual state |
+| draw args buffer 是 null 或 `size` 不足以容納最大使用 index | 不寫 buffer，直接 return | ERROR，記錄 pointer 狀態、實際 size、要求 size |
+| `ed_fm_get_param` 查詢本模組明確支援的 index | 從最新 output 計算並回傳 | 不寫 |
+| 查詢已申報的 compatibility param index | 回傳該 index 明確定義的 compatibility value | 不寫；這是刻意相容行為，不是 missing mapping |
+| 查詢完全未申報的 param index | 回傳 `0.0` | Counted WARN；第一次立即輸出，release 彙總總次數 |
+| 已映射且已宣告可用的 param 卻缺少必要 runtime data | 回傳該 index 的 compatibility value | ERROR，記錄 index 與缺少的資料類別 |
+| start output 尚未取得第一份 atmosphere／suspension sample | 回傳該 index 的 start compatibility value | 不寫；這是實機確認的正常初始化順序 |
+| fuel setter/getter 在 release 後、下一次 start 前被 DCS 用於準備下一趟 flight | setter 更新原有 Core state；getter 回傳該準備 state | 不寫 |
+| shake callback 沒有有效 output | 回傳 `0.0` | Start 前／release 後記 ERROR |
+| `ed_fm_change_mass` 沒有 pending delta | 將輸出 references 清為 `0`，回傳 `false` | 不寫；這是正常的「沒有下一筆」 |
+| `ed_fm_change_mass` 在 release 後、下一次 start 前被查詢 | 將輸出 references 清為 `0`，回傳 `false` | 不寫；這是 DCS 準備下一趟 flight 的正常查詢 |
+| force/moment component callbacks 未實作 component 模式 | 輸出 references 清為 `0`，回傳 `false` | 不寫；這是固定能力選擇 |
+| carrier pop 沒有 event | 清空 `out`，回傳 `false` | 不寫 |
+| carrier pop 在 release 後被呼叫 | 清空 `out`，回傳 `false` | ERROR |
+| Production build 的 Debug Watch 未啟用 | `ed_fm_enable_debug_info()` 回傳 `false`；可寫 buffer 清空，`ed_fm_debug_watch()` 回傳 `0` | 不寫；這是明確的 capability 選擇 |
+| Developer-only Debug Watch 已啟用，但 buffer 無效或 release 後被讀取 | 回傳 `0`；buffer 可寫時清空 | ERROR，記錄 buffer/lifecycle 狀態 |
+| invalid suspension index 或 null info | 不更新該輪 latest sample，Core 仍可用既有/default sample 執行 step | ERROR，記錄 index 與 null 狀態 |
+| 已申報為 Cockpit route 或 DCS-owned ignored 的 command ID | 不 dispatch | 不寫 |
+| unknown command ID | 不 dispatch，step 可繼續 | Counted WARN；第一次包含 ID、value，release 彙總總次數 |
+| Cockpit 必要 parameter 缺失 | 本次使用已定義的 neutral input，step 可繼續 | ERROR，並在恢復時記 recovery |
+| `ed_fm_simulate` 收到非有限值或 `dt <= 0` | 不執行 Core step，保留最後 output | ERROR；此情況理論上不應發生，用假 dt 繼續會破壞 simulation time 與積分結果 |
+| 上一個 flight 的 operational/output callback 在 release 後嘗試讀寫 | 不執行該操作；有 return 的回 neutral，void callback 直接 return | ERROR |
+| 已列入 next-flight preparation 的 callback 在 release 後、下一次 start 前讀寫 | 使用原有 Core state 準備下一趟 flight；OutputStore 保持 invalid | 不寫 |
 
-「回傳 `false`」有兩種完全不同的意思，必須在程式碼與測試中分清楚：沒有下一筆資料／未提供 component 模式是正常協定結果；release 後或 invalid lifecycle 才是錯誤。正常的 `false` 不寫 ERROR。
+「回傳 `false`」有兩種完全不同的意思，必須在程式碼與測試中分清楚：沒有下一筆資料／未提供 component 模式是正常協定結果；只有在該 callback 不屬於 next-flight preparation、卻於 invalid lifecycle 被呼叫時才是錯誤。正常的 `false` 不寫 ERROR。
 
-依本專案實際使用方式，DCS 不會主動遍歷 `ed_fm_param_enum`。因此只要 `ed_fm_get_param(index)` 確實被呼叫，就代表已有 Lua 儀表或其他 consumer 要求該 index；mapping 不存在或資料無法產生都視為 ERROR。Neutral `0.0` 只用來滿足 C ABI，不能讓錯誤保持沉默。本輪不先加入 log 去重；若同一錯誤被高頻重複呼叫，完整重複記錄可以直接暴露錯誤頻率，之後再依實測決定是否需要明確的抑制策略。
+實機驗證已確認 DCS 會主動查詢一批 EFM params，不能把「被查詢」直接當成已有 Lua 儀表或專案 consumer。已申報 compatibility mapping 是正常相容行為；完全未申報的 index 才記 counted WARN。只有已宣告可用的 mapping 因 runtime data contract 被破壞而無法產生時才是 ERROR。
 
-Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合法值。已確定使用 `std::optional<double>`：有值代表成功，`std::nullopt` 代表 mapping 不存在，不使用 nullable pointer 或 NaN sentinel。`EfmExports.cpp`／param adapter 在沒有 value 時記錄包含 index 的 ERROR，再向 DCS 回傳 neutral `0.0`。
+Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合法值。已確定使用 `std::optional<double>`：有值包含真實輸出或已申報 compatibility value，`std::nullopt` 只代表 index 完全未申報，不使用 nullable pointer 或 NaN sentinel。`EfmExports.cpp`／param adapter 收到 `std::nullopt` 時呼叫 EventLog 的 counted-warning 函式，再向 DCS 回傳 compatibility `0.0`。
 
-目前 EFM 與 test 的 Visual Studio projects 使用 v142 toolset，但沒有明確設定 `<LanguageStandard>`。本輪要在兩個 projects 都加入 C++17 language standard 設定，避免依賴開發者機器的預設值。
+EFM 與 test 的 Visual Studio projects 已在第一輪重構中明確設定 C++17 language standard，不再依賴開發者機器的預設值；v142 toolset 與 DCS C ABI 保持不變。
 
 ## 明確移除的舊設計
 
@@ -554,13 +597,15 @@ Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合
 - 對不同 StartMode 輸入，驗證初始 `FrameOutput`。
 - 對 `FrameInput + dt` 執行 step，驗證 force、moment、engine、fuel、controls、gear、suspension、shake 等必要 `FrameOutput`。
 - 驗證 `dt` 使用 DCS 實際輸入，不假定 0.001。
-- 驗證 command table 的 PassThrough、Constant、PressOnly 與 release ignored。
+- 驗證 command table 的 PassThrough、Constant 與 PressOnly；PressOnly 的按鍵 release value 不 dispatch。
+- 驗證 EFM route 正常 dispatch、Cockpit route 與 DCS-owned ignored ID 靜默忽略、unknown command 第一次 WARN／後續計數／flight release summary 與 reset。
 - 驗證 Cockpit parameter 缺失會產生可追蹤錯誤、使用 neutral input 並允許 step；恢復後產生 recovery。
+- 驗證已實作 param、全部已申報 compatibility param、unknown param counted warning，以及 start 後第一份 atmosphere／suspension sample 前的 compatibility 行為。
 - 驗證 suspension 初始值、完整 sample 更新與 sticky latest-known 行為。
 - 驗證 concurrent input update/read 只得到完整舊值或完整新值。
 - 驗證 concurrent OutputStore publish/read 只得到完整舊 frame 或完整新 frame。
-- 驗證 step 與 release 被序列化，release 後讀取會明確報錯。
-- 驗證 EventLog 行格式、simulation time、必要錯誤參數、路徑與 rotation。
+- 驗證 step 與 release 被序列化；release 後的上一趟 operational/output callback 明確報錯，next-flight fuel／gameplay preparation callback 可使用原有 Core state，mass-delta query 正常回傳沒有資料，下一次 start 保留準備值並重新發布 output。
+- 驗證 EventLog 行格式、simulation time、必要錯誤參數、路徑、rotation，以及 counted-warning 只為實際 ID 配置、第一次即時輸出、release 總數與清除。
 - 驗證 CSV header、欄位順序、單位、精度、`True`／`False`、向量展開、unavailable `-`、sequence reset 與多 flight append。
 - 暫停 CSV writer 後連續發布多筆 record，驗證 writer 只寫最新資料且 sequence 出現跳號。
 - 改寫現有依賴 `Fck1cEfmSnapshot`／`TestRuntime` 的測試，使其改驗證新介面的輸入輸出。
@@ -574,127 +619,80 @@ Param lookup 的內部結果不能只回傳 `double`，因為 `0.0` 可能是合
 - 驗證 cold、hot ground、hot air、release 與同 execution 多次飛行。
 - 驗證 CSV writer 落後時飛行運算不被檔案 I/O 阻塞，且 sequence 跳號可見。
 
-## 實作準備狀態
+## 目前狀態
 
-目前沒有尚未回答、會阻擋架構實作的問題。
+原始重構步驟 0–16 與第一輪 DCS 實機驗證已完成。實機驗證暴露的 release lifecycle、command 分類、param compatibility 與 log 去重修正已完成設計決策，但 runtime 實作、測試與第二輪 DCS 驗證仍待執行。目前沒有尚未回答、會阻擋這批修正實作的問題。
 
 - CSV 的逐欄 header 與順序由最終 `FrameOutput` 宣告機械式展開，並以 schema 測試鎖定；這是實作工作，不再建立另一份人工挑選清單。
 - Suspension 的座標系與單位已依 DCS reference 固定；`acting_force_point`、`integrity_factor` 與 `wheel_speed_X` 目前只保留在完整 `FrameInput`，沒有 output consumer，因此不阻擋本輪，也不加入 `FrameOutput`／CSV。
 - 效能與 DCS callback cadence 在實作後用整合測試確認；真正需要觀察的是 `simulate` 未被檔案 I/O 阻塞，以及 CSV 落後時可由 sequence 跳號看見。
-- 實作與 commit 順序已列在下一節，等待審核。
+- 第一輪實作與 commit 順序保留在下一節作為重構紀錄；實機驗證後的修正範圍列於文件末段，目前不替尚未討論的執行順序編號。
 - 若實作時發現現有程式碼或 SDK 與本文件矛盾，必須帶著具體檔案、symbol 與影響回來討論，不預先為假想情況增加 abstraction 或 fallback。
 
-## 實作與 commit 計畫（待審核）
-### 共通執行規則
-- 除「實作前基準」外，一個編號原則上對應一個 commit；若該步實際 diff 過大，只能沿該步已寫明的責任邊界再拆小，不能把後續責任提前混入。
-- 每個 commit 完成後都要重建並執行 native tests；DLL 一律透過專案的 `tools/build_dll.ps1` 重建與複製。測試失敗、腳本失敗或 export surface 改變時，不進入下一步。
-- 測試只驗證輸入與可觀察輸出，例如 Core result、callback return、log／CSV 內容與 lifecycle；不測 private helper、mutex 型別或 class 數量。
-- 本輪不順手修改飛行公式、控制律、Config/FM Data 架構或 Lua。
-- DLL export 名稱與 signatures 以重構前產物為基準；每次整理入口檔後都比較 export 清單，不新增 SDK optional exports。
+## 第一輪實作與 commit 計畫（步驟 0–16 已完成）
 
-### 0. 實作前基準（不建立 commit）
-- 從乾淨 source 重建 Release/x64 tests，並以 `tools/build_dll.ps1` 重建 DLL，保存測試數量、結果、DLL export 清單及腳本輸出的 SHA256。
-- 執行現有 cold、hot ground、hot air、simulate、force/moment、draw args、param、fuel、mass delta、suspension 與 carrier 測試，確認重構前基準。
-- 現有已編譯 test binary 的基準是 443 checks、0 failures；正式開始實作前仍須用當時 source 重新 build，不能只依賴舊 binary。
+本節保留第一輪重構的簡要紀錄。當時每步原則上一個 commit，每次都執行 native tests，DLL 由 `tools/build_dll.ps1` 建置，並維持 DCS export surface；詳細差異由 git history 與基準文件保存。凡是與前述現行設計不同的 command、param、release 或 WARN 行為，都以「實機驗證後修正計畫」為準。
 
-### 1. 明確啟用 C++17
-- EFM DLL 與 native test projects 都設定 ISO C++17，保留 Release/x64、v142 與 `/MT`。
-- 不修改任何執行邏輯。
-- 驗收：tests 與 DLL 重新 build，export 清單不變。
+| 步驟 | 已完成結果 |
+|---:|---|
+| 0 | 建立重構前 tests、DLL、exports 與 SHA256 基準 |
+| 1 | EFM 與 tests 明確啟用 C++17 |
+| 2 | 建立 `StartMode`、`FrameInput`、availability 與 `FrameOutput` contracts |
+| 3 | 把 autopilot／max-power Cockpit 讀取移到 DCSBridge |
+| 4 | 移除 Core 反向通知、舊 Debug Watch implementation 與 suspension diagnostics |
+| 5 | 移除 `Fck1cEfmRuntime` 與 Core 對 DCSBridge 的依賴 |
+| 6 | 建立 thread-safe `FrameInputCollector` |
+| 7 | Core production 入口切換為 `start()`／`step()` |
+| 8 | 建立 `OutputStore`，集中 frame output callbacks |
+| 9 | 建立 process-lifetime、可即時讀取的 `EventLog` |
+| 10 | 建立 latest-only、非阻塞 simulate 的 `StateCsvWriter` |
+| 11 | 拆出精簡 `CockpitBridge`、`CarrierBridge` 與路徑工具 |
+| 12 | 建立唯一 production ownership/composition root `BridgeContext` |
+| 13 | 建立 command binding、`std::optional<double>` param lookup 與 numeric boundary errors；實機後分類修正見下節 |
+| 14 | 刪除 legacy ownership、runtime 與 snapshot 路徑 |
+| 15 | 整理 DCSBridge/Internal、EfmExports 入口與 contributor 文件 |
+| 16 | 完成自動檢查與第一輪 DCS 多 flight 實機驗證 |
 
-### 2. 建立 Core frame contracts，但暫不切換 production data flow
-- 在 Core 定義 `StartMode`、完整 `FrameInput`、`FrameDataAvailability`、`FrameOutput` 及其固定分組。
-- `FrameInput` 納入所有 DCS 已提供的 atmosphere、surface、mass、world/body kinematics、三輪完整 suspension、autopilot、max-power 與實際 `dt`，即使部分欄位目前尚未被公式使用。
-- `FrameOutput` 只包含已確認的 DCS/CSV consumer 所需輸出，不包含 logger、CSV sequence 或完整 implementation snapshot。
-- 先增加由現有 Core state 產生 `FrameOutput` 的單一 projection；既有 production callbacks 暫時仍走舊路徑，方便比較新舊結果。
-- 步驟 2 暫時以 `frame_output(const FrameDataAvailability&) const` 暴露唯讀 projection 供新舊輸出比較；它不推進 Core，也不接上 production callbacks。步驟 7 的 `start()`／`step()` 接管發布後，projection 轉為其內部實作，不保留第二條公開輸出路徑。
-- 驗收：用相同 start/input 驗證新 `FrameOutput` 與既有可觀察輸出一致，並驗證所有 StartMode 初始結果。
+## 實機驗證後修正步驟（17–21，待執行）
 
-### 3. 把 autopilot 與 max-power 讀取移出 Core
-- DCSBridge 在每次 simulate 前主動讀取兩組 Cockpit parameter，轉成 typed input 後傳給 Core。
-- Core 的 autopilot、engine 與 thrust 更新函式改為接收明確輸入，不再呼叫 `runtime.read_autopilot()` 或 `runtime.read_max_power()`。
-- Cockpit parameter 缺失暫時沿用既有可觀察處理；正式 EventLog 錯誤格式在後續步驟統一。
-- 驗收：相同 cockpit input 產生相同 controls、engine power 與 thrust output；缺失 input 使用 neutral value且 step 仍完成。
+這批修正拆成五個可獨立 review 與回復的步驟，不建立暫時 adapter、第二份 mapping 或第二份 preflight state。
 
-### 4. 移除 Core 反向通知與舊 Debug Watch／suspension diagnostics
-- 移除 `on_first_frame`、`on_engine_shutdown`、`on_thrust_updated`、`on_ground_diagnostics`、`on_release` reverse callbacks。
-- 移除 startup/periodic/ground suspension probe、`fck_susp_debug.log`、舊 Debug Watch formatter 與其完整 snapshot 依賴。
-- Production Debug Watch exports 保留，但固定回報未啟用；不新增替代 debug framework。
-- Engine shutdown 不建立事件 callback，之後由每 step CSV 前後狀態觀察。
-- 驗收：Core 的 start/step/release 輸出不因移除 diagnostics 改變；Debug Watch ABI return 符合既定規則。
+### 實機驗證原則
 
-### 5. 移除 `Fck1cEfmRuntime` 注入
-- 刪除 Core runtime interface、reference member 與 constructor parameter。
-- Core construction 只需要 aircraft config；Core headers 不再 include 或 forward declare DCSBridge/runtime 型別。
-- 更新既有 tests，移除 `TestRuntime`／`NullRuntime`，直接從 Core 輸入與輸出驗證行為。
-- 驗收：以 dependency search 確認 Core 不再依賴 DCSBridge；全部 Core tests 通過。
+- 步驟 17–20 每步都執行相關 native tests、完整 native test suite、`tools/build_dll.ps1`、code review 與 commit，但不需要逐步安裝到 DCS。
+- DCS 實機驗證集中在步驟 21；因為 Command、Param、counted WARN 與 release lifecycle 必須在同一 execution、多次 flight 中一起觀察，分階段安裝只會重複測試不完整的中間狀態。
 
-### 6. 建立 `FrameInputCollector`
-- 在 DCSBridge/Internal 新增 thread-safe latest-known collector；每個 DCS callback 先在 local variable 完成驗證與翻譯，再一次發布整類 sample。
-- Collector reset 清除所有 DCS raw sample 與 availability；依 StartMode 建立飛機內部初始 state 是 `Core::start(StartMode)` 的責任。suspension 保存三輪完整 raw sample，未更新的 step 沿用上一筆。
-- Collector snapshot 不強制不同 callback 分類對齊，只保證每一分類不會出現 torn value。
-- 驗收：測試完整 sample publish/read、sticky suspension、reset、缺失分類及並行讀寫只得到完整舊值或完整新值。
+### 17. 固定修正規格與 Command 分類資料
 
-### 7. 將 Core 入口切換為 `start()`／`step()`
-- `start(StartMode)` 建立初始 state、將 simulation time 設為 0，並回傳初始 `FrameOutput`。
-- `step(const FrameInput&)` 套用最新輸入、使用實際 `dt` 完成一次既有計算，再回傳完整 `FrameOutput`。
-- DCS continuous callbacks 改為只更新 collector；`ed_fm_simulate` snapshot collector 後呼叫一次 Core step。
-- 刪除 Core 對外的 continuous setters、舊 `simulate(double)` 及 cold/hot 三套重複入口。
-- 驗收：用相同 callback input 重播，比較重構前後 force、moment、engine、fuel、controls、gear、suspension 與 shake；invalid dt 明確跳過且不發布 output。
+- Commit 本文件、`CommandIds.json`、DcsIds README、generator 驗證、同步更新的 Lua／generated files，以及依專案規範重建的 DLL。
+- `CommandIds.json` 成為 custom command route 與 known ignored DCS command 的單一資料來源；移除舊名稱 fallback，並驗證 route、ID、重複值與 reason。
+- 驗收 generator 可重複產生相同結果，且建置與既有 runtime 行為不變。
 
-### 8. 建立並接上 `OutputStore`
-- Start 與每個成功 step 將 immutable `FrameOutput` 一次發布到 thread-safe latest store。
-- Force/moment、draw args、param 與 shake callbacks 全部只讀 `OutputStore`；Core 計算中可以繼續讀上一個完整 frame。
-- Fuel getter 與 consume-once mass delta 保留直接且序列化的 Core query；release 使 store invalid。
-- 驗收：測試 start 前、active flight、Core step 中、release 後與下一次 start 的 callback 行為，以及並行 publish/read 不出現半新半舊 frame。
+### 18. 完成 EventLog counted warnings 與 Command routing
 
-### 9. 實作 `EventLog`
-- 實作 `<module-root>/log/fck1c_efm.log` 的目錄建立、active/`.old` 輪替、其他 app 可同時讀取的 share mode、thread-safe write 與每事件 flush。
-- 固定格式為 `[wall-clock][simulation-time][LEVEL] message`；沒有 simulation time 時使用 `[-]`。
-- 補上步驟 7 暫緩的 invalid `dt` ERROR；步驟 8 若遇到同類型、必須依賴正式 EventLog 才能完成的邊界錯誤回報，也集中在本步驟接上。步驟 7、8 不為此寫入舊診斷 log 或建立暫時 logger。
-- 只加入既定 lifecycle、INFO 與 ERROR；不把飛機數值寫成 INFO，不留下 DEBUG instrumentation。
-- 驗收：以 temporary directory 驗證路徑、輪替、格式、simulation time、必要錯誤參數與寫入期間可讀。
+- EventLog 新增 WARN、動態「warning kind + ID」counter、第一次即時輸出及 `release_flight()` 總數／清除；呼叫端不保存去重狀態。
+- Generator 把 Cockpit route 與 ignored IDs 寫入既有 C++ generated header；DLL runtime 不解析 JSON，也不手寫第二份 ignored table。
+- EFM route 正常 dispatch；Cockpit route、`851`、`1609`、`2035`、`2142`、`2143` 與 `3135` 靜默 no-op。
+- 未申報 ID（包含實機出現的 `2659`）no-op 並 counted WARN；測試第一次內容、後續計數、release summary 與 reset。
 
-### 10. 實作 `StateCsvWriter`
-- 實作完整 `FrameOutput` schema、固定 header 順序、已知單位 suffix、`True`／`False`、vector `x/y/z` 展開、unavailable `-` 與 round-trip 浮點格式。
-- 實作 `<module-root>/log/fck1c_state.csv` 與 `.old` 輪替、header 立即 flush、約 100 ms flush，以及允許其他 app 同時讀取的 share mode。
-- 實作容量一筆的 latest-only mailbox；新 record 覆蓋尚未開始處理的舊 record，不阻塞 simulate，以 sequence 跳號顯示遺失。
-- 驗收：測試完整 schema、start row、每成功 step record、sequence reset、多 flight append、latest-only 覆蓋、外部讀取與完整 row 寫入。
+### 19. 完成 Param export mappings 與分類
 
-### 11. 把剩餘 DCS 工具從 `DcsRuntime` 拆出
-- 將 Cockpit handle/parameter 讀取整理為精簡 `CockpitBridge`；只負責 DCS Cockpit API 與 typed values。
-- 將 carrier push/pop state 整理為精簡 `CarrierBridge`；保留既有事件與 reference thrust 行為。
-- `ModulePaths` 保留 DCSBridge 路徑責任；ConfigReader 只保留本輪仍被實際使用的內容。
-- 驗收：沿用與改寫現有 param、simulation event 與 start tests，確認工具拆分不改變 callback output。
+- 補齊「Param export」表列的全部 compatibility mappings；已實作 mapping 繼續讀 latest `FrameOutput`。
+- Start 後第一份 atmosphere／suspension sample 前使用 per-param compatibility value；known compatibility 不寫 log，unknown index 回 `0.0` 並 counted WARN。
+- 測試已實作、known compatibility、unknown 與 active-flight runtime data contract error 四種外部結果和 log。
 
-### 12. 建立 execution-level `BridgeContext`
-- `BridgeContext` 成為唯一 production ownership/composition root，持有 ModulePaths、EventLog、StateCsvWriter、FrameInputCollector、OutputStore、CockpitBridge、CarrierBridge 與 Core。
-- 第一個 exported callback 先完成 once-only context 初始化；`ed_fm_configure` 若為第一個 callback，直接使用其 `cfg_path`，否則由 DLL path 回推 module root。
-- 初始化先開 EventLog，再準備 CSV/writer，最後才建立並處理其他 operational objects；所有 Core 操作用同一把 execution mutex 序列化。
-- Context 與 writer 採 process lifetime；不在 `DllMain` 做 I/O、啟動或 join thread，也不隨 `ed_fm_release` 重建。
-- Start 與每個成功 step 同時把帶 sequence 的最新 record 交給 CSV writer；callback 不等待格式化、write 或 flush。
-- 驗收：測試 first callback initialization、同 execution 多 flight、release/start、並行 callback，以及 EventLog/CSV 在 flight start 前已可用。
+### 20. 修正 release 與 next-flight preparation
 
-### 13. 統一 command、param 與 numeric boundary errors
-- Command binding 固定為單一 table 與 `PassThrough`、`Constant`、`PressOnly`；PressOnly release 不 dispatch，也不保存 pressed state。
-- Unknown command、重複 binding、invalid index/pointer 與 NaN/Infinity 按已定規則記錄 ERROR；完整 callback sample 無效時整筆拒絕並保留上一筆。
-- Param lookup 改為 `std::optional<double>`；不存在時 EfmExports 記錄包含 index 的 ERROR，再向 DCS 回 neutral `0.0`。
-- 驗收：逐一驗證正常 mapping、PressOnly press/release、unknown ID、missing param、invalid sample 與 recovery 的外部結果和 log。
+- `ed_fm_release` 結束當前 flight、使 OutputStore invalid 並呼叫 `release_flight()`，但保留 process-lifetime `BridgeContext`、Core、logger 與 CSV writer。
+- 上一個 flight 的 operational/output callbacks 維持 lifecycle ERROR；release 後允許 fuel setter/getter、unlimited fuel、immortal、easy flight 與 mass-delta preparation。
+- 準備資料重複使用既有 Core state；下一次 start 保留準備值，只初始化 flight-only state並重新發布 start output。
+- 測試同一 execution 多 flight、禁止與允許的 callbacks、mass-delta `false`、warning 週期及原有 CSV 行為。
 
-### 14. 刪除 legacy ownership 與 snapshot 路徑
-- EfmExports 全面改用 `BridgeContext`，再刪除 `DcsModule`、`DcsRuntime`、`DcsSnapshots`、`Fck1cEfmSnapshot` 與已無 caller 的 diagnostics/runtime helpers。
-- 確認 Core 只有 typed input/command/output 與少數具明確立即語意的操作；DCSBridge 不再讀完整 Core implementation state。
-- 驗收：dependency search 不再找到 legacy types；tests 與 DLL build 通過，exports 不變。
+### 21. 最終文件、自動檢查與 DCS 實機驗證
 
-### 15. 完成目錄、入口與 contributor 文件
-- 將 DCSBridge 實作依既定結構收進 `Internal`；不為小型 helper 強迫新增一檔一類。
-- 將現有 callback implementation 整理為 `EfmExports.cpp` composition root；它負責驗證、翻譯、協調工具與 ABI return，不承擔物理計算或檔案格式化。
-- 更新 Visual Studio projects 與 DCSBridge README，說明入口、資料流、ownership、如何新增 command/FrameOutput/CSV 欄位，以及哪些 headers 不提供外部 include。
-- 驗收：新貢獻者只看 README、EfmExports 與 Core frame contracts 即可追蹤主要資料流；所有 project references 正常。
-
-### 16. 最終自動與 DCS 整合驗證
-- 重建並執行完整 native tests 與 DLL，比較重構前後 export 清單；在 DCS 驗證 cold、hot ground、hot air、simulate cadence、force/moment、draw args、param、fuel、mass delta、suspension、carrier、release 與同 execution 第二次 start。
-- 執行時用外部程式持續讀取 active log/CSV，確認 EventLog 即時可見、CSV 約 100 ms 可見、row 完整，且 writer 落後時 simulate 不等待、sequence 會跳號；比較重構前後相同輸入下的飛行輸出，任何差異都不能用放寬 tolerance 掩蓋。
+- 更新 DCSBridge／DcsIds contributor 文件，執行完整 tests、`tools/build_dll.ps1` 並比較 DLL exports。
+- 在同一 DCS execution 驗證 cold、hot ground、hot air 與多次重生；確認 known Command／Param 不污染 log、unknown 仍可追蹤且 next-flight 準備值生效。
+- 確認飛行輸出、CSV、draw args、fuel、mass delta、suspension 與 release 沒有回歸後，完成 code review 與 commit。
 
 ## 重構後另案討論
 - Config／FM Data 的責任與檔案結構，以及是否把整台飛機 state management 抽成獨立 Core module。
