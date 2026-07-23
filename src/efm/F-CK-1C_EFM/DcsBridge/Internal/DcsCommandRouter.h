@@ -8,6 +8,7 @@ enum class DcsCommandMappingStatus
 {
 	Mapped,
 	IgnoredRelease,
+	IgnoredCommand,
 	UnknownCommand,
 	InvalidValue,
 	InvalidBindingTable

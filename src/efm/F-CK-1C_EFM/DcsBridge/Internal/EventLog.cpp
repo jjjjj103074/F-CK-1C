@@ -11,6 +11,7 @@
 namespace
 {
 constexpr size_t kLineCapacity = 2048;
+constexpr size_t kWarningSummaryMessageCapacity = 256;
 constexpr int kRoundTripDoubleDigits = std::numeric_limits<double>::max_digits10;
 constexpr const char* kActiveFileName = "fck1c_efm.log";
 
@@ -20,10 +21,25 @@ const char* level_name(DcsBridge::Internal::EventLevel level)
 	{
 	case DcsBridge::Internal::EventLevel::Info:
 		return "INFO";
+	case DcsBridge::Internal::EventLevel::Warning:
+		return "WARN";
 	case DcsBridge::Internal::EventLevel::Error:
 		return "ERROR";
 	}
 	return "ERROR";
+}
+
+const char* warning_kind_name(
+	DcsBridge::Internal::CountedWarningKind kind)
+{
+	switch (kind)
+	{
+	case DcsBridge::Internal::CountedWarningKind::UnknownCommand:
+		return "unknown_command";
+	case DcsBridge::Internal::CountedWarningKind::UnknownParam:
+		return "unknown_param";
+	}
+	return "unknown";
 }
 
 bool format_simulation_time(
@@ -113,6 +129,11 @@ bool EventLog::format_line(
 bool EventLog::write(const EventRecord& record)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
+	return write_unlocked(record);
+}
+
+bool EventLog::write_unlocked(const EventRecord& record)
+{
 	if (file_ == nullptr)
 	{
 		return false;
@@ -135,6 +156,76 @@ bool EventLog::write(const EventRecord& record)
 		return false;
 	}
 	return true;
+}
+
+EventLog::WarningCounter* EventLog::find_counter(
+	CountedWarningKind kind,
+	std::int64_t id)
+{
+	for (WarningCounter& counter : warning_counters_)
+	{
+		if (counter.kind == kind && counter.id == id)
+		{
+			return &counter;
+		}
+	}
+	return nullptr;
+}
+
+bool EventLog::write_counted_warning(const CountedWarningEvent& event)
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+	if (event.first_message == nullptr)
+	{
+		set_error(EINVAL);
+		return false;
+	}
+	WarningCounter* counter = find_counter(event.kind, event.id);
+	if (counter != nullptr)
+	{
+		++counter->count;
+		return true;
+	}
+	warning_counters_.push_back({ event.kind, event.id, 1 });
+	return write_unlocked({
+		EventLevel::Warning,
+		event.simulation_time_s,
+		event.first_message
+	});
+}
+
+bool EventLog::write_summary(
+	const WarningCounter& counter,
+	const std::optional<double>& simulation_time_s)
+{
+	char message[kWarningSummaryMessageCapacity];
+	const int length = snprintf(
+		message,
+		sizeof(message),
+		"counted_warning kind=%s id=%lld total=%llu flight_release_summary",
+		warning_kind_name(counter.kind),
+		static_cast<long long>(counter.id),
+		static_cast<unsigned long long>(counter.count));
+	if (length < 0 || static_cast<size_t>(length) >= sizeof(message))
+	{
+		set_error(EINVAL);
+		return false;
+	}
+	return write_unlocked({ EventLevel::Warning, simulation_time_s, message });
+}
+
+bool EventLog::release_flight(
+	const std::optional<double>& simulation_time_s)
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+	bool success = true;
+	for (const WarningCounter& counter : warning_counters_)
+	{
+		const bool summary_written = write_summary(counter, simulation_time_s);
+		success = summary_written && success;
+	}
+	warning_counters_.clear();
+	return success;
 }
 
 bool EventLog::is_open() const

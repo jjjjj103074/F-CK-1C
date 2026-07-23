@@ -167,6 +167,26 @@ DcsBridge::CommandTableValidation inspect_command_bindings()
 	}
 	return find_duplicate_binding();
 }
+
+bool is_ignored_command(int command)
+{
+	for (const DcsIds::CommandRouting::Entry& entry :
+		DcsIds::CommandRouting::CustomCommands)
+	{
+		if (entry.id == command)
+		{
+			return entry.route == DcsIds::CommandRouting::Route::Cockpit;
+		}
+	}
+	for (const int ignored : DcsIds::CommandRouting::IgnoredDcsCommands)
+	{
+		if (ignored == command)
+		{
+			return true;
+		}
+	}
+	return false;
+}
 }
 
 namespace DcsBridge
@@ -179,6 +199,10 @@ CommandTableValidation validate_command_bindings()
 
 DcsCommandMapping map_command(int command, float value)
 {
+	if (is_ignored_command(command))
+	{
+		return { DcsCommandMappingStatus::IgnoredCommand };
+	}
 	if (!std::isfinite(value))
 	{
 		return { DcsCommandMappingStatus::InvalidValue };

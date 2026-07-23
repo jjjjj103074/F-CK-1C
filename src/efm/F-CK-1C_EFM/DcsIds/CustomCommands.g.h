@@ -70,4 +70,93 @@ static constexpr int EngineThrustCutTestToggle = 3135;
 static constexpr int EngineThrustCutTestEnable = 3136;
 static constexpr int EngineThrustCutTestDisable = 3137;
 }
+
+namespace CommandRouting
+{
+enum class Route
+{
+    Efm,
+    Cockpit
+};
+
+struct Entry
+{
+    int id;
+    Route route;
+};
+
+static constexpr Entry CustomCommands[] = {
+    { Commands::FBWCatToggle, Route::Efm },
+    { Commands::FBWCat1, Route::Efm },
+    { Commands::FBWCat3, Route::Efm },
+    { Commands::AirBrakesAuto, Route::Efm },
+    { Commands::GearAuto, Route::Efm },
+    { Commands::FlapsAuto, Route::Efm },
+    { Commands::NoseTurnUp, Route::Efm },
+    { Commands::NoseTurnAuto, Route::Efm },
+    { Commands::NoseTurnDown, Route::Efm },
+    { Commands::AirBrakesUp, Route::Efm },
+    { Commands::AirBrakesDown, Route::Efm },
+    { Commands::GearHandleUp, Route::Efm },
+    { Commands::GearHandleDown, Route::Efm },
+    { Commands::FlapsUpCmd, Route::Efm },
+    { Commands::FlapsDownCmd, Route::Efm },
+    { Commands::NoseTurnToggle, Route::Efm },
+    { Commands::WheelBrakeAxis, Route::Efm },
+    { Commands::WheelBrakeAxisLeft, Route::Efm },
+    { Commands::WheelBrakeAxisRight, Route::Efm },
+    { Commands::FBWGLimiterOverride, Route::Efm },
+    { Commands::FBWGLimiterOverrideToggle, Route::Efm },
+    { Commands::TriggerFirstStage, Route::Cockpit },
+    { Commands::CMSForward, Route::Cockpit },
+    { Commands::CMSAft, Route::Cockpit },
+    { Commands::CMSLeft, Route::Cockpit },
+    { Commands::CMSRight, Route::Cockpit },
+    { Commands::CMSPress, Route::Cockpit },
+    { Commands::TriggerSecondStage, Route::Cockpit },
+    { Commands::MasterArmOn, Route::Cockpit },
+    { Commands::MasterArmOff, Route::Cockpit },
+    { Commands::MasterArmSim, Route::Cockpit },
+    { Commands::DogfightSwitch, Route::Cockpit },
+    { Commands::MissileUncage, Route::Cockpit },
+    { Commands::WeaponRelease, Route::Cockpit },
+    { Commands::TMSUp, Route::Cockpit },
+    { Commands::TMSDown, Route::Cockpit },
+    { Commands::TMSLeft, Route::Cockpit },
+    { Commands::TMSRight, Route::Cockpit },
+    { Commands::NavMode, Route::Cockpit },
+    { Commands::MissileOverride, Route::Cockpit },
+    { Commands::SoundTestCycle, Route::Cockpit },
+    { Commands::APMasterToggle, Route::Cockpit },
+    { Commands::APMasterOn, Route::Cockpit },
+    { Commands::APMasterOff, Route::Cockpit },
+    { Commands::APBypass, Route::Cockpit },
+    { Commands::APVertPitchHold, Route::Cockpit },
+    { Commands::APVertVSHold, Route::Cockpit },
+    { Commands::APVertAltHold, Route::Cockpit },
+    { Commands::APVertIncrease, Route::Cockpit },
+    { Commands::APVertDecrease, Route::Cockpit },
+    { Commands::APLatHeadingHold, Route::Cockpit },
+    { Commands::APLatHeadingSelect, Route::Cockpit },
+    { Commands::APLatNavTrack, Route::Cockpit },
+    { Commands::APLatIncrease, Route::Cockpit },
+    { Commands::APLatDecrease, Route::Cockpit },
+    { Commands::APAutoThrottleToggle, Route::Cockpit },
+    { Commands::APAutoThrottleOn, Route::Cockpit },
+    { Commands::APAutoThrottleOff, Route::Cockpit },
+    { Commands::APSpeedIncrease, Route::Cockpit },
+    { Commands::APSpeedDecrease, Route::Cockpit },
+    { Commands::EngineThrustCutTestToggle, Route::Cockpit },
+    { Commands::EngineThrustCutTestEnable, Route::Cockpit },
+    { Commands::EngineThrustCutTestDisable, Route::Cockpit },
+};
+
+static constexpr int IgnoredDcsCommands[] = {
+    851, // iCommandPlane_ShowControls
+    1609, // iCommandViewPauseOnOff
+    2035, // iCommandPlaneFeedbackTrimmer
+    2142, // iServiceInformAboutUserHAngle
+    2143, // iServiceInformAboutUserVAngle
+};
+}
 }

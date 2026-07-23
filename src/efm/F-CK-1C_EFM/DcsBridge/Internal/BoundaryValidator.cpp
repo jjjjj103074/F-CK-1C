@@ -181,6 +181,7 @@ bool validate_command_mapping(
 	case DcsCommandMappingStatus::Mapped:
 		return true;
 	case DcsCommandMappingStatus::IgnoredRelease:
+	case DcsCommandMappingStatus::IgnoredCommand:
 		return false;
 	case DcsCommandMappingStatus::UnknownCommand:
 		reporter.log_unknown_command(sample.command_id, sample.value);

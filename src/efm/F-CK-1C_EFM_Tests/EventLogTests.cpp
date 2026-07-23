@@ -21,6 +21,18 @@ constexpr float kUnknownCommandValue = 0.5F;
 constexpr int kWritesPerThread = 40;
 constexpr int kWriterThreadCount = 2;
 
+size_t count_occurrences(const std::string& text, const std::string& value)
+{
+	size_t count = 0;
+	size_t offset = 0;
+	while ((offset = text.find(value, offset)) != std::string::npos)
+	{
+		++count;
+		offset += value.size();
+	}
+	return count;
+}
+
 std::string read_text(const std::filesystem::path& path)
 {
 	std::ifstream input(path, std::ios::binary);
@@ -231,6 +243,8 @@ void test_reporter_writes_boundary_and_recovery_events(Tests::Context& context)
 	const std::string missing_data = "callback=ed_fm_get_param index=" +
 		std::to_string(kMissingParamId) + " missing data=atmosphere";
 	TEST_EXPECT(context, content.find(unknown_command) != std::string::npos);
+	TEST_EXPECT(context, content.find("][WARN] " + unknown_command) !=
+		std::string::npos);
 	TEST_EXPECT(context, content.find(missing_param) != std::string::npos);
 	TEST_EXPECT(context, content.find(missing_data) != std::string::npos);
 	TEST_EXPECT(context, content.find(
@@ -238,6 +252,47 @@ void test_reporter_writes_boundary_and_recovery_events(Tests::Context& context)
 		std::string::npos);
 	TEST_EXPECT(context, content.find(
 		"][INFO] cockpit parameter=TEST_PARAM recovered") != std::string::npos);
+}
+
+void test_counted_warnings_summarize_and_reset(Tests::Context& context)
+{
+	constexpr int kObservedUnknownCommand = 2659;
+	TestFiles::TemporaryDirectory root;
+	DcsBridge::Internal::EventLog log(root.path().string().c_str());
+	DcsBridge::Internal::OutputStore output_store;
+	DcsBridge::Internal::EfmEventReporter reporter(log, output_store);
+	Core::FrameOutput output;
+	output.simulation_time_s = 4.0;
+	output_store.publish(output);
+	reporter.log_unknown_command(kObservedUnknownCommand, 0.25F);
+	reporter.log_unknown_command(kObservedUnknownCommand, 0.5F);
+	TEST_EXPECT(context, log.write_counted_warning({
+		DcsBridge::Internal::CountedWarningKind::UnknownParam,
+		kObservedUnknownCommand,
+		4.0,
+		"synthetic unknown param" }));
+	reporter.log_release(4.0);
+	output.simulation_time_s = 8.0;
+	output_store.publish(output);
+	reporter.log_unknown_command(kObservedUnknownCommand, 0.75F);
+	reporter.log_release(8.0);
+	const std::string content = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	const std::string command_event =
+		"callback=ed_fm_set_command command=2659 unknown";
+	TEST_EXPECT(context, count_occurrences(content, command_event) == 2);
+	TEST_EXPECT(context, content.find("command=2659 unknown value=0.5") ==
+		std::string::npos);
+	TEST_EXPECT(context, count_occurrences(
+		content,
+		"kind=unknown_command id=2659 total=2 flight_release_summary") == 1);
+	TEST_EXPECT(context, count_occurrences(
+		content,
+		"kind=unknown_command id=2659 total=1 flight_release_summary") == 1);
+	TEST_EXPECT(context, count_occurrences(
+		content,
+		"kind=unknown_param id=2659 total=1 flight_release_summary") == 1);
+	TEST_EXPECT(context, count_occurrences(content, "synthetic unknown param") == 1);
 }
 }
 
@@ -249,4 +304,5 @@ void run_event_log_tests(Tests::Context& context)
 	test_error_messages_include_required_parameters(context);
 	test_reporter_writes_required_error_context(context);
 	test_reporter_writes_boundary_and_recovery_events(context);
+	test_counted_warnings_summarize_and_reset(context);
 }

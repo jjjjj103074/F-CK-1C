@@ -11,7 +11,7 @@ namespace
 {
 constexpr double kTolerance = 1e-6;
 constexpr double kSimulationStepS = 0.001;
-constexpr int kUnknownCommandId = -1;
+constexpr int kUnknownCommandId = 2659;
 
 struct DcsCommandInput
 {
@@ -186,6 +186,42 @@ void test_mapping_rules_and_errors(Tests::Context& context)
 		context,
 		invalid.status == DcsBridge::DcsCommandMappingStatus::InvalidValue);
 }
+
+void test_generated_command_routes(Tests::Context& context)
+{
+	for (const DcsIds::CommandRouting::Entry& entry :
+		DcsIds::CommandRouting::CustomCommands)
+	{
+		const DcsBridge::DcsCommandMapping mapping =
+			DcsBridge::map_command(entry.id, 1.0F);
+		if (entry.route == DcsIds::CommandRouting::Route::Efm)
+		{
+			TEST_EXPECT(context, mapping.should_dispatch());
+			continue;
+		}
+		TEST_EXPECT(context,
+			mapping.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+		const DcsBridge::DcsCommandMapping non_finite =
+			DcsBridge::map_command(entry.id, std::numeric_limits<float>::infinity());
+		TEST_EXPECT(context,
+			non_finite.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+	}
+}
+
+void test_generated_ignored_dcs_commands(Tests::Context& context)
+{
+	for (const int command : DcsIds::CommandRouting::IgnoredDcsCommands)
+	{
+		const DcsBridge::DcsCommandMapping mapping =
+			DcsBridge::map_command(command, 1.0F);
+		TEST_EXPECT(context,
+			mapping.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+		const DcsBridge::DcsCommandMapping non_finite =
+			DcsBridge::map_command(command, std::numeric_limits<float>::infinity());
+		TEST_EXPECT(context,
+			non_finite.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+	}
+}
 }
 
 void run_dcs_command_router_tests(Tests::Context& context)
@@ -197,4 +233,6 @@ void run_dcs_command_router_tests(Tests::Context& context)
 	test_routed_throttle_and_airframe_outputs(context);
 	test_routed_wheel_outputs(context);
 	test_mapping_rules_and_errors(context);
+	test_generated_command_routes(context);
+	test_generated_ignored_dcs_commands(context);
 }

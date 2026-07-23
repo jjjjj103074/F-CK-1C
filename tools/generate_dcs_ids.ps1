@@ -94,6 +94,34 @@ foreach ($command in $commands) {
     $cpp.Add(('static constexpr int {0} = {1};' -f $command.name, [int]$command.value))
 }
 $cpp.Add('}')
+$cpp.Add('')
+$cpp.Add('namespace CommandRouting')
+$cpp.Add('{')
+$cpp.Add('enum class Route')
+$cpp.Add('{')
+$cpp.Add('    Efm,')
+$cpp.Add('    Cockpit')
+$cpp.Add('};')
+$cpp.Add('')
+$cpp.Add('struct Entry')
+$cpp.Add('{')
+$cpp.Add('    int id;')
+$cpp.Add('    Route route;')
+$cpp.Add('};')
+$cpp.Add('')
+$cpp.Add('static constexpr Entry CustomCommands[] = {')
+foreach ($command in $commands) {
+    $route = if ([string]$command.route -eq 'efm') { 'Efm' } else { 'Cockpit' }
+    $cpp.Add(('    {{ Commands::{0}, Route::{1} }},' -f $command.name, $route))
+}
+$cpp.Add('};')
+$cpp.Add('')
+$cpp.Add('static constexpr int IgnoredDcsCommands[] = {')
+foreach ($command in $ignoredDcsCommands) {
+    $cpp.Add(('    {0}, // {1}' -f [int]$command.value, $command.name))
+}
+$cpp.Add('};')
+$cpp.Add('}')
 $cpp.Add('}')
 $cpp.Add('')
 

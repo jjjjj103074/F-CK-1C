@@ -113,7 +113,12 @@ void EfmEventReporter::log_unknown_command(int command, float value)
 		command,
 		kRoundTripFloatDigits,
 		static_cast<double>(value));
-	write(EventLevel::Error, latest_simulation_time(), message);
+	(void)event_log_.write_counted_warning({
+		CountedWarningKind::UnknownCommand,
+		command,
+		latest_simulation_time(),
+		message
+	});
 }
 
 void EfmEventReporter::log_command_binding_error(
@@ -274,6 +279,7 @@ void EfmEventReporter::log_release(
 	const std::optional<double>& simulation_time_s)
 {
 	write(EventLevel::Info, simulation_time_s, "flight release");
+	(void)event_log_.release_flight(simulation_time_s);
 }
 }
 }
