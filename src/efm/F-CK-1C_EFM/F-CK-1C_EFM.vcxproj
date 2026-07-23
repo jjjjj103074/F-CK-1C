@@ -83,7 +83,9 @@
     <ClInclude Include="Data\EngineTables.h" />
 	<ClInclude Include="DcsBridge\Internal\DcsCommandRouter.h" />
 	<ClInclude Include="DcsBridge\Internal\DcsDamageMapper.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsSuspensionAdapter.h" />
 	<ClInclude Include="DcsBridge\Internal\DrawArgs.h" />
+	<ClInclude Include="DcsBridge\Internal\AbiBoundary.h" />
 	<ClInclude Include="DcsBridge\Internal\BoundaryValidator.h" />
 	<ClInclude Include="DcsBridge\Internal\EfmEventReporter.h" />
 	<ClInclude Include="DcsBridge\Internal\EventLog.h" />
@@ -97,6 +99,7 @@
 	<ClInclude Include="DcsBridge\Internal\ModulePaths.h" />
 	<ClInclude Include="DcsBridge\Internal\ParamExport.h" />
 	<ClInclude Include="DcsBridge\Internal\ParamExporter.h" />
+	<ClInclude Include="DcsBridge\Internal\ProcessBridgeContext.h" />
 	<ClInclude Include="DcsBridge\Internal\RuntimeDiagnostics.h" />
     <ClInclude Include="DcsIds\CockpitParams.g.h" />
     <ClInclude Include="DcsIds\Commands.h" />
@@ -156,6 +159,9 @@
 	<ClCompile Include="DcsBridge\Internal\DcsDamageMapper.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+	<ClCompile Include="DcsBridge\Internal\AbiBoundary.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
 	<ClCompile Include="DcsBridge\Internal\BoundaryValidator.cpp">
 	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
 	</ClCompile>
@@ -169,6 +175,9 @@
 	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
 	</ClCompile>
 	<ClCompile Include="DcsBridge\Internal\ParamExporter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\ProcessBridgeContext.cpp">
 	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
 	</ClCompile>
     <ClCompile Include="DcsBridge\Internal\BridgeContext.cpp">

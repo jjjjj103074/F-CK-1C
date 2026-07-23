@@ -123,8 +123,14 @@ BridgeContext& BridgeContextOwner::get(const char* initial_config_path)
 				cockpit_api_provider_,
 				aircraft_config_
 			});
+			published_context_.store(context_.get(), std::memory_order_release);
 		});
 	return *context_;
+}
+
+BridgeContext* BridgeContextOwner::try_get() const noexcept
+{
+	return published_context_.load(std::memory_order_acquire);
 }
 }
 }

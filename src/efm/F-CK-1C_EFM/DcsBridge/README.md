@@ -35,8 +35,10 @@ directly under the same execution mutex. Other callbacks publish input and wait
 for the next simulation step unless the DCS ABI requires an immediate return.
 
 `EfmExports.cpp` owns boundary orchestration: ABI defaults, validation,
-translation, locking, tool coordination, and return values. It must not gain
-flight calculations, log message formatting, or CSV row formatting.
+translation, locking, tool coordination, and return values. Every exported
+callback uses the shared ABI exception boundary, which logs unexpected C++
+exceptions and returns that callback's neutral result. It must not gain flight
+calculations, log message formatting, or CSV row formatting.
 
 ## Layout and ownership
 
@@ -44,9 +46,10 @@ flight calculations, log message formatting, or CSV row formatting.
 - `Internal/` contains all C++ implementation details: callback adapters,
   command and damage mapping, bridges, latest-value stores, logging, CSV, and
   lifecycle coordination.
-- `BridgeContextOwner` constructs one process-lifetime production context.
-  `BridgeContext` owns Core, the collector and output store, cockpit/carrier
-  bridges, EventLog, StateCsvWriter, and the execution mutex.
+- `ProcessBridgeContext` constructs one process-lifetime production context
+  without running logger or worker-thread destruction under the Windows loader
+  lock. `BridgeContext` owns Core, the collector and output store,
+  cockpit/carrier bridges, EventLog, StateCsvWriter, and the execution mutex.
 - `Core::Fck1cEfm` exclusively owns simulation state. DCSBridge reads only
   `FrameOutput`; it must not read Core implementation state.
 - `FrameInputCollector` and `OutputStore` own copies of their latest typed

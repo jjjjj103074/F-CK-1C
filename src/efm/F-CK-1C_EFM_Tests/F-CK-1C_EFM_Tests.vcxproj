@@ -59,6 +59,7 @@
   <ItemGroup>
     <ClCompile Include="AerodynamicsSystemTests.cpp" />
     <ClCompile Include="AirframeDeviceSystemTests.cpp" />
+    <ClCompile Include="AbiBoundaryTests.cpp" />
     <ClCompile Include="BridgeContextTests.cpp" />
 	<ClCompile Include="BoundaryValidatorTests.cpp" />
     <ClCompile Include="CommonTests.cpp" />
@@ -89,11 +90,13 @@
     <ClCompile Include="..\F-CK-1C_EFM\Data\EngineTables.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DcsCommandRouter.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DcsDamageMapper.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\AbiBoundary.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\BoundaryValidator.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EfmEventReporter.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EventLog.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\LogFileLifecycle.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\ParamExporter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\ProcessBridgeContext.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\BridgeContext.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CarrierBridge.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp" />

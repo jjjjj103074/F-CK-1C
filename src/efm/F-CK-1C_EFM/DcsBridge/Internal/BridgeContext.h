@@ -11,6 +11,7 @@
 #include "ModulePaths.h"
 #include "../../Core/Fck1cEfm.h"
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -124,6 +125,7 @@ public:
 	BridgeContextOwner& operator=(const BridgeContextOwner&) = delete;
 
 	BridgeContext& get(const char* initial_config_path);
+	BridgeContext* try_get() const noexcept;
 
 private:
 	const CockpitApiProvider cockpit_api_provider_;
@@ -131,6 +133,7 @@ private:
 	const void* const module_address_;
 	std::once_flag initialization_flag_;
 	std::unique_ptr<BridgeContext> context_;
+	std::atomic<BridgeContext*> published_context_ = nullptr;
 };
 }
 }

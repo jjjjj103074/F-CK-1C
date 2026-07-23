@@ -50,7 +50,8 @@ constexpr const char* kStateCsvHeader =
 	"suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,"
 	"suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
 	"suspension_any_weight_on_wheels,suspension_on_ground,"
-	"fuel_internal,fuel_external,fuel_total,fuel_total_flow_kg_per_s,shake_amplitude\n";
+	"fuel_internal_kg,fuel_external_kg,fuel_total_kg,"
+	"fuel_total_flow_kg_per_s,shake_amplitude\n";
 
 class CsvRowBuilder final
 {

@@ -251,6 +251,7 @@ void test_concurrent_first_callbacks_share_context(Tests::Context& tests)
 	const std::string config_path = create_config_path(root.path());
 	g_cockpit_api_requests.store(0);
 	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	TEST_EXPECT(tests, owner.try_get() == nullptr);
 	std::array<DcsBridge::Internal::BridgeContext*, kConcurrentCallbackCount> contexts = {};
 	std::vector<std::thread> callbacks;
 	for (std::size_t index = 0; index < contexts.size(); ++index)
@@ -266,6 +267,7 @@ void test_concurrent_first_callbacks_share_context(Tests::Context& tests)
 	{
 		TEST_EXPECT(tests, context == contexts[0]);
 	}
+	TEST_EXPECT(tests, owner.try_get() == contexts[0]);
 	TEST_EXPECT(tests, g_cockpit_api_requests.load() == 1);
 }
 
