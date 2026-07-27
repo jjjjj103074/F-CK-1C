@@ -24,17 +24,17 @@ struct CommandBinding
 {
 	int dcs_id;
 	Core::CommandGroup group;
-	Core::CommandAction action;
+	Core::CommandId command_id;
 	ValueRule value_rule;
 	double constant;
 };
 
 #define BIND_INPUT(id, group, action) \
-	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueRule::PassThrough, 0.0 }
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandId::action, ValueRule::PassThrough, 0.0 }
 #define BIND_CONST(id, group, action, value) \
-	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueRule::Constant, value }
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandId::action, ValueRule::Constant, value }
 #define BIND_PRESS(id, group, action) \
-	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandAction::action, ValueRule::PressOnly, 0.0 }
+	{ DcsIds::Commands::id, Core::CommandGroup::group, Core::CommandId::action, ValueRule::PressOnly, 0.0 }
 
 constexpr CommandBinding kBindings[] = {
 	BIND_INPUT(JoystickPitch, PitchRoll, SetPitchAxis),
@@ -193,7 +193,12 @@ namespace DcsBridge
 {
 CommandTableValidation validate_command_bindings()
 {
-	static const CommandTableValidation validation = inspect_command_bindings();
+	static const CommandTableValidation validation = []()
+		{
+			CommandTableValidation result = inspect_command_bindings();
+			result.binding_count = std::size(kBindings);
+			return result;
+		}();
 	return validation;
 }
 
@@ -226,7 +231,7 @@ DcsCommandMapping map_command(int command, float value)
 			}
 			return {
 				DcsCommandMappingStatus::Mapped,
-				{ binding.group, binding.action, mapped_value(binding, value) }
+				{ binding.group, binding.command_id, mapped_value(binding, value) }
 			};
 		}
 	}

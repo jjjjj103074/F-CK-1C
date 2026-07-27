@@ -162,19 +162,19 @@ std::string frame_snapshot(const Core::FrameOutput& frame)
 void send_trajectory_commands(Core::Fck1cEfm& efm)
 {
 	efm.handle_command({
-		Core::CommandGroup::PitchRoll, Core::CommandAction::SetPitchAxis, 0.25 });
+		Core::CommandGroup::PitchRoll, Core::CommandId::SetPitchAxis, 0.25 });
 	efm.handle_command({
-		Core::CommandGroup::PitchRoll, Core::CommandAction::SetRollAxis, -0.2 });
+		Core::CommandGroup::PitchRoll, Core::CommandId::SetRollAxis, -0.2 });
 	efm.handle_command({
-		Core::CommandGroup::Yaw, Core::CommandAction::SetYawAxis, 0.15 });
+		Core::CommandGroup::Yaw, Core::CommandId::SetYawAxis, 0.15 });
 	efm.handle_command({
-		Core::CommandGroup::Throttle, Core::CommandAction::SetCommonThrottleAxis, 0.8 });
+		Core::CommandGroup::Throttle, Core::CommandId::SetCommonThrottleAxis, 0.8 });
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandAction::SetGear, 0.0 });
+		Core::CommandGroup::LandingGear, Core::CommandId::SetGear, 0.0 });
 	efm.handle_command({
-		Core::CommandGroup::Airframe, Core::CommandAction::SetFlapsAuto, 1.0 });
+		Core::CommandGroup::Airframe, Core::CommandId::SetFlapsAuto, 1.0 });
 	efm.handle_command({
-		Core::CommandGroup::Airframe, Core::CommandAction::SetAirbrake, 1.0 });
+		Core::CommandGroup::Airframe, Core::CommandId::SetAirbrake, 1.0 });
 }
 
 std::array<
@@ -197,7 +197,7 @@ std::array<
 	frames[0] = efm.step(input);
 	(void)efm.apply_damage({ Core::DamageArea::LeftEngine, 0, 0.6 });
 	frames[1] = efm.step(input);
-	efm.repair();
+	efm.repair({});
 	Core::FrameInput sticky_input;
 	sticky_input.dt_s = input.dt_s;
 	frames[2] = efm.step(sticky_input);
@@ -251,9 +251,9 @@ void test_gear_position_drives_flaps_in_same_frame(Tests::Context& context)
 	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config());
 	Core::FrameOutput previous = efm.start(Core::StartMode::HotAir);
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandAction::SetGear, 1.0 });
+		Core::CommandGroup::LandingGear, Core::CommandId::SetGear, 1.0 });
 	efm.handle_command({
-		Core::CommandGroup::Airframe, Core::CommandAction::SetFlapsAuto, 1.0 });
+		Core::CommandGroup::Airframe, Core::CommandId::SetFlapsAuto, 1.0 });
 	Core::FrameInput input = Tests::Fck1c::make_frame_input();
 	input.autopilot = {};
 	bool crossed = false;
@@ -304,7 +304,7 @@ void test_engine_output_drives_fuel_in_same_frame(Tests::Context& context)
 	const Core::FrameOutput start = efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	efm.handle_command({
-		Core::CommandGroup::Throttle, Core::CommandAction::SetCommonThrottleAxis, 1.0 });
+		Core::CommandGroup::Throttle, Core::CommandId::SetCommonThrottleAxis, 1.0 });
 	Core::FrameInput input;
 	input.dt_s = 0.1;
 	const Core::FrameOutput frame = efm.step(input);
@@ -400,7 +400,7 @@ void test_repair_clears_damage_but_preserves_engine_history(
 	TEST_EXPECT(context,
 		damaged_frame.engines[0].thrust_force <
 			control_frame.engines[0].thrust_force);
-	pair.subject.repair();
+	pair.subject.repair({});
 	const Core::FrameOutput repaired = pair.subject.step(input);
 	const Core::FrameOutput expected = pair.control.step(input);
 	TEST_EXPECT(context,

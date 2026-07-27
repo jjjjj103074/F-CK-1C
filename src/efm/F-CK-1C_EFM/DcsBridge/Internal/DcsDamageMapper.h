@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Core/Fck1cEfm.h"
+#include "../../Core/Contracts/Events.h"
 
 namespace DcsBridge
 {

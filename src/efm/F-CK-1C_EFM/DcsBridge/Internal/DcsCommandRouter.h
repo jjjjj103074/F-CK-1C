@@ -1,6 +1,8 @@
 #pragma once
 
-#include "../../Core/Fck1cEfm.h"
+#include "../../Core/Contracts/Commands.h"
+
+#include <cstddef>
 
 namespace DcsBridge
 {
@@ -25,12 +27,13 @@ struct CommandTableValidation
 {
 	CommandBindingError error = CommandBindingError::None;
 	int command_id = 0;
+	std::size_t binding_count = 0;
 };
 
 struct DcsCommandMapping
 {
 	DcsCommandMappingStatus status = DcsCommandMappingStatus::UnknownCommand;
-	Core::EfmCommand command;
+	Core::Command command;
 	CommandTableValidation table_validation;
 
 	bool should_dispatch() const

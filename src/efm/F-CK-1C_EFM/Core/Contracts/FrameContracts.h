@@ -1,9 +1,8 @@
 #pragma once
 
-#include "../Common/Vec3.h"
+#include "../../Common/Vec3.h"
 
 #include <array>
-#include <cmath>
 #include <cstddef>
 
 namespace Core
@@ -17,11 +16,6 @@ enum class StartMode
 	HotGround,
 	HotAir
 };
-
-inline bool is_valid_frame_dt(double dt_s) noexcept
-{
-	return std::isfinite(dt_s) && dt_s > 0.0;
-}
 
 struct Quaternion
 {
@@ -104,6 +98,26 @@ struct MaxPowerCommand
 {
 	double ready = 0.0;
 	double value = 1.0;
+};
+
+struct ExternalFuelInput
+{
+	int station = 0;
+	double fuel = 0.0;
+	Common::Vec3 position;
+};
+
+struct MassDelta
+{
+	double mass = 0.0;
+	Common::Vec3 position;
+	Common::Vec3 moment_of_inertia;
+};
+
+struct MassDeltaResult
+{
+	bool available = false;
+	MassDelta delta;
 };
 
 struct FrameDataAvailability

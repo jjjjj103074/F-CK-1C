@@ -40,6 +40,11 @@ namespace DcsBridge
 {
 namespace Internal
 {
+bool is_valid_frame_dt(double dt_s) noexcept
+{
+	return std::isfinite(dt_s) && dt_s > 0.0;
+}
+
 bool validate_atmosphere_input(
 	const Core::AtmosphereInput& input,
 	EfmEventReporter& reporter)

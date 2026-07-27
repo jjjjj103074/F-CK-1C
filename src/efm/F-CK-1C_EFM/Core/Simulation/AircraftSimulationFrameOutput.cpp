@@ -1,4 +1,4 @@
-#include "Fck1cEfm.h"
+#include "AircraftSimulation.h"
 
 namespace
 {
@@ -39,7 +39,7 @@ Core::EngineOutput project_engine(const Systems::EngineChannelState& source)
 
 Core::ControlOutput project_controls(
 	const Systems::PrimaryControlState& input,
-	const Core::ControlSurfaceState& surfaces,
+	const Core::Simulation::ControlSurfaceState& surfaces,
 	const Systems::AirframeDeviceState& devices)
 {
 	return {
@@ -100,7 +100,9 @@ Core::FuelOutput project_fuel(const Systems::FuelSystem& source)
 
 namespace Core
 {
-FrameOutput Fck1cEfm::make_frame_output(
+namespace Simulation
+{
+FrameOutput AircraftSimulation::make_frame_output(
 	const FrameDataAvailability& availability) const
 {
 	FrameOutput output;
@@ -125,5 +127,6 @@ FrameOutput Fck1cEfm::make_frame_output(
 	output.fuel = project_fuel(systems_.fuel);
 	output.shake_amplitude = gameplay_.shake_amplitude;
 	return output;
+}
 }
 }

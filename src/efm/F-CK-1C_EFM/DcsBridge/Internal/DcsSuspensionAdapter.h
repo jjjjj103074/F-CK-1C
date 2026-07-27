@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Core/FrameContracts.h"
+#include "../../Core/Contracts/FrameContracts.h"
 #include "../../include/FM/wHumanCustomPhysicsAPI.h"
 
 namespace DcsBridge

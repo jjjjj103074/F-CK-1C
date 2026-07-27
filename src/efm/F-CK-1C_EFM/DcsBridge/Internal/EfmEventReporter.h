@@ -3,7 +3,8 @@
 #include "CockpitBridge.h"
 #include "EventLog.h"
 #include "OutputStore.h"
-#include "../../Core/Fck1cEfm.h"
+#include "../../Core/Contracts/Events.h"
+#include "../../Core/Contracts/FrameContracts.h"
 
 #include <cstddef>
 

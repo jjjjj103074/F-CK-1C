@@ -9,8 +9,8 @@ To trace the main path, read these files in order:
 
 1. [`EfmExports.cpp`](EfmExports.cpp) — all exported callbacks and the
    production composition root.
-2. [`../Core/FrameContracts.h`](../Core/FrameContracts.h) — typed frame input
-   and output shared across the boundary.
+2. [`../Core/Contracts/FrameContracts.h`](../Core/Contracts/FrameContracts.h) —
+   typed frame input and output shared across the boundary.
 3. [`../Core/Fck1cEfm.h`](../Core/Fck1cEfm.h) — the small Core command and
    immediate-operation interface.
 
@@ -29,7 +29,8 @@ DCS setter callbacks
        -> Internal/StateCsvWriter
 ```
 
-Fuel getters and immediate setters use `BridgeContext::perform_core_action`.
+Fuel getters and flight-preparation setters use
+`BridgeContext::perform_core_preparation`.
 Consumption callbacks with custom ABI results, such as mass delta, coordinate
 directly under the same execution mutex. Other callbacks publish input and wait
 for the next simulation step unless the DCS ABI requires an immediate return.
@@ -50,8 +51,9 @@ calculations, log message formatting, or CSV row formatting.
   without running logger or worker-thread destruction under the Windows loader
   lock. `BridgeContext` owns Core, the collector and output store,
   cockpit/carrier bridges, EventLog, StateCsvWriter, and the execution mutex.
-- `Core::Fck1cEfm` exclusively owns simulation state. DCSBridge reads only
-  `FrameOutput`; it must not read Core implementation state.
+- `Core::Fck1cEfm` is the stable façade and owns the current per-flight
+  `AircraftSimulation`. DCSBridge reads only `FrameOutput`; it must not read
+  Core implementation state.
 - `FrameInputCollector` and `OutputStore` own copies of their latest typed
   values. `StateCsvWriter` owns its worker thread and latest-record mailbox.
 - `../DcsIds/` contains DCS boundary identifiers and generated ID tables. It is
@@ -60,8 +62,8 @@ calculations, log message formatting, or CSV row formatting.
 
 There is no DCSBridge umbrella or stable public C++ header. Files under
 `Internal/` are private and may be included only by DCSBridge implementation or
-native tests. Other production modules use `Core/FrameContracts.h` and the
-explicit Core interface instead. DCS itself sees only the exported C ABI.
+native tests. Other production modules use `Core/Contracts/` and the explicit
+Core interface instead. DCS itself sees only the exported C ABI.
 
 ## Adding a command
 
@@ -70,8 +72,9 @@ explicit Core interface instead. DCS itself sees only the exported C ABI.
    `.\tools\generate_dcs_ids.ps1` from the repository root.
 2. Add one binding in `Internal/DcsCommandRouter.cpp` with its explicit value
    rule: `PassThrough`, `Constant`, or `PressOnly`.
-3. If the typed command is new, extend `CommandGroup`/`CommandAction` in
-   `../Core/Fck1cEfm.h` and handle it in `../Core/Fck1cEfmCommands.cpp`.
+3. If the semantic command is new, extend `CommandGroup`/`CommandId` in
+   `../Core/Contracts/Commands.h` and handle it in
+   `../Core/Simulation/AircraftSimulationCommands.cpp`.
 4. Test both the DCS-to-command mapping and the observable `FrameOutput` result.
 
 Do not add callback-specific methods to `BridgeContext`, and do not store
@@ -80,8 +83,9 @@ pressed state for `PressOnly` commands.
 ## Adding a FrameOutput field
 
 1. Add the typed field to the appropriate output structure in
-   `../Core/FrameContracts.h`, using the value's existing unit.
-2. Populate it in `../Core/Fck1cEfmFrameOutput.cpp` from Core-owned state.
+   `../Core/Contracts/FrameContracts.h`, using the value's existing unit.
+2. Populate it in
+   `../Core/Simulation/AircraftSimulationFrameOutput.cpp` from Core-owned state.
 3. Consume it only where required: an ABI callback, an adapter in `Internal/`,
    or CSV output.
 4. Add input/output tests. Do not expose a full Core snapshot to make testing

@@ -58,6 +58,17 @@ void test_invalid_sample_preserves_latest(Tests::Context& context)
 		std::string::npos);
 }
 
+void test_frame_dt_contract(Tests::Context& context)
+{
+	TEST_EXPECT(context, DcsBridge::Internal::is_valid_frame_dt(kFrameDt));
+	TEST_EXPECT(context, !DcsBridge::Internal::is_valid_frame_dt(0.0));
+	TEST_EXPECT(context, !DcsBridge::Internal::is_valid_frame_dt(-kFrameDt));
+	TEST_EXPECT(context, !DcsBridge::Internal::is_valid_frame_dt(
+		std::numeric_limits<double>::quiet_NaN()));
+	TEST_EXPECT(context, !DcsBridge::Internal::is_valid_frame_dt(
+		std::numeric_limits<double>::infinity()));
+}
+
 void test_invalid_typed_inputs_are_rejected(Tests::Context& context)
 {
 	ValidationFixture fixture;
@@ -167,6 +178,7 @@ void test_simulation_event_numeric_input(Tests::Context& context)
 void run_boundary_validator_tests(Tests::Context& context)
 {
 	test_invalid_sample_preserves_latest(context);
+	test_frame_dt_contract(context);
 	test_invalid_typed_inputs_are_rejected(context);
 	test_suspension_rejection_preserves_latest(context);
 	test_invalid_pointer_and_index_are_rejected(context);

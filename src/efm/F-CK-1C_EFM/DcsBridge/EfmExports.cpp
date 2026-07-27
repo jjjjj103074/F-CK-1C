@@ -105,7 +105,7 @@ EFM_ABI_CATCH_VOID("ed_fm_add_local_moment", (void)0)
 void ed_fm_simulate(double dt) try
 {
 	ensure_module_initialized();
-	if (!Core::is_valid_frame_dt(dt))
+	if (!DcsBridge::Internal::is_valid_frame_dt(dt))
 	{
 		bridge().event_reporter().log_invalid_frame_dt(dt);
 		return;
@@ -504,7 +504,7 @@ void ed_fm_repair() try
 	ensure_module_initialized();
 	(void)bridge().perform_core_action(
 		{ "ed_fm_repair" },
-		[](Core::Fck1cEfm& core) { core.repair(); });
+		[](Core::Fck1cEfm& core) { core.repair({}); });
 }
 EFM_ABI_CATCH_VOID("ed_fm_repair", (void)0)
 

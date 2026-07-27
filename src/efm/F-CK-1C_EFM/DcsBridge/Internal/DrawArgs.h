@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../Common/Clamp.h"
-#include "../../Core/FrameContracts.h"
+#include "../../Core/Contracts/FrameContracts.h"
 #include "../../DcsIds/DrawArgs.h"
 #include "../../include/FM/wHumanCustomPhysicsAPI.h"
 #include <stddef.h>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Core/Fck1cEfm.h"
+#include "../../Core/Contracts/FrameContracts.h"
 #include "../../include/FM/wHumanCustomPhysicsAPI.h"
 #include "DcsCommandRouter.h"
 
@@ -19,6 +19,7 @@ struct CommandCallbackSample
 	const DcsCommandMapping& mapping;
 };
 
+bool is_valid_frame_dt(double dt_s) noexcept;
 bool validate_atmosphere_input(
 	const Core::AtmosphereInput& input,
 	EfmEventReporter& reporter);

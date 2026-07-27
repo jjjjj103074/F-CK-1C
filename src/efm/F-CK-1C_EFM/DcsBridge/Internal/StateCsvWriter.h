@@ -2,7 +2,7 @@
 
 #include "EventLog.h"
 #include "LogFileLifecycle.h"
-#include "../../Core/FrameContracts.h"
+#include "../../Core/Contracts/FrameContracts.h"
 
 #include <array>
 #include <atomic>

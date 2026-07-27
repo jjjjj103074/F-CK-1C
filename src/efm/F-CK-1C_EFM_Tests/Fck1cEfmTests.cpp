@@ -3,13 +3,26 @@
 
 #include "Core/Fck1cEfm.h"
 
-#include <limits>
 #include <stdexcept>
 
 namespace
 {
 constexpr double kTolerance = 1e-9;
 constexpr double kSimulationStepS = 0.01;
+constexpr double kPreparedInternalFuel = 240.0;
+constexpr double kPreparedExternalFuelLeft = 20.0;
+constexpr double kPreparedExternalFuelRight = 30.0;
+constexpr int kLeftExternalFuelStation = 1;
+constexpr int kRightExternalFuelStation = 2;
+constexpr std::size_t kFirstDamageSegment = 0;
+constexpr double kDamagedIntegrity = 0.2;
+constexpr double kCommandEnabled = 1.0;
+constexpr double kLifecyclePitchInput = 0.5;
+constexpr Core::StartMode kLifecycleModes[] = {
+	Core::StartMode::HotGround,
+	Core::StartMode::HotAir,
+	Core::StartMode::ColdGround
+};
 
 using Tests::Fck1c::all_frame_data_available;
 using Tests::Fck1c::make_frame_input;
@@ -146,17 +159,6 @@ void test_complete_frame_input_contract(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, input.max_power.value, 1.0, kTolerance);
 }
 
-void test_frame_dt_contract(Tests::Context& context)
-{
-	TEST_EXPECT(context, Core::is_valid_frame_dt(0.001));
-	TEST_EXPECT(context, !Core::is_valid_frame_dt(0.0));
-	TEST_EXPECT(context, !Core::is_valid_frame_dt(-0.001));
-	TEST_EXPECT(context, !Core::is_valid_frame_dt(
-		std::numeric_limits<double>::quiet_NaN()));
-	TEST_EXPECT(context, !Core::is_valid_frame_dt(
-		std::numeric_limits<double>::infinity()));
-}
-
 void test_all_start_mode_outputs(Tests::Context& context)
 {
 	const Core::StartMode modes[] = {
@@ -180,9 +182,9 @@ void test_frame_output_golden_contract(Tests::Context& context)
 	efm.set_internal_fuel(500.0);
 	efm.set_external_fuel({ 1, 120.0, { 0.5, -0.2, 0.1 } });
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandAction::SetLeftBrake, 0.4 });
+		Core::CommandGroup::LandingGear, Core::CommandId::SetLeftBrake, 0.4 });
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandAction::SetRightBrake, 0.6 });
+		Core::CommandGroup::LandingGear, Core::CommandId::SetRightBrake, 0.6 });
 	const Core::FrameInput input = make_frame_input();
 	const Core::FrameOutput output = efm.step(input);
 	// Golden values captured from 401f44c with this exact translated callback input.
@@ -261,6 +263,140 @@ void test_release_preparation_survives_start(Tests::Context& context)
 		context,
 		std::fabs(next.force_moment.moment.x -
 			easy_flight_disabled.force_moment.moment.x) > kTolerance);
+}
+
+bool step_throws_without_active_flight(Core::Fck1cEfm& efm)
+{
+	try
+	{
+		(void)efm.step(make_frame_input());
+	}
+	catch (const std::logic_error&)
+	{
+		return true;
+	}
+	return false;
+}
+
+void test_step_requires_active_flight(Tests::Context& context)
+{
+	Core::Fck1cEfm efm(make_test_config());
+	TEST_EXPECT(context, step_throws_without_active_flight(efm));
+	(void)efm.start(Core::StartMode::HotGround);
+	efm.release();
+	TEST_EXPECT(context, step_throws_without_active_flight(efm));
+}
+
+void configure_active_preparation(Core::Fck1cEfm& efm)
+{
+	efm.set_internal_fuel(kPreparedInternalFuel);
+	efm.set_external_fuel({
+		kLeftExternalFuelStation, kPreparedExternalFuelLeft, {} });
+	efm.set_external_fuel({
+		kRightExternalFuelStation, kPreparedExternalFuelRight, {} });
+	efm.set_infinite_fuel(true);
+	efm.set_easy_flight(true);
+	efm.set_invincible(true);
+}
+
+void expect_prepared_fuel(
+	Tests::Context& context,
+	const Core::FrameOutput& output)
+{
+	const double external =
+		kPreparedExternalFuelLeft + kPreparedExternalFuelRight;
+	TEST_EXPECT_NEAR(
+		context, output.fuel.internal_fuel, kPreparedInternalFuel, kTolerance);
+	TEST_EXPECT_NEAR(context, output.fuel.external_fuel, external, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, output.fuel.total_fuel, kPreparedInternalFuel + external, kTolerance);
+}
+
+void test_active_preparation_updates_next_flight(Tests::Context& context)
+{
+	Core::Fck1cEfm efm(make_test_config());
+	Core::Fck1cEfm normal_flight(make_test_config());
+	(void)efm.start(Core::StartMode::HotGround);
+	configure_active_preparation(efm);
+	expect_prepared_fuel(context, efm.step(make_frame_input()));
+	const Core::FrameOutput restarted = efm.start(Core::StartMode::HotAir);
+	expect_prepared_fuel(context, restarted);
+	TEST_EXPECT(context, efm.apply_damage(
+		{
+			Core::DamageArea::LeftWing,
+			kFirstDamageSegment,
+			kDamagedIntegrity
+		}).invincible);
+	const Core::FrameOutput easy_flight = efm.step(make_frame_input());
+	expect_prepared_fuel(context, easy_flight);
+	(void)normal_flight.start(Core::StartMode::HotAir);
+	const Core::FrameOutput normal = normal_flight.step(make_frame_input());
+	TEST_EXPECT(context, std::fabs(
+		easy_flight.force_moment.moment.x -
+		normal.force_moment.moment.x) > kTolerance);
+}
+
+void test_release_synchronizes_consumed_fuel(Tests::Context& context)
+{
+	Data::AircraftConfig config = make_test_config();
+	config.fuel.consumption_rate = 3.0;
+	Core::Fck1cEfm efm(config);
+	(void)efm.start(Core::StartMode::HotAir);
+	efm.set_internal_fuel(kPreparedInternalFuel);
+	efm.set_external_fuel({
+		kLeftExternalFuelStation, kPreparedExternalFuelLeft, {} });
+	const Core::FrameOutput consumed = efm.step(make_frame_input());
+	efm.release();
+	const Core::FrameOutput restarted = efm.start(Core::StartMode::HotAir);
+	TEST_EXPECT_NEAR(context, restarted.fuel.internal_fuel,
+		consumed.fuel.internal_fuel, kTolerance);
+	TEST_EXPECT_NEAR(context, restarted.fuel.external_fuel,
+		consumed.fuel.external_fuel, kTolerance);
+}
+
+void test_released_commands_and_damage_do_not_persist(Tests::Context& context)
+{
+	Core::Fck1cEfm subject(make_test_config());
+	Core::Fck1cEfm baseline(make_test_config());
+	(void)subject.start(Core::StartMode::HotAir);
+	subject.release();
+	subject.repair({});
+	subject.handle_command({
+		Core::CommandGroup::LandingGear,
+		Core::CommandId::SetGear,
+		kCommandEnabled
+	});
+	TEST_EXPECT(context, !subject.apply_damage(
+		{
+			Core::DamageArea::LeftWing,
+			kFirstDamageSegment,
+			kDamagedIntegrity
+		}).invincible);
+	(void)subject.start(Core::StartMode::HotAir);
+	(void)baseline.start(Core::StartMode::HotAir);
+	const Core::FrameOutput actual = subject.step(make_frame_input());
+	const Core::FrameOutput expected = baseline.step(make_frame_input());
+	TEST_EXPECT_NEAR(context, actual.landing_gear.gear_position,
+		expected.landing_gear.gear_position, kTolerance);
+	expect_vec3(context, actual.force_moment.force, expected.force_moment.force);
+	expect_vec3(context, actual.force_moment.moment, expected.force_moment.moment);
+}
+
+void test_repeated_start_release_cycles(Tests::Context& context)
+{
+	Core::Fck1cEfm efm(make_test_config());
+	for (const Core::StartMode mode : kLifecycleModes)
+	{
+		expect_start_output(context, efm.start(mode), mode);
+		efm.handle_command({
+			Core::CommandGroup::PitchRoll,
+			Core::CommandId::SetPitchAxis,
+			kLifecyclePitchInput
+		});
+		(void)efm.step(make_frame_input());
+		efm.release();
+		TEST_EXPECT(context, !efm.take_mass_delta().available);
+	}
 }
 
 void test_config_is_owned_by_core(Tests::Context& context)
@@ -349,7 +485,7 @@ void test_neutral_cockpit_input_completes_step(Tests::Context& context)
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	efm.handle_command({
-		Core::CommandGroup::PitchRoll, Core::CommandAction::SetPitchAxis, 0.3 });
+		Core::CommandGroup::PitchRoll, Core::CommandId::SetPitchAxis, 0.3 });
 	Core::FrameInput input;
 	input.dt_s = kSimulationStepS;
 	const Core::FrameOutput output = efm.step(input);
@@ -372,12 +508,16 @@ void test_damage_returns_immediate_result(Tests::Context& context)
 void run_fck1c_efm_tests(Tests::Context& context)
 {
 	test_complete_frame_input_contract(context);
-	test_frame_dt_contract(context);
 	test_all_start_mode_outputs(context);
 	test_frame_output_golden_contract(context);
 	test_unavailable_input_preserves_latest_values(context);
 	test_start_reinitializes_output(context);
 	test_release_preparation_survives_start(context);
+	test_step_requires_active_flight(context);
+	test_active_preparation_updates_next_flight(context);
+	test_release_synchronizes_consumed_fuel(context);
+	test_released_commands_and_damage_do_not_persist(context);
+	test_repeated_start_release_cycles(context);
 	test_config_is_owned_by_core(context);
 	test_invalid_config_rejected(context);
 	test_frame_output_isolation(context);

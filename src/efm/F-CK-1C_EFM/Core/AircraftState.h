@@ -3,7 +3,7 @@
 #include "../Common/Clamp.h"
 #include "../Common/Units.h"
 #include "../Common/Vec3.h"
-#include "FrameContracts.h"
+#include "Contracts/FrameContracts.h"
 #include <cmath>
 
 namespace Core
