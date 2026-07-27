@@ -235,6 +235,7 @@ struct FrameOutput
 	LandingGearOutput landing_gear;
 	SuspensionOutput suspension;
 	FuelOutput fuel;
+	MassDeltaResult mass_effect;
 	double shake_amplitude = 0.0;
 };
 }

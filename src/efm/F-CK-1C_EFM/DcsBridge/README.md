@@ -31,8 +31,9 @@ DCS setter callbacks
 
 Fuel getters and flight-preparation setters use
 `BridgeContext::perform_core_preparation`.
-Consumption callbacks with custom ABI results, such as mass delta, coordinate
-directly under the same execution mutex. Other callbacks publish input and wait
+Each completed `FrameOutput` mass effect is queued by `OutputStore`.
+`ed_fm_change_mass` drains that queue in publication order, while ordinary
+outputs retain latest-value semantics. Other callbacks publish input and wait
 for the next simulation step unless the DCS ABI requires an immediate return.
 
 `EfmExports.cpp` owns boundary orchestration: ABI defaults, validation,
@@ -54,8 +55,9 @@ calculations, log message formatting, or CSV row formatting.
 - `Core::Fck1cEfm` is the stable façade and owns the current per-flight
   `AircraftSimulation`. DCSBridge reads only `FrameOutput`; it must not read
   Core implementation state.
-- `FrameInputCollector` and `OutputStore` own copies of their latest typed
-  values. `StateCsvWriter` owns its worker thread and latest-record mailbox.
+- `FrameInputCollector` owns the latest typed inputs. `OutputStore` owns the
+  latest completed frame plus the lossless per-flight mass-effect queue.
+  `StateCsvWriter` owns its worker thread and latest-record mailbox.
 - `../DcsIds/` contains DCS boundary identifiers and generated ID tables. It is
   boundary-only, is not a supported external include, and is not a Core
   dependency.

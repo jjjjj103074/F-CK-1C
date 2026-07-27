@@ -18,6 +18,8 @@ The staged refactor and verification gates are recorded in
   per-flight simulation.
 - `F-CK-1C_EFM/Core/Systems/` - aircraft-owned systems and their pipeline
   contracts.
+- `F-CK-1C_EFM/Core/Simulation/Models/` - DCS-neutral physical effect models
+  for aerodynamics, propulsion, ground interaction, and mass properties.
 - `F-CK-1C_EFM/Systems/` - simulation helpers awaiting later migration.
 - `F-CK-1C_EFM/Data/` - immutable aircraft configuration and lookup tables.
 - `F-CK-1C_EFM/DcsBridge/Internal/` - private DCS adapters, lifecycle, log, and CSV implementation.
@@ -41,6 +43,9 @@ The Lua runtime references this DLL from `entry.lua`.
 Both the DLL and native test projects import `EfmCore.props` and
 `EfmCore.targets`. These shared rules compile the same Core sources and
 generate the build-time System catalog from `Core/Systems/*/Entry.cpp`.
+Simulation models are deliberately not registered or scanned: the
+`SimulationPipeline` executes each one exactly once in the fixed order
+Aerodynamics, Propulsion, GroundInteraction, then MassProperties.
 
 To verify the catalog generator independently:
 

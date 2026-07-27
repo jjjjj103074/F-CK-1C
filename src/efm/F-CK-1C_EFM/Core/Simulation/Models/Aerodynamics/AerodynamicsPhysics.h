@@ -1,44 +1,20 @@
 #pragma once
 
-#include "../Common/Clamp.h"
-#include "../Common/Interpolation.h"
-#include "../Common/Table.h"
-#include "../Common/Units.h"
-#include "../Common/Vec3.h"
-#include <cstddef>
+#include "../../../../Data/AircraftDefinition.h"
+#include "../../../../Common/Clamp.h"
+#include "../../../../Common/Interpolation.h"
+#include "../../../../Common/Table.h"
+#include "../../../../Common/Units.h"
+#include "../../../../Common/Vec3.h"
 #include <cmath>
-#include <vector>
 
-namespace Systems
+namespace Core
 {
-struct AerodynamicsSystemConfig
+namespace Simulation
 {
-	double wing_area = 0.0;
-	double wingspan = 0.0;
-	double length = 0.0;
-	double height = 0.0;
-	double mach_max = 0.0;
-
-	double cy_zero = 0.0;
-	double cz_beta = 0.0;
-	double cx_gear = 0.0;
-	double cx_airbrake = 0.0;
-	double cx_flap = 0.0;
-	double cx_lift_k = 0.0;
-	double cx_alpha_k = 0.0;
-	double cx_elevator_k = 0.0;
-	double cy_flap = 0.0;
-	double airbrake_pitch_comp_k = 0.0;
-
-	std::vector<double> mach_table;
-	std::vector<double> cx_zero_table;
-	std::vector<double> cy_alpha_table;
-	std::vector<double> roll_rate_max_table;
-	std::vector<double> alpha_max_table;
-	std::vector<double> cy_max_table;
-};
-
-struct AerodynamicsSystemState
+namespace AerodynamicsPhysics
+{
+struct AerodynamicsState
 {
 	Common::Vec3 left_wing_pos;
 	Common::Vec3 right_wing_pos;
@@ -114,24 +90,13 @@ struct AerodynamicConditionInput
 
 struct AerodynamicsContext
 {
-	const AerodynamicsSystemConfig& config;
+	const ::Data::AerodynamicsDefinition& config;
 	const AerodynamicsFrameInput& input;
 };
 
-inline bool has_valid_aerodynamics_tables(const AerodynamicsSystemConfig& config)
-{
-	const std::size_t table_size = config.mach_table.size();
-	return table_size > 0 &&
-		config.cx_zero_table.size() == table_size &&
-		config.cy_alpha_table.size() == table_size &&
-		config.roll_rate_max_table.size() == table_size &&
-		config.alpha_max_table.size() == table_size &&
-		config.cy_max_table.size() == table_size;
-}
-
 inline void initialize_aerodynamic_force_positions(
-	AerodynamicsSystemState& state,
-	const AerodynamicsSystemConfig& config,
+	AerodynamicsState& state,
+	const ::Data::AerodynamicsDefinition& config,
 	const Common::Vec3& center_of_mass)
 {
 	state.left_wing_pos = Common::Vec3(
@@ -151,7 +116,7 @@ inline void initialize_aerodynamic_force_positions(
 }
 
 inline void reset_aerodynamic_conditions(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicConditionInput& input)
 {
 	state.dynamic_pressure = 0.5 * input.atmosphere_density *
@@ -166,8 +131,8 @@ inline void reset_aerodynamic_conditions(
 }
 
 inline void interpolate_aerodynamic_conditions(
-	AerodynamicsSystemState& state,
-	const AerodynamicsSystemConfig& config,
+	AerodynamicsState& state,
+	const ::Data::AerodynamicsDefinition& config,
 	const AerodynamicConditionInput& input)
 {
 	const unsigned table_size = static_cast<unsigned>(config.mach_table.size());
@@ -185,8 +150,8 @@ inline void interpolate_aerodynamic_conditions(
 }
 
 inline void update_lift_coefficients(
-	AerodynamicsSystemState& state,
-	const AerodynamicsSystemConfig& config,
+	AerodynamicsState& state,
+	const ::Data::AerodynamicsDefinition& config,
 	const AerodynamicConditionInput& input)
 {
 	state.wing_lift_coefficient = state.cy_alpha * input.alpha_deg;
@@ -213,15 +178,15 @@ inline void update_lift_coefficients(
 }
 
 inline void update_aerodynamic_conditions(
-	AerodynamicsSystemState& state,
-	const AerodynamicsSystemConfig& config,
+	AerodynamicsState& state,
+	const ::Data::AerodynamicsDefinition& config,
 	const AerodynamicConditionInput& input)
 {
 	if (!state.force_positions_initialized)
 	{
 		initialize_aerodynamic_force_positions(state, config, input.center_of_mass);
 	}
-	if (!has_valid_aerodynamics_tables(config))
+	if (!::Data::has_valid_aerodynamics_definition(config))
 	{
 		reset_aerodynamic_conditions(state, input);
 		return;
@@ -231,8 +196,8 @@ inline void update_aerodynamic_conditions(
 }
 
 inline void update_wing_force_positions(
-	AerodynamicsSystemState& state,
-	const AerodynamicsSystemConfig& config,
+	AerodynamicsState& state,
+	const ::Data::AerodynamicsDefinition& config,
 	const AerodynamicsFrameInput& input)
 {
 	if ((std::fabs(input.alpha_deg) / state.alpha_max_deg) >= 0.75)
@@ -255,11 +220,11 @@ inline void update_wing_force_positions(
 
 template <typename ForceSink>
 inline void apply_wing_aerodynamics(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink& add_force)
 {
-	const AerodynamicsSystemConfig& config = context.config;
+	const ::Data::AerodynamicsDefinition& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	const double q = state.dynamic_pressure;
 	state.left_wing_force = Common::Vec3(
@@ -276,11 +241,11 @@ inline void apply_wing_aerodynamics(
 
 template <typename ForceSink>
 inline void apply_tail_aerodynamics(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink& add_force)
 {
-	const AerodynamicsSystemConfig& config = context.config;
+	const ::Data::AerodynamicsDefinition& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	const double q = state.dynamic_pressure;
 	state.tail_force = Common::Vec3(
@@ -292,11 +257,11 @@ inline void apply_tail_aerodynamics(
 
 template <typename ForceSink>
 inline void apply_elevator_aerodynamics(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink& add_force)
 {
-	const AerodynamicsSystemConfig& config = context.config;
+	const ::Data::AerodynamicsDefinition& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	const double q = state.dynamic_pressure;
 	const double elevator_deflection =
@@ -317,11 +282,11 @@ inline void apply_elevator_aerodynamics(
 
 template <typename ForceSink>
 inline void apply_aileron_aerodynamics(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink& add_force)
 {
-	const AerodynamicsSystemConfig& config = context.config;
+	const ::Data::AerodynamicsDefinition& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	const double q = state.dynamic_pressure;
 	const double aileron_deflection = Common::rescale(
@@ -339,7 +304,7 @@ inline void apply_aileron_aerodynamics(
 
 template <typename ForceSink>
 inline void apply_rudder_aerodynamics(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink& add_force)
 {
@@ -356,11 +321,11 @@ inline void apply_rudder_aerodynamics(
 
 template <typename ForceSink>
 inline void apply_primary_aerodynamics(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink add_force)
 {
-	const AerodynamicsSystemConfig& config = context.config;
+	const ::Data::AerodynamicsDefinition& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	state.lift_coefficient = state.wing_lift_coefficient + config.cy_zero +
 		(config.cy_flap * input.flaps_pos);
@@ -397,7 +362,7 @@ inline AerodynamicSinks<ForceSink, MomentSink> make_aerodynamic_sinks(
 
 template <typename MomentSink>
 inline void apply_rate_limiters(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	MomentSink& add_moment)
 {
@@ -417,11 +382,11 @@ inline void apply_rate_limiters(
 
 template <typename ForceSink>
 inline void apply_speed_limiter(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink& add_force)
 {
-	const AerodynamicsSystemConfig& config = context.config;
+	const ::Data::AerodynamicsDefinition& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	const double q = state.dynamic_pressure;
 	state.speed_limiter_force = 0.0;
@@ -438,11 +403,11 @@ inline void apply_speed_limiter(
 
 template <typename MomentSink>
 inline void apply_airbrake_compensation(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	MomentSink& add_moment)
 {
-	const AerodynamicsSystemConfig& config = context.config;
+	const ::Data::AerodynamicsDefinition& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	const double q = state.dynamic_pressure;
 	const double mean_aerodynamic_chord = config.wing_area / config.wingspan;
@@ -453,7 +418,7 @@ inline void apply_airbrake_compensation(
 
 template <typename ForceSink, typename MomentSink>
 inline void apply_easy_flight_assist(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	AerodynamicSinks<ForceSink, MomentSink>& sinks)
 {
@@ -473,7 +438,7 @@ inline void apply_easy_flight_assist(
 
 template <typename ForceSink, typename MomentSink>
 inline void apply_aerodynamic_limiters(
-	AerodynamicsSystemState& state,
+	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	AerodynamicSinks<ForceSink, MomentSink> sinks)
 {
@@ -484,8 +449,8 @@ inline void apply_aerodynamic_limiters(
 }
 
 inline double update_aerodynamic_shake(
-	AerodynamicsSystemState& state,
-	const AerodynamicsSystemConfig& config,
+	AerodynamicsState& state,
+	const ::Data::AerodynamicsDefinition& config,
 	const AerodynamicsFrameInput& input)
 {
 	state.shake_amplitude = Common::limit(
@@ -515,5 +480,7 @@ inline double update_aerodynamic_shake(
 	}
 
 	return state.shake_amplitude;
+}
+}
 }
 }

@@ -489,7 +489,7 @@ void SystemPipeline::Implementation::validate_fuel_management(
 		*runtime.setup.fuel_management;
 	const bool complete = handlers.read && handlers.current_data &&
 		handlers.set_internal && handlers.set_external &&
-		handlers.set_reported_flow && handlers.take_mass_delta;
+		handlers.suppress_consumption;
 	const int fuel_writer = writers[slot(AircraftDataId::FuelData)];
 	if (!complete || fuel_management ||
 		fuel_writer != static_cast<int>(system_index))
@@ -680,15 +680,10 @@ void SystemPipeline::set_external_fuel(const ExternalFuelInput& fuel)
 	implementation_->commit_current_fuel_data();
 }
 
-void SystemPipeline::set_reported_fuel_flow(double flow_rate)
+void SystemPipeline::suppress_fuel_consumption()
 {
-	implementation_->require_fuel_management().set_reported_flow(flow_rate);
+	implementation_->require_fuel_management().suppress_consumption();
 	implementation_->commit_current_fuel_data();
-}
-
-MassDeltaResult SystemPipeline::take_mass_delta()
-{
-	return implementation_->require_fuel_management().take_mass_delta();
 }
 
 std::size_t SystemPipeline::system_count() const

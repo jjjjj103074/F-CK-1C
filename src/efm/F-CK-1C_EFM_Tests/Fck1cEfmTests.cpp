@@ -244,7 +244,6 @@ void test_release_preparation_survives_start(Tests::Context& context)
 	const Core::FrameOutput easy_flight_disabled =
 		efm.step(make_frame_input());
 	efm.release();
-	TEST_EXPECT(context, !efm.take_mass_delta().available);
 	efm.set_internal_fuel(200.0);
 	efm.set_external_fuel({ 1, 30.0, {} });
 	efm.set_infinite_fuel(true);
@@ -259,6 +258,7 @@ void test_release_preparation_survives_start(Tests::Context& context)
 	const Core::FrameOutput next = efm.step(make_frame_input());
 	TEST_EXPECT_NEAR(context, next.fuel.internal_fuel, 200.0, kTolerance);
 	TEST_EXPECT_NEAR(context, next.fuel.external_fuel, 30.0, kTolerance);
+	TEST_EXPECT(context, !next.mass_effect.available);
 	TEST_EXPECT(
 		context,
 		std::fabs(next.force_moment.moment.x -
@@ -395,7 +395,6 @@ void test_repeated_start_release_cycles(Tests::Context& context)
 		});
 		(void)efm.step(make_frame_input());
 		efm.release();
-		TEST_EXPECT(context, !efm.take_mass_delta().available);
 	}
 }
 

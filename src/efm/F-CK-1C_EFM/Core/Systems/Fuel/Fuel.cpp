@@ -33,8 +33,7 @@ void Fuel::setup(SystemSetup& setup)
 		{
 			set_external_fuel({ fuel.station, fuel.fuel, fuel.position });
 		},
-		[this](double flow_rate) { set_reported_flow(flow_rate); },
-		[this]() { return take_management_mass_delta(); }
+		[this]() { suppress_consumption(); }
 	});
 }
 
@@ -57,9 +56,9 @@ const FuelData& Fuel::step(const FuelDemand& demand, double dt)
 	return data_;
 }
 
-void Fuel::set_reported_flow(double flow_rate)
+void Fuel::suppress_consumption()
 {
-	::Systems::set_reported_fuel_flow(fuel_, flow_rate);
+	::Systems::suppress_fuel_consumption(fuel_);
 	refresh_data();
 }
 
@@ -91,11 +90,6 @@ const ::Systems::FuelSystem& Fuel::state() const
 	return fuel_;
 }
 
-::Systems::FuelMassDeltaResult Fuel::take_mass_delta()
-{
-	return ::Systems::take_fuel_mass_delta(fuel_);
-}
-
 const FuelData& Fuel::data() const
 {
 	return data_;
@@ -117,25 +111,13 @@ FlightFuelState Fuel::management_state() const
 	return state;
 }
 
-MassDeltaResult Fuel::take_management_mass_delta()
-{
-	const ::Systems::FuelMassDeltaResult source = take_mass_delta();
-	return {
-		source.available,
-		{
-			source.delta.mass,
-			source.delta.position,
-			source.delta.moment_of_inertia
-		}
-	};
-}
-
 void Fuel::refresh_data()
 {
 	data_ = {
 		fuel_.internal_fuel,
 		fuel_.external_fuel,
-		fuel_.total_fuel_flow
+		fuel_.total_fuel_flow,
+		fuel_.frame_consumed_mass
 	};
 }
 }

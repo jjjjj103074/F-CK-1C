@@ -61,7 +61,7 @@
     <ClInclude Include="SystemPipelineTestFixture.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AerodynamicsSystemTests.cpp" />
+    <ClCompile Include="AerodynamicsPhysicsTests.cpp" />
     <ClCompile Include="AirframeDeviceSystemTests.cpp" />
     <ClCompile Include="AbiBoundaryTests.cpp" />
     <ClCompile Include="BridgeContextTests.cpp" />
@@ -87,6 +87,7 @@
     <ClCompile Include="ParamExportTests.cpp" />
     <ClCompile Include="Phase3SystemTests.cpp" />
     <ClCompile Include="Phase4SystemTimingTests.cpp" />
+    <ClCompile Include="SimulationModelTests.cpp" />
     <ClCompile Include="SuspensionSystemTests.cpp" />
     <ClCompile Include="SystemPipelineDataTests.cpp" />
     <ClCompile Include="SystemPipelineHandlerTests.cpp" />

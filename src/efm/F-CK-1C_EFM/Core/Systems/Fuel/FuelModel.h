@@ -24,21 +24,8 @@ struct FuelSystem
 	double internal_fuel = 0.0;
 	double external_fuel = 0.0;
 	double total_fuel_flow = 0.0;
-	double fuel_consumption_since_last_time = 0.0;
+	double frame_consumed_mass = 0.0;
 	std::map<int, ExternalFuelState> external_fuel_by_station;
-};
-
-struct FuelMassDelta
-{
-	double mass = 0.0;
-	Common::Vec3 position;
-	Common::Vec3 moment_of_inertia;
-};
-
-struct FuelMassDeltaResult
-{
-	bool available = false;
-	FuelMassDelta delta;
 };
 
 inline double consume_external_fuel(FuelSystem& fuel, double requested)
@@ -80,7 +67,7 @@ inline void consume_fuel(
 	const double external_consumed = consume_external_fuel(fuel, requested);
 	const double internal_consumed =
 		consume_internal_fuel(fuel, requested - external_consumed);
-	fuel.fuel_consumption_since_last_time =
+	fuel.frame_consumed_mass =
 		external_consumed + internal_consumed;
 }
 
@@ -92,26 +79,10 @@ inline void apply_fuel_demand(
 	consume_fuel(fuel, flow_rate, dt);
 }
 
-inline void set_reported_fuel_flow(
-	FuelSystem& fuel,
-	double flow_rate)
+inline void suppress_fuel_consumption(FuelSystem& fuel)
 {
-	fuel.total_fuel_flow = flow_rate;
-}
-
-inline FuelMassDeltaResult take_fuel_mass_delta(FuelSystem& fuel)
-{
-	FuelMassDeltaResult result;
-	if (fuel.fuel_consumption_since_last_time <= 0.0)
-	{
-		return result;
-	}
-
-	result.available = true;
-	result.delta.mass = fuel.fuel_consumption_since_last_time;
-	result.delta.position = Common::Vec3(-1.0, 1.0, 0.0);
-	fuel.fuel_consumption_since_last_time = 0.0;
-	return result;
+	fuel.total_fuel_flow = 0.0;
+	fuel.frame_consumed_mass = 0.0;
 }
 
 inline void set_internal_fuel(FuelSystem& fuel, double value)

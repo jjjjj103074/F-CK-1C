@@ -77,11 +77,6 @@ void Fck1cEfm::handle_command(const Command& command)
 	}
 }
 
-MassDeltaResult Fck1cEfm::take_mass_delta()
-{
-	return simulation_ ? simulation_->take_mass_delta() : MassDeltaResult{};
-}
-
 void Fck1cEfm::set_internal_fuel(double fuel)
 {
 	preparation_->fuel.internal_fuel = fuel;

@@ -131,6 +131,11 @@ void test_config_injection(Tests::Context& context)
 	const Data::EngineTables& engine = Data::fck1c_engine_tables();
 	expect_owned_table(context, config.aerodynamics.mach_table, aero.mach);
 	expect_owned_table(context, config.aerodynamics.cy_max_table, aero.cy_max);
+	expect_owned_table(context, config.flight_envelope.mach, aero.mach);
+	expect_owned_table(
+		context,
+		config.flight_envelope.alpha_limit_deg,
+		aero.alpha_max);
 	expect_owned_table(context, config.engine.mach_table, engine.mach);
 	expect_owned_table(context, config.engine.max_thrust_table, engine.max_thrust);
 	expect_owned_table(context, config.engine.throttle_input_table, engine.throttle_input);

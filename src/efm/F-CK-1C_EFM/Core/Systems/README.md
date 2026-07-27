@@ -97,8 +97,9 @@ have one semantic owner. Repair may have multiple subscribers. An unregistered
 command or damage event returns `DispatchResult::Unhandled`; handlers are not
 broadcast.
 
-Fuel registers the preparation and mass-delta handlers required by the
+Fuel registers only the preparation handlers used by the
 simulation façade. The Pipeline validates that the handler set is complete and
-belongs to the sole `FuelData` publisher. Infinite-fuel policy remains in
-Simulation; it can skip Fuel advancement without making Fuel aware of that
-policy.
+belongs to the sole `FuelData` publisher. Fuel publishes the current frame's
+consumed mass in `FuelData`; Simulation converts that snapshot value into a
+mass effect. Infinite-fuel policy remains in Simulation and Fuel does not know
+why consumption was suppressed.

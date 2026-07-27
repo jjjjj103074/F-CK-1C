@@ -101,6 +101,7 @@ namespace Simulation
 {
 FrameOutput AircraftSimulation::make_frame_output(
 	const Systems::AircraftDataSnapshot& aircraft,
+	const SimulationResult& simulation,
 	const FrameDataAvailability& availability) const
 {
 	const EngineData& engines =
@@ -111,14 +112,10 @@ FrameOutput AircraftSimulation::make_frame_output(
 	output.simulation_time_s = startup_.simulation_time;
 	output.availability = availability;
 	output.flight = project_flight(aircraft_state_);
-	output.force_moment = {
-		force_moment_.force,
-		force_moment_.moment,
-		force_moment_.center_of_mass
-	};
+	output.force_moment = simulation.force_moment;
 	output.engines = {
-		project_engine(engines.left, left_thrust_force_),
-		project_engine(engines.right, right_thrust_force_)
+		project_engine(engines.left, simulation.thrust_force[0]),
+		project_engine(engines.right, simulation.thrust_force[1])
 	};
 	output.controls = project_controls(
 		aircraft.read(AircraftDataKeys::kPilotControlState),
@@ -128,7 +125,8 @@ FrameOutput AircraftSimulation::make_frame_output(
 	output.suspension = project_suspension(landing_gear);
 	output.fuel = project_fuel(
 		aircraft.read(AircraftDataKeys::kFuelData));
-	output.shake_amplitude = gameplay_.shake_amplitude;
+	output.mass_effect = simulation.mass_effect;
+	output.shake_amplitude = simulation.shake_amplitude;
 	return output;
 }
 }

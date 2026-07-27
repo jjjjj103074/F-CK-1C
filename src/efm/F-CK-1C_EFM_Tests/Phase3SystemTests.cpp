@@ -145,8 +145,8 @@ FlightControlDemand expected_nonzero_demand()
 	FlightControlComputer reference(
 		config.fbw,
 		{
-			config.aerodynamics.mach_table,
-			config.aerodynamics.alpha_max_table
+			config.flight_envelope.mach,
+			config.flight_envelope.alpha_limit_deg
 		},
 		StartMode::HotGround);
 	::Systems::FBWControllerInput input;

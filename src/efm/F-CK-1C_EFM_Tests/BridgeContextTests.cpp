@@ -41,6 +41,8 @@ constexpr double kPreviousFlightAltitudeAslM = 999.0;
 constexpr double kPreparedInternalFuelKg = 300.0;
 constexpr int kPreparedExternalFuelStation = 2;
 constexpr double kPreparedExternalFuelKg = 40.0;
+constexpr double kFirstQueuedMassKg = 1.25;
+constexpr double kSecondQueuedMassKg = 2.5;
 constexpr auto kInputConcurrencyTimeout = std::chrono::seconds(1);
 std::atomic<int> g_cockpit_api_requests = 0;
 
@@ -124,7 +126,7 @@ void start_flight(
 	const std::lock_guard<std::mutex> lock(context.execution_mutex());
 	context.param_exporter().reset();
 	const Core::FrameOutput output = context.core().start(mode);
-	context.output_store().publish(output);
+	context.output_store().publish_start(output);
 	context.param_exporter().observe(output);
 	context.state_csv_writer().publish_start(output);
 }
@@ -242,6 +244,33 @@ void test_release_then_start_reuses_context(Tests::Context& tests)
 	const std::optional<Core::FrameOutput> output = context.output_store().read();
 	TEST_EXPECT(tests, output.has_value());
 	TEST_EXPECT_NEAR(tests, output->simulation_time_s, 0.0, 0.0);
+}
+
+void test_mass_delivery_drains_output_queue(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcq");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotGround);
+	Core::FrameOutput first;
+	first.mass_effect = { true, { kFirstQueuedMassKg, {}, {} } };
+	Core::FrameOutput second;
+	second.mass_effect = { true, { kSecondQueuedMassKg, {}, {} } };
+	context.output_store().publish(first);
+	context.output_store().publish(second);
+	const Core::MassDeltaResult first_result =
+		context.take_flight_mass_delta();
+	const Core::MassDeltaResult second_result =
+		context.take_flight_mass_delta();
+	TEST_EXPECT(tests, first_result.available);
+	TEST_EXPECT(tests, second_result.available);
+	TEST_EXPECT_NEAR(
+		tests, first_result.delta.mass, kFirstQueuedMassKg, 0.0);
+	TEST_EXPECT_NEAR(
+		tests, second_result.delta.mass, kSecondQueuedMassKg, 0.0);
+	TEST_EXPECT(tests, !context.take_flight_mass_delta().available);
 }
 
 void test_concurrent_first_callbacks_share_context(Tests::Context& tests)
@@ -461,6 +490,7 @@ void run_bridge_context_tests(Tests::Context& context)
 	test_first_callback_initializes_once(context);
 	test_files_ready_before_flight(context);
 	test_release_then_start_reuses_context(context);
+	test_mass_delivery_drains_output_queue(context);
 	test_concurrent_first_callbacks_share_context(context);
 	test_execution_mutex_serializes_core_actions(context);
 	test_input_collection_does_not_wait_for_core(context);

@@ -139,6 +139,19 @@ void write_fuel(std::ostringstream& output, const Core::FuelOutput& value)
 	output << "fuel.total_fuel_flow=" << value.total_fuel_flow << '\n';
 }
 
+void write_mass_effect(
+	std::ostringstream& output,
+	const Core::MassDeltaResult& value)
+{
+	output << "mass_effect.available=" << value.available << '\n';
+	output << "mass_effect.delta.mass=" << value.delta.mass << '\n';
+	write_vec3(output, "mass_effect.delta.position", value.delta.position);
+	write_vec3(
+		output,
+		"mass_effect.delta.moment_of_inertia",
+		value.delta.moment_of_inertia);
+}
+
 std::string frame_snapshot(const Core::FrameOutput& frame)
 {
 	std::ostringstream output;
@@ -158,6 +171,7 @@ std::string frame_snapshot(const Core::FrameOutput& frame)
 	write_landing_gear(output, frame.landing_gear);
 	write_suspension(output, frame.suspension);
 	write_fuel(output, frame.fuel);
+	write_mass_effect(output, frame.mass_effect);
 	output << "shake_amplitude=" << frame.shake_amplitude << '\n';
 	return output.str();
 }
@@ -451,7 +465,7 @@ struct PairedHotGroundEfms
 	Core::Fck1cEfm control;
 };
 
-void test_feedback_does_not_suppress_fallback_force(Tests::Context& context)
+void test_feedback_suppresses_fallback_force(Tests::Context& context)
 {
 	Data::AircraftConfig fallback = Tests::Fck1c::make_test_config();
 	fallback.suspension.enable_fallback_ground_forces = true;
@@ -463,16 +477,16 @@ void test_feedback_does_not_suppress_fallback_force(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		with_feedback.force_moment.force.y,
-		without_feedback.force_moment.force.y,
+		without_fallback.force_moment.force.y,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
 		with_feedback.force_moment.moment.z,
-		without_feedback.force_moment.moment.z,
+		without_fallback.force_moment.moment.z,
 		kTolerance);
 	TEST_EXPECT(context,
-		with_feedback.force_moment.force.y >
-			without_fallback.force_moment.force.y);
+		without_feedback.force_moment.force.y >
+			with_feedback.force_moment.force.y);
 }
 
 void test_repair_clears_damage_but_preserves_engine_history(
@@ -518,7 +532,7 @@ void test_invincible_damage_is_discarded(Tests::Context& context)
 		kTolerance);
 }
 
-void test_unread_mass_delta_is_overwritten(Tests::Context& context)
+void test_each_frame_exposes_its_mass_effect(Tests::Context& context)
 {
 	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
 	config.fuel.consumption_rate = 3.0;
@@ -529,16 +543,38 @@ void test_unread_mass_delta_is_overwritten(Tests::Context& context)
 	input.dt_s = 0.1;
 	const Core::FrameOutput first = efm.step(input);
 	const Core::FrameOutput second = efm.step(input);
-	const Core::MassDeltaResult delta = efm.take_mass_delta();
-	TEST_EXPECT(context, delta.available);
+	TEST_EXPECT(context, first.mass_effect.available);
+	TEST_EXPECT(context, second.mass_effect.available);
 	TEST_EXPECT_NEAR(
 		context,
-		delta.delta.mass,
+		first.mass_effect.delta.mass,
+		first.fuel.total_fuel_flow * input.dt_s,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		second.mass_effect.delta.mass,
 		second.fuel.total_fuel_flow * input.dt_s,
 		kTolerance);
-	TEST_EXPECT(context,
-		delta.delta.mass <
-			(first.fuel.total_fuel_flow + second.fuel.total_fuel_flow) * input.dt_s);
+}
+
+void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
+{
+	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
+	config.fuel.consumption_rate = 3.0;
+	Core::Fck1cEfm efm(config);
+	(void)efm.start(Core::StartMode::HotGround);
+	efm.set_internal_fuel(100.0);
+	Core::FrameInput input;
+	input.dt_s = 0.1;
+	TEST_EXPECT(context, efm.step(input).mass_effect.available);
+	const double fuel_before = efm.internal_fuel();
+	efm.set_infinite_fuel(true);
+	const Core::FrameOutput unlimited = efm.step(input);
+	TEST_EXPECT(context, !unlimited.mass_effect.available);
+	TEST_EXPECT_NEAR(
+		context, unlimited.fuel.total_fuel_flow, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, efm.internal_fuel(), fuel_before, kTolerance);
 }
 }
 
@@ -550,8 +586,9 @@ void run_fck1c_efm_characterization_tests(Tests::Context& context)
 	test_fuel_reads_previous_committed_engine_demand(context);
 	test_empty_fuel_inhibits_thrust_after_engine_update(context);
 	test_excess_altitude_inhibits_thrust_after_engine_update(context);
-	test_feedback_does_not_suppress_fallback_force(context);
+	test_feedback_suppresses_fallback_force(context);
 	test_repair_clears_damage_but_preserves_engine_history(context);
 	test_invincible_damage_is_discarded(context);
-	test_unread_mass_delta_is_overwritten(context);
+	test_each_frame_exposes_its_mass_effect(context);
+	test_infinite_fuel_suppresses_mass_effect(context);
 }

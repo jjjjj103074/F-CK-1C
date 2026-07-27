@@ -29,7 +29,6 @@ public:
 	double external_fuel() const;
 
 	void handle_command(const Command& command);
-	MassDeltaResult take_mass_delta();
 	void set_internal_fuel(double fuel);
 	void set_external_fuel(const ExternalFuelInput& input);
 	void add_refueling_fuel(double fuel);

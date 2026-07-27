@@ -43,7 +43,7 @@ void start_efm(Core::StartMode mode)
 		bridge().param_exporter().reset();
 		bridge().carrier_bridge().reset();
 		output = bridge().core().start(mode);
-		bridge().output_store().publish(output);
+		bridge().output_store().publish_start(output);
 		bridge().param_exporter().observe(output);
 		bridge().state_csv_writer().publish_start(output);
 	}

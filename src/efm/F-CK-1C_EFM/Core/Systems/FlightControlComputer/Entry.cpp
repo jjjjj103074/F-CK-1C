@@ -21,8 +21,8 @@ SystemEntry create_entry()
 			return std::make_unique<Core::Systems::FlightControlComputer>(
 				config.fbw,
 				FlightEnvelopeDefinition{
-					config.aerodynamics.mach_table,
-					config.aerodynamics.alpha_max_table
+					config.flight_envelope.mach,
+					config.flight_envelope.alpha_limit_deg
 				},
 				setup.start_mode);
 		}

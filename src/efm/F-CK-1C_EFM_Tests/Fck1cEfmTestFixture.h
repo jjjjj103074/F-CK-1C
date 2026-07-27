@@ -20,6 +20,10 @@ inline Data::AircraftConfig make_test_config()
 	config.aerodynamics.roll_rate_max_table = { 3.0, 2.0 };
 	config.aerodynamics.alpha_max_table = { 20.0, 18.0 };
 	config.aerodynamics.cy_max_table = { 1.2, 1.0 };
+	config.flight_envelope.mach =
+		config.aerodynamics.mach_table;
+	config.flight_envelope.alpha_limit_deg =
+		config.aerodynamics.alpha_max_table;
 	config.engine.start_time = 5.0;
 	config.engine.spool_up_tau = 1.0;
 	config.engine.spool_down_tau = 1.0;

@@ -111,6 +111,7 @@ struct FuelData
 	double internal_fuel = 0.0;
 	double external_fuel = 0.0;
 	double total_fuel_flow = 0.0;
+	double consumed_mass = 0.0;
 };
 
 struct AirframeIntegrity

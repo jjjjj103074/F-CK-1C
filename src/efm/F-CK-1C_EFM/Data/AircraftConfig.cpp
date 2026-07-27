@@ -5,10 +5,10 @@
 
 namespace
 {
-Systems::AerodynamicsSystemConfig make_aerodynamics_config()
+Data::AerodynamicsDefinition make_aerodynamics_config()
 {
 	const Data::AeroTables& data = Data::fck1c_aero_tables();
-	Systems::AerodynamicsSystemConfig config;
+	Data::AerodynamicsDefinition config;
 	config.wing_area = 24.26;
 	config.wingspan = 8.53;
 	config.length = 14.48;
@@ -51,6 +51,10 @@ Data::AircraftConfig make_aircraft_config()
 {
 	Data::AircraftConfig config;
 	config.aerodynamics = make_aerodynamics_config();
+	config.flight_envelope.mach =
+		config.aerodynamics.mach_table;
+	config.flight_envelope.alpha_limit_deg =
+		config.aerodynamics.alpha_max_table;
 	config.engine = make_engine_config();
 	config.fuel.consumption_rate = Data::fck1c_engine_tables().fuel_consumption;
 	config.left_engine_position = Common::Vec3(-3.793, -0.391, -0.716);
@@ -61,6 +65,31 @@ Data::AircraftConfig make_aircraft_config()
 
 namespace Data
 {
+GroundInteractionDefinition make_ground_interaction_definition(
+		const Systems::SuspensionSystemConfig& suspension)
+{
+	GroundInteractionDefinition definition;
+	for (std::size_t index = 0;
+		index < Core::kFrameSuspensionWheelCount;
+		++index)
+	{
+		definition.gear_points[index] =
+			suspension.fallback_gear_points[index];
+		definition.wheel_radius[index] =
+			suspension.fallback_wheel_radius[index];
+		definition.spring[index] =
+			suspension.fallback_spring[index];
+		definition.damping[index] =
+			suspension.fallback_damping[index];
+		definition.contact_band[index] =
+			suspension.fallback_contact_band[index];
+	}
+	definition.belly_point = suspension.fallback_belly_point;
+	definition.enable_fallback_ground_forces =
+		suspension.enable_fallback_ground_forces;
+	return definition;
+}
+
 const AircraftConfig& fck1c_aircraft_config()
 {
 	static const AircraftConfig config = make_aircraft_config();

@@ -1,12 +1,12 @@
 #include "TestHarness.h"
 
+#include "Core/Simulation/Models/MassProperties/MassPropertiesModel.h"
 #include "Core/Systems/Fuel/Fuel.h"
 
 namespace
 {
 constexpr double kTolerance = 1e-9;
 constexpr double kPendingConsumption = 12.5;
-constexpr double kAvailableFuel = 20.0;
 constexpr double kFlowRate = 2.5;
 constexpr double kFrameDt = 0.2;
 constexpr double kExpectedConsumption = 0.5;
@@ -14,7 +14,6 @@ constexpr double kExternalFuel = 10.0;
 constexpr double kInternalFuel = 10.0;
 constexpr double kBoundaryExternalFuel = 0.25;
 constexpr double kRemainingInternalFuel = 9.75;
-constexpr double kOneSecond = 1.0;
 constexpr double kMassPositionX = -1.0;
 constexpr double kMassPositionY = 1.0;
 constexpr double kMassPositionZ = 0.0;
@@ -26,24 +25,29 @@ constexpr double kUpdatedFirstStationFuel = 4.0;
 constexpr double kTotalStationFuel = 30.0;
 constexpr double kUpdatedTotalStationFuel = 24.0;
 
-void test_pending_mass_delta_is_consumed_once(Tests::Context& context)
+void test_mass_properties_projects_consumed_fuel(Tests::Context& context)
 {
-	Core::Systems::Fuel fuel;
-	fuel.set_internal_fuel(kAvailableFuel);
-	fuel.step({ kPendingConsumption }, kOneSecond);
-	const Systems::FuelMassDeltaResult first = fuel.take_mass_delta();
-	TEST_EXPECT(context, first.available);
+	Core::Simulation::MassPropertiesModel model;
+	Core::FuelData fuel;
+	fuel.consumed_mass = kPendingConsumption;
+	const Core::MassDeltaResult& result = model.step(fuel);
+	TEST_EXPECT(context, result.available);
 	TEST_EXPECT_NEAR(
-		context, first.delta.mass, kPendingConsumption, kTolerance);
+		context, result.delta.mass, kPendingConsumption, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, first.delta.position.x, kMassPositionX, kTolerance);
+		context, result.delta.position.x, kMassPositionX, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, first.delta.position.y, kMassPositionY, kTolerance);
+		context, result.delta.position.y, kMassPositionY, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, first.delta.position.z, kMassPositionZ, kTolerance);
+		context, result.delta.position.z, kMassPositionZ, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, result.delta.moment_of_inertia.x, 0.0, kTolerance);
+}
 
-	const Systems::FuelMassDeltaResult second = fuel.take_mass_delta();
-	TEST_EXPECT(context, !second.available);
+void test_mass_properties_ignores_zero_consumption(Tests::Context& context)
+{
+	Core::Simulation::MassPropertiesModel model;
+	TEST_EXPECT(context, !model.step({}).available);
 }
 
 void test_fuel_consumes_registered_demand(Tests::Context& context)
@@ -54,11 +58,9 @@ void test_fuel_consumes_registered_demand(Tests::Context& context)
 		fuel.step({ kFlowRate }, kFrameDt);
 	TEST_EXPECT_NEAR(
 		context, data.total_fuel_flow, kFlowRate, kTolerance);
-	const Systems::FuelMassDeltaResult delta = fuel.take_mass_delta();
-	TEST_EXPECT(context, delta.available);
 	TEST_EXPECT_NEAR(
 		context,
-		delta.delta.mass,
+		data.consumed_mass,
 		kExpectedConsumption,
 		kTolerance);
 }
@@ -101,16 +103,15 @@ void test_consumption_crosses_external_fuel_boundary(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, fuel.external_fuel(), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(
 		context, fuel.internal_fuel(), kRemainingInternalFuel, kTolerance);
-	const Systems::FuelMassDeltaResult delta = fuel.take_mass_delta();
-	TEST_EXPECT(context, delta.available);
 	TEST_EXPECT_NEAR(
-		context, delta.delta.mass, kExpectedConsumption, kTolerance);
+		context, fuel.data().consumed_mass, kExpectedConsumption, kTolerance);
 }
 }
 
 void run_mass_delta_tests(Tests::Context& context)
 {
-	test_pending_mass_delta_is_consumed_once(context);
+	test_mass_properties_projects_consumed_fuel(context);
+	test_mass_properties_ignores_zero_consumption(context);
 	test_fuel_consumes_registered_demand(context);
 	test_external_fuel_is_aggregated_by_station(context);
 	test_consumption_crosses_external_fuel_boundary(context);

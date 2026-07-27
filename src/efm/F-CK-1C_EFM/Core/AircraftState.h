@@ -16,6 +16,7 @@ struct AircraftState
 	Common::Vec3 angular_velocity_world;
 	Common::Vec3 angular_velocity_body;
 	Common::Vec3 airspeed;
+	Common::Vec3 center_of_mass;
 
 	double current_mass = 9000.0;
 	double atmosphere_density = 101000.0;
@@ -68,9 +69,12 @@ inline void set_surface(
 	state.altitude_agl = state.altitude_asl - input.surface_height;
 }
 
-inline void set_current_mass(AircraftState& state, double mass)
+inline void set_mass_state(
+	AircraftState& state,
+	const MassStateInput& input)
 {
-	state.current_mass = mass;
+	state.current_mass = input.mass;
+	state.center_of_mass = input.center_of_mass;
 }
 
 inline void set_world_kinematics(
@@ -137,7 +141,7 @@ inline void apply_aircraft_observations(
 	}
 	if (input.availability.mass)
 	{
-		set_current_mass(state, input.mass.mass);
+		set_mass_state(state, input.mass);
 	}
 	if (input.availability.world_kinematics)
 	{

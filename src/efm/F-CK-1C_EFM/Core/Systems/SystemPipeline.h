@@ -37,8 +37,7 @@ struct FuelManagementHandlers
 	std::function<FuelData()> current_data;
 	std::function<void(double)> set_internal;
 	std::function<void(const ExternalFuelInput&)> set_external;
-	std::function<void(double)> set_reported_flow;
-	std::function<MassDeltaResult()> take_mass_delta;
+	std::function<void()> suppress_consumption;
 };
 
 struct SystemStepOptions
@@ -199,8 +198,7 @@ public:
 	FlightFuelState fuel_state() const;
 	void set_internal_fuel(double fuel);
 	void set_external_fuel(const ExternalFuelInput& fuel);
-	void set_reported_fuel_flow(double flow_rate);
-	MassDeltaResult take_mass_delta();
+	void suppress_fuel_consumption();
 	std::size_t system_count() const;
 
 private:

@@ -31,8 +31,7 @@ FuelManagementHandlers complete_fuel_management()
 		[]() { return FuelData{}; },
 		[](double) {},
 		[](const ExternalFuelInput&) {},
-		[](double) {},
-		[]() { return MassDeltaResult{}; }
+		[]() {}
 	};
 }
 
