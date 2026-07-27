@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Common/Actuator.h"
-#include "../Common/Clamp.h"
-#include "../Common/Table.h"
+#include "Common/Actuator.h"
+#include "Common/Clamp.h"
+#include "Common/Table.h"
 #include <cstddef>
 #include <vector>
 
@@ -356,17 +356,6 @@ inline void shutdown_engines(EngineSystemState& engines, double dt)
 		engines.left.power_readout, { 0.0, -dt / 10, dt / 10 });
 	engines.right.power_readout = Common::actuator(
 		engines.right.power_readout, { 0.0, -dt / 10, dt / 10 });
-}
-
-inline void apply_thrust_cut(EngineSystemState& engines, bool cut_thrust)
-{
-	if (!cut_thrust)
-	{
-		return;
-	}
-
-	engines.left.thrust_force = 0.0;
-	engines.right.thrust_force = 0.0;
 }
 
 inline double remap_engine_range(double value, const RangeRemap& range)

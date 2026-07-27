@@ -4,9 +4,18 @@
 setup declarations, routes commands and events, and commits shared
 `AircraftData`.
 
-Phase 2 deliberately contains no production System. The existing aircraft
-logic continues to run through `AircraftSimulation` until each owner is moved
-in a later phase.
+Phase 3 provides the production aircraft owners listed below. During this
+migration, `AircraftSimulation` still calls the concrete owners in the
+established frame order. Phase 4 will make `SystemPipeline` the production
+scheduler after timing parity is verified.
+
+- `FlightControlComputer`
+- `PrimaryFlightControls`
+- `SecondaryFlightControls`
+- `LandingGear`
+- `Engine`
+- `Fuel`
+- `AirframeStructure`
 
 ## System contract
 
@@ -78,6 +87,11 @@ Use only keys declared in `Core/Contracts/AircraftData.h`. A key has one
 publisher; readers may require an initial value or explicitly accept an
 uninitialized value. A missing provider, wrong type, duplicate publisher, or
 missing required initial value fails setup.
+
+`FrameInput` carries frame-local values such as `dt`, autopilot commands, and
+suspension samples. `AircraftObservation` carries retained, normalized flight
+state. The Pipeline updates only observations whose availability flag is set;
+missing samples keep their previous committed values.
 
 Commands have one registered handler per semantic `CommandId`. Damage areas
 have one semantic owner. Repair may have multiple subscribers. An unregistered

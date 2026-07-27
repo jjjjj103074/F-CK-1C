@@ -122,4 +122,30 @@ inline double ground_speed(const AircraftState& state)
 		state.velocity_world.x * state.velocity_world.x +
 		state.velocity_world.z * state.velocity_world.z);
 }
+
+inline void apply_aircraft_observations(
+	AircraftState& state,
+	const FrameInput& input)
+{
+	if (input.availability.atmosphere)
+	{
+		set_atmosphere(state, input.atmosphere);
+	}
+	if (input.availability.surface)
+	{
+		set_surface(state, input.surface);
+	}
+	if (input.availability.mass)
+	{
+		set_current_mass(state, input.mass.mass);
+	}
+	if (input.availability.world_kinematics)
+	{
+		set_world_kinematics(state, input.world_kinematics);
+	}
+	if (input.availability.body_kinematics)
+	{
+		set_body_kinematics(state, input.body_kinematics);
+	}
+}
 }

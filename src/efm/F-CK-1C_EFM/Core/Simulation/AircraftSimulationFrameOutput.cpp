@@ -23,14 +23,16 @@ Core::FlightOutput project_flight(const Core::AircraftState& source)
 	};
 }
 
-Core::EngineOutput project_engine(const Systems::EngineChannelState& source)
+Core::EngineOutput project_engine(
+	const Core::EngineChannelData& source,
+	double thrust_force)
 {
 	return {
 		source.switch_on,
 		source.throttle_input,
 		source.throttle_output,
 		source.power_readout,
-		source.thrust_force,
+		thrust_force,
 		source.afterburner_ratio,
 		source.afterburner_lit,
 		source.nozzle_aperture
@@ -38,34 +40,34 @@ Core::EngineOutput project_engine(const Systems::EngineChannelState& source)
 }
 
 Core::ControlOutput project_controls(
-	const Systems::PrimaryControlState& input,
-	const Core::Simulation::ControlSurfaceState& surfaces,
-	const Systems::AirframeDeviceState& devices)
+	const Core::PilotControlState& input,
+	const Core::PrimaryControlPosition& primary,
+	const Core::SecondaryControlPosition& secondary)
 {
 	return {
-		input.pitch.input,
-		input.roll.input,
-		input.yaw.input,
-		surfaces.elevator_command,
-		surfaces.aileron_command,
-		surfaces.rudder_command,
-		devices.flaps_pos,
-		devices.slats_pos,
-		devices.airbrake_pos
+		input.pitch,
+		input.roll,
+		input.yaw,
+		primary.elevator,
+		primary.aileron,
+		primary.rudder,
+		secondary.flaps,
+		secondary.slats,
+		secondary.airbrake
 	};
 }
 
 Core::LandingGearOutput project_landing_gear(
-	const Systems::LandingGearSystemState& source)
+	const Core::LandingGearData& source)
 {
 	Core::LandingGearOutput output;
 	output.gear_position = source.position;
-	output.nose_wheel_steering = source.wheels.nose_steering;
-	output.brake_left = source.wheels.brake_left;
-	output.brake_right = source.wheels.brake_right;
+	output.nose_wheel_steering = source.nose_wheel_steering;
+	output.brake_left = source.brake_left;
+	output.brake_right = source.brake_right;
 	for (std::size_t index = 0; index < output.wheel_spin.size(); ++index)
 	{
-		output.wheel_spin[index] = source.wheels.spin[index];
+		output.wheel_spin[index] = source.wheel_spin[index];
 	}
 	return output;
 }
@@ -87,7 +89,7 @@ Core::SuspensionOutput project_suspension(
 	return output;
 }
 
-Core::FuelOutput project_fuel(const Systems::FuelSystem& source)
+Core::FuelOutput project_fuel(const Core::FuelData& source)
 {
 	return {
 		source.internal_fuel,
@@ -106,7 +108,7 @@ FrameOutput AircraftSimulation::make_frame_output(
 	const FrameDataAvailability& availability) const
 {
 	FrameOutput output;
-	output.simulation_time_s = systems_.startup.simulation_time;
+	output.simulation_time_s = startup_.simulation_time;
 	output.availability = availability;
 	output.flight = project_flight(aircraft_state_);
 	output.force_moment = {
@@ -115,16 +117,17 @@ FrameOutput AircraftSimulation::make_frame_output(
 		force_moment_.center_of_mass
 	};
 	output.engines = {
-		project_engine(systems_.engines.left),
-		project_engine(systems_.engines.right)
+		project_engine(engine_.data().left, left_thrust_force_),
+		project_engine(engine_.data().right, right_thrust_force_)
 	};
 	output.controls = project_controls(
-		systems_.primary_controls,
-		control_surfaces_,
-		systems_.airframe_devices);
-	output.landing_gear = project_landing_gear(systems_.landing_gear);
-	output.suspension = project_suspension(systems_.suspension);
-	output.fuel = project_fuel(systems_.fuel);
+		flight_control_computer_.pilot_controls(),
+		primary_flight_controls_.position(),
+		secondary_flight_controls_.position());
+	output.landing_gear = project_landing_gear(landing_gear_.data());
+	output.suspension =
+		project_suspension(landing_gear_.suspension_state());
+	output.fuel = project_fuel(fuel_.data());
 	output.shake_amplitude = gameplay_.shake_amplitude;
 	return output;
 }

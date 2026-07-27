@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Common/Actuator.h"
-#include "../Common/Clamp.h"
+#include "Common/Actuator.h"
+#include "Common/Clamp.h"
 
 namespace Systems
 {

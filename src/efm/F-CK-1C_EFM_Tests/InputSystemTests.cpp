@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "Systems/InputSystem.h"
+#include "Core/Systems/FlightControlComputer/InputModel.h"
 
 namespace
 {

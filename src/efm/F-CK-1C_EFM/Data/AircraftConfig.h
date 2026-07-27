@@ -1,10 +1,10 @@
 #pragma once
 
 #include "../Common/Vec3.h"
+#include "../Core/Systems/Engine/EngineModel.h"
+#include "../Core/Systems/FlightControlComputer/ControlLaws.h"
+#include "../Core/Systems/Fuel/FuelModel.h"
 #include "../Systems/AerodynamicsSystem.h"
-#include "../Systems/EngineSystem.h"
-#include "../Systems/FBWController.h"
-#include "../Systems/FuelSystem.h"
 #include "../Systems/SuspensionSystem.h"
 
 namespace Data

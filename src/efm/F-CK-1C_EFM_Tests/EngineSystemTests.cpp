@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "Systems/EngineSystem.h"
+#include "Core/Systems/Engine/EngineModel.h"
 
 namespace
 {

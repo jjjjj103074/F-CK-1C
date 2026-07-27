@@ -16,7 +16,9 @@ The staged refactor and verification gates are recorded in
 - `F-CK-1C_EFM/DcsBridge/README.md` - boundary data flow and contributor guide.
 - `F-CK-1C_EFM/Core/` - stable façade, shared contracts, and DCS-neutral
   per-flight simulation.
-- `F-CK-1C_EFM/Systems/` - flight systems, including the active FBW controller.
+- `F-CK-1C_EFM/Core/Systems/` - aircraft-owned systems and their pipeline
+  contracts.
+- `F-CK-1C_EFM/Systems/` - simulation helpers awaiting later migration.
 - `F-CK-1C_EFM/Data/` - immutable aircraft configuration and lookup tables.
 - `F-CK-1C_EFM/DcsBridge/Internal/` - private DCS adapters, lifecycle, log, and CSV implementation.
 - `F-CK-1C_EFM/include/` - DCS cockpit and flight model API headers.

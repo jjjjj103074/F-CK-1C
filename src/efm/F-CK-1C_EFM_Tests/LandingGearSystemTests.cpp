@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "Systems/LandingGearSystem.h"
+#include "Core/Systems/LandingGear/LandingGearModel.h"
 
 namespace
 {

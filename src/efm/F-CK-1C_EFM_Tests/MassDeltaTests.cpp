@@ -1,93 +1,117 @@
 #include "TestHarness.h"
 
-#include "Systems/FuelSystem.h"
+#include "Core/Systems/Fuel/Fuel.h"
 
 namespace
 {
 constexpr double kTolerance = 1e-9;
+constexpr double kPendingConsumption = 12.5;
+constexpr double kAvailableFuel = 20.0;
+constexpr double kFlowRate = 2.5;
+constexpr double kFrameDt = 0.2;
+constexpr double kExpectedConsumption = 0.5;
+constexpr double kExternalFuel = 10.0;
+constexpr double kInternalFuel = 10.0;
+constexpr double kBoundaryExternalFuel = 0.25;
+constexpr double kRemainingInternalFuel = 9.75;
+constexpr double kOneSecond = 1.0;
+constexpr double kMassPositionX = -1.0;
+constexpr double kMassPositionY = 1.0;
+constexpr double kMassPositionZ = 0.0;
+constexpr int kFirstFuelStation = 1;
+constexpr int kSecondFuelStation = 2;
+constexpr double kFirstStationFuel = 10.0;
+constexpr double kSecondStationFuel = 20.0;
+constexpr double kUpdatedFirstStationFuel = 4.0;
+constexpr double kTotalStationFuel = 30.0;
+constexpr double kUpdatedTotalStationFuel = 24.0;
 
 void test_pending_mass_delta_is_consumed_once(Tests::Context& context)
 {
-	Systems::FuelSystem fuel;
-	fuel.fuel_consumption_since_last_time = 12.5;
-	const Systems::FuelMassDeltaResult first = Systems::take_fuel_mass_delta(fuel);
+	Core::Systems::Fuel fuel;
+	fuel.set_internal_fuel(kAvailableFuel);
+	fuel.step({ kPendingConsumption }, kOneSecond);
+	const Systems::FuelMassDeltaResult first = fuel.take_mass_delta();
 	TEST_EXPECT(context, first.available);
-	TEST_EXPECT_NEAR(context, first.delta.mass, 12.5, kTolerance);
-	TEST_EXPECT_NEAR(context, first.delta.position.x, -1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, first.delta.position.y, 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, first.delta.position.z, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, first.delta.mass, kPendingConsumption, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, first.delta.position.x, kMassPositionX, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, first.delta.position.y, kMassPositionY, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, first.delta.position.z, kMassPositionZ, kTolerance);
 
-	const Systems::FuelMassDeltaResult second = Systems::take_fuel_mass_delta(fuel);
+	const Systems::FuelMassDeltaResult second = fuel.take_mass_delta();
 	TEST_EXPECT(context, !second.available);
-	TEST_EXPECT_NEAR(context, fuel.fuel_consumption_since_last_time, 0.0, kTolerance);
 }
 
-void test_fuel_flow_matches_consumption_rate(Tests::Context& context)
+void test_fuel_consumes_registered_demand(Tests::Context& context)
 {
-	Systems::FuelSystem fuel;
-	Systems::set_external_fuel(fuel, { 1, 10.0, {} });
-	const Systems::FuelSystemConfig config = { 3.0 };
-	const Systems::FuelConsumptionInput input = {
-		0.2, 0.5, 1.0, 0.0, 0.0, 2.0
-	};
-	Systems::simulate_fuel_consumption(fuel, config, input);
-	TEST_EXPECT_NEAR(context, fuel.total_fuel_flow, 2.5, kTolerance);
+	Core::Systems::Fuel fuel;
+	fuel.set_external_fuel({ kFirstFuelStation, kExternalFuel, {} });
+	const Core::FuelData& data =
+		fuel.step({ kFlowRate }, kFrameDt);
+	TEST_EXPECT_NEAR(
+		context, data.total_fuel_flow, kFlowRate, kTolerance);
+	const Systems::FuelMassDeltaResult delta = fuel.take_mass_delta();
+	TEST_EXPECT(context, delta.available);
 	TEST_EXPECT_NEAR(
 		context,
-		fuel.fuel_consumption_since_last_time,
-		0.5,
+		delta.delta.mass,
+		kExpectedConsumption,
 		kTolerance);
 }
 
 void test_external_fuel_is_aggregated_by_station(Tests::Context& context)
 {
-	Systems::FuelSystem fuel;
-	Systems::set_external_fuel(fuel, { 1, 10.0, { 1.0, 0.0, 0.0 } });
-	Systems::set_external_fuel(fuel, { 2, 20.0, { 2.0, 0.0, 0.0 } });
-	TEST_EXPECT_NEAR(context, Systems::get_external_fuel(fuel), 30.0, kTolerance);
-	Systems::set_external_fuel(fuel, { 1, 4.0, { 1.0, 0.0, 0.0 } });
-	TEST_EXPECT_NEAR(context, Systems::get_external_fuel(fuel), 24.0, kTolerance);
-	Systems::set_external_fuel(fuel, { 2, 0.0, {} });
-	TEST_EXPECT_NEAR(context, Systems::get_external_fuel(fuel), 4.0, kTolerance);
+	Core::Systems::Fuel fuel;
+	fuel.set_external_fuel({
+		kFirstFuelStation,
+		kFirstStationFuel,
+		{ kMassPositionY, kMassPositionZ, kMassPositionZ }
+	});
+	fuel.set_external_fuel({
+		kSecondFuelStation,
+		kSecondStationFuel,
+		{ kSecondFuelStation, kMassPositionZ, kMassPositionZ }
+	});
+	TEST_EXPECT_NEAR(
+		context, fuel.external_fuel(), kTotalStationFuel, kTolerance);
+	fuel.set_external_fuel({
+		kFirstFuelStation,
+		kUpdatedFirstStationFuel,
+		{ kMassPositionY, kMassPositionZ, kMassPositionZ }
+	});
+	TEST_EXPECT_NEAR(
+		context, fuel.external_fuel(), kUpdatedTotalStationFuel, kTolerance);
+	fuel.set_external_fuel({ kSecondFuelStation, kMassPositionZ, {} });
+	TEST_EXPECT_NEAR(
+		context, fuel.external_fuel(), kUpdatedFirstStationFuel, kTolerance);
 }
 
 void test_consumption_crosses_external_fuel_boundary(Tests::Context& context)
 {
-	Systems::FuelSystem fuel;
-	fuel.internal_fuel = 10.0;
-	Systems::set_external_fuel(fuel, { 1, 0.25, {} });
-	const Systems::FuelSystemConfig config = { 3.0 };
-	const Systems::FuelConsumptionInput input = {
-		0.2, 0.5, 1.0, 0.0, 0.0, 2.0
-	};
-	Systems::simulate_fuel_consumption(fuel, config, input);
-	TEST_EXPECT_NEAR(context, fuel.external_fuel, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, fuel.internal_fuel, 9.75, kTolerance);
+	Core::Systems::Fuel fuel;
+	fuel.set_internal_fuel(kInternalFuel);
+	fuel.set_external_fuel({
+		kFirstFuelStation, kBoundaryExternalFuel, {}
+	});
+	fuel.step({ kFlowRate }, kFrameDt);
+	TEST_EXPECT_NEAR(context, fuel.external_fuel(), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, fuel.fuel_consumption_since_last_time, 0.5, kTolerance);
-}
-
-void test_transient_reset_preserves_prepared_fuel(Tests::Context& context)
-{
-	Systems::FuelSystem fuel;
-	fuel.internal_fuel = 7.0;
-	Systems::set_external_fuel(fuel, { 3, 5.0, {} });
-	fuel.total_fuel_flow = 2.0;
-	fuel.fuel_consumption_since_last_time = 1.0;
-	Systems::reset_fuel_transient_state(fuel);
-	TEST_EXPECT_NEAR(context, fuel.internal_fuel, 7.0, kTolerance);
-	TEST_EXPECT_NEAR(context, fuel.external_fuel, 5.0, kTolerance);
-	TEST_EXPECT_NEAR(context, fuel.total_fuel_flow, 0.0, kTolerance);
+		context, fuel.internal_fuel(), kRemainingInternalFuel, kTolerance);
+	const Systems::FuelMassDeltaResult delta = fuel.take_mass_delta();
+	TEST_EXPECT(context, delta.available);
 	TEST_EXPECT_NEAR(
-		context, fuel.fuel_consumption_since_last_time, 0.0, kTolerance);
+		context, delta.delta.mass, kExpectedConsumption, kTolerance);
 }
 }
 
 void run_mass_delta_tests(Tests::Context& context)
 {
 	test_pending_mass_delta_is_consumed_once(context);
-	test_fuel_flow_matches_consumption_rate(context);
+	test_fuel_consumes_registered_demand(context);
 	test_external_fuel_is_aggregated_by_station(context);
 	test_consumption_crosses_external_fuel_boundary(context);
-	test_transient_reset_preserves_prepared_fuel(context);
 }

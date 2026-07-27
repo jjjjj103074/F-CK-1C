@@ -4,6 +4,10 @@
 
 namespace Core
 {
+inline constexpr std::size_t kWingDamageSegmentCount = 3;
+inline constexpr std::size_t kTailDamageSegmentCount = 5;
+inline constexpr std::size_t kEngineDamageSegmentCount = 3;
+
 enum class DamageArea
 {
 	LeftWing,

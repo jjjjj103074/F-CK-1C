@@ -15,6 +15,8 @@ constexpr std::size_t kMaxGearTransitionFrames = 1000;
 constexpr double kGearMidpoint = 0.5;
 constexpr double kExpectedFlapIncrementPerFrame = 0.002;
 constexpr double kExpectedSlatIncrementPerFrame = 0.003;
+constexpr double kEngineShutdownAltitudeAsl = 21000.0;
+constexpr double kOperatingFuelMass = 100.0;
 
 void write_availability(
 	std::ostringstream& output,
@@ -317,6 +319,51 @@ void test_engine_output_drives_fuel_in_same_frame(Tests::Context& context)
 		kTolerance);
 }
 
+Core::FrameOutput run_engine_shutdown_frame(
+	double internal_fuel,
+	double altitude_asl)
+{
+	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config());
+	(void)efm.start(Core::StartMode::HotGround);
+	efm.set_internal_fuel(internal_fuel);
+	efm.handle_command({
+		Core::CommandGroup::Throttle,
+		Core::CommandId::SetCommonThrottleAxis,
+		1.0
+	});
+	Core::FrameInput input = Tests::Fck1c::make_frame_input();
+	input.dt_s = 0.1;
+	input.atmosphere.altitude_asl = altitude_asl;
+	return efm.step(input);
+}
+
+void expect_shutdown_thrust_is_inhibited(
+	Tests::Context& context,
+	const Core::FrameOutput& frame)
+{
+	TEST_EXPECT(context, frame.engines[0].throttle_output > 0.0);
+	TEST_EXPECT_NEAR(context, frame.engines[0].thrust_force, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, frame.engines[1].thrust_force, 0.0, kTolerance);
+}
+
+void test_empty_fuel_inhibits_thrust_after_engine_update(
+	Tests::Context& context)
+{
+	expect_shutdown_thrust_is_inhibited(
+		context,
+		run_engine_shutdown_frame(0.0, 0.0));
+}
+
+void test_excess_altitude_inhibits_thrust_after_engine_update(
+	Tests::Context& context)
+{
+	expect_shutdown_thrust_is_inhibited(
+		context,
+		run_engine_shutdown_frame(
+			kOperatingFuelMass,
+			kEngineShutdownAltitudeAsl));
+}
+
 Core::FrameInput make_ground_input(bool feedback_available)
 {
 	Core::FrameInput input;
@@ -410,7 +457,7 @@ void test_repair_clears_damage_but_preserves_engine_history(
 		repaired.engines[0].thrust_force != expected.engines[0].thrust_force);
 }
 
-void test_invincible_damage_remains_latent(Tests::Context& context)
+void test_invincible_damage_is_discarded(Tests::Context& context)
 {
 	PairedHotGroundEfms pair;
 	pair.subject.set_invincible(true);
@@ -420,10 +467,13 @@ void test_invincible_damage_remains_latent(Tests::Context& context)
 	(void)pair.subject.apply_damage({ Core::DamageArea::RightWing, 0, 1.0 });
 	Core::FrameInput input;
 	input.dt_s = 0.02;
-	const Core::FrameOutput latent = pair.subject.step(input);
+	const Core::FrameOutput ignored = pair.subject.step(input);
 	const Core::FrameOutput undamaged = pair.control.step(input);
-	TEST_EXPECT(context,
-		latent.engines[0].thrust_force < undamaged.engines[0].thrust_force);
+	TEST_EXPECT_NEAR(
+		context,
+		ignored.engines[0].thrust_force,
+		undamaged.engines[0].thrust_force,
+		kTolerance);
 }
 
 void test_unread_mass_delta_is_overwritten(Tests::Context& context)
@@ -456,8 +506,10 @@ void run_fck1c_efm_characterization_tests(Tests::Context& context)
 	test_repeated_run_is_deterministic(context);
 	test_gear_position_drives_flaps_in_same_frame(context);
 	test_engine_output_drives_fuel_in_same_frame(context);
+	test_empty_fuel_inhibits_thrust_after_engine_update(context);
+	test_excess_altitude_inhibits_thrust_after_engine_update(context);
 	test_feedback_does_not_suppress_fallback_force(context);
 	test_repair_clears_damage_but_preserves_engine_history(context);
-	test_invincible_damage_remains_latent(context);
+	test_invincible_damage_is_discarded(context);
 	test_unread_mass_delta_is_overwritten(context);
 }

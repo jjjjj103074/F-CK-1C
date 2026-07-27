@@ -1,8 +1,8 @@
 #pragma once
 
-#include "FBWControllerTypes.h"
-#include "../Common/Clamp.h"
-#include "../Common/Units.h"
+#include "ControlLawTypes.h"
+#include "Common/Clamp.h"
+#include "Common/Units.h"
 #include <cmath>
 
 namespace Systems

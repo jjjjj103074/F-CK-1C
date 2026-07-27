@@ -1,9 +1,9 @@
-#include "FBWController.h"
+#include "ControlLaws.h"
 
-#include "FBWMath.h"
-#include "../Common/Actuator.h"
-#include "../Common/Clamp.h"
-#include "../Common/Units.h"
+#include "ControlLawMath.h"
+#include "Common/Actuator.h"
+#include "Common/Clamp.h"
+#include "Common/Units.h"
 #include <cmath>
 
 namespace

@@ -23,6 +23,7 @@
     <ClInclude Include="$(EfmCoreRoot)Simulation\AircraftSimulation.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\System.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\SystemPipeline.h" />
+    <ClInclude Include="$(EfmSystemRoot)\*\*.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(EfmCoreRoot)Fck1cEfm.cpp">
@@ -38,6 +39,14 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="$(EfmCoreRoot)Systems\SystemPipeline.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <EfmSystemSource
+      Include="$(EfmSystemRoot)\*\*.cpp"
+      Exclude="$(EfmSystemRoot)\*\Entry.cpp">
+      <ObjectFileName>$(IntDir)SystemSources\$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('%(FullPath)')))).%(Filename).obj</ObjectFileName>
+    </EfmSystemSource>
+    <ClCompile Include="@(EfmSystemSource)">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <EfmSystemEntry Include="$(EfmSystemRoot)\*\Entry.cpp">

@@ -85,6 +85,7 @@
     <ClCompile Include="MassDeltaTests.cpp" />
     <ClCompile Include="OutputStoreTests.cpp" />
     <ClCompile Include="ParamExportTests.cpp" />
+    <ClCompile Include="Phase3SystemTests.cpp" />
     <ClCompile Include="SuspensionSystemTests.cpp" />
     <ClCompile Include="SystemPipelineDataTests.cpp" />
     <ClCompile Include="SystemPipelineHandlerTests.cpp" />
@@ -107,8 +108,6 @@
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\OutputStore.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\StateCsvWriter.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWController.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWLifecycle.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Import Project="..\EfmCore.targets" />

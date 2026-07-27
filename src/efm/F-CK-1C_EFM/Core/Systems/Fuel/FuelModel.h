@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Common/Vec3.h"
+#include "Common/Vec3.h"
 
 #include <algorithm>
 #include <map>
@@ -10,16 +10,6 @@ namespace Systems
 struct FuelSystemConfig
 {
 	double consumption_rate = 0.0;
-};
-
-struct FuelConsumptionInput
-{
-	double dt = 0.0;
-	double left_throttle_output = 0.0;
-	double right_throttle_output = 0.0;
-	double left_afterburner_ratio = 0.0;
-	double right_afterburner_ratio = 0.0;
-	double afterburner_fuel_factor = 0.0;
 };
 
 struct ExternalFuelState
@@ -80,26 +70,33 @@ inline double consume_internal_fuel(FuelSystem& fuel, double requested)
 	return consumed;
 }
 
-inline void simulate_fuel_consumption(
+inline void consume_fuel(
 	FuelSystem& fuel,
-	const FuelSystemConfig& config,
-	const FuelConsumptionInput& input)
+	double flow_rate,
+	double dt)
 {
-	const double ab_avg = 0.5 * (input.left_afterburner_ratio + input.right_afterburner_ratio);
-	const double ab_fuel_mult = 1.0 + ab_avg * (input.afterburner_fuel_factor - 1.0);
-
-	// Fuel drain at full throttle in Kg/s.
-	fuel.total_fuel_flow =
-		config.consumption_rate *
-		((input.left_throttle_output + input.right_throttle_output + 1) / 3) *
-		ab_fuel_mult;
-	const double requested = fuel.total_fuel_flow * input.dt;
-
+	fuel.total_fuel_flow = flow_rate;
+	const double requested = flow_rate * dt;
 	const double external_consumed = consume_external_fuel(fuel, requested);
 	const double internal_consumed =
 		consume_internal_fuel(fuel, requested - external_consumed);
 	fuel.fuel_consumption_since_last_time =
 		external_consumed + internal_consumed;
+}
+
+inline void apply_fuel_demand(
+	FuelSystem& fuel,
+	double flow_rate,
+	double dt)
+{
+	consume_fuel(fuel, flow_rate, dt);
+}
+
+inline void set_reported_fuel_flow(
+	FuelSystem& fuel,
+	double flow_rate)
+{
+	fuel.total_fuel_flow = flow_rate;
 }
 
 inline FuelMassDeltaResult take_fuel_mass_delta(FuelSystem& fuel)
@@ -151,9 +148,4 @@ inline double get_external_fuel(const FuelSystem& fuel)
 	return fuel.external_fuel;
 }
 
-inline void reset_fuel_transient_state(FuelSystem& fuel)
-{
-	fuel.total_fuel_flow = 0.0;
-	fuel.fuel_consumption_since_last_time = 0.0;
-}
 }

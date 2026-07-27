@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "Systems/AirframeDeviceSystem.h"
+#include "Core/Systems/SecondaryFlightControls/SecondaryFlightControlModel.h"
 
 namespace
 {

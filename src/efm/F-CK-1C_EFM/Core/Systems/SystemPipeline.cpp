@@ -1,5 +1,7 @@
 #include "SystemPipeline.h"
 
+#include "../AircraftState.h"
+
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -13,6 +15,25 @@ namespace Systems
 namespace
 {
 constexpr int kNoAircraftDataWriter = -1;
+constexpr int kExternalAircraftDataWriter = -2;
+constexpr double kDynamicPressureCoefficient = 0.5;
+
+template <std::size_t... Indices>
+std::array<std::type_index, sizeof...(Indices)> make_aircraft_data_types(
+	std::index_sequence<Indices...>)
+{
+	return {
+		std::type_index(typeid(
+			std::variant_alternative_t<Indices, AircraftDataValue>))...
+	};
+}
+
+static_assert(
+	std::variant_size<AircraftDataValue>::value == kAircraftDataSlotCount,
+	"AircraftData IDs and value types must have the same size.");
+
+const auto kAircraftDataTypes = make_aircraft_data_types(
+	std::make_index_sequence<kAircraftDataSlotCount>{});
 
 std::size_t slot(AircraftDataId id)
 {
@@ -26,16 +47,7 @@ std::size_t slot(AircraftDataId id)
 
 std::type_index expected_type(AircraftDataId id)
 {
-	switch (id)
-	{
-	case AircraftDataId::FlightControlDemand:
-		return typeid(FlightControlDemand);
-	case AircraftDataId::PrimaryControlPosition:
-		return typeid(PrimaryControlPosition);
-	case AircraftDataId::Count:
-		break;
-	}
-	throw std::logic_error("AircraftData key has an invalid ID.");
+	return kAircraftDataTypes[slot(id)];
 }
 
 void validate_key(const AircraftDataDescriptor& descriptor)
@@ -57,6 +69,28 @@ std::string system_error(
 	const std::string& message)
 {
 	return "System '" + system_id + "': " + message;
+}
+
+AircraftObservation make_observation(const AircraftState& state)
+{
+	return {
+		state.altitude_asl,
+		state.altitude_agl,
+		state.atmosphere_density,
+		state.speed_scalar,
+		ground_speed(state),
+		state.mach,
+		kDynamicPressureCoefficient * state.atmosphere_density *
+			state.speed_scalar * state.speed_scalar,
+		state.g,
+		state.alpha,
+		state.beta,
+		state.roll,
+		state.pitch,
+		state.roll_rate,
+		state.pitch_rate,
+		state.yaw_rate
+	};
 }
 }
 
@@ -129,6 +163,7 @@ struct SystemPipeline::Implementation
 	void commit_group(SystemGroup group, Storage& next);
 
 	std::vector<RuntimeSystem> systems;
+	AircraftState observation_state;
 	Storage committed;
 	std::array<int, kAircraftDataSlotCount> writers;
 	std::map<CommandId, CommandHandler> command_handlers;
@@ -260,6 +295,14 @@ SystemPipeline::Implementation::Implementation(
 	std::vector<SystemEntry> catalog)
 {
 	writers.fill(kNoAircraftDataWriter);
+	const std::size_t frame_input_slot =
+		slot(AircraftDataId::FrameInput);
+	writers[frame_input_slot] = kExternalAircraftDataWriter;
+	committed[frame_input_slot] = FrameInput{};
+	const std::size_t observation_slot =
+		slot(AircraftDataId::AircraftObservation);
+	writers[observation_slot] = kExternalAircraftDataWriter;
+	committed[observation_slot] = make_observation(observation_state);
 	create_systems(context, std::move(catalog));
 	collect_declarations();
 	validate_and_commit_setup();
@@ -308,7 +351,7 @@ void SystemPipeline::Implementation::collect_declarations()
 
 void SystemPipeline::Implementation::validate_and_commit_setup()
 {
-	Storage initial;
+	Storage initial = committed;
 	validate_publications(initial);
 	validate_reads(initial);
 	validate_handlers();
@@ -422,12 +465,17 @@ AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot(
 AircraftDataSnapshot SystemPipeline::Implementation::step(
 	const FrameInput& input)
 {
-	// Production observation keys are introduced when the first System migrates.
-	(void)input;
 	Storage next = committed;
+	next[slot(AircraftDataId::FrameInput)] = input;
+	AircraftState next_observation = observation_state;
+	apply_aircraft_observations(next_observation, input);
+	update_airspeed(next_observation);
+	next[slot(AircraftDataId::AircraftObservation)] =
+		make_observation(next_observation);
 	run_group(SystemGroup::Control, next);
 	run_group(SystemGroup::Equipment, next);
 	committed = std::move(next);
+	observation_state = std::move(next_observation);
 	return make_snapshot();
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Common/Clamp.h"
+#include "Common/Clamp.h"
 
 namespace Systems
 {

@@ -17,8 +17,9 @@ constexpr double kInitialCrossPosition = 2.0;
 constexpr double kDemandOffset = 10.0;
 constexpr double kPositionOffset = 20.0;
 constexpr double kTolerance = 1e-12;
+constexpr double kFullIntegrity = 1.0;
 constexpr int kFirstCall = 0;
-constexpr std::size_t kEmptyCatalogSize = 0;
+constexpr std::size_t kPhaseThreeCatalogSize = 7;
 
 struct DemandPublisherOptions
 {
@@ -232,9 +233,15 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 	};
 	SystemPipeline pipeline(
 		flight_setup(), { entry(publisher), entry(failing_equipment) });
+	FrameInput failed_input;
+	failed_input.availability.world_kinematics = true;
+	failed_input.world_kinematics.velocity.x = kNextDemand;
 	TEST_EXPECT(
 		context,
-		action_throws([&pipeline]() { (void)step_pipeline(pipeline); }));
+		action_throws([&pipeline, &failed_input]()
+		{
+			(void)pipeline.step(failed_input);
+		}));
 	const AircraftDataSnapshot unchanged = pipeline.snapshot();
 	TEST_EXPECT_NEAR(context, *observed, kNextDemand, kTolerance);
 	TEST_EXPECT_NEAR(
@@ -245,6 +252,11 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		unchanged.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		kNeutralValue,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		unchanged.read(AircraftDataKeys::kAircraftObservation).speed_scalar,
 		kNeutralValue,
 		kTolerance);
 }
@@ -389,11 +401,30 @@ void test_catalog_order_does_not_change_group_result(Tests::Context& context)
 	expect_order_independent_result(context, step_pipeline(reverse));
 }
 
-void test_empty_generated_catalog(Tests::Context& context)
+void test_phase_three_generated_catalog(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup());
-	TEST_EXPECT(context, pipeline.system_count() == kEmptyCatalogSize);
-	(void)step_pipeline(pipeline);
+	TEST_EXPECT(context, pipeline.system_count() == kPhaseThreeCatalogSize);
+	const AircraftDataSnapshot output = step_pipeline(pipeline);
+	TEST_EXPECT_NEAR(
+		context,
+		output.read(AircraftDataKeys::kPilotControlState).pitch,
+		kNeutralValue,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		output.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		kNeutralValue,
+		kTolerance);
+	TEST_EXPECT(
+		context,
+		output.read(AircraftDataKeys::kFuelData).total_fuel_flow >=
+			kNeutralValue);
+	TEST_EXPECT_NEAR(
+		context,
+		output.read(AircraftDataKeys::kAirframeIntegrity).left_wing,
+		kFullIntegrity,
+		kTolerance);
 }
 
 void test_factory_receives_start_mode(Tests::Context& context)
@@ -431,6 +462,6 @@ void run_system_pipeline_data_tests(Tests::Context& context)
 	test_missing_new_value_retains_last_commit(context);
 	test_pending_storage_does_not_leak(context);
 	test_catalog_order_does_not_change_group_result(context);
-	test_empty_generated_catalog(context);
+	test_phase_three_generated_catalog(context);
 	test_factory_receives_start_mode(context);
 }

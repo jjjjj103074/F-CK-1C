@@ -1,7 +1,7 @@
 #pragma once
 
-#include "FBWControllerTypes.h"
-#include "FBWLifecycle.h"
+#include "ControlLawTypes.h"
+#include "ControlLawLifecycle.h"
 
 namespace Systems
 {

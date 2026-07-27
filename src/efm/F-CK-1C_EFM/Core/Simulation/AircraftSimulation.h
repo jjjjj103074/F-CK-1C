@@ -4,18 +4,17 @@
 #include "../Contracts/Commands.h"
 #include "../Contracts/Events.h"
 #include "../Contracts/FrameContracts.h"
+#include "../Systems/AirframeStructure/AirframeStructure.h"
+#include "../Systems/Engine/Engine.h"
+#include "../Systems/FlightControlComputer/FlightControlComputer.h"
+#include "../Systems/Fuel/Fuel.h"
+#include "../Systems/LandingGear/LandingGear.h"
+#include "../Systems/PrimaryFlightControls/PrimaryFlightControls.h"
+#include "../Systems/SecondaryFlightControls/SecondaryFlightControls.h"
 #include "../../Common/Vec3.h"
 #include "../../Data/AircraftConfig.h"
 #include "../../Systems/AerodynamicsSystem.h"
-#include "../../Systems/AirframeDeviceSystem.h"
-#include "../../Systems/DamageModel.h"
-#include "../../Systems/EngineSystem.h"
-#include "../../Systems/FBWController.h"
-#include "../../Systems/FuelSystem.h"
-#include "../../Systems/InputSystem.h"
-#include "../../Systems/LandingGearSystem.h"
 #include "../../Systems/StartupSystem.h"
-#include "../../Systems/SuspensionSystem.h"
 
 #include <map>
 
@@ -56,32 +55,10 @@ struct ForceMomentFrame
 	Common::Vec3 center_of_mass;
 };
 
-struct ControlSurfaceState
-{
-	double elevator_command = 0.0;
-	double aileron_command = 0.0;
-	double rudder_command = 0.0;
-};
-
 struct GameplayState
 {
 	SimulationOptions options;
 	double shake_amplitude = 0.0;
-};
-
-struct AircraftSystems
-{
-	Systems::AerodynamicsSystemState aerodynamics;
-	Systems::PrimaryControlState primary_controls;
-	Systems::EngineSystemState engines;
-	Systems::ThrottleInputState throttle_inputs;
-	Systems::AirframeDeviceState airframe_devices;
-	Systems::LandingGearSystemState landing_gear;
-	Systems::FuelSystem fuel;
-	Systems::SuspensionSystemState suspension;
-	Systems::DamageModel damage;
-	Systems::StartupSystemState startup;
-	Systems::FBWControllerState fbw;
 };
 
 class AircraftSimulation final
@@ -111,37 +88,25 @@ private:
 		const FrameDataAvailability& availability) const;
 	void apply_setup(const FlightSetupContext& setup);
 	void apply_frame_input(const FrameInput& input);
-	void apply_mass_input(const MassStateInput& input);
 	void apply_suspension_input(const FrameInput& input);
-	void configure_start_state(const FlightSetupContext& setup);
-	void handle_pitch_roll_command(const Command& command);
-	void handle_yaw_command(const Command& command);
-	void handle_fbw_command(const Command& command);
-	void handle_engine_command(const Command& command);
-	void handle_throttle_command(const Command& command);
-	void handle_airframe_command(const Command& command);
-	void handle_landing_gear_command(const Command& command);
 	void begin_frame(double dt);
 	void update_airframe(double dt);
-	void update_autopilot(const AutopilotCommand& command);
-	void update_fbw(double dt);
-	Systems::FBWControllerInput make_fbw_input(double dt) const;
-	Systems::AerodynamicsFrameInput make_aerodynamics_input() const;
+	void update_fbw(double dt, const AutopilotCommand& autopilot);
+	::Systems::FBWControllerInput make_fbw_input(double dt) const;
+	::Systems::AerodynamicsFrameInput make_aerodynamics_input() const;
 	void update_primary_aerodynamics(
-		const Systems::AerodynamicsFrameInput& input);
+		const ::Systems::AerodynamicsFrameInput& input);
 	void update_engines_and_fuel(
 		double dt,
 		const MaxPowerCommand& max_power);
 	double max_dry_thrust() const;
-	void update_engine_state(double dt, double dry_thrust);
-	void handle_engine_shutdown(double dt);
+	void update_engine_thrust(double dry_thrust);
 	void apply_thrust(const MaxPowerCommand& command);
 	void update_fuel(double dt);
 	void update_ground_and_suspension(
 		double dt,
-		const Systems::AerodynamicsFrameInput& input);
+		const ::Systems::AerodynamicsFrameInput& input);
 	void apply_fallback_ground_forces();
-	double nose_wheel_steering() const;
 	void add_force(
 		const Common::Vec3& force,
 		const Common::Vec3& position);
@@ -151,9 +116,19 @@ private:
 	const Data::AircraftConfig& config_;
 	AircraftState aircraft_state_;
 	ForceMomentFrame force_moment_;
-	ControlSurfaceState control_surfaces_;
 	GameplayState gameplay_;
-	AircraftSystems systems_;
+	::Systems::AerodynamicsSystemState aerodynamics_;
+	::Systems::StartupSystemState startup_;
+	::Systems::SuspensionSystemState ground_physics_;
+	Systems::FlightControlComputer flight_control_computer_;
+	Systems::PrimaryFlightControls primary_flight_controls_;
+	Systems::SecondaryFlightControls secondary_flight_controls_;
+	Systems::LandingGear landing_gear_;
+	Systems::Engine engine_;
+	Systems::Fuel fuel_;
+	Systems::AirframeStructure airframe_structure_;
+	double left_thrust_force_ = 0.0;
+	double right_thrust_force_ = 0.0;
 };
 
 void validate_aircraft_config(const Data::AircraftConfig& config);
