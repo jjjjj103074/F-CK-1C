@@ -4,10 +4,9 @@
 setup declarations, routes commands and events, and commits shared
 `AircraftData`.
 
-Phase 3 provides the production aircraft owners listed below. During this
-migration, `AircraftSimulation` still calls the concrete owners in the
-established frame order. Phase 4 will make `SystemPipeline` the production
-scheduler after timing parity is verified.
+The Pipeline is the sole production scheduler and commit point for these
+aircraft owners. `AircraftSimulation` consumes only the completed aircraft
+snapshot and does not call or own concrete Systems.
 
 - `FlightControlComputer`
 - `PrimaryFlightControls`
@@ -22,10 +21,9 @@ scheduler after timing parity is verified.
 Every System is a class derived from `System` and has two lifecycle methods:
 
 - `setup()` declares AircraftData reads/publications and registers handlers.
-- `step(frame input)` advances one complete frame and returns its immutable
-  AircraftData snapshot. Each System reads one immutable group snapshot and
-  writes only to its reusable
-  `SystemResult`.
+- `step()` advances one complete frame. Each System reads one immutable group
+  snapshot and writes only to its reusable `SystemResult`; the Pipeline
+  returns the completed immutable AircraftData snapshot.
 
 Setup completes in two stages. The Pipeline first collects every System's
 declarations, then validates providers, types, initial values, single writers,
@@ -77,7 +75,8 @@ MSBuild scans `Core/Systems/*/Entry.cpp` before compilation and generates the
 catalog in the project intermediate directory. Do not edit a generated catalog
 or add the Entry manually to either `.vcxproj`.
 
-`FlightSetupContext` currently exposes only `StartMode`. Simulation policies,
+`FlightSetupContext` contains the immutable aircraft configuration, `StartMode`,
+and initial fuel load needed to construct one flight. Simulation policies,
 including infinite fuel, invincibility, and easy flight, do not belong in a
 System.
 
@@ -97,3 +96,9 @@ Commands have one registered handler per semantic `CommandId`. Damage areas
 have one semantic owner. Repair may have multiple subscribers. An unregistered
 command or damage event returns `DispatchResult::Unhandled`; handlers are not
 broadcast.
+
+Fuel registers the preparation and mass-delta handlers required by the
+simulation façade. The Pipeline validates that the handler set is complete and
+belongs to the sole `FuelData` publisher. Infinite-fuel policy remains in
+Simulation; it can skip Fuel advancement without making Fuel aware of that
+policy.

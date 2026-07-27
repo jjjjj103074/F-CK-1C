@@ -24,6 +24,7 @@ void run_mass_delta_tests(Tests::Context& context);
 void run_output_store_tests(Tests::Context& context);
 void run_param_export_tests(Tests::Context& context);
 void run_phase_three_system_tests(Tests::Context& context);
+void run_phase_four_system_timing_tests(Tests::Context& context);
 void run_state_csv_writer_tests(Tests::Context& context);
 void run_suspension_system_tests(Tests::Context& context);
 void run_system_pipeline_data_tests(Tests::Context& context);
@@ -49,6 +50,7 @@ int main()
 	run_output_store_tests(context);
 	run_param_export_tests(context);
 	run_phase_three_system_tests(context);
+	run_phase_four_system_timing_tests(context);
 	run_state_csv_writer_tests(context);
 	run_suspension_system_tests(context);
 	run_engine_system_tests(context);

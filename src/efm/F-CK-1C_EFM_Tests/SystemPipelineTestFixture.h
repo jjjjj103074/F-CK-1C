@@ -2,6 +2,7 @@
 
 #include "TestHarness.h"
 #include "../F-CK-1C_EFM/Core/Systems/SystemPipeline.h"
+#include "../F-CK-1C_EFM/Data/AircraftConfig.h"
 
 #include <functional>
 #include <memory>
@@ -67,7 +68,11 @@ inline Core::Systems::SystemEntry entry(const SystemDefinition& definition)
 
 inline Core::Systems::FlightSetupContext flight_setup()
 {
-	return { Core::StartMode::HotGround };
+	return {
+		Data::fck1c_aircraft_config(),
+		Core::StartMode::HotGround,
+		{}
+	};
 }
 
 inline Core::Systems::AircraftDataSnapshot step_pipeline(

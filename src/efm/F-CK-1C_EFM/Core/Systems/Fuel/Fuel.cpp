@@ -6,11 +6,36 @@ namespace Core
 {
 namespace Systems
 {
+Fuel::Fuel(const FlightFuelState& initial)
+{
+	set_internal_fuel(initial.internal_fuel);
+	for (const ExternalFuelInput& external : initial.external_fuel)
+	{
+		set_external_fuel({
+			external.station,
+			external.fuel,
+			external.position
+		});
+	}
+	refresh_data();
+}
+
 void Fuel::setup(SystemSetup& setup)
 {
 	setup.read(AircraftDataKeys::kFrameInput);
 	setup.read(AircraftDataKeys::kFuelDemand);
 	setup.publish(AircraftDataKeys::kFuelData, data_);
+	setup.register_fuel_management({
+		[this]() { return management_state(); },
+		[this]() { return data_; },
+		[this](double fuel) { set_internal_fuel(fuel); },
+		[this](const ExternalFuelInput& fuel)
+		{
+			set_external_fuel({ fuel.station, fuel.fuel, fuel.position });
+		},
+		[this](double flow_rate) { set_reported_flow(flow_rate); },
+		[this]() { return take_management_mass_delta(); }
+	});
 }
 
 void Fuel::step(
@@ -74,6 +99,35 @@ const ::Systems::FuelSystem& Fuel::state() const
 const FuelData& Fuel::data() const
 {
 	return data_;
+}
+
+FlightFuelState Fuel::management_state() const
+{
+	FlightFuelState state;
+	state.internal_fuel = fuel_.internal_fuel;
+	state.external_fuel.reserve(fuel_.external_fuel_by_station.size());
+	for (const auto& station : fuel_.external_fuel_by_station)
+	{
+		state.external_fuel.push_back({
+			station.first,
+			station.second.value,
+			station.second.position
+		});
+	}
+	return state;
+}
+
+MassDeltaResult Fuel::take_management_mass_delta()
+{
+	const ::Systems::FuelMassDeltaResult source = take_mass_delta();
+	return {
+		source.available,
+		{
+			source.delta.mass,
+			source.delta.position,
+			source.delta.moment_of_inertia
+		}
+	};
 }
 
 void Fuel::refresh_data()

@@ -13,9 +13,9 @@ SystemEntry create_entry()
 	return {
 		"fuel",
 		SystemGroup::Equipment,
-		[](const FlightSetupContext&)
+		[](const FlightSetupContext& setup)
 		{
-			return std::make_unique<Core::Systems::Fuel>();
+			return std::make_unique<Core::Systems::Fuel>(setup.fuel);
 		}
 	};
 }

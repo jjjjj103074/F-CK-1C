@@ -2,13 +2,6 @@
 
 namespace
 {
-static_assert(
-	Core::kFrameSuspensionWheelCount == Systems::kSuspensionWheelCount,
-	"Frame and suspension wheel counts must match.");
-static_assert(
-	Core::kFrameSuspensionWheelCount == Systems::kLandingGearWheelCount,
-	"Frame and landing gear wheel counts must match.");
-
 Core::FlightOutput project_flight(const Core::AircraftState& source)
 {
 	return {
@@ -73,18 +66,20 @@ Core::LandingGearOutput project_landing_gear(
 }
 
 Core::SuspensionOutput project_suspension(
-	const Systems::SuspensionSystemState& source)
+	const Core::LandingGearData& source)
 {
 	Core::SuspensionOutput output;
 	for (std::size_t index = 0; index < output.wheels.size(); ++index)
 	{
 		Core::SuspensionWheelOutput& wheel = output.wheels[index];
-		wheel.acting_force = source.force_vec[index];
-		wheel.compression = source.compression[index];
-		wheel.force_magnitude = source.force_mag[index];
-		wheel.weight_on_wheel = source.wow[index];
+		const Core::SuspensionWheelData& source_wheel =
+			source.suspension[index];
+		wheel.acting_force = source_wheel.acting_force;
+		wheel.compression = source_wheel.compression;
+		wheel.force_magnitude = source_wheel.force_magnitude;
+		wheel.weight_on_wheel = source_wheel.weight_on_wheel;
 	}
-	output.any_weight_on_wheels = Systems::any_wow(source);
+	output.any_weight_on_wheels = source.any_weight_on_wheels;
 	output.on_ground = source.on_ground;
 	return output;
 }
@@ -105,8 +100,13 @@ namespace Core
 namespace Simulation
 {
 FrameOutput AircraftSimulation::make_frame_output(
+	const Systems::AircraftDataSnapshot& aircraft,
 	const FrameDataAvailability& availability) const
 {
+	const EngineData& engines =
+		aircraft.read(AircraftDataKeys::kEngineData);
+	const LandingGearData& landing_gear =
+		aircraft.read(AircraftDataKeys::kLandingGearData);
 	FrameOutput output;
 	output.simulation_time_s = startup_.simulation_time;
 	output.availability = availability;
@@ -117,17 +117,17 @@ FrameOutput AircraftSimulation::make_frame_output(
 		force_moment_.center_of_mass
 	};
 	output.engines = {
-		project_engine(engine_.data().left, left_thrust_force_),
-		project_engine(engine_.data().right, right_thrust_force_)
+		project_engine(engines.left, left_thrust_force_),
+		project_engine(engines.right, right_thrust_force_)
 	};
 	output.controls = project_controls(
-		flight_control_computer_.pilot_controls(),
-		primary_flight_controls_.position(),
-		secondary_flight_controls_.position());
-	output.landing_gear = project_landing_gear(landing_gear_.data());
-	output.suspension =
-		project_suspension(landing_gear_.suspension_state());
-	output.fuel = project_fuel(fuel_.data());
+		aircraft.read(AircraftDataKeys::kPilotControlState),
+		aircraft.read(AircraftDataKeys::kPrimaryControlPosition),
+		aircraft.read(AircraftDataKeys::kSecondaryControlPosition));
+	output.landing_gear = project_landing_gear(landing_gear);
+	output.suspension = project_suspension(landing_gear);
+	output.fuel = project_fuel(
+		aircraft.read(AircraftDataKeys::kFuelData));
 	output.shake_amplitude = gameplay_.shake_amplitude;
 	return output;
 }

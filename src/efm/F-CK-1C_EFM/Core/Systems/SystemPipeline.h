@@ -31,6 +31,21 @@ using CommandHandler = std::function<void(const Command&)>;
 using DamageHandler = std::function<void(const DamageEvent&)>;
 using RepairHandler = std::function<void(const RepairEvent&)>;
 
+struct FuelManagementHandlers
+{
+	std::function<FlightFuelState()> read;
+	std::function<FuelData()> current_data;
+	std::function<void(double)> set_internal;
+	std::function<void(const ExternalFuelInput&)> set_external;
+	std::function<void(double)> set_reported_flow;
+	std::function<MassDeltaResult()> take_mass_delta;
+};
+
+struct SystemStepOptions
+{
+	bool advance_fuel = true;
+};
+
 struct RuntimeSystem;
 
 struct AircraftDataDescriptor
@@ -139,6 +154,7 @@ public:
 	void register_command_handler(CommandId id, CommandHandler handler);
 	void register_damage_handler(DamageArea area, DamageHandler handler);
 	void register_repair_handler(RepairHandler handler);
+	void register_fuel_management(FuelManagementHandlers handlers);
 
 private:
 	struct State;
@@ -170,10 +186,21 @@ public:
 	SystemPipeline& operator=(const SystemPipeline&) = delete;
 
 	AircraftDataSnapshot snapshot() const;
-	AircraftDataSnapshot step(const FrameInput& input);
+	AircraftDataSnapshot step(const FrameInput& input)
+	{
+		return step(input, {});
+	}
+	AircraftDataSnapshot step(
+		const FrameInput& input,
+		const SystemStepOptions& options);
 	DispatchResult send(const Command& command);
 	DispatchResult apply(const DamageEvent& event);
 	std::size_t apply(const RepairEvent& event);
+	FlightFuelState fuel_state() const;
+	void set_internal_fuel(double fuel);
+	void set_external_fuel(const ExternalFuelInput& fuel);
+	void set_reported_fuel_flow(double flow_rate);
+	MassDeltaResult take_mass_delta();
 	std::size_t system_count() const;
 
 private:

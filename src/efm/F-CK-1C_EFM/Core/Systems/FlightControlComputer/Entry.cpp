@@ -17,11 +17,12 @@ SystemEntry create_entry()
 		SystemGroup::Control,
 		[](const FlightSetupContext& setup)
 		{
+			const Data::AircraftConfig& config = setup.config;
 			return std::make_unique<Core::Systems::FlightControlComputer>(
-				Data::fck1c_aircraft_config().fbw,
+				config.fbw,
 				FlightEnvelopeDefinition{
-					Data::fck1c_aircraft_config().aerodynamics.mach_table,
-					Data::fck1c_aircraft_config().aerodynamics.alpha_max_table
+					config.aerodynamics.mach_table,
+					config.aerodynamics.alpha_max_table
 				},
 				setup.start_mode);
 		}

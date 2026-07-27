@@ -4,13 +4,7 @@
 #include "../Contracts/Commands.h"
 #include "../Contracts/Events.h"
 #include "../Contracts/FrameContracts.h"
-#include "../Systems/AirframeStructure/AirframeStructure.h"
-#include "../Systems/Engine/Engine.h"
-#include "../Systems/FlightControlComputer/FlightControlComputer.h"
-#include "../Systems/Fuel/Fuel.h"
-#include "../Systems/LandingGear/LandingGear.h"
-#include "../Systems/PrimaryFlightControls/PrimaryFlightControls.h"
-#include "../Systems/SecondaryFlightControls/SecondaryFlightControls.h"
+#include "../Systems/SystemPipeline.h"
 #include "../../Common/Vec3.h"
 #include "../../Data/AircraftConfig.h"
 #include "../../Systems/AerodynamicsSystem.h"
@@ -85,28 +79,29 @@ public:
 
 private:
 	FrameOutput make_frame_output(
+		const Systems::AircraftDataSnapshot& aircraft,
 		const FrameDataAvailability& availability) const;
 	void apply_setup(const FlightSetupContext& setup);
 	void apply_frame_input(const FrameInput& input);
-	void apply_suspension_input(const FrameInput& input);
 	void begin_frame(double dt);
-	void update_airframe(double dt);
-	void update_fbw(double dt, const AutopilotCommand& autopilot);
-	::Systems::FBWControllerInput make_fbw_input(double dt) const;
-	::Systems::AerodynamicsFrameInput make_aerodynamics_input() const;
+	void update_airframe(const Systems::AircraftDataSnapshot& aircraft);
+	::Systems::AerodynamicsFrameInput make_aerodynamics_input(
+		const Systems::AircraftDataSnapshot& aircraft) const;
 	void update_primary_aerodynamics(
 		const ::Systems::AerodynamicsFrameInput& input);
-	void update_engines_and_fuel(
-		double dt,
+	void update_engines(
+		const Systems::AircraftDataSnapshot& aircraft,
 		const MaxPowerCommand& max_power);
 	double max_dry_thrust() const;
-	void update_engine_thrust(double dry_thrust);
+	void update_engine_thrust(
+		const EngineData& engines,
+		double dry_thrust);
 	void apply_thrust(const MaxPowerCommand& command);
-	void update_fuel(double dt);
 	void update_ground_and_suspension(
-		double dt,
+		const Systems::AircraftDataSnapshot& aircraft,
 		const ::Systems::AerodynamicsFrameInput& input);
-	void apply_fallback_ground_forces();
+	void apply_fallback_ground_forces(
+		const Systems::AircraftDataSnapshot& aircraft);
 	void add_force(
 		const Common::Vec3& force,
 		const Common::Vec3& position);
@@ -117,16 +112,10 @@ private:
 	AircraftState aircraft_state_;
 	ForceMomentFrame force_moment_;
 	GameplayState gameplay_;
+	Systems::SystemPipeline system_pipeline_;
 	::Systems::AerodynamicsSystemState aerodynamics_;
 	::Systems::StartupSystemState startup_;
 	::Systems::SuspensionSystemState ground_physics_;
-	Systems::FlightControlComputer flight_control_computer_;
-	Systems::PrimaryFlightControls primary_flight_controls_;
-	Systems::SecondaryFlightControls secondary_flight_controls_;
-	Systems::LandingGear landing_gear_;
-	Systems::Engine engine_;
-	Systems::Fuel fuel_;
-	Systems::AirframeStructure airframe_structure_;
 	double left_thrust_force_ = 0.0;
 	double right_thrust_force_ = 0.0;
 };

@@ -17,8 +17,7 @@ SystemEntry create_entry()
 		SystemGroup::Equipment,
 		[](const FlightSetupContext& setup)
 		{
-			const Data::AircraftConfig& config =
-				Data::fck1c_aircraft_config();
+			const Data::AircraftConfig& config = setup.config;
 			return std::make_unique<Core::Systems::Engine>(
 				config.engine,
 				config.fuel.consumption_rate,

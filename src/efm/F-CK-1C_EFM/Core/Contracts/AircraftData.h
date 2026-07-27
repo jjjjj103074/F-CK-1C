@@ -61,6 +61,14 @@ struct SecondaryControlPosition
 	double airbrake = 0.0;
 };
 
+struct SuspensionWheelData
+{
+	Common::Vec3 acting_force;
+	double compression = 0.0;
+	double force_magnitude = 0.0;
+	bool weight_on_wheel = false;
+};
+
 struct LandingGearData
 {
 	double position = 0.0;
@@ -68,6 +76,8 @@ struct LandingGearData
 	double brake_left = 0.0;
 	double brake_right = 0.0;
 	std::array<double, kFrameSuspensionWheelCount> wheel_spin = {};
+	std::array<SuspensionWheelData, kFrameSuspensionWheelCount>
+		suspension = {};
 	bool any_weight_on_wheels = false;
 	bool on_ground = false;
 };

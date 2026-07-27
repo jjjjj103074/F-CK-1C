@@ -86,6 +86,7 @@
     <ClCompile Include="OutputStoreTests.cpp" />
     <ClCompile Include="ParamExportTests.cpp" />
     <ClCompile Include="Phase3SystemTests.cpp" />
+    <ClCompile Include="Phase4SystemTimingTests.cpp" />
     <ClCompile Include="SuspensionSystemTests.cpp" />
     <ClCompile Include="SystemPipelineDataTests.cpp" />
     <ClCompile Include="SystemPipelineHandlerTests.cpp" />

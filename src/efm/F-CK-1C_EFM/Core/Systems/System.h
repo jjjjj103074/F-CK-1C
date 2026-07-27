@@ -7,6 +7,12 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
+
+namespace Data
+{
+struct AircraftConfig;
+}
 
 namespace Core
 {
@@ -22,9 +28,17 @@ enum class SystemGroup
 	Equipment
 };
 
+struct FlightFuelState
+{
+	double internal_fuel = 0.0;
+	std::vector<ExternalFuelInput> external_fuel;
+};
+
 struct FlightSetupContext
 {
-	const StartMode start_mode = StartMode::ColdGround;
+	const Data::AircraftConfig& config;
+	const StartMode start_mode;
+	const FlightFuelState fuel;
 };
 
 class System

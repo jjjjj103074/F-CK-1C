@@ -163,6 +163,12 @@ void LandingGear::refresh_data()
 	for (std::size_t index = 0; index < data_.wheel_spin.size(); ++index)
 	{
 		data_.wheel_spin[index] = landing_gear_.wheels.spin[index];
+		data_.suspension[index] = {
+			suspension_.force_vec[index],
+			suspension_.compression[index],
+			suspension_.force_mag[index],
+			suspension_.wow[index]
+		};
 	}
 	data_.any_weight_on_wheels = ::Systems::any_wow(suspension_);
 	data_.on_ground = suspension_.on_ground;

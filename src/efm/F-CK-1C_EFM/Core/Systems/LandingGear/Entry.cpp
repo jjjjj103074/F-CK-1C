@@ -19,7 +19,7 @@ SystemEntry create_entry()
 		{
 			return std::make_unique<Core::Systems::LandingGear>(
 				setup.start_mode,
-				Data::fck1c_aircraft_config().suspension);
+				setup.config.suspension);
 		}
 	};
 }

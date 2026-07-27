@@ -1,7 +1,5 @@
 #include "SystemPipeline.h"
-
 #include "../AircraftState.h"
-
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -130,6 +128,7 @@ struct SystemSetup::State
 	std::vector<CommandRegistration> commands;
 	std::vector<DamageRegistration> damage_handlers;
 	std::vector<RepairHandler> repair_handlers;
+	std::optional<FuelManagementHandlers> fuel_management;
 };
 
 struct RuntimeSystem
@@ -150,8 +149,13 @@ struct SystemPipeline::Implementation
 
 	AircraftDataSnapshot make_snapshot() const;
 	AircraftDataSnapshot make_snapshot(const Storage& storage) const;
-	AircraftDataSnapshot step(const FrameInput& input);
-	void run_group(SystemGroup group, Storage& next);
+	AircraftDataSnapshot step(
+		const FrameInput& input,
+		const SystemStepOptions& options);
+	void run_group(
+		SystemGroup group,
+		Storage& next,
+		const SystemStepOptions& options);
 	void create_systems(
 		const FlightSetupContext& context,
 		std::vector<SystemEntry> catalog);
@@ -160,7 +164,16 @@ struct SystemPipeline::Implementation
 	void validate_publications(Storage& initial);
 	void validate_reads(const Storage& initial) const;
 	void validate_handlers();
+	void validate_fuel_management(
+		const RuntimeSystem& runtime,
+		std::size_t system_index);
 	void commit_group(SystemGroup group, Storage& next);
+	bool should_run(
+		const RuntimeSystem& runtime,
+		const SystemStepOptions& options) const;
+	const FuelManagementHandlers& require_fuel_management() const;
+	FuelManagementHandlers& require_fuel_management();
+	void commit_current_fuel_data();
 
 	std::vector<RuntimeSystem> systems;
 	AircraftState observation_state;
@@ -169,6 +182,7 @@ struct SystemPipeline::Implementation
 	std::map<CommandId, CommandHandler> command_handlers;
 	std::map<DamageArea, DamageHandler> damage_handlers;
 	std::vector<RepairHandler> repair_handlers;
+	std::optional<FuelManagementHandlers> fuel_management;
 };
 
 AircraftDataSnapshot::AircraftDataSnapshot(const Storage& storage)
@@ -288,6 +302,16 @@ void SystemSetup::register_damage_handler(
 void SystemSetup::register_repair_handler(RepairHandler handler)
 {
 	state_->repair_handlers.push_back(std::move(handler));
+}
+
+void SystemSetup::register_fuel_management(FuelManagementHandlers handlers)
+{
+	if (state_->fuel_management)
+	{
+		throw std::logic_error(
+			"System registered fuel management more than once.");
+	}
+	state_->fuel_management = std::move(handlers);
 }
 
 SystemPipeline::Implementation::Implementation(
@@ -418,8 +442,9 @@ void SystemPipeline::Implementation::validate_reads(
 
 void SystemPipeline::Implementation::validate_handlers()
 {
-	for (RuntimeSystem& runtime : systems)
+	for (std::size_t index = 0; index < systems.size(); ++index)
 	{
+		RuntimeSystem& runtime = systems[index];
 		for (CommandRegistration& registration : runtime.setup.commands)
 		{
 			if (!registration.handler ||
@@ -448,7 +473,31 @@ void SystemPipeline::Implementation::validate_handlers()
 			}
 			repair_handlers.push_back(std::move(handler));
 		}
+		validate_fuel_management(runtime, index);
 	}
+}
+
+void SystemPipeline::Implementation::validate_fuel_management(
+	const RuntimeSystem& runtime,
+	std::size_t system_index)
+{
+	if (!runtime.setup.fuel_management)
+	{
+		return;
+	}
+	const FuelManagementHandlers& handlers =
+		*runtime.setup.fuel_management;
+	const bool complete = handlers.read && handlers.current_data &&
+		handlers.set_internal && handlers.set_external &&
+		handlers.set_reported_flow && handlers.take_mass_delta;
+	const int fuel_writer = writers[slot(AircraftDataId::FuelData)];
+	if (!complete || fuel_management ||
+		fuel_writer != static_cast<int>(system_index))
+	{
+		throw std::logic_error(
+			"Fuel management requires one complete FuelData owner.");
+	}
+	fuel_management = handlers;
 }
 
 AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot() const
@@ -463,7 +512,8 @@ AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot(
 }
 
 AircraftDataSnapshot SystemPipeline::Implementation::step(
-	const FrameInput& input)
+	const FrameInput& input,
+	const SystemStepOptions& options)
 {
 	Storage next = committed;
 	next[slot(AircraftDataId::FrameInput)] = input;
@@ -472,8 +522,8 @@ AircraftDataSnapshot SystemPipeline::Implementation::step(
 	update_airspeed(next_observation);
 	next[slot(AircraftDataId::AircraftObservation)] =
 		make_observation(next_observation);
-	run_group(SystemGroup::Control, next);
-	run_group(SystemGroup::Equipment, next);
+	run_group(SystemGroup::Control, next, options);
+	run_group(SystemGroup::Equipment, next, options);
 	committed = std::move(next);
 	observation_state = std::move(next_observation);
 	return make_snapshot();
@@ -481,7 +531,8 @@ AircraftDataSnapshot SystemPipeline::Implementation::step(
 
 void SystemPipeline::Implementation::run_group(
 	SystemGroup group,
-	Storage& next)
+	Storage& next,
+	const SystemStepOptions& options)
 {
 	const AircraftDataSnapshot input = make_snapshot(next);
 	for (RuntimeSystem& runtime : systems)
@@ -493,12 +544,19 @@ void SystemPipeline::Implementation::run_group(
 	}
 	for (RuntimeSystem& runtime : systems)
 	{
-		if (runtime.group == group)
+		if (runtime.group == group && should_run(runtime, options))
 		{
 			runtime.system->step(input, runtime.result);
 		}
 	}
 	commit_group(group, next);
+}
+
+bool SystemPipeline::Implementation::should_run(
+	const RuntimeSystem& runtime,
+	const SystemStepOptions& options) const
+{
+	return options.advance_fuel || !runtime.setup.fuel_management;
 }
 
 void SystemPipeline::Implementation::commit_group(
@@ -541,9 +599,11 @@ AircraftDataSnapshot SystemPipeline::snapshot() const
 	return implementation_->make_snapshot();
 }
 
-AircraftDataSnapshot SystemPipeline::step(const FrameInput& input)
+AircraftDataSnapshot SystemPipeline::step(
+	const FrameInput& input,
+	const SystemStepOptions& options)
 {
-	return implementation_->step(input);
+	return implementation_->step(input, options);
 }
 
 DispatchResult SystemPipeline::send(const Command& command)
@@ -575,6 +635,60 @@ std::size_t SystemPipeline::apply(const RepairEvent& event)
 		handler(event);
 	}
 	return implementation_->repair_handlers.size();
+}
+
+const FuelManagementHandlers& SystemPipeline::Implementation::
+	require_fuel_management() const
+{
+	if (!fuel_management)
+	{
+		throw std::logic_error("SystemPipeline has no fuel management owner.");
+	}
+	return *fuel_management;
+}
+
+FuelManagementHandlers& SystemPipeline::Implementation::
+	require_fuel_management()
+{
+	if (!fuel_management)
+	{
+		throw std::logic_error("SystemPipeline has no fuel management owner.");
+	}
+	return *fuel_management;
+}
+
+void SystemPipeline::Implementation::commit_current_fuel_data()
+{
+	committed[slot(AircraftDataId::FuelData)] =
+		require_fuel_management().current_data();
+}
+
+FlightFuelState SystemPipeline::fuel_state() const
+{
+	return implementation_->require_fuel_management().read();
+}
+
+void SystemPipeline::set_internal_fuel(double fuel)
+{
+	implementation_->require_fuel_management().set_internal(fuel);
+	implementation_->commit_current_fuel_data();
+}
+
+void SystemPipeline::set_external_fuel(const ExternalFuelInput& fuel)
+{
+	implementation_->require_fuel_management().set_external(fuel);
+	implementation_->commit_current_fuel_data();
+}
+
+void SystemPipeline::set_reported_fuel_flow(double flow_rate)
+{
+	implementation_->require_fuel_management().set_reported_flow(flow_rate);
+	implementation_->commit_current_fuel_data();
+}
+
+MassDeltaResult SystemPipeline::take_mass_delta()
+{
+	return implementation_->require_fuel_management().take_mass_delta();
 }
 
 std::size_t SystemPipeline::system_count() const

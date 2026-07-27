@@ -11,6 +11,8 @@ namespace Systems
 class Fuel final : public System
 {
 public:
+	explicit Fuel(const FlightFuelState& initial = {});
+
 	void setup(SystemSetup& setup) override;
 	void step(
 		const AircraftDataSnapshot& snapshot,
@@ -27,6 +29,8 @@ public:
 	const FuelData& data() const;
 
 private:
+	FlightFuelState management_state() const;
+	MassDeltaResult take_management_mass_delta();
 	void refresh_data();
 
 	::Systems::FuelSystem fuel_;

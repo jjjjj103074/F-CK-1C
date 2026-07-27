@@ -9,6 +9,45 @@ namespace
 constexpr double kMaxPowerReadyThreshold = 0.5;
 constexpr double kMaxPowerCutThreshold = 0.5;
 
+Core::Systems::FlightFuelState make_system_fuel_state(
+	const Core::Simulation::FlightFuelLoad& load)
+{
+	Core::Systems::FlightFuelState result;
+	result.internal_fuel = load.internal_fuel;
+	result.external_fuel.reserve(load.external_fuel_by_station.size());
+	for (const auto& station : load.external_fuel_by_station)
+	{
+		result.external_fuel.push_back({
+			station.first,
+			station.second.fuel,
+			station.second.position
+		});
+	}
+	return result;
+}
+
+Core::Systems::FlightSetupContext make_system_setup(
+	const Data::AircraftConfig& config,
+	const Core::Simulation::FlightSetupContext& setup)
+{
+	return {
+		config,
+		setup.start_mode,
+		make_system_fuel_state(setup.fuel)
+	};
+}
+
+::Systems::EngineSystemState make_engine_physics_state(
+	const Core::EngineData& source)
+{
+	::Systems::EngineSystemState result;
+	result.left.throttle_output = source.left.throttle_output;
+	result.left.afterburner_ratio = source.left.afterburner_ratio;
+	result.right.throttle_output = source.right.throttle_output;
+	result.right.afterburner_ratio = source.right.afterburner_ratio;
+	return result;
+}
+
 Systems::StartupMode startup_mode(Core::StartMode mode)
 {
 	switch (mode)
@@ -44,19 +83,7 @@ AircraftSimulation::AircraftSimulation(
 	const Data::AircraftConfig& config,
 	const FlightSetupContext& setup)
 	: config_(config),
-	flight_control_computer_(
-		config.fbw,
-		{
-			config.aerodynamics.mach_table,
-			config.aerodynamics.alpha_max_table
-		},
-		setup.start_mode),
-	secondary_flight_controls_(setup.start_mode),
-	landing_gear_(setup.start_mode, config.suspension),
-	engine_(
-		config.engine,
-		config.fuel.consumption_rate,
-		setup.start_mode)
+	system_pipeline_(make_system_setup(config, setup))
 {
 	validate_aircraft_config(config_);
 	apply_setup(setup);
@@ -65,38 +92,36 @@ AircraftSimulation::AircraftSimulation(
 void AircraftSimulation::apply_setup(const FlightSetupContext& setup)
 {
 	gameplay_.options = setup.options;
-	fuel_.set_internal_fuel(setup.fuel.internal_fuel);
-	for (const auto& station : setup.fuel.external_fuel_by_station)
-	{
-		set_external_fuel(station.first, station.second);
-	}
 	::Systems::begin_startup(startup_, startup_mode(setup.start_mode));
 }
 
 FrameOutput AircraftSimulation::initial_output() const
 {
-	return make_frame_output({});
+	return make_frame_output(system_pipeline_.snapshot(), {});
 }
 
 double AircraftSimulation::internal_fuel() const
 {
-	return fuel_.internal_fuel();
+	return system_pipeline_.snapshot()
+		.read(AircraftDataKeys::kFuelData).internal_fuel;
 }
 
 double AircraftSimulation::external_fuel() const
 {
-	return fuel_.external_fuel();
+	return system_pipeline_.snapshot()
+		.read(AircraftDataKeys::kFuelData).external_fuel;
 }
 
 FlightFuelLoad AircraftSimulation::fuel_load() const
 {
+	const Systems::FlightFuelState state = system_pipeline_.fuel_state();
 	FlightFuelLoad load;
-	load.internal_fuel = fuel_.state().internal_fuel;
-	for (const auto& station : fuel_.state().external_fuel_by_station)
+	load.internal_fuel = state.internal_fuel;
+	for (const ExternalFuelInput& external : state.external_fuel)
 	{
-		load.external_fuel_by_station[station.first] = {
-			station.second.value,
-			station.second.position
+		load.external_fuel_by_station[external.station] = {
+			external.fuel,
+			external.position
 		};
 	}
 	return load;
@@ -104,25 +129,23 @@ FlightFuelLoad AircraftSimulation::fuel_load() const
 
 MassDeltaResult AircraftSimulation::take_mass_delta()
 {
-	const ::Systems::FuelMassDeltaResult source = fuel_.take_mass_delta();
-	MassDeltaResult result;
-	result.available = source.available;
-	result.delta.mass = source.delta.mass;
-	result.delta.position = source.delta.position;
-	result.delta.moment_of_inertia = source.delta.moment_of_inertia;
-	return result;
+	return system_pipeline_.take_mass_delta();
 }
 
 void AircraftSimulation::set_internal_fuel(double fuel)
 {
-	fuel_.set_internal_fuel(fuel);
+	system_pipeline_.set_internal_fuel(fuel);
 }
 
 void AircraftSimulation::set_external_fuel(
 	int station,
 	const ExternalFuelLoad& fuel)
 {
-	fuel_.set_external_fuel({ station, fuel.fuel, fuel.position });
+	system_pipeline_.set_external_fuel({
+		station,
+		fuel.fuel,
+		fuel.position
+	});
 }
 
 void AircraftSimulation::set_infinite_fuel(bool enabled)
@@ -146,22 +169,8 @@ DamageApplyResult AircraftSimulation::apply_damage(const DamageEvent& event)
 	{
 		return { true };
 	}
-	switch (event.area)
-	{
-	case DamageArea::LeftWing:
-	case DamageArea::RightWing:
-	case DamageArea::Tail:
-		airframe_structure_.apply_damage(event); break;
-	case DamageArea::LeftEngine:
-	case DamageArea::RightEngine:
-		engine_.apply_damage(event); break;
-	}
+	(void)system_pipeline_.apply(event);
 	return { false };
-}
-
-void AircraftSimulation::apply_suspension_input(const FrameInput& input)
-{
-	landing_gear_.apply_suspension_feedback(input);
 }
 
 void AircraftSimulation::apply_frame_input(const FrameInput& input)
@@ -171,22 +180,30 @@ void AircraftSimulation::apply_frame_input(const FrameInput& input)
 	{
 		force_moment_.center_of_mass = input.mass.center_of_mass;
 	}
-	apply_suspension_input(input);
 }
 
 FrameOutput AircraftSimulation::step(const FrameInput& input)
 {
 	apply_frame_input(input);
 	begin_frame(input.dt_s);
-	update_airframe(input.dt_s);
-	update_fbw(input.dt_s, input.autopilot);
+	update_airspeed(aircraft_state_);
+	const Systems::SystemStepOptions options = {
+		!gameplay_.options.infinite_fuel
+	};
+	if (!options.advance_fuel)
+	{
+		system_pipeline_.set_reported_fuel_flow(0.0);
+	}
+	const Systems::AircraftDataSnapshot aircraft =
+		system_pipeline_.step(input, options);
+	update_airframe(aircraft);
 	const ::Systems::AerodynamicsFrameInput aerodynamics_input =
-		make_aerodynamics_input();
+		make_aerodynamics_input(aircraft);
 	update_primary_aerodynamics(aerodynamics_input);
-	update_engines_and_fuel(input.dt_s, input.max_power);
-	update_ground_and_suspension(input.dt_s, aerodynamics_input);
+	update_engines(aircraft, input.max_power);
+	update_ground_and_suspension(aircraft, aerodynamics_input);
 	finish_frame();
-	return make_frame_output(input.availability);
+	return make_frame_output(aircraft, input.availability);
 }
 
 void AircraftSimulation::begin_frame(double dt)
@@ -204,20 +221,11 @@ void AircraftSimulation::begin_frame(double dt)
 		force_moment_.center_of_mass);
 }
 
-void AircraftSimulation::update_airframe(double dt)
+void AircraftSimulation::update_airframe(
+	const Systems::AircraftDataSnapshot& aircraft)
 {
-	const Systems::LandingGearFrameInput landing_input = {
-		aircraft_state_.speed_scalar,
-		ground_speed(aircraft_state_),
-		dt,
-		aircraft_state_.altitude_agl,
-		flight_control_computer_.pilot_controls().yaw
-	};
-	landing_gear_.step(landing_input);
-	secondary_flight_controls_.step(
-		aircraft_state_.speed_scalar,
-		landing_gear_.data().position);
-	update_airspeed(aircraft_state_);
+	const SecondaryControlPosition& secondary =
+		aircraft.read(AircraftDataKeys::kSecondaryControlPosition);
 	::Systems::update_aerodynamic_conditions(
 		aerodynamics_,
 		config_.aerodynamics,
@@ -228,53 +236,22 @@ void AircraftSimulation::update_airframe(double dt)
 			aircraft_state_.mach,
 			aircraft_state_.alpha,
 			aircraft_state_.beta,
-			secondary_flight_controls_.position().slats
+			secondary.slats
 		});
 }
 
-void AircraftSimulation::update_fbw(
-	double dt,
-	const AutopilotCommand& autopilot)
-{
-	const FlightControlDemand& demand = flight_control_computer_.step(
-		make_fbw_input(dt),
-		autopilot);
-	primary_flight_controls_.step(demand);
-}
-
-::Systems::FBWControllerInput AircraftSimulation::make_fbw_input(
-	double dt) const
-{
-	::Systems::FBWControllerInput input;
-	input.dt = dt;
-	input.qbar = aerodynamics_.dynamic_pressure;
-	input.roll = aircraft_state_.roll;
-	input.pitch = aircraft_state_.pitch;
-	input.roll_rate = aircraft_state_.roll_rate;
-	input.pitch_rate = aircraft_state_.pitch_rate;
-	input.yaw_rate = aircraft_state_.yaw_rate;
-	input.alpha = aircraft_state_.alpha;
-	input.beta = aircraft_state_.beta;
-	input.speed_scalar = aircraft_state_.speed_scalar;
-	input.mach = aircraft_state_.mach;
-	input.g = aircraft_state_.g;
-	input.gear_pos = landing_gear_.data().position;
-	input.wow =
-		::Systems::has_suspension_feedback(
-			landing_gear_.suspension_state()) &&
-		::Systems::any_wow(landing_gear_.suspension_state());
-	input.elevator_command =
-		primary_flight_controls_.position().elevator;
-	input.aileron_command =
-		primary_flight_controls_.position().aileron;
-	input.rudder_command =
-		primary_flight_controls_.position().rudder;
-	return input;
-}
-
 ::Systems::AerodynamicsFrameInput
-	AircraftSimulation::make_aerodynamics_input() const
+	AircraftSimulation::make_aerodynamics_input(
+		const Systems::AircraftDataSnapshot& aircraft) const
 {
+	const PrimaryControlPosition& primary =
+		aircraft.read(AircraftDataKeys::kPrimaryControlPosition);
+	const SecondaryControlPosition& secondary =
+		aircraft.read(AircraftDataKeys::kSecondaryControlPosition);
+	const LandingGearData& gear =
+		aircraft.read(AircraftDataKeys::kLandingGearData);
+	const AirframeIntegrity& integrity =
+		aircraft.read(AircraftDataKeys::kAirframeIntegrity);
 	::Systems::AerodynamicsFrameInput input;
 	input.center_of_mass = force_moment_.center_of_mass;
 	input.mach = aircraft_state_.mach;
@@ -285,21 +262,15 @@ void AircraftSimulation::update_fbw(
 	input.pitch_rate = aircraft_state_.pitch_rate;
 	input.roll_rate = aircraft_state_.roll_rate;
 	input.yaw_rate = aircraft_state_.yaw_rate;
-	input.elevator_command =
-		primary_flight_controls_.position().elevator;
-	input.aileron_command =
-		primary_flight_controls_.position().aileron;
-	input.rudder_command =
-		primary_flight_controls_.position().rudder;
-	input.airbrake_pos =
-		secondary_flight_controls_.position().airbrake;
-	input.flaps_pos = secondary_flight_controls_.position().flaps;
-	input.gear_pos = landing_gear_.data().position;
-	input.left_wing_integrity =
-		airframe_structure_.integrity().left_wing;
-	input.right_wing_integrity =
-		airframe_structure_.integrity().right_wing;
-	input.tail_integrity = airframe_structure_.integrity().tail;
+	input.elevator_command = primary.elevator;
+	input.aileron_command = primary.aileron;
+	input.rudder_command = primary.rudder;
+	input.airbrake_pos = secondary.airbrake;
+	input.flaps_pos = secondary.flaps;
+	input.gear_pos = gear.position;
+	input.left_wing_integrity = integrity.left_wing;
+	input.right_wing_integrity = integrity.right_wing;
+	input.tail_integrity = integrity.tail;
 	input.easy_flight = gameplay_.options.easy_flight;
 	return input;
 }
@@ -316,43 +287,42 @@ void AircraftSimulation::update_primary_aerodynamics(
 		});
 }
 
-void AircraftSimulation::update_engines_and_fuel(
-	double dt,
+void AircraftSimulation::update_engines(
+	const Systems::AircraftDataSnapshot& aircraft,
 	const MaxPowerCommand& max_power)
 {
 	const double dry_thrust = max_dry_thrust();
-	engine_.step({
-		dt,
-		flight_control_computer_.engine_demand(),
-		fuel_.internal_fuel(),
-		aircraft_state_.altitude_asl
-	});
-	update_engine_thrust(dry_thrust);
+	update_engine_thrust(
+		aircraft.read(AircraftDataKeys::kEngineData),
+		dry_thrust);
 	apply_thrust(max_power);
-	update_fuel(dt);
 }
 
 double AircraftSimulation::max_dry_thrust() const
 {
 	return ::Systems::max_dry_thrust(
-		config_.engine, aircraft_state_.mach);
+		config_.engine,
+		aircraft_state_.mach);
 }
 
-void AircraftSimulation::update_engine_thrust(double dry_thrust)
+void AircraftSimulation::update_engine_thrust(
+	const EngineData& engines,
+	double dry_thrust)
 {
-	::Systems::EngineSystemState physical_state = engine_.state();
+	::Systems::EngineSystemState physical_state =
+		make_engine_physics_state(engines);
 	::Systems::update_engine_thrust_outputs(
 		physical_state,
 		config_.engine,
 		{
 			dry_thrust,
 			aircraft_state_.engine_alt_effect,
-			engine_.left_integrity(),
-			engine_.right_integrity()
+			engines.left.condition,
+			engines.right.condition
 		});
 	left_thrust_force_ = physical_state.left.thrust_force;
 	right_thrust_force_ = physical_state.right.thrust_force;
-	if (engine_.data().thrust_inhibited)
+	if (engines.thrust_inhibited)
 	{
 		left_thrust_force_ = 0.0;
 		right_thrust_force_ = 0.0;
@@ -377,21 +347,10 @@ void AircraftSimulation::apply_thrust(const MaxPowerCommand& command)
 		config_.right_engine_position);
 }
 
-void AircraftSimulation::update_fuel(double dt)
-{
-	if (gameplay_.options.infinite_fuel)
-	{
-		fuel_.set_reported_flow(0.0);
-		return;
-	}
-	fuel_.step(engine_.fuel_demand(), dt);
-}
-
 void AircraftSimulation::update_ground_and_suspension(
-	double dt,
+	const Systems::AircraftDataSnapshot& aircraft,
 	const ::Systems::AerodynamicsFrameInput& input)
 {
-	(void)dt;
 	auto add_force_sink = [this](
 		const Common::Vec3& force,
 		const Common::Vec3& position)
@@ -407,10 +366,10 @@ void AircraftSimulation::update_ground_and_suspension(
 		{ config_.aerodynamics, input },
 		::Systems::make_aerodynamic_sinks(
 			add_force_sink, add_moment_sink));
-	apply_fallback_ground_forces();
-	landing_gear_.update_on_ground();
+	apply_fallback_ground_forces(aircraft);
 	::Systems::AerodynamicsFrameInput shake_input = input;
-	shake_input.on_ground = landing_gear_.data().on_ground;
+	shake_input.on_ground =
+		aircraft.read(AircraftDataKeys::kLandingGearData).on_ground;
 	shake_input.g_force = aircraft_state_.g;
 	gameplay_.shake_amplitude = ::Systems::update_aerodynamic_shake(
 		aerodynamics_,
@@ -418,11 +377,13 @@ void AircraftSimulation::update_ground_and_suspension(
 		shake_input);
 }
 
-void AircraftSimulation::apply_fallback_ground_forces()
+void AircraftSimulation::apply_fallback_ground_forces(
+	const Systems::AircraftDataSnapshot& aircraft)
 {
-	const ::Systems::EngineSystemState& engines = engine_.state();
-	const ::Systems::LandingGearSystemState& gear =
-		landing_gear_.device_state();
+	const EngineData& engines =
+		aircraft.read(AircraftDataKeys::kEngineData);
+	const LandingGearData& gear =
+		aircraft.read(AircraftDataKeys::kLandingGearData);
 	const ::Systems::SuspensionFallbackInput input = {
 		aircraft_state_.altitude_agl,
 		aircraft_state_.pitch,
@@ -435,8 +396,8 @@ void AircraftSimulation::apply_fallback_ground_forces()
 		engines.right.throttle_input,
 		left_thrust_force_,
 		right_thrust_force_,
-		gear.wheels.brake_left,
-		gear.wheels.brake_right
+		gear.brake_left,
+		gear.brake_right
 	};
 	ground_physics_.fallback_ground_force =
 		::Systems::apply_fallback_ground_forces(
@@ -471,8 +432,7 @@ void AircraftSimulation::finish_frame()
 
 void AircraftSimulation::repair(const RepairEvent& event)
 {
-	airframe_structure_.repair(event);
-	engine_.repair(event);
+	(void)system_pipeline_.apply(event);
 }
 }
 }

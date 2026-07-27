@@ -24,6 +24,73 @@ SystemDefinition handler_system(
 	return { id, SystemGroup::Control, setup, no_step() };
 }
 
+FuelManagementHandlers complete_fuel_management()
+{
+	return {
+		[]() { return FlightFuelState{}; },
+		[]() { return FuelData{}; },
+		[](double) {},
+		[](const ExternalFuelInput&) {},
+		[](double) {},
+		[]() { return MassDeltaResult{}; }
+	};
+}
+
+void test_incomplete_fuel_management_fails(Tests::Context& context)
+{
+	const SystemDefinition system = {
+		"fuel",
+		SystemGroup::Equipment,
+		[](SystemSetup& setup)
+		{
+			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
+			setup.register_fuel_management({});
+		},
+		no_step()
+	};
+	TEST_EXPECT(context, construction_throws({ entry(system) }));
+}
+
+void test_fuel_management_requires_fuel_data_owner(
+	Tests::Context& context)
+{
+	const SystemDefinition manager = handler_system(
+		"manager",
+		[](SystemSetup& setup)
+		{
+			setup.register_fuel_management(complete_fuel_management());
+		});
+	const SystemDefinition publisher = {
+		"publisher",
+		SystemGroup::Equipment,
+		[](SystemSetup& setup)
+		{
+			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
+		},
+		no_step()
+	};
+	TEST_EXPECT(
+		context,
+		construction_throws({ entry(manager), entry(publisher) }));
+}
+
+void test_duplicate_fuel_management_registration_fails(
+	Tests::Context& context)
+{
+	const SystemDefinition system = {
+		"fuel",
+		SystemGroup::Equipment,
+		[](SystemSetup& setup)
+		{
+			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
+			setup.register_fuel_management(complete_fuel_management());
+			setup.register_fuel_management(complete_fuel_management());
+		},
+		no_step()
+	};
+	TEST_EXPECT(context, construction_throws({ entry(system) }));
+}
+
 void test_duplicate_command_handler_fails(Tests::Context& context)
 {
 	const SetupAction register_pitch = [](SystemSetup& setup)
@@ -222,6 +289,9 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 
 void run_system_pipeline_handler_tests(Tests::Context& context)
 {
+	test_incomplete_fuel_management_fails(context);
+	test_fuel_management_requires_fuel_data_owner(context);
+	test_duplicate_fuel_management_registration_fails(context);
 	test_duplicate_command_handler_fails(context);
 	test_unregistered_command_is_explicitly_ignored(context);
 	test_command_only_changes_next_step_request(context);

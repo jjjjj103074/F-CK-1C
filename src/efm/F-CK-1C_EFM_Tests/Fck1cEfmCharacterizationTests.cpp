@@ -4,6 +4,7 @@
 
 #include <array>
 #include <iomanip>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -223,10 +224,11 @@ void expect_snapshot(
 	TEST_EXPECT(context, actual == expected);
 }
 
-void test_multiframe_golden_trajectory(Tests::Context& context)
+void test_grouped_scheduler_multiframe_golden_trajectory(
+	Tests::Context& context)
 {
-	// Captured from the Phase 0 fixed point. Update only in the isolated
-	// semantic-change commits named by the refactor plan.
+	// Phase 4 intentionally shifts the declared cross-group signals by one
+	// frame and lets every System observe the current normalized DCS input.
 	const auto actual = run_trajectory();
 	for (std::size_t index = 0; index < actual.size(); ++index)
 	{
@@ -248,40 +250,73 @@ void test_repeated_run_is_deterministic(Tests::Context& context)
 	}
 }
 
-void test_gear_position_drives_flaps_in_same_frame(Tests::Context& context)
+struct GearCrossing
+{
+	Core::FrameOutput before;
+	Core::FrameOutput at;
+};
+
+std::optional<GearCrossing> find_gear_midpoint_crossing(
+	Core::Fck1cEfm& efm,
+	const Core::FrameInput& input,
+	Core::FrameOutput previous)
+{
+	for (std::size_t frame = 0; frame < kMaxGearTransitionFrames; ++frame)
+	{
+		const Core::FrameOutput current = efm.step(input);
+		if (previous.landing_gear.gear_position <= kGearMidpoint &&
+			current.landing_gear.gear_position > kGearMidpoint)
+		{
+			return GearCrossing{ previous, current };
+		}
+		previous = current;
+	}
+	return std::nullopt;
+}
+
+void test_secondary_controls_read_previous_committed_gear(
+	Tests::Context& context)
 {
 	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config());
-	Core::FrameOutput previous = efm.start(Core::StartMode::HotAir);
+	const Core::FrameOutput start = efm.start(Core::StartMode::HotAir);
 	efm.handle_command({
 		Core::CommandGroup::LandingGear, Core::CommandId::SetGear, 1.0 });
 	efm.handle_command({
 		Core::CommandGroup::Airframe, Core::CommandId::SetFlapsAuto, 1.0 });
 	Core::FrameInput input = Tests::Fck1c::make_frame_input();
 	input.autopilot = {};
-	bool crossed = false;
-	for (std::size_t frame = 0;
-		frame < kMaxGearTransitionFrames && !crossed;
-		++frame)
+	const std::optional<GearCrossing> crossing =
+		find_gear_midpoint_crossing(efm, input, start);
+	TEST_EXPECT(context, crossing.has_value());
+	if (!crossing)
 	{
-		const Core::FrameOutput current = efm.step(input);
-		crossed = previous.landing_gear.gear_position <= kGearMidpoint &&
-			current.landing_gear.gear_position > kGearMidpoint;
-		if (crossed)
-		{
-			TEST_EXPECT_NEAR(
-				context,
-				current.controls.flaps_position - previous.controls.flaps_position,
-				kExpectedFlapIncrementPerFrame,
-				kTolerance);
-			TEST_EXPECT_NEAR(
-				context,
-				current.controls.slats_position - previous.controls.slats_position,
-				kExpectedSlatIncrementPerFrame,
-				kTolerance);
-		}
-		previous = current;
+		return;
 	}
-	TEST_EXPECT(context, crossed);
+	TEST_EXPECT_NEAR(
+		context,
+		crossing->at.controls.flaps_position -
+			crossing->before.controls.flaps_position,
+		0.0,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		crossing->at.controls.slats_position -
+			crossing->before.controls.slats_position,
+		0.0,
+		kTolerance);
+	const Core::FrameOutput next = efm.step(input);
+	TEST_EXPECT_NEAR(
+		context,
+		next.controls.flaps_position -
+			crossing->at.controls.flaps_position,
+		kExpectedFlapIncrementPerFrame,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		next.controls.slats_position -
+			crossing->at.controls.slats_position,
+		kExpectedSlatIncrementPerFrame,
+		kTolerance);
 }
 
 double expected_fuel_flow(
@@ -298,7 +333,8 @@ double expected_fuel_flow(
 		afterburner_factor;
 }
 
-void test_engine_output_drives_fuel_in_same_frame(Tests::Context& context)
+void test_fuel_reads_previous_committed_engine_demand(
+	Tests::Context& context)
 {
 	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
 	config.fuel.consumption_rate = 3.0;
@@ -309,13 +345,19 @@ void test_engine_output_drives_fuel_in_same_frame(Tests::Context& context)
 		Core::CommandGroup::Throttle, Core::CommandId::SetCommonThrottleAxis, 1.0 });
 	Core::FrameInput input;
 	input.dt_s = 0.1;
-	const Core::FrameOutput frame = efm.step(input);
+	const Core::FrameOutput first = efm.step(input);
 	TEST_EXPECT(context,
-		frame.engines[0].throttle_output != start.engines[0].throttle_output);
+		first.engines[0].throttle_output != start.engines[0].throttle_output);
 	TEST_EXPECT_NEAR(
 		context,
-		frame.fuel.total_fuel_flow,
-		expected_fuel_flow(config, frame),
+		first.fuel.total_fuel_flow,
+		expected_fuel_flow(config, start),
+		kTolerance);
+	const Core::FrameOutput second = efm.step(input);
+	TEST_EXPECT_NEAR(
+		context,
+		second.fuel.total_fuel_flow,
+		expected_fuel_flow(config, first),
 		kTolerance);
 }
 
@@ -502,10 +544,10 @@ void test_unread_mass_delta_is_overwritten(Tests::Context& context)
 
 void run_fck1c_efm_characterization_tests(Tests::Context& context)
 {
-	test_multiframe_golden_trajectory(context);
+	test_grouped_scheduler_multiframe_golden_trajectory(context);
 	test_repeated_run_is_deterministic(context);
-	test_gear_position_drives_flaps_in_same_frame(context);
-	test_engine_output_drives_fuel_in_same_frame(context);
+	test_secondary_controls_read_previous_committed_gear(context);
+	test_fuel_reads_previous_committed_engine_demand(context);
 	test_empty_fuel_inhibits_thrust_after_engine_update(context);
 	test_excess_altitude_inhibits_thrust_after_engine_update(context);
 	test_feedback_does_not_suppress_fallback_force(context);
