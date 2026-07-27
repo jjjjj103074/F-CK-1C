@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ControlLaws.h"
+#include "FlightControlComputerConfig.h"
 #include "InputModel.h"
 #include "../System.h"
 #include "../../Contracts/AircraftData.h"
@@ -11,18 +12,11 @@ namespace Core
 {
 namespace Systems
 {
-struct FlightEnvelopeDefinition
-{
-	const std::vector<double>& mach;
-	const std::vector<double>& alpha_limit_deg;
-};
-
 class FlightControlComputer final : public System
 {
 public:
 	FlightControlComputer(
-		const ::Systems::FBWControllerConfig& config,
-		const FlightEnvelopeDefinition& envelope,
+		const FlightControlComputerConfig& config,
 		StartMode start_mode);
 
 	void setup(SystemSetup& setup) override;
@@ -52,9 +46,7 @@ private:
 	::Systems::FBWControllerInput make_pipeline_input(
 		const AircraftDataSnapshot& snapshot) const;
 
-	const ::Systems::FBWControllerConfig& config_;
-	const std::vector<double>& mach_table_;
-	const std::vector<double>& alpha_limit_table_;
+	const FlightControlComputerConfig config_;
 	::Systems::PrimaryControlState primary_controls_;
 	::Systems::ThrottleInputState throttle_inputs_;
 	::Systems::FBWControllerState fbw_;
@@ -62,5 +54,8 @@ private:
 	FlightControlDemand demand_;
 	EngineControlDemand engine_demand_;
 };
+
+SystemEntry make_flight_control_computer_system_entry(
+	const FlightControlComputerConfig& config);
 }
 }

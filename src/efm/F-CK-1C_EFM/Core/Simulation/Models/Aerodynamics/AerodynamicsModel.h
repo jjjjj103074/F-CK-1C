@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../../../Data/AircraftDefinition.h"
+#include "AerodynamicsConfig.h"
 #include "../ModelEffect.h"
-#include "../../../AircraftState.h"
+#include "../../AircraftState.h"
 #include "../../../Contracts/AircraftData.h"
 
 #include <memory>
@@ -32,8 +32,7 @@ struct AerodynamicsResult
 class AerodynamicsModel final
 {
 public:
-	explicit AerodynamicsModel(
-		const ::Data::AerodynamicsDefinition& definition);
+	explicit AerodynamicsModel(const AerodynamicsConfig& config);
 	~AerodynamicsModel();
 
 	AerodynamicsModel(const AerodynamicsModel&) = delete;

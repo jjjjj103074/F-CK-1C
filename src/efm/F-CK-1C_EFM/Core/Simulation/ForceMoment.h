@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Common/Vec3.h"
+#include "../../Common/Vec3.h"
 
 namespace Core
 {

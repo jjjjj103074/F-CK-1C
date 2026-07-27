@@ -1,19 +1,26 @@
 #include "SimulationPipeline.h"
 
-#include "../ForceMoment.h"
+#include "ForceMoment.h"
 #include "../Systems/SystemPipeline.h"
 #include "Models/Aerodynamics/AerodynamicsModel.h"
 #include "Models/GroundInteraction/GroundInteractionModel.h"
 #include "Models/MassProperties/MassPropertiesModel.h"
 #include "Models/Propulsion/PropulsionModel.h"
-#include "../../Data/AircraftConfig.h"
 
+#include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace Core
 {
 namespace Simulation
 {
+SimulationModels::SimulationModels() = default;
+SimulationModels::~SimulationModels() = default;
+SimulationModels::SimulationModels(SimulationModels&&) noexcept = default;
+SimulationModels& SimulationModels::operator=(
+	SimulationModels&&) noexcept = default;
+
 namespace
 {
 class FrameAccumulator final
@@ -52,18 +59,18 @@ private:
 
 struct SimulationPipeline::Implementation
 {
-	explicit Implementation(const Data::AircraftConfig& config)
-		: aerodynamics(config.aerodynamics),
-		propulsion({
-			config.engine.mach_table,
-			config.engine.max_thrust_table,
-			config.engine.afterburner.thrust_factor,
-			config.left_engine_position,
-			config.right_engine_position
-		}),
-		ground_interaction(
-			Data::make_ground_interaction_definition(config.suspension))
+	explicit Implementation(SimulationModels models)
+		: aerodynamics(std::move(models.aerodynamics)),
+		propulsion(std::move(models.propulsion)),
+		ground_interaction(std::move(models.ground_interaction)),
+		mass_properties(std::move(models.mass_properties))
 	{
+		if (!aerodynamics || !propulsion ||
+			!ground_interaction || !mass_properties)
+		{
+			throw std::invalid_argument(
+				"SimulationPipeline requires every simulation model.");
+		}
 	}
 
 	AerodynamicsModelInput make_aerodynamics_input(
@@ -75,10 +82,10 @@ struct SimulationPipeline::Implementation
 		const PropulsionResult& propulsion_result) const;
 	const SimulationResult& step(const SimulationFrameInput& input);
 
-	AerodynamicsModel aerodynamics;
-	PropulsionModel propulsion;
-	GroundInteractionModel ground_interaction;
-	MassPropertiesModel mass_properties;
+	std::unique_ptr<AerodynamicsModel> aerodynamics;
+	std::unique_ptr<PropulsionModel> propulsion;
+	std::unique_ptr<GroundInteractionModel> ground_interaction;
+	std::unique_ptr<MassPropertiesModel> mass_properties;
 	SimulationResult current_result;
 };
 
@@ -125,12 +132,12 @@ const SimulationResult& SimulationPipeline::Implementation::step(
 	const SimulationFrameInput& input)
 {
 	const AerodynamicsResult& aerodynamics_result =
-		aerodynamics.step(make_aerodynamics_input(input));
+		aerodynamics->step(make_aerodynamics_input(input));
 	const PropulsionResult& propulsion_result =
-		propulsion.step(make_propulsion_input(input));
+		propulsion->step(make_propulsion_input(input));
 	const GroundInteractionResult& ground_result =
-		ground_interaction.step(make_ground_input(input, propulsion_result));
-	const MassDeltaResult& mass_result = mass_properties.step(
+		ground_interaction->step(make_ground_input(input, propulsion_result));
+	const MassDeltaResult& mass_result = mass_properties->step(
 		input.aircraft.read(AircraftDataKeys::kFuelData));
 
 	FrameAccumulator accumulator(input.observation.center_of_mass);
@@ -150,8 +157,9 @@ const SimulationResult& SimulationPipeline::Implementation::step(
 	return current_result;
 }
 
-SimulationPipeline::SimulationPipeline(const Data::AircraftConfig& config)
-	: implementation_(std::make_unique<Implementation>(config))
+SimulationPipeline::SimulationPipeline(SimulationModels models)
+	: implementation_(
+		std::make_unique<Implementation>(std::move(models)))
 {
 }
 

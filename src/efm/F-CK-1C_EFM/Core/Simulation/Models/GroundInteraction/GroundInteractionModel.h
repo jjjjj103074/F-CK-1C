@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../../../../Data/AircraftDefinition.h"
+#include "GroundInteractionConfig.h"
 #include "../ModelEffect.h"
 #include "../Propulsion/PropulsionModel.h"
-#include "../../../AircraftState.h"
+#include "../../AircraftState.h"
 #include "../../../Contracts/AircraftData.h"
 #include "../../../Contracts/FrameContracts.h"
 
@@ -32,7 +32,7 @@ struct GroundInteractionResult
 class GroundInteractionModel final
 {
 public:
-	explicit GroundInteractionModel(::Data::GroundInteractionDefinition definition);
+	explicit GroundInteractionModel(const GroundInteractionConfig& config);
 	~GroundInteractionModel();
 
 	GroundInteractionModel(const GroundInteractionModel&) = delete;

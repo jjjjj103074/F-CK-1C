@@ -1,7 +1,6 @@
 #include "TestFileUtils.h"
 #include "TestHarness.h"
 
-#include "../F-CK-1C_EFM/Data/AircraftConfig.h"
 #include "../F-CK-1C_EFM/DcsBridge/Internal/BridgeContext.h"
 
 #include <algorithm>
@@ -102,7 +101,7 @@ DcsBridge::Internal::BridgeContextEnvironment make_environment()
 	static const int module_address_anchor = 0;
 	return {
 		provide_cockpit_api,
-		Data::fck1c_aircraft_config(),
+		[]() { return std::make_unique<Core::Fck1cEfm>(); },
 		&module_address_anchor
 	};
 }
@@ -300,6 +299,40 @@ void test_concurrent_first_callbacks_share_context(Tests::Context& tests)
 	TEST_EXPECT(tests, g_cockpit_api_requests.load() == 1);
 }
 
+struct CoreActionCounters
+{
+	std::atomic<int> active = 0;
+	std::atomic<int> peak = 0;
+	std::atomic<int> completed = 0;
+};
+
+void perform_test_core_action(
+	DcsBridge::Internal::BridgeContext& context,
+	CoreActionCounters& counters,
+	int action)
+{
+	(void)context.perform_core_action(
+		{ "test_execution_mutex_serializes_core_actions" },
+		[&counters, action](Core::Fck1cEfm& core)
+		{
+			const int active = ++counters.active;
+			counters.peak.store((std::max)(counters.peak.load(), active));
+			core.set_easy_flight((action % 2) == 0);
+			++counters.completed;
+			--counters.active;
+		});
+}
+
+void perform_test_core_actions(
+	DcsBridge::Internal::BridgeContext& context,
+	CoreActionCounters& counters)
+{
+	for (int action = 0; action < kCoreActionsPerCallback; ++action)
+	{
+		perform_test_core_action(context, counters, action);
+	}
+}
+
 void test_execution_mutex_serializes_core_actions(Tests::Context& tests)
 {
 	TestFiles::TemporaryDirectory root("bcm");
@@ -308,38 +341,24 @@ void test_execution_mutex_serializes_core_actions(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
 	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
 	start_flight(context, Core::StartMode::HotGround);
-	std::atomic<int> active_actions = 0;
-	std::atomic<int> peak_actions = 0;
-	std::atomic<int> completed_actions = 0;
+	CoreActionCounters counters;
 	std::vector<std::thread> callbacks;
 	for (std::size_t index = 0; index < kConcurrentCallbackCount; ++index)
 	{
-		callbacks.emplace_back([&context, &active_actions, &peak_actions, &completed_actions]()
-		{
-			for (int action = 0; action < kCoreActionsPerCallback; ++action)
+		callbacks.emplace_back(
+			[&context, &counters]()
 			{
-				(void)context.perform_core_action(
-					{ "test_execution_mutex_serializes_core_actions" },
-					[&active_actions, &peak_actions, &completed_actions, action](
-						Core::Fck1cEfm& core)
-					{
-						const int active = ++active_actions;
-						peak_actions.store((std::max)(peak_actions.load(), active));
-						core.set_easy_flight((action % 2) == 0);
-						++completed_actions;
-						--active_actions;
-					});
-			}
-		});
+				perform_test_core_actions(context, counters);
+			});
 	}
 	for (std::thread& callback : callbacks)
 	{
 		callback.join();
 	}
-	TEST_EXPECT(tests, peak_actions.load() == 1);
+	TEST_EXPECT(tests, counters.peak.load() == 1);
 	TEST_EXPECT(
 		tests,
-		completed_actions.load() ==
+		counters.completed.load() ==
 			static_cast<int>(kConcurrentCallbackCount) * kCoreActionsPerCallback);
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineConfig.h"
 #include "EngineModel.h"
 #include "../System.h"
 #include "../../Contracts/AircraftData.h"
@@ -20,10 +21,7 @@ struct EngineFrameInput
 class Engine final : public System
 {
 public:
-	Engine(
-		const ::Systems::EngineSystemConfig& config,
-		double fuel_consumption_rate,
-		StartMode start_mode);
+	Engine(const EngineConfig& config, StartMode start_mode);
 
 	void setup(SystemSetup& setup) override;
 	void step(
@@ -46,8 +44,7 @@ private:
 	void register_handlers(SystemSetup& setup);
 	void refresh_outputs();
 
-	const ::Systems::EngineSystemConfig& config_;
-	const double fuel_consumption_rate_;
+	const EngineConfig config_;
 	::Systems::EngineSystemState engines_;
 	Common::SegmentedIntegrity<kEngineDamageSegmentCount> left_integrity_;
 	Common::SegmentedIntegrity<kEngineDamageSegmentCount> right_integrity_;
@@ -55,5 +52,7 @@ private:
 	FuelDemand fuel_demand_;
 	bool thrust_inhibited_ = false;
 };
+
+SystemEntry make_engine_system_entry(const EngineConfig& config);
 }
 }

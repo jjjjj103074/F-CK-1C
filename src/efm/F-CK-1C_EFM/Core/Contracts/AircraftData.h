@@ -75,6 +75,7 @@ struct LandingGearData
 	double nose_wheel_steering = 0.0;
 	double brake_left = 0.0;
 	double brake_right = 0.0;
+	std::array<double, kFrameSuspensionWheelCount> wheel_radius = {};
 	std::array<double, kFrameSuspensionWheelCount> wheel_spin = {};
 	std::array<SuspensionWheelData, kFrameSuspensionWheelCount>
 		suspension = {};

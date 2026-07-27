@@ -17,19 +17,11 @@ namespace Core
 namespace Systems
 {
 FlightControlComputer::FlightControlComputer(
-	const ::Systems::FBWControllerConfig& config,
-	const FlightEnvelopeDefinition& envelope,
+	const FlightControlComputerConfig& config,
 	StartMode start_mode)
-	: config_(config),
-	mach_table_(envelope.mach),
-	alpha_limit_table_(envelope.alpha_limit_deg)
+	: config_(config)
 {
-	if (mach_table_.empty() ||
-		mach_table_.size() != alpha_limit_table_.size())
-	{
-		throw std::invalid_argument(
-			"FlightControlComputer requires a complete flight envelope.");
-	}
+	validate_flight_control_computer_config(config_);
 	const double throttle = start_mode == StartMode::HotAir
 		? kHotAirStartThrottle : kColdStartThrottle;
 	::Systems::reset_throttle_inputs(
@@ -98,7 +90,8 @@ const FlightControlDemand& FlightControlComputer::step(
 	input.yaw_input = primary_controls_.yaw.input;
 	input.yaw_trim = primary_controls_.yaw.trim;
 	const ::Systems::FBWControllerOutput output =
-		::Systems::update_fbw_controller(fbw_, config_, input);
+		::Systems::update_fbw_controller(
+			fbw_, config_.control_laws, input);
 	::Systems::update_pilot_throttle_cmds(throttle_inputs_);
 	refresh_outputs(output);
 	return demand_;
@@ -192,9 +185,9 @@ double FlightControlComputer::alpha_limit(double mach) const
 {
 	return Common::lerp(
 		{
-			mach_table_.data(),
-			alpha_limit_table_.data(),
-			static_cast<unsigned>(mach_table_.size())
+			config_.mach_table.data(),
+			config_.alpha_limit_deg.data(),
+			static_cast<unsigned>(config_.mach_table.size())
 		},
 		mach);
 }

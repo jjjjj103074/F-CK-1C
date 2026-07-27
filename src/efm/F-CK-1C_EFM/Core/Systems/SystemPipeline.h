@@ -45,6 +45,12 @@ struct SystemStepOptions
 	bool advance_fuel = true;
 };
 
+struct SystemFrameInput
+{
+	const FrameInput& frame;
+	const AircraftObservation& observation;
+};
+
 struct RuntimeSystem;
 
 struct AircraftDataDescriptor
@@ -185,12 +191,12 @@ public:
 	SystemPipeline& operator=(const SystemPipeline&) = delete;
 
 	AircraftDataSnapshot snapshot() const;
-	AircraftDataSnapshot step(const FrameInput& input)
+	AircraftDataSnapshot step(const SystemFrameInput& input)
 	{
 		return step(input, {});
 	}
 	AircraftDataSnapshot step(
-		const FrameInput& input,
+		const SystemFrameInput& input,
 		const SystemStepOptions& options);
 	DispatchResult send(const Command& command);
 	DispatchResult apply(const DamageEvent& event);

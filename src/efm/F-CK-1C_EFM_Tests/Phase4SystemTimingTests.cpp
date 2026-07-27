@@ -51,6 +51,7 @@ std::vector<double> landing_gear_values(
 	{
 		const SuspensionWheelData& wheel = gear.suspension[index];
 		values.insert(values.end(), {
+			gear.wheel_radius[index],
 			gear.wheel_spin[index],
 			wheel.acting_force.x,
 			wheel.acting_force.y,
@@ -128,7 +129,6 @@ void test_production_output_ignores_same_group_entry_order(
 	auto reversed_catalog = load_generated_system_catalog();
 	std::reverse(reversed_catalog.begin(), reversed_catalog.end());
 	const FlightSetupContext setup = {
-		Data::fck1c_aircraft_config(),
 		StartMode::HotGround,
 		{ kInitialFuel, {} }
 	};
@@ -137,16 +137,17 @@ void test_production_output_ignores_same_group_entry_order(
 	send_scenario_commands(forward);
 	send_scenario_commands(reversed);
 	const FrameInput input = Tests::Fck1c::make_frame_input();
+	const AircraftObservation observation;
 	for (std::size_t frame = 0; frame < kComparisonFrameCount; ++frame)
 	{
 		TEST_EXPECT(
 			context,
-			published_values(forward.step(input)) ==
-				published_values(reversed.step(input)));
+			published_values(forward.step({ input, observation })) ==
+				published_values(reversed.step({ input, observation })));
 	}
 }
 
-void test_equipment_reads_current_normalized_observation(
+void test_equipment_reads_current_aircraft_observation(
 	Tests::Context& context)
 {
 	SystemPipeline pipeline(SystemPipelineTest::flight_setup());
@@ -157,9 +158,11 @@ void test_equipment_reads_current_normalized_observation(
 	});
 	FrameInput input;
 	input.dt_s = kFrameDt;
-	input.availability.world_kinematics = true;
-	input.world_kinematics.velocity.x = kHighSpeedObservation;
-	const LandingGearData& gear = pipeline.step(input).read(
+	AircraftObservation observation;
+	observation.speed_scalar = kHighSpeedObservation;
+	observation.ground_speed = kHighSpeedObservation;
+	const LandingGearData& gear = pipeline.step({
+		input, observation }).read(
 		AircraftDataKeys::kLandingGearData);
 	TEST_EXPECT_NEAR(
 		context,
@@ -172,5 +175,5 @@ void test_equipment_reads_current_normalized_observation(
 void run_phase_four_system_timing_tests(Tests::Context& context)
 {
 	test_production_output_ignores_same_group_entry_order(context);
-	test_equipment_reads_current_normalized_observation(context);
+	test_equipment_reads_current_aircraft_observation(context);
 }

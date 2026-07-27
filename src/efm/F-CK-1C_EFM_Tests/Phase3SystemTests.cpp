@@ -2,7 +2,6 @@
 
 #include "Common/Units.h"
 #include "Core/Systems/FlightControlComputer/FlightControlComputer.h"
-#include "Data/AircraftConfig.h"
 
 #include <array>
 
@@ -104,7 +103,9 @@ void test_control_data_crosses_owner_boundary(Tests::Context& context)
 		{ CommandGroup::None, CommandId::SetYawAxis, kYawInput });
 	FrameInput input;
 	input.dt_s = kFrameDt;
-	const AircraftDataSnapshot output = pipeline.step(input);
+	const AircraftObservation observation;
+	const AircraftDataSnapshot output =
+		step_pipeline(pipeline, input, observation);
 	const PilotControlState& pilot =
 		output.read(AircraftDataKeys::kPilotControlState);
 	const FlightControlDemand& demand =
@@ -140,14 +141,8 @@ FrameInput nonzero_observation_frame()
 
 FlightControlDemand expected_nonzero_demand()
 {
-	const Data::AircraftConfig& config =
-		Data::fck1c_aircraft_config();
 	FlightControlComputer reference(
-		config.fbw,
-		{
-			config.flight_envelope.mach,
-			config.flight_envelope.alpha_limit_deg
-		},
+		fck1c_flight_control_computer_config(),
 		StartMode::HotGround);
 	::Systems::FBWControllerInput input;
 	input.dt = kFrameDt;
@@ -193,8 +188,15 @@ void expect_normalized_observation(
 void test_observations_are_normalized_and_retained(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup());
+	AircraftState observation_state;
+	const FrameInput first_frame = nonzero_observation_frame();
+	apply_aircraft_observations(observation_state, first_frame);
+	update_airspeed(observation_state);
 	const AircraftDataSnapshot first =
-		pipeline.step(nonzero_observation_frame());
+		step_pipeline(
+			pipeline,
+			first_frame,
+			make_aircraft_observation(observation_state));
 	expect_normalized_observation(context, first);
 	const FlightControlDemand expected = expected_nonzero_demand();
 	const FlightControlDemand& actual =
@@ -211,13 +213,21 @@ void test_observations_are_normalized_and_retained(Tests::Context& context)
 	no_new_observation.dt_s = kFrameDt;
 	expect_normalized_observation(
 		context,
-		pipeline.step(no_new_observation));
+		step_pipeline(
+			pipeline,
+			no_new_observation,
+			make_aircraft_observation(observation_state)));
 	FrameInput atmosphere_only;
 	atmosphere_only.dt_s = kFrameDt;
 	atmosphere_only.availability.atmosphere = true;
 	atmosphere_only.atmosphere = valid_atmosphere(kUpdatedAltitudeAsl);
+	apply_aircraft_observations(observation_state, atmosphere_only);
+	update_airspeed(observation_state);
 	const AircraftObservation& updated =
-		pipeline.step(atmosphere_only)
+		step_pipeline(
+			pipeline,
+			atmosphere_only,
+			make_aircraft_observation(observation_state))
 			.read(AircraftDataKeys::kAircraftObservation);
 	TEST_EXPECT_NEAR(
 		context, updated.altitude_asl, kUpdatedAltitudeAsl, kTolerance);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineConfig.h"
 #include "Common/Actuator.h"
 #include "Common/Clamp.h"
 #include "Common/Table.h"
@@ -8,37 +9,12 @@
 
 namespace Systems
 {
-struct AfterburnerConfig
-{
-	double detent = 0.70;
-	double thrust_factor = 1.73;
-	double fuel_factor = 2.2;
-	double core_rpm = 0.94;
-	double core_drop_time = 0.80;
-	double spool_in_tau = 2.0;
-	double spool_out_tau = 0.6;
-	double light_throttle_output_min = 0.88;
-};
-
-struct EngineSystemConfig
-{
-	double start_time = 0.0;
-	double spool_up_tau = 0.0;
-	double spool_down_tau = 0.0;
-	std::vector<double> mach_table;
-	std::vector<double> max_thrust_table;
-	std::vector<double> throttle_input_table;
-	std::vector<double> power_table;
-	AfterburnerConfig afterburner;
-};
-
 struct EngineChannelState
 {
 	bool switch_on = false;
 	double throttle_input = 0.0;
 	double throttle_output = 0.0;
 	double power_readout = 0.0;
-	double thrust_force = 0.0;
 	double afterburner_ratio = 0.0;
 	bool afterburner_lit = false;
 	double nozzle_aperture = 0.80;
@@ -57,14 +33,6 @@ struct FirstOrderInput
 	double target = 0.0;
 	double tau = 0.0;
 	double dt = 0.0;
-};
-
-struct EngineThrustInput
-{
-	double max_dry_thrust = 0.0;
-	double altitude_effect = 0.0;
-	double left_integrity = 1.0;
-	double right_integrity = 1.0;
 };
 
 struct RangeRemap
@@ -99,27 +67,6 @@ struct NozzleUpdateInput
 	bool engine_on = false;
 	double dt = 0.0;
 };
-
-inline bool has_valid_engine_tables(const EngineSystemConfig& config)
-{
-	const std::size_t mach_table_size = config.mach_table.size();
-	const std::size_t throttle_table_size = config.throttle_input_table.size();
-	return mach_table_size > 0 &&
-		config.max_thrust_table.size() == mach_table_size &&
-		throttle_table_size > 0 &&
-		config.power_table.size() == throttle_table_size;
-}
-
-inline double max_dry_thrust(const EngineSystemConfig& config, double mach)
-{
-	return Common::lerp(
-		{
-			config.mach_table.data(),
-			config.max_thrust_table.data(),
-			static_cast<unsigned>(config.mach_table.size())
-		},
-		mach);
-}
 
 inline void set_engine_switch(EngineChannelState& engine, bool enabled)
 {
@@ -192,7 +139,7 @@ inline void update_afterburner(EngineChannelState& engine, const AfterburnerConf
 
 inline void update_afterburners(
 	EngineSystemState& engines,
-	const EngineSystemConfig& config,
+	const EngineConfig& config,
 	double dt)
 {
 	update_afterburner(engines.left, config.afterburner, dt);
@@ -201,7 +148,7 @@ inline void update_afterburners(
 
 inline void update_stopped_engine(
 	EngineChannelState& engine,
-	const EngineSystemConfig& config,
+	const EngineConfig& config,
 	double dt)
 {
 	engine.throttle_output = Common::actuator(
@@ -214,7 +161,7 @@ inline void update_stopped_engine(
 
 inline void update_starting_engine(
 	EngineChannelState& engine,
-	const EngineSystemConfig& config,
+	const EngineConfig& config,
 	double dt)
 {
 	engine.power_readout = Common::actuator(
@@ -225,7 +172,7 @@ inline void update_starting_engine(
 
 inline void update_running_dry_engine(
 	EngineChannelState& engine,
-	const EngineSystemConfig& config,
+	const EngineConfig& config,
 	double dt)
 {
 	const AfterburnerConfig& afterburner = config.afterburner;
@@ -263,7 +210,7 @@ inline void update_running_dry_engine(
 
 inline void update_dry_engine_channel(
 	EngineChannelState& engine,
-	const EngineSystemConfig& config,
+	const EngineConfig& config,
 	double dt)
 {
 	if (!engine.switch_on)
@@ -282,7 +229,7 @@ inline void update_dry_engine_channel(
 
 inline void update_dry_engine_channels(
 	EngineSystemState& engines,
-	const EngineSystemConfig& config,
+	const EngineConfig& config,
 	double dt)
 {
 	update_dry_engine_channel(engines.left, config, dt);
@@ -293,39 +240,6 @@ inline void clamp_engine_throttle_inputs(EngineSystemState& engines)
 {
 	engines.left.throttle_input = Common::limit(engines.left.throttle_input, 0.0, 1.0);
 	engines.right.throttle_input = Common::limit(engines.right.throttle_input, 0.0, 1.0);
-}
-
-inline void update_engine_thrust_outputs(
-	EngineSystemState& engines,
-	const EngineSystemConfig& config,
-	const EngineThrustInput& input)
-{
-	const double max_ab_thrust =
-		input.max_dry_thrust * config.afterburner.thrust_factor;
-
-	const double left_dry_force = engines.left.throttle_output
-		* input.max_dry_thrust
-		* input.altitude_effect
-		* input.left_integrity
-		* 0.5;
-	const double right_dry_force = engines.right.throttle_output
-		* input.max_dry_thrust
-		* input.altitude_effect
-		* input.right_integrity
-		* 0.5;
-	const double left_ab_extra = engines.left.afterburner_ratio
-		* (max_ab_thrust - input.max_dry_thrust)
-		* input.altitude_effect
-		* input.left_integrity
-		* 0.5;
-	const double right_ab_extra = engines.right.afterburner_ratio
-		* (max_ab_thrust - input.max_dry_thrust)
-		* input.altitude_effect
-		* input.right_integrity
-		* 0.5;
-
-	engines.left.thrust_force = left_dry_force + left_ab_extra;
-	engines.right.thrust_force = right_dry_force + right_ab_extra;
 }
 
 inline void apply_engine_readout_integrity(
@@ -344,8 +258,6 @@ inline bool should_shutdown_engines(double internal_fuel, double altitude_asl)
 
 inline void shutdown_engines(EngineSystemState& engines, double dt)
 {
-	engines.left.thrust_force = 0.0;
-	engines.right.thrust_force = 0.0;
 	engines.left.afterburner_ratio = 0.0;
 	engines.right.afterburner_ratio = 0.0;
 	engines.left.afterburner_lit = false;
@@ -448,7 +360,7 @@ inline void configure_engine_start_channel(
 
 inline void configure_cold_start_engines(
 	EngineSystemState& engines,
-	const EngineSystemConfig& config)
+	const EngineConfig& config)
 {
 	configure_engine_start_channel(
 		engines.left, { false, 0.0, 0.0, 0.0 }, config.afterburner);
@@ -458,7 +370,7 @@ inline void configure_cold_start_engines(
 
 inline void configure_hot_ground_start_engines(
 	EngineSystemState& engines,
-	const EngineSystemConfig& config)
+	const EngineConfig& config)
 {
 	configure_engine_start_channel(
 		engines.left, { true, 0.0, 0.5, 0.5 }, config.afterburner);
@@ -468,7 +380,7 @@ inline void configure_hot_ground_start_engines(
 
 inline void configure_hot_air_start_engines(
 	EngineSystemState& engines,
-	const EngineSystemConfig& config)
+	const EngineConfig& config)
 {
 	configure_engine_start_channel(
 		engines.left, { true, 0.5, 0.5, 0.5 }, config.afterburner);
@@ -537,7 +449,7 @@ inline void update_nozzle_aperture(
 
 inline void update_nozzle_apertures(
 	EngineSystemState& engines,
-	const EngineSystemConfig& config,
+	const EngineConfig& config,
 	double dt)
 {
 	update_nozzle_aperture(engines.left, config.afterburner, dt);

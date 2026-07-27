@@ -217,8 +217,8 @@ void test_unavailable_input_preserves_latest_values(Tests::Context& context)
 
 void test_start_reinitializes_output(Tests::Context& context)
 {
-	Data::AircraftConfig config = make_test_config();
-	config.fuel.consumption_rate = 3.0;
+	auto config = make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
 	Core::Fck1cEfm efm(config);
 	(void)efm.start(Core::StartMode::HotGround);
 	const Core::FrameOutput previous = efm.step(make_frame_input());
@@ -236,8 +236,8 @@ void test_start_reinitializes_output(Tests::Context& context)
 
 void test_release_preparation_survives_start(Tests::Context& context)
 {
-	Data::AircraftConfig config = make_test_config();
-	config.fuel.consumption_rate = 3.0;
+	auto config = make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
 	Core::Fck1cEfm efm(config);
 	(void)efm.start(Core::StartMode::ColdGround);
 	efm.set_internal_fuel(100.0);
@@ -338,8 +338,8 @@ void test_active_preparation_updates_next_flight(Tests::Context& context)
 
 void test_release_synchronizes_consumed_fuel(Tests::Context& context)
 {
-	Data::AircraftConfig config = make_test_config();
-	config.fuel.consumption_rate = 3.0;
+	auto config = make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
 	Core::Fck1cEfm efm(config);
 	(void)efm.start(Core::StartMode::HotAir);
 	efm.set_internal_fuel(kPreparedInternalFuel);
@@ -400,9 +400,9 @@ void test_repeated_start_release_cycles(Tests::Context& context)
 
 void test_config_is_owned_by_core(Tests::Context& context)
 {
-	Data::AircraftConfig source = make_test_config();
+	auto source = make_test_config();
 	Core::Fck1cEfm efm(source);
-	source.engine.max_thrust_table[0] = 0.0;
+	source.propulsion.max_thrust_table[0] = 0.0;
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	Core::FrameInput input;
@@ -417,7 +417,8 @@ void test_invalid_config_rejected(Tests::Context& context)
 	bool rejected = false;
 	try
 	{
-		Core::Fck1cEfm efm(Data::AircraftConfig{});
+		Core::Fck1cEfm efm(Tests::Fck1c::TestAircraftConfig{});
+		(void)efm.start(Core::StartMode::HotGround);
 	}
 	catch (const std::invalid_argument&)
 	{

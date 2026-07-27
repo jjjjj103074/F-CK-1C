@@ -1,11 +1,9 @@
 #include "BridgeContext.h"
 
-#include "../../Data/AircraftConfig.h"
+#include <stdexcept>
 
 namespace
 {
-constexpr double kCarrierLaunchReferenceMach = 0.1;
-
 DcsBridge::ModulePaths make_module_paths(
 	const DcsBridge::ModulePathSource& source)
 {
@@ -14,14 +12,36 @@ DcsBridge::ModulePaths make_module_paths(
 	return paths;
 }
 
-DcsBridge::Internal::CarrierBridgeConfig make_carrier_config(
-	const Data::AircraftConfig& aircraft_config)
+DcsBridge::Internal::CarrierBridgeConfig make_carrier_config()
 {
-	return {
-		Systems::max_dry_thrust(
-			aircraft_config.engine,
-			kCarrierLaunchReferenceMach)
-	};
+	return { Core::carrier_launch_reference_thrust() };
+}
+
+cockpit_param_api make_cockpit_api(
+	DcsBridge::Internal::CockpitApiProvider provider)
+{
+	if (provider == nullptr)
+	{
+		throw std::invalid_argument(
+			"BridgeContext requires a cockpit API provider.");
+	}
+	return provider();
+}
+
+std::unique_ptr<Core::Fck1cEfm> make_core(
+	const DcsBridge::Internal::CoreFactory& factory)
+{
+	if (!factory)
+	{
+		throw std::invalid_argument("BridgeContext requires a Core factory.");
+	}
+	std::unique_ptr<Core::Fck1cEfm> core = factory();
+	if (!core)
+	{
+		throw std::invalid_argument(
+			"BridgeContext core factory returned no Core.");
+	}
+	return core;
 }
 }
 
@@ -35,9 +55,9 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
 	state_csv_writer_(module_paths_.mod_root_path, event_log_),
 	event_reporter_(event_log_, output_store_),
 	param_exporter_(event_reporter_),
-	cockpit_bridge_(config.cockpit_api_provider()),
-	carrier_bridge_(make_carrier_config(config.aircraft_config)),
-	core_(config.aircraft_config)
+	cockpit_bridge_(make_cockpit_api(config.cockpit_api_provider)),
+	carrier_bridge_(make_carrier_config()),
+	core_(make_core(config.core_factory))
 {
 }
 
@@ -93,7 +113,7 @@ std::mutex& BridgeContext::execution_mutex()
 
 Core::Fck1cEfm& BridgeContext::core()
 {
-	return core_;
+	return *core_;
 }
 
 Core::MassDeltaResult BridgeContext::take_flight_mass_delta()
@@ -105,7 +125,7 @@ Core::MassDeltaResult BridgeContext::take_flight_mass_delta()
 BridgeContextOwner::BridgeContextOwner(
 	const BridgeContextEnvironment& environment)
 	: cockpit_api_provider_(environment.cockpit_api_provider),
-	aircraft_config_(environment.aircraft_config),
+	core_factory_(environment.core_factory),
 	module_address_(environment.module_address)
 {
 }
@@ -119,7 +139,7 @@ BridgeContext& BridgeContextOwner::get(const char* initial_config_path)
 			context_ = std::make_unique<BridgeContext>(BridgeContextConfig{
 				{ initial_config_path, module_address_ },
 				cockpit_api_provider_,
-				aircraft_config_
+				core_factory_
 			});
 			published_context_.store(context_.get(), std::memory_order_release);
 		});

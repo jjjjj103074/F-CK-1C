@@ -15,9 +15,14 @@ namespace
 constexpr int kUnknownThrownValue = 42;
 constexpr double kNeutralResult = -1.0;
 
-const Data::AircraftConfig& throw_during_aircraft_config()
+std::unique_ptr<Core::Fck1cEfm> throw_during_core_creation()
 {
 	throw std::runtime_error("configuration failure");
+}
+
+cockpit_param_api provide_empty_cockpit_api()
+{
+	return {};
 }
 
 std::string read_log(const TestFiles::TemporaryDirectory& root)
@@ -130,8 +135,8 @@ void test_missing_log_does_not_throw(Tests::Context& context)
 void test_process_context_exposes_initialization_failure(Tests::Context& context)
 {
 	DcsBridge::Internal::ProcessBridgeContext process_context(
-		nullptr,
-		throw_during_aircraft_config,
+		provide_empty_cockpit_api,
+		throw_during_core_creation,
 		nullptr);
 	TEST_EXPECT(context, process_context.try_event_log() == nullptr);
 

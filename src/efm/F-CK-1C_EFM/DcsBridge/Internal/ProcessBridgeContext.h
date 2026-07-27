@@ -8,14 +8,12 @@ namespace DcsBridge
 {
 namespace Internal
 {
-using AircraftConfigProvider = const Data::AircraftConfig& (*)();
-
 class ProcessBridgeContext final
 {
 public:
 	ProcessBridgeContext(
 		CockpitApiProvider cockpit_api_provider,
-		AircraftConfigProvider aircraft_config_provider,
+		CoreFactory core_factory,
 		const void* module_address) noexcept;
 
 	ProcessBridgeContext(const ProcessBridgeContext&) = delete;

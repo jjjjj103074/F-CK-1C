@@ -2,7 +2,14 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <SystemCatalogGenerator>$(MSBuildThisFileDirectory)..\..\tools\generate_system_catalog.ps1</SystemCatalogGenerator>
+    <EfmArchitectureChecker>$(MSBuildThisFileDirectory)..\..\tools\check_efm_architecture.ps1</EfmArchitectureChecker>
   </PropertyGroup>
+  <Target Name="CheckEfmArchitecture" BeforeTargets="GenerateEfmSystemCatalog">
+    <Message
+      Importance="Low"
+      Text="Checking EFM architecture boundaries under $(EfmModuleRoot)" />
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(EfmArchitectureChecker)&quot; -ModuleRoot &quot;$(EfmModuleRoot).&quot;" />
+  </Target>
   <Target Name="GenerateEfmSystemCatalog" BeforeTargets="ClCompile">
     <Message
       Importance="Low"

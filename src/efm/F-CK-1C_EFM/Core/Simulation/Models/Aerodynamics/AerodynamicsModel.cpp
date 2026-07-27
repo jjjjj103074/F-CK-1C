@@ -13,10 +13,10 @@ namespace Simulation
 {
 struct AerodynamicsModel::Implementation
 {
-	explicit Implementation(
-		const ::Data::AerodynamicsDefinition& model_definition)
-		: definition(model_definition)
+	explicit Implementation(const AerodynamicsConfig& model_config)
+		: config(model_config)
 	{
+		validate_aerodynamics_config(config);
 		result.primary_effects.reserve(kPrimaryEffectCapacity);
 		result.limiter_effects.reserve(kLimiterEffectCapacity);
 	}
@@ -30,7 +30,7 @@ struct AerodynamicsModel::Implementation
 		const AerodynamicsPhysics::AerodynamicsFrameInput& input);
 	const AerodynamicsResult& step(const AerodynamicsModelInput& input);
 
-	const ::Data::AerodynamicsDefinition& definition;
+	const AerodynamicsConfig config;
 	AerodynamicsPhysics::AerodynamicsState state;
 	AerodynamicsResult result;
 };
@@ -71,7 +71,7 @@ void AerodynamicsModel::Implementation::update_conditions(
 	const AircraftState& observation = input.observation;
 	AerodynamicsPhysics::update_aerodynamic_conditions(
 		state,
-		definition,
+		config,
 		{
 			observation.center_of_mass,
 			observation.atmosphere_density,
@@ -95,7 +95,7 @@ void AerodynamicsModel::Implementation::record_primary(
 	};
 	AerodynamicsPhysics::apply_primary_aerodynamics(
 		state,
-		{ definition, input },
+		{ config, input },
 		record_force);
 }
 
@@ -116,7 +116,7 @@ void AerodynamicsModel::Implementation::record_limiters(
 	};
 	AerodynamicsPhysics::apply_aerodynamic_limiters(
 		state,
-		{ definition, input },
+		{ config, input },
 		AerodynamicsPhysics::make_aerodynamic_sinks(
 			record_force,
 			record_moment));
@@ -134,13 +134,12 @@ const AerodynamicsResult& AerodynamicsModel::Implementation::step(
 	record_limiters(frame);
 	result.shake_amplitude =
 		AerodynamicsPhysics::update_aerodynamic_shake(
-			state, definition, frame);
+			state, config, frame);
 	return result;
 }
 
-AerodynamicsModel::AerodynamicsModel(
-	const ::Data::AerodynamicsDefinition& definition)
-	: implementation_(std::make_unique<Implementation>(definition))
+AerodynamicsModel::AerodynamicsModel(const AerodynamicsConfig& config)
+	: implementation_(std::make_unique<Implementation>(config))
 {
 }
 

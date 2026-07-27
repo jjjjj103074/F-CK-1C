@@ -13,11 +13,21 @@ struct Fck1cEfm::FlightPreparation
 	Simulation::SimulationOptions options;
 };
 
-Fck1cEfm::Fck1cEfm(const Data::AircraftConfig& config)
-	: config_(config),
+Fck1cEfm::Fck1cEfm()
+	: Fck1cEfm(Simulation::make_fck1c_aircraft_simulation_factory())
+{
+}
+
+Fck1cEfm::Fck1cEfm(
+	Simulation::AircraftSimulationFactory simulation_factory)
+	: simulation_factory_(std::move(simulation_factory)),
 	preparation_(std::make_unique<FlightPreparation>())
 {
-	Simulation::validate_aircraft_config(config_);
+	if (!simulation_factory_)
+	{
+		throw std::invalid_argument(
+			"Fck1cEfm requires an AircraftSimulation factory.");
+	}
 }
 
 Fck1cEfm::~Fck1cEfm() = default;
@@ -30,8 +40,12 @@ FrameOutput Fck1cEfm::start(StartMode mode)
 		preparation_->fuel,
 		preparation_->options
 	};
-	auto simulation =
-		std::make_unique<Simulation::AircraftSimulation>(config_, setup);
+	auto simulation = simulation_factory_(setup);
+	if (!simulation)
+	{
+		throw std::logic_error(
+			"AircraftSimulation factory returned no simulation.");
+	}
 	const FrameOutput output = simulation->initial_output();
 	simulation_ = std::move(simulation);
 	return output;
@@ -165,5 +179,10 @@ void Fck1cEfm::repair(const RepairEvent& event)
 	{
 		simulation_->repair(event);
 	}
+}
+
+double carrier_launch_reference_thrust()
+{
+	return Simulation::carrier_launch_reference_thrust();
 }
 }

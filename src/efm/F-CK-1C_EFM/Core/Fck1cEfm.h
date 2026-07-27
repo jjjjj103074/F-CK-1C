@@ -3,7 +3,7 @@
 #include "Contracts/Commands.h"
 #include "Contracts/Events.h"
 #include "Contracts/FrameContracts.h"
-#include "../Data/AircraftConfig.h"
+#include "Simulation/AircraftSimulationFactory.h"
 
 #include <memory>
 
@@ -17,7 +17,9 @@ class AircraftSimulation;
 class Fck1cEfm
 {
 public:
-	explicit Fck1cEfm(const Data::AircraftConfig& config);
+	Fck1cEfm();
+	explicit Fck1cEfm(
+		Simulation::AircraftSimulationFactory simulation_factory);
 	~Fck1cEfm();
 
 	Fck1cEfm(const Fck1cEfm&) = delete;
@@ -44,8 +46,10 @@ private:
 
 	void synchronize_preparation();
 
-	const Data::AircraftConfig config_;
+	const Simulation::AircraftSimulationFactory simulation_factory_;
 	std::unique_ptr<FlightPreparation> preparation_;
 	std::unique_ptr<Simulation::AircraftSimulation> simulation_;
 };
+
+double carrier_launch_reference_thrust();
 }

@@ -13,11 +13,12 @@ namespace Systems
 {
 LandingGear::LandingGear(
 	StartMode start_mode,
-	const ::Systems::SuspensionSystemConfig& suspension_config)
+	const LandingGearConfig& config)
 {
+	validate_landing_gear_config(config);
 	for (std::size_t index = 0; index < wheel_radius_.size(); ++index)
 	{
-		wheel_radius_[index] = suspension_config.fallback_wheel_radius[index];
+		wheel_radius_[index] = config.wheel_radius[index];
 	}
 	if (start_mode == StartMode::HotAir)
 	{
@@ -27,7 +28,6 @@ LandingGear::LandingGear(
 	{
 		::Systems::configure_ground_start_landing_gear(landing_gear_);
 	}
-	::Systems::reset_suspension_feedback_state(suspension_);
 	refresh_data();
 }
 
@@ -111,7 +111,7 @@ void LandingGear::apply_suspension_feedback(const FrameInput& input)
 			continue;
 		}
 		const SuspensionFeedbackInput& wheel = input.suspension[index];
-		::Systems::update_suspension_feedback(
+		update_suspension_feedback(
 			suspension_,
 			{ wheel.index, wheel.compression, wheel.acting_force });
 	}
@@ -119,7 +119,7 @@ void LandingGear::apply_suspension_feedback(const FrameInput& input)
 
 void LandingGear::update_on_ground()
 {
-	::Systems::update_on_ground(suspension_, landing_gear_.position);
+	Core::Systems::update_on_ground(suspension_, landing_gear_.position);
 	refresh_data();
 }
 
@@ -162,15 +162,16 @@ void LandingGear::refresh_data()
 	data_.brake_right = landing_gear_.wheels.brake_right;
 	for (std::size_t index = 0; index < data_.wheel_spin.size(); ++index)
 	{
+		data_.wheel_radius[index] = wheel_radius_[index];
 		data_.wheel_spin[index] = landing_gear_.wheels.spin[index];
 		data_.suspension[index] = {
-			suspension_.force_vec[index],
+			suspension_.force[index],
 			suspension_.compression[index],
-			suspension_.force_mag[index],
-			suspension_.wow[index]
+			suspension_.force_magnitude[index],
+			suspension_.weight_on_wheel[index]
 		};
 	}
-	data_.any_weight_on_wheels = ::Systems::any_wow(suspension_);
+	data_.any_weight_on_wheels = any_weight_on_wheels(suspension_);
 	data_.on_ground = suspension_.on_ground;
 }
 
@@ -184,7 +185,7 @@ const ::Systems::LandingGearSystemState& LandingGear::device_state() const
 	return landing_gear_;
 }
 
-const ::Systems::SuspensionSystemState& LandingGear::suspension_state() const
+const SuspensionFeedbackState& LandingGear::suspension_state() const
 {
 	return suspension_;
 }

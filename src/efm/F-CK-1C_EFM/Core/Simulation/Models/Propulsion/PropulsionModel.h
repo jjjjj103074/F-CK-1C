@@ -1,7 +1,8 @@
 #pragma once
 
+#include "PropulsionConfig.h"
 #include "../ModelEffect.h"
-#include "../../../AircraftState.h"
+#include "../../AircraftState.h"
 #include "../../../Contracts/AircraftData.h"
 #include "../../../Contracts/FrameContracts.h"
 
@@ -11,15 +12,6 @@ namespace Core
 {
 namespace Simulation
 {
-struct PropulsionModelDefinition
-{
-	const std::vector<double>& mach_table;
-	const std::vector<double>& max_thrust_table;
-	double afterburner_thrust_factor = 1.0;
-	Common::Vec3 left_engine_position;
-	Common::Vec3 right_engine_position;
-};
-
 struct PropulsionModelInput
 {
 	const EngineData& engines;
@@ -37,16 +29,12 @@ struct PropulsionResult
 class PropulsionModel final
 {
 public:
-	explicit PropulsionModel(const PropulsionModelDefinition& definition);
+	explicit PropulsionModel(const PropulsionConfig& config);
 
 	const PropulsionResult& step(const PropulsionModelInput& input);
 
 private:
-	const std::vector<double>& mach_table_;
-	const std::vector<double>& max_thrust_table_;
-	double afterburner_thrust_factor_ = 1.0;
-	Common::Vec3 left_engine_position_;
-	Common::Vec3 right_engine_position_;
+	const PropulsionConfig config_;
 	PropulsionResult result_;
 };
 }

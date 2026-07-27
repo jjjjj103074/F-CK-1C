@@ -9,11 +9,6 @@
 #include <string>
 #include <vector>
 
-namespace Data
-{
-struct AircraftConfig;
-}
-
 namespace Core
 {
 namespace Systems
@@ -36,7 +31,6 @@ struct FlightFuelState
 
 struct FlightSetupContext
 {
-	const Data::AircraftConfig& config;
 	const StartMode start_mode;
 	const FlightFuelState fuel;
 };

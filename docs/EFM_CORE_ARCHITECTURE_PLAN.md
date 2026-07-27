@@ -546,6 +546,7 @@ release 時則明確清空未交付項目。
 
 ```text
 Core/
+├── README.md
 ├── Fck1cEfm.h
 ├── Fck1cEfm.cpp
 │
@@ -559,10 +560,9 @@ Core/
 │   ├── System.h
 │   ├── SystemPipeline.h
 │   ├── SystemPipeline.cpp
-│   ├── Generated/
-│   │   └── SystemCatalog.g.cpp
 │   ├── FlightControlComputer/
 │   │   ├── Entry.cpp
+│   │   ├── FlightControlComputerConfig.*
 │   │   ├── FlightControlComputer.h
 │   │   ├── FlightControlComputer.cpp
 │   │   └── ControlLaws.cpp
@@ -574,12 +574,15 @@ Core/
 │   │   └── SecondaryFlightControls.*
 │   ├── Engine/
 │   │   ├── Entry.cpp
+│   │   ├── EngineConfig.*
 │   │   └── Engine.*
 │   ├── Fuel/
 │   │   ├── Entry.cpp
 │   │   └── Fuel.*
 │   ├── LandingGear/
 │   │   ├── Entry.cpp
+│   │   ├── LandingGearConfig.*
+│   │   ├── SuspensionFeedback.h
 │   │   └── LandingGear.*
 │   └── AirframeStructure/
 │       ├── Entry.cpp
@@ -588,19 +591,31 @@ Core/
 └── Simulation/
     ├── AircraftSimulation.h
     ├── AircraftSimulation.cpp
+    ├── AircraftSimulationFactory.h
+    ├── AircraftState.h
+    ├── ForceMoment.h
     ├── SimulationPipeline.h
     ├── SimulationPipeline.cpp
-    ├── Definition/
-    │   └── Fck1cDefinition.*
     └── Models/
+        ├── ModelEffect.h
         ├── Aerodynamics/
+        │   ├── AerodynamicsConfig.*
+        │   └── AerodynamicsModel.*
         ├── Propulsion/
+        │   ├── PropulsionConfig.*
+        │   └── PropulsionModel.*
         ├── GroundInteraction/
+        │   ├── GroundInteractionConfig.*
+        │   └── GroundInteractionModel.*
         └── MassProperties/
 ```
 
 目錄以飛機功能或物理模型分類，不以 class 類型或可見性建立大量
 `Interface/`、`Manager/`、`Internal/` 目錄。
+
+`SystemCatalog.g.cpp` 由建置工具產生於 intermediate 目錄，不屬於來源
+樹。現階段沒有兩個 Model 共同擁有的幾何，因此不建立空的
+`Simulation/Definition/`；未來只有真正跨 Model 的定義才放入該目錄。
 
 ## 依賴規則
 

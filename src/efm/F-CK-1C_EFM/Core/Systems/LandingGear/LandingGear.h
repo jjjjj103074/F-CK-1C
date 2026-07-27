@@ -1,9 +1,10 @@
 #pragma once
 
+#include "LandingGearConfig.h"
 #include "LandingGearModel.h"
+#include "SuspensionFeedback.h"
 #include "../System.h"
 #include "../../Contracts/AircraftData.h"
-#include "Systems/SuspensionSystem.h"
 
 namespace Core
 {
@@ -21,9 +22,7 @@ struct LandingGearFrameInput
 class LandingGear final : public System
 {
 public:
-	LandingGear(
-		StartMode start_mode,
-		const ::Systems::SuspensionSystemConfig& suspension_config);
+	LandingGear(StartMode start_mode, const LandingGearConfig& config);
 
 	void setup(SystemSetup& setup) override;
 	void step(
@@ -37,16 +36,19 @@ public:
 
 	const LandingGearData& data() const;
 	const ::Systems::LandingGearSystemState& device_state() const;
-	const ::Systems::SuspensionSystemState& suspension_state() const;
+	const SuspensionFeedbackState& suspension_state() const;
 
 private:
 	void register_commands(SystemSetup& setup);
 	void refresh_data();
 
 	::Systems::LandingGearSystemState landing_gear_;
-	::Systems::SuspensionSystemState suspension_;
+	SuspensionFeedbackState suspension_;
 	std::array<double, kFrameSuspensionWheelCount> wheel_radius_;
 	LandingGearData data_;
 };
+
+SystemEntry make_landing_gear_system_entry(
+	const LandingGearConfig& config);
 }
 }

@@ -1,6 +1,14 @@
 #include "AircraftSimulation.h"
 
-#include <stdexcept>
+#include "Models/Aerodynamics/AerodynamicsConfig.h"
+#include "Models/Aerodynamics/AerodynamicsModel.h"
+#include "Models/GroundInteraction/GroundInteractionConfig.h"
+#include "Models/GroundInteraction/GroundInteractionModel.h"
+#include "Models/MassProperties/MassPropertiesModel.h"
+#include "Models/Propulsion/PropulsionConfig.h"
+#include "Models/Propulsion/PropulsionModel.h"
+
+#include <utility>
 
 namespace
 {
@@ -22,28 +30,29 @@ Core::Systems::FlightFuelState make_system_fuel_state(
 }
 
 Core::Systems::FlightSetupContext make_system_setup(
-	const Data::AircraftConfig& config,
 	const Core::Simulation::FlightSetupContext& setup)
 {
 	return {
-		config,
 		setup.start_mode,
 		make_system_fuel_state(setup.fuel)
 	};
 }
 
-Systems::StartupMode startup_mode(Core::StartMode mode)
+Core::Simulation::SimulationModels make_fck1c_simulation_models()
 {
-	switch (mode)
-	{
-	case Core::StartMode::ColdGround:
-		return Systems::STARTUP_MODE_COLD_GROUND;
-	case Core::StartMode::HotGround:
-		return Systems::STARTUP_MODE_HOT_GROUND;
-	case Core::StartMode::HotAir:
-		return Systems::STARTUP_MODE_HOT_AIR;
-	}
-	throw std::invalid_argument("Unknown Core::StartMode.");
+	Core::Simulation::SimulationModels models;
+	models.aerodynamics =
+		std::make_unique<Core::Simulation::AerodynamicsModel>(
+			Core::Simulation::fck1c_aerodynamics_config());
+	models.propulsion =
+		std::make_unique<Core::Simulation::PropulsionModel>(
+			Core::Simulation::fck1c_propulsion_config());
+	models.ground_interaction =
+		std::make_unique<Core::Simulation::GroundInteractionModel>(
+			Core::Simulation::fck1c_ground_interaction_config());
+	models.mass_properties =
+		std::make_unique<Core::Simulation::MassPropertiesModel>();
+	return models;
 }
 }
 
@@ -51,34 +60,21 @@ namespace Core
 {
 namespace Simulation
 {
-void validate_aircraft_config(const Data::AircraftConfig& config)
-{
-	if (!Data::has_valid_aerodynamics_definition(
-		config.aerodynamics))
-	{
-		throw std::invalid_argument("Fck1cEfm requires complete aerodynamic tables.");
-	}
-	if (!::Systems::has_valid_engine_tables(config.engine))
-	{
-		throw std::invalid_argument("Fck1cEfm requires complete engine tables.");
-	}
-}
-
 AircraftSimulation::AircraftSimulation(
-	const Data::AircraftConfig& config,
-	const FlightSetupContext& setup)
-	: config_(config),
-	system_pipeline_(make_system_setup(config, setup)),
-	simulation_pipeline_(config)
+	const FlightSetupContext& setup,
+	AircraftSimulationDependencies dependencies)
+	: system_pipeline_(
+		make_system_setup(setup),
+		std::move(dependencies.system_catalog)),
+	simulation_pipeline_(std::move(dependencies.simulation_models))
 {
-	validate_aircraft_config(config_);
 	apply_setup(setup);
 }
 
 void AircraftSimulation::apply_setup(const FlightSetupContext& setup)
 {
 	gameplay_.options = setup.options;
-	::Systems::begin_startup(startup_, startup_mode(setup.start_mode));
+	simulation_time_s_ = 0.0;
 }
 
 FrameOutput AircraftSimulation::initial_output() const
@@ -174,15 +170,16 @@ FrameOutput AircraftSimulation::step(const FrameInput& input)
 	{
 		system_pipeline_.suppress_fuel_consumption();
 	}
+	const AircraftObservation observation =
+		make_aircraft_observation(aircraft_state_);
 	const Systems::AircraftDataSnapshot aircraft =
-		system_pipeline_.step(input, options);
+		system_pipeline_.step({ input, observation }, options);
 	const SimulationResult& simulation = simulation_pipeline_.step({
 		aircraft,
 		aircraft_state_,
 		input,
 		gameplay_.options.easy_flight
 	});
-	finish_frame();
 	return make_frame_output(
 		aircraft,
 		simulation,
@@ -191,17 +188,32 @@ FrameOutput AircraftSimulation::step(const FrameInput& input)
 
 void AircraftSimulation::begin_frame(double dt)
 {
-	::Systems::advance_simulation_time(startup_, dt);
-}
-
-void AircraftSimulation::finish_frame()
-{
-	::Systems::mark_first_frame_completed(startup_);
+	simulation_time_s_ += dt;
 }
 
 void AircraftSimulation::repair(const RepairEvent& event)
 {
 	(void)system_pipeline_.apply(event);
+}
+
+AircraftSimulationFactory make_fck1c_aircraft_simulation_factory()
+{
+	return [](const FlightSetupContext& setup)
+	{
+		AircraftSimulationDependencies dependencies;
+		dependencies.system_catalog =
+			Systems::load_generated_system_catalog();
+		dependencies.simulation_models =
+			make_fck1c_simulation_models();
+		return std::make_unique<AircraftSimulation>(
+			setup,
+			std::move(dependencies));
+	};
+}
+
+double carrier_launch_reference_thrust()
+{
+	return fck1c_carrier_launch_reference_thrust();
 }
 }
 }

@@ -1,7 +1,6 @@
 #include "TestHarness.h"
 
 #include "Core/Fck1cEfm.h"
-#include "Data/AircraftConfig.h"
 #include "DcsBridge/Internal/DcsCommandRouter.h"
 #include "DcsIds/Commands.h"
 
@@ -189,7 +188,7 @@ void test_system_command_mappings(Tests::Context& context)
 
 void test_routed_primary_and_engine_outputs(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(Data::fck1c_aircraft_config());
+	Core::Fck1cEfm efm;
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	route_command(context, efm, { DcsIds::Commands::JoystickPitch, 0.4F });
@@ -207,8 +206,8 @@ void test_routed_primary_and_engine_outputs(Tests::Context& context)
 
 void test_routed_trim_changes_control_output(Tests::Context& context)
 {
-	Core::Fck1cEfm baseline(Data::fck1c_aircraft_config());
-	Core::Fck1cEfm trimmed(Data::fck1c_aircraft_config());
+	Core::Fck1cEfm baseline;
+	Core::Fck1cEfm trimmed;
 	(void)baseline.start(Core::StartMode::HotGround);
 	(void)trimmed.start(Core::StartMode::HotGround);
 	route_command(context, trimmed, { DcsIds::Commands::TrimUp, 1.0F });
@@ -222,7 +221,7 @@ void test_routed_trim_changes_control_output(Tests::Context& context)
 
 void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(Data::fck1c_aircraft_config());
+	Core::Fck1cEfm efm;
 	(void)efm.start(Core::StartMode::HotAir);
 	route_command(context, efm, { DcsIds::Commands::ThrottleAxis, -1.0F });
 	route_command(context, efm, { DcsIds::Commands::AirBrakesOn, 1.0F });
@@ -238,7 +237,7 @@ void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
 
 void test_routed_wheel_outputs(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(Data::fck1c_aircraft_config());
+	Core::Fck1cEfm efm;
 	(void)efm.start(Core::StartMode::HotGround);
 	route_command(context, efm, { DcsIds::Commands::NoseTurnUp, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::PedalYaw, 0.5F });

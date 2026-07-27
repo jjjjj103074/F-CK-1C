@@ -1,5 +1,4 @@
 #include "SystemPipeline.h"
-#include "../AircraftState.h"
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -14,8 +13,6 @@ namespace
 {
 constexpr int kNoAircraftDataWriter = -1;
 constexpr int kExternalAircraftDataWriter = -2;
-constexpr double kDynamicPressureCoefficient = 0.5;
-
 template <std::size_t... Indices>
 std::array<std::type_index, sizeof...(Indices)> make_aircraft_data_types(
 	std::index_sequence<Indices...>)
@@ -69,27 +66,6 @@ std::string system_error(
 	return "System '" + system_id + "': " + message;
 }
 
-AircraftObservation make_observation(const AircraftState& state)
-{
-	return {
-		state.altitude_asl,
-		state.altitude_agl,
-		state.atmosphere_density,
-		state.speed_scalar,
-		ground_speed(state),
-		state.mach,
-		kDynamicPressureCoefficient * state.atmosphere_density *
-			state.speed_scalar * state.speed_scalar,
-		state.g,
-		state.alpha,
-		state.beta,
-		state.roll,
-		state.pitch,
-		state.roll_rate,
-		state.pitch_rate,
-		state.yaw_rate
-	};
-}
 }
 
 struct DataReadDeclaration
@@ -150,7 +126,7 @@ struct SystemPipeline::Implementation
 	AircraftDataSnapshot make_snapshot() const;
 	AircraftDataSnapshot make_snapshot(const Storage& storage) const;
 	AircraftDataSnapshot step(
-		const FrameInput& input,
+		const SystemFrameInput& input,
 		const SystemStepOptions& options);
 	void run_group(
 		SystemGroup group,
@@ -162,12 +138,24 @@ struct SystemPipeline::Implementation
 	void collect_declarations();
 	void validate_and_commit_setup();
 	void validate_publications(Storage& initial);
+	void validate_publication(
+		Storage& initial,
+		RuntimeSystem& runtime,
+		std::size_t system_index);
 	void validate_reads(const Storage& initial) const;
+	void validate_read(
+		const Storage& initial,
+		const RuntimeSystem& runtime,
+		const DataReadDeclaration& declaration) const;
 	void validate_handlers();
+	void collect_command_handlers(RuntimeSystem& runtime);
+	void collect_damage_handlers(RuntimeSystem& runtime);
+	void collect_repair_handlers(RuntimeSystem& runtime);
 	void validate_fuel_management(
 		const RuntimeSystem& runtime,
 		std::size_t system_index);
 	void commit_group(SystemGroup group, Storage& next);
+	void commit_result(const RuntimeSystem& runtime, Storage& next);
 	bool should_run(
 		const RuntimeSystem& runtime,
 		const SystemStepOptions& options) const;
@@ -176,7 +164,6 @@ struct SystemPipeline::Implementation
 	void commit_current_fuel_data();
 
 	std::vector<RuntimeSystem> systems;
-	AircraftState observation_state;
 	Storage committed;
 	std::array<int, kAircraftDataSlotCount> writers;
 	std::map<CommandId, CommandHandler> command_handlers;
@@ -189,7 +176,6 @@ AircraftDataSnapshot::AircraftDataSnapshot(const Storage& storage)
 	: storage_(storage)
 {
 }
-
 const AircraftDataValue& AircraftDataSnapshot::read_value(
 	const AircraftDataDescriptor& descriptor) const
 {
@@ -203,25 +189,21 @@ const AircraftDataValue& AircraftDataSnapshot::read_value(
 	}
 	return *value;
 }
-
 bool AircraftDataSnapshot::has_value(
 	const AircraftDataDescriptor& descriptor) const
 {
 	validate_key(descriptor);
 	return storage_[slot(descriptor.id)].has_value();
 }
-
 void AircraftDataSnapshot::throw_type_error(const char* name)
 {
 	throw std::logic_error(
 		std::string("AircraftData stored type mismatch: ") + name);
 }
-
 void SystemResult::allow_publication(AircraftDataId id)
 {
 	writable_[slot(id)] = true;
 }
-
 void SystemResult::clear()
 {
 	for (auto& value : pending_)
@@ -229,7 +211,6 @@ void SystemResult::clear()
 		value.reset();
 	}
 }
-
 void SystemResult::publish_value(
 	const AircraftDataDescriptor& descriptor,
 	const AircraftDataValue& value)
@@ -255,7 +236,6 @@ SystemSetup::SystemSetup(State& state)
 	: state_(&state)
 {
 }
-
 void SystemSetup::declare_read(
 	const AircraftDataDescriptor& descriptor,
 	InitialValueRequirement initial)
@@ -267,7 +247,6 @@ void SystemSetup::declare_read(
 		initial
 	});
 }
-
 void SystemSetup::declare_publication(
 	const AircraftDataDescriptor& descriptor,
 	const AircraftDataValue* initial)
@@ -284,26 +263,22 @@ void SystemSetup::declare_publication(
 	}
 	state_->publications.push_back(std::move(declaration));
 }
-
 void SystemSetup::register_command_handler(
 	CommandId id,
 	CommandHandler handler)
 {
 	state_->commands.push_back({ id, std::move(handler) });
 }
-
 void SystemSetup::register_damage_handler(
 	DamageArea area,
 	DamageHandler handler)
 {
 	state_->damage_handlers.push_back({ area, std::move(handler) });
 }
-
 void SystemSetup::register_repair_handler(RepairHandler handler)
 {
 	state_->repair_handlers.push_back(std::move(handler));
 }
-
 void SystemSetup::register_fuel_management(FuelManagementHandlers handlers)
 {
 	if (state_->fuel_management)
@@ -326,7 +301,7 @@ SystemPipeline::Implementation::Implementation(
 	const std::size_t observation_slot =
 		slot(AircraftDataId::AircraftObservation);
 	writers[observation_slot] = kExternalAircraftDataWriter;
-	committed[observation_slot] = make_observation(observation_state);
+	committed[observation_slot] = AircraftObservation{};
 	create_systems(context, std::move(catalog));
 	collect_declarations();
 	validate_and_commit_setup();
@@ -387,25 +362,33 @@ void SystemPipeline::Implementation::validate_publications(Storage& initial)
 	for (std::size_t index = 0; index < systems.size(); ++index)
 	{
 		RuntimeSystem& runtime = systems[index];
-		for (const DataPublicationDeclaration& declaration :
-			runtime.setup.publications)
+		validate_publication(initial, runtime, index);
+	}
+}
+
+void SystemPipeline::Implementation::validate_publication(
+	Storage& initial,
+	RuntimeSystem& runtime,
+	std::size_t system_index)
+{
+	for (const DataPublicationDeclaration& declaration :
+		runtime.setup.publications)
+	{
+		validate_key({
+			declaration.id,
+			declaration.type,
+			declaration.name.c_str()
+		});
+		const std::size_t data_slot = slot(declaration.id);
+		if (writers[data_slot] != kNoAircraftDataWriter)
 		{
-			validate_key({
-				declaration.id,
-				declaration.type,
-				declaration.name.c_str()
-			});
-			const std::size_t data_slot = slot(declaration.id);
-			if (writers[data_slot] != kNoAircraftDataWriter)
-			{
-				throw std::logic_error(
-					"AircraftData key has more than one publisher: " +
-					declaration.name);
-			}
-			writers[data_slot] = static_cast<int>(index);
-			runtime.result.allow_publication(declaration.id);
-			initial[data_slot] = declaration.initial;
+			throw std::logic_error(
+				"AircraftData key has more than one publisher: " +
+				declaration.name);
 		}
+		writers[data_slot] = static_cast<int>(system_index);
+		runtime.result.allow_publication(declaration.id);
+		initial[data_slot] = declaration.initial;
 	}
 }
 
@@ -416,27 +399,35 @@ void SystemPipeline::Implementation::validate_reads(
 	{
 		for (const DataReadDeclaration& declaration : runtime.setup.reads)
 		{
-			validate_key({
-				declaration.id,
-				declaration.type,
-				declaration.name.c_str()
-			});
-			const std::size_t data_slot = slot(declaration.id);
-			if (writers[data_slot] == kNoAircraftDataWriter)
-			{
-				throw std::logic_error(
-					system_error(runtime.setup.system_id,
-						"missing AircraftData provider: " + declaration.name));
-			}
-			if (declaration.initial == InitialValueRequirement::Required &&
-				!initial[data_slot])
-			{
-				throw std::logic_error(
-					system_error(runtime.setup.system_id,
-						"required AircraftData has no initial value: " +
-						declaration.name));
-			}
+			validate_read(initial, runtime, declaration);
 		}
+	}
+}
+
+void SystemPipeline::Implementation::validate_read(
+	const Storage& initial,
+	const RuntimeSystem& runtime,
+	const DataReadDeclaration& declaration) const
+{
+	validate_key({
+		declaration.id,
+		declaration.type,
+		declaration.name.c_str()
+	});
+	const std::size_t data_slot = slot(declaration.id);
+	if (writers[data_slot] == kNoAircraftDataWriter)
+	{
+		throw std::logic_error(
+			system_error(runtime.setup.system_id,
+				"missing AircraftData provider: " + declaration.name));
+	}
+	if (declaration.initial == InitialValueRequirement::Required &&
+		!initial[data_slot])
+	{
+		throw std::logic_error(
+			system_error(runtime.setup.system_id,
+				"required AircraftData has no initial value: " +
+				declaration.name));
 	}
 }
 
@@ -445,35 +436,53 @@ void SystemPipeline::Implementation::validate_handlers()
 	for (std::size_t index = 0; index < systems.size(); ++index)
 	{
 		RuntimeSystem& runtime = systems[index];
-		for (CommandRegistration& registration : runtime.setup.commands)
-		{
-			if (!registration.handler ||
-				!command_handlers.emplace(
-					registration.id, std::move(registration.handler)).second)
-			{
-				throw std::logic_error(
-					"Command ID has more than one or no handler.");
-			}
-		}
-		for (DamageRegistration& registration : runtime.setup.damage_handlers)
-		{
-			if (!registration.handler ||
-				!damage_handlers.emplace(
-					registration.area, std::move(registration.handler)).second)
-			{
-				throw std::logic_error(
-					"Damage area has more than one or no owner.");
-			}
-		}
-		for (RepairHandler& handler : runtime.setup.repair_handlers)
-		{
-			if (!handler)
-			{
-				throw std::logic_error("Repair handler is empty.");
-			}
-			repair_handlers.push_back(std::move(handler));
-		}
+		collect_command_handlers(runtime);
+		collect_damage_handlers(runtime);
+		collect_repair_handlers(runtime);
 		validate_fuel_management(runtime, index);
+	}
+}
+
+void SystemPipeline::Implementation::collect_command_handlers(
+	RuntimeSystem& runtime)
+{
+	for (CommandRegistration& registration : runtime.setup.commands)
+	{
+		if (!registration.handler ||
+			!command_handlers.emplace(
+				registration.id, std::move(registration.handler)).second)
+		{
+			throw std::logic_error(
+				"Command ID has more than one or no handler.");
+		}
+	}
+}
+
+void SystemPipeline::Implementation::collect_damage_handlers(
+	RuntimeSystem& runtime)
+{
+	for (DamageRegistration& registration : runtime.setup.damage_handlers)
+	{
+		if (!registration.handler ||
+			!damage_handlers.emplace(
+				registration.area, std::move(registration.handler)).second)
+		{
+			throw std::logic_error(
+				"Damage area has more than one or no owner.");
+		}
+	}
+}
+
+void SystemPipeline::Implementation::collect_repair_handlers(
+	RuntimeSystem& runtime)
+{
+	for (RepairHandler& handler : runtime.setup.repair_handlers)
+	{
+		if (!handler)
+		{
+			throw std::logic_error("Repair handler is empty.");
+		}
+		repair_handlers.push_back(std::move(handler));
 	}
 }
 
@@ -512,20 +521,16 @@ AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot(
 }
 
 AircraftDataSnapshot SystemPipeline::Implementation::step(
-	const FrameInput& input,
+	const SystemFrameInput& input,
 	const SystemStepOptions& options)
 {
 	Storage next = committed;
-	next[slot(AircraftDataId::FrameInput)] = input;
-	AircraftState next_observation = observation_state;
-	apply_aircraft_observations(next_observation, input);
-	update_airspeed(next_observation);
+	next[slot(AircraftDataId::FrameInput)] = input.frame;
 	next[slot(AircraftDataId::AircraftObservation)] =
-		make_observation(next_observation);
+		input.observation;
 	run_group(SystemGroup::Control, next, options);
 	run_group(SystemGroup::Equipment, next, options);
 	committed = std::move(next);
-	observation_state = std::move(next_observation);
 	return make_snapshot();
 }
 
@@ -569,12 +574,19 @@ void SystemPipeline::Implementation::commit_group(
 		{
 			continue;
 		}
-		for (std::size_t index = 0; index < kAircraftDataSlotCount; ++index)
+		commit_result(runtime, next);
+	}
+}
+
+void SystemPipeline::Implementation::commit_result(
+	const RuntimeSystem& runtime,
+	Storage& next)
+{
+	for (std::size_t index = 0; index < kAircraftDataSlotCount; ++index)
+	{
+		if (runtime.result.pending_[index])
 		{
-			if (runtime.result.pending_[index])
-			{
-				next[index] = runtime.result.pending_[index];
-			}
+			next[index] = runtime.result.pending_[index];
 		}
 	}
 }
@@ -583,7 +595,6 @@ SystemPipeline::SystemPipeline(const FlightSetupContext& setup)
 	: SystemPipeline(setup, load_generated_system_catalog())
 {
 }
-
 SystemPipeline::SystemPipeline(
 	const FlightSetupContext& setup,
 	std::vector<SystemEntry> catalog)
@@ -591,21 +602,17 @@ SystemPipeline::SystemPipeline(
 		std::make_unique<Implementation>(setup, std::move(catalog)))
 {
 }
-
 SystemPipeline::~SystemPipeline() = default;
-
 AircraftDataSnapshot SystemPipeline::snapshot() const
 {
 	return implementation_->make_snapshot();
 }
-
 AircraftDataSnapshot SystemPipeline::step(
-	const FrameInput& input,
+	const SystemFrameInput& input,
 	const SystemStepOptions& options)
 {
 	return implementation_->step(input, options);
 }
-
 DispatchResult SystemPipeline::send(const Command& command)
 {
 	const auto handler = implementation_->command_handlers.find(command.id);
@@ -616,7 +623,6 @@ DispatchResult SystemPipeline::send(const Command& command)
 	handler->second(command);
 	return DispatchResult::Handled;
 }
-
 DispatchResult SystemPipeline::apply(const DamageEvent& event)
 {
 	const auto handler = implementation_->damage_handlers.find(event.area);
@@ -627,7 +633,6 @@ DispatchResult SystemPipeline::apply(const DamageEvent& event)
 	handler->second(event);
 	return DispatchResult::Handled;
 }
-
 std::size_t SystemPipeline::apply(const RepairEvent& event)
 {
 	for (const RepairHandler& handler : implementation_->repair_handlers)
@@ -636,7 +641,6 @@ std::size_t SystemPipeline::apply(const RepairEvent& event)
 	}
 	return implementation_->repair_handlers.size();
 }
-
 const FuelManagementHandlers& SystemPipeline::Implementation::
 	require_fuel_management() const
 {
@@ -646,7 +650,6 @@ const FuelManagementHandlers& SystemPipeline::Implementation::
 	}
 	return *fuel_management;
 }
-
 FuelManagementHandlers& SystemPipeline::Implementation::
 	require_fuel_management()
 {

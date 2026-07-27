@@ -240,7 +240,8 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 		context,
 		action_throws([&pipeline, &failed_input]()
 		{
-			(void)pipeline.step(failed_input);
+			const Core::AircraftObservation observation;
+			(void)pipeline.step({ failed_input, observation });
 		}));
 	const AircraftDataSnapshot unchanged = pipeline.snapshot();
 	TEST_EXPECT_NEAR(context, *observed, kNextDemand, kTolerance);

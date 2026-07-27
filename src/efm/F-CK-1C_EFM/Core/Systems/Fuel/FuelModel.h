@@ -7,11 +7,6 @@
 
 namespace Systems
 {
-struct FuelSystemConfig
-{
-	double consumption_rate = 0.0;
-};
-
 struct ExternalFuelState
 {
 	int station = 0;

@@ -1,7 +1,6 @@
 // DCS EFM ABI callbacks. Keep this file limited to contract adaptation.
 #include "../stdafx.h"
 #include "../F-CK-1C_EFM.h"
-#include "../Data/AircraftConfig.h"
 #include "Internal/AbiBoundary.h"
 #include "Internal/BoundaryValidator.h"
 #include "Internal/BridgeContext.h"
@@ -19,7 +18,7 @@ DcsBridge::Internal::ProcessBridgeContext& bridge_access() noexcept
 	static const int module_address_anchor = 0;
 	static DcsBridge::Internal::ProcessBridgeContext access(
 		ed_get_cockpit_param_api,
-		Data::fck1c_aircraft_config,
+		[]() { return std::make_unique<Core::Fck1cEfm>(); },
 		&module_address_anchor);
 	return access;
 }
@@ -48,6 +47,25 @@ void start_efm(Core::StartMode mode)
 		bridge().state_csv_writer().publish_start(output);
 	}
 	bridge().event_reporter().log_start(mode, output.simulation_time_s);
+}
+
+std::optional<double> current_simulation_time()
+{
+	const std::optional<Core::FrameOutput> output =
+		bridge().output_store().read();
+	return output
+		? std::optional<double>(output->simulation_time_s)
+		: std::nullopt;
+}
+
+void release_active_flight()
+{
+	const std::optional<double> final_simulation_time =
+		current_simulation_time();
+	bridge().core().release();
+	bridge().input_collector().reset();
+	bridge().output_store().mark_released();
+	bridge().event_reporter().log_release(final_simulation_time);
 }
 
 }
@@ -564,23 +582,13 @@ EFM_ABI_CATCH_VOID("ed_fm_hot_start_in_air", (void)0)
 void ed_fm_release() try
 {
 	ensure_module_initialized();
-	std::optional<double> final_simulation_time;
 	bool released = false;
 	{
 		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
 		released = bridge().output_store().is_released();
 		if (!released)
 		{
-			const std::optional<Core::FrameOutput> output =
-				bridge().output_store().read();
-			if (output)
-			{
-				final_simulation_time = output->simulation_time_s;
-			}
-			bridge().core().release();
-			bridge().input_collector().reset();
-			bridge().output_store().mark_released();
-			bridge().event_reporter().log_release(final_simulation_time);
+			release_active_flight();
 		}
 	}
 	if (released)

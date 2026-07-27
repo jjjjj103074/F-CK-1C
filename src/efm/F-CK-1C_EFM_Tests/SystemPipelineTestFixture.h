@@ -1,8 +1,8 @@
 #pragma once
 
 #include "TestHarness.h"
+#include "../F-CK-1C_EFM/Core/Simulation/AircraftState.h"
 #include "../F-CK-1C_EFM/Core/Systems/SystemPipeline.h"
-#include "../F-CK-1C_EFM/Data/AircraftConfig.h"
 
 #include <functional>
 #include <memory>
@@ -69,16 +69,25 @@ inline Core::Systems::SystemEntry entry(const SystemDefinition& definition)
 inline Core::Systems::FlightSetupContext flight_setup()
 {
 	return {
-		Data::fck1c_aircraft_config(),
 		Core::StartMode::HotGround,
 		{}
 	};
 }
 
 inline Core::Systems::AircraftDataSnapshot step_pipeline(
+	Core::Systems::SystemPipeline& pipeline,
+	const Core::FrameInput& frame,
+	const Core::AircraftObservation& observation)
+{
+	return pipeline.step({ frame, observation });
+}
+
+inline Core::Systems::AircraftDataSnapshot step_pipeline(
 	Core::Systems::SystemPipeline& pipeline)
 {
-	return pipeline.step(Core::FrameInput{});
+	const Core::FrameInput frame;
+	const Core::AircraftObservation observation;
+	return step_pipeline(pipeline, frame, observation);
 }
 
 inline bool construction_throws(

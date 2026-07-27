@@ -1,16 +1,17 @@
 #pragma once
 
-#include "../AircraftState.h"
+#include "AircraftState.h"
 #include "../Contracts/Commands.h"
 #include "../Contracts/Events.h"
 #include "../Contracts/FrameContracts.h"
 #include "../Systems/SystemPipeline.h"
+#include "AircraftSimulationFactory.h"
 #include "SimulationPipeline.h"
 #include "../../Common/Vec3.h"
-#include "../../Data/AircraftConfig.h"
-#include "../../Systems/StartupSystem.h"
 
 #include <map>
+#include <memory>
+#include <vector>
 
 namespace Core
 {
@@ -47,12 +48,18 @@ struct GameplayState
 	SimulationOptions options;
 };
 
+struct AircraftSimulationDependencies
+{
+	std::vector<Systems::SystemEntry> system_catalog;
+	SimulationModels simulation_models;
+};
+
 class AircraftSimulation final
 {
 public:
 	AircraftSimulation(
-		const Data::AircraftConfig& config,
-		const FlightSetupContext& setup);
+		const FlightSetupContext& setup,
+		AircraftSimulationDependencies dependencies);
 
 	FrameOutput initial_output() const;
 	FrameOutput step(const FrameInput& input);
@@ -76,16 +83,15 @@ private:
 	void apply_setup(const FlightSetupContext& setup);
 	void apply_frame_input(const FrameInput& input);
 	void begin_frame(double dt);
-	void finish_frame();
 
-	const Data::AircraftConfig& config_;
 	AircraftState aircraft_state_;
 	GameplayState gameplay_;
 	Systems::SystemPipeline system_pipeline_;
 	SimulationPipeline simulation_pipeline_;
-	::Systems::StartupSystemState startup_;
+	double simulation_time_s_ = 0.0;
 };
 
-void validate_aircraft_config(const Data::AircraftConfig& config);
+AircraftSimulationFactory make_fck1c_aircraft_simulation_factory();
+double carrier_launch_reference_thrust();
 }
 }

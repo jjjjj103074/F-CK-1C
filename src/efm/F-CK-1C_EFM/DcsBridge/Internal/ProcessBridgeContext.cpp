@@ -1,19 +1,21 @@
 #include "ProcessBridgeContext.h"
 
+#include <utility>
+
 namespace DcsBridge
 {
 namespace Internal
 {
 ProcessBridgeContext::ProcessBridgeContext(
 	CockpitApiProvider cockpit_api_provider,
-	AircraftConfigProvider aircraft_config_provider,
+	CoreFactory core_factory,
 	const void* module_address) noexcept
 {
 	try
 	{
 		owner_ = new BridgeContextOwner({
 			cockpit_api_provider,
-			aircraft_config_provider(),
+			std::move(core_factory),
 			module_address
 		});
 	}

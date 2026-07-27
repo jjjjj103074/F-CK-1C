@@ -109,7 +109,7 @@ FrameOutput AircraftSimulation::make_frame_output(
 	const LandingGearData& landing_gear =
 		aircraft.read(AircraftDataKeys::kLandingGearData);
 	FrameOutput output;
-	output.simulation_time_s = startup_.simulation_time;
+	output.simulation_time_s = simulation_time_s_;
 	output.availability = availability;
 	output.flight = project_flight(aircraft_state_);
 	output.force_moment = simulation.force_moment;

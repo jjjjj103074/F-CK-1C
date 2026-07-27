@@ -1,14 +1,51 @@
 #pragma once
 
 #include "Core/Fck1cEfm.h"
+#include "Core/Simulation/AircraftSimulation.h"
+#include "Core/Simulation/Models/Aerodynamics/AerodynamicsConfig.h"
+#include "Core/Simulation/Models/Aerodynamics/AerodynamicsModel.h"
+#include "Core/Simulation/Models/GroundInteraction/GroundInteractionConfig.h"
+#include "Core/Simulation/Models/GroundInteraction/GroundInteractionModel.h"
+#include "Core/Simulation/Models/MassProperties/MassPropertiesModel.h"
+#include "Core/Simulation/Models/Propulsion/PropulsionConfig.h"
+#include "Core/Simulation/Models/Propulsion/PropulsionModel.h"
+#include "Core/Systems/Engine/Engine.h"
+#include "Core/Systems/FlightControlComputer/FlightControlComputer.h"
+#include "Core/Systems/LandingGear/LandingGear.h"
+
+#include <algorithm>
+#include <stdexcept>
+#include <utility>
 
 namespace Tests
 {
 namespace Fck1c
 {
-inline Data::AircraftConfig make_test_config()
+inline constexpr double kTestAfterburnerThrustFactor = 1.73;
+
+struct TestAircraftConfig;
+
+Core::Simulation::AircraftSimulationFactory make_test_simulation_factory(
+	const TestAircraftConfig& config);
+
+struct TestAircraftConfig
 {
-	Data::AircraftConfig config;
+	Core::Simulation::AerodynamicsConfig aerodynamics;
+	Core::Systems::EngineConfig engine;
+	Core::Systems::FlightControlComputerConfig flight_control_computer;
+	Core::Systems::LandingGearConfig landing_gear;
+	Core::Simulation::PropulsionConfig propulsion;
+	Core::Simulation::GroundInteractionConfig ground_interaction;
+
+	operator Core::Simulation::AircraftSimulationFactory() const
+	{
+		return make_test_simulation_factory(*this);
+	}
+};
+
+inline TestAircraftConfig make_test_config()
+{
+	TestAircraftConfig config;
 	config.aerodynamics.wing_area = 24.26;
 	config.aerodynamics.wingspan = 8.53;
 	config.aerodynamics.length = 14.48;
@@ -20,20 +57,96 @@ inline Data::AircraftConfig make_test_config()
 	config.aerodynamics.roll_rate_max_table = { 3.0, 2.0 };
 	config.aerodynamics.alpha_max_table = { 20.0, 18.0 };
 	config.aerodynamics.cy_max_table = { 1.2, 1.0 };
-	config.flight_envelope.mach =
+	config.flight_control_computer.mach_table =
 		config.aerodynamics.mach_table;
-	config.flight_envelope.alpha_limit_deg =
+	config.flight_control_computer.alpha_limit_deg =
 		config.aerodynamics.alpha_max_table;
 	config.engine.start_time = 5.0;
 	config.engine.spool_up_tau = 1.0;
 	config.engine.spool_down_tau = 1.0;
-	config.engine.mach_table = { 0.0, 1.0 };
-	config.engine.max_thrust_table = { 54000.0, 50000.0 };
 	config.engine.throttle_input_table = { 0.0, 1.0 };
 	config.engine.power_table = { 0.1, 1.0 };
-	config.left_engine_position = { -3.793, -0.391, -0.716 };
-	config.right_engine_position = { -3.793, -0.391, 0.716 };
+	config.propulsion.mach_table = { 0.0, 1.0 };
+	config.propulsion.max_thrust_table = { 54000.0, 50000.0 };
+	config.propulsion.afterburner_thrust_factor =
+		kTestAfterburnerThrustFactor;
+	config.propulsion.left_engine_position = { -3.793, -0.391, -0.716 };
+	config.propulsion.right_engine_position = { -3.793, -0.391, 0.716 };
+	config.landing_gear =
+		Core::Systems::fck1c_landing_gear_config();
+	config.ground_interaction =
+		Core::Simulation::fck1c_ground_interaction_config();
 	return config;
+}
+
+inline void replace_system_entry(
+	std::vector<Core::Systems::SystemEntry>& catalog,
+	Core::Systems::SystemEntry replacement)
+{
+	const auto entry = std::find_if(
+		catalog.begin(),
+		catalog.end(),
+		[&replacement](const Core::Systems::SystemEntry& candidate)
+		{
+			return candidate.id == replacement.id;
+		});
+	if (entry == catalog.end())
+	{
+		throw std::logic_error(
+			"Test catalog is missing System '" + replacement.id + "'.");
+	}
+	*entry = std::move(replacement);
+}
+
+inline Core::Simulation::SimulationModels make_test_models(
+	const TestAircraftConfig& config)
+{
+	Core::Simulation::SimulationModels models;
+	models.aerodynamics =
+		std::make_unique<Core::Simulation::AerodynamicsModel>(
+			config.aerodynamics);
+	models.propulsion =
+		std::make_unique<Core::Simulation::PropulsionModel>(
+			config.propulsion);
+	models.ground_interaction =
+		std::make_unique<Core::Simulation::GroundInteractionModel>(
+			config.ground_interaction);
+	models.mass_properties =
+		std::make_unique<Core::Simulation::MassPropertiesModel>();
+	return models;
+}
+
+inline Core::Simulation::AircraftSimulationDependencies
+	make_test_dependencies(const TestAircraftConfig& config)
+{
+	Core::Simulation::AircraftSimulationDependencies dependencies;
+	dependencies.system_catalog =
+		Core::Systems::load_generated_system_catalog();
+	replace_system_entry(
+		dependencies.system_catalog,
+		Core::Systems::make_engine_system_entry(config.engine));
+	replace_system_entry(
+		dependencies.system_catalog,
+		Core::Systems::make_flight_control_computer_system_entry(
+			config.flight_control_computer));
+	replace_system_entry(
+		dependencies.system_catalog,
+		Core::Systems::make_landing_gear_system_entry(
+			config.landing_gear));
+	dependencies.simulation_models = make_test_models(config);
+	return dependencies;
+}
+
+inline Core::Simulation::AircraftSimulationFactory
+	make_test_simulation_factory(const TestAircraftConfig& config)
+{
+	return [owned_config = config](
+		const Core::Simulation::FlightSetupContext& setup)
+	{
+		return std::make_unique<Core::Simulation::AircraftSimulation>(
+			setup,
+			make_test_dependencies(owned_config));
+	};
 }
 
 inline Core::FrameDataAvailability all_frame_data_available()

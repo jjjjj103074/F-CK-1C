@@ -75,10 +75,11 @@ MSBuild scans `Core/Systems/*/Entry.cpp` before compilation and generates the
 catalog in the project intermediate directory. Do not edit a generated catalog
 or add the Entry manually to either `.vcxproj`.
 
-`FlightSetupContext` contains the immutable aircraft configuration, `StartMode`,
-and initial fuel load needed to construct one flight. Simulation policies,
-including infinite fuel, invincibility, and easy flight, do not belong in a
-System.
+`FlightSetupContext` contains `StartMode` and the initial fuel load needed to
+construct one flight. A System-specific Entry captures that System's immutable
+production configuration and passes it to the concrete factory. Simulation
+policies, including infinite fuel, invincibility, and easy flight, do not
+belong in a System.
 
 ## AircraftData and handlers
 
@@ -89,8 +90,10 @@ missing required initial value fails setup.
 
 `FrameInput` carries frame-local values such as `dt`, autopilot commands, and
 suspension samples. `AircraftObservation` carries retained, normalized flight
-state. The Pipeline updates only observations whose availability flag is set;
-missing samples keep their previous committed values.
+state. `AircraftSimulation` updates only observations whose availability flag
+is set, retains missing samples, and gives the completed observation to the
+Pipeline. The Pipeline publishes both inputs through the same typed snapshot;
+Systems do not know which DCS callback produced them.
 
 Commands have one registered handler per semantic `CommandId`. Damage areas
 have one semantic owner. Repair may have multiple subscribers. An unregistered

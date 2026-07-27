@@ -12,6 +12,7 @@
 #include "../../Core/Fck1cEfm.h"
 
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <mutex>
 
@@ -20,12 +21,14 @@ namespace DcsBridge
 namespace Internal
 {
 using CockpitApiProvider = cockpit_param_api (*)();
+using CoreFactory =
+	std::function<std::unique_ptr<Core::Fck1cEfm>()>;
 
 struct BridgeContextConfig
 {
 	ModulePathSource path_source;
 	CockpitApiProvider cockpit_api_provider;
-	const Data::AircraftConfig& aircraft_config;
+	CoreFactory core_factory;
 };
 
 class BridgeContext final
@@ -76,21 +79,21 @@ public:
 	{
 		return perform_flight_action(
 			context,
-			[this, &action]() { action(core_); });
+			[this, &action]() { action(*core_); });
 	}
 
 	template <typename Action>
 	void perform_core_preparation(const Action& action)
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex_);
-		action(core_);
+		action(*core_);
 	}
 
 	template <typename Query>
 	auto query_core_preparation(const Query& query)
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex_);
-		return query(core_);
+		return query(*core_);
 	}
 
 	Core::MassDeltaResult take_flight_mass_delta();
@@ -106,13 +109,13 @@ private:
 	CockpitBridge cockpit_bridge_;
 	CarrierBridge carrier_bridge_;
 	std::mutex execution_mutex_;
-	Core::Fck1cEfm core_;
+	std::unique_ptr<Core::Fck1cEfm> core_;
 };
 
 struct BridgeContextEnvironment
 {
 	CockpitApiProvider cockpit_api_provider;
-	const Data::AircraftConfig& aircraft_config;
+	CoreFactory core_factory;
 	const void* module_address;
 };
 
@@ -129,7 +132,7 @@ public:
 
 private:
 	const CockpitApiProvider cockpit_api_provider_;
-	const Data::AircraftConfig& aircraft_config_;
+	const CoreFactory core_factory_;
 	const void* const module_address_;
 	std::once_flag initialization_flag_;
 	std::unique_ptr<BridgeContext> context_;

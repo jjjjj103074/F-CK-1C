@@ -20,10 +20,12 @@ The staged refactor and verification gates are recorded in
   contracts.
 - `F-CK-1C_EFM/Core/Simulation/Models/` - DCS-neutral physical effect models
   for aerodynamics, propulsion, ground interaction, and mass properties.
-- `F-CK-1C_EFM/Systems/` - simulation helpers awaiting later migration.
-- `F-CK-1C_EFM/Data/` - immutable aircraft configuration and lookup tables.
 - `F-CK-1C_EFM/DcsBridge/Internal/` - private DCS adapters, lifecycle, log, and CSV implementation.
 - `F-CK-1C_EFM/include/` - DCS cockpit and flight model API headers.
+
+Every concrete System and Simulation Model owns its configuration, production
+values, lookup tables, and validation inside its own directory. There is no
+global `Data` configuration bag or legacy top-level `Systems` implementation.
 
 ## Build
 
@@ -42,7 +44,8 @@ The Lua runtime references this DLL from `entry.lua`.
 
 Both the DLL and native test projects import `EfmCore.props` and
 `EfmCore.targets`. These shared rules compile the same Core sources and
-generate the build-time System catalog from `Core/Systems/*/Entry.cpp`.
+check architecture boundaries, then generate the build-time System catalog
+from `Core/Systems/*/Entry.cpp`.
 Simulation models are deliberately not registered or scanned: the
 `SimulationPipeline` executes each one exactly once in the fixed order
 Aerodynamics, Propulsion, GroundInteraction, then MassProperties.
@@ -52,4 +55,13 @@ To verify the catalog generator independently:
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
     -File .\tools\test_system_catalog_generator.ps1
+```
+
+To verify the dependency checker and its rejection fixtures:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File .\tools\check_efm_architecture.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File .\tools\test_efm_architecture_checker.ps1
 ```

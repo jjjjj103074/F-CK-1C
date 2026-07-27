@@ -46,13 +46,10 @@ namespace Core
 namespace Simulation
 {
 PropulsionModel::PropulsionModel(
-	const PropulsionModelDefinition& definition)
-	: mach_table_(definition.mach_table),
-	max_thrust_table_(definition.max_thrust_table),
-	afterburner_thrust_factor_(definition.afterburner_thrust_factor),
-	left_engine_position_(definition.left_engine_position),
-	right_engine_position_(definition.right_engine_position)
+	const PropulsionConfig& config)
+	: config_(config)
 {
+	validate_propulsion_config(config_);
 	result_.effects.reserve(kEngineEffectCapacity);
 }
 
@@ -61,15 +58,15 @@ const PropulsionResult& PropulsionModel::step(
 {
 	const double dry_thrust = Common::lerp(
 		{
-			mach_table_.data(),
-			max_thrust_table_.data(),
-			static_cast<unsigned>(mach_table_.size())
+			config_.mach_table.data(),
+			config_.max_thrust_table.data(),
+			static_cast<unsigned>(config_.mach_table.size())
 		},
 		input.observation.mach);
 	const ThrustConditions conditions = {
 		dry_thrust,
 		input.observation.engine_alt_effect,
-		afterburner_thrust_factor_
+		config_.afterburner_thrust_factor
 	};
 	result_.left_thrust_force =
 		calculate_channel_thrust(input.engines.left, conditions);
@@ -84,10 +81,10 @@ const PropulsionResult& PropulsionModel::step(
 	result_.effects.clear();
 	result_.effects.push_back(make_local_force_effect(
 		{ result_.left_thrust_force, 0.0, 0.0 },
-		left_engine_position_));
+		config_.left_engine_position));
 	result_.effects.push_back(make_local_force_effect(
 		{ result_.right_thrust_force, 0.0, 0.0 },
-		right_engine_position_));
+		config_.right_engine_position));
 	return result_;
 }
 }

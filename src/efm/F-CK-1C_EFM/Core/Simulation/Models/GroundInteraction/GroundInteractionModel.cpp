@@ -37,7 +37,7 @@ using Core::Simulation::GroundInteractionResult;
 
 struct FallbackContext
 {
-	const ::Data::GroundInteractionDefinition& definition;
+	const Core::Simulation::GroundInteractionConfig& config;
 	const GroundInteractionModelInput& input;
 	double sink_rate = 0.0;
 	double gear_support = 0.0;
@@ -82,11 +82,11 @@ bool has_current_dcs_gear_contact(
 }
 
 FallbackContext make_fallback_context(
-	const ::Data::GroundInteractionDefinition& definition,
+	const Core::Simulation::GroundInteractionConfig& config,
 	const GroundInteractionModelInput& input)
 {
 	return {
-		definition,
+		config,
 		input,
 		Common::limit(
 			-input.observation.velocity_world.y, 0.0, kMaximumSinkRate),
@@ -116,9 +116,9 @@ double wheel_force(
 	std::size_t index,
 	double compression)
 {
-	double force = compression * context.definition.spring[index] *
+	double force = compression * context.config.spring[index] *
 		context.gear_support;
-	force += context.sink_rate * context.definition.damping[index] *
+	force += context.sink_rate * context.config.damping[index] *
 		context.gear_support;
 	const double weight = context.input.observation.current_mass * kGravity;
 	const double load_limit = index == kNoseWheelIndex
@@ -166,11 +166,11 @@ FallbackGearLoads apply_wheel_contacts(
 		const double wheel_bottom_agl =
 			context.input.observation.altitude_agl +
 			world_vertical_offset(
-				context.definition.gear_points[index],
+				context.config.gear_points[index],
 				context.input.observation) -
-			context.definition.wheel_radius[index];
+			context.input.landing_gear.wheel_radius[index];
 		const double compression =
-			context.definition.contact_band[index] - wheel_bottom_agl;
+			context.config.contact_band[index] - wheel_bottom_agl;
 		if (compression <= 0.0)
 		{
 			continue;
@@ -178,7 +178,7 @@ FallbackGearLoads apply_wheel_contacts(
 		const double force = wheel_force(context, index, compression);
 		result.effects.push_back(Core::Simulation::make_local_force_effect(
 			{ 0.0, force, 0.0 },
-			context.definition.gear_points[index]));
+			context.config.gear_points[index]));
 		record_wheel_load(index, force, loads);
 	}
 	return loads;
@@ -247,7 +247,7 @@ void apply_belly_contact(
 	const double belly_bottom_agl =
 		context.input.observation.altitude_agl +
 		world_vertical_offset(
-			context.definition.belly_point,
+			context.config.belly_point,
 			context.input.observation);
 	const double compression = kBellyContactBand - belly_bottom_agl;
 	if (compression <= 0.0)
@@ -263,7 +263,7 @@ void apply_belly_contact(
 			kGravity * kBellyLoadLimit);
 	result.effects.push_back(Core::Simulation::make_local_force_effect(
 		{ 0.0, force, 0.0 },
-		context.definition.belly_point));
+		context.config.belly_point));
 }
 }
 
@@ -273,16 +273,17 @@ namespace Simulation
 {
 struct GroundInteractionModel::Implementation
 {
-	explicit Implementation(::Data::GroundInteractionDefinition model_definition)
-		: definition(std::move(model_definition))
+	explicit Implementation(const GroundInteractionConfig& model_config)
+		: config(model_config)
 	{
+		validate_ground_interaction_config(config);
 		result.effects.reserve(kGroundEffectCapacity);
 	}
 
 	const GroundInteractionResult& step(
 		const GroundInteractionModelInput& input);
 
-	::Data::GroundInteractionDefinition definition;
+	const GroundInteractionConfig config;
 	GroundInteractionResult result;
 };
 
@@ -292,14 +293,14 @@ const GroundInteractionResult&
 {
 	result.effects.clear();
 	result.used_fallback =
-		definition.enable_fallback_ground_forces &&
+		config.enable_fallback_ground_forces &&
 		has_missing_suspension_feedback(input.availability);
 	if (!result.used_fallback)
 	{
 		return result;
 	}
 	const FallbackContext context =
-		make_fallback_context(definition, input);
+		make_fallback_context(config, input);
 	const FallbackGearLoads loads =
 		apply_wheel_contacts(context, result);
 	apply_longitudinal_resistance(context, loads, result);
@@ -308,9 +309,8 @@ const GroundInteractionResult&
 }
 
 GroundInteractionModel::GroundInteractionModel(
-	::Data::GroundInteractionDefinition definition)
-	: implementation_(
-		std::make_unique<Implementation>(std::move(definition)))
+	const GroundInteractionConfig& config)
+	: implementation_(std::make_unique<Implementation>(config))
 {
 }
 

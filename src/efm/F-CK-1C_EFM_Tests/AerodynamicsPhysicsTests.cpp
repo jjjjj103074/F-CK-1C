@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "Data/AircraftConfig.h"
+#include "Core/Simulation/Models/Aerodynamics/AerodynamicsConfig.h"
 #include "Core/Simulation/Models/Aerodynamics/AerodynamicsPhysics.h"
 
 namespace
@@ -12,8 +12,8 @@ constexpr double kTolerance = 1e-9;
 
 void test_conditions_and_primary_forces(Tests::Context& context)
 {
-	const Data::AerodynamicsDefinition& config =
-		Data::fck1c_aircraft_config().aerodynamics;
+	const Core::Simulation::AerodynamicsConfig& config =
+		Core::Simulation::fck1c_aerodynamics_config();
 	AerodynamicsPhysics::AerodynamicsState state;
 	AerodynamicsPhysics::update_aerodynamic_conditions(
 		state, config, { Common::Vec3(), 1.225, 100.0, 0.0, 5.0, 0.0, 0.0 });
@@ -30,8 +30,8 @@ void test_conditions_and_primary_forces(Tests::Context& context)
 
 void test_limiter_sinks(Tests::Context& context)
 {
-	const Data::AerodynamicsDefinition& config =
-		Data::fck1c_aircraft_config().aerodynamics;
+	const Core::Simulation::AerodynamicsConfig& config =
+		Core::Simulation::fck1c_aerodynamics_config();
 	AerodynamicsPhysics::AerodynamicsState state;
 	state.dynamic_pressure = 1000.0;
 	state.roll_rate_max = 1.0;

@@ -1,29 +1,33 @@
 #include "Engine.h"
 
-#include "Data/AircraftConfig.h"
+#include <utility>
 
 namespace Core
 {
 namespace Systems
 {
+SystemEntry make_engine_system_entry(const EngineConfig& config)
+{
+	validate_engine_config(config);
+	return {
+		"engine",
+		SystemGroup::Equipment,
+		[owned_config = config](const FlightSetupContext& setup)
+		{
+			return std::make_unique<Engine>(
+				owned_config,
+				setup.start_mode);
+		}
+	};
+}
+
 namespace Catalog
 {
 namespace Engine
 {
 SystemEntry create_entry()
 {
-	return {
-		"engine",
-		SystemGroup::Equipment,
-		[](const FlightSetupContext& setup)
-		{
-			const Data::AircraftConfig& config = setup.config;
-			return std::make_unique<Core::Systems::Engine>(
-				config.engine,
-				config.fuel.consumption_rate,
-				setup.start_mode);
-		}
-	};
+	return make_engine_system_entry(fck1c_engine_config());
 }
 }
 }

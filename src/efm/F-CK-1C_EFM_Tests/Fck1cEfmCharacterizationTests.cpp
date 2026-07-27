@@ -198,8 +198,8 @@ std::array<
 	Core::FrameOutput,
 	Tests::Fck1c::kCharacterizationFrameCount> run_trajectory()
 {
-	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
-	config.fuel.consumption_rate = 3.0;
+	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
 	Core::Fck1cEfm efm(config);
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(500.0);
@@ -334,14 +334,14 @@ void test_secondary_controls_read_previous_committed_gear(
 }
 
 double expected_fuel_flow(
-	const Data::AircraftConfig& config,
+	const Tests::Fck1c::TestAircraftConfig& config,
 	const Core::FrameOutput& frame)
 {
 	const double afterburner_average = 0.5 *
 		(frame.engines[0].afterburner_ratio + frame.engines[1].afterburner_ratio);
 	const double afterburner_factor = 1.0 + afterburner_average *
 		(config.engine.afterburner.fuel_factor - 1.0);
-	return config.fuel.consumption_rate *
+	return config.engine.fuel_consumption_rate *
 		((frame.engines[0].throttle_output +
 			frame.engines[1].throttle_output + 1.0) / 3.0) *
 		afterburner_factor;
@@ -350,8 +350,8 @@ double expected_fuel_flow(
 void test_fuel_reads_previous_committed_engine_demand(
 	Tests::Context& context)
 {
-	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
-	config.fuel.consumption_rate = 3.0;
+	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
 	Core::Fck1cEfm efm(config);
 	const Core::FrameOutput start = efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
@@ -440,7 +440,7 @@ Core::FrameInput make_ground_input(bool feedback_available)
 }
 
 Core::FrameOutput run_ground_frame(
-	Data::AircraftConfig config,
+	Tests::Fck1c::TestAircraftConfig config,
 	bool feedback_available)
 {
 	Core::Fck1cEfm efm(config);
@@ -467,10 +467,10 @@ struct PairedHotGroundEfms
 
 void test_feedback_suppresses_fallback_force(Tests::Context& context)
 {
-	Data::AircraftConfig fallback = Tests::Fck1c::make_test_config();
-	fallback.suspension.enable_fallback_ground_forces = true;
-	Data::AircraftConfig disabled = fallback;
-	disabled.suspension.enable_fallback_ground_forces = false;
+	Tests::Fck1c::TestAircraftConfig fallback = Tests::Fck1c::make_test_config();
+	fallback.ground_interaction.enable_fallback_ground_forces = true;
+	Tests::Fck1c::TestAircraftConfig disabled = fallback;
+	disabled.ground_interaction.enable_fallback_ground_forces = false;
 	const Core::FrameOutput with_feedback = run_ground_frame(fallback, true);
 	const Core::FrameOutput without_feedback = run_ground_frame(fallback, false);
 	const Core::FrameOutput without_fallback = run_ground_frame(disabled, true);
@@ -534,8 +534,8 @@ void test_invincible_damage_is_discarded(Tests::Context& context)
 
 void test_each_frame_exposes_its_mass_effect(Tests::Context& context)
 {
-	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
-	config.fuel.consumption_rate = 3.0;
+	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
 	Core::Fck1cEfm efm(config);
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
@@ -559,8 +559,8 @@ void test_each_frame_exposes_its_mass_effect(Tests::Context& context)
 
 void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 {
-	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
-	config.fuel.consumption_rate = 3.0;
+	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
 	Core::Fck1cEfm efm(config);
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);

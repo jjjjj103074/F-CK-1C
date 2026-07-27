@@ -1,9 +1,10 @@
 #pragma once
 
-#include "../Common/Clamp.h"
-#include "../Common/Units.h"
-#include "../Common/Vec3.h"
-#include "Contracts/FrameContracts.h"
+#include "../../Common/Clamp.h"
+#include "../../Common/Units.h"
+#include "../../Common/Vec3.h"
+#include "../Contracts/AircraftData.h"
+#include "../Contracts/FrameContracts.h"
 #include <cmath>
 
 namespace Core
@@ -125,6 +126,30 @@ inline double ground_speed(const AircraftState& state)
 	return std::sqrt(
 		state.velocity_world.x * state.velocity_world.x +
 		state.velocity_world.z * state.velocity_world.z);
+}
+
+inline AircraftObservation make_aircraft_observation(
+	const AircraftState& state)
+{
+	constexpr double kDynamicPressureCoefficient = 0.5;
+	return {
+		state.altitude_asl,
+		state.altitude_agl,
+		state.atmosphere_density,
+		state.speed_scalar,
+		ground_speed(state),
+		state.mach,
+		kDynamicPressureCoefficient * state.atmosphere_density *
+			state.speed_scalar * state.speed_scalar,
+		state.g,
+		state.alpha,
+		state.beta,
+		state.roll,
+		state.pitch,
+		state.roll_rate,
+		state.pitch_rate,
+		state.yaw_rate
+	};
 }
 
 inline void apply_aircraft_observations(

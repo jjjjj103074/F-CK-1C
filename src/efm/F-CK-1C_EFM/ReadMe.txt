@@ -11,10 +11,13 @@ Important files:
 - DcsBridge/README.md: boundary data flow and contributor guide.
 - F-CK-1C_EFM.h: exported DCS EFM function declarations.
 - F-CK-1C_EFM_API.h: DLL export/import macro.
-- Core/: DCS-neutral simulation owner and pipeline.
-- Systems/: active aircraft systems, including FBWController.
-- Data/: immutable aircraft configuration and aerodynamic/engine tables.
+- Core/: DCS-neutral facade, aircraft Systems, Simulation, and contracts.
+- Core/Systems/: aircraft-owned state and behavior.
+- Core/Simulation/Models/: physical effects and model-owned configuration.
 - DcsBridge/Internal/: private DCS adapters, lifecycle, log, and CSV implementation.
+
+The build checks Core dependency boundaries before compiling and generates the
+System catalog from Core/Systems/*/Entry.cpp.
 
 Build from the repository root with:
 

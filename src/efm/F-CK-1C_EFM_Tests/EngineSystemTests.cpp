@@ -40,18 +40,6 @@ void test_afterburner_ignition(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, engines.left.afterburner_ratio, 1.0 / 3.0, kTolerance);
 }
 
-void test_engine_thrust_split(Tests::Context& context)
-{
-	constexpr double kTotalDryThrust = 54000.0;
-	Systems::EngineSystemState engines;
-	Systems::EngineSystemConfig config;
-	engines.left.throttle_output = 1.0;
-	engines.right.throttle_output = 1.0;
-	Systems::update_engine_thrust_outputs(
-		engines, config, { kTotalDryThrust, 1.0, 1.0, 1.0 });
-	TEST_EXPECT_NEAR(context, engines.left.thrust_force, 27000.0, kTolerance);
-	TEST_EXPECT_NEAR(context, engines.right.thrust_force, 27000.0, kTolerance);
-}
 }
 
 void run_engine_system_tests(Tests::Context& context)
@@ -59,5 +47,4 @@ void run_engine_system_tests(Tests::Context& context)
 	test_engine_switches_and_throttle(context);
 	test_engine_first_order(context);
 	test_afterburner_ignition(context);
-	test_engine_thrust_split(context);
 }

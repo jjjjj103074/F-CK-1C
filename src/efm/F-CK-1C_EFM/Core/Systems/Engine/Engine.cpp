@@ -14,12 +14,11 @@ namespace Core
 namespace Systems
 {
 Engine::Engine(
-	const ::Systems::EngineSystemConfig& config,
-	double fuel_consumption_rate,
+	const EngineConfig& config,
 	StartMode start_mode)
-	: config_(config),
-	fuel_consumption_rate_(fuel_consumption_rate)
+	: config_(config)
 {
+	validate_engine_config(config_);
 	configure_start(start_mode);
 	refresh_outputs();
 }
@@ -117,7 +116,7 @@ void Engine::refresh_outputs()
 		(engines_.left.afterburner_ratio + engines_.right.afterburner_ratio);
 	const double fuel_multiplier = 1.0 + afterburner_average *
 		(config_.afterburner.fuel_factor - 1.0);
-	fuel_demand_.flow_rate_kg_s = fuel_consumption_rate_ *
+	fuel_demand_.flow_rate_kg_s = config_.fuel_consumption_rate *
 		((engines_.left.throttle_output +
 			engines_.right.throttle_output +
 			kFuelFlowChannelBias) / kFuelFlowChannelDivisor) *

@@ -59,22 +59,22 @@ bool has_effect_at_position(
 	return false;
 }
 
-Data::GroundInteractionDefinition
-	make_enabled_ground_definition()
+Core::Simulation::GroundInteractionConfig make_enabled_ground_config()
 {
-	Data::AircraftConfig config = Tests::Fck1c::make_test_config();
-	config.suspension.enable_fallback_ground_forces = true;
-	return Data::make_ground_interaction_definition(
-		config.suspension);
+	auto config = Core::Simulation::fck1c_ground_interaction_config();
+	config.enable_fallback_ground_forces = true;
+	return config;
 }
 
 struct GroundModelFixture
 {
 	GroundModelFixture()
-		: definition(make_enabled_ground_definition()),
-		model(definition)
+		: config(make_enabled_ground_config()),
+		model(config)
 	{
 		gear.position = 1.0;
+		gear.wheel_radius =
+			Tests::Fck1c::make_test_config().landing_gear.wheel_radius;
 		observation.altitude_agl = 2.25;
 		observation.current_mass = 10000.0;
 		observation.velocity_body.x = 10.0;
@@ -92,7 +92,7 @@ struct GroundModelFixture
 		});
 	}
 
-	Data::GroundInteractionDefinition definition;
+	Core::Simulation::GroundInteractionConfig config;
 	Core::Simulation::GroundInteractionModel model;
 	Core::EngineData engines;
 	Core::LandingGearData gear;
@@ -114,7 +114,7 @@ Core::AircraftState make_aerodynamic_observation()
 
 void test_aerodynamics_model_effect_groups(Tests::Context& context)
 {
-	const Data::AircraftConfig config = Tests::Fck1c::make_test_config();
+	const auto config = Tests::Fck1c::make_test_config();
 	Core::Simulation::AerodynamicsModel model(config.aerodynamics);
 	const Core::PrimaryControlPosition primary;
 	const Core::SecondaryControlPosition secondary;
@@ -137,17 +137,11 @@ void test_aerodynamics_model_effect_groups(Tests::Context& context)
 }
 
 Core::Simulation::PropulsionResult run_propulsion(
-	const Data::AircraftConfig& config,
+	const Core::Simulation::PropulsionConfig& config,
 	const Core::EngineData& engines,
 	const Core::MaxPowerCommand& max_power = {})
 {
-	Core::Simulation::PropulsionModel model({
-		config.engine.mach_table,
-		config.engine.max_thrust_table,
-		config.engine.afterburner.thrust_factor,
-		config.left_engine_position,
-		config.right_engine_position
-	});
+	Core::Simulation::PropulsionModel model(config);
 	Core::AircraftState observation;
 	observation.engine_alt_effect = 1.0;
 	return model.step({ engines, observation, max_power });
@@ -155,13 +149,13 @@ Core::Simulation::PropulsionResult run_propulsion(
 
 void test_propulsion_operating_points(Tests::Context& context)
 {
-	const Data::AircraftConfig config = Tests::Fck1c::make_test_config();
+	const auto config = Tests::Fck1c::make_test_config();
 	Core::EngineData engines;
-	const auto idle = run_propulsion(config, engines);
+	const auto idle = run_propulsion(config.propulsion, engines);
 	TEST_EXPECT_NEAR(context, idle.left_thrust_force, 0.0, kTolerance);
 	engines.left.throttle_output = kFullThrottle;
 	engines.right.throttle_output = kFullThrottle;
-	const auto dry = run_propulsion(config, engines);
+	const auto dry = run_propulsion(config.propulsion, engines);
 	TEST_EXPECT_NEAR(
 		context,
 		dry.left_thrust_force,
@@ -169,22 +163,23 @@ void test_propulsion_operating_points(Tests::Context& context)
 		kTolerance);
 	engines.left.afterburner_ratio = 1.0;
 	engines.right.afterburner_ratio = 1.0;
-	const auto afterburner = run_propulsion(config, engines);
+	const auto afterburner = run_propulsion(config.propulsion, engines);
 	TEST_EXPECT(
 		context,
 		afterburner.left_thrust_force > dry.left_thrust_force);
-	const auto cut = run_propulsion(config, engines, { 1.0, 0.0 });
+	const auto cut = run_propulsion(
+		config.propulsion, engines, { 1.0, 0.0 });
 	TEST_EXPECT_NEAR(context, cut.left_thrust_force, 0.0, kTolerance);
 }
 
 void test_propulsion_applies_engine_condition(Tests::Context& context)
 {
-	const Data::AircraftConfig config = Tests::Fck1c::make_test_config();
+	const auto config = Tests::Fck1c::make_test_config();
 	Core::EngineData engines;
 	engines.left.throttle_output = kFullThrottle;
 	engines.right.throttle_output = kFullThrottle;
 	engines.left.condition = kDamagedCondition;
-	const auto result = run_propulsion(config, engines);
+	const auto result = run_propulsion(config.propulsion, engines);
 	TEST_EXPECT_NEAR(
 		context, result.left_thrust_force, kExpectedDamagedThrust, kTolerance);
 	TEST_EXPECT_NEAR(
@@ -229,7 +224,7 @@ void test_ground_model_selects_one_force_source(Tests::Context& context)
 		context,
 		!has_effect_at_position(
 			partial,
-			fixture.definition.gear_points[kLeftMainWheelIndex]));
+			fixture.config.gear_points[kLeftMainWheelIndex]));
 }
 
 void test_ground_model_ignores_stale_feedback(
@@ -256,7 +251,7 @@ void test_ground_model_ignores_stale_feedback(
 		context,
 		has_effect_at_position(
 			fallback,
-			fixture.definition.belly_point));
+			fixture.config.belly_point));
 }
 }
 
