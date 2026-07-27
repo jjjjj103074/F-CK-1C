@@ -143,6 +143,11 @@ inline void reset_primary_commands(PrimaryControlState& controls)
 
 inline double update_pitch_axis_input(double input, int discrete, bool analog)
 {
+	// Keyboard axes intentionally retain the legacy per-frame ramp and
+	// centering feel. Pitch/yaw use a slightly slower step than roll, and the
+	// asymmetric pitch centering window prevents abrupt recentering near the
+	// historical command limits; these are input-feel tuning values, not
+	// aircraft configuration.
 	if (analog)
 	{
 		return Common::limit(input, -1.0, 1.0);

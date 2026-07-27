@@ -8,13 +8,31 @@ inline constexpr std::size_t kWingDamageSegmentCount = 3;
 inline constexpr std::size_t kTailDamageSegmentCount = 5;
 inline constexpr std::size_t kEngineDamageSegmentCount = 3;
 
+enum class LandingGearDamageSegment : std::size_t
+{
+	Nose,
+	LeftMain,
+	RightMain,
+	Count
+};
+
+constexpr std::size_t landing_gear_segment_index(
+	LandingGearDamageSegment segment)
+{
+	return static_cast<std::size_t>(segment);
+}
+
+inline constexpr std::size_t kLandingGearDamageSegmentCount =
+	landing_gear_segment_index(LandingGearDamageSegment::Count);
+
 enum class DamageArea
 {
 	LeftWing,
 	RightWing,
 	Tail,
 	LeftEngine,
-	RightEngine
+	RightEngine,
+	LandingGear
 };
 
 struct DamageEvent

@@ -289,6 +289,9 @@ inline double estimate_dry_nozzle_aperture(
 	double limited_throttle,
 	const AfterburnerConfig& afterburner)
 {
+	// The paired values below are the legacy piecewise nozzle schedule:
+	// input breakpoints followed by normalized aperture targets. Keeping each
+	// pair beside its range makes the calibrated animation curve auditable.
 	if (limited_power < 0.50)
 	{
 		return remap_engine_range(limited_power, { 0.0, 0.50, 0.80, 0.40 });
@@ -312,6 +315,8 @@ inline double estimate_dry_nozzle_aperture(
 
 inline double estimate_afterburner_nozzle_aperture(double limited_afterburner)
 {
+	// Afterburner uses a separate calibrated schedule so the nozzle opens
+	// progressively across the three visual operating regions.
 	if (limited_afterburner <= 0.25)
 	{
 		return remap_engine_range(

@@ -17,6 +17,8 @@ constexpr double kYawInput = 0.4;
 constexpr double kDamagedEngineIntegrity = 0.2;
 constexpr double kDamagedWingIntegrity = 0.35;
 constexpr double kFullIntegrity = 1.0;
+constexpr double kFailedIntegrity = 0.0;
+constexpr double kFullBrakeInput = 1.0;
 constexpr double kFrameDt = 0.02;
 constexpr double kAltitudeAsl = 1000.0;
 constexpr double kSurfaceHeight = 200.0;
@@ -33,8 +35,16 @@ constexpr double kBodyAccelerationY = 9.81;
 constexpr double kExpectedGLoad = 2.0;
 constexpr double kAngleOfAttack = 0.1;
 constexpr double kAngleOfSlide = -0.05;
-constexpr std::size_t kExpectedRepairSubscribers = 2;
-constexpr std::size_t kDamageAreaCount = 5;
+constexpr std::size_t kExpectedRepairSubscribers = 3;
+constexpr std::size_t kDamageAreaCount = 6;
+
+struct LandingGearDamageCase
+{
+	LandingGearDamageSegment segment;
+	bool nose_failed = false;
+	bool left_main_failed = false;
+	bool right_main_failed = false;
+};
 
 AtmosphereInput valid_atmosphere(double altitude_asl)
 {
@@ -79,7 +89,8 @@ void test_owner_handlers_are_registered(Tests::Context& context)
 		DamageArea::RightWing,
 		DamageArea::Tail,
 		DamageArea::LeftEngine,
-		DamageArea::RightEngine
+		DamageArea::RightEngine,
+		DamageArea::LandingGear
 	}};
 	for (DamageArea area : areas)
 	{
@@ -275,6 +286,102 @@ void test_damage_and_repair_reach_semantic_owners(Tests::Context& context)
 		kFullIntegrity,
 		kTolerance);
 }
+
+void configure_landing_gear_controls(
+	Tests::Context& context,
+	SystemPipeline& pipeline)
+{
+	expect_handled(context, pipeline, {
+		CommandGroup::Yaw, CommandId::SetYawAxis, kYawInput
+	});
+	expect_handled(context, pipeline, {
+		CommandGroup::LandingGear, CommandId::SetLeftBrake, kFullBrakeInput
+	});
+	expect_handled(context, pipeline, {
+		CommandGroup::LandingGear, CommandId::SetRightBrake, kFullBrakeInput
+	});
+}
+
+void expect_other_damage_owners_healthy(
+	Tests::Context& context,
+	const AircraftDataSnapshot& snapshot)
+{
+	const EngineData& engine = snapshot.read(AircraftDataKeys::kEngineData);
+	const AirframeIntegrity& airframe =
+		snapshot.read(AircraftDataKeys::kAirframeIntegrity);
+	TEST_EXPECT_NEAR(
+		context, engine.left.condition, kFullIntegrity, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, engine.right.condition, kFullIntegrity, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, airframe.left_wing, kFullIntegrity, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, airframe.right_wing, kFullIntegrity, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, airframe.tail, kFullIntegrity, kTolerance);
+}
+
+void expect_landing_gear_damage_case(
+	Tests::Context& context,
+	const AircraftDataSnapshot& snapshot,
+	const LandingGearDamageCase& expected)
+{
+	const LandingGearData& gear =
+		snapshot.read(AircraftDataKeys::kLandingGearData);
+	if (expected.nose_failed)
+	{
+		TEST_EXPECT_NEAR(
+			context, gear.nose_wheel_steering, 0.0, kTolerance);
+	}
+	else
+	{
+		TEST_EXPECT(context, gear.nose_wheel_steering != 0.0);
+	}
+	TEST_EXPECT_NEAR(
+		context,
+		gear.brake_left,
+		expected.left_main_failed ? 0.0 : kFullBrakeInput,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		gear.brake_right,
+		expected.right_main_failed ? 0.0 : kFullBrakeInput,
+		kTolerance);
+	expect_other_damage_owners_healthy(context, snapshot);
+}
+
+void test_landing_gear_damage_is_routed_and_isolated(
+	Tests::Context& context)
+{
+	SystemPipeline pipeline(flight_setup());
+	configure_landing_gear_controls(context, pipeline);
+	const std::array<
+		LandingGearDamageCase,
+		kLandingGearDamageSegmentCount> cases = {{
+		{ LandingGearDamageSegment::Nose, true, false, false },
+		{ LandingGearDamageSegment::LeftMain, false, true, false },
+		{ LandingGearDamageSegment::RightMain, false, false, true }
+	}};
+	for (const LandingGearDamageCase& test_case : cases)
+	{
+		TEST_EXPECT(
+			context,
+			pipeline.apply({
+				DamageArea::LandingGear,
+				landing_gear_segment_index(test_case.segment),
+				kFailedIntegrity
+			}) == DispatchResult::Handled);
+		expect_landing_gear_damage_case(
+			context, step_pipeline(pipeline), test_case);
+		TEST_EXPECT(
+			context,
+			pipeline.apply(RepairEvent{}) == kExpectedRepairSubscribers);
+		expect_landing_gear_damage_case(
+			context,
+			step_pipeline(pipeline),
+			{ test_case.segment, false, false, false });
+	}
+}
 }
 
 void run_phase_three_system_tests(Tests::Context& context)
@@ -283,4 +390,5 @@ void run_phase_three_system_tests(Tests::Context& context)
 	test_control_data_crosses_owner_boundary(context);
 	test_observations_are_normalized_and_retained(context);
 	test_damage_and_repair_reach_semantic_owners(context);
+	test_landing_gear_damage_is_routed_and_isolated(context);
 }

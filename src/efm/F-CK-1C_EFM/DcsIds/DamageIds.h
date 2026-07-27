@@ -10,5 +10,7 @@ static constexpr int RightWing[] = { 24, 30, 36 };
 static constexpr int Tail[] = { 53, 54, 55, 56, 57 };
 static constexpr int LeftEngine[] = { 13, 17, 103 };
 static constexpr int RightEngine[] = { 14, 18, 104 };
+// Canonical DCS Damage.lua cells: WHEEL_F, WHEEL_L, WHEEL_R.
+static constexpr int LandingGear[] = { 83, 84, 85 };
 }
 }

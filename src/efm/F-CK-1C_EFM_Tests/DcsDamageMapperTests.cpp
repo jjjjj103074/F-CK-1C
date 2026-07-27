@@ -6,6 +6,9 @@
 namespace
 {
 constexpr double kTolerance = 1e-9;
+constexpr int kDcsNoseWheelDamageElement = 83;
+constexpr int kDcsLeftWheelDamageElement = 84;
+constexpr int kDcsRightWheelDamageElement = 85;
 
 struct ExpectedDamage
 {
@@ -51,5 +54,23 @@ void run_dcs_damage_mapper_tests(Tests::Context& context)
 		context, DcsIds::Damage::LeftEngine, Core::DamageArea::LeftEngine);
 	expect_area_mappings(
 		context, DcsIds::Damage::RightEngine, Core::DamageArea::RightEngine);
+	expect_damage_mapping(context, {
+		kDcsNoseWheelDamageElement,
+		Core::DamageArea::LandingGear,
+		Core::landing_gear_segment_index(
+			Core::LandingGearDamageSegment::Nose)
+	});
+	expect_damage_mapping(context, {
+		kDcsLeftWheelDamageElement,
+		Core::DamageArea::LandingGear,
+		Core::landing_gear_segment_index(
+			Core::LandingGearDamageSegment::LeftMain)
+	});
+	expect_damage_mapping(context, {
+		kDcsRightWheelDamageElement,
+		Core::DamageArea::LandingGear,
+		Core::landing_gear_segment_index(
+			Core::LandingGearDamageSegment::RightMain)
+	});
 	TEST_EXPECT(context, !DcsBridge::map_damage(-1, 0.5).mapped);
 }

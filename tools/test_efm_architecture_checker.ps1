@@ -127,6 +127,15 @@ try {
     } 'Core root source is not an entry facade' 'Core\Extra.h'
 
     Assert-Rejected {
+        Write-Fixture 'Core\Extra.hpp' "#pragma once`r`n"
+    } 'Core root source is not an entry facade' 'Core\Extra.hpp'
+
+    Assert-Rejected {
+        Write-Fixture 'Core\Systems\Alpha\Invalid.hpp' `
+            "#include `"../Bravo/Bravo.h`"`r`n"
+    } 'Cross-System dependency' 'Core\Systems\Alpha\Invalid.hpp'
+
+    Assert-Rejected {
         Write-Fixture 'Data\OldConfig.h' "#pragma once`r`n"
     } 'Legacy production path' 'Data\OldConfig.h'
 

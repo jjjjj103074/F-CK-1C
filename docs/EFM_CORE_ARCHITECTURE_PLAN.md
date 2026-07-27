@@ -274,7 +274,12 @@ handler 使用 `std::function`、member function pointer 或其他 type-erased
 - 實際部件擁有自己的 integrity、condition 與 failure 狀態。
 - 機翼、尾翼與機體狀態由 `AirframeStructure` 持有。
 - 引擎損壞由 `Engine` 持有。
-- 起落架損壞由 `LandingGear` 持有。
+- 起落架損壞由 `LandingGear` 持有；Core 使用單一 semantic
+  `DamageArea::LandingGear`，並以 nose、left main、right main 三個 segment
+  表示 DCS 的 `WHEEL_F`、`WHEEL_L`、`WHEEL_R`。
+- 起落架 integrity 只影響其 owner 的設備能力：鼻輪按比例縮放 NWS，左右
+  主輪分別按比例縮放對應煞車；本階段不模擬爆胎、支柱折斷或收放卡死。
+- `RepairEvent` 將三個起落架 segment 恢復為完整 integrity。
 - `DamageEvent` 依 semantic area 或 component 路由到唯一 owner；raw
   damage ID 不得進入 Core。
 - `RepairEvent` 可以由多個可修復部件訂閱。Event 與 Command 不共用
@@ -458,6 +463,9 @@ Simulation Model 回答：
 
 - 各 System 擁有自己的 Config 型別、資料與驗證。
 - 各 Simulation Model 擁有自己的 Config、參數表與驗證。
+- owner 內部、不需要外部調校的演算法數值可以留在其實作中，但必須以
+  鄰近註解說明其物理、調校或 legacy 行為意義；不為了形式一致而全部搬入
+  Config。
 - 多個 Simulation Model 共用的機體幾何才放入
   `Simulation/Definition/`。
 - 最終不保留依賴具體 System 的全域 `Data::AircraftConfig` 聚合袋。
@@ -489,6 +497,10 @@ DcsBridge 負責將 DCS 資料轉換成 Core 使用的統一單位與座標。Co
 System 讀取 DCS-owned observation 時，使用與其他 AircraftData 相同的
 typed data reader。`AircraftSimulation` 在每幀開始時更新保留的
 observation channels；資料來源不會出現在 System 的查詢路徑中。
+所有 System group 在該幀都讀取這份最新 DCS-owned observation；group
+snapshot 延遲只套用於 System 在同幀產生的資料，不讓外部 observation
+額外延遲一幀。因此高速開始時，`LandingGear` 會在第一幀立即依目前速度
+關閉 NWS，不保留舊 baseline 的單幀轉向暫態。
 Observation 在飛行開始時由 start mode 與明確的 neutral 值完整初始化；
 本幀沒有新 sample 時保留最後值。只有資料 provider/channel 根本沒有
 註冊時才 setup 失敗，單幀缺少 callback sample 不算錯誤。

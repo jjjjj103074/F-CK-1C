@@ -30,7 +30,31 @@ constexpr DamageBinding kDamageBindings[] = {
 	{ DcsIds::Damage::LeftEngine[2], Core::DamageArea::LeftEngine, 2 },
 	{ DcsIds::Damage::RightEngine[0], Core::DamageArea::RightEngine, 0 },
 	{ DcsIds::Damage::RightEngine[1], Core::DamageArea::RightEngine, 1 },
-	{ DcsIds::Damage::RightEngine[2], Core::DamageArea::RightEngine, 2 }
+	{ DcsIds::Damage::RightEngine[2], Core::DamageArea::RightEngine, 2 },
+	{
+		DcsIds::Damage::LandingGear[
+			Core::landing_gear_segment_index(
+				Core::LandingGearDamageSegment::Nose)],
+		Core::DamageArea::LandingGear,
+		Core::landing_gear_segment_index(
+			Core::LandingGearDamageSegment::Nose)
+	},
+	{
+		DcsIds::Damage::LandingGear[
+			Core::landing_gear_segment_index(
+				Core::LandingGearDamageSegment::LeftMain)],
+		Core::DamageArea::LandingGear,
+		Core::landing_gear_segment_index(
+			Core::LandingGearDamageSegment::LeftMain)
+	},
+	{
+		DcsIds::Damage::LandingGear[
+			Core::landing_gear_segment_index(
+				Core::LandingGearDamageSegment::RightMain)],
+		Core::DamageArea::LandingGear,
+		Core::landing_gear_segment_index(
+			Core::LandingGearDamageSegment::RightMain)
+	}
 };
 }
 

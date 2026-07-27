@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $maximumSourceLines = 700
-$sourceExtensions = @('.cpp', '.h')
+$sourceExtensions = @('.cpp', '.h', '.hpp')
 $findings = [System.Collections.Generic.List[string]]::new()
 
 function Get-RelativeSourcePath {

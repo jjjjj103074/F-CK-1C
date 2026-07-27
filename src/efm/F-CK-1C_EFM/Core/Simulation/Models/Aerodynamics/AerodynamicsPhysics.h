@@ -180,6 +180,10 @@ inline void update_wing_force_positions(
 	const Core::Simulation::AerodynamicsConfig& config,
 	const AerodynamicsFrameInput& input)
 {
+	// Preserve the legacy high-alpha force-migration curve: the final quarter
+	// of usable alpha moves each wing load aft, while AoS adds a capped
+	// left/right offset. These empirical ratios define one tuned curve rather
+	// than independently configurable aircraft geometry.
 	if ((std::fabs(input.alpha_deg) / state.alpha_max_deg) >= 0.75)
 	{
 		const double alpha_shift = Common::limit(

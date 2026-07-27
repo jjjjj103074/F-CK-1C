@@ -5,6 +5,7 @@
 namespace
 {
 constexpr double kEnabledCommandThreshold = 0.5;
+constexpr double kFullIntegrity = 1.0;
 }
 
 namespace Core
@@ -28,6 +29,7 @@ LandingGear::LandingGear(
 	{
 		::Systems::configure_ground_start_landing_gear(landing_gear_);
 	}
+	integrity_.fill(kFullIntegrity);
 	refresh_data();
 }
 
@@ -37,10 +39,10 @@ void LandingGear::setup(SystemSetup& setup)
 	setup.read(AircraftDataKeys::kAircraftObservation);
 	setup.read(AircraftDataKeys::kPilotControlState);
 	setup.publish(AircraftDataKeys::kLandingGearData, data_);
-	register_commands(setup);
+	register_handlers(setup);
 }
 
-void LandingGear::register_commands(SystemSetup& setup)
+void LandingGear::register_handlers(SystemSetup& setup)
 {
 	const CommandId commands[] = {
 		CommandId::ToggleGear,
@@ -57,6 +59,11 @@ void LandingGear::register_commands(SystemSetup& setup)
 			id,
 			[this](const Command& command) { handle_command(command); });
 	}
+	setup.register_damage_handler(
+		DamageArea::LandingGear,
+		[this](const DamageEvent& event) { apply_damage(event); });
+	setup.register_repair_handler(
+		[this](const RepairEvent& event) { repair(event); });
 }
 
 void LandingGear::step(
@@ -154,12 +161,36 @@ void LandingGear::handle_command(const Command& command)
 	refresh_data();
 }
 
+void LandingGear::apply_damage(const DamageEvent& event)
+{
+	if (event.area != DamageArea::LandingGear ||
+		event.segment >= integrity_.size())
+	{
+		return;
+	}
+	integrity_[event.segment] = event.integrity;
+	refresh_data();
+}
+
+void LandingGear::repair(const RepairEvent& event)
+{
+	(void)event;
+	integrity_.fill(kFullIntegrity);
+	refresh_data();
+}
+
 void LandingGear::refresh_data()
 {
 	data_.position = landing_gear_.position;
-	data_.nose_wheel_steering = landing_gear_.wheels.nose_steering;
-	data_.brake_left = landing_gear_.wheels.brake_left;
-	data_.brake_right = landing_gear_.wheels.brake_right;
+	data_.nose_wheel_steering = landing_gear_.wheels.nose_steering *
+		integrity_[landing_gear_segment_index(
+			LandingGearDamageSegment::Nose)];
+	data_.brake_left = landing_gear_.wheels.brake_left *
+		integrity_[landing_gear_segment_index(
+			LandingGearDamageSegment::LeftMain)];
+	data_.brake_right = landing_gear_.wheels.brake_right *
+		integrity_[landing_gear_segment_index(
+			LandingGearDamageSegment::RightMain)];
 	for (std::size_t index = 0; index < data_.wheel_spin.size(); ++index)
 	{
 		data_.wheel_radius[index] = wheel_radius_[index];

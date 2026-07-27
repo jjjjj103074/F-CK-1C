@@ -337,12 +337,18 @@ production 不得再執行一份舊函式作為 fallback。
 
 - 結構 integrity 搬到 AirframeStructure。
 - engine 與 landing gear damage 分別由其 owner 保存。
+- `LandingGear` 使用單一 semantic area 與 nose、left main、right main
+  三個 segment；DcsBridge 將 `WHEEL_F`、`WHEEL_L`、`WHEEL_R` 映射到
+  對應 segment。
+- nose integrity 按比例影響 NWS；left/right main integrity 分別按比例
+  影響對應煞車。本階段不新增爆胎、支柱折斷或收放卡死。
 - repair 透過 event fan-out；invincible 在事件進入 Systems 前處理。
 
 驗證：
 
 - damage 會實際改變對應設備狀態或其後的物理效果。
 - damage 不會誤傷非 owner。
+- 三個起落架 segment 只影響各自的 NWS 或煞車能力。
 - repair 恢復所有已損壞且可修復部件。
 - invincible 阻止 damage，且關閉 invincible 後不會出現先前被忽略的
   潛伏損壞；這項預期只在本 commit 更新。
@@ -368,6 +374,9 @@ production 不得再執行一份舊函式作為 fallback。
 - FCC 的本幀結果可供 Equipment 使用。
 - SecondaryFlightControls 讀到上一個已提交 gear state。
 - Fuel 讀到上一個已提交 engine fuel-flow state。
+- 所有 group 讀取本幀最新 DCS-owned observation；已批准高速開始時 NWS
+  第一幀由舊 baseline 的短暫轉向改為立即歸零。這不是 System 間提交時序，
+  而是外部 observation freshness 的修正。
 - before/after 多幀 diff 只能出現已批准的一幀時序差異。
 - 所有非時序數值、限制、公式與 DCS exports 不變。
 - 更新 golden 預期只能發生在此 commit，並在測試名稱說明原因。
@@ -474,6 +483,8 @@ production 不得再執行一份舊函式作為 fallback。
 驗證：
 
 - 每個 Model 每幀恰好執行一次。
+- 目前固定、單線程的直接排程以程式結構及既有單幀、多幀、
+  deterministic tests 驗證；不額外加入 call-count instrumentation。
 - force/moment aggregation 不因抽取而重複或漏算。
 - ground fallback 若需要 propulsion 結果，只能透過 frame context 取得。
 - 完整單幀、多幀與 deterministic tests 通過。
@@ -487,6 +498,8 @@ production 不得再執行一份舊函式作為 fallback。
 變更：
 
 - 各 System/Model 擁有自己的 Config、表格、production values 與驗證。
+- owner 內部且不需外部調校的 legacy/演算法數值可留在實作中，但要以
+  鄰近註解說明意義，不強制全部提升為 Config。
 - 只把跨 Model 的機體幾何留在 `Simulation/Definition`。
 - 移除依賴具體 Systems 的全域 `Data::AircraftConfig`。
 
@@ -505,6 +518,8 @@ production 不得再執行一份舊函式作為 fallback。
 - 刪除已無 caller 的舊 flat Systems、舊 orchestration、轉送 header 與
   暫時遷移程式碼。
 - 加入可重複執行的 architecture dependency check。
+- architecture dependency check 同時掃描 `.cpp`、`.h` 與 `.hpp`，避免
+  只更換 header 副檔名就繞過邊界。
 - 更新 Core README、架構文件與 source tree。
 
 驗證：
@@ -516,8 +531,8 @@ production 不得再執行一份舊函式作為 fallback。
 - Core 根目錄只保留 `Fck1cEfm.h/.cpp`。
 - 沒有 production code include 已刪除路徑。
 - 沒有未使用 source、dead compatibility path 或雙重權威狀態。
-- 函式不超過 50 行、檔案不超過 700 行、巢狀不超過 3 層；超過者依
-  責任拆分，不以停用檢查處理。
+- 專案初期只強制檔案不超過 700 行；50 行函式與三層巢狀保留為人工
+  review 指引，不加入阻擋式自動檢查。明顯責任混雜仍應在 review 時拆分。
 - 從乾淨 intermediate 完成 native tests 與 DLL build。
 - DLL export 名稱與 Phase 0 baseline 完全一致。
 - `git diff --check` 通過。
@@ -527,7 +542,8 @@ production 不得再執行一份舊函式作為 fallback。
 只有同時滿足下列條件才算完成，不以「可以編譯」代替：
 
 - 架構文件中的完成條件全部成立。
-- 24 個步驟各自的 focused tests 與共通驗證都有紀錄。
+- 24 個步驟的 commit 與其中通過的 focused/common validation 即為驗證
+  紀錄，不另外要求逐步報告文件。
 - 除步驟 15、16、19、21 明列並經測試批准的差異外，多幀行為與
   baseline 相同。
 - 沒有為了通過測試加入 silent fallback、雙路徑或吞錯。

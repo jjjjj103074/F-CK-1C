@@ -33,18 +33,21 @@ public:
 	void apply_suspension_feedback(const FrameInput& input);
 	void update_on_ground();
 	void handle_command(const Command& command);
+	void apply_damage(const DamageEvent& event);
+	void repair(const RepairEvent& event);
 
 	const LandingGearData& data() const;
 	const ::Systems::LandingGearSystemState& device_state() const;
 	const SuspensionFeedbackState& suspension_state() const;
 
 private:
-	void register_commands(SystemSetup& setup);
+	void register_handlers(SystemSetup& setup);
 	void refresh_data();
 
 	::Systems::LandingGearSystemState landing_gear_;
 	SuspensionFeedbackState suspension_;
 	std::array<double, kFrameSuspensionWheelCount> wheel_radius_;
+	std::array<double, kLandingGearDamageSegmentCount> integrity_;
 	LandingGearData data_;
 };
 
