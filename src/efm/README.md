@@ -3,6 +3,11 @@
 This directory contains the C++ external flight model source for the F-CK-1C
 DCS module.
 
+The target Core responsibilities and dependency rules are recorded in
+[`../../docs/EFM_CORE_ARCHITECTURE_PLAN.md`](../../docs/EFM_CORE_ARCHITECTURE_PLAN.md).
+The staged refactor and verification gates are recorded in
+[`../../docs/EFM_CORE_REFACTOR_IMPLEMENTATION_PLAN.md`](../../docs/EFM_CORE_REFACTOR_IMPLEMENTATION_PLAN.md).
+
 ## Layout
 
 - `F-CK-1C_EFM.sln` - Visual Studio solution.

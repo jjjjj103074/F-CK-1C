@@ -104,5 +104,5 @@ After changing the boundary:
 
 1. Build and run the native tests.
 2. Run `tools/build_dll.ps1` from the repository root.
-3. Confirm the exported DCS ABI list has not changed unless the task explicitly
-   changes it.
+3. Run `tools/check_efm_exports.ps1` and confirm the exported DCS ABI names
+   match `EfmExports.baseline.txt`, unless the task explicitly changes the ABI.

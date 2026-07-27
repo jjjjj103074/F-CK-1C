@@ -14,6 +14,7 @@ void run_airframe_device_system_tests(Tests::Context& context);
 void run_engine_system_tests(Tests::Context& context);
 void run_event_log_tests(Tests::Context& context);
 void run_fbw_controller_tests(Tests::Context& context);
+void run_fck1c_efm_characterization_tests(Tests::Context& context);
 void run_fck1c_efm_tests(Tests::Context& context);
 void run_frame_input_collector_tests(Tests::Context& context);
 void run_immutable_data_tests(Tests::Context& context);
@@ -49,6 +50,7 @@ int main()
 	run_engine_system_tests(context);
 	run_event_log_tests(context);
 	run_fbw_controller_tests(context);
+	run_fck1c_efm_characterization_tests(context);
 	run_fck1c_efm_tests(context);
 	run_frame_input_collector_tests(context);
 	run_immutable_data_tests(context);

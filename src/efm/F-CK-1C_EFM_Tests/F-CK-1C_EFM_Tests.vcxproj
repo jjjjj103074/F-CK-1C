@@ -55,6 +55,8 @@
   <ItemGroup>
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
+    <ClInclude Include="Fck1cEfmGoldenSnapshots.h" />
+    <ClInclude Include="Fck1cEfmTestFixture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AerodynamicsSystemTests.cpp" />
@@ -72,6 +74,7 @@
 	<ClCompile Include="EventLogTests.cpp" />
 	<ClCompile Include="StateCsvWriterTests.cpp" />
     <ClCompile Include="FBWControllerTests.cpp" />
+    <ClCompile Include="Fck1cEfmCharacterizationTests.cpp" />
     <ClCompile Include="Fck1cEfmTests.cpp" />
     <ClCompile Include="FrameInputCollectorTests.cpp" />
     <ClCompile Include="ImmutableDataTests.cpp" />
