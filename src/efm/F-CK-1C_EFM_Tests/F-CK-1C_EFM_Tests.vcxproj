@@ -52,11 +52,13 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <Import Project="..\EfmCore.props" />
   <ItemGroup>
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
     <ClInclude Include="Fck1cEfmGoldenSnapshots.h" />
     <ClInclude Include="Fck1cEfmTestFixture.h" />
+    <ClInclude Include="SystemPipelineTestFixture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AerodynamicsSystemTests.cpp" />
@@ -84,11 +86,9 @@
     <ClCompile Include="OutputStoreTests.cpp" />
     <ClCompile Include="ParamExportTests.cpp" />
     <ClCompile Include="SuspensionSystemTests.cpp" />
+    <ClCompile Include="SystemPipelineDataTests.cpp" />
+    <ClCompile Include="SystemPipelineHandlerTests.cpp" />
     <ClCompile Include="TestMain.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\Core\Fck1cEfm.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\Core\Simulation\AircraftSimulation.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\Core\Simulation\AircraftSimulationCommands.cpp" />
-    <ClCompile Include="..\F-CK-1C_EFM\Core\Simulation\AircraftSimulationFrameOutput.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Data\AeroTables.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Data\AircraftConfig.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\Data\EngineTables.cpp" />
@@ -111,5 +111,6 @@
     <ClCompile Include="..\F-CK-1C_EFM\Systems\FBWLifecycle.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="..\EfmCore.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

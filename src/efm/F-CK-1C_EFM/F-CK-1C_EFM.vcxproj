@@ -60,6 +60,7 @@
       </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
+  <Import Project="..\EfmCore.props" />
   <ItemGroup>
     <None Include="ReadMe.txt" />
     <None Include="DcsBridge\README.md" />
@@ -74,13 +75,6 @@
     <ClInclude Include="Common\Table.h" />
     <ClInclude Include="Common\Units.h" />
     <ClInclude Include="Common\Vec3.h" />
-    <ClInclude Include="Core\AircraftState.h" />
-    <ClInclude Include="Core\Contracts\Commands.h" />
-    <ClInclude Include="Core\Contracts\Events.h" />
-    <ClInclude Include="Core\Contracts\FrameContracts.h" />
-    <ClInclude Include="Core\Fck1cEfm.h" />
-    <ClInclude Include="Core\ForceMoment.h" />
-    <ClInclude Include="Core\Simulation\AircraftSimulation.h" />
     <ClInclude Include="Data\AeroTables.h" />
     <ClInclude Include="Data\AircraftConfig.h" />
     <ClInclude Include="Data\EngineTables.h" />
@@ -137,18 +131,6 @@
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</CompileAsManaged>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Core\Fck1cEfm.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Core\Simulation\AircraftSimulation.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Core\Simulation\AircraftSimulationCommands.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Core\Simulation\AircraftSimulationFrameOutput.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Data\AeroTables.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -219,6 +201,7 @@
     </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="..\EfmCore.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

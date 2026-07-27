@@ -25,6 +25,8 @@ void run_output_store_tests(Tests::Context& context);
 void run_param_export_tests(Tests::Context& context);
 void run_state_csv_writer_tests(Tests::Context& context);
 void run_suspension_system_tests(Tests::Context& context);
+void run_system_pipeline_data_tests(Tests::Context& context);
+void run_system_pipeline_handler_tests(Tests::Context& context);
 
 int main()
 {
@@ -54,5 +56,7 @@ int main()
 	run_fck1c_efm_tests(context);
 	run_frame_input_collector_tests(context);
 	run_immutable_data_tests(context);
+	run_system_pipeline_data_tests(context);
+	run_system_pipeline_handler_tests(context);
 	return context.finish();
 }

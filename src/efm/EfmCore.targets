@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <SystemCatalogGenerator>$(MSBuildThisFileDirectory)..\..\tools\generate_system_catalog.ps1</SystemCatalogGenerator>
+  </PropertyGroup>
+  <Target Name="GenerateEfmSystemCatalog" BeforeTargets="ClCompile">
+    <Message
+      Importance="Low"
+      Text="Generating EFM System catalog at $(EfmGeneratedSystemCatalog)" />
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(SystemCatalogGenerator)&quot; -SystemsRoot &quot;$(EfmSystemRoot)&quot; -OutputPath &quot;$(EfmGeneratedSystemCatalog)&quot;" />
+  </Target>
+</Project>

@@ -35,3 +35,14 @@ The script builds the `Release|x64` EFM DLL project and copies the resulting
 Only `Release|x64` is supported for this DLL.
 
 The Lua runtime references this DLL from `entry.lua`.
+
+Both the DLL and native test projects import `EfmCore.props` and
+`EfmCore.targets`. These shared rules compile the same Core sources and
+generate the build-time System catalog from `Core/Systems/*/Entry.cpp`.
+
+To verify the catalog generator independently:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File .\tools\test_system_catalog_generator.ps1
+```
