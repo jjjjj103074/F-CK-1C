@@ -104,6 +104,11 @@ FrameOutput AircraftSimulation::initial_output() const
 		{});
 }
 
+void AircraftSimulation::handle_command(const Command& command)
+{
+	(void)system_pipeline_.send(command);
+}
+
 double AircraftSimulation::internal_fuel() const
 {
 	return system_pipeline_.snapshot()

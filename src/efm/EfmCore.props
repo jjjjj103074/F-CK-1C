@@ -37,9 +37,6 @@
     <ClCompile Include="$(EfmCoreRoot)Simulation\AircraftSimulation.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="$(EfmCoreRoot)Simulation\AircraftSimulationCommands.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="$(EfmCoreRoot)Simulation\AircraftSimulationFrameOutput.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

@@ -2,13 +2,13 @@
 
 ## 文件狀態
 
-本文件描述 F-CK-1C EFM Core 的目標責任、依賴方向、執行模型與檔案
-結構。它是架構討論的決策紀錄，不是檔案搬移順序或重構施工清單。
+本文件描述 F-CK-1C EFM Core 已採用的責任、依賴方向、執行模型與檔案
+結構。它同時是架構決策紀錄與目前實作的基準，不是檔案搬移順序或重構
+施工清單。
 
 文件中的內容分為：
 
-- **已確認**：目前討論已達成共識，後續實作應遵守。
-- **待討論**：架構需要，但具體實作方式尚未決定。
+- **已確認**：已達成共識且目前實作應持續遵守。
 - **暫不實作**：保留未來能力，但目前不增加程式碼。
 
 ## 目標
@@ -170,6 +170,35 @@ Module 飛機概念時才擴充 AircraftData schema。這是共享語言的明�
 - 無 active flight 時，普通 command 與 damage/repair event 不保留到
   下一次飛行；只有明列的 preparation setters 可以跨越此邊界。
 
+### `start()` 前資料的責任
+
+**已確認**
+
+`start()` 前可能到達的資料分成兩類，不能放進同一份儲存：
+
+| 資料 | 權威 owner | 何時送入新飛行 |
+|---|---|---|
+| 內外部燃油、無限燃油、無敵、簡易飛行 | Core `FlightPreparation` | 建立 `AircraftSimulation` 時 |
+| 大氣、地表、質量、世界/機體運動、避震器 sample、座艙輸入 | DcsBridge `FrameInputCollector` | 第一次及後續 `step()` 的 `FrameInput` |
+
+DcsBridge 對 preparation setter 只做 DCS 契約驗證與轉換，然後立即寫入
+`Fck1cEfm`；它不另外保存第二份燃油或模擬選項權威狀態。DCS-owned
+observation 則由 DcsBridge 保存最新 sample，因為它們是組成下一幀
+`FrameInput` 的外部資料，不是建立飛機設備時的 preparation。
+
+`start()` 的初始輸出只使用 start mode 與 `FlightPreparation`。已收集的
+observation 不塞進 `start()` Interface，而是在第一個 `step()` 一次送入，
+避免同一份 DCS 狀態同時存在於 preparation 與 frame input。
+
+合法的後續飛行 preparation 順序是
+`release → preparation setters → start`。DCS-owned input callback 可以
+在 `start()` 前後到達，只要在 `step()` 建立 snapshot 前已由 collector
+收集即可。若 DCS 在沒有 `release()` 時重複 `start()`，DcsBridge 記錄
+warning，但不清除 `FrameInputCollector`，以保留可能已為新飛行送達的
+observation；Core 同步需延續的燃油與選項後建立全新的
+`AircraftSimulation`，而舊 frame 與未交付 mass delta 仍由新飛行發布
+明確清除，不跨飛行保留。
+
 ## System 模型
 
 ### 執行組別
@@ -219,12 +248,13 @@ System 尚未提交的結果。這使 System 的結果不依賴同組迭代順�
 
 ### System Interface
 
-**部分確認**
+**已確認**
 
-所有 System 使用類別，並至少具有：
+所有 System 實作 `System` 類別的兩個函式：
 
-- 一次性的 `setup()`。
-- 唯一的連續狀態推進函式 `step()`。
+- 一次性的 `setup(SystemSetup&)`。
+- 唯一的連續狀態推進函式
+  `step(const AircraftDataView&, SystemResult&)`。
 
 Entry factory 接收 immutable `FlightSetupContext`，其中只有 Core
 `StartMode` 與建立該次飛行所需的共同資料。`setup()` 用於宣告：
@@ -249,8 +279,9 @@ System 會在 `setup()` 將自己擁有的專用 command 或 event handler 註�
 要求每個 System 實作中央 switch。handler 只能改變離散狀態、模式或下
 一幀使用的 requested state；連續狀態仍由 `step()` 推進。
 
-handler 使用 `std::function`、member function pointer 或其他 type-erased
-表示方式，留待實作時決定。
+目前 handler 使用 `std::function` 做 type erasure；`AircraftDataView`
+只允許讀取該 System 在 `setup()` 宣告的 typed key，未宣告的 `read()` 或
+`has()` 會明確失敗。
 
 ### Command
 
@@ -345,7 +376,7 @@ step(frame input) -> completed aircraft snapshot
 
 ## System 註冊
 
-**已確認 build-time 自動產生，MSBuild 整合待討論**
+**已確認**
 
 每個 System 目錄提供一個 `Entry.cpp`，作為唯一整合入口。Entry 宣告：
 
@@ -364,8 +395,9 @@ System 自己在 `setup()` 註冊資料、command 與 event。
 
 因 C++ DLL 執行時不存在原始碼目錄，不能在 runtime 掃描
 `Systems/*/Entry.cpp`。建置流程必須自動掃描 Entry，並在編譯前建立
-固定 catalog。產生檔應位於明確的 generated 或 intermediate 位置；
-確切 MSBuild 掛載方式仍待決定。
+固定 catalog。production 與 native test project 共用 `EfmCore.props`
+和 `EfmCore.targets`；catalog 由 `generate_system_catalog.ps1` 產生到
+各 project 的 intermediate `Generated/SystemCatalog.g.cpp`。
 
 ## 目標 Systems
 
@@ -617,6 +649,7 @@ Core/
 └── Simulation/
     ├── AircraftSimulation.h
     ├── AircraftSimulation.cpp
+    ├── AircraftSimulationFrameOutput.cpp
     ├── AircraftSimulationFactory.h
     ├── AircraftState.h
     ├── ForceMoment.h
@@ -716,14 +749,21 @@ Common → Systems / Simulation / DcsBridge
 - DcsBridge 的 ABI boundary 是 runtime 錯誤的唯一記錄者，並使用既有
   `EventLog` 寫入一次。
 
-## 尚待實作時決定的局部細節
+## 已落地的局部實作決定
 
-下列項目不再改變架構邊界，可在對應施工步驟依測試與效能證據決定：
+下列局部選擇已由目前實作與測試固定，但不改變上述架構責任：
 
-1. `ISystem` 的確切 C++ 函式簽章與 handler 的 type-erasure 方法。
-2. typed key 的 slot 配置與 `SystemResult` 的實體記憶體布局。
-3. `Entry.cpp` catalog 的確切 MSBuild 產生與兩個 project 共用方式。
-4. per-frame heap allocation 的實測結果與是否需要進一步消除。
+1. System Interface 使用 `System::setup(SystemSetup&)` 與
+   `System::step(const AircraftDataView&, SystemResult&)`；handler 使用
+   `std::function`。
+2. typed key 使用固定 `AircraftDataId` slot、`std::variant` value 與
+   固定大小的 snapshot/pending storage；單一 writer 由 setup 驗證。
+3. `Entry.cpp` catalog 由共用 `EfmCore.props`/`EfmCore.targets` 在
+   build-time 產生，production 與 native tests 使用同一套 Core source
+   規則。
+4. System 每幀資料路徑重複使用固定 storage，不為每個 System 複製
+   AircraftData，也不在 System `step()` 中建立動態 registry。未來只有在
+   profiling 顯示瓶頸時才進一步調整記憶體布局。
 
 施工切分、行為保留規則與每步驗證方式另見
 [`EFM_CORE_REFACTOR_IMPLEMENTATION_PLAN.md`](EFM_CORE_REFACTOR_IMPLEMENTATION_PLAN.md)。

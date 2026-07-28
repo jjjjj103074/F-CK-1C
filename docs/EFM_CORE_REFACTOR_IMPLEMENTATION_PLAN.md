@@ -1,9 +1,13 @@
 # F-CK-1C EFM Core 重構實作計畫
 
-## 結論
+## 現況與結論
 
-目標架構可以實作，但原計畫不是完全沒有問題。審查現有 Core、DcsBridge、
-建置檔與 native tests 後，已在架構文件補正五個會影響正確性的缺口：
+本計畫的 29 個步驟已由 Phase 0 至 Phase 6 及後續補強 commit 落地。
+目前 Core、DcsBridge、建置規則、native tests 與架構檢查都以
+[`EFM_CORE_ARCHITECTURE_PLAN.md`](EFM_CORE_ARCHITECTURE_PLAN.md) 記錄的
+現況為準。
+
+施工前審查曾找出下列會影響正確性的缺口，現均已有明確 owner 與實作：
 
 1. `release()` 後到下一次 `start()` 前的燃油與選項沒有 owner。
 2. 「首次 DCS sample 缺失即失敗」與現有 sticky input 行為衝突。
@@ -14,8 +18,9 @@
 7. `take_mass_delta()` 會在 `step()` 外改寫 Fuel 暫態，而且跨幀未讀取的
    delta 可能被下一幀覆蓋。
 
-補正後沒有發現阻止重構的架構矛盾。剩餘問題是局部 C++ 表示方式與
-MSBuild 掛載方式，可以在不改變責任邊界的情況下用測試決定。
+局部 C++ Interface、typed storage 與 MSBuild catalog 掛載方式也已完成，
+不再是待決定項目。尚未納入本重構的產品功能或精度改善由各自既有 issue
+追蹤，不回頭擴大本計畫範圍。
 
 本文件是施工清單；架構邊界與原因以
 [`EFM_CORE_ARCHITECTURE_PLAN.md`](EFM_CORE_ARCHITECTURE_PLAN.md) 為準。
@@ -450,6 +455,8 @@ production 不得再執行一份舊函式作為 fallback。
 - 本階段保留目前 mass delta 的位置與 inertia 模型，不新增外部油箱
   CG/慣量精度。
 - unlimited fuel、refuel 與單次 mass delta 消費規則不變。
+- Phase 0 baseline 中加油 callback 的既有行為也只做保留；其功能改善由
+  既有 issue 追蹤，不屬於本重構的行為變更。
 - Fuel 只發布該幀 mass effect，不再由讀取 callback 清除自身狀態。
 - 共通驗證全數通過。
 
@@ -554,8 +561,15 @@ production 不得再執行一份舊函式作為 fallback。
   `EventLog` 寫入明確 lifecycle warning。
 - warning 不自動呼叫完整 `release()`，也不重設 `FrameInputCollector`，
   避免清除 DCS 在新 `start()` 前送入的 observation。
-- Core 的 `Fck1cEfm::start()` 保持 replace-safe；非法 DCSBridge 順序僅
-  警告並沿用現有替換行為，不承諾隔離兩次 `start()` 間的暫態 observation。
+- DCS-owned observation 只保存在 `FrameInputCollector`，於新飛行第一個
+  `step()` 送入；燃油與模擬選項則由 Core `FlightPreparation` 保存並在
+  `start()` 建立新 `AircraftSimulation` 時使用。
+- Core 的 `Fck1cEfm::start()` 保持 replace-safe；若前一飛行仍存在，先把
+  需延續的燃油與選項同步回 preparation，再建立全新的飛行。
+- 新飛行的 `publish_start()` 取代舊 output 並清除上一飛行尚未交付的
+  mass delta；這是建立新飛行的暫態隔離，不是假裝執行一次 `release()`。
+- 非法 DCSBridge 順序僅警告並沿用上述替換行為，不承諾隔離兩次
+  `start()` 間由 DCSBridge 收集的 observation。
 
 驗證：
 
@@ -564,8 +578,10 @@ production 不得再執行一份舊函式作為 fallback。
   飛行使用新的 preparation 與 observation。
 - 未 `release()` 的連續 `start()` 會透過 DcsBridge `EventLog` 產生一次
   可辨識的 warning，不會在 Core 直接寫 log。
-- 重複 `start()` 不會隱式執行 release 的燃油同步、mass/output 清除或
-  input collector reset。
+- 重複 `start()` 會延續目前燃油與選項、清除舊 output/mass delivery
+  暫態，但不執行完整 `release()`，也不重設 input collector。
+- 已在重複 `start()` 前收到的 observation 會保留，並由新飛行第一個
+  `step()` 使用。
 - 合法生命週期的既有數值、native tests 與共通驗證全數通過。
 
 ### 26. 強制執行 System 的 AircraftData 讀取宣告
@@ -684,8 +700,8 @@ production 不得再執行一份舊函式作為 fallback。
 只有同時滿足下列條件才算完成，不以「可以編譯」代替：
 
 - 架構文件中的完成條件全部成立。
-- 29 個步驟的 commit 與其中通過的 focused/common validation 即為驗證
-  紀錄，不另外要求逐步報告文件。
+- 29 個步驟均由對應 Phase／補強 commit 與 focused/common validation
+  覆蓋；不要求每一步各自形成一個 commit，也不另外要求逐步報告文件。
 - 除步驟 15、16、19、21 明列並經測試批准的差異外，多幀行為與
   baseline 相同。
 - 沒有為了通過測試加入 silent fallback、雙路徑或吞錯。
