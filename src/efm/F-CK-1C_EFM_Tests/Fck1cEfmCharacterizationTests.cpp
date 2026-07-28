@@ -179,19 +179,19 @@ std::string frame_snapshot(const Core::FrameOutput& frame)
 void send_trajectory_commands(Core::Fck1cEfm& efm)
 {
 	efm.handle_command({
-		Core::CommandGroup::PitchRoll, Core::CommandId::SetPitchAxis, 0.25 });
+		Core::CommandId::SetPitchAxis, 0.25 });
 	efm.handle_command({
-		Core::CommandGroup::PitchRoll, Core::CommandId::SetRollAxis, -0.2 });
+		Core::CommandId::SetRollAxis, -0.2 });
 	efm.handle_command({
-		Core::CommandGroup::Yaw, Core::CommandId::SetYawAxis, 0.15 });
+		Core::CommandId::SetYawAxis, 0.15 });
 	efm.handle_command({
-		Core::CommandGroup::Throttle, Core::CommandId::SetCommonThrottleAxis, 0.8 });
+		Core::CommandId::SetCommonThrottleAxis, 0.8 });
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandId::SetGear, 0.0 });
+		Core::CommandId::SetGear, 0.0 });
 	efm.handle_command({
-		Core::CommandGroup::Airframe, Core::CommandId::SetFlapsAuto, 1.0 });
+		Core::CommandId::SetFlapsAuto, 1.0 });
 	efm.handle_command({
-		Core::CommandGroup::Airframe, Core::CommandId::SetAirbrake, 1.0 });
+		Core::CommandId::SetAirbrake, 1.0 });
 }
 
 std::array<
@@ -294,9 +294,9 @@ void test_secondary_controls_read_previous_committed_gear(
 	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config());
 	const Core::FrameOutput start = efm.start(Core::StartMode::HotAir);
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandId::SetGear, 1.0 });
+		Core::CommandId::SetGear, 1.0 });
 	efm.handle_command({
-		Core::CommandGroup::Airframe, Core::CommandId::SetFlapsAuto, 1.0 });
+		Core::CommandId::SetFlapsAuto, 1.0 });
 	Core::FrameInput input = Tests::Fck1c::make_frame_input();
 	input.autopilot = {};
 	const std::optional<GearCrossing> crossing =
@@ -356,7 +356,7 @@ void test_fuel_reads_previous_committed_engine_demand(
 	const Core::FrameOutput start = efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	efm.handle_command({
-		Core::CommandGroup::Throttle, Core::CommandId::SetCommonThrottleAxis, 1.0 });
+		Core::CommandId::SetCommonThrottleAxis, 1.0 });
 	Core::FrameInput input;
 	input.dt_s = 0.1;
 	const Core::FrameOutput first = efm.step(input);
@@ -383,7 +383,6 @@ Core::FrameOutput run_engine_shutdown_frame(
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(internal_fuel);
 	efm.handle_command({
-		Core::CommandGroup::Throttle,
 		Core::CommandId::SetCommonThrottleAxis,
 		1.0
 	});

@@ -115,7 +115,8 @@ private:
 		std::optional<AircraftDataValue>,
 		kAircraftDataSlotCount>;
 
-	void allow_publication(AircraftDataId id);
+	void activate_publications(
+		const std::array<bool, kAircraftDataSlotCount>& writable);
 	void clear();
 	void publish_value(
 		const AircraftDataDescriptor& descriptor,

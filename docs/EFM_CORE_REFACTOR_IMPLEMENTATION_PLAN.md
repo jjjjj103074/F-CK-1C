@@ -429,6 +429,8 @@ production 不得再執行一份舊函式作為 fallback。
 
 - 有有效 DCS suspension feedback 時不執行同輪 fallback 累加。
 - 無 feedback 時 fallback 結果與 baseline 相同。
+- Suspension sample 數值可保留，但 availability 只表示本幀 freshness；
+  snapshot 消耗後，下一幀未收到 callback 的機輪必須改用 fallback。
 - brakes、NWS、wheel contact 與 on-ground 情境不變。
 - 增加「不會 double force」的專用回歸測試。
 - 由舊的同時累加改成互斥來源所造成的預期值，只能在本 commit 更新。

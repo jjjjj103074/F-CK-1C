@@ -111,7 +111,7 @@ struct RuntimeSystem
 {
 	SystemGroup group;
 	std::unique_ptr<System> system;
-	SystemResult result;
+	std::array<bool, kAircraftDataSlotCount> publications = {};
 	SystemSetup::State setup;
 };
 
@@ -154,8 +154,7 @@ struct SystemPipeline::Implementation
 	void validate_fuel_management(
 		const RuntimeSystem& runtime,
 		std::size_t system_index);
-	void commit_group(SystemGroup group, Storage& next);
-	void commit_result(const RuntimeSystem& runtime, Storage& next);
+	void commit_group(Storage& next);
 	bool should_run(
 		const RuntimeSystem& runtime,
 		const SystemStepOptions& options) const;
@@ -165,6 +164,7 @@ struct SystemPipeline::Implementation
 
 	std::vector<RuntimeSystem> systems;
 	Storage committed;
+	SystemResult pending_result;
 	std::array<int, kAircraftDataSlotCount> writers;
 	std::map<CommandId, CommandHandler> command_handlers;
 	std::map<DamageArea, DamageHandler> damage_handlers;
@@ -200,12 +200,14 @@ void AircraftDataSnapshot::throw_type_error(const char* name)
 	throw std::logic_error(
 		std::string("AircraftData stored type mismatch: ") + name);
 }
-void SystemResult::allow_publication(AircraftDataId id)
+void SystemResult::activate_publications(
+	const std::array<bool, kAircraftDataSlotCount>& writable)
 {
-	writable_[slot(id)] = true;
+	writable_ = writable;
 }
 void SystemResult::clear()
 {
+	writable_.fill(false);
 	for (auto& value : pending_)
 	{
 		value.reset();
@@ -333,7 +335,7 @@ void SystemPipeline::Implementation::create_systems(
 		systems.push_back({
 			entry.group,
 			std::move(instance),
-			SystemResult(),
+			{},
 			SystemSetup::State{ entry.id }
 		});
 	}
@@ -387,7 +389,7 @@ void SystemPipeline::Implementation::validate_publication(
 				declaration.name);
 		}
 		writers[data_slot] = static_cast<int>(system_index);
-		runtime.result.allow_publication(declaration.id);
+		runtime.publications[data_slot] = true;
 		initial[data_slot] = declaration.initial;
 	}
 }
@@ -540,21 +542,16 @@ void SystemPipeline::Implementation::run_group(
 	const SystemStepOptions& options)
 {
 	const AircraftDataSnapshot input = make_snapshot(next);
-	for (RuntimeSystem& runtime : systems)
-	{
-		if (runtime.group == group)
-		{
-			runtime.result.clear();
-		}
-	}
+	pending_result.clear();
 	for (RuntimeSystem& runtime : systems)
 	{
 		if (runtime.group == group && should_run(runtime, options))
 		{
-			runtime.system->step(input, runtime.result);
+			pending_result.activate_publications(runtime.publications);
+			runtime.system->step(input, pending_result);
 		}
 	}
-	commit_group(group, next);
+	commit_group(next);
 }
 
 bool SystemPipeline::Implementation::should_run(
@@ -564,29 +561,13 @@ bool SystemPipeline::Implementation::should_run(
 	return options.advance_fuel || !runtime.setup.fuel_management;
 }
 
-void SystemPipeline::Implementation::commit_group(
-	SystemGroup group,
-	Storage& next)
-{
-	for (RuntimeSystem& runtime : systems)
-	{
-		if (runtime.group != group)
-		{
-			continue;
-		}
-		commit_result(runtime, next);
-	}
-}
-
-void SystemPipeline::Implementation::commit_result(
-	const RuntimeSystem& runtime,
-	Storage& next)
+void SystemPipeline::Implementation::commit_group(Storage& next)
 {
 	for (std::size_t index = 0; index < kAircraftDataSlotCount; ++index)
 	{
-		if (runtime.result.pending_[index])
+		if (pending_result.pending_[index])
 		{
-			next[index] = runtime.result.pending_[index];
+			next[index] = pending_result.pending_[index];
 		}
 	}
 }

@@ -402,6 +402,35 @@ void test_catalog_order_does_not_change_group_result(Tests::Context& context)
 	expect_order_independent_result(context, step_pipeline(reverse));
 }
 
+void test_systems_share_one_flight_result_buffer(Tests::Context& context)
+{
+	auto first_result = std::make_shared<const SystemResult*>(nullptr);
+	auto second_result = std::make_shared<const SystemResult*>(nullptr);
+	const SystemDefinition first = {
+		"first",
+		SystemGroup::Equipment,
+		[](SystemSetup&) {},
+		[first_result](const AircraftDataSnapshot&, SystemResult& result)
+		{
+			*first_result = &result;
+		}
+	};
+	const SystemDefinition second = {
+		"second",
+		SystemGroup::Equipment,
+		[](SystemSetup&) {},
+		[second_result](const AircraftDataSnapshot&, SystemResult& result)
+		{
+			*second_result = &result;
+		}
+	};
+	SystemPipeline pipeline(
+		flight_setup(), { entry(first), entry(second) });
+	(void)step_pipeline(pipeline);
+	TEST_EXPECT(context, *first_result != nullptr);
+	TEST_EXPECT(context, *first_result == *second_result);
+}
+
 void test_phase_three_generated_catalog(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup());
@@ -463,6 +492,7 @@ void run_system_pipeline_data_tests(Tests::Context& context)
 	test_missing_new_value_retains_last_commit(context);
 	test_pending_storage_does_not_leak(context);
 	test_catalog_order_does_not_change_group_result(context);
+	test_systems_share_one_flight_result_buffer(context);
 	test_phase_three_generated_catalog(context);
 	test_factory_receives_start_mode(context);
 }

@@ -182,9 +182,9 @@ void test_frame_output_golden_contract(Tests::Context& context)
 	efm.set_internal_fuel(500.0);
 	efm.set_external_fuel({ 1, 120.0, { 0.5, -0.2, 0.1 } });
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandId::SetLeftBrake, 0.4 });
+		Core::CommandId::SetLeftBrake, 0.4 });
 	efm.handle_command({
-		Core::CommandGroup::LandingGear, Core::CommandId::SetRightBrake, 0.6 });
+		Core::CommandId::SetRightBrake, 0.6 });
 	const Core::FrameInput input = make_frame_input();
 	const Core::FrameOutput output = efm.step(input);
 	// Golden values captured from 401f44c with this exact translated callback input.
@@ -362,7 +362,6 @@ void test_released_commands_and_damage_do_not_persist(Tests::Context& context)
 	subject.release();
 	subject.repair({});
 	subject.handle_command({
-		Core::CommandGroup::LandingGear,
 		Core::CommandId::SetGear,
 		kCommandEnabled
 	});
@@ -389,7 +388,6 @@ void test_repeated_start_release_cycles(Tests::Context& context)
 	{
 		expect_start_output(context, efm.start(mode), mode);
 		efm.handle_command({
-			Core::CommandGroup::PitchRoll,
 			Core::CommandId::SetPitchAxis,
 			kLifecyclePitchInput
 		});
@@ -485,7 +483,7 @@ void test_neutral_cockpit_input_completes_step(Tests::Context& context)
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	efm.handle_command({
-		Core::CommandGroup::PitchRoll, Core::CommandId::SetPitchAxis, 0.3 });
+		Core::CommandId::SetPitchAxis, 0.3 });
 	Core::FrameInput input;
 	input.dt_s = kSimulationStepS;
 	const Core::FrameOutput output = efm.step(input);

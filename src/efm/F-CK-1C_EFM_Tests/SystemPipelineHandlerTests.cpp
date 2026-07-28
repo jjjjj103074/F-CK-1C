@@ -110,7 +110,6 @@ void test_unregistered_command_is_explicitly_ignored(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup(), {});
 	const DispatchResult result = pipeline.send({
-		CommandGroup::PitchRoll,
 		CommandId::SetPitchAxis,
 		kCommandValue
 	});
@@ -146,7 +145,6 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 	TEST_EXPECT(
 		context,
 		pipeline.send({
-			CommandGroup::PitchRoll,
 			CommandId::SetPitchAxis,
 			kCommandValue
 		}) == DispatchResult::Handled);
@@ -272,7 +270,6 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 		action_throws([&pipeline]()
 		{
 			(void)pipeline.send({
-				CommandGroup::PitchRoll,
 				CommandId::SetPitchAxis,
 				kCommandValue
 			});

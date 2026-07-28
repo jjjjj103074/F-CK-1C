@@ -2,18 +2,6 @@
 
 namespace Core
 {
-enum class CommandGroup
-{
-	PitchRoll,
-	Yaw,
-	Fbw,
-	Engine,
-	Throttle,
-	Airframe,
-	LandingGear,
-	None
-};
-
 enum class CommandId
 {
 	NoOp,
@@ -58,7 +46,6 @@ enum class CommandId
 
 struct Command
 {
-	CommandGroup group = CommandGroup::None;
 	CommandId id = CommandId::NoOp;
 	double value = 0.0;
 };

@@ -53,12 +53,10 @@ void test_damage_scales_owned_equipment_and_repair_restores_it(
 		Core::StartMode::HotGround,
 		Core::Systems::fck1c_landing_gear_config());
 	landing_gear.handle_command({
-		Core::CommandGroup::LandingGear,
 		Core::CommandId::SetLeftBrake,
 		kBrakeInput
 	});
 	landing_gear.handle_command({
-		Core::CommandGroup::LandingGear,
 		Core::CommandId::SetRightBrake,
 		kBrakeInput
 	});

@@ -504,6 +504,9 @@ snapshot 延遲只套用於 System 在同幀產生的資料，不讓外部 obser
 Observation 在飛行開始時由 start mode 與明確的 neutral 值完整初始化；
 本幀沒有新 sample 時保留最後值。只有資料 provider/channel 根本沒有
 註冊時才 setup 失敗，單幀缺少 callback sample 不算錯誤。
+Suspension feedback 的 sample 數值同樣保留，但其 availability 表示
+「本幀收到」並在建立 frame snapshot 後消耗，讓每個機輪能在下一幀沒有
+新 feedback 時改用 fallback，而不把舊 sample 誤認為本幀來源。
 
 ## 每幀資料流
 

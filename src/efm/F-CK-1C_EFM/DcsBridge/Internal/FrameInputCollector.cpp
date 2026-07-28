@@ -77,12 +77,16 @@ void FrameInputCollector::publish_max_power(const Core::MaxPowerCommand& sample)
 	latest_.max_power = sample;
 }
 
-Core::FrameInput FrameInputCollector::snapshot(double dt_s) const
+Core::FrameInput FrameInputCollector::snapshot(double dt_s)
 {
 	Core::FrameInput result;
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
 		result = latest_;
+		// Suspension availability means "received for this simulation frame".
+		// Keep the last sample values, but consume their freshness atomically so
+		// GroundInteraction can select DCS feedback or fallback per wheel.
+		latest_.availability.suspension.fill(false);
 	}
 	result.dt_s = dt_s;
 	return result;

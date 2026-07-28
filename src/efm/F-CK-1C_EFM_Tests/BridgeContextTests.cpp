@@ -476,8 +476,6 @@ void test_release_allows_next_flight_preparation(Tests::Context& tests)
 	release_flight(context);
 	prepare_next_flight_core(context);
 	publish_prepared_frame_input(context);
-	expect_prepared_frame_input(
-		tests, context.input_collector().snapshot(kPreparedStepS));
 	TEST_EXPECT_NEAR(
 		tests,
 		context.query_core_preparation(

@@ -24,10 +24,10 @@ public:
 	bool publish_suspension(const Core::SuspensionFeedbackInput& sample);
 	void publish_autopilot(const Core::AutopilotCommand& sample);
 	void publish_max_power(const Core::MaxPowerCommand& sample);
-	Core::FrameInput snapshot(double dt_s) const;
+	Core::FrameInput snapshot(double dt_s);
 
 private:
-	mutable std::mutex mutex_;
+	std::mutex mutex_;
 	Core::FrameInput latest_;
 };
 }

@@ -58,6 +58,9 @@ calculations, log message formatting, or CSV row formatting.
 - `FrameInputCollector` owns the latest typed inputs. `OutputStore` owns the
   latest completed frame plus the lossless per-flight mass-effect queue.
   `StateCsvWriter` owns its worker thread and latest-record mailbox.
+- Suspension sample values retain latest-value semantics, while their
+  availability flags are consumed by each frame snapshot so Core can select
+  DCS feedback or fallback per wheel.
 - `../DcsIds/` contains DCS boundary identifiers and generated ID tables. It is
   boundary-only, is not a supported external include, and is not a Core
   dependency.
@@ -74,9 +77,9 @@ Core interface instead. DCS itself sees only the exported C ABI.
    `.\tools\generate_dcs_ids.ps1` from the repository root.
 2. Add one binding in `Internal/DcsCommandRouter.cpp` with its explicit value
    rule: `PassThrough`, `Constant`, or `PressOnly`.
-3. If the semantic command is new, extend `CommandGroup`/`CommandId` in
-   `../Core/Contracts/Commands.h` and handle it in
-   `../Core/Simulation/AircraftSimulationCommands.cpp`.
+3. If the semantic command is new, extend `CommandId` in
+   `../Core/Contracts/Commands.h`, then register its handler from the owning
+   System's `setup()`.
 4. Test both the DCS-to-command mapping and the observable `FrameOutput` result.
 
 Do not add callback-specific methods to `BridgeContext`, and do not store

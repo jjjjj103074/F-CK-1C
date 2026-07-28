@@ -4,6 +4,7 @@
 #include "Core/Simulation/Models/Aerodynamics/AerodynamicsModel.h"
 #include "Core/Simulation/Models/GroundInteraction/GroundInteractionModel.h"
 #include "Core/Simulation/Models/Propulsion/PropulsionModel.h"
+#include "DcsBridge/Internal/FrameInputCollector.h"
 
 #include <cmath>
 
@@ -24,6 +25,7 @@ constexpr std::size_t kBellyFallbackEffectCount = 1;
 constexpr double kExpectedFullFallbackVerticalForce = 145920.0;
 constexpr double kExpectedPartialFallbackVerticalForce = 72960.0;
 constexpr double kBellyContactAltitude = 0.5;
+constexpr double kSimulationStepSeconds = 0.01;
 
 double total_vertical_force(
 	const Core::Simulation::GroundInteractionResult& result)
@@ -253,6 +255,31 @@ void test_ground_model_ignores_stale_feedback(
 			fallback,
 			fixture.config.belly_point));
 }
+
+void test_ground_model_uses_collector_frame_freshness(
+	Tests::Context& context)
+{
+	DcsBridge::Internal::FrameInputCollector collector;
+	for (int index = 0;
+		index < static_cast<int>(Core::kFrameSuspensionWheelCount);
+		++index)
+	{
+		Core::SuspensionFeedbackInput sample;
+		sample.index = index;
+		TEST_EXPECT(context, collector.publish_suspension(sample));
+	}
+	GroundModelFixture fixture;
+	const Core::FrameInput feedback_frame =
+		collector.snapshot(kSimulationStepSeconds);
+	TEST_EXPECT(
+		context,
+		!fixture.step(feedback_frame.availability).used_fallback);
+	const Core::FrameInput missing_frame =
+		collector.snapshot(kSimulationStepSeconds);
+	TEST_EXPECT(
+		context,
+		fixture.step(missing_frame.availability).used_fallback);
+}
 }
 
 void run_simulation_model_tests(Tests::Context& context)
@@ -262,4 +289,5 @@ void run_simulation_model_tests(Tests::Context& context)
 	test_propulsion_applies_engine_condition(context);
 	test_ground_model_selects_one_force_source(context);
 	test_ground_model_ignores_stale_feedback(context);
+	test_ground_model_uses_collector_frame_freshness(context);
 }

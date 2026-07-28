@@ -108,18 +108,17 @@ std::vector<double> published_values(
 void send_scenario_commands(SystemPipeline& pipeline)
 {
 	(void)pipeline.send({
-		CommandGroup::PitchRoll, CommandId::SetPitchAxis, kPitchCommand });
+		CommandId::SetPitchAxis, kPitchCommand });
 	(void)pipeline.send({
-		CommandGroup::Yaw, CommandId::SetYawAxis, kYawCommand });
+		CommandId::SetYawAxis, kYawCommand });
 	(void)pipeline.send({
-		CommandGroup::Throttle,
 		CommandId::SetCommonThrottleAxis,
 		kThrottleCommand
 	});
 	(void)pipeline.send({
-		CommandGroup::LandingGear, CommandId::SetGear, kGearUpCommand });
+		CommandId::SetGear, kGearUpCommand });
 	(void)pipeline.send({
-		CommandGroup::Airframe, CommandId::SetFlapsAuto, kActiveCommand });
+		CommandId::SetFlapsAuto, kActiveCommand });
 }
 
 void test_production_output_ignores_same_group_entry_order(
@@ -152,7 +151,6 @@ void test_equipment_reads_current_aircraft_observation(
 {
 	SystemPipeline pipeline(SystemPipelineTest::flight_setup());
 	(void)pipeline.send({
-		CommandGroup::Yaw,
 		CommandId::SetYawAxis,
 		kYawCommand
 	});

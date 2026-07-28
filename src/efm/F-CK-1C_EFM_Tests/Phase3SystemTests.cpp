@@ -71,10 +71,10 @@ void test_owner_handlers_are_registered(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup());
 	const std::array<Command, 4> commands = {{
-		{ CommandGroup::PitchRoll, CommandId::SetPitchAxis, kPitchInput },
-		{ CommandGroup::Engine, CommandId::SetLeftEngine, kFullIntegrity },
-		{ CommandGroup::Airframe, CommandId::SetFlapsDown, kFullIntegrity },
-		{ CommandGroup::LandingGear, CommandId::SetGear, kFullIntegrity }
+		{ CommandId::SetPitchAxis, kPitchInput },
+		{ CommandId::SetLeftEngine, kFullIntegrity },
+		{ CommandId::SetFlapsDown, kFullIntegrity },
+		{ CommandId::SetGear, kFullIntegrity }
 	}};
 	for (const Command& command : commands)
 	{
@@ -107,11 +107,11 @@ void test_control_data_crosses_owner_boundary(Tests::Context& context)
 	expect_handled(
 		context,
 		pipeline,
-		{ CommandGroup::None, CommandId::SetPitchAxis, kPitchInput });
+		{ CommandId::SetPitchAxis, kPitchInput });
 	expect_handled(
 		context,
 		pipeline,
-		{ CommandGroup::None, CommandId::SetYawAxis, kYawInput });
+		{ CommandId::SetYawAxis, kYawInput });
 	FrameInput input;
 	input.dt_s = kFrameDt;
 	const AircraftObservation observation;
@@ -292,13 +292,13 @@ void configure_landing_gear_controls(
 	SystemPipeline& pipeline)
 {
 	expect_handled(context, pipeline, {
-		CommandGroup::Yaw, CommandId::SetYawAxis, kYawInput
+		CommandId::SetYawAxis, kYawInput
 	});
 	expect_handled(context, pipeline, {
-		CommandGroup::LandingGear, CommandId::SetLeftBrake, kFullBrakeInput
+		CommandId::SetLeftBrake, kFullBrakeInput
 	});
 	expect_handled(context, pipeline, {
-		CommandGroup::LandingGear, CommandId::SetRightBrake, kFullBrakeInput
+		CommandId::SetRightBrake, kFullBrakeInput
 	});
 }
 

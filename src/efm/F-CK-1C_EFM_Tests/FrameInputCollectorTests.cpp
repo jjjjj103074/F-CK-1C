@@ -297,7 +297,8 @@ void test_missing_categories_and_reset(Tests::Context& context)
 	expect_reset_input(context, collector.snapshot(kSnapshotDtSeconds));
 }
 
-void test_sticky_suspension_and_invalid_index(Tests::Context& context)
+void test_suspension_values_are_sticky_but_freshness_is_per_frame(
+	Tests::Context& context)
 {
 	DcsBridge::Internal::FrameInputCollector collector;
 	const Core::SuspensionFeedbackInput first = make_suspension(0, kFirstSuspensionBase);
@@ -307,7 +308,16 @@ void test_sticky_suspension_and_invalid_index(Tests::Context& context)
 	Core::FrameInput input = collector.snapshot(kSnapshotDtSeconds);
 	expect_suspension(context, input.suspension[0], first);
 	expect_suspension(context, input.suspension[1], second);
+	TEST_EXPECT(context, input.availability.suspension[0]);
+	TEST_EXPECT(context, input.availability.suspension[1]);
 	TEST_EXPECT(context, !input.availability.suspension[2]);
+	input = collector.snapshot(kSnapshotDtSeconds);
+	expect_suspension(context, input.suspension[0], first);
+	expect_suspension(context, input.suspension[1], second);
+	for (bool suspension_available : input.availability.suspension)
+	{
+		TEST_EXPECT(context, !suspension_available);
+	}
 	const Core::SuspensionFeedbackInput replacement =
 		make_suspension(0, kReplacementSuspensionBase);
 	TEST_EXPECT(context, collector.publish_suspension(replacement));
@@ -322,6 +332,9 @@ void test_sticky_suspension_and_invalid_index(Tests::Context& context)
 	input = collector.snapshot(kSnapshotDtSeconds);
 	expect_suspension(context, input.suspension[0], replacement);
 	expect_suspension(context, input.suspension[1], second);
+	TEST_EXPECT(context, input.availability.suspension[0]);
+	TEST_EXPECT(context, !input.availability.suspension[1]);
+	TEST_EXPECT(context, !input.availability.suspension[2]);
 }
 
 bool same_vec(const Common::Vec3& left, const Common::Vec3& right)
@@ -393,6 +406,6 @@ void run_frame_input_collector_tests(Tests::Context& context)
 {
 	test_complete_publish_and_snapshot(context);
 	test_missing_categories_and_reset(context);
-	test_sticky_suspension_and_invalid_index(context);
+	test_suspension_values_are_sticky_but_freshness_is_per_frame(context);
 	test_concurrent_publish_and_snapshot(context);
 }
