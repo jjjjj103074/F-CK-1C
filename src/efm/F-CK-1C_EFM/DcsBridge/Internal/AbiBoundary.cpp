@@ -1,7 +1,7 @@
 #include "AbiBoundary.h"
 
 #include "EventLog.h"
-#include "../../Core/Contracts/Diagnostics.h"
+#include "../../Core/Diagnostics/ExecutionError.h"
 
 #include <cstdio>
 #include <exception>

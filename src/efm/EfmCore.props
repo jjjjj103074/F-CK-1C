@@ -16,7 +16,8 @@
     <None Include="$(EfmSystemRoot)\README.md" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\AircraftData.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
-    <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics.h" />
+    <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionContext.h" />
+    <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionError.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Events.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\FrameContracts.h" />
     <ClInclude Include="$(EfmCoreRoot)Fck1cEfm.h" />
@@ -26,6 +27,7 @@
     <ClInclude Include="$(EfmCoreRoot)Systems\System.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\SystemExecutionContext.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\SystemPipeline.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\SystemPipelineDataAccess.h" />
     <ClInclude Include="$(EfmSystemRoot)\*\*.h" />
   </ItemGroup>
   <ItemGroup>
@@ -49,6 +51,9 @@
       <ObjectFileName>$(IntDir)SimulationModels\$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('%(FullPath)')))).%(Filename).obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="$(EfmCoreRoot)Systems\SystemPipeline.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Systems\SystemPipelineData.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <EfmSystemSource

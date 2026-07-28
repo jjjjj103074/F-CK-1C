@@ -12,7 +12,7 @@ class PrimaryFlightControls final : public System
 public:
 	void setup(SystemSetup& setup) override;
 	void step(
-		const AircraftDataSnapshot& snapshot,
+		const AircraftDataView& aircraft,
 		SystemResult& result) override;
 
 	const PrimaryControlPosition& step(const FlightControlDemand& demand);

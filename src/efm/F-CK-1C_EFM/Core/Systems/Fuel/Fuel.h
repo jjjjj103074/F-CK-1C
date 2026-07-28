@@ -15,11 +15,11 @@ public:
 
 	void setup(SystemSetup& setup) override;
 	void step(
-		const AircraftDataSnapshot& snapshot,
+		const AircraftDataView& aircraft,
 		SystemResult& result) override;
 
 	const FuelData& step(const FuelDemand& demand, double dt);
-	void suppress_consumption();
+	void suppress_next_consumption();
 	void set_internal_fuel(double fuel);
 	void set_external_fuel(const ::Systems::ExternalFuelState& fuel);
 	double internal_fuel() const;
@@ -33,6 +33,7 @@ private:
 
 	::Systems::FuelSystem fuel_;
 	FuelData data_;
+	bool suppress_next_consumption_ = false;
 };
 }
 }

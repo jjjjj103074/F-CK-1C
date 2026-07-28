@@ -50,6 +50,7 @@ public:
 	CarrierBridge& carrier_bridge();
 	std::mutex& execution_mutex();
 	Core::Fck1cEfm& core();
+	Core::FrameOutput start_flight(Core::StartMode mode);
 
 	template <typename Action>
 	bool perform_flight_action(

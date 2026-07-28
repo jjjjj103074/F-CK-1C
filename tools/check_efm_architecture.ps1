@@ -59,6 +59,7 @@ function Test-DcsBridgeDependency {
         return
     }
     if ($Target -eq 'Core\Fck1cEfm.h' -or
+        $Target -eq 'Core\Diagnostics\ExecutionError.h' -or
         $Target -like 'Core\Contracts\*') {
         return
     }

@@ -66,11 +66,11 @@ void FlightControlComputer::register_commands(SystemSetup& setup)
 }
 
 void FlightControlComputer::step(
-	const AircraftDataSnapshot& snapshot,
+	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const FrameInput& frame = snapshot.read(AircraftDataKeys::kFrameInput);
-	step(make_pipeline_input(snapshot), frame.autopilot);
+	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
+	step(make_pipeline_input(aircraft), frame.autopilot);
 	result.publish(AircraftDataKeys::kPilotControlState, pilot_controls_);
 	result.publish(AircraftDataKeys::kFlightControlDemand, demand_);
 	result.publish(AircraftDataKeys::kEngineControlDemand, engine_demand_);
@@ -151,11 +151,11 @@ void FlightControlComputer::refresh_pilot_controls()
 }
 
 ::Systems::FBWControllerInput FlightControlComputer::make_pipeline_input(
-	const AircraftDataSnapshot& snapshot) const
+	const AircraftDataView& aircraft) const
 {
-	const FrameInput& frame = snapshot.read(AircraftDataKeys::kFrameInput);
+	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const AircraftObservation& observation =
-		snapshot.read(AircraftDataKeys::kAircraftObservation);
+		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	::Systems::FBWControllerInput input;
 	input.dt = frame.dt_s;
 	input.qbar = observation.dynamic_pressure;
@@ -170,11 +170,11 @@ void FlightControlComputer::refresh_pilot_controls()
 	input.mach = observation.mach;
 	input.g = observation.g_load;
 	const LandingGearData& gear =
-		snapshot.read(AircraftDataKeys::kLandingGearData);
+		aircraft.read(AircraftDataKeys::kLandingGearData);
 	input.gear_pos = gear.position;
 	input.wow = gear.any_weight_on_wheels;
 	const PrimaryControlPosition& position =
-		snapshot.read(AircraftDataKeys::kPrimaryControlPosition);
+		aircraft.read(AircraftDataKeys::kPrimaryControlPosition);
 	input.elevator_command = position.elevator;
 	input.aileron_command = position.aileron;
 	input.rudder_command = position.rudder;

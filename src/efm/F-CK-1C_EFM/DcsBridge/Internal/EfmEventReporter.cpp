@@ -252,6 +252,18 @@ void EfmEventReporter::log_cockpit_parameter_events(
 	}
 }
 
+void EfmEventReporter::log_repeated_start(Core::StartMode mode)
+{
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"flight start lifecycle_warning=repeated_start_without_release "
+		"mode=%s action=replace_without_implicit_release",
+		start_mode_name(mode));
+	write(EventLevel::Warning, latest_simulation_time(), message);
+}
+
 void EfmEventReporter::log_start(
 	Core::StartMode mode,
 	double simulation_time_s)

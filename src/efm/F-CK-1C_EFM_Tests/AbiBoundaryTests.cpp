@@ -4,7 +4,7 @@
 #include "DcsBridge/Internal/AbiBoundary.h"
 #include "DcsBridge/Internal/EventLog.h"
 #include "DcsBridge/Internal/ProcessBridgeContext.h"
-#include "Core/Contracts/Diagnostics.h"
+#include "Core/Diagnostics/ExecutionError.h"
 
 #include <exception>
 #include <filesystem>
@@ -58,21 +58,19 @@ void report_unknown_exception(DcsBridge::Internal::EventLog& log)
 	}
 }
 
-void report_execution_error(DcsBridge::Internal::EventLog& log)
+void report_execution_error(
+	DcsBridge::Internal::EventLog& log,
+	const char* callback,
+	const Core::ExecutionErrorDetails& details)
 {
 	try
 	{
-		throw Core::ExecutionError({
-			Core::ExecutionOwnerType::SimulationModel,
-			"aerodynamics",
-			"step",
-			"Common::rescale input is not finite."
-		});
+		throw Core::ExecutionError(details);
 	}
 	catch (...)
 	{
 		DcsBridge::Internal::report_abi_exception(
-			"ed_fm_simulate", std::current_exception(), &log);
+			callback, std::current_exception(), &log);
 	}
 }
 
@@ -99,7 +97,51 @@ void test_exception_details_are_logged(Tests::Context& context)
 	DcsBridge::Internal::EventLog log(root.path().string().c_str());
 	report_standard_exception(log);
 	report_unknown_exception(log);
-	report_execution_error(log);
+	report_execution_error(
+		log,
+		"ed_fm_simulate",
+		{
+			Core::ExecutionOwnerType::SimulationModel,
+			"aerodynamics",
+			"step",
+			"Common::rescale input is not finite."
+		});
+	report_execution_error(
+		log,
+		"ed_fm_hot_start",
+		{
+			Core::ExecutionOwnerType::System,
+			"fuel",
+			"create",
+			"factory failed"
+		});
+	report_execution_error(
+		log,
+		"ed_fm_hot_start",
+		{
+			Core::ExecutionOwnerType::System,
+			"engine",
+			"setup",
+			"declaration failed"
+		});
+	report_execution_error(
+		log,
+		"ed_fm_set_command",
+		{
+			Core::ExecutionOwnerType::System,
+			"flight_control_computer",
+			"handle_command",
+			"handler failed"
+		});
+	report_execution_error(
+		log,
+		"ed_fm_hot_start",
+		{
+			Core::ExecutionOwnerType::SimulationModel,
+			"propulsion",
+			"create",
+			"configuration failed"
+		});
 
 	const std::string content = read_log(root);
 	TEST_EXPECT(context, content.find(
@@ -114,6 +156,20 @@ void test_exception_details_are_logged(Tests::Context& context)
 		"owner=aerodynamics operation=step "
 		"reason=Common::rescale input is not finite. "
 		"caught_at=c_abi_boundary\n") != std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"callback=ed_fm_hot_start source=system owner=fuel "
+		"operation=create reason=factory failed") != std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"callback=ed_fm_hot_start source=system owner=engine "
+		"operation=setup reason=declaration failed") != std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"callback=ed_fm_set_command source=system "
+		"owner=flight_control_computer operation=handle_command "
+		"reason=handler failed") != std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"callback=ed_fm_hot_start source=simulation_model "
+		"owner=propulsion operation=create "
+		"reason=configuration failed") != std::string::npos);
 }
 
 void test_guard_returns_neutral_and_runs_cleanup(Tests::Context& context)

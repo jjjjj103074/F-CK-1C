@@ -23,10 +23,10 @@ void AirframeStructure::setup(SystemSetup& setup)
 }
 
 void AirframeStructure::step(
-	const AircraftDataSnapshot& snapshot,
+	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	(void)snapshot;
+	(void)aircraft;
 	result.publish(AircraftDataKeys::kAirframeIntegrity, integrity_);
 }
 

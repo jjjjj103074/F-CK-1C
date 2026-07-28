@@ -67,15 +67,15 @@ void LandingGear::register_handlers(SystemSetup& setup)
 }
 
 void LandingGear::step(
-	const AircraftDataSnapshot& snapshot,
+	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const FrameInput& frame = snapshot.read(AircraftDataKeys::kFrameInput);
+	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const AircraftObservation& observation =
-		snapshot.read(AircraftDataKeys::kAircraftObservation);
+		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	apply_suspension_feedback(frame);
 	const PilotControlState& pilot =
-		snapshot.read(AircraftDataKeys::kPilotControlState);
+		aircraft.read(AircraftDataKeys::kPilotControlState);
 	const LandingGearFrameInput input = {
 		observation.speed_scalar,
 		observation.ground_speed,

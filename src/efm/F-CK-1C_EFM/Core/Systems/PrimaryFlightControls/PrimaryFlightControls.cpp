@@ -13,12 +13,12 @@ void PrimaryFlightControls::setup(SystemSetup& setup)
 }
 
 void PrimaryFlightControls::step(
-	const AircraftDataSnapshot& snapshot,
+	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
 	result.publish(
 		AircraftDataKeys::kPrimaryControlPosition,
-		step(snapshot.read(AircraftDataKeys::kFlightControlDemand)));
+		step(aircraft.read(AircraftDataKeys::kFlightControlDemand)));
 }
 
 const PrimaryControlPosition& PrimaryFlightControls::step(

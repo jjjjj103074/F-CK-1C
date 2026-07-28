@@ -13,7 +13,7 @@ namespace Core
 {
 namespace Systems
 {
-class AircraftDataSnapshot;
+class AircraftDataView;
 class SystemResult;
 class SystemSetup;
 
@@ -42,7 +42,7 @@ public:
 
 	virtual void setup(SystemSetup& setup) = 0;
 	virtual void step(
-		const AircraftDataSnapshot& snapshot,
+		const AircraftDataView& aircraft,
 		SystemResult& result) = 0;
 };
 

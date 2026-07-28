@@ -247,6 +247,7 @@ void test_release_preparation_survives_start(Tests::Context& context)
 	efm.set_internal_fuel(200.0);
 	efm.set_external_fuel({ 1, 30.0, {} });
 	efm.set_infinite_fuel(true);
+	efm.set_infinite_fuel(true);
 	efm.set_easy_flight(true);
 	efm.set_invincible(true);
 	const Core::FrameOutput start = efm.start(Core::StartMode::ColdGround);

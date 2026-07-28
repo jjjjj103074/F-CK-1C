@@ -86,7 +86,8 @@ belong in a System.
 Use only keys declared in `Core/Contracts/AircraftData.h`. A key has one
 publisher; readers may require an initial value or explicitly accept an
 uninitialized value. A missing provider, wrong type, duplicate publisher, or
-missing required initial value fails setup.
+missing required initial value fails setup. During `step()`, both `read()` and
+`has()` reject keys that the current System did not declare during `setup()`.
 
 `FrameInput` carries frame-local values such as `dt`, autopilot commands, and
 suspension samples. `AircraftObservation` carries retained, normalized flight
@@ -100,14 +101,16 @@ have one semantic owner. Repair may have multiple subscribers. An unregistered
 command or damage event returns `DispatchResult::Unhandled`; handlers are not
 broadcast.
 
-Unexpected exceptions from a System step or registered handler receive that
-System's catalog ID and operation in a structured `ExecutionError`. Systems do
-not write DCS logs; the error crosses the Core boundary and DCSBridge records
-it once.
+Unexpected exceptions from System creation, setup, step, or a registered
+handler receive that System's catalog ID and operation in a structured
+`ExecutionError`. Systems do not write DCS logs; the error crosses the Core
+boundary and DCSBridge records it once.
 
 Fuel registers only the preparation handlers used by the
 simulation façade. The Pipeline validates that the handler set is complete and
 belongs to the sole `FuelData` publisher. Fuel publishes the current frame's
 consumed mass in `FuelData`; Simulation converts that snapshot value into a
-mass effect. Infinite-fuel policy remains in Simulation and Fuel does not know
-why consumption was suppressed.
+mass effect. Infinite-fuel policy remains in Simulation: it requests one-frame
+consumption suppression before every step while enabled. Fuel still computes
+and publishes the true total flow, publishes zero consumed mass for that
+frame, and does not know why consumption was suppressed.

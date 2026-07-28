@@ -560,20 +560,51 @@ void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
-	(void)efm.start(Core::StartMode::HotGround);
-	efm.set_internal_fuel(100.0);
+	Core::Fck1cEfm subject(config);
+	Core::Fck1cEfm control(config);
+	(void)subject.start(Core::StartMode::HotGround);
+	(void)control.start(Core::StartMode::HotGround);
+	subject.set_internal_fuel(100.0);
+	control.set_internal_fuel(100.0);
 	Core::FrameInput input;
 	input.dt_s = 0.1;
-	TEST_EXPECT(context, efm.step(input).mass_effect.available);
-	const double fuel_before = efm.internal_fuel();
-	efm.set_infinite_fuel(true);
-	const Core::FrameOutput unlimited = efm.step(input);
+	(void)subject.step(input);
+	(void)control.step(input);
+	const double fuel_before = subject.internal_fuel();
+	subject.set_infinite_fuel(true);
+	subject.set_infinite_fuel(true);
+	const Core::FrameOutput unlimited = subject.step(input);
+	const Core::FrameOutput limited = control.step(input);
 	TEST_EXPECT(context, !unlimited.mass_effect.available);
+	TEST_EXPECT(context, limited.mass_effect.available);
 	TEST_EXPECT_NEAR(
-		context, unlimited.fuel.total_fuel_flow, 0.0, kTolerance);
+		context,
+		unlimited.fuel.total_fuel_flow,
+		limited.fuel.total_fuel_flow,
+		kTolerance);
 	TEST_EXPECT_NEAR(
-		context, efm.internal_fuel(), fuel_before, kTolerance);
+		context, subject.internal_fuel(), fuel_before, kTolerance);
+	const Core::FrameOutput still_unlimited = subject.step(input);
+	const Core::FrameOutput still_limited = control.step(input);
+	TEST_EXPECT(context, !still_unlimited.mass_effect.available);
+	TEST_EXPECT_NEAR(
+		context,
+		still_unlimited.fuel.total_fuel_flow,
+		still_limited.fuel.total_fuel_flow,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context, subject.internal_fuel(), fuel_before, kTolerance);
+	subject.set_infinite_fuel(false);
+	subject.set_infinite_fuel(false);
+	const Core::FrameOutput resumed = subject.step(input);
+	const Core::FrameOutput expected = control.step(input);
+	TEST_EXPECT(context, resumed.mass_effect.available);
+	TEST_EXPECT_NEAR(
+		context,
+		resumed.fuel.total_fuel_flow,
+		expected.fuel.total_fuel_flow,
+		kTolerance);
+	TEST_EXPECT(context, subject.internal_fuel() < fuel_before);
 }
 }
 

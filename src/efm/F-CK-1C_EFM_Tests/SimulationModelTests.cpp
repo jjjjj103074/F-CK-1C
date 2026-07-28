@@ -2,7 +2,8 @@
 #include "SystemPipelineTestFixture.h"
 #include "TestHarness.h"
 
-#include "Core/Contracts/Diagnostics.h"
+#include "Core/Diagnostics/ExecutionError.h"
+#include "Core/Simulation/Models/ModelExecutionContext.h"
 #include "Core/Simulation/Models/Aerodynamics/AerodynamicsModel.h"
 #include "Core/Simulation/Models/GroundInteraction/GroundInteractionModel.h"
 #include "Core/Simulation/Models/Propulsion/PropulsionModel.h"
@@ -11,6 +12,7 @@
 
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 namespace
 {
@@ -244,6 +246,63 @@ void test_model_error_identifies_runtime_owner(Tests::Context& context)
 		});
 }
 
+void test_model_create_error_identifies_runtime_owner(
+	Tests::Context& context)
+{
+	using namespace Core;
+	using namespace Core::Simulation;
+	using namespace SystemPipelineTest;
+	expect_execution_error(
+		context,
+		[]()
+		{
+			(void)Detail::invoke_model_action(
+				Detail::kAerodynamicsOwner,
+				Detail::kModelCreateOperation,
+				[]() -> int
+				{
+					throw std::runtime_error(
+						"expected model construction failure");
+				});
+		},
+		{
+			ExecutionOwnerType::SimulationModel,
+			"aerodynamics",
+			"create",
+			"expected model construction failure"
+		});
+}
+
+void test_execution_error_is_not_rewrapped(Tests::Context& context)
+{
+	using namespace Core;
+	using namespace Core::Simulation;
+	using namespace SystemPipelineTest;
+	expect_execution_error(
+		context,
+		[]()
+		{
+			(void)Detail::invoke_model_action(
+				Detail::kAerodynamicsOwner,
+				Detail::kModelCreateOperation,
+				[]() -> int
+				{
+					throw ExecutionError({
+						ExecutionOwnerType::System,
+						"inner_system",
+						"setup",
+						"original failure"
+					});
+				});
+		},
+		{
+			ExecutionOwnerType::System,
+			"inner_system",
+			"setup",
+			"original failure"
+		});
+}
+
 void test_ground_model_selects_one_force_source(Tests::Context& context)
 {
 	GroundModelFixture fixture;
@@ -341,6 +400,8 @@ void run_simulation_model_tests(Tests::Context& context)
 	test_propulsion_operating_points(context);
 	test_propulsion_applies_engine_condition(context);
 	test_model_error_identifies_runtime_owner(context);
+	test_model_create_error_identifies_runtime_owner(context);
+	test_execution_error_is_not_rewrapped(context);
 	test_ground_model_selects_one_force_source(context);
 	test_ground_model_ignores_stale_feedback(context);
 	test_ground_model_uses_collector_frame_freshness(context);

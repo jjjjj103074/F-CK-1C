@@ -8,7 +8,9 @@ adapters remain in `DcsBridge`.
 
 - `Fck1cEfm.h/.cpp` is the only source-level facade in the Core root.
 - `Contracts/` defines semantic commands, events, AircraftData, frame
-  input/output, and structured execution errors shared across Core modules.
+  input/output, and other passive data shared across Core modules.
+- `Diagnostics/` defines the structured execution error that carries Core
+  owner and operation context across the public boundary.
 - `Systems/` owns aircraft equipment state and behavior. `SystemPipeline`
   validates declarations, routes commands/events, schedules groups, and
   publishes one completed AircraftData snapshot.
@@ -37,13 +39,15 @@ Concrete Systems do not include one another, `DcsBridge`, or anything under
 `Simulation/`. Concrete Simulation Models do not include one another or
 anything under `Systems/`; `SimulationPipeline` translates their results into
 the next Model's plain input values. `DcsBridge` reaches Core only through
-`Fck1cEfm.h` and `Core/Contracts/`; it does not include Core pipeline or
-Simulation implementation headers.
+`Fck1cEfm.h`, `Core/Contracts/`, and the exact
+`Core/Diagnostics/ExecutionError.h` boundary type; it does not include Core
+pipeline, diagnostic wrapping, or Simulation implementation headers.
 
 Systems and Simulation Models do not write logs. Their pipelines attach the
-registered owner and operation to unexpected exceptions as an
-`ExecutionError`; DCSBridge remains the single owner that writes those errors
-to the runtime EventLog.
+registered owner and lifecycle operation (`create`, `setup`, `step`, or a
+handler operation) to unexpected exceptions as an `ExecutionError`;
+DCSBridge remains the single owner that writes those errors to the runtime
+EventLog.
 
 The build runs `tools/check_efm_architecture.ps1` before compiling. Run the
 checker and its fixtures directly from the repository root with:

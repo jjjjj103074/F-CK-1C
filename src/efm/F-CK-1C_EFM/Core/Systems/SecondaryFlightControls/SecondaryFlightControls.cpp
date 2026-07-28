@@ -47,13 +47,13 @@ void SecondaryFlightControls::register_commands(SystemSetup& setup)
 }
 
 void SecondaryFlightControls::step(
-	const AircraftDataSnapshot& snapshot,
+	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
 	const AircraftObservation& observation =
-		snapshot.read(AircraftDataKeys::kAircraftObservation);
+		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	const double gear =
-		snapshot.read(AircraftDataKeys::kLandingGearData).position;
+		aircraft.read(AircraftDataKeys::kLandingGearData).position;
 	result.publish(
 		AircraftDataKeys::kSecondaryControlPosition,
 		step(observation.speed_scalar, gear));

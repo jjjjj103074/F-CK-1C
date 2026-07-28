@@ -8,10 +8,16 @@
 
 namespace
 {
+// Fixed result storage and the DCS suspension ordering used by FrameInput.
 constexpr std::size_t kGroundEffectCapacity = 5;
 constexpr std::size_t kNoseWheelIndex = 0;
 constexpr std::size_t kLeftMainWheelIndex = 1;
 constexpr std::size_t kRightMainWheelIndex = 2;
+
+// Contact envelope: speeds are m/s, gravity is m/s^2, the normal-force
+// threshold is N, and the remaining limits/coefficients are dimensionless.
+// These provisional fallback values preserve the pre-refactor ground handling
+// until aircraft-specific measurements are available.
 constexpr double kMaximumSinkRate = 80.0;
 constexpr double kGearSupportStart = 0.2;
 constexpr double kGearSupportRange = 0.8;
@@ -26,10 +32,15 @@ constexpr double kLowSpeedThreshold = 1.5;
 constexpr double kIdleThrottleThreshold = 0.05;
 constexpr double kStaticThrustResistanceFactor = 0.12;
 constexpr double kMovingSpeedThreshold = 0.05;
+
+// Belly-contact fallback: distance is m, spring is N/m, damping is N/(m/s),
+// and load limit is a multiple of aircraft weight.
 constexpr double kBellyContactBand = 0.03;
 constexpr double kBellySpring = 260000.0;
 constexpr double kBellyDamping = 40000.0;
 constexpr double kBellyLoadLimit = 2.0;
+
+// Local-aircraft point (m) where aggregate rolling/braking resistance acts.
 const Common::Vec3 kGroundResistancePoint(-0.9, -1.6, 0.0);
 
 using Core::Simulation::GroundInteractionModelInput;

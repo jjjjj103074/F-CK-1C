@@ -71,16 +71,16 @@ void Engine::register_handlers(SystemSetup& setup)
 }
 
 void Engine::step(
-	const AircraftDataSnapshot& snapshot,
+	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const FrameInput& frame = snapshot.read(AircraftDataKeys::kFrameInput);
+	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const AircraftObservation& observation =
-		snapshot.read(AircraftDataKeys::kAircraftObservation);
-	const FuelData& fuel = snapshot.read(AircraftDataKeys::kFuelData);
+		aircraft.read(AircraftDataKeys::kAircraftObservation);
+	const FuelData& fuel = aircraft.read(AircraftDataKeys::kFuelData);
 	step({
 		frame.dt_s,
-		snapshot.read(AircraftDataKeys::kEngineControlDemand),
+		aircraft.read(AircraftDataKeys::kEngineControlDemand),
 		fuel.internal_fuel,
 		observation.altitude_asl
 	});

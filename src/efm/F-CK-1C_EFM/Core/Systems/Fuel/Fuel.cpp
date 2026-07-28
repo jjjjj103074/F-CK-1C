@@ -33,17 +33,17 @@ void Fuel::setup(SystemSetup& setup)
 		{
 			set_external_fuel({ fuel.station, fuel.fuel, fuel.position });
 		},
-		[this]() { suppress_consumption(); }
+		[this]() { suppress_next_consumption(); }
 	});
 }
 
 void Fuel::step(
-	const AircraftDataSnapshot& snapshot,
+	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const FrameInput& frame = snapshot.read(AircraftDataKeys::kFrameInput);
+	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const FuelDemand& demand =
-		snapshot.read(AircraftDataKeys::kFuelDemand);
+		aircraft.read(AircraftDataKeys::kFuelDemand);
 	result.publish(
 		AircraftDataKeys::kFuelData,
 		step(demand, frame.dt_s));
@@ -51,15 +51,25 @@ void Fuel::step(
 
 const FuelData& Fuel::step(const FuelDemand& demand, double dt)
 {
-	::Systems::apply_fuel_demand(fuel_, demand.flow_rate_kg_s, dt);
+	const bool suppress_consumption = suppress_next_consumption_;
+	suppress_next_consumption_ = false;
+	if (suppress_consumption)
+	{
+		::Systems::record_fuel_demand_without_consumption(
+			fuel_,
+			demand.flow_rate_kg_s);
+	}
+	else
+	{
+		::Systems::apply_fuel_demand(fuel_, demand.flow_rate_kg_s, dt);
+	}
 	refresh_data();
 	return data_;
 }
 
-void Fuel::suppress_consumption()
+void Fuel::suppress_next_consumption()
 {
-	::Systems::suppress_fuel_consumption(fuel_);
-	refresh_data();
+	suppress_next_consumption_ = true;
 }
 
 void Fuel::set_internal_fuel(double fuel)

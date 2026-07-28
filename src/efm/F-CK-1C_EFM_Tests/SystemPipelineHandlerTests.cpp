@@ -134,7 +134,7 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 					*requested = command.value;
 				});
 		},
-		[requested](const AircraftDataSnapshot&, SystemResult& result)
+		[requested](const AircraftDataView&, SystemResult& result)
 		{
 			result.publish(
 				AircraftDataKeys::kFlightControlDemand,

@@ -43,6 +43,8 @@ constexpr double kPreparedExternalFuelKg = 40.0;
 constexpr double kFirstQueuedMassKg = 1.25;
 constexpr double kSecondQueuedMassKg = 2.5;
 constexpr auto kInputConcurrencyTimeout = std::chrono::seconds(1);
+constexpr const char* kRepeatedStartWarning =
+	"lifecycle_warning=repeated_start_without_release";
 std::atomic<int> g_cockpit_api_requests = 0;
 
 void* get_parameter_handle(const char* name)
@@ -122,12 +124,8 @@ void start_flight(
 	DcsBridge::Internal::BridgeContext& context,
 	Core::StartMode mode)
 {
-	const std::lock_guard<std::mutex> lock(context.execution_mutex());
-	context.param_exporter().reset();
-	const Core::FrameOutput output = context.core().start(mode);
-	context.output_store().publish_start(output);
-	context.param_exporter().observe(output);
-	context.state_csv_writer().publish_start(output);
+	const Core::FrameOutput output = context.start_flight(mode);
+	context.event_reporter().log_start(mode, output.simulation_time_s);
 }
 
 void release_flight(DcsBridge::Internal::BridgeContext& context)
@@ -243,6 +241,35 @@ void test_release_then_start_reuses_context(Tests::Context& tests)
 	const std::optional<Core::FrameOutput> output = context.output_store().read();
 	TEST_EXPECT(tests, output.has_value());
 	TEST_EXPECT_NEAR(tests, output->simulation_time_s, 0.0, 0.0);
+	const std::string log = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(tests, log.find(kRepeatedStartWarning) == std::string::npos);
+}
+
+void test_repeated_start_warns_without_resetting_input(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcw");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotGround);
+	context.input_collector().publish_atmosphere(
+		make_prepared_atmosphere(kPreparedAltitudeAslM));
+	start_flight(context, Core::StartMode::HotAir);
+	const Core::FrameInput retained =
+		context.input_collector().snapshot(kPreparedStepS);
+	TEST_EXPECT(tests, retained.availability.atmosphere);
+	TEST_EXPECT_NEAR(
+		tests, retained.atmosphere.altitude_asl, kPreparedAltitudeAslM, 0.0);
+	const std::string log = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	const std::size_t warning = log.find(kRepeatedStartWarning);
+	TEST_EXPECT(tests, warning != std::string::npos);
+	TEST_EXPECT(
+		tests,
+		log.find(kRepeatedStartWarning, warning + 1) == std::string::npos);
+	TEST_EXPECT(tests, log.find("flight release") == std::string::npos);
 }
 
 void test_mass_delivery_drains_output_queue(Tests::Context& tests)
@@ -507,6 +534,7 @@ void run_bridge_context_tests(Tests::Context& context)
 	test_first_callback_initializes_once(context);
 	test_files_ready_before_flight(context);
 	test_release_then_start_reuses_context(context);
+	test_repeated_start_warns_without_resetting_input(context);
 	test_mass_delivery_drains_output_queue(context);
 	test_concurrent_first_callbacks_share_context(context);
 	test_execution_mutex_serializes_core_actions(context);

@@ -84,12 +84,15 @@ try {
     Write-Fixture 'Core\Systems\Bravo\Bravo.h' "#pragma once`r`n"
     Write-Fixture 'Core\Systems\SystemPipeline.h' "#pragma once`r`n"
     Write-Fixture 'Core\Contracts\FrameContracts.h' "#pragma once`r`n"
+    Write-Fixture 'Core\Diagnostics\ExecutionError.h' "#pragma once`r`n"
+    Write-Fixture 'Core\Diagnostics\ExecutionContext.h' "#pragma once`r`n"
     Write-Fixture 'Core\Simulation\AircraftSimulation.h' "#pragma once`r`n"
     Write-Fixture 'Core\Simulation\Models\Lift\Lift.h' "#pragma once`r`n"
     Write-Fixture 'Core\Simulation\Models\Drag\Drag.h' "#pragma once`r`n"
     Write-Fixture 'DcsBridge\Bridge.cpp' (
         "#include `"../Core/Fck1cEfm.h`"`r`n" +
-        "#include `"../Core/Contracts/FrameContracts.h`"`r`n")
+        "#include `"../Core/Contracts/FrameContracts.h`"`r`n" +
+        "#include `"../Core/Diagnostics/ExecutionError.h`"`r`n")
     Invoke-Checker
 
     Assert-Rejected {
@@ -110,6 +113,11 @@ try {
     Assert-Rejected {
         Write-Fixture 'DcsBridge\Invalid.cpp' `
             "#include `"../Core/Simulation/AircraftSimulation.h`"`r`n"
+    } 'DcsBridge boundary violation' 'DcsBridge\Invalid.cpp'
+
+    Assert-Rejected {
+        Write-Fixture 'DcsBridge\Invalid.cpp' `
+            "#include `"../Core/Diagnostics/ExecutionContext.h`"`r`n"
     } 'DcsBridge boundary violation' 'DcsBridge\Invalid.cpp'
 
     Assert-Rejected {

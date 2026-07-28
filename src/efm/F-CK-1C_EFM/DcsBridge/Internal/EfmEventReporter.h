@@ -44,6 +44,7 @@ public:
 		std::size_t size,
 		std::size_t required);
 	void log_cockpit_parameter_events(const CockpitParameterEvents& events);
+	void log_repeated_start(Core::StartMode mode);
 	void log_start(Core::StartMode mode, double simulation_time_s);
 	void log_damage(
 		const Core::DamageApplyResult& result,

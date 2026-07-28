@@ -2,6 +2,8 @@
 
 namespace
 {
+// Provisional local-aircraft fuel centroid in metres. These values preserve
+// the legacy EFM mass callback until tank-specific mass distribution exists.
 constexpr double kFuelMassPositionX = -1.0;
 constexpr double kFuelMassPositionY = 1.0;
 constexpr double kFuelMassPositionZ = 0.0;

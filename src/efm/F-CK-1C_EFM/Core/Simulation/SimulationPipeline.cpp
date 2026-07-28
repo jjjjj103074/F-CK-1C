@@ -1,7 +1,7 @@
 #include "SimulationPipeline.h"
 
 #include "ForceMoment.h"
-#include "../Contracts/Diagnostics.h"
+#include "Models/ModelExecutionContext.h"
 #include "../Systems/SystemPipeline.h"
 #include "Models/Aerodynamics/AerodynamicsModel.h"
 #include "Models/GroundInteraction/GroundInteractionModel.h"
@@ -24,47 +24,6 @@ SimulationModels& SimulationModels::operator=(
 
 namespace
 {
-constexpr const char* kModelStepOperation = "step";
-constexpr const char* kAerodynamicsOwner = "aerodynamics";
-constexpr const char* kPropulsionOwner = "propulsion";
-constexpr const char* kGroundInteractionOwner = "ground_interaction";
-constexpr const char* kMassPropertiesOwner = "mass_properties";
-constexpr const char* kUnknownExceptionReason = "unknown C++ exception";
-
-template <typename Action>
-decltype(auto) invoke_model_action(
-	const char* owner,
-	const char* operation,
-	Action&& action)
-{
-	try
-	{
-		return std::forward<Action>(action)();
-	}
-	catch (const ExecutionError&)
-	{
-		throw;
-	}
-	catch (const std::exception& error)
-	{
-		throw ExecutionError({
-			ExecutionOwnerType::SimulationModel,
-			owner,
-			operation,
-			error.what()
-		});
-	}
-	catch (...)
-	{
-		throw ExecutionError({
-			ExecutionOwnerType::SimulationModel,
-			owner,
-			operation,
-			kUnknownExceptionReason
-		});
-	}
-}
-
 class FrameAccumulator final
 {
 public:
@@ -184,9 +143,9 @@ const AerodynamicsResult&
 	SimulationPipeline::Implementation::step_aerodynamics(
 		const SimulationFrameInput& input)
 {
-	return invoke_model_action(
-		kAerodynamicsOwner,
-		kModelStepOperation,
+	return Detail::invoke_model_action(
+		Detail::kAerodynamicsOwner,
+		Detail::kModelStepOperation,
 		[this, &input]() -> const AerodynamicsResult&
 		{
 			return aerodynamics->step(make_aerodynamics_input(input));
@@ -197,9 +156,9 @@ const PropulsionResult&
 	SimulationPipeline::Implementation::step_propulsion(
 		const SimulationFrameInput& input)
 {
-	return invoke_model_action(
-		kPropulsionOwner,
-		kModelStepOperation,
+	return Detail::invoke_model_action(
+		Detail::kPropulsionOwner,
+		Detail::kModelStepOperation,
 		[this, &input]() -> const PropulsionResult&
 		{
 			return propulsion->step(make_propulsion_input(input));
@@ -211,9 +170,9 @@ const GroundInteractionResult&
 		const SimulationFrameInput& input,
 		const PropulsionResult& propulsion_result)
 {
-	return invoke_model_action(
-		kGroundInteractionOwner,
-		kModelStepOperation,
+	return Detail::invoke_model_action(
+		Detail::kGroundInteractionOwner,
+		Detail::kModelStepOperation,
 		[this, &input, &propulsion_result]() ->
 			const GroundInteractionResult&
 		{
@@ -226,9 +185,9 @@ const MassDeltaResult&
 	SimulationPipeline::Implementation::step_mass_properties(
 		const SimulationFrameInput& input)
 {
-	return invoke_model_action(
-		kMassPropertiesOwner,
-		kModelStepOperation,
+	return Detail::invoke_model_action(
+		Detail::kMassPropertiesOwner,
+		Detail::kModelStepOperation,
 		[this, &input]() -> const MassDeltaResult&
 		{
 			return mass_properties->step(

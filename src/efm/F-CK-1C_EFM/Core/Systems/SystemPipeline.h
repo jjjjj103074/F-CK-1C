@@ -37,12 +37,7 @@ struct FuelManagementHandlers
 	std::function<FuelData()> current_data;
 	std::function<void(double)> set_internal;
 	std::function<void(const ExternalFuelInput&)> set_external;
-	std::function<void()> suppress_consumption;
-};
-
-struct SystemStepOptions
-{
-	bool advance_fuel = true;
+	std::function<void()> suppress_next_consumption;
 };
 
 struct SystemFrameInput
@@ -95,6 +90,37 @@ private:
 	[[noreturn]] static void throw_type_error(const char* name);
 
 	Storage storage_;
+
+	friend class SystemPipeline;
+};
+
+class AircraftDataView final
+{
+public:
+	template <typename T>
+	const T& read(const AircraftDataKey<T>& key) const
+	{
+		require_declared({ key.id, typeid(T), key.name });
+		return snapshot_->read(key);
+	}
+
+	template <typename T>
+	bool has(const AircraftDataKey<T>& key) const
+	{
+		require_declared({ key.id, typeid(T), key.name });
+		return snapshot_->has(key);
+	}
+
+private:
+	using ReadableMask = std::array<bool, kAircraftDataSlotCount>;
+
+	AircraftDataView(
+		const AircraftDataSnapshot& snapshot,
+		const ReadableMask& readable);
+	void require_declared(const AircraftDataDescriptor& descriptor) const;
+
+	const AircraftDataSnapshot* snapshot_;
+	const ReadableMask* readable_;
 
 	friend class SystemPipeline;
 };
@@ -192,20 +218,14 @@ public:
 	SystemPipeline& operator=(const SystemPipeline&) = delete;
 
 	AircraftDataSnapshot snapshot() const;
-	AircraftDataSnapshot step(const SystemFrameInput& input)
-	{
-		return step(input, {});
-	}
-	AircraftDataSnapshot step(
-		const SystemFrameInput& input,
-		const SystemStepOptions& options);
+	AircraftDataSnapshot step(const SystemFrameInput& input);
 	DispatchResult send(const Command& command);
 	DispatchResult apply(const DamageEvent& event);
 	std::size_t apply(const RepairEvent& event);
 	FlightFuelState fuel_state() const;
 	void set_internal_fuel(double fuel);
 	void set_external_fuel(const ExternalFuelInput& fuel);
-	void suppress_fuel_consumption();
+	void suppress_next_fuel_consumption();
 	std::size_t system_count() const;
 
 private:

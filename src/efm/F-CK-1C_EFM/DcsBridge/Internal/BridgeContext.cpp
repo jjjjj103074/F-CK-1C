@@ -116,6 +116,22 @@ Core::Fck1cEfm& BridgeContext::core()
 	return *core_;
 }
 
+Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
+{
+	const std::lock_guard<std::mutex> lock(execution_mutex_);
+	if (output_store_.read())
+	{
+		event_reporter_.log_repeated_start(mode);
+	}
+	param_exporter_.reset();
+	carrier_bridge_.reset();
+	const Core::FrameOutput output = core_->start(mode);
+	output_store_.publish_start(output);
+	param_exporter_.observe(output);
+	state_csv_writer_.publish_start(output);
+	return output;
+}
+
 Core::MassDeltaResult BridgeContext::take_flight_mass_delta()
 {
 	const std::lock_guard<std::mutex> lock(execution_mutex_);

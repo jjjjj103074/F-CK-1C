@@ -21,7 +21,7 @@ public:
 
 	void setup(SystemSetup& setup) override;
 	void step(
-		const AircraftDataSnapshot& snapshot,
+		const AircraftDataView& aircraft,
 		SystemResult& result) override;
 
 	const FlightControlDemand& step(
@@ -44,7 +44,7 @@ private:
 	void refresh_outputs(const ::Systems::FBWControllerOutput& output);
 	double alpha_limit(double mach) const;
 	::Systems::FBWControllerInput make_pipeline_input(
-		const AircraftDataSnapshot& snapshot) const;
+		const AircraftDataView& aircraft) const;
 
 	const FlightControlComputerConfig config_;
 	::Systems::PrimaryControlState primary_controls_;

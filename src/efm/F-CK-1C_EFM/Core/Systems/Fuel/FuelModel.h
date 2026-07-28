@@ -74,9 +74,11 @@ inline void apply_fuel_demand(
 	consume_fuel(fuel, flow_rate, dt);
 }
 
-inline void suppress_fuel_consumption(FuelSystem& fuel)
+inline void record_fuel_demand_without_consumption(
+	FuelSystem& fuel,
+	double flow_rate)
 {
-	fuel.total_fuel_flow = 0.0;
+	fuel.total_fuel_flow = flow_rate;
 	fuel.frame_consumed_mass = 0.0;
 }
 

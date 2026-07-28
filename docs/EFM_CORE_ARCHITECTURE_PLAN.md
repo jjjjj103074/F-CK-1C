@@ -113,6 +113,10 @@ Contracts 只包含 immutable 型別宣告、enum 與 `inline constexpr` key，�
 `Fck1cEfm.h` 作為 Core 入口；Contracts 只是 Systems、Simulation 與
 入口共同使用的穩定語言。
 
+`Core/Diagnostics/` 僅放跨 Core Module 共用的結構化執行錯誤與
+exception-context 包裝。它不寫 log、不依賴 DcsBridge；DcsBridge 只讀取
+`ExecutionError`，並由既有 `EventLog` 決定格式與輸出位置。
+
 新增只使用既有資料的 System 不修改 Contracts；只有新增真正的跨
 Module 飛機概念時才擴充 AircraftData schema。這是共享語言的明確變更，
 不是對其他具體 System 的依賴。
@@ -571,10 +575,17 @@ Core/
 │   ├── AircraftData.h
 │   └── FrameContracts.h
 │
+├── Diagnostics/
+│   ├── ExecutionError.h
+│   └── ExecutionContext.h
+│
 ├── Systems/
 │   ├── System.h
+│   ├── SystemExecutionContext.h
 │   ├── SystemPipeline.h
 │   ├── SystemPipeline.cpp
+│   ├── SystemPipelineDataAccess.h
+│   ├── SystemPipelineData.cpp
 │   ├── FlightControlComputer/
 │   │   ├── Entry.cpp
 │   │   ├── FlightControlComputerConfig.*
@@ -613,6 +624,7 @@ Core/
     ├── SimulationPipeline.cpp
     └── Models/
         ├── ModelEffect.h
+        ├── ModelExecutionContext.h
         ├── Aerodynamics/
         │   ├── AerodynamicsConfig.*
         │   └── AerodynamicsModel.*
@@ -639,6 +651,8 @@ Core/
 ```text
 DcsBridge
   → Fck1cEfm Interface
+  → Core Contracts
+  → Diagnostics/ExecutionError
 
 Fck1cEfm
   → AircraftSimulation
@@ -650,6 +664,7 @@ AircraftSimulation
 
 SystemPipeline
   → Core Contracts
+  → Core Diagnostics
   → System Interface
   → System Catalog
 
@@ -660,6 +675,7 @@ Concrete System
 
 Simulation Model
   → Core Contracts
+  → Core Diagnostics
   → completed aircraft snapshot
   → frame observations
   → its own definition and tables

@@ -36,16 +36,7 @@ void ensure_module_initialized()
 void start_efm(Core::StartMode mode)
 {
 	ensure_module_initialized();
-	Core::FrameOutput output;
-	{
-		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
-		bridge().param_exporter().reset();
-		bridge().carrier_bridge().reset();
-		output = bridge().core().start(mode);
-		bridge().output_store().publish_start(output);
-		bridge().param_exporter().observe(output);
-		bridge().state_csv_writer().publish_start(output);
-	}
+	const Core::FrameOutput output = bridge().start_flight(mode);
 	bridge().event_reporter().log_start(mode, output.simulation_time_s);
 }
 

@@ -258,6 +258,25 @@ void test_reporter_writes_boundary_and_recovery_events(Tests::Context& context)
 		"][INFO] cockpit parameter=TEST_PARAM recovered") != std::string::npos);
 }
 
+void test_reporter_writes_repeated_start_warning(Tests::Context& context)
+{
+	TestFiles::TemporaryDirectory root;
+	DcsBridge::Internal::EventLog log(root.path().string().c_str());
+	DcsBridge::Internal::OutputStore output_store;
+	DcsBridge::Internal::EfmEventReporter reporter(log, output_store);
+	Core::FrameOutput output;
+	output.simulation_time_s = 12.5;
+	output_store.publish_start(output);
+	reporter.log_repeated_start(Core::StartMode::HotAir);
+	const std::string content = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(context, content.find(
+		"][12.5][WARN] flight start "
+		"lifecycle_warning=repeated_start_without_release "
+		"mode=hot_air action=replace_without_implicit_release\n") !=
+		std::string::npos);
+}
+
 void test_counted_warnings_summarize_and_reset(Tests::Context& context)
 {
 	constexpr int kObservedUnknownCommand = 2659;
@@ -311,5 +330,6 @@ void run_event_log_tests(Tests::Context& context)
 	test_error_messages_include_required_parameters(context);
 	test_reporter_writes_required_error_context(context);
 	test_reporter_writes_boundary_and_recovery_events(context);
+	test_reporter_writes_repeated_start_warning(context);
 	test_counted_warnings_summarize_and_reset(context);
 }

@@ -141,7 +141,8 @@ MSBuild 掛載方式，可以在不改變責任邊界的情況下用測試決定
 驗證：
 
 - cold、hot ground、hot air start 結果與 baseline 相同。
-- 未先 `release()` 的重複 `start()` 仍建立全新飛行。
+- `Fck1cEfm` 直接收到重複 `start()` 時仍能安全替換為全新飛行；DcsBridge
+  callback 的合法順序另由步驟 25 約束。
 - `release()` 後沒有 active simulation。
 - 多次 start/release loop 不殘留上一飛行暫態。
 - 每個 System 由 immutable FlightSetupContext 取得相同 start mode。
@@ -539,12 +540,151 @@ production 不得再執行一份舊函式作為 fallback。
 - DLL export 名稱與 Phase 0 baseline 完全一致。
 - `git diff --check` 通過。
 
+## 重構後補正
+
+### 25. 在 DcsBridge 明確檢查重複 `start()` 生命週期
+
+變更：
+
+- 第一次飛行可直接在 preparation setters 後 `start`；後續飛行的合法
+  DCS callback 順序為 `release → preparation setters → start`。
+- DcsBridge 以自身的 flight/output 狀態判斷是否已有 active flight，不把
+  DCS callback 順序責任下推到 Core。
+- active flight 尚未 `release()` 時再次收到 `start()`，使用既有
+  `EventLog` 寫入明確 lifecycle warning。
+- warning 不自動呼叫完整 `release()`，也不重設 `FrameInputCollector`，
+  避免清除 DCS 在新 `start()` 前送入的 observation。
+- Core 的 `Fck1cEfm::start()` 保持 replace-safe；非法 DCSBridge 順序僅
+  警告並沿用現有替換行為，不承諾隔離兩次 `start()` 間的暫態 observation。
+
+驗證：
+
+- 第一次 `start()` 不產生 lifecycle warning。
+- `start → release → preparation setters → start` 不產生 warning，且下一次
+  飛行使用新的 preparation 與 observation。
+- 未 `release()` 的連續 `start()` 會透過 DcsBridge `EventLog` 產生一次
+  可辨識的 warning，不會在 Core 直接寫 log。
+- 重複 `start()` 不會隱式執行 release 的燃油同步、mass/output 清除或
+  input collector reset。
+- 合法生命週期的既有數值、native tests 與共通驗證全數通過。
+
+### 26. 強制執行 System 的 AircraftData 讀取宣告
+
+變更：
+
+- `setup.read()` 不再只做啟動時 provider/型別/初值驗證，也成為該 System
+  執行期可讀資料的權限清單。
+- `SystemPipeline` 為每個 System 建立只引用該組 immutable snapshot 的
+  `AircraftDataView`；不複製 AircraftData，也不配置每幀 heap memory。
+- `System::step()` 只接收自己的 `AircraftDataView`。未宣告的 `read()` 與
+  `has()` 都明確失敗，不以 `has() == false` 隱藏遺漏宣告。
+- Simulation Models 仍讀取所有 System 完成提交後的完整 snapshot；讀取
+  權限只限制 System Interface。
+- 既有 owner/operation exception context 負責補上 System 身分，錯誤不得
+  靜默轉成預設值。
+
+驗證：
+
+- 未宣告 key 的 `read()` 與 `has()` 都明確失敗。
+- 已宣告且已初始化的 key 可正常讀取。
+- 已宣告但允許未初始化的 key，`has()` 正確回傳 false。
+- 同組固定 snapshot、Control/Equipment 提交順序與多幀保留規則不變。
+- 所有 production System 的宣告與實際讀取一致。
+- architecture dependency check、native tests、DLL build、export baseline 與
+  `git diff --check` 全數通過。
+
+### 27. 補齊 owner 內部物理與調校常數說明
+
+變更：
+
+- 檢查具體 System 與 Simulation Model 實作中的具名物理、限制與 legacy
+  tuning constants。
+- 以相鄰的群組註解說明單位、物理意義或「沿用重構前 baseline 的調校值」；
+  不替沒有來源的數值虛構依據。
+- 優先補齊 `GroundInteractionModel` 的接觸/支撐限制、輪胎/煞車阻力、
+  belly fallback 與低速靜態推力阻力，以及 `MassPropertiesModel` 的燃油
+  質量中心位置。
+- 仍由單一 owner 使用的數值留在該實作；只有需要跨 Module 共用或外部
+  調校時才移入 Config。
+- 本步只補充責任與意義，不改變任何數值或模擬行為。
+
+驗證：
+
+- 所有修改過的常數可由鄰近註解辨識單位、物理/調校角色與 owner。
+- 沒有新建無明確 owner 的 `Constants.h`。
+- golden frame、native tests、DLL build、export baseline 與 `git diff --check`
+  全數通過。
+
+### 28. 讓無限燃料只抑制每幀燃油消耗
+
+變更：
+
+- DCS 仍只透過 `ed_fm_unlimited_fuel(bool)` setter 更新
+  `FlightPreparation` 與 active `AircraftSimulation` 的權威選項；不把此
+  選項改成 Command 或 AircraftData。
+- `AircraftSimulation::step()` 每幀套用已保存的選項。無限燃料啟用時，
+  透過既有 fuel-management handler 發出一次性的
+  `suppress_next_fuel_consumption()` 請求。
+- Fuel 每幀仍執行完整 `step()`；一次性請求只阻止該幀因引擎需求而減少
+  內部與外部油量，並在 `step()` 內消耗後立即清除。
+- `FuelData::total_fuel_flow` 仍回報引擎的真實需求，
+  `FuelData::consumed_mass` 則為零。
+- 移除 `SystemPipeline` 依 `advance_fuel` 跳過整個 fuel-management owner
+  的行為，避免未來油箱轉移、幫浦與供油邏輯被無限燃料一併停用。
+
+驗證：
+
+- DCS setter 在 start 前、active flight 中與重複設定時皆保持 idempotent。
+- 正常燃料模式的油量、流量與 mass delta 結果不變。
+- 無限燃料下 Fuel 仍每幀執行、油量不因引擎需求減少、mass delta 不發布，
+  且 `total_fuel_flow` 等於同輸入下正常模式的真實需求。
+- 關閉無限燃料後，下一幀立即恢復消耗，不殘留一次性 suppression。
+- 未來加入的非消耗 Fuel 邏輯不需知道 DCS gameplay option。
+- 共通驗證全數通過。
+
+### 29. 統一 Core 執行錯誤上下文與 DcsBridge 記錄責任
+
+變更：
+
+- 將含有執行行為的 `Contracts/Diagnostics.h` 移出純資料 Contracts，建立
+  最小的 `Core/Diagnostics/` Module。
+- `ExecutionError` 只保存結構化的 owner type、owner、operation 與原始
+  reason；Core 不寫檔、不決定 log 格式，也不持有 DcsBridge logger。
+- 建立共用的 execution-context wrapper，取代 System 與 Simulation 各自
+  重複的 exception 轉換程式碼。
+- System factory `create`、System `setup`、System step/handlers，以及
+  Simulation Model `create`/`step` 都補上對應 owner 與 operation。
+- 可安全繼續的預期診斷由其 owner 主動產生；目前 lifecycle、未知 raw
+  command/parameter 與外部輸入問題仍由 DcsBridge 記錄。
+- 無法產生合法結果的操作只向外拋出 exception，不在 Core 先寫 log。
+  DcsBridge C ABI seam 統一攔截，轉成同一個 `EventLog` Error。
+- 不注入 `logger.ERROR` 函式指標，也不建立 Core logger 或全域 singleton；
+  未來真的出現 Core 非致命診斷需求時，再以結構化結果或明確
+  DiagnosticSink seam 單獨設計。
+
+驗證：
+
+- Contracts 只留下 immutable 資料契約與具名常數，不再包含
+  `ExecutionError` 行為。
+- System create/setup/step/handler 與 Simulation Model create/step 的例外，
+  都能在 ABI log 中辨識 callback、owner type、owner、operation 與 reason。
+- 已是 `ExecutionError` 的例外不重複包裝，同一失敗只由 DcsBridge 寫一次。
+- 未知 C++ exception 仍被 C ABI seam 攔截，不能穿越 DCS callback。
+- lifecycle warning 等可繼續的診斷不會被誤記為 exception。
+- architecture dependency check 明確允許 DcsBridge 只讀取 Core 的
+  `ExecutionError` Interface，不允許 Core 依賴 DcsBridge。
+- native tests、DLL build、export baseline 與 `git diff --check` 全數通過。
+
+固定 `SimulationPipeline` 對具體 Model 的局部 DIP 問題本輪不處理；是否
+建立四個 role-specific Model Interfaces，待其複雜度與收益可接受時另案
+決定。
+
 ## 最終完成條件
 
 只有同時滿足下列條件才算完成，不以「可以編譯」代替：
 
 - 架構文件中的完成條件全部成立。
-- 24 個步驟的 commit 與其中通過的 focused/common validation 即為驗證
+- 29 個步驟的 commit 與其中通過的 focused/common validation 即為驗證
   紀錄，不另外要求逐步報告文件。
 - 除步驟 15、16、19、21 明列並經測試批准的差異外，多幀行為與
   baseline 相同。

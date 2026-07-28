@@ -7,6 +7,7 @@
 #include "Models/MassProperties/MassPropertiesModel.h"
 #include "Models/Propulsion/PropulsionConfig.h"
 #include "Models/Propulsion/PropulsionModel.h"
+#include "Models/ModelExecutionContext.h"
 
 #include <utility>
 
@@ -41,17 +42,35 @@ Core::Systems::FlightSetupContext make_system_setup(
 Core::Simulation::SimulationModels make_fck1c_simulation_models()
 {
 	Core::Simulation::SimulationModels models;
-	models.aerodynamics =
-		std::make_unique<Core::Simulation::AerodynamicsModel>(
-			Core::Simulation::fck1c_aerodynamics_config());
-	models.propulsion =
-		std::make_unique<Core::Simulation::PropulsionModel>(
-			Core::Simulation::fck1c_propulsion_config());
-	models.ground_interaction =
-		std::make_unique<Core::Simulation::GroundInteractionModel>(
-			Core::Simulation::fck1c_ground_interaction_config());
-	models.mass_properties =
-		std::make_unique<Core::Simulation::MassPropertiesModel>();
+	using namespace Core::Simulation;
+	models.aerodynamics = Detail::invoke_model_action(
+		Detail::kAerodynamicsOwner,
+		Detail::kModelCreateOperation,
+		[]()
+		{
+			return std::make_unique<AerodynamicsModel>(
+				fck1c_aerodynamics_config());
+		});
+	models.propulsion = Detail::invoke_model_action(
+		Detail::kPropulsionOwner,
+		Detail::kModelCreateOperation,
+		[]()
+		{
+			return std::make_unique<PropulsionModel>(
+				fck1c_propulsion_config());
+		});
+	models.ground_interaction = Detail::invoke_model_action(
+		Detail::kGroundInteractionOwner,
+		Detail::kModelCreateOperation,
+		[]()
+		{
+			return std::make_unique<GroundInteractionModel>(
+				fck1c_ground_interaction_config());
+		});
+	models.mass_properties = Detail::invoke_model_action(
+		Detail::kMassPropertiesOwner,
+		Detail::kModelCreateOperation,
+		[]() { return std::make_unique<MassPropertiesModel>(); });
 	return models;
 }
 }
@@ -163,17 +182,14 @@ FrameOutput AircraftSimulation::step(const FrameInput& input)
 	apply_frame_input(input);
 	begin_frame(input.dt_s);
 	update_airspeed(aircraft_state_);
-	const Systems::SystemStepOptions options = {
-		!gameplay_.options.infinite_fuel
-	};
-	if (!options.advance_fuel)
+	if (gameplay_.options.infinite_fuel)
 	{
-		system_pipeline_.suppress_fuel_consumption();
+		system_pipeline_.suppress_next_fuel_consumption();
 	}
 	const AircraftObservation observation =
 		make_aircraft_observation(aircraft_state_);
 	const Systems::AircraftDataSnapshot aircraft =
-		system_pipeline_.step({ input, observation }, options);
+		system_pipeline_.step({ input, observation });
 	const SimulationResult& simulation = simulation_pipeline_.step({
 		aircraft,
 		aircraft_state_,

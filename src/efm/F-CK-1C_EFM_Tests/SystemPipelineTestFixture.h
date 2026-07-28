@@ -1,7 +1,7 @@
 #pragma once
 
 #include "TestHarness.h"
-#include "../F-CK-1C_EFM/Core/Contracts/Diagnostics.h"
+#include "../F-CK-1C_EFM/Core/Diagnostics/ExecutionError.h"
 #include "../F-CK-1C_EFM/Core/Simulation/AircraftState.h"
 #include "../F-CK-1C_EFM/Core/Systems/SystemPipeline.h"
 
@@ -18,7 +18,7 @@ inline constexpr double kNeutralAxis = 0.0;
 
 using SetupAction = std::function<void(Core::Systems::SystemSetup&)>;
 using StepAction = std::function<void(
-	const Core::Systems::AircraftDataSnapshot&,
+	const Core::Systems::AircraftDataView&,
 	Core::Systems::SystemResult&)>;
 
 struct SystemDefinition
@@ -44,10 +44,10 @@ public:
 	}
 
 	void step(
-		const Core::Systems::AircraftDataSnapshot& snapshot,
+		const Core::Systems::AircraftDataView& aircraft,
 		Core::Systems::SystemResult& result) override
 	{
-		step_(snapshot, result);
+		step_(aircraft, result);
 	}
 
 private:
@@ -98,9 +98,9 @@ inline bool construction_throws(
 	{
 		Core::Systems::SystemPipeline pipeline(flight_setup(), catalog);
 	}
-	catch (const std::logic_error&)
+	catch (const Core::ExecutionError& error)
 	{
-		return true;
+		return error.details().operation == "setup";
 	}
 	return false;
 }
@@ -155,7 +155,7 @@ inline Core::PrimaryControlPosition position(double elevator)
 inline StepAction no_step()
 {
 	return [](
-		const Core::Systems::AircraftDataSnapshot&,
+		const Core::Systems::AircraftDataView&,
 		Core::Systems::SystemResult&)
 	{
 	};

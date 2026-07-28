@@ -12,6 +12,7 @@ constexpr double kFrameDt = 0.2;
 constexpr double kExpectedConsumption = 0.5;
 constexpr double kExternalFuel = 10.0;
 constexpr double kInternalFuel = 10.0;
+constexpr double kConsumedInternalFuel = 9.5;
 constexpr double kBoundaryExternalFuel = 0.25;
 constexpr double kRemainingInternalFuel = 9.75;
 constexpr double kMassPositionX = -1.0;
@@ -65,6 +66,26 @@ void test_fuel_consumes_registered_demand(Tests::Context& context)
 		kTolerance);
 }
 
+void test_fuel_suppression_is_one_frame_and_preserves_flow(
+	Tests::Context& context)
+{
+	Core::Systems::Fuel fuel;
+	fuel.set_internal_fuel(kInternalFuel);
+	fuel.suppress_next_consumption();
+	const Core::FuelData suppressed =
+		fuel.step({ kFlowRate }, kFrameDt);
+	TEST_EXPECT_NEAR(
+		context, fuel.internal_fuel(), kInternalFuel, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, suppressed.total_fuel_flow, kFlowRate, kTolerance);
+	TEST_EXPECT_NEAR(context, suppressed.consumed_mass, 0.0, kTolerance);
+	const Core::FuelData resumed = fuel.step({ kFlowRate }, kFrameDt);
+	TEST_EXPECT_NEAR(
+		context, fuel.internal_fuel(), kConsumedInternalFuel, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, resumed.consumed_mass, kExpectedConsumption, kTolerance);
+}
+
 void test_external_fuel_is_aggregated_by_station(Tests::Context& context)
 {
 	Core::Systems::Fuel fuel;
@@ -113,6 +134,7 @@ void run_mass_delta_tests(Tests::Context& context)
 	test_mass_properties_projects_consumed_fuel(context);
 	test_mass_properties_ignores_zero_consumption(context);
 	test_fuel_consumes_registered_demand(context);
+	test_fuel_suppression_is_one_frame_and_preserves_flow(context);
 	test_external_fuel_is_aggregated_by_station(context);
 	test_consumption_crosses_external_fuel_boundary(context);
 }

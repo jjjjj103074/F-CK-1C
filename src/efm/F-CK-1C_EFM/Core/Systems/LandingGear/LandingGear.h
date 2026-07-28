@@ -26,7 +26,7 @@ public:
 
 	void setup(SystemSetup& setup) override;
 	void step(
-		const AircraftDataSnapshot& snapshot,
+		const AircraftDataView& aircraft,
 		SystemResult& result) override;
 
 	const LandingGearData& step(const LandingGearFrameInput& input);
