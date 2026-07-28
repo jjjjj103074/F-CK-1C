@@ -675,6 +675,7 @@ System → Another concrete System
 System → DcsBridge
 System → Simulation Model
 Simulation Model → Concrete System
+Simulation Model → Another concrete Simulation Model
 Common → Systems / Simulation / DcsBridge
 ```
 

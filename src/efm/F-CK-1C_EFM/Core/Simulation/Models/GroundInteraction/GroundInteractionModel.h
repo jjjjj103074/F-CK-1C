@@ -2,7 +2,6 @@
 
 #include "GroundInteractionConfig.h"
 #include "../ModelEffect.h"
-#include "../Propulsion/PropulsionModel.h"
 #include "../../AircraftState.h"
 #include "../../../Contracts/AircraftData.h"
 #include "../../../Contracts/FrameContracts.h"
@@ -20,7 +19,7 @@ struct GroundInteractionModelInput
 	const LandingGearData& landing_gear;
 	const AircraftState& observation;
 	const FrameDataAvailability& availability;
-	const PropulsionResult& propulsion;
+	double total_thrust_force = 0.0;
 };
 
 struct GroundInteractionResult

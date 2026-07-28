@@ -102,6 +102,21 @@ void EfmEventReporter::log_invalid_numeric(
 	write(EventLevel::Error, latest_simulation_time(), message);
 }
 
+void EfmEventReporter::log_damage_integrity_out_of_range(double integrity)
+{
+	constexpr int kRoundTripDoubleDigits =
+		std::numeric_limits<double>::max_digits10;
+	char message[kEventMessageCapacity];
+	snprintf(
+		message,
+		sizeof(message),
+		"callback=ed_fm_on_damage field=integrity out_of_range "
+		"value=%.*g expected=[0,1]",
+		kRoundTripDoubleDigits,
+		integrity);
+	write(EventLevel::Error, latest_simulation_time(), message);
+}
+
 void EfmEventReporter::log_unknown_command(int command, float value)
 {
 	constexpr int kRoundTripFloatDigits = std::numeric_limits<float>::max_digits10;

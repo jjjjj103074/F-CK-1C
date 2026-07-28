@@ -354,6 +354,23 @@ void test_release_synchronizes_consumed_fuel(Tests::Context& context)
 		consumed.fuel.external_fuel, kTolerance);
 }
 
+void test_active_restart_synchronizes_consumed_fuel(Tests::Context& context)
+{
+	auto config = make_test_config();
+	config.engine.fuel_consumption_rate = 3.0;
+	Core::Fck1cEfm efm(config);
+	(void)efm.start(Core::StartMode::HotAir);
+	efm.set_internal_fuel(kPreparedInternalFuel);
+	efm.set_external_fuel({
+		kLeftExternalFuelStation, kPreparedExternalFuelLeft, {} });
+	const Core::FrameOutput consumed = efm.step(make_frame_input());
+	const Core::FrameOutput restarted = efm.start(Core::StartMode::HotAir);
+	TEST_EXPECT_NEAR(context, restarted.fuel.internal_fuel,
+		consumed.fuel.internal_fuel, kTolerance);
+	TEST_EXPECT_NEAR(context, restarted.fuel.external_fuel,
+		consumed.fuel.external_fuel, kTolerance);
+}
+
 void test_released_commands_and_damage_do_not_persist(Tests::Context& context)
 {
 	Core::Fck1cEfm subject(make_test_config());
@@ -514,6 +531,7 @@ void run_fck1c_efm_tests(Tests::Context& context)
 	test_step_requires_active_flight(context);
 	test_active_preparation_updates_next_flight(context);
 	test_release_synchronizes_consumed_fuel(context);
+	test_active_restart_synchronizes_consumed_fuel(context);
 	test_released_commands_and_damage_do_not_persist(context);
 	test_repeated_start_release_cycles(context);
 	test_config_is_owned_by_core(context);

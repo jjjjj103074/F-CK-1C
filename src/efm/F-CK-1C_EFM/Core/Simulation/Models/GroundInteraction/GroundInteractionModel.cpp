@@ -212,8 +212,7 @@ void apply_longitudinal_resistance(
 		average_throttle < kIdleThrottleThreshold)
 	{
 		resistance += Common::limit(
-			input.propulsion.left_thrust_force +
-				input.propulsion.right_thrust_force,
+			input.total_thrust_force,
 			0.0,
 			total_main_normal * kStaticThrustResistanceFactor);
 	}

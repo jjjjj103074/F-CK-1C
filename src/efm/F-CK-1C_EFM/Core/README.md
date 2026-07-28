@@ -33,9 +33,12 @@ Concrete System -> System + Core Contracts + Common
 Simulation Model -> Core Contracts + completed AircraftData + Common
 ```
 
-Concrete Systems do not include one another, `DcsBridge`, or Simulation
-Models. Simulation Models do not include concrete Systems. `DcsBridge` does not
-include concrete Systems or Simulation Models.
+Concrete Systems do not include one another, `DcsBridge`, or anything under
+`Simulation/`. Concrete Simulation Models do not include one another or
+anything under `Systems/`; `SimulationPipeline` translates their results into
+the next Model's plain input values. `DcsBridge` reaches Core only through
+`Fck1cEfm.h` and `Core/Contracts/`; it does not include Core pipeline or
+Simulation implementation headers.
 
 The build runs `tools/check_efm_architecture.ps1` before compiling. Run the
 checker and its fixtures directly from the repository root with:

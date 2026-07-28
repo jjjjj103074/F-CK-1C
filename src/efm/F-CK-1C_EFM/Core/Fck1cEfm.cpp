@@ -57,9 +57,7 @@ FrameOutput Fck1cEfm::step(const FrameInput& input)
 	{
 		throw std::logic_error("Fck1cEfm::step requires an active flight.");
 	}
-	const FrameOutput output = simulation_->step(input);
-	preparation_->fuel = simulation_->fuel_load();
-	return output;
+	return simulation_->step(input);
 }
 
 double Fck1cEfm::internal_fuel() const

@@ -82,8 +82,14 @@ try {
     Write-Fixture 'Core\Fck1cEfm.cpp' "#include `"Fck1cEfm.h`"`r`n"
     Write-Fixture 'Core\Systems\Alpha\Alpha.h' "#pragma once`r`n"
     Write-Fixture 'Core\Systems\Bravo\Bravo.h' "#pragma once`r`n"
+    Write-Fixture 'Core\Systems\SystemPipeline.h' "#pragma once`r`n"
+    Write-Fixture 'Core\Contracts\FrameContracts.h' "#pragma once`r`n"
+    Write-Fixture 'Core\Simulation\AircraftSimulation.h' "#pragma once`r`n"
     Write-Fixture 'Core\Simulation\Models\Lift\Lift.h' "#pragma once`r`n"
-    Write-Fixture 'DcsBridge\Bridge.cpp' "#include `"../Core/Fck1cEfm.h`"`r`n"
+    Write-Fixture 'Core\Simulation\Models\Drag\Drag.h' "#pragma once`r`n"
+    Write-Fixture 'DcsBridge\Bridge.cpp' (
+        "#include `"../Core/Fck1cEfm.h`"`r`n" +
+        "#include `"../Core/Contracts/FrameContracts.h`"`r`n")
     Invoke-Checker
 
     Assert-Rejected {
@@ -94,6 +100,16 @@ try {
     Assert-Rejected {
         Write-Fixture 'DcsBridge\Invalid.cpp' `
             "#include `"../Core/Simulation/Models/Lift/Lift.h`"`r`n"
+    } 'DcsBridge boundary violation' 'DcsBridge\Invalid.cpp'
+
+    Assert-Rejected {
+        Write-Fixture 'DcsBridge\Invalid.cpp' `
+            "#include `"../Core/Systems/SystemPipeline.h`"`r`n"
+    } 'DcsBridge boundary violation' 'DcsBridge\Invalid.cpp'
+
+    Assert-Rejected {
+        Write-Fixture 'DcsBridge\Invalid.cpp' `
+            "#include `"../Core/Simulation/AircraftSimulation.h`"`r`n"
     } 'DcsBridge boundary violation' 'DcsBridge\Invalid.cpp'
 
     Assert-Rejected {
@@ -112,9 +128,26 @@ try {
     } 'System boundary violation' 'Core\Systems\Alpha\Invalid.cpp'
 
     Assert-Rejected {
+        Write-Fixture 'Core\Systems\Alpha\Invalid.cpp' `
+            "#include `"../../Simulation/AircraftSimulation.h`"`r`n"
+    } 'System boundary violation' 'Core\Systems\Alpha\Invalid.cpp'
+
+    Assert-Rejected {
         Write-Fixture 'Core\Simulation\Models\Lift\Invalid.cpp' `
             "#include `"../../../Systems/Alpha/Alpha.h`"`r`n"
     } 'Simulation Model boundary violation' `
+        'Core\Simulation\Models\Lift\Invalid.cpp'
+
+    Assert-Rejected {
+        Write-Fixture 'Core\Simulation\Models\Lift\Invalid.cpp' `
+            "#include `"../../../Systems/SystemPipeline.h`"`r`n"
+    } 'Simulation Model boundary violation' `
+        'Core\Simulation\Models\Lift\Invalid.cpp'
+
+    Assert-Rejected {
+        Write-Fixture 'Core\Simulation\Models\Lift\Invalid.cpp' `
+            "#include `"../Drag/Drag.h`"`r`n"
+    } 'Cross-Simulation-Model dependency' `
         'Core\Simulation\Models\Lift\Invalid.cpp'
 
     Assert-Rejected {

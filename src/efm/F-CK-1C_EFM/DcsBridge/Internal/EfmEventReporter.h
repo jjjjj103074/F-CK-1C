@@ -33,6 +33,7 @@ public:
 		const char* callback,
 		const char* field,
 		double value);
+	void log_damage_integrity_out_of_range(double integrity);
 	void log_unknown_command(int command, float value);
 	void log_command_binding_error(const char* reason, int command);
 	void log_missing_param(unsigned index);

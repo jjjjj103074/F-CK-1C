@@ -90,7 +90,7 @@ struct GroundModelFixture
 			gear,
 			observation,
 			availability,
-			propulsion
+			total_thrust_force
 		});
 	}
 
@@ -99,7 +99,7 @@ struct GroundModelFixture
 	Core::EngineData engines;
 	Core::LandingGearData gear;
 	Core::AircraftState observation;
-	Core::Simulation::PropulsionResult propulsion;
+	double total_thrust_force = 0.0;
 };
 
 Core::AircraftState make_aerodynamic_observation()

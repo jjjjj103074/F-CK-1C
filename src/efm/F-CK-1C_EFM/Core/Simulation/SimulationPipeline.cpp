@@ -124,7 +124,8 @@ GroundInteractionModelInput
 		input.aircraft.read(AircraftDataKeys::kLandingGearData),
 		input.observation,
 		input.frame.availability,
-		propulsion_result
+		propulsion_result.left_thrust_force +
+			propulsion_result.right_thrust_force
 	};
 }
 

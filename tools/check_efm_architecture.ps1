@@ -48,34 +48,69 @@ function Add-DependencyFinding {
     $findings.Add("$Rule`: $Source -> $Target")
 }
 
-function Test-Dependency {
+function Test-DcsBridgeDependency {
     param(
         [string]$Source,
         [string]$Target
     )
 
-    if ($Source -like 'DcsBridge\*' -and
-        ($Target -match '^Core\\Systems\\[^\\]+\\' -or
-         $Target -like 'Core\Simulation\Models\*')) {
-        Add-DependencyFinding $Source $Target 'DcsBridge boundary violation'
+    if ($Source -notlike 'DcsBridge\*' -or
+        $Target -notlike 'Core\*') {
+        return
     }
+    if ($Target -eq 'Core\Fck1cEfm.h' -or
+        $Target -like 'Core\Contracts\*') {
+        return
+    }
+    Add-DependencyFinding $Source $Target 'DcsBridge boundary violation'
+}
 
-    if ($Source -match '^Core\\Systems\\([^\\]+)\\') {
-        $sourceOwner = $Matches[1]
-        if ($Target -match '^Core\\Systems\\([^\\]+)\\' -and
-            $Matches[1] -ne $sourceOwner) {
-            Add-DependencyFinding $Source $Target 'Cross-System dependency'
-        }
-        if ($Target -like 'DcsBridge\*' -or
-            $Target -like 'Core\Simulation\Models\*') {
-            Add-DependencyFinding $Source $Target 'System boundary violation'
-        }
-    }
+function Test-ConcreteSystemDependency {
+    param(
+        [string]$Source,
+        [string]$Target
+    )
 
-    if ($Source -like 'Core\Simulation\Models\*' -and
-        $Target -match '^Core\\Systems\\[^\\]+\\') {
-        Add-DependencyFinding $Source $Target 'Simulation Model boundary violation'
+    if ($Source -notmatch '^Core\\Systems\\([^\\]+)\\') {
+        return
     }
+    $sourceOwner = $Matches[1]
+    if ($Target -match '^Core\\Systems\\([^\\]+)\\' -and
+        $Matches[1] -ne $sourceOwner) {
+        Add-DependencyFinding $Source $Target 'Cross-System dependency'
+    }
+    if ($Target -like 'DcsBridge\*' -or
+        $Target -like 'Core\Simulation\*') {
+        Add-DependencyFinding $Source $Target 'System boundary violation'
+    }
+}
+
+function Test-SimulationModelDependency {
+    param(
+        [string]$Source,
+        [string]$Target
+    )
+
+    if ($Source -notmatch '^Core\\Simulation\\Models\\([^\\]+)\\') {
+        return
+    }
+    $sourceOwner = $Matches[1]
+    if ($Target -like 'Core\Systems\*') {
+        Add-DependencyFinding $Source $Target `
+            'Simulation Model boundary violation'
+    }
+    if ($Target -match '^Core\\Simulation\\Models\\([^\\]+)\\' -and
+        $Matches[1] -ne $sourceOwner) {
+        Add-DependencyFinding $Source $Target `
+            'Cross-Simulation-Model dependency'
+    }
+}
+
+function Test-CommonDependency {
+    param(
+        [string]$Source,
+        [string]$Target
+    )
 
     if ($Source -like 'Common\*' -and
         ($Target -like 'Core\Systems\*' -or
@@ -83,12 +118,32 @@ function Test-Dependency {
          $Target -like 'DcsBridge\*')) {
         Add-DependencyFinding $Source $Target 'Common boundary violation'
     }
+}
+
+function Test-CoreFacadeDependency {
+    param(
+        [string]$Source,
+        [string]$Target
+    )
 
     if ($Source -match '^Core\\Fck1cEfm\.(cpp|h)$' -and
         ($Target -match '^Core\\Systems\\[^\\]+\\' -or
          $Target -like 'Core\Simulation\Models\*')) {
         Add-DependencyFinding $Source $Target 'Core facade boundary violation'
     }
+}
+
+function Test-Dependency {
+    param(
+        [string]$Source,
+        [string]$Target
+    )
+
+    Test-DcsBridgeDependency $Source $Target
+    Test-ConcreteSystemDependency $Source $Target
+    Test-SimulationModelDependency $Source $Target
+    Test-CommonDependency $Source $Target
+    Test-CoreFacadeDependency $Source $Target
 }
 
 function Test-Includes {

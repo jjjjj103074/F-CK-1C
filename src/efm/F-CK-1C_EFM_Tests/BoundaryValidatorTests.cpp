@@ -16,6 +16,8 @@ namespace
 constexpr double kFrameDt = 0.001;
 constexpr double kOriginalDensity = 1.225;
 constexpr double kOriginalCompression = 0.2;
+constexpr double kBelowMinimumDamageIntegrity = -0.1;
+constexpr double kAboveMaximumDamageIntegrity = 1.1;
 constexpr float kCarrierReadyEventPhase = 1.0F;
 
 class ValidationFixture final
@@ -101,6 +103,27 @@ void test_invalid_typed_inputs_are_rejected(Tests::Context& context)
 		infinity, fixture.reporter));
 }
 
+void test_damage_integrity_range(Tests::Context& context)
+{
+	ValidationFixture fixture;
+	TEST_EXPECT(context, DcsBridge::Internal::validate_damage_input(
+		0.0, fixture.reporter));
+	TEST_EXPECT(context, DcsBridge::Internal::validate_damage_input(
+		1.0, fixture.reporter));
+	TEST_EXPECT(context, !DcsBridge::Internal::validate_damage_input(
+		kBelowMinimumDamageIntegrity, fixture.reporter));
+	TEST_EXPECT(context, !DcsBridge::Internal::validate_damage_input(
+		kAboveMaximumDamageIntegrity, fixture.reporter));
+	const std::string log = TestFiles::read_text_while_open(
+		fixture.root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(context, log.find(
+		"callback=ed_fm_on_damage field=integrity out_of_range "
+		"value=-0.10000000000000001 expected=[0,1]") != std::string::npos);
+	TEST_EXPECT(context, log.find(
+		"callback=ed_fm_on_damage field=integrity out_of_range "
+		"value=1.1000000000000001 expected=[0,1]") != std::string::npos);
+}
+
 ed_fm_suspension_info make_suspension_info()
 {
 	ed_fm_suspension_info info = {};
@@ -180,6 +203,7 @@ void run_boundary_validator_tests(Tests::Context& context)
 	test_invalid_sample_preserves_latest(context);
 	test_frame_dt_contract(context);
 	test_invalid_typed_inputs_are_rejected(context);
+	test_damage_integrity_range(context);
 	test_suspension_rejection_preserves_latest(context);
 	test_invalid_pointer_and_index_are_rejected(context);
 	test_simulation_event_numeric_input(context);

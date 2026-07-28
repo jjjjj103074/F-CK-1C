@@ -20,6 +20,9 @@ struct NumericSample
 	std::initializer_list<NumericField> fields;
 };
 
+constexpr double kMinimumDamageIntegrity = 0.0;
+constexpr double kMaximumDamageIntegrity = 1.0;
+
 bool validate_numeric_sample(
 	const NumericSample& sample,
 	DcsBridge::Internal::EfmEventReporter& reporter)
@@ -172,9 +175,19 @@ bool validate_refueling_fuel_input(double fuel, EfmEventReporter& reporter)
 
 bool validate_damage_input(double integrity, EfmEventReporter& reporter)
 {
-	return validate_numeric_sample(
+	if (!validate_numeric_sample(
 		{ "ed_fm_on_damage", { { "integrity", integrity } } },
-		reporter);
+		reporter))
+	{
+		return false;
+	}
+	if (integrity < kMinimumDamageIntegrity ||
+		integrity > kMaximumDamageIntegrity)
+	{
+		reporter.log_damage_integrity_out_of_range(integrity);
+		return false;
+	}
+	return true;
 }
 
 bool validate_command_mapping(
