@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TestHarness.h"
+#include "../F-CK-1C_EFM/Core/Contracts/Diagnostics.h"
 #include "../F-CK-1C_EFM/Core/Simulation/AircraftState.h"
 #include "../F-CK-1C_EFM/Core/Systems/SystemPipeline.h"
 
@@ -116,6 +117,29 @@ bool action_throws(const Action& action)
 		return true;
 	}
 	return false;
+}
+
+template <typename Action>
+void expect_execution_error(
+	Tests::Context& context,
+	const Action& action,
+	const Core::ExecutionErrorDetails& expected)
+{
+	bool caught = false;
+	try
+	{
+		action();
+	}
+	catch (const Core::ExecutionError& error)
+	{
+		caught = true;
+		const Core::ExecutionErrorDetails& actual = error.details();
+		TEST_EXPECT(context, actual.owner_type == expected.owner_type);
+		TEST_EXPECT(context, actual.owner == expected.owner);
+		TEST_EXPECT(context, actual.operation == expected.operation);
+		TEST_EXPECT(context, actual.reason == expected.reason);
+	}
+	TEST_EXPECT(context, caught);
 }
 
 inline Core::FlightControlDemand demand(double pitch)

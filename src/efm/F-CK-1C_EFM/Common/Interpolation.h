@@ -1,19 +1,27 @@
 #pragma once
 
-#include <math.h>
+#include <cmath>
+#include <stdexcept>
 
 namespace Common
 {
 inline double rescale(double input, double min, double max)
 {
-	if (input >= 0.0)
+	if (!std::isfinite(input))
 	{
-		return input * fabs(max);
+		throw std::domain_error("Common::rescale input is not finite.");
 	}
-	if (input < 0.0)
+	if (!std::isfinite(min))
 	{
-		return input * fabs(min);
+		throw std::domain_error("Common::rescale minimum is not finite.");
 	}
+	if (!std::isfinite(max))
+	{
+		throw std::domain_error("Common::rescale maximum is not finite.");
+	}
+	return input >= 0.0
+		? input * std::fabs(max)
+		: input * std::fabs(min);
 }
 
 inline double smooth_lerp(double current, double target, double t)

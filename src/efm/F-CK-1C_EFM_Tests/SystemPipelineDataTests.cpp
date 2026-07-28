@@ -318,9 +318,15 @@ void test_pending_storage_does_not_leak(Tests::Context& context)
 		}
 	};
 	SystemPipeline pipeline(flight_setup(), { entry(publisher) });
-	TEST_EXPECT(
+	expect_execution_error(
 		context,
-		action_throws([&pipeline]() { (void)step_pipeline(pipeline); }));
+		[&pipeline]() { (void)step_pipeline(pipeline); },
+		{
+			ExecutionOwnerType::System,
+			"publisher",
+			"step",
+			"expected test failure"
+		});
 	const AircraftDataSnapshot next = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,

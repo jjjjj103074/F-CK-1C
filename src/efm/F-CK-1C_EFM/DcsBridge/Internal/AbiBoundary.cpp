@@ -1,6 +1,7 @@
 #include "AbiBoundary.h"
 
 #include "EventLog.h"
+#include "../../Core/Contracts/Diagnostics.h"
 
 #include <cstdio>
 #include <exception>
@@ -11,23 +12,78 @@ namespace
 constexpr size_t kAbiErrorMessageCapacity = 1400;
 constexpr const char* kUnknownException = "unknown C++ exception";
 
-const char* exception_message(const std::exception_ptr& exception) noexcept
+struct AbiErrorOutput
+{
+	char* data;
+	size_t capacity;
+	const char* callback;
+};
+
+const char* owner_type_name(Core::ExecutionOwnerType owner_type)
+{
+	switch (owner_type)
+	{
+	case Core::ExecutionOwnerType::System:
+		return "system";
+	case Core::ExecutionOwnerType::SimulationModel:
+		return "simulation_model";
+	}
+	return "unknown";
+}
+
+void format_standard_exception(
+	const AbiErrorOutput& output,
+	const char* reason) noexcept
+{
+	std::snprintf(
+		output.data,
+		output.capacity,
+		"callback=%s unhandled_exception=%s caught_at=c_abi_boundary",
+		output.callback,
+		reason);
+}
+
+void format_execution_error(
+	const AbiErrorOutput& output,
+	const Core::ExecutionError& error) noexcept
+{
+	const Core::ExecutionErrorDetails& details = error.details();
+	std::snprintf(
+		output.data,
+		output.capacity,
+		"callback=%s source=%s owner=%s operation=%s reason=%s "
+		"caught_at=c_abi_boundary",
+		output.callback,
+		owner_type_name(details.owner_type),
+		details.owner.c_str(),
+		details.operation.c_str(),
+		details.reason.c_str());
+}
+
+void format_exception(
+	const AbiErrorOutput& output,
+	const std::exception_ptr& exception) noexcept
 {
 	if (!exception)
 	{
-		return kUnknownException;
+		format_standard_exception(output, kUnknownException);
+		return;
 	}
 	try
 	{
 		std::rethrow_exception(exception);
 	}
+	catch (const Core::ExecutionError& error)
+	{
+		format_execution_error(output, error);
+	}
 	catch (const std::exception& error)
 	{
-		return error.what();
+		format_standard_exception(output, error.what());
 	}
 	catch (...)
 	{
-		return kUnknownException;
+		format_standard_exception(output, kUnknownException);
 	}
 }
 
@@ -49,12 +105,7 @@ void report_abi_exception(
 	EventLog* event_log) noexcept
 {
 	char message[kAbiErrorMessageCapacity];
-	std::snprintf(
-		message,
-		sizeof(message),
-		"callback=%s unhandled_exception=%s caught_at=c_abi_boundary",
-		callback,
-		exception_message(exception));
+	format_exception({ message, sizeof(message), callback }, exception);
 
 	if (event_log != nullptr)
 	{

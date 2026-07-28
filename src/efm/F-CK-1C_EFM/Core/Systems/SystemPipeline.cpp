@@ -1,4 +1,5 @@
 #include "SystemPipeline.h"
+#include "SystemExecutionContext.h"
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -152,7 +153,7 @@ struct SystemPipeline::Implementation
 	void collect_damage_handlers(RuntimeSystem& runtime);
 	void collect_repair_handlers(RuntimeSystem& runtime);
 	void validate_fuel_management(
-		const RuntimeSystem& runtime,
+		RuntimeSystem& runtime,
 		std::size_t system_index);
 	void commit_group(Storage& next);
 	bool should_run(
@@ -452,7 +453,11 @@ void SystemPipeline::Implementation::collect_command_handlers(
 	{
 		if (!registration.handler ||
 			!command_handlers.emplace(
-				registration.id, std::move(registration.handler)).second)
+				registration.id,
+				Detail::with_system_context(
+					runtime.setup.system_id,
+					Detail::kCommandOperation,
+					std::move(registration.handler))).second)
 		{
 			throw std::logic_error(
 				"Command ID has more than one or no handler.");
@@ -467,7 +472,11 @@ void SystemPipeline::Implementation::collect_damage_handlers(
 	{
 		if (!registration.handler ||
 			!damage_handlers.emplace(
-				registration.area, std::move(registration.handler)).second)
+				registration.area,
+				Detail::with_system_context(
+					runtime.setup.system_id,
+					Detail::kDamageOperation,
+					std::move(registration.handler))).second)
 		{
 			throw std::logic_error(
 				"Damage area has more than one or no owner.");
@@ -484,19 +493,22 @@ void SystemPipeline::Implementation::collect_repair_handlers(
 		{
 			throw std::logic_error("Repair handler is empty.");
 		}
-		repair_handlers.push_back(std::move(handler));
+		repair_handlers.push_back(Detail::with_system_context(
+			runtime.setup.system_id,
+			Detail::kRepairOperation,
+			std::move(handler)));
 	}
 }
 
 void SystemPipeline::Implementation::validate_fuel_management(
-	const RuntimeSystem& runtime,
+	RuntimeSystem& runtime,
 	std::size_t system_index)
 {
 	if (!runtime.setup.fuel_management)
 	{
 		return;
 	}
-	const FuelManagementHandlers& handlers =
+	FuelManagementHandlers& handlers =
 		*runtime.setup.fuel_management;
 	const bool complete = handlers.read && handlers.current_data &&
 		handlers.set_internal && handlers.set_external &&
@@ -508,7 +520,9 @@ void SystemPipeline::Implementation::validate_fuel_management(
 		throw std::logic_error(
 			"Fuel management requires one complete FuelData owner.");
 	}
-	fuel_management = handlers;
+	fuel_management = Detail::with_system_context(
+		runtime.setup.system_id,
+		std::move(handlers));
 }
 
 AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot() const
@@ -548,7 +562,13 @@ void SystemPipeline::Implementation::run_group(
 		if (runtime.group == group && should_run(runtime, options))
 		{
 			pending_result.activate_publications(runtime.publications);
-			runtime.system->step(input, pending_result);
+			Detail::invoke_system_action(
+				runtime.setup.system_id,
+				Detail::kSystemStepOperation,
+				[&runtime, &input, this]()
+				{
+					runtime.system->step(input, pending_result);
+				});
 		}
 	}
 	commit_group(next);

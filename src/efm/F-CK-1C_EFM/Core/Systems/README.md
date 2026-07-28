@@ -100,6 +100,11 @@ have one semantic owner. Repair may have multiple subscribers. An unregistered
 command or damage event returns `DispatchResult::Unhandled`; handlers are not
 broadcast.
 
+Unexpected exceptions from a System step or registered handler receive that
+System's catalog ID and operation in a structured `ExecutionError`. Systems do
+not write DCS logs; the error crosses the Core boundary and DCSBridge records
+it once.
+
 Fuel registers only the preparation handlers used by the
 simulation façade. The Pipeline validates that the handler set is complete and
 belongs to the sole `FuelData` publisher. Fuel publishes the current frame's

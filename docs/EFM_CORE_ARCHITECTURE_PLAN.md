@@ -695,6 +695,10 @@ Common → Systems / Simulation / DcsBridge
 - command 不會在 `step()` 之外推進連續狀態。
 - 外部只會取得完成的 frame snapshot。
 - 所有 setup 錯誤明確失敗，不以預設值或靜默 fallback 隱藏。
+- System 與 Simulation Model 不直接寫 log；Pipeline 將 owner、operation
+  與原始原因包裝成結構化 `ExecutionError`。
+- DcsBridge 的 ABI boundary 是 runtime 錯誤的唯一記錄者，並使用既有
+  `EventLog` 寫入一次。
 
 ## 尚待實作時決定的局部細節
 
@@ -703,8 +707,7 @@ Common → Systems / Simulation / DcsBridge
 1. `ISystem` 的確切 C++ 函式簽章與 handler 的 type-erasure 方法。
 2. typed key 的 slot 配置與 `SystemResult` 的實體記憶體布局。
 3. `Entry.cpp` catalog 的確切 MSBuild 產生與兩個 project 共用方式。
-4. setup 與未預期 runtime 例外如何轉成 C ABI 可診斷錯誤。
-5. per-frame heap allocation 的實測結果與是否需要進一步消除。
+4. per-frame heap allocation 的實測結果與是否需要進一步消除。
 
 施工切分、行為保留規則與每步驗證方式另見
 [`EFM_CORE_REFACTOR_IMPLEMENTATION_PLAN.md`](EFM_CORE_REFACTOR_IMPLEMENTATION_PLAN.md)。

@@ -1,12 +1,16 @@
 #include "Fck1cEfmTestFixture.h"
+#include "SystemPipelineTestFixture.h"
 #include "TestHarness.h"
 
+#include "Core/Contracts/Diagnostics.h"
 #include "Core/Simulation/Models/Aerodynamics/AerodynamicsModel.h"
 #include "Core/Simulation/Models/GroundInteraction/GroundInteractionModel.h"
 #include "Core/Simulation/Models/Propulsion/PropulsionModel.h"
+#include "Core/Simulation/SimulationPipeline.h"
 #include "DcsBridge/Internal/FrameInputCollector.h"
 
 #include <cmath>
+#include <limits>
 
 namespace
 {
@@ -191,6 +195,55 @@ void test_propulsion_applies_engine_condition(Tests::Context& context)
 		kTolerance);
 }
 
+SystemPipelineTest::SystemDefinition invalid_aerodynamics_state()
+{
+	using namespace Core;
+	using namespace Core::Systems;
+	return {
+		"test_state",
+		SystemGroup::Equipment,
+		[](SystemSetup& setup)
+		{
+			PrimaryControlPosition primary;
+			primary.elevator = std::numeric_limits<double>::quiet_NaN();
+			setup.publish(AircraftDataKeys::kPrimaryControlPosition, primary);
+			setup.publish(
+				AircraftDataKeys::kSecondaryControlPosition,
+				SecondaryControlPosition{});
+			setup.publish(AircraftDataKeys::kLandingGearData, LandingGearData{});
+			setup.publish(
+				AircraftDataKeys::kAirframeIntegrity, AirframeIntegrity{});
+			setup.publish(AircraftDataKeys::kEngineData, EngineData{});
+			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
+		},
+		SystemPipelineTest::no_step()
+	};
+}
+
+void test_model_error_identifies_runtime_owner(Tests::Context& context)
+{
+	using namespace Core;
+	using namespace Core::Systems;
+	using namespace SystemPipelineTest;
+	SystemPipeline aircraft(
+		flight_setup(),
+		{ entry(invalid_aerodynamics_state()) });
+	Simulation::SimulationPipeline simulation(
+		Tests::Fck1c::make_test_models(Tests::Fck1c::make_test_config()));
+	const AircraftDataSnapshot snapshot = aircraft.snapshot();
+	const AircraftState observation;
+	const FrameInput frame;
+	expect_execution_error(
+		context,
+		[&]() { (void)simulation.step({ snapshot, observation, frame }); },
+		{
+			ExecutionOwnerType::SimulationModel,
+			"aerodynamics",
+			"step",
+			"Common::rescale input is not finite."
+		});
+}
+
 void test_ground_model_selects_one_force_source(Tests::Context& context)
 {
 	GroundModelFixture fixture;
@@ -287,6 +340,7 @@ void run_simulation_model_tests(Tests::Context& context)
 	test_aerodynamics_model_effect_groups(context);
 	test_propulsion_operating_points(context);
 	test_propulsion_applies_engine_condition(context);
+	test_model_error_identifies_runtime_owner(context);
 	test_ground_model_selects_one_force_source(context);
 	test_ground_model_ignores_stale_feedback(context);
 	test_ground_model_uses_collector_frame_freshness(context);

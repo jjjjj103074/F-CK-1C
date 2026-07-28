@@ -39,8 +39,10 @@ for the next simulation step unless the DCS ABI requires an immediate return.
 `EfmExports.cpp` owns boundary orchestration: ABI defaults, validation,
 translation, locking, tool coordination, and return values. Every exported
 callback uses the shared ABI exception boundary, which logs unexpected C++
-exceptions and returns that callback's neutral result. It must not gain flight
-calculations, log message formatting, or CSV row formatting.
+exceptions and returns that callback's neutral result. Structured Core
+execution errors retain their System or Simulation Model owner, operation, and
+reason in the same EventLog. It must not gain flight calculations, log message
+formatting, or CSV row formatting.
 
 ## Layout and ownership
 

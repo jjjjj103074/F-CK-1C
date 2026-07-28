@@ -4,6 +4,7 @@
 #include "DcsBridge/Internal/AbiBoundary.h"
 #include "DcsBridge/Internal/EventLog.h"
 #include "DcsBridge/Internal/ProcessBridgeContext.h"
+#include "Core/Contracts/Diagnostics.h"
 
 #include <exception>
 #include <filesystem>
@@ -57,6 +58,24 @@ void report_unknown_exception(DcsBridge::Internal::EventLog& log)
 	}
 }
 
+void report_execution_error(DcsBridge::Internal::EventLog& log)
+{
+	try
+	{
+		throw Core::ExecutionError({
+			Core::ExecutionOwnerType::SimulationModel,
+			"aerodynamics",
+			"step",
+			"Common::rescale input is not finite."
+		});
+	}
+	catch (...)
+	{
+		DcsBridge::Internal::report_abi_exception(
+			"ed_fm_simulate", std::current_exception(), &log);
+	}
+}
+
 double guarded_return(
 	DcsBridge::Internal::EventLog& log,
 	bool& cleanup_called) try
@@ -80,6 +99,7 @@ void test_exception_details_are_logged(Tests::Context& context)
 	DcsBridge::Internal::EventLog log(root.path().string().c_str());
 	report_standard_exception(log);
 	report_unknown_exception(log);
+	report_execution_error(log);
 
 	const std::string content = read_log(root);
 	TEST_EXPECT(context, content.find(
@@ -88,6 +108,11 @@ void test_exception_details_are_logged(Tests::Context& context)
 	TEST_EXPECT(context, content.find(
 		"][-][ERROR] callback=unknown_callback "
 		"unhandled_exception=unknown C++ exception "
+		"caught_at=c_abi_boundary\n") != std::string::npos);
+	TEST_EXPECT(context, content.find(
+		"][-][ERROR] callback=ed_fm_simulate source=simulation_model "
+		"owner=aerodynamics operation=step "
+		"reason=Common::rescale input is not finite. "
 		"caught_at=c_abi_boundary\n") != std::string::npos);
 }
 

@@ -16,6 +16,7 @@
     <None Include="$(EfmSystemRoot)\README.md" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\AircraftData.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Events.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\FrameContracts.h" />
     <ClInclude Include="$(EfmCoreRoot)Fck1cEfm.h" />
@@ -23,6 +24,7 @@
     <ClInclude Include="$(EfmCoreRoot)Simulation\Models\*.h" />
     <ClInclude Include="$(EfmCoreRoot)Simulation\Models\*\*.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\System.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\SystemExecutionContext.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\SystemPipeline.h" />
     <ClInclude Include="$(EfmSystemRoot)\*\*.h" />
   </ItemGroup>

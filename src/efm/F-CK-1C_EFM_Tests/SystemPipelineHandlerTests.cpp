@@ -265,15 +265,21 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 		no_step()
 	};
 	SystemPipeline pipeline(flight_setup(), { entry(system) });
-	TEST_EXPECT(
+	expect_execution_error(
 		context,
-		action_throws([&pipeline]()
+		[&pipeline]()
 		{
 			(void)pipeline.send({
 				CommandId::SetPitchAxis,
 				kCommandValue
 			});
-		}));
+		},
+		{
+			ExecutionOwnerType::System,
+			"throwing",
+			"handle_command",
+			"expected handler failure"
+		});
 	TEST_EXPECT_NEAR(
 		context,
 		pipeline.snapshot().read(
