@@ -8,13 +8,15 @@ The Pipeline is the sole production scheduler and commit point for these
 aircraft owners. `AircraftSimulation` consumes only the completed aircraft
 snapshot and does not call or own concrete Systems.
 
-- `FlightControlComputer`
-- `PrimaryFlightControls`
-- `SecondaryFlightControls`
-- `LandingGear`
-- `Engine`
-- `Fuel`
-- `AirframeStructure`
+| System | Group | Responsibility |
+|---|---|---|
+| `FlightControlComputer` | Control | Input shaping and control demands |
+| `PrimaryFlightControls` | Equipment | Elevator, aileron, and rudder actuators |
+| `SecondaryFlightControls` | Equipment | Flaps, slats, and airbrake |
+| `LandingGear` | Equipment | Gear, brakes, NWS, wheels, and suspension state |
+| `Engine` | Equipment | Engine device state, spool, nozzle, and fuel demand |
+| `Fuel` | Equipment | Fuel storage, supply, transfer, and consumed mass |
+| `AirframeStructure` | Equipment | Component integrity and damage ownership |
 
 ## System contract
 
@@ -22,8 +24,9 @@ Every System is a class derived from `System` and has two lifecycle methods:
 
 - `setup()` declares AircraftData reads/publications and registers handlers.
 - `step()` advances one complete frame. Each System reads one immutable group
-  snapshot and writes only to its reusable `SystemResult`; the Pipeline
-  returns the completed immutable AircraftData snapshot.
+  snapshot and publishes only through the Pipeline-owned reusable
+  `SystemResult` buffer; the Pipeline returns the completed immutable
+  AircraftData snapshot.
 
 Setup completes in two stages. The Pipeline first collects every System's
 declarations, then validates providers, types, initial values, single writers,
@@ -75,6 +78,11 @@ MSBuild scans `Core/Systems/*/Entry.cpp` before compilation and generates the
 catalog in the project intermediate directory. Do not edit a generated catalog
 or add the Entry manually to either `.vcxproj`.
 
+Adding a System must not require changes to `Fck1cEfm`,
+`AircraftSimulation`, `SystemPipeline`, or another concrete System. Add its
+directory, implementation, tests, and `Entry.cpp`; the shared MSBuild rules
+discover the Entry for both production and native tests.
+
 `FlightSetupContext` contains `StartMode` and the initial fuel load needed to
 construct one flight. A System-specific Entry captures that System's immutable
 production configuration and passes it to the concrete factory. Simulation
@@ -114,3 +122,11 @@ mass effect. Infinite-fuel policy remains in Simulation: it requests one-frame
 consumption suppression before every step while enabled. Fuel still computes
 and publishes the true total flow, publishes zero consumed mass for that
 frame, and does not know why consumption was suppressed.
+
+## Verification
+
+Follow the
+[`DLL build guide`](../../../../../docs/BUILD_DLL.md). A System change must
+pass the native tests, architecture check, and System catalog fixtures. Add
+focused tests for its setup declarations, handlers, group timing, retained
+data, and published frame output as applicable.

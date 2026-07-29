@@ -49,6 +49,10 @@ Please preserve attribution to the original author(s) and contributors. Third-pa
 
 See [LICENSE](LICENSE) for details.
 
-## Contributing
+## Development Documentation
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, branch strategy, and commit format.
+- [Contributing guide](CONTRIBUTING.md) — setup, branch strategy, validation,
+  and commit format
+- [EFM overview](src/efm/README.md) — current C++ architecture and links to
+  responsibility-specific contributor guides
+- [DLL build guide](docs/BUILD_DLL.md) — supported toolchain and verification

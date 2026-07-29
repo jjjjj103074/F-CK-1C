@@ -4,6 +4,10 @@
 owner, known DCS commands intentionally ignored by the EFM, and cockpit
 parameter names shared by C++ and Lua.
 
+Raw DCS numeric IDs stop at DCSBridge. A supported flight-model command is
+translated into the semantic `Core::CommandId` declared in
+`Core/Contracts/Commands.h`; concrete Systems never compare DCS numbers.
+
 Every custom command declares one route:
 
 - `efm`: the input profile sends the command to `ed_fm_set_command`, where
@@ -21,8 +25,9 @@ An incoming ID absent from both the supported EFM bindings and the declared
 ignored IDs remains unknown and must produce the counted warning defined by
 the DCSBridge logging policy.
 
-Run `tools/generate_dcs_ids.ps1` explicitly after changing it. The DLL build
-does not generate or modify source files. The generator updates:
+Run `tools/generate_dcs_ids.ps1` explicitly from the repository root after
+changing it. The DLL build does not generate or modify these tracked source
+files. The generator updates:
 
 - `DcsIds/CustomCommands.g.h`
 - `DcsIds/CockpitParams.g.h`
@@ -35,9 +40,10 @@ Do not edit generated files directly.
 IDs as `dcs_commands`. Cockpit Lua that calls `dispatch_action` must use the
 generated `dcs_commands` value instead of repeating a raw numeric ID.
 
-`Commands.h` contains DCS built-in input command IDs used by Core bindings
-because those values are owned by DCS rather than this module. Known ignored
-DCS IDs stay in `CommandIds.json` with the reason they require no EFM action.
+`Commands.h` contains DCS built-in input command IDs used by DCSBridge command
+bindings to produce semantic Core commands; those numeric values are owned by
+DCS rather than this module. Known ignored DCS IDs stay in `CommandIds.json`
+with the reason they require no EFM action.
 `DrawArgs.h`, `ParamIds.h`, and `DamageIds.h` give module-specific semantic
 names to the other DCS contracts.
 

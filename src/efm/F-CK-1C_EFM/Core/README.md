@@ -31,14 +31,17 @@ Allowed dependencies point inward through contracts and pipelines:
 ```text
 DcsBridge -> Fck1cEfm -> AircraftSimulation
 AircraftSimulation -> SystemPipeline + SimulationPipeline
-Concrete System -> System + Core Contracts + Common
+Concrete System -> System contract + SystemPipeline setup/data API
+                   + Core Contracts + Common
 Simulation Model -> Core Contracts + completed AircraftData + Common
 ```
 
 Concrete Systems do not include one another, `DcsBridge`, or anything under
-`Simulation/`. Concrete Simulation Models do not include one another or
-anything under `Systems/`; `SimulationPipeline` translates their results into
-the next Model's plain input values. `DcsBridge` reaches Core only through
+`Simulation/`. They use the SystemPipeline contract types `SystemSetup`,
+`AircraftDataView`, and `SystemResult`, but do not schedule or commit
+themselves. Concrete Simulation Models do not include one another or anything
+under `Systems/`; `SimulationPipeline` translates their results into the next
+Model's plain input values. `DcsBridge` reaches Core only through
 `Fck1cEfm.h`, `Core/Contracts/`, and the exact
 `Core/Diagnostics/ExecutionError.h` boundary type; it does not include Core
 pipeline, diagnostic wrapping, or Simulation implementation headers.
@@ -49,14 +52,29 @@ handler operation) to unexpected exceptions as an `ExecutionError`;
 DCSBridge remains the single owner that writes those errors to the runtime
 EventLog.
 
-The build runs `tools/check_efm_architecture.ps1` before compiling. Run the
-checker and its fixtures directly from the repository root with:
+## Flight and frame execution
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-    -File .\tools\check_efm_architecture.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-    -File .\tools\test_efm_architecture_checker.ps1
+`Fck1cEfm` persists across DCS flights and stores only preparation values that
+must survive between `release()` and the next `start()`. Each start constructs
+a new `AircraftSimulation`; release destroys that per-flight state. Individual
+Systems do not have a separate release hook.
+
+Every valid frame follows one fixed path:
+
+```text
+FrameInput
+  -> retain available external observations
+  -> SystemPipeline: Control group, then commit
+  -> SystemPipeline: Equipment group, then commit
+  -> SimulationPipeline: Aerodynamics, Propulsion,
+                         GroundInteraction, MassProperties
+  -> one complete FrameOutput
 ```
 
-See `Systems/README.md` for the System extension contract.
+Commands and events may be routed between frames, but continuous state advances
+only in `step()`. Output becomes visible only after the complete frame succeeds.
+
+See [`Systems/README.md`](Systems/README.md) for the System extension contract.
+Use the
+[`DLL build guide`](../../../../docs/BUILD_DLL.md) for the canonical build,
+test, architecture-check, and export-verification commands.

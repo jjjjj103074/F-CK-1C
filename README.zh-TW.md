@@ -49,6 +49,9 @@ install.bat "D:\Saved Games\DCS"
 
 詳細內容請見 [LICENSE](LICENSE)。
 
-## 貢獻專案
+## 開發文件
 
-開發環境設定、分支策略與 Commit 格式請見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- [貢獻指南](CONTRIBUTING.md) — 環境設定、分支策略、驗證方式與 Commit 格式
+- [EFM 總覽](src/efm/README.md) — 目前的 C++ 架構，以及各責任專用
+  Contributor Guide 的入口
+- [DLL 建置指南](docs/BUILD_DLL.md) — 支援的工具鏈與驗證方式

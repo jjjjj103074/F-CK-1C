@@ -14,7 +14,9 @@ Important files:
 - Core/: DCS-neutral facade, aircraft Systems, Simulation, and contracts.
 - Core/Systems/: aircraft-owned state and behavior.
 - Core/Simulation/Models/: physical effects and model-owned configuration.
+- DcsIds/: DCS boundary identifiers and generated command/parameter tables.
 - DcsBridge/Internal/: private DCS adapters, lifecycle, log, and CSV implementation.
+- ../F-CK-1C_EFM_Tests/: native tests that run without DCS.
 
 The build checks Core dependency boundaries before compiling and generates the
 System catalog from Core/Systems/*/Entry.cpp.
@@ -28,3 +30,12 @@ The expected runtime output is:
     bin\F-CK-1C_EFM.dll
 
 Only the Release|x64 build target is supported.
+
+Current guidance is maintained in:
+
+- ../README.md
+- ../../../docs/BUILD_DLL.md
+- DcsBridge/README.md
+- Core/README.md
+- Core/Systems/README.md
+- DcsIds/README.md
