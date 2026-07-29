@@ -1,21 +1,103 @@
 #!/bin/sh
-# pre-commit hook: rebuild the runtime EFM DLL only when EFM inputs change.
+# Rebuild the runtime DLL only for staged EFM build inputs.
 set -e
 
-EFM_CHANGES=$(git diff --cached --name-only --diff-filter=ACMR -- src/efm tools/build_dll.ps1 bin/F-CK-1C_EFM.dll)
+git_runtime_inputs()
+{
+    git "$@" -- src/efm/F-CK-1C_EFM
+}
 
-if [ -z "$EFM_CHANGES" ]; then
-    echo "[F-CK-1C] No staged EFM changes; skipping EFM DLL build."
+git_explicit_inputs()
+{
+    git "$@" -- \
+        src/efm/F-CK-1C_EFM/F-CK-1C_EFM.vcxproj \
+        src/efm/EfmCore.props \
+        src/efm/EfmCore.targets \
+        tools/build_dll.ps1 \
+        tools/check_efm_architecture.ps1 \
+        tools/generate_system_catalog.ps1
+}
+
+filter_runtime_build_inputs()
+{
+    while IFS= read -r path; do
+        case "$path" in
+            *.[cC]|*.[cC][cC]|*.[cC][pP][pP]|*.[cC][xX][xX]|\
+            *.[hH]|*.[hH][hH]|*.[hH][pP][pP]|*.[hH][xX][xX]|\
+            *.[iI][nN][cC]|*.[iI][nN][lL]|*.[iI][pP][pP]|*.[tT][pP][pP])
+                printf '%s\n' "$path"
+                ;;
+        esac
+    done
+}
+
+filter_nonempty_lines()
+{
+    while IFS= read -r path; do
+        if [ -n "$path" ]; then
+            printf '%s\n' "$path"
+        fi
+    done
+}
+
+STAGED_RUNTIME_PATHS=$(git_runtime_inputs \
+    diff --cached --no-renames --name-only --diff-filter=ACMRD)
+STAGED_RUNTIME_INPUTS=$(printf '%s\n' "$STAGED_RUNTIME_PATHS" |
+    filter_runtime_build_inputs)
+STAGED_EXPLICIT_INPUTS=$(git_explicit_inputs \
+    diff --cached --no-renames --name-only --diff-filter=ACMRD)
+STAGED_DLL=$(git diff --cached --no-renames --name-only \
+    --diff-filter=ACMRD -- \
+    bin/F-CK-1C_EFM.dll)
+
+if [ -z "$STAGED_RUNTIME_INPUTS" ] &&
+    [ -z "$STAGED_EXPLICIT_INPUTS" ] &&
+    [ -z "$STAGED_DLL" ]; then
+    echo "[F-CK-1C] No staged EFM build inputs; skipping DLL build."
     exit 0
 fi
 
-echo "[F-CK-1C] Staged EFM changes detected:"
-echo "$EFM_CHANGES"
+UNSTAGED_TRACKED_RUNTIME_PATHS=$(git_runtime_inputs \
+    diff --no-renames --name-only --diff-filter=ACMRD)
+UNSTAGED_TRACKED_RUNTIME=$(printf '%s\n' \
+    "$UNSTAGED_TRACKED_RUNTIME_PATHS" |
+    filter_runtime_build_inputs)
+UNSTAGED_TRACKED_EXPLICIT=$(git_explicit_inputs \
+    diff --no-renames --name-only --diff-filter=ACMRD)
+UNTRACKED_RUNTIME_PATHS=$(git_runtime_inputs \
+    ls-files --others --exclude-standard)
+UNTRACKED_RUNTIME=$(printf '%s\n' "$UNTRACKED_RUNTIME_PATHS" |
+    filter_runtime_build_inputs)
+UNTRACKED_EXPLICIT=$(git_explicit_inputs \
+    ls-files --others --exclude-standard)
+IGNORED_RUNTIME_PATHS=$(git_runtime_inputs \
+    ls-files --others --ignored --exclude-standard)
+IGNORED_RUNTIME=$(printf '%s\n' "$IGNORED_RUNTIME_PATHS" |
+    filter_runtime_build_inputs)
+IGNORED_EXPLICIT=$(git_explicit_inputs \
+    ls-files --others --ignored --exclude-standard)
+DIRTY_BUILD_INPUTS=$(
+    printf '%s\n%s\n%s\n%s\n%s\n%s\n' \
+        "$UNSTAGED_TRACKED_RUNTIME" \
+        "$UNSTAGED_TRACKED_EXPLICIT" \
+        "$UNTRACKED_RUNTIME" \
+        "$UNTRACKED_EXPLICIT" \
+        "$IGNORED_RUNTIME" \
+        "$IGNORED_EXPLICIT" |
+        filter_nonempty_lines
+)
 
-echo "[F-CK-1C] Building EFM DLL (Release|x64) before commit..."
+if [ -n "$DIRTY_BUILD_INPUTS" ]; then
+    echo "[F-CK-1C] Refusing to build a DLL from dirty EFM inputs:" >&2
+    printf '%s\n' "$DIRTY_BUILD_INPUTS" >&2
+    echo "[F-CK-1C] Stage, stash, move, or remove these inputs first." >&2
+    exit 1
+fi
+
+echo "[F-CK-1C] Building EFM DLL from staged inputs (Release|x64)..."
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1
 
-echo "[F-CK-1C] Staging rebuilt EFM DLL..."
+echo "[F-CK-1C] Staging rebuilt runtime DLL..."
 git add bin/F-CK-1C_EFM.dll
 
-echo "[F-CK-1C] EFM build completed."
+echo "[F-CK-1C] EFM DLL build completed."
