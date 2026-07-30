@@ -5,6 +5,7 @@
   "scripts": {
     "prepare": "husky",
     "build:efm": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1",
+    "test:cockpit-baseline": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/capture_cockpit_baseline.ps1 -Mode Check",
     "commit": "czg --config ./cz.config.js"
   },
   "config": {
