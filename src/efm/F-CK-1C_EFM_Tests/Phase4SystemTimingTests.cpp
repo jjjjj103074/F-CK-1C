@@ -87,14 +87,16 @@ std::vector<double> landing_gear_values(
 std::vector<double> published_values(
 	const AircraftDataSnapshot& snapshot)
 {
-	const PilotControlState& pilot =
-		snapshot.read(AircraftDataKeys::kPilotControlState);
-	const FlightControlDemand& control =
-		snapshot.read(AircraftDataKeys::kFlightControlDemand);
-	const PrimaryControlPosition& primary =
-		snapshot.read(AircraftDataKeys::kPrimaryControlPosition);
-	const EngineControlDemand& engine_control =
-		snapshot.read(AircraftDataKeys::kEngineControlDemand);
+	const PilotControlSignal& pilot =
+		snapshot.read(AircraftDataKeys::kPilotControlSignal);
+	const FlightControlActuatorCommand& control =
+		snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	const FlightControlActuatorState& primary =
+		snapshot.read(AircraftDataKeys::kFlightControlActuatorState);
+	const ThrottleLeverSignal& throttle_levers =
+		snapshot.read(AircraftDataKeys::kThrottleLeverSignal);
+	const EngineThrottleCommand& engine_control =
+		snapshot.read(AircraftDataKeys::kEngineThrottleCommand);
 	const SecondaryControlPosition& secondary =
 		snapshot.read(AircraftDataKeys::kSecondaryControlPosition);
 	const EngineData& engines =
@@ -103,10 +105,11 @@ std::vector<double> published_values(
 	const AirframeIntegrity& integrity =
 		snapshot.read(AircraftDataKeys::kAirframeIntegrity);
 	std::vector<double> values = {
-		pilot.pitch, pilot.roll, pilot.yaw,
-		control.pitch, control.roll, control.yaw,
-		primary.elevator, primary.aileron, primary.rudder,
-		engine_control.left_throttle, engine_control.right_throttle,
+		pilot.pitch_axis_normalized, pilot.roll_axis_normalized, pilot.yaw_axis_normalized,
+		throttle_levers.left_normalized, throttle_levers.right_normalized,
+		control.elevator_normalized, control.aileron_normalized, control.rudder_normalized,
+		primary.elevator.normalized_position, primary.aileron.normalized_position, primary.rudder.normalized_position,
+		engine_control.left_normalized, engine_control.right_normalized,
 		secondary.flaps, secondary.slats, secondary.airbrake
 	};
 	const std::vector<double> landing = landing_gear_values(
@@ -301,15 +304,15 @@ SystemDefinition slow_publisher()
 		[](SystemSetup& setup)
 		{
 			setup.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(kPublisherInitial));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(kPublisherInitial));
 		},
 		[calls](const AircraftDataView&, SystemResult& result)
 		{
 			++*calls;
 			result.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(kPublisherInitial + *calls));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(kPublisherInitial + *calls));
 		}
 	};
 	definition.update_rate_hz = kSlowUpdateRateHz;
@@ -323,17 +326,17 @@ SystemDefinition fast_observer()
 		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlDemand);
+			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
 			setup.publish(
-				AircraftDataKeys::kPrimaryControlPosition,
-				position(kNeutralAxis));
+				AircraftDataKeys::kFlightControlActuatorState,
+				actuator_state(kNeutralAxis));
 		},
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
 			result.publish(
-				AircraftDataKeys::kPrimaryControlPosition,
-				position(aircraft.read(
-					AircraftDataKeys::kFlightControlDemand).pitch));
+				AircraftDataKeys::kFlightControlActuatorState,
+				actuator_state(aircraft.read(
+					AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized));
 		}
 	};
 }
@@ -345,7 +348,7 @@ double observed_position_at(
 	const FrameInput frame;
 	const AircraftObservation observation;
 	return step_pipeline_to(pipeline, frame, observation, target)
-		.read(AircraftDataKeys::kPrimaryControlPosition).elevator;
+		.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position;
 }
 
 void test_different_time_buckets_commit_between_ticks(
@@ -465,17 +468,17 @@ void test_fcc_to_actuator_has_one_receiver_tick_delay(
 	const AircraftDataSnapshot first =
 		step_pipeline(pipeline, frame, observation);
 	const double first_demand =
-		first.read(AircraftDataKeys::kFlightControlDemand).pitch;
+		first.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
 	TEST_EXPECT_NEAR(
 		context,
-		first.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		first.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
 		kNeutralAxis,
 		kTolerance);
 	const AircraftDataSnapshot second =
 		step_pipeline(pipeline, frame, observation);
 	TEST_EXPECT_NEAR(
 		context,
-		second.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		second.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
 		first_demand,
 		kTolerance);
 }

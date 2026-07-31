@@ -15,7 +15,8 @@ SystemEntry make_flight_control_computer_system_entry(
 		{
 			return std::make_unique<FlightControlComputer>(
 				owned_config,
-				setup.start_mode);
+				setup.start_mode,
+				setup.initial_throttle_levers);
 		}
 	};
 }

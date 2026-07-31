@@ -50,9 +50,9 @@ AerodynamicsPhysics::AerodynamicsFrameInput
 	frame.pitch_rate = observation.pitch_rate;
 	frame.roll_rate = observation.roll_rate;
 	frame.yaw_rate = observation.yaw_rate;
-	frame.elevator_command = input.primary.elevator;
-	frame.aileron_command = input.primary.aileron;
-	frame.rudder_command = input.primary.rudder;
+	frame.elevator_command = input.primary.elevator.normalized_position;
+	frame.aileron_command = input.primary.aileron.normalized_position;
+	frame.rudder_command = input.primary.rudder.normalized_position;
 	frame.airbrake_pos = input.secondary.airbrake;
 	frame.flaps_pos = input.secondary.flaps;
 	frame.gear_pos = input.landing_gear.position;

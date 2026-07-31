@@ -104,7 +104,7 @@ AerodynamicsModelInput
 		const SimulationFrameInput& input) const
 {
 	return {
-		input.aircraft.read(AircraftDataKeys::kPrimaryControlPosition),
+		input.aircraft.read(AircraftDataKeys::kFlightControlActuatorState),
 		input.aircraft.read(AircraftDataKeys::kSecondaryControlPosition),
 		input.aircraft.read(AircraftDataKeys::kLandingGearData),
 		input.aircraft.read(AircraftDataKeys::kAirframeIntegrity),

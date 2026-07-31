@@ -124,7 +124,7 @@ void test_aerodynamics_model_effect_groups(Tests::Context& context)
 {
 	const auto config = Tests::Fck1c::make_test_config();
 	Core::Simulation::AerodynamicsModel model(config.aerodynamics);
-	const Core::PrimaryControlPosition primary;
+	const Core::FlightControlActuatorState primary;
 	const Core::SecondaryControlPosition secondary;
 	const Core::LandingGearData landing_gear;
 	const Core::AirframeIntegrity integrity;
@@ -206,9 +206,12 @@ SystemPipelineTest::SystemDefinition invalid_aerodynamics_state()
 		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
-			PrimaryControlPosition primary;
-			primary.elevator = std::numeric_limits<double>::quiet_NaN();
-			setup.publish(AircraftDataKeys::kPrimaryControlPosition, primary);
+			FlightControlActuatorState primary;
+			primary.elevator.normalized_position =
+				std::numeric_limits<double>::quiet_NaN();
+			setup.publish(
+				AircraftDataKeys::kFlightControlActuatorState,
+				primary);
 			setup.publish(
 				AircraftDataKeys::kSecondaryControlPosition,
 				SecondaryControlPosition{});

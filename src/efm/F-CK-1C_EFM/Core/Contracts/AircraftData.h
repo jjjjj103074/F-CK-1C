@@ -30,31 +30,88 @@ struct AircraftObservation
 	double yaw_rate = 0.0;
 };
 
-struct FlightControlDemand
+struct PilotControlSignal
 {
-	double pitch = 0.0;
-	double roll = 0.0;
-	double yaw = 0.0;
+	double pitch_axis_normalized = 0.0;
+	double roll_axis_normalized = 0.0;
+	double yaw_axis_normalized = 0.0;
+	double pitch_trim_normalized = 0.0;
+	double roll_trim_normalized = 0.0;
+	double yaw_trim_normalized = 0.0;
 };
 
-struct PrimaryControlPosition
+struct FlightControlObservation
 {
-	double elevator = 0.0;
-	double aileron = 0.0;
-	double rudder = 0.0;
+	double altitude_asl_m = 0.0;
+	double indicated_airspeed_mps = 0.0;
+	double vertical_speed_mps = 0.0;
+	double mach = 0.0;
+	double dynamic_pressure_pa = 0.0;
+	double normal_acceleration_g = 0.0;
+	double alpha_deg = 0.0;
+	double beta_deg = 0.0;
+	double heading_rad = 0.0;
+	double roll_rad = 0.0;
+	double pitch_rad = 0.0;
+	double roll_rate_rad_s = 0.0;
+	double pitch_rate_rad_s = 0.0;
+	double yaw_rate_rad_s = 0.0;
 };
 
-struct PilotControlState
+inline FlightControlObservation make_flight_control_observation(
+	const AircraftObservation& source)
 {
-	double pitch = 0.0;
-	double roll = 0.0;
-	double yaw = 0.0;
+	return {
+		source.altitude_asl,
+		source.indicated_airspeed_mps,
+		source.vertical_speed_mps,
+		source.mach,
+		source.dynamic_pressure,
+		source.g_load,
+		source.alpha_deg,
+		source.beta_deg,
+		source.heading_rad,
+		source.roll,
+		source.pitch,
+		source.roll_rate,
+		source.pitch_rate,
+		source.yaw_rate
+	};
+}
+
+struct FlightControlActuatorCommand
+{
+	double elevator_normalized = 0.0;
+	double aileron_normalized = 0.0;
+	double rudder_normalized = 0.0;
 };
 
-struct EngineControlDemand
+struct FlightControlSurfaceState
 {
-	double left_throttle = 0.0;
-	double right_throttle = 0.0;
+	double position_rad = 0.0;
+	double rate_rad_s = 0.0;
+	double normalized_position = 0.0;
+	bool saturated = false;
+};
+
+struct FlightControlActuatorState
+{
+	FlightControlSurfaceState elevator;
+	FlightControlSurfaceState aileron;
+	FlightControlSurfaceState rudder;
+	bool any_saturated = false;
+};
+
+struct ThrottleLeverSignal
+{
+	double left_normalized = 0.0;
+	double right_normalized = 0.0;
+};
+
+struct EngineThrottleCommand
+{
+	double left_normalized = 0.0;
+	double right_normalized = 0.0;
 };
 
 struct SecondaryControlPosition
@@ -134,16 +191,19 @@ enum class AircraftDataId
 {
 	FrameInput,
 	AircraftObservation,
-	PilotControlState,
-	FlightControlDemand,
-	PrimaryControlPosition,
-	EngineControlDemand,
+	FlightControlObservation,
+	PilotControlSignal,
+	FlightControlActuatorCommand,
+	FlightControlActuatorState,
+	ThrottleLeverSignal,
+	EngineThrottleCommand,
 	SecondaryControlPosition,
 	LandingGearData,
 	EngineData,
 	FuelDemand,
 	FuelData,
 	AirframeIntegrity,
+	FlightControlComputerSnapshot,
 	AutomaticFlightControlSnapshot,
 	PropulsionTestIntent,
 	Count
@@ -168,24 +228,38 @@ inline constexpr AircraftDataKey<AircraftObservation> kAircraftObservation = {
 	"aircraft_observation"
 };
 
-inline constexpr AircraftDataKey<PilotControlState> kPilotControlState = {
-	AircraftDataId::PilotControlState,
-	"pilot_control_state"
+inline constexpr AircraftDataKey<FlightControlObservation>
+	kFlightControlObservation = {
+		AircraftDataId::FlightControlObservation,
+		"flight_control_observation"
 };
 
-inline constexpr AircraftDataKey<FlightControlDemand> kFlightControlDemand = {
-	AircraftDataId::FlightControlDemand,
-	"flight_control_demand"
+inline constexpr AircraftDataKey<PilotControlSignal> kPilotControlSignal = {
+	AircraftDataId::PilotControlSignal,
+	"pilot_control_signal"
 };
 
-inline constexpr AircraftDataKey<PrimaryControlPosition> kPrimaryControlPosition = {
-	AircraftDataId::PrimaryControlPosition,
-	"primary_control_position"
+inline constexpr AircraftDataKey<FlightControlActuatorCommand>
+	kFlightControlActuatorCommand = {
+		AircraftDataId::FlightControlActuatorCommand,
+		"flight_control_actuator_command"
 };
 
-inline constexpr AircraftDataKey<EngineControlDemand> kEngineControlDemand = {
-	AircraftDataId::EngineControlDemand,
-	"engine_control_demand"
+inline constexpr AircraftDataKey<FlightControlActuatorState>
+	kFlightControlActuatorState = {
+		AircraftDataId::FlightControlActuatorState,
+		"flight_control_actuator_state"
+};
+
+inline constexpr AircraftDataKey<ThrottleLeverSignal> kThrottleLeverSignal = {
+	AircraftDataId::ThrottleLeverSignal,
+	"throttle_lever_signal"
+};
+
+inline constexpr AircraftDataKey<EngineThrottleCommand>
+	kEngineThrottleCommand = {
+		AircraftDataId::EngineThrottleCommand,
+		"engine_throttle_command"
 };
 
 inline constexpr AircraftDataKey<SecondaryControlPosition>
@@ -219,6 +293,12 @@ inline constexpr AircraftDataKey<AirframeIntegrity> kAirframeIntegrity = {
 	"airframe_integrity"
 };
 
+inline constexpr AircraftDataKey<FlightControlComputerSnapshot>
+	kFlightControlComputerSnapshot = {
+		AircraftDataId::FlightControlComputerSnapshot,
+		"flight_control_computer_snapshot"
+};
+
 inline constexpr AircraftDataKey<AutomaticFlightControlSnapshot>
 	kAutomaticFlightControlSnapshot = {
 		AircraftDataId::AutomaticFlightControlSnapshot,
@@ -234,16 +314,19 @@ inline constexpr AircraftDataKey<PropulsionTestIntent> kPropulsionTestIntent = {
 using AircraftDataValue = std::variant<
 	FrameInput,
 	AircraftObservation,
-	PilotControlState,
-	FlightControlDemand,
-	PrimaryControlPosition,
-	EngineControlDemand,
+	FlightControlObservation,
+	PilotControlSignal,
+	FlightControlActuatorCommand,
+	FlightControlActuatorState,
+	ThrottleLeverSignal,
+	EngineThrottleCommand,
 	SecondaryControlPosition,
 	LandingGearData,
 	EngineData,
 	FuelDemand,
 	FuelData,
 	AirframeIntegrity,
+	FlightControlComputerSnapshot,
 	AutomaticFlightControlSnapshot,
 	PropulsionTestIntent>;
 

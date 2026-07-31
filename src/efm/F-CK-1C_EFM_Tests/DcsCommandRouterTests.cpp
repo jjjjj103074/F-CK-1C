@@ -266,6 +266,9 @@ void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
 	route_command(context, efm, { DcsIds::Commands::AirBrakesOn, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::FlapsDown, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::GearDown, 1.0F });
+	const Core::FrameOutput first = step(efm);
+	TEST_EXPECT_NEAR(context, first.engines[0].throttle_input, 0.5, kTolerance);
+	(void)step(efm);
 	const Core::FrameOutput output = step(efm);
 	TEST_EXPECT_NEAR(context, output.engines[0].throttle_input, 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, output.engines[1].throttle_input, 1.0, kTolerance);

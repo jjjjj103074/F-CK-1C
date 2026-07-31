@@ -52,6 +52,8 @@ constexpr const char* kStateCsvHeader =
 	"suspension_any_weight_on_wheels,suspension_on_ground,"
 	"fuel_internal_kg,fuel_external_kg,fuel_total_kg,"
 	"fuel_total_flow_kg_per_s,"
+	"flight_control_developer_g_limiter_override_available,"
+	"flight_control_developer_g_limiter_override_active,"
 	"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,"
 	"afcs_vertical_mode,afcs_lateral_mode,"
 	"afcs_pitch_command_normalized,afcs_roll_command_normalized,"
@@ -353,6 +355,10 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 		append_landing_gear(row, output.landing_gear) &&
 		append_suspension(row, output) &&
 		append_fuel(row, output.fuel) &&
+		row.append_bool(output.cockpit.flight_control_computer.
+			developer_g_limiter_override_available) &&
+		row.append_bool(output.cockpit.flight_control_computer.
+			developer_g_limiter_override_active) &&
 		append_automatic_flight_control(
 			row,
 			output.cockpit.automatic_flight_control) &&

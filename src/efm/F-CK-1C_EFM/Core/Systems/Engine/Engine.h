@@ -13,7 +13,7 @@ namespace Systems
 struct EngineFrameInput
 {
 	double dt = 0.0;
-	EngineControlDemand demand;
+	EngineThrottleCommand throttle_command;
 	double internal_fuel = 0.0;
 	double altitude_asl = 0.0;
 };

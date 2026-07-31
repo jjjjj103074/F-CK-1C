@@ -6,8 +6,6 @@
 namespace
 {
 constexpr double kEnabledCommandThreshold = 0.5;
-constexpr double kFuelFlowChannelBias = 1.0;
-constexpr double kFuelFlowChannelDivisor = 3.0;
 }
 
 namespace Core
@@ -41,7 +39,7 @@ void Engine::setup(SystemSetup& setup)
 {
 	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kAircraftObservation);
-	setup.read(AircraftDataKeys::kEngineControlDemand);
+	setup.read(AircraftDataKeys::kEngineThrottleCommand);
 	setup.read(AircraftDataKeys::kFuelData);
 	setup.publish(AircraftDataKeys::kEngineData, data_);
 	setup.publish(AircraftDataKeys::kFuelDemand, fuel_demand_);
@@ -81,7 +79,7 @@ void Engine::step(
 	const FuelData& fuel = aircraft.read(AircraftDataKeys::kFuelData);
 	step({
 		context.dt_s,
-		aircraft.read(AircraftDataKeys::kEngineControlDemand),
+		aircraft.read(AircraftDataKeys::kEngineThrottleCommand),
 		fuel.internal_fuel,
 		observation.altitude_asl
 	});
@@ -93,8 +91,8 @@ const EngineData& Engine::step(const EngineFrameInput& input)
 {
 	::Systems::apply_engine_throttle_commands(
 		engines_,
-		input.demand.left_throttle,
-		input.demand.right_throttle);
+		input.throttle_command.left_normalized,
+		input.throttle_command.right_normalized);
 	::Systems::clamp_engine_throttle_inputs(engines_);
 	::Systems::update_dry_engine_channels(engines_, config_, input.dt);
 	::Systems::update_afterburners(engines_, config_, input.dt);
@@ -113,15 +111,13 @@ const EngineData& Engine::step(const EngineFrameInput& input)
 
 void Engine::refresh_outputs()
 {
-	const double afterburner_average = 0.5 *
-		(engines_.left.afterburner_ratio + engines_.right.afterburner_ratio);
-	const double fuel_multiplier = 1.0 + afterburner_average *
-		(config_.afterburner.fuel_factor - 1.0);
-	fuel_demand_.flow_rate_kg_s = config_.fuel_consumption_rate *
-		((engines_.left.throttle_output +
-			engines_.right.throttle_output +
-			kFuelFlowChannelBias) / kFuelFlowChannelDivisor) *
-		fuel_multiplier;
+	fuel_demand_.flow_rate_kg_s =
+		::Systems::command_fuel_flow({
+			engines_.left.throttle_output,
+			engines_.right.throttle_output,
+			engines_.left.afterburner_ratio,
+			engines_.right.afterburner_ratio
+		}, config_).flow_rate_kg_s;
 	data_.left = {
 		engines_.left.switch_on,
 		engines_.left.throttle_input,

@@ -37,31 +37,7 @@ constexpr double kAoaDegradeRatio = 0.95;
 constexpr double kHoldGainMinimum = 1e-3;
 constexpr double kRateLimitTolerance = 1e-5;
 constexpr double kAntiWindupTolerance = 1e-4;
-constexpr double kActuatorTolerance = 1e-3;
 constexpr double kActuatorTimerMaximum = 10.0;
-
-struct FBWActuatorConfig
-{
-	double limit_deg;
-	double rate_deg_s;
-	double lag_tau;
-};
-
-struct FBWActuatorStateView
-{
-	double& rate_state_deg;
-	double& lag_state_deg;
-	double& debug_pre_deg;
-	double& debug_sat_deg;
-	double& debug_rate_deg;
-	double& debug_lag_deg;
-};
-
-struct FBWActuatorResult
-{
-	double command;
-	bool saturated;
-};
 
 struct FBWOuterPitchGains
 {
@@ -81,7 +57,9 @@ public:
 		: state_(state),
 		config_(config),
 		input_(input),
-		output_{ input.elevator_command, input.aileron_command, input.rudder_command }
+		output_{ input.elevator_position_normalized,
+			input.aileron_position_normalized,
+			input.rudder_position_normalized }
 	{
 	}
 
@@ -105,7 +83,8 @@ public:
 		select_rate_commands();
 		limit_rate_commands();
 		update_inner_rate_loop();
-		update_actuators();
+		publish_actuator_commands();
+		update_actuator_feedback();
 		return output_;
 	}
 
@@ -515,57 +494,16 @@ private:
 			std::fabs(rudder_pre - rudder_command_) > kAntiWindupTolerance;
 	}
 
-	FBWActuatorResult apply_axis_actuator(
-		double normalized_command,
-		const FBWActuatorConfig& actuator,
-		FBWActuatorStateView view)
+	void publish_actuator_commands()
 	{
-		view.debug_pre_deg = normalized_command * actuator.limit_deg;
-		view.debug_sat_deg = Common::limit(
-			view.debug_pre_deg, -actuator.limit_deg, actuator.limit_deg);
-		const double maximum_step = actuator.rate_deg_s * input_.dt;
-		view.rate_state_deg += Common::limit(
-			view.debug_sat_deg - view.rate_state_deg, -maximum_step, maximum_step);
-		view.rate_state_deg = Common::limit(
-			view.rate_state_deg, -actuator.limit_deg, actuator.limit_deg);
-		const double lag_gain = Common::limit(
-			input_.dt / (actuator.lag_tau + input_.dt), 0.0, 1.0);
-		view.lag_state_deg += (view.rate_state_deg - view.lag_state_deg) * lag_gain;
-		view.lag_state_deg = Common::limit(
-			view.lag_state_deg, -actuator.limit_deg, actuator.limit_deg);
-		view.debug_rate_deg = view.rate_state_deg;
-		view.debug_lag_deg = view.lag_state_deg;
-		const bool saturated =
-			std::fabs(view.debug_pre_deg - view.debug_sat_deg) > kActuatorTolerance ||
-			std::fabs(view.debug_sat_deg - view.rate_state_deg) > kActuatorTolerance ||
-			std::fabs(view.lag_state_deg) > actuator.limit_deg - kActuatorTolerance;
-		return {
-			Common::limit(view.lag_state_deg / actuator.limit_deg, -1.0, 1.0),
-			saturated
-		};
+		output_.aileron_command = aileron_command_;
+		output_.elevator_command = elevator_command_;
+		output_.rudder_command = rudder_command_;
 	}
 
-	void update_actuators()
+	void update_actuator_feedback()
 	{
-		const FBWActuatorResult aileron = apply_axis_actuator(
-			aileron_command_,
-			{ config_.ail_limit_deg, config_.ail_rate_deg_s, config_.ail_lag_tau },
-			{ state_.ail_rate_state_deg, state_.ail_lag_state_deg,
-				state_.ail_cmd_pre, state_.ail_cmd_sat, state_.ail_cmd_rate, state_.ail_cmd_lag });
-		const FBWActuatorResult elevator = apply_axis_actuator(
-			elevator_command_,
-			{ config_.ele_limit_deg, config_.ele_rate_deg_s, config_.ele_lag_tau },
-			{ state_.ele_rate_state_deg, state_.ele_lag_state_deg,
-				state_.ele_cmd_pre, state_.ele_cmd_sat, state_.ele_cmd_rate, state_.ele_cmd_lag });
-		const FBWActuatorResult rudder = apply_axis_actuator(
-			rudder_command_,
-			{ config_.rud_limit_deg, config_.rud_rate_deg_s, config_.rud_lag_tau },
-			{ state_.rud_rate_state_deg, state_.rud_lag_state_deg,
-				state_.rud_cmd_pre, state_.rud_cmd_sat, state_.rud_cmd_rate, state_.rud_cmd_lag });
-		output_.aileron_command = aileron.command;
-		output_.elevator_command = elevator.command;
-		output_.rudder_command = rudder.command;
-		state_.actuator_sat = aileron.saturated || elevator.saturated || rudder.saturated;
+		state_.actuator_sat = input_.actuator_saturated;
 		state_.actuator_sat_timer = state_.actuator_sat
 			? state_.actuator_sat_timer + input_.dt
 			: Common::limit(state_.actuator_sat_timer - input_.dt, 0.0, kActuatorTimerMaximum);

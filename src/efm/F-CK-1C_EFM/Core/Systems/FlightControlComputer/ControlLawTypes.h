@@ -179,15 +179,6 @@ struct FBWControllerConfig
 	double region_alpha2_deg = 18.0;
 	double alpha_cmd_per_stick_deg = 13.5;
 	double q_cmd_land_max_deg = 50.0;
-	double ail_limit_deg = 22.0;
-	double ele_limit_deg = 25.0;
-	double rud_limit_deg = 30.0;
-	double ail_rate_deg_s = 110.0;
-	double ele_rate_deg_s = 120.0;
-	double rud_rate_deg_s = 80.0;
-	double ail_lag_tau = 0.05;
-	double ele_lag_tau = 0.04;
-	double rud_lag_tau = 0.07;
 };
 
 struct FBWControllerState
@@ -211,12 +202,6 @@ struct FBWControllerState
 	double int_p = 0.0;
 	double int_q = 0.0;
 	double int_r = 0.0;
-	double ail_rate_state_deg = 0.0;
-	double ail_lag_state_deg = 0.0;
-	double ele_rate_state_deg = 0.0;
-	double ele_lag_state_deg = 0.0;
-	double rud_rate_state_deg = 0.0;
-	double rud_lag_state_deg = 0.0;
 	bool aoa_limit_active = false;
 	bool rate_limit_active = false;
 	bool actuator_sat = false;
@@ -282,18 +267,6 @@ struct FBWControllerState
 	double q_ref_blended = 0.0;
 	double q_ref_filtered = 0.0;
 	bool g_limit_active = false;
-	double ail_cmd_pre = 0.0;
-	double ail_cmd_sat = 0.0;
-	double ail_cmd_rate = 0.0;
-	double ail_cmd_lag = 0.0;
-	double ele_cmd_pre = 0.0;
-	double ele_cmd_sat = 0.0;
-	double ele_cmd_rate = 0.0;
-	double ele_cmd_lag = 0.0;
-	double rud_cmd_pre = 0.0;
-	double rud_cmd_sat = 0.0;
-	double rud_cmd_rate = 0.0;
-	double rud_cmd_lag = 0.0;
 };
 
 struct FBWControllerInput
@@ -319,9 +292,10 @@ struct FBWControllerInput
 	double yaw_trim = 0.0;
 	double gear_pos = 0.0;
 	bool wow = false;
-	double elevator_command = 0.0;
-	double aileron_command = 0.0;
-	double rudder_command = 0.0;
+	double elevator_position_normalized = 0.0;
+	double aileron_position_normalized = 0.0;
+	double rudder_position_normalized = 0.0;
+	bool actuator_saturated = false;
 };
 
 struct FBWControllerOutput

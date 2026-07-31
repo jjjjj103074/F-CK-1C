@@ -84,8 +84,8 @@ join(res.keyCommands, {
     { combos = { { key = "C", reformers = { "RCtrl" } } }, down = device_commands.FBWCatToggle, name = _("FBW CAT - Toggle"), category = { _("Flight Control") } },
     { combos = { { key = "1", reformers = { "RAlt" } } }, down = device_commands.FBWCat1, name = _("FBW CAT - CAT I"), category = { _("Flight Control") } },
     { combos = { { key = "3", reformers = { "RAlt" } } }, down = device_commands.FBWCat3, name = _("FBW CAT - CAT III"), category = { _("Flight Control") } },
-    { combos = { { key = "G", reformers = { "RCtrl" } } }, down = device_commands.FBWGLimiterOverride, up = device_commands.FBWGLimiterOverride, value_down = 1.0, value_up = 0.0, name = _("FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
-    { combos = { { key = "G", reformers = { "RAlt" } } }, down = device_commands.FBWGLimiterOverrideToggle, name = _("FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
+    { combos = { { key = "G", reformers = { "RCtrl" } } }, down = device_commands.FBWGLimiterOverride, up = device_commands.FBWGLimiterOverride, value_down = 1.0, value_up = 0.0, name = _("[Developer] FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
+    { combos = { { key = "G", reformers = { "RAlt" } } }, down = device_commands.FBWGLimiterOverrideToggle, name = _("[Developer] FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
 
     -- Autopilot
     { combos = { { key = "A", reformers = { "LAlt" } } }, down = device_commands.APMasterToggle, up = device_commands.APMasterToggle, value_down = 1.0, value_up = 0.0, name = _("AP Master - Toggle"), category = { _("Autopilot") } },

@@ -2,6 +2,9 @@
 
 #include "Common/Clamp.h"
 
+#include <cmath>
+#include <stdexcept>
+
 namespace Systems
 {
 struct PrimaryAxisState
@@ -32,14 +35,6 @@ struct ThrottleInputState
 	bool axis_inverted = true;
 	ThrottleChannelState left;
 	ThrottleChannelState right;
-};
-
-struct ThrottleCompositionInput
-{
-	double pilot_command = 0.0;
-	double fbw_command = 0.0;
-	double fbw_blend = 0.0;
-	bool fbw_override = false;
 };
 
 inline void reset_throttle_channel(ThrottleChannelState& channel, double command)
@@ -141,95 +136,65 @@ inline void reset_primary_commands(PrimaryControlState& controls)
 	controls.yaw.trim = 0.0;
 }
 
-inline double update_pitch_axis_input(double input, int discrete, bool analog)
+struct PrimaryAxisDynamics
 {
-	// Keyboard axes intentionally retain the legacy per-frame ramp and
-	// centering feel. Pitch/yaw use a slightly slower step than roll, and the
-	// asymmetric pitch centering window prevents abrupt recentering near the
-	// historical command limits; these are input-feel tuning values, not
-	// aircraft configuration.
-	if (analog)
-	{
-		return Common::limit(input, -1.0, 1.0);
-	}
-	if (discrete > 0.1)
-	{
-		const double next = input + 0.0035;
-		return next > 1.0 ? 1.0 : next;
-	}
-	if (discrete < -0.1)
-	{
-		const double next = input - 0.0035;
-		return next < -1.0 ? -1.0 : next;
-	}
-	if (discrete == 0 && (input > 0.7 || input < -0.5))
-	{
-		return input * 0.98;
-	}
-	return input;
+	double command_rate_normalized_s = 0.0;
+	double centering_retention_per_reference_tick = 1.0;
+	double centering_positive_threshold = 0.0;
+	double centering_negative_threshold = 0.0;
+	bool center_only_outside_thresholds = false;
+};
+
+inline bool should_center_axis(
+	const PrimaryAxisState& axis,
+	const PrimaryAxisDynamics& dynamics)
+{
+	return axis.discrete == 0 &&
+		(!dynamics.center_only_outside_thresholds ||
+			axis.input > dynamics.centering_positive_threshold ||
+			axis.input < dynamics.centering_negative_threshold);
 }
 
-inline double update_roll_axis_input(double input, int discrete, bool analog)
+inline PrimaryAxisState update_primary_axis(
+	const PrimaryAxisState& current,
+	const PrimaryAxisDynamics& dynamics,
+	double dt_s)
 {
-	if (analog == true)
+	constexpr double kReferenceUpdateRateHz = 64.0;
+	constexpr double kDiscreteCommandThreshold = 0.1;
+	if (!std::isfinite(dt_s) || dt_s <= 0.0)
 	{
-		return Common::limit(input, -1.0, 1.0);
+		throw std::invalid_argument(
+			"PilotControls axis dt must be positive and finite.");
 	}
-
-	if (discrete > 0.1)
+	PrimaryAxisState next = current;
+	if (current.analog)
 	{
-		input += 0.004;
-		if (input > 1.0)
-		{
-			input = 1.0;
-		}
+		next.input = Common::limit(current.input, -1.0, 1.0);
+		return next;
 	}
-	if (discrete < -0.1)
+	if (std::fabs(static_cast<double>(current.discrete)) >
+		kDiscreteCommandThreshold)
 	{
-		input -= 0.004;
-		if (input < -1.0)
-		{
-			input = -1.0;
-		}
+		next.input = Common::limit(
+			current.input + current.discrete *
+				dynamics.command_rate_normalized_s * dt_s,
+			-1.0,
+			1.0);
+		return next;
 	}
-	if (discrete == 0)
+	if (should_center_axis(current, dynamics))
 	{
-		input *= 0.9;
+		next.input *= std::pow(
+			dynamics.centering_retention_per_reference_tick,
+			dt_s * kReferenceUpdateRateHz);
 	}
-
-	return input;
+	return next;
 }
 
-inline double update_yaw_axis_input(double input, int discrete, bool analog)
-{
-	if (analog == true)
-	{
-		return Common::limit(input, -1.0, 1.0);
-	}
-
-	if (discrete > 0.1)
-	{
-		input += 0.0035;
-		if (input > 1.0)
-		{
-			input = 1.0;
-		}
-	}
-	if (discrete < -0.1)
-	{
-		input -= 0.0035;
-		if (input < -1.0)
-		{
-			input = -1.0;
-		}
-	}
-	if (discrete == 0)
-	{
-		input *= 0.9;
-	}
-
-	return input;
-}
+inline PrimaryControlState update_primary_control_inputs(
+	const PrimaryControlState& current,
+	double dt_s);
 
 inline double clamp_pitch_roll_trim(double trim)
 {
@@ -241,16 +206,47 @@ inline double clamp_yaw_trim(double trim)
 	return Common::limit(trim, -0.2, 0.2);
 }
 
-inline void update_primary_control_inputs(PrimaryControlState& controls)
+inline PrimaryControlState update_primary_control_inputs(
+	const PrimaryControlState& current,
+	double dt_s)
 {
-	controls.pitch.input = update_pitch_axis_input(controls.pitch.input, controls.pitch.discrete, controls.pitch.analog);
-	controls.pitch.trim = clamp_pitch_roll_trim(controls.pitch.trim);
-
-	controls.roll.input = update_roll_axis_input(controls.roll.input, controls.roll.discrete, controls.roll.analog);
-	controls.roll.trim = clamp_pitch_roll_trim(controls.roll.trim);
-
-	controls.yaw.input = update_yaw_axis_input(controls.yaw.input, controls.yaw.discrete, controls.yaw.analog);
-	controls.yaw.trim = clamp_yaw_trim(controls.yaw.trim);
+	// These rates and retention factors preserve the legacy 64 Hz keyboard
+	// feel while making the result depend on elapsed simulation time.
+	constexpr double kPitchYawCommandRateNormalizedS = 0.224;
+	constexpr double kRollCommandRateNormalizedS = 0.256;
+	constexpr double kPitchCenteringRetention = 0.98;
+	constexpr double kRollYawCenteringRetention = 0.9;
+	constexpr double kPitchPositiveCenteringThreshold = 0.7;
+	constexpr double kPitchNegativeCenteringThreshold = -0.5;
+	constexpr PrimaryAxisDynamics kPitchDynamics = {
+		kPitchYawCommandRateNormalizedS,
+		kPitchCenteringRetention,
+		kPitchPositiveCenteringThreshold,
+		kPitchNegativeCenteringThreshold,
+		true
+	};
+	constexpr PrimaryAxisDynamics kRollDynamics = {
+		kRollCommandRateNormalizedS,
+		kRollYawCenteringRetention,
+		0.0,
+		0.0,
+		false
+	};
+	constexpr PrimaryAxisDynamics kYawDynamics = {
+		kPitchYawCommandRateNormalizedS,
+		kRollYawCenteringRetention,
+		0.0,
+		0.0,
+		false
+	};
+	PrimaryControlState next = current;
+	next.pitch = update_primary_axis(current.pitch, kPitchDynamics, dt_s);
+	next.roll = update_primary_axis(current.roll, kRollDynamics, dt_s);
+	next.yaw = update_primary_axis(current.yaw, kYawDynamics, dt_s);
+	next.pitch.trim = clamp_pitch_roll_trim(next.pitch.trim);
+	next.roll.trim = clamp_pitch_roll_trim(next.roll.trim);
+	next.yaw.trim = clamp_yaw_trim(next.yaw.trim);
+	return next;
 }
 
 inline double normalize_throttle_axis(double raw_value, bool throttle_axis_inverted)
@@ -344,18 +340,4 @@ inline void update_pilot_throttle_cmds(ThrottleInputState& throttles)
 		throttles.right.use_axis);
 }
 
-inline double compose_engine_throttle_cmd(
-	const ThrottleCompositionInput& input)
-{
-	const double pilot = Common::limit(input.pilot_command, 0.0, 1.0);
-	const double fbw = Common::limit(input.fbw_command, 0.0, 1.0);
-
-	if (input.fbw_override)
-	{
-		return fbw;
-	}
-
-	const double blend = Common::limit(input.fbw_blend, 0.0, 1.0);
-	return Common::limit((1.0 - blend) * pilot + blend * fbw, 0.0, 1.0);
-}
 }

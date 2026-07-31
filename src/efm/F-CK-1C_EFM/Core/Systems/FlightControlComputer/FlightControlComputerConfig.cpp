@@ -103,13 +103,6 @@ bool valid_signal_time_constants(
 		config.nz_filter_tau > 0.0 && config.pitch_ref_tau > 0.0;
 }
 
-bool valid_actuator_time_constants(
-	const Systems::FBWControllerConfig& config)
-{
-	return config.ail_lag_tau > 0.0 && config.ele_lag_tau > 0.0 &&
-		config.rud_lag_tau > 0.0;
-}
-
 bool valid_controller_outer_limits(
 	const Systems::FBWControllerConfig& config)
 {
@@ -120,13 +113,6 @@ bool valid_controller_outer_limits(
 		config.nz_limit_buffer_bias >= 0.0 &&
 		config.alpha_cmd_per_stick_deg > 0.0 &&
 		config.q_cmd_land_max_deg > 0.0;
-}
-
-bool valid_actuator_limits(const Systems::FBWControllerConfig& config)
-{
-	return config.ail_limit_deg > 0.0 && config.ele_limit_deg > 0.0 &&
-		config.rud_limit_deg > 0.0 && config.ail_rate_deg_s > 0.0 &&
-		config.ele_rate_deg_s > 0.0 && config.rud_rate_deg_s > 0.0;
 }
 
 bool valid_controller_parameters(const Systems::FBWControllerConfig& config)
@@ -142,16 +128,11 @@ bool valid_controller_parameters(const Systems::FBWControllerConfig& config)
 		config.region_low_kts, config.region_high_kts,
 		config.region_approach_kts, config.region_min_kts,
 		config.region_alpha1_deg, config.region_alpha2_deg,
-		config.alpha_cmd_per_stick_deg, config.q_cmd_land_max_deg,
-		config.ail_limit_deg, config.ele_limit_deg, config.rud_limit_deg,
-		config.ail_rate_deg_s, config.ele_rate_deg_s, config.rud_rate_deg_s,
-		config.ail_lag_tau, config.ele_lag_tau, config.rud_lag_tau
+		config.alpha_cmd_per_stick_deg, config.q_cmd_land_max_deg
 	});
 	return finite && valid_controller_regions(config) &&
 		valid_signal_time_constants(config) &&
-		valid_actuator_time_constants(config) &&
-		valid_controller_outer_limits(config) &&
-		valid_actuator_limits(config);
+		valid_controller_outer_limits(config);
 }
 }
 

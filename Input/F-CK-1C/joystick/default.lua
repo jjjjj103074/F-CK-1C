@@ -77,8 +77,8 @@ join(res.keyCommands, {
     { down = device_commands.FBWCatToggle, name = _("FBW CAT - Toggle"), category = { _("Flight Control") } },
     { down = device_commands.FBWCat1, name = _("FBW CAT - CAT I"), category = { _("Flight Control") } },
     { down = device_commands.FBWCat3, name = _("FBW CAT - CAT III"), category = { _("Flight Control") } },
-    { down = device_commands.FBWGLimiterOverride, up = device_commands.FBWGLimiterOverride, value_down = 1.0, value_up = 0.0, name = _("FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
-    { down = device_commands.FBWGLimiterOverrideToggle, name = _("FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
+    { down = device_commands.FBWGLimiterOverride, up = device_commands.FBWGLimiterOverride, value_down = 1.0, value_up = 0.0, name = _("[Developer] FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
+    { down = device_commands.FBWGLimiterOverrideToggle, name = _("[Developer] FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
 
     { down = device_commands.AirBrakesUp, name = _("Speedbrake 3-Pos - Close"), category = { _("Throttle Panel"), _("Flight Control") } },
     { down = device_commands.AirBrakesAuto, name = _("Speedbrake 3-Pos - Hold"), category = { _("Throttle Panel"), _("Flight Control") } },

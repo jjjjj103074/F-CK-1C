@@ -118,20 +118,20 @@ void test_control_data_crosses_owner_boundary(Tests::Context& context)
 	const AircraftObservation observation;
 	const AircraftDataSnapshot output =
 		step_pipeline(pipeline, input, observation);
-	const PilotControlState& pilot =
-		output.read(AircraftDataKeys::kPilotControlState);
-	const FlightControlDemand& demand =
-		output.read(AircraftDataKeys::kFlightControlDemand);
-	const PrimaryControlPosition& position =
-		output.read(AircraftDataKeys::kPrimaryControlPosition);
-	TEST_EXPECT_NEAR(context, pilot.pitch, kPitchInput, kTolerance);
-	TEST_EXPECT_NEAR(context, pilot.yaw, -kYawInput, kTolerance);
+	const PilotControlSignal& pilot =
+		output.read(AircraftDataKeys::kPilotControlSignal);
+	const FlightControlActuatorCommand& demand =
+		output.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	const FlightControlActuatorState& position =
+		output.read(AircraftDataKeys::kFlightControlActuatorState);
+	TEST_EXPECT_NEAR(context, pilot.pitch_axis_normalized, kPitchInput, kTolerance);
+	TEST_EXPECT_NEAR(context, pilot.yaw_axis_normalized, -kYawInput, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.elevator, kNeutralAxis, kTolerance);
+		context, position.elevator.normalized_position, kNeutralAxis, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.aileron, kNeutralAxis, kTolerance);
+		context, position.aileron.normalized_position, kNeutralAxis, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.rudder, kNeutralAxis, kTolerance);
+		context, position.rudder.normalized_position, kNeutralAxis, kTolerance);
 }
 
 FrameInput nonzero_observation_frame()
@@ -151,11 +151,12 @@ FrameInput nonzero_observation_frame()
 	return input;
 }
 
-FlightControlDemand expected_nonzero_demand()
+FlightControlActuatorCommand expected_nonzero_demand()
 {
 	FlightControlComputer reference(
 		fck1c_flight_control_computer_config(),
-		StartMode::HotGround);
+		StartMode::HotGround,
+		{});
 	::Systems::FBWControllerInput input;
 	input.dt = kSystemDt;
 	input.qbar = kDynamicPressure;
@@ -165,7 +166,7 @@ FlightControlDemand expected_nonzero_demand()
 	input.mach = kMach;
 	input.g = kExpectedGLoad;
 	input.gear_pos = kFullIntegrity;
-	return reference.step(input, {});
+	return reference.step({ input, {}, {}, {} });
 }
 
 void expect_normalized_observation(
@@ -210,12 +211,12 @@ void test_observations_are_normalized_and_retained(Tests::Context& context)
 			first_frame,
 			make_aircraft_observation(observation_state));
 	expect_normalized_observation(context, first);
-	const FlightControlDemand expected = expected_nonzero_demand();
-	const FlightControlDemand& actual =
-		first.read(AircraftDataKeys::kFlightControlDemand);
-	TEST_EXPECT_NEAR(context, actual.pitch, expected.pitch, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.roll, expected.roll, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.yaw, expected.yaw, kTolerance);
+	const FlightControlActuatorCommand expected = expected_nonzero_demand();
+	const FlightControlActuatorCommand& actual =
+		first.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	TEST_EXPECT_NEAR(context, actual.elevator_normalized, expected.elevator_normalized, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.aileron_normalized, expected.aileron_normalized, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.rudder_normalized, expected.rudder_normalized, kTolerance);
 	for (double spin :
 		first.read(AircraftDataKeys::kLandingGearData).wheel_spin)
 	{

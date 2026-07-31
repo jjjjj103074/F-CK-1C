@@ -17,6 +17,16 @@
 namespace
 {
 constexpr long double kNanosecondsPerSecond = 1'000'000'000.0L;
+constexpr double kColdStartThrottle = 0.0;
+constexpr double kHotAirStartThrottle = 0.5;
+
+Core::ThrottleLeverSignal make_initial_throttle_levers(
+	Core::StartMode start_mode)
+{
+	const double throttle = start_mode == Core::StartMode::HotAir
+		? kHotAirStartThrottle : kColdStartThrottle;
+	return { throttle, throttle };
+}
 
 Core::Systems::FlightFuelState make_system_fuel_state(
 	const Core::Simulation::FlightFuelLoad& load)
@@ -40,7 +50,8 @@ Core::Systems::FlightSetupContext make_system_setup(
 {
 	return {
 		setup.start_mode,
-		make_system_fuel_state(setup.fuel)
+		make_system_fuel_state(setup.fuel),
+		make_initial_throttle_levers(setup.start_mode)
 	};
 }
 

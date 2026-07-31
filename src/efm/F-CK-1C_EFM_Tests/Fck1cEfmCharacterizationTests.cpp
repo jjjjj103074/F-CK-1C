@@ -23,10 +23,10 @@ constexpr std::size_t kCharacterizationFrameCount = 4;
 constexpr std::uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
 constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
 constexpr std::array<std::uint64_t, 4> kSchedulerTrajectoryHashes = {
-	8266340088514578931ULL,
-	1251275511464176060ULL,
-	15630636623490966596ULL,
-	8942799995731078575ULL
+	8530861424250479465ULL,
+	18313816468762350542ULL,
+	5134985644762202281ULL,
+	7006821647100821277ULL
 };
 
 void write_availability(

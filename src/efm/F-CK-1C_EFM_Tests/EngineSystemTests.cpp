@@ -1,6 +1,7 @@
 #include "TestHarness.h"
 
 #include "Core/Systems/Engine/EngineModel.h"
+#include "Core/Systems/Engine/EngineConfig.h"
 
 namespace
 {
@@ -40,6 +41,25 @@ void test_afterburner_ignition(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, engines.left.afterburner_ratio, 1.0 / 3.0, kTolerance);
 }
 
+void test_digital_control_commands_are_separate_from_plant(
+	Tests::Context& context)
+{
+	const auto& config = Core::Systems::fck1c_engine_config();
+	const auto dry = Systems::command_dry_engine(0.5, 0.0, config);
+	TEST_EXPECT(context, dry.throttle_output_target > 0.0);
+	TEST_EXPECT_NEAR(
+		context, dry.spool_time_constant_s, config.spool_up_tau, kTolerance);
+	const auto afterburner = Systems::command_afterburner(
+		{ 1.0, 1.0, 0.0, true }, false, config.afterburner);
+	TEST_EXPECT(context, afterburner.lit);
+	TEST_EXPECT(context, afterburner.ratio_target > 0.0);
+	const auto fuel = Systems::command_fuel_flow(
+		{ 0.5, 0.5, 0.0, 0.0 }, config);
+	TEST_EXPECT_NEAR(
+		context, fuel.flow_rate_kg_s,
+		config.fuel_consumption_rate * (2.0 / 3.0), kTolerance);
+}
+
 }
 
 void run_engine_system_tests(Tests::Context& context)
@@ -47,4 +67,5 @@ void run_engine_system_tests(Tests::Context& context)
 	test_engine_switches_and_throttle(context);
 	test_engine_first_order(context);
 	test_afterburner_ignition(context);
+	test_digital_control_commands_are_separate_from_plant(context);
 }

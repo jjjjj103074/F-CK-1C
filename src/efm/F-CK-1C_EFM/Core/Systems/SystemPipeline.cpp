@@ -44,13 +44,11 @@ struct CommandRegistration
 	CommandId id;
 	CommandHandler handler;
 };
-
 struct DamageRegistration
 {
 	DamageArea area;
 	DamageHandler handler;
 };
-
 struct SystemSetup::State
 {
 	std::string system_id;
@@ -63,7 +61,6 @@ struct SystemSetup::State
 	std::optional<std::uint32_t> update_rate_hz;
 	std::optional<SystemScheduledTime> update_period;
 };
-
 struct RuntimeSystem
 {
 	std::uint32_t update_rate_hz = 0;
@@ -73,11 +70,9 @@ struct RuntimeSystem
 	std::array<bool, kAircraftDataSlotCount> publications = {};
 	SystemSetup::State setup;
 };
-
 struct SystemPipeline::Implementation
 {
 	using Storage = AircraftDataSnapshot::Storage;
-
 	explicit Implementation(
 		const FlightSetupContext& context,
 		std::vector<SystemEntry> catalog);
@@ -229,6 +224,12 @@ SystemPipeline::Implementation::Implementation(
 		slot(AircraftDataId::AircraftObservation);
 	writers[observation_slot] = kExternalAircraftDataWriter;
 	committed[observation_slot] = AircraftObservation{};
+	const std::size_t flight_control_observation_slot =
+		slot(AircraftDataId::FlightControlObservation);
+	writers[flight_control_observation_slot] =
+		kExternalAircraftDataWriter;
+	committed[flight_control_observation_slot] =
+		FlightControlObservation{};
 	create_systems(context, std::move(catalog));
 	collect_declarations();
 	validate_and_commit_setup();
@@ -535,6 +536,8 @@ AircraftDataSnapshot SystemPipeline::Implementation::step(
 	next[slot(AircraftDataId::FrameInput)] = input.frame;
 	next[slot(AircraftDataId::AircraftObservation)] =
 		input.observation;
+	next[slot(AircraftDataId::FlightControlObservation)] =
+		make_flight_control_observation(input.observation);
 	SystemSchedule next_schedule = schedule;
 	while (next_schedule.has_due(input.target_time))
 	{

@@ -14,7 +14,7 @@ namespace Simulation
 {
 struct AerodynamicsModelInput
 {
-	const PrimaryControlPosition& primary;
+	const FlightControlActuatorState& primary;
 	const SecondaryControlPosition& secondary;
 	const LandingGearData& landing_gear;
 	const AirframeIntegrity& integrity;

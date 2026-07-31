@@ -39,7 +39,7 @@ void LandingGear::setup(SystemSetup& setup)
 	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
 	setup.read(AircraftDataKeys::kAircraftObservation);
-	setup.read(AircraftDataKeys::kPilotControlState);
+	setup.read(AircraftDataKeys::kPilotControlSignal);
 	setup.publish(AircraftDataKeys::kLandingGearData, data_);
 	register_handlers(setup);
 }
@@ -77,14 +77,14 @@ void LandingGear::step(
 	const AircraftObservation& observation =
 		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	apply_suspension_feedback(frame);
-	const PilotControlState& pilot =
-		aircraft.read(AircraftDataKeys::kPilotControlState);
+	const PilotControlSignal& pilot =
+		aircraft.read(AircraftDataKeys::kPilotControlSignal);
 	const LandingGearFrameInput input = {
 		observation.speed_scalar,
 		observation.ground_speed,
 		context.dt_s,
 		observation.altitude_agl,
-		pilot.yaw
+		pilot.yaw_axis_normalized
 	};
 	step(input);
 	update_on_ground();

@@ -33,17 +33,17 @@ Core::EngineOutput project_engine(
 }
 
 Core::ControlOutput project_controls(
-	const Core::PilotControlState& input,
-	const Core::PrimaryControlPosition& primary,
+	const Core::PilotControlSignal& input,
+	const Core::FlightControlActuatorState& primary,
 	const Core::SecondaryControlPosition& secondary)
 {
 	return {
-		input.pitch,
-		input.roll,
-		input.yaw,
-		primary.elevator,
-		primary.aileron,
-		primary.rudder,
+		input.pitch_axis_normalized,
+		input.roll_axis_normalized,
+		input.yaw_axis_normalized,
+		primary.elevator.normalized_position,
+		primary.aileron.normalized_position,
+		primary.rudder.normalized_position,
 		secondary.flaps,
 		secondary.slats,
 		secondary.airbrake
@@ -118,8 +118,8 @@ FrameOutput AircraftSimulation::make_frame_output(
 		project_engine(engines.right, simulation.thrust_force[1])
 	};
 	output.controls = project_controls(
-		aircraft.read(AircraftDataKeys::kPilotControlState),
-		aircraft.read(AircraftDataKeys::kPrimaryControlPosition),
+		aircraft.read(AircraftDataKeys::kPilotControlSignal),
+		aircraft.read(AircraftDataKeys::kFlightControlActuatorState),
 		aircraft.read(AircraftDataKeys::kSecondaryControlPosition));
 	output.landing_gear = project_landing_gear(landing_gear);
 	output.suspension = project_suspension(landing_gear);
@@ -132,6 +132,8 @@ FrameOutput AircraftSimulation::make_frame_output(
 	output.mass_effect = simulation.mass_effect;
 	output.cockpit.status = { true, cockpit_snapshot_revision_ };
 	output.cockpit.simulation_time_s = simulation_time_s_;
+	output.cockpit.flight_control_computer =
+		aircraft.read(AircraftDataKeys::kFlightControlComputerSnapshot);
 	output.cockpit.automatic_flight_control =
 		aircraft.read(AircraftDataKeys::kAutomaticFlightControlSnapshot);
 	output.cockpit.propulsion_test_thrust_cut_requested =

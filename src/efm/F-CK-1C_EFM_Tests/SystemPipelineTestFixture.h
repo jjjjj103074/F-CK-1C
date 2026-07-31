@@ -181,14 +181,16 @@ void expect_execution_error(
 	TEST_EXPECT(context, caught);
 }
 
-inline Core::FlightControlDemand demand(double pitch)
-{
-	return { pitch, kNeutralAxis, kNeutralAxis };
-}
-
-inline Core::PrimaryControlPosition position(double elevator)
+inline Core::FlightControlActuatorCommand actuator_command(double elevator)
 {
 	return { elevator, kNeutralAxis, kNeutralAxis };
+}
+
+inline Core::FlightControlActuatorState actuator_state(double elevator)
+{
+	Core::FlightControlActuatorState state;
+	state.elevator.normalized_position = elevator;
+	return state;
 }
 
 inline StepAction no_step()

@@ -13,6 +13,7 @@ struct FlightControlComputerConfig
 	::Systems::FBWControllerConfig control_laws;
 	std::vector<double> mach_table;
 	std::vector<double> alpha_limit_deg;
+	bool developer_g_limiter_override_available = false;
 };
 
 void validate_flight_control_computer_config(

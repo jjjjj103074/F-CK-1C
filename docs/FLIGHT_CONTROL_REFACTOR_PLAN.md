@@ -5,17 +5,17 @@
 本文件已取代先前的
 `F16_INSPIRED_FLIGHT_CONTROL_ARCHITECTURE_PLAN.md`。
 
-目前狀態是「宏觀範圍與 System scheduler 架構待使用者最後檢查」。先前文件中的
-AP 模式表、控制器形式、參數與詳細 commit 規劃仍然失效，不得當成後續實作
-依據。
+System scheduler 已完成實作與驗證；飛控、控制面作動與油門裝置 seam 已完成
+native 驗證，目前等待 DCS integration 驗證。先前文件中的 AP 模式表、
+控制器形式、參數與詳細 commit 規劃仍然失效，不得當成後續實作依據。
 
 本文件目前固定：
 
 1. 已由可靠公開來源確認的事實。
 2. 已由專案明確決定的產品方向。
 3. 重構包含與不包含的宏觀範圍。
-4. 現有 `SystemPipeline` 改為時間排程的架構決策。
-5. scheduler 完成並驗證後，才繼續討論 AP 與飛控架構。
+4. 已完成的 `SystemPipeline` 時間排程架構與因果規則。
+5. 飛控、作動器、引擎數位控制及非擬真功能的隔離原則。
 
 控制律數學、AP 模式細節、參數與詳細施工順序，必須在後續討論重新建立。
 
@@ -95,19 +95,32 @@ systems。
 
 此來源沒有公開 DFLCC 的內部軟體分區、冗餘數量、Interface 或 AP 模式。
 
-### 3.3 雙發動機
+### 3.3 雙發動機、HOTAS 與全數位引擎控制
 
-中華民國空軍公開資料明確記載 F-CK-1 使用兩具 TFE1042-70 渦輪扇發動機。
+第一方公開資料目前可以確認三件互相獨立的事實：
+
+- 中華民國空軍記載 F-CK-1 使用兩具 TFE1042-70 渦輪扇發動機。
+- 漢翔記載 IDF 座艙採用 Hands-on-Throttle and Stick（HOTAS）。
+- 漢翔記載 TFE1042 採用 all-digital electronic control，並曾在 IDF 完成實際
+  飛行驗證。
 
 來源：
 
 - [中華民國空軍 — IDF](https://air.mnd.gov.tw/TW/Weapon/Weapon_Detail.aspx?CID=55&ID=89)
+- [AIDC — IDF Fighter](https://www.aidc.com.tw/en/military/idf)
+- [AIDC — TFE1042 Turbofan Engine](https://www.aidc.com.tw/en/engine/tfe1042)
 
 架構意義：
 
 - 不得直接複製單發 F-16 的推進與方向動態假設。
 - 飛控與測試環境必須能面對左右推力不一致造成的偏航力矩。
+- HOTAS 只確認操作器配置，不證明具有或不具有 Auto-throttle。
+- 玩家油門桿位置與引擎 fuel、nozzle、afterburner command 之間必須保留明確的
+  數位引擎控制 seam。
 - 是否具有真實的自動單發補償仍屬未知，不能由雙發配置自行推導。
+- 公開資料沒有確認控制器的正式名稱是否為 DEEC、是否具有完整 FADEC authority、
+  控制器數量、控制律、更新率或故障模式；專案使用 DEEC 一詞時必須註明這是
+  responsibility label，而不是已確認的 F-CK-1 硬體名稱。
 
 ### 3.4 機體與 F-16 不相同
 
@@ -207,7 +220,9 @@ F-CK-1 重構目標。
 - CAT I／CAT III 名稱或 stores-configuration 操作方式。
 - 基本 AP 模式、panel 操作與各軸 engage 關係。
 - AP 是否位於 DFLCC 內，或另有獨立硬體。
-- Auto-throttle。
+- 是否具有 Auto-throttle；HOTAS 與全數位引擎控制都不能回答此問題。
+- 油門桿到數位引擎控制器的真實訊號形式、左右引擎控制方式與 detent 行為。
+- 數位引擎控制器的正式名稱、硬體數量、authority、控制律、更新率與故障模式。
 - Manual Pitch Override。
 - Direct／reversion control law。
 - DFLCC 冗餘、voting、failure 與 degradation 行為。
@@ -260,6 +275,10 @@ Toggle 可以被正規化為一個操作，但最終狀態必須由目標狀態�
 - 輸入名稱與文件必須標示 Developer 或 Flight Test。
 - 正常擬真測試必須確認它沒有啟用。
 
+實作以 `developer_g_limiter_override_available` 作為獨立 availability；production
+預設 `false`，因此一般 DCS 指令不會取得控制權。telemetry／CSV 必須分別輸出
+`available` 與 `active`，測試也必須證明 unavailable 時送入命令不改變飛控輸出。
+
 ### 6.4 現有 Lua AP 不是未來規格
 
 Phase 3 搬移的 Lua 行為只保留為 legacy behavior、測試資料與回歸證據。
@@ -275,17 +294,35 @@ Phase 3 搬移的 Lua 行為只保留為 legacy behavior、測試資料與回歸
 
 - [Cockpit Phase 3 Autopilot 遷移報告](COCKPIT_PHASE_3_AUTOPILOT_REPORT.md)
 
+### 6.5 擬真基線與非擬真功能隔離
+
+專案允許保留非擬真玩法，但必須滿足：
+
+- 擬真基線是預設路徑，不能依賴非擬真功能才能正常運作。
+- 每項非擬真功能具有獨立、明確且預設關閉的 availability switch。
+- availability 與飛行中 engage／disengage 是兩種不同狀態，不得混成一個旗標。
+- 非擬真功能不得偽裝成真實座艙裝置、DFLCC、DEEC 或已確認的 AP 模式。
+- 關閉時不得發布控制 demand、改寫 reference 或取得控制權；狀態仍須在
+  diagnostics／telemetry 中可辨識。
+- 測試必須證明關閉功能時的擬真輸出與完全不存在該功能時相同。
+
+現有 Auto-throttle 未被證實為 F-CK-1 功能，長期應保留為獨立、預設關閉的
+`Experimental Auto-throttle Assist`。其 placement、開關與人工接管規則屬於 AP／
+gameplay-assist 後續討論；本次不搬移、不重寫也不改變既有 A/T 行為。
+
 ## 7. 宏觀重構範圍
 
 ### 7.1 包含
 
-- 將 `SystemPipeline` 從固定 group 排程改為依模擬時間執行的 scheduler。
+- 已完成並必須保留的固定時間 `SystemPipeline` scheduler。
 - `PilotControls` 的 System 身分與輸出 Interface。
 - `FlightControlComputer` 的真實裝置責任。
+- 以 `FlightControlActuationSystem` 取代語意不清的 `PrimaryFlightControls`。
 - FLCC 內部 Module 與外部 System 的 seam。
 - 玩家、AP 與未來自動安全來源的 authority ownership。
-- `FlightControlDemand` 與 `PrimaryFlightControls` 的 seam。
-- actuator demand、actuator state 與實際控制面位置的 ownership。
+- `FlightControlActuatorCommand`、`FlightControlActuatorState` 與實際控制面位置的
+  ownership。
+- 油門桿訊號、數位引擎控制責任與 engine plant 的最小 seam 整理。
 - 飛控需要的 typed AircraftData Interface。
 - AP 與 manual FBW 的重新整理、修復及重構。
 - 與 F-CK-1 simulation plant 的閉迴路驗證。
@@ -298,43 +335,22 @@ Phase 3 搬移的 Lua 行為只保留為 legacy behavior、測試資料與回歸
 - 完整重寫 aerodynamics、mass、fuel 或 propulsion model。
 - 虛構 F-CK-1 的機密或未公開控制律。
 - 在沒有證據或需求前實作完整 DFLCC redundancy 與故障投票。
-- 在本宏觀階段決定 PID、filter、gain、limit 或 control frequency。
-- 在本宏觀階段決定完整 AP 模式表。
+- 在缺少證據與閉迴路驗證時宣稱 PID、filter、gain、limit 或 rate 是真機數值。
+- 在裝置 seam 以前固定完整 AP 模式表。
 - 模擬電纜的奈秒級物理傳播延遲。
 - 每條 AircraftData 訊號各自擁有 transport-delay queue。
 - 使用隨機啟動 offset、Clock Domain、動態 update rate 或多執行緒執行 System。
 - 冷啟動、通電時重設 scheduler epoch 或依電源狀態加入／移除 schedule。
-- 在 scheduler 以前建立 AP／FBW 的詳細實作或 commit 順序。
+- 完整重寫 TFE1042 engine plant 或虛構其機密 DEEC control law。
 
 ## 8. 重構前 `System` 架構的已確認基線
 
-重構前的 `SystemPipeline`：
-
-- 是 aircraft Systems 的唯一 production scheduler 與 commit point。
-- 透過 typed `AircraftData` 傳遞跨 System 狀態。
-- 驗證 read、publication、型別、初始值與 single writer。
-- 每個 semantic `CommandId` 只允許一個 handler。
-- concrete System 不需要直接呼叫另一個 concrete System。
-- 每個 System 透過 `setup()` 宣告 Interface，透過 `step()` 跟隨 host frame
-  推進。
-
-重構前的執行模型只有兩個 `SystemGroup`：
-
-```text
-Control
-Equipment
-```
-
-當時每個 group 使用同一份 immutable input snapshot 執行。相同 group 的
-System 看不到彼此在該 frame 的 pending publication；整個 group 完成後才一次
-commit。本節只記錄重構前基線，目前 runtime 已由第 10 節的 ordered time
-buckets 取代，`SystemGroup` 不再控制執行順序。
-
-來源：
-
-- [System contributor guide](../src/efm/F-CK-1C_EFM/Core/Systems/README.md)
-- [SystemGroup definition](../src/efm/F-CK-1C_EFM/Core/Systems/System.h)
-- [SystemPipeline execution](../src/efm/F-CK-1C_EFM/Core/Systems/SystemPipeline.cpp)
+重構前以 `Control -> Equipment` group 和 host frame 推進的歷史基線已由第 10 節
+scheduler 取代。現行架構的權威說明是
+[System contributor guide](../src/efm/F-CK-1C_EFM/Core/Systems/README.md)：
+`SystemPipeline` 是唯一 scheduler／commit point，跨 System 只交換 typed
+`AircraftData`，每個 publication 與 semantic command 都有唯一 owner；
+`SystemGroup` 只保留為 metadata，不再控制執行順序。
 
 ## 9. 現有 `System` 架構與飛控邏輯鏈的適配性
 
@@ -346,7 +362,7 @@ buckets 取代，`SystemGroup` 不再控制執行順序。
 - 跨 System 只交換 passive typed data。
 - 一個 AircraftData key 只有一個 owner。
 - command 有明確的 semantic owner。
-- `FlightControlComputer` 先產生 demand，`PrimaryFlightControls` 再推進
+- `FlightControlComputer` 先產生 command，`FlightControlActuationSystem` 再推進
   actuator state。
 - `AircraftSimulation` 消費完成的控制面位置，而不直接擁有飛機 Systems。
 - `SystemPipeline` 是唯一 production scheduler 與 commit point。
@@ -414,8 +430,9 @@ System 不得再把 DCS `FrameInput::dt_s` 當成自己的積分步長。
 
 | System | Rate | 證據身分 |
 |---|---:|---|
+| `PilotControls` | 64 Hz | **Project-defined fallback** |
 | `FlightControlComputer` | 64 Hz | **F-16XL reference**：NASA DFLCS control laws 為每秒 64 cycles；不是已確認的 F-CK-1C 資料 |
-| `PrimaryFlightControls` | 64 Hz | **Project-defined fallback** |
+| `FlightControlActuationSystem` | 256 Hz | **Project-defined numerical integration rate**；不是已確認的真機取樣或伺服頻率 |
 | `SecondaryFlightControls` | 64 Hz | **Project-defined fallback** |
 | `LandingGear` | 64 Hz | **Project-defined fallback** |
 | `Engine` | 64 Hz | **Project-defined fallback** |
@@ -548,136 +565,122 @@ owner 的 command handler 可以立即保存輸入意圖：
 schedule。若未來需要物理 substep，必須另行討論，不能藏在 scheduler refactor
 中。
 
-## 11. 對新 AP／FBW 架構的影響
+## 11. 目標裝置鏈與 Interface
 
-### 11.1 不衝突的裝置 seam
-
-暫定最小裝置鏈是：
+### 11.1 飛控裝置鏈
 
 ```text
-DCS input Adapter
-  -> PilotControls
-  -> FlightControlComputer
-  -> PrimaryFlightControls
-  -> AircraftSimulation
-  -> observed aircraft motion
-  -> FlightControlComputer
+DCS input Adapter -> PilotControls --PilotControlSignal-->
+FlightControlComputer --FlightControlActuatorCommand-->
+FlightControlActuationSystem --FlightControlActuatorState-->
+AircraftSimulation --FlightControlObservation--> FlightControlComputer
 ```
 
-其中：
+- `PilotControls` 擁有玩家實際控制器狀態與 command 正規化。
+- `FlightControlComputer` 是一個完整飛控裝置；FBW、limiter、mixer 與經確認後的 AP
+  都只能是其內部 Module，不拆成假裝獨立硬體的 System。
+- `FlightControlActuationSystem` 取代 `PrimaryFlightControls`，擁有伺服／液壓延遲、
+  rate limit、位置限制、局部控制面回饋及實際控制面狀態。
+- `AircraftSimulation` 是 simulation layer，不是飛機上的 System。
 
-- DCS input Adapter 只轉換並傳入 DCS input。
-- `PilotControls` 擁有玩家輸入裝置狀態。
-- `FlightControlComputer` 擁有飛控決策。
-- AP 若被判定屬於 DFLCC，作為其內部 Module，不是獨立飛機 System。
-- AP、FBW、limiter 與 mixer 可以在同一次 FCC tick 內依序執行。
-- `PrimaryFlightControls` 擁有 actuator 與實際控制面狀態。
-- `AircraftSimulation` 擁有飛機物理狀態。
+### 11.2 四條飛控訊號與單位
 
-AP 與 FBW 位於同一 FCC System，因此不會因 batch scheduler 在兩者之間增加一個
-System period。未來若 AP outer loop 需要較低更新率，可以在 FCC 內部按整數 tick
-分頻並保持 demand，不需要把 AP 暴露成頂層 System。
+1. `PilotControlSignal`：`PilotControls -> FlightControlComputer`。
+2. `FlightControlObservation`：`AircraftSimulation -> FlightControlComputer`。
+3. `FlightControlActuatorCommand`：`FlightControlComputer -> FlightControlActuationSystem`。
+4. `FlightControlActuatorState`：`FlightControlActuationSystem -> AircraftSimulation + FCC`。
 
-### 11.2 明確接受的跨 System 延遲
+FCC 對 actuator 的 command 使用 `[-1, 1]` normalized authority；actuation 內部權威
+狀態使用 radians 與 radians/second。可讀設定允許使用 degrees，但建立 configuration
+時只轉換一次。actuator state 可同時發布物理角度與 derived normalized position，
+不得讓呼叫端重複實作換算。
 
-若 FCC 與 `PrimaryFlightControls` 在完全相同時間到期：
+飛行狀態 gyros／accelerometers／air-data 是 FCC 的外部 Observation；控制面位置／
+rate sensor 則是 actuation 裝置的內部回授並由它發布，不另外建立只有轉接功能的
+System。
+
+### 11.3 Actuation update rate 與因果性
+
+`FlightControlComputer` 目前維持 64 Hz F-16XL reference。目標
+`FlightControlActuationSystem` 必須高於 FCC，以離散積分近似兩次 FCC command
+之間仍持續工作的局部伺服；這不是由一般感測器的 350 Hz 規格推導真機頻率。
+
+核准值是 **256 Hz（4 × 64 Hz）**，身分為 Project-defined numerical integration
+rate，不是真機已知規格。相同時間 bucket 仍一起取樣與提交，因此 64／256 Hz 下，
+FCC 最多讀到約 3.906 ms 前已提交的 actuator state，新 FCC command 也最多等待一個
+actuator period；不建立同一 bucket 內的即時循環依賴。
+
+`SimulationPipeline` 暫時維持 host-driven，所以較高 actuation rate 先改善 actuator
+端點與 FCC feedback，不宣稱整架飛機的氣動力也以 256 Hz substep。是否需要物理
+substep 必須由後續閉迴路測量決定，不藏入本次裝置重構。
+
+### 11.4 油門與數位引擎控制 seam
+
+油門桿訊號的權威鏈固定為：
 
 ```text
-FCC[k]      讀取 actuator[k-1]
-Actuator[k] 讀取 demand[k-1]
+PilotControls --ThrottleLeverSignal--> [Engine boundary]
+Engine: DigitalEngineControlModel -> engine plant -> controller feedback
 ```
 
-這是明確的一個接收端取樣週期延遲，不是意外的 DCS frame 延遲。新的 AP／FBW
-控制器與閉迴路測試必須包含它，不得只在「demand 立即成為控制面位置」的理想
-plant 下調整。
+`ThrottleLeverSignal` 只表示油門桿等效位置，不直接表示 fuel flow、nozzle position、
+afterburner state 或 spool target。`Engine` 目前保留為一個 concrete System，但其內部
+必須建立可抽離的 `DigitalEngineControlModel` seam：輸入油門桿與引擎回饋，輸出
+fuel／nozzle／afterburner command；engine plant 只負責物理狀態與推力反應。
 
-Auto-throttle demand 與 Engine、Engine 與 Fuel 等獨立裝置也遵守相同規則。
+實作註解集中在該 Module Interface 與關鍵排程處，明確標示「DEEC responsibility、
+Project-defined approximation、真實控制律未確認」，不把 DEEC 名稱散落到 plant。
+未來取得獨立硬體、rate 或 failure-mode 證據時，可把 Module 提升為 System，而不改寫
+控制演算法或呼叫端。
 
-Fuel 另外以 DCS callback 為 mass-effect 交付邊界：callback 開始時清除該次
-`consumed_mass` 累計，期間零個或多個 64 Hz Fuel ticks 的消耗會累加，最後由
-`SimulationPipeline` 一次交付給 DCS。Infinite Fuel 抑制整個 callback 期間，
-而不是只抑制第一個到期 Fuel tick。
+現有 A/T 的 placement 尚未決策，而且本次禁止改變其控制邏輯。因此目前保留一條
+明確標示為過渡相容層的鏈：
 
-### 11.3 scheduler 階段必須先修正的現有 AP 耦合
+```text
+PilotControls --ThrottleLeverSignal--> FlightControlComputer
+FlightControlComputer --EngineThrottleCommand--> Engine
+```
 
-在重設計 AP 模式與控制律以前，scheduler refactor 必須先移除兩個既有耦合：
-
-1. FCC、AP、Engine、Fuel、LandingGear 等 System 不得使用 host
-   `FrameInput::dt_s` 積分，必須使用自己的 `SystemStepContext::dt`。
-2. 目前 AP command handler 會立即用上次保存的 Observation 擷取 reference；
-   必須改為保存 pending intent，並在下一次 FCC tick 使用當時最新可用的
-   Observation 執行 mode transition 與 reference capture。
-
-這兩項是時間架構相容修改，不代表核准現有 AP 邏輯為未來規格。
+`EngineThrottleCommand` 是既有人工油門／A/T composition 後的引擎輸入，不得命名成
+油門桿訊號，也不是新增的真機裝置或最終 A/T 架構。後續討論 A/T placement 時，才
+決定擬真路徑是否由 `Engine` 直接消費 `ThrottleLeverSignal`，以及非擬真 A/T 如何以
+獨立、預設關閉的 authority 接入；本次只做型別隔離並維持既有 composition 行為。
 
 ## 12. Scheduler 驗證基準
 
-scheduler 實作完成後，至少必須從 `SystemPipeline` Interface 驗證：
-
-1. 相同總模擬時間使用 30、60、144 FPS 與不規則 host `dt` 分割時，固定 rate
-   System 的 invocation count 與 scheduled times 相同。
-2. 64 Hz System 經過一秒模擬時間準確執行 64 次。
-3. 相同 scheduled time 的 Systems 全部讀同一份 snapshot。
-4. 反轉同一 batch 的 catalog／執行順序不改變 completed AircraftData。
-5. 不同 scheduled time 的後續 System 能讀到前一個 bucket 的 publication。
-6. 沒有 System 到期時，先前 System 輸出維持不變，最新 DCS external sample
-   仍會更新。
-7. 一次大型 host `dt` 完成所有到期更新，不得靜默丟棄。
-8. System 收到自己的 period，不是 DCS host `dt`。
-9. 長時間執行不因浮點累加遺失、增加或重排 tick。
-10. command 在兩個 owner ticks 之間到達時，只在下一次 owner tick 形成可觀察
-    狀態變更。
-11. AP engage 在下一次 FCC tick 使用當時最新可用 Observation 擷取 reference。
-12. FCC／actuator 同時間取樣的一週期延遲有明確 characterization test。
-
-上述 1 至 12 已由 native tests 覆蓋；其中長時間測試使用 3 Hz 跑一小時來檢查
-invocation count 與最後 scheduled time，64 Hz 則驗證一秒恰好 64 ticks。
+scheduler 的 native tests 已驗證：不同 host FPS／不規則 `dt` 的 invocation 與
+scheduled time、64 Hz 精確計數、同 bucket 共用 snapshot／批次 commit、跨 bucket
+可見性、大 `dt` catch-up、owner period、command next-tick 語意、AP reference capture、
+FCC／actuator 取樣延遲及長時間無累積漂移。這些測試仍是後續裝置重構不得破壞的
+回歸基線。
 
 不同 DCS FPS 的完整飛行軌跡只能要求在定義容差內接近，不要求逐位元一致；該
 容差必須在取得實作測量結果後明確制定，不能用寬鬆 fallback 隱藏差異。
 
 ### 12.1 DCS integration 驗證結果
 
-2026-07-31 已使用安裝後的 Release x64 DLL 完成兩次 `hot_air` flight lifecycle
-驗證。主要 run 為 157.338 秒，第二次重新進入任務為 7.116 秒；CSV 中 simulation
-time 均單調前進，沒有非有限值、Fuel 反向增加、EFM exception 或 scheduler error。
-主要 run 已觀察到 pitch／roll／yaw、throttle、flaps、airbrake、AP、A/T、ALT Hold、
-Heading Hold，以及連續兩次 vertical／heading reference command 的狀態變化；第二次
-flight 從 simulation time 0 與初始 Fuel 重新開始，確認 scheduler epoch 沒有跨 flight
-殘留。
+2026-07-31 已用安裝後 Release x64 DLL 完成兩次 `hot_air` lifecycle 驗證；simulation
+time 單調、flight epoch 正確重設，未發現非有限值、Fuel 反向增加、EFM exception 或
+scheduler error。Unlimited Fuel callback 語意由 native regression tests 覆蓋；DCS
+log 只出現既有 baseline 問題，沒有 scheduler 重構新增錯誤。
 
-使用者沒有執行手動 Unlimited Fuel 情境，因為切換成本高且不是本次 scheduler
-重構的主要 DCS integration 風險。Infinite Fuel 對單一 callback 內所有 Fuel ticks 的
-抑制，以及同 callback 多 tick 的 consumption 累加，仍由 native regression tests
-直接覆蓋。本次 DCS log 只出現既有 baseline 問題：unknown command `2659`、damage
-model 缺失與 HMCS parent 缺失；沒有本次重構新增的錯誤。
+## 13. 尚未決策但不阻擋本次重構
 
-## 13. Scheduler 之後才繼續決定的內容
-
-- F-CK-1 公開證據不足時，允許採用 F-16 參考到什麼深度。
-- 哪些感測器需要成為獨立 System。
-- AP 是否確定視為 DFLCC 內部 Module。
-- 最小真實 AP 模式表。
-- Vertical Speed Hold、Auto-throttle 與 reference stepping 的長期身分。
-- 構型模型最終名稱及其與 stores system 的關係。
-- manual、automatic、safety command 的 physical command type。
-- control allocation 位於 FLCC 內部或獨立真實裝置的證據。
-- direct／reversion capability 是否只有未來 seam，或列入本次功能。
-- 取得更可靠證據後，哪些 Project-defined 64 Hz fallback 可以替換為真實裝置
-  rate。
-
-Air data、inertial reference、stores configuration、AP panel、engine control 與未來
-safety source 的 System 身分也仍待後續逐一確認。
+`FlightControlActuationSystem = 256 Hz` 與第 11 節裝置 seam 已核准；目前沒有阻擋
+本次飛控 System 重構的未決問題。後續議題包括 A/T placement／開關／人工接管、
+真實 AP 模式表、control law／gain／limit、
+stores configuration、direct／reversion capability、DFLCC redundancy，以及 air-data／
+inertial-reference 等裝置的最終 System 身分；必須在各自功能開始前另行決策。
 
 ## 14. 實作閘門
 
 執行順序固定為：
 
-1. [x] 使用者最後檢查並核准本文件的 scheduler 章節。
-2. [x] 只重構 `SystemPipeline` 時間排程與必要的 System timing／command 相容修改。
-3. [x] 完成自動化 scheduler 驗證與既有功能回歸。
-4. [x] 完成 DCS callback、flight lifecycle、controls、AP／A/T 與 Fuel integration
-   驗證；Unlimited Fuel 的 callback 語意由 native tests 覆蓋。
-5. scheduler 通過後，重新開始 AP 與飛控裝置、Interface、模式和控制律討論。
-
-在第 1 至 4 項完成以前，不開始新的 AP／FBW 架構實作。
+1. [x] 完成 scheduler、native regression 與 DCS integration 驗證。
+2. [x] 核准 `FlightControlActuationSystem = 256 Hz` 與裝置 seam；A/T 移至後續範圍。
+3. [x] 建立 `PilotControls -> FCC -> FlightControlActuationSystem -> Simulation` seam，
+   並整理 Engine 內部數位控制 seam；此階段不重設 AP control law。
+4. [x] 以 native tests 證明單位、rate、batch causality 與 DEEC／plant 分工，並確認
+   本次沒有改變既有 A/T 行為。
+5. [ ] 需要時安裝 Release DLL 並完成 DCS 操縱、控制面、油門與功能開關驗證。
+6. [ ] 裝置 seam 通過後，再決定 AP／FBW 模式和控制律。

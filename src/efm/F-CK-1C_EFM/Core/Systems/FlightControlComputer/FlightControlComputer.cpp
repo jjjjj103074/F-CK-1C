@@ -4,12 +4,8 @@
 #include "../SystemUpdateRates.h"
 #include "Common/Table.h"
 
-#include <stdexcept>
-
 namespace
 {
-constexpr double kColdStartThrottle = 0.0;
-constexpr double kHotAirStartThrottle = 0.5;
 constexpr double kEnabledCommandThreshold = 0.5;
 }
 
@@ -19,50 +15,55 @@ namespace Systems
 {
 FlightControlComputer::FlightControlComputer(
 	const FlightControlComputerConfig& config,
-	StartMode start_mode)
+	StartMode start_mode,
+	const ThrottleLeverSignal& initial_throttle_levers)
 	: config_(config),
 	automatic_flight_control_(
 		fck1c_automatic_flight_control_config(),
 		start_mode != StartMode::HotAir)
 {
 	validate_flight_control_computer_config(config_);
-	const double throttle = start_mode == StartMode::HotAir
-		? kHotAirStartThrottle : kColdStartThrottle;
-	::Systems::reset_throttle_inputs(
-		throttle_inputs_, throttle, throttle);
 	::Systems::reset_fbw_state(fbw_, {});
-	refresh_outputs({});
+	engine_throttle_command_ = {
+		initial_throttle_levers.left_normalized,
+		initial_throttle_levers.right_normalized
+	};
+	diagnostics_.status.available = true;
+	diagnostics_.developer_g_limiter_override_available =
+		config_.developer_g_limiter_override_available;
 }
 
 void FlightControlComputer::setup(SystemSetup& setup)
 {
 	setup.update_rate_hz(kF16XlDflcsReferenceUpdateRateHz);
-	setup.read(AircraftDataKeys::kAircraftObservation);
+	setup.read(AircraftDataKeys::kFlightControlObservation);
+	setup.read(AircraftDataKeys::kPilotControlSignal);
+	setup.read(AircraftDataKeys::kThrottleLeverSignal);
 	setup.read(AircraftDataKeys::kLandingGearData);
-	setup.read(AircraftDataKeys::kPrimaryControlPosition);
-	setup.publish(AircraftDataKeys::kPilotControlState, pilot_controls_);
-	setup.publish(AircraftDataKeys::kFlightControlDemand, demand_);
-	setup.publish(AircraftDataKeys::kEngineControlDemand, engine_demand_);
+	setup.read(AircraftDataKeys::kFlightControlActuatorState);
+	setup.publish(
+		AircraftDataKeys::kFlightControlActuatorCommand,
+		actuator_command_);
+	setup.publish(
+		AircraftDataKeys::kEngineThrottleCommand,
+		engine_throttle_command_);
 	setup.publish(
 		AircraftDataKeys::kAutomaticFlightControlSnapshot,
 		automatic_flight_control_.snapshot());
+	setup.publish(
+		AircraftDataKeys::kFlightControlComputerSnapshot,
+		diagnostics_);
 	register_commands(setup);
 }
 
 void FlightControlComputer::register_commands(SystemSetup& setup)
 {
 	const CommandId commands[] = {
-		CommandId::SetPitchAxis, CommandId::SetPitchDiscrete,
-		CommandId::AdjustPitchTrim, CommandId::SetRollAxis,
-		CommandId::SetRollDiscrete, CommandId::AdjustRollTrim,
-		CommandId::SetYawAxis, CommandId::SetYawDiscrete,
-		CommandId::AdjustYawTrim, CommandId::ResetTrim,
-		CommandId::ToggleFbwCat, CommandId::SetFbwCat1,
-		CommandId::SetFbwCat3, CommandId::SetGLimiterOverride,
-		CommandId::ToggleGLimiterOverride,
-		CommandId::SetCommonThrottleAxis, CommandId::SetLeftThrottleAxis,
-		CommandId::SetRightThrottleAxis, CommandId::StepCommonThrottle,
-		CommandId::StepLeftThrottle, CommandId::StepRightThrottle
+		CommandId::ToggleFbwCat,
+		CommandId::SetFbwCat1,
+		CommandId::SetFbwCat3,
+		CommandId::SetGLimiterOverride,
+		CommandId::ToggleGLimiterOverride
 	};
 	for (CommandId id : commands)
 	{
@@ -81,35 +82,55 @@ void FlightControlComputer::step(
 	const AutomaticFlightControlDemand& automatic =
 		automatic_flight_control_.step(
 			make_automatic_observation(context, aircraft));
-	step(make_pipeline_input(context, aircraft), automatic);
-	result.publish(AircraftDataKeys::kPilotControlState, pilot_controls_);
-	result.publish(AircraftDataKeys::kFlightControlDemand, demand_);
-	result.publish(AircraftDataKeys::kEngineControlDemand, engine_demand_);
+	const PilotControlSignal& pilot =
+		aircraft.read(AircraftDataKeys::kPilotControlSignal);
+	step({
+		make_pipeline_input(context, aircraft),
+		automatic,
+		pilot,
+		aircraft.read(AircraftDataKeys::kThrottleLeverSignal)
+	});
+	result.publish(
+		AircraftDataKeys::kFlightControlActuatorCommand,
+		actuator_command_);
+	result.publish(
+		AircraftDataKeys::kEngineThrottleCommand,
+		engine_throttle_command_);
 	result.publish(
 		AircraftDataKeys::kAutomaticFlightControlSnapshot,
 		automatic_flight_control_.snapshot());
+	result.publish(
+		AircraftDataKeys::kFlightControlComputerSnapshot,
+		diagnostics_);
 }
 
-const FlightControlDemand& FlightControlComputer::step(
-	::Systems::FBWControllerInput input,
-	const AutomaticFlightControlDemand& automatic)
+const FlightControlActuatorCommand& FlightControlComputer::step(
+	const FlightControlComputerStepInput& request)
 {
+	::Systems::FBWControllerInput input = request.flight_control;
 	input.alpha_limit_deg = alpha_limit(input.mach);
-	::Systems::update_primary_control_inputs(primary_controls_);
-	::Systems::update_pilot_throttle_cmds(throttle_inputs_);
-	input.pitch_input = primary_controls_.pitch.input;
-	input.roll_input = primary_controls_.roll.input;
-	input.roll_trim = primary_controls_.roll.trim;
-	input.pitch_trim = primary_controls_.pitch.trim;
-	input.yaw_input = primary_controls_.yaw.input;
-	input.yaw_trim = primary_controls_.yaw.trim;
-	apply_automatic_flight_control(input, automatic);
-	refresh_pilot_controls(input.pitch_input, input.roll_input);
+	input = apply_pilot_signal(input, request.pilot);
+	apply_automatic_flight_control(input, request.automatic);
 	const ::Systems::FBWControllerOutput output =
 		::Systems::update_fbw_controller(
 			fbw_, config_.control_laws, input);
-	refresh_outputs(output);
-	return demand_;
+	refresh_outputs(output, request.throttle_levers);
+	refresh_diagnostics();
+	return actuator_command_;
+}
+
+::Systems::FBWControllerInput FlightControlComputer::apply_pilot_signal(
+	const ::Systems::FBWControllerInput& input,
+	const PilotControlSignal& pilot) const
+{
+	::Systems::FBWControllerInput result = input;
+	result.pitch_input = pilot.pitch_axis_normalized;
+	result.roll_input = pilot.roll_axis_normalized;
+	result.yaw_input = pilot.yaw_axis_normalized;
+	result.pitch_trim = pilot.pitch_trim_normalized;
+	result.roll_trim = pilot.roll_trim_normalized;
+	result.yaw_trim = pilot.yaw_trim_normalized;
+	return result;
 }
 
 void FlightControlComputer::apply_automatic_flight_control(
@@ -121,34 +142,35 @@ void FlightControlComputer::apply_automatic_flight_control(
 		input.pitch_input = automatic.pitch_normalized;
 		input.roll_input = automatic.roll_normalized;
 	}
-	if (automatic.auto_throttle_engaged)
+	if (!automatic.auto_throttle_engaged)
 	{
-		fbw_.throttle_cmd_left = automatic.throttle_normalized;
-		fbw_.throttle_cmd_right = automatic.throttle_normalized;
-		fbw_.throttle_blend = 1.0;
-		fbw_.throttle_override = false;
+		fbw_.throttle_blend = 0.0;
 		return;
 	}
-	fbw_.throttle_blend = 0.0;
+	fbw_.throttle_cmd_left = automatic.throttle_normalized;
+	fbw_.throttle_cmd_right = automatic.throttle_normalized;
+	fbw_.throttle_blend = 1.0;
+	fbw_.throttle_override = false;
 }
 
 void FlightControlComputer::refresh_outputs(
-	const ::Systems::FBWControllerOutput& output)
+	const ::Systems::FBWControllerOutput& output,
+	const ThrottleLeverSignal& throttle_levers)
 {
-	demand_ = {
+	actuator_command_ = {
 		output.elevator_command,
 		output.aileron_command,
 		output.rudder_command
 	};
-	engine_demand_ = {
-		::Systems::compose_engine_throttle_cmd({
-			throttle_inputs_.left.pilot_cmd,
+	engine_throttle_command_ = {
+		::Systems::compose_engine_throttle_command({
+			throttle_levers.left_normalized,
 			fbw_.throttle_cmd_left,
 			fbw_.throttle_blend,
 			fbw_.throttle_override
 		}),
-		::Systems::compose_engine_throttle_cmd({
-			throttle_inputs_.right.pilot_cmd,
+		::Systems::compose_engine_throttle_command({
+			throttle_levers.right_normalized,
 			fbw_.throttle_cmd_right,
 			fbw_.throttle_blend,
 			fbw_.throttle_override
@@ -156,45 +178,45 @@ void FlightControlComputer::refresh_outputs(
 	};
 }
 
-void FlightControlComputer::refresh_pilot_controls(
-	double pitch,
-	double roll)
+void FlightControlComputer::refresh_diagnostics()
 {
-	pilot_controls_ = {
-		pitch,
-		roll,
-		primary_controls_.yaw.input
-	};
+	++diagnostics_.status.revision;
+	diagnostics_.developer_g_limiter_override_active =
+		fbw_.g_limiter_override;
 }
 
 ::Systems::FBWControllerInput FlightControlComputer::make_pipeline_input(
 	const SystemStepContext& context,
 	const AircraftDataView& aircraft) const
 {
-	const AircraftObservation& observation =
-		aircraft.read(AircraftDataKeys::kAircraftObservation);
+	const FlightControlObservation& observation =
+		aircraft.read(AircraftDataKeys::kFlightControlObservation);
 	::Systems::FBWControllerInput input;
 	input.dt = context.dt_s;
-	input.qbar = observation.dynamic_pressure;
-	input.roll = observation.roll;
-	input.pitch = observation.pitch;
-	input.roll_rate = observation.roll_rate;
-	input.pitch_rate = observation.pitch_rate;
-	input.yaw_rate = observation.yaw_rate;
+	input.qbar = observation.dynamic_pressure_pa;
+	input.roll = observation.roll_rad;
+	input.pitch = observation.pitch_rad;
+	input.roll_rate = observation.roll_rate_rad_s;
+	input.pitch_rate = observation.pitch_rate_rad_s;
+	input.yaw_rate = observation.yaw_rate_rad_s;
 	input.alpha = observation.alpha_deg;
 	input.beta = observation.beta_deg;
-	input.speed_scalar = observation.speed_scalar;
+	input.speed_scalar = observation.indicated_airspeed_mps;
 	input.mach = observation.mach;
-	input.g = observation.g_load;
+	input.g = observation.normal_acceleration_g;
 	const LandingGearData& gear =
 		aircraft.read(AircraftDataKeys::kLandingGearData);
 	input.gear_pos = gear.position;
 	input.wow = gear.any_weight_on_wheels;
-	const PrimaryControlPosition& position =
-		aircraft.read(AircraftDataKeys::kPrimaryControlPosition);
-	input.elevator_command = position.elevator;
-	input.aileron_command = position.aileron;
-	input.rudder_command = position.rudder;
+	const FlightControlActuatorState& actuator =
+		aircraft.read(AircraftDataKeys::kFlightControlActuatorState);
+	input.elevator_position_normalized =
+		actuator.elevator.normalized_position;
+	input.aileron_position_normalized =
+		actuator.aileron.normalized_position;
+	input.rudder_position_normalized =
+		actuator.rudder.normalized_position;
+	input.actuator_saturated = actuator.any_saturated;
 	return input;
 }
 
@@ -203,22 +225,21 @@ FlightControlComputer::make_automatic_observation(
 	const SystemStepContext& context,
 	const AircraftDataView& aircraft) const
 {
-	const AircraftObservation& observation =
-		aircraft.read(AircraftDataKeys::kAircraftObservation);
+	const FlightControlObservation& observation =
+		aircraft.read(AircraftDataKeys::kFlightControlObservation);
 	const LandingGearData& gear =
 		aircraft.read(AircraftDataKeys::kLandingGearData);
 	return {
 		context.dt_s,
 		observation.indicated_airspeed_mps,
-		observation.altitude_asl,
+		observation.altitude_asl_m,
 		observation.vertical_speed_mps,
 		observation.mach,
 		observation.heading_rad,
-		observation.pitch,
-		observation.roll,
-		// Lua used getAngularVelocityX/Y for these two damping terms.
-		observation.roll_rate,
-		observation.yaw_rate,
+		observation.pitch_rad,
+		observation.roll_rad,
+		observation.roll_rate_rad_s,
+		observation.yaw_rate_rad_s,
 		gear.any_weight_on_wheels
 	};
 }
@@ -236,58 +257,6 @@ double FlightControlComputer::alpha_limit(double mach) const
 
 void FlightControlComputer::handle_command(const Command& command)
 {
-	handle_primary_command(command);
-	handle_yaw_command(command);
-	handle_fbw_command(command);
-	handle_throttle_command(command);
-	refresh_pilot_controls(
-		primary_controls_.pitch.input,
-		primary_controls_.roll.input);
-}
-
-void FlightControlComputer::handle_primary_command(const Command& command)
-{
-	switch (command.id)
-	{
-	case CommandId::SetPitchAxis:
-		::Systems::set_pitch_axis_input(primary_controls_, command.value); break;
-	case CommandId::SetPitchDiscrete:
-		::Systems::set_pitch_discrete_input(
-			primary_controls_, static_cast<int>(command.value)); break;
-	case CommandId::AdjustPitchTrim:
-		::Systems::adjust_pitch_trim(primary_controls_, command.value); break;
-	case CommandId::SetRollAxis:
-		::Systems::set_roll_axis_input(primary_controls_, command.value); break;
-	case CommandId::SetRollDiscrete:
-		::Systems::set_roll_discrete_input(
-			primary_controls_, static_cast<int>(command.value)); break;
-	case CommandId::AdjustRollTrim:
-		::Systems::adjust_roll_trim(primary_controls_, command.value); break;
-	default:
-		break;
-	}
-}
-
-void FlightControlComputer::handle_yaw_command(const Command& command)
-{
-	switch (command.id)
-	{
-	case CommandId::SetYawAxis:
-		::Systems::set_yaw_axis_input(primary_controls_, command.value); break;
-	case CommandId::SetYawDiscrete:
-		::Systems::set_yaw_discrete_input(
-			primary_controls_, static_cast<int>(command.value)); break;
-	case CommandId::AdjustYawTrim:
-		::Systems::adjust_yaw_trim(primary_controls_, command.value); break;
-	case CommandId::ResetTrim:
-		::Systems::reset_primary_trims(primary_controls_); break;
-	default:
-		break;
-	}
-}
-
-void FlightControlComputer::handle_fbw_command(const Command& command)
-{
 	const bool enabled = command.value > kEnabledCommandThreshold;
 	switch (command.id)
 	{
@@ -300,54 +269,34 @@ void FlightControlComputer::handle_fbw_command(const Command& command)
 		if (enabled) ::Systems::set_fbw_cat_mode(fbw_, ::Systems::FBW_CAT3);
 		break;
 	case CommandId::SetGLimiterOverride:
-		::Systems::set_fbw_g_limiter_override(fbw_, enabled); break;
+		::Systems::set_fbw_g_limiter_override(
+			fbw_, config_.developer_g_limiter_override_available && enabled);
+		break;
 	case CommandId::ToggleGLimiterOverride:
-		::Systems::toggle_fbw_g_limiter_override(fbw_, enabled); break;
+		if (config_.developer_g_limiter_override_available)
+		{
+			::Systems::toggle_fbw_g_limiter_override(fbw_, enabled);
+		}
+		else
+		{
+			::Systems::set_fbw_g_limiter_override(fbw_, false);
+		}
+		break;
 	default:
 		break;
 	}
 }
 
-void FlightControlComputer::handle_throttle_command(const Command& command)
+const FlightControlActuatorCommand&
+	FlightControlComputer::actuator_command() const
 {
-	switch (command.id)
-	{
-	case CommandId::SetCommonThrottleAxis:
-		::Systems::set_common_throttle_axis(
-			throttle_inputs_, command.value); break;
-	case CommandId::SetLeftThrottleAxis:
-		::Systems::set_left_throttle_axis(
-			throttle_inputs_, command.value); break;
-	case CommandId::SetRightThrottleAxis:
-		::Systems::set_right_throttle_axis(
-			throttle_inputs_, command.value); break;
-	case CommandId::StepCommonThrottle:
-		::Systems::step_common_keyboard_throttle(
-			throttle_inputs_, command.value); break;
-	case CommandId::StepLeftThrottle:
-		::Systems::step_left_keyboard_throttle(
-			throttle_inputs_, command.value); break;
-	case CommandId::StepRightThrottle:
-		::Systems::step_right_keyboard_throttle(
-			throttle_inputs_, command.value); break;
-	default:
-		break;
-	}
+	return actuator_command_;
 }
 
-const PilotControlState& FlightControlComputer::pilot_controls() const
+const EngineThrottleCommand&
+	FlightControlComputer::engine_throttle_command() const
 {
-	return pilot_controls_;
-}
-
-const FlightControlDemand& FlightControlComputer::demand() const
-{
-	return demand_;
-}
-
-const EngineControlDemand& FlightControlComputer::engine_demand() const
-{
-	return engine_demand_;
+	return engine_throttle_command_;
 }
 }
 }

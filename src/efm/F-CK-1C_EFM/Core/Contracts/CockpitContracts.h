@@ -156,6 +156,13 @@ struct SnapshotStatus
 	std::uint64_t revision = 0;
 };
 
+struct FlightControlComputerSnapshot
+{
+	SnapshotStatus status;
+	bool developer_g_limiter_override_available = false;
+	bool developer_g_limiter_override_active = false;
+};
+
 struct AutomaticFlightControlSnapshot
 {
 	SnapshotStatus status;
@@ -262,6 +269,7 @@ struct CockpitSnapshot
 {
 	SnapshotStatus status;
 	double simulation_time_s = 0.0;
+	FlightControlComputerSnapshot flight_control_computer;
 	AutomaticFlightControlSnapshot automatic_flight_control;
 	bool propulsion_test_thrust_cut_requested = false;
 	CombatAvionicsSnapshot combat_avionics;

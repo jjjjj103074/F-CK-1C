@@ -4,7 +4,7 @@
 
 namespace
 {
-constexpr double kSnapshotTolerance = 1e-12;
+constexpr double kSnapshotTolerance = 1e-9;
 constexpr int kInitialSnapshotFrameCount = 1;
 constexpr int kReferenceSnapshotFrameCount = 50;
 constexpr int kModeTransitionFrameCount = 50;
@@ -37,9 +37,9 @@ void carry_output(
 	Systems::FBWControllerInput& input,
 	const Systems::FBWControllerOutput& output)
 {
-	input.elevator_command = output.elevator_command;
-	input.aileron_command = output.aileron_command;
-	input.rudder_command = output.rudder_command;
+	input.elevator_position_normalized = output.elevator_command;
+	input.aileron_position_normalized = output.aileron_command;
+	input.rudder_position_normalized = output.rudder_command;
 }
 
 struct FBWTestRig
@@ -88,11 +88,11 @@ void test_reference_frame_snapshots(Tests::Context& context)
 	FBWTestRig rig;
 	rig.advance(kInitialSnapshotFrameCount);
 	expect_output(context, rig.output,
-		{ 0.0023222816610468443, 0.0083333333333333332, 0.0017862844650569911 });
-	TEST_EXPECT(context, rig.state.actuator_sat);
+		{ 0.011611408305, 0.070876471341, 0.014290275720 });
+	TEST_EXPECT(context, !rig.state.actuator_sat);
 	rig.advance(kReferenceSnapshotFrameCount - kInitialSnapshotFrameCount);
 	expect_output(context, rig.output,
-		{ -0.077868133088307326, 0.43456274515860627, 0.077430492540090767 });
+		{ -0.083879029377, 0.442372609973, 0.078491967314 });
 	TEST_EXPECT_NEAR(context, rig.state.p_cmd, 0.63520036385081835, kSnapshotTolerance);
 	TEST_EXPECT_NEAR(context, rig.state.q_cmd, -0.11632423571852148, kSnapshotTolerance);
 	TEST_EXPECT_NEAR(context, rig.state.r_cmd, 0.1112729717086177, kSnapshotTolerance);
@@ -106,7 +106,7 @@ void test_hold_snapshot(Tests::Context& context)
 	rig.input.yaw_input = 0.0;
 	rig.reset();
 	rig.advance(kHoldEngagementFrameCount);
-	expect_output(context, rig.output, { 0.028528760570, -0.019599302642, -0.022718110918 });
+	expect_output(context, rig.output, { 0.026739925853, -0.022681454009, -0.023911647820 });
 	TEST_EXPECT(context, rig.state.control_state == Systems::FBW_STATE_HOLD);
 	TEST_EXPECT(context, rig.state.hold_active);
 }
@@ -124,9 +124,9 @@ void test_direct_mode_snapshot(Tests::Context& context)
 	input.pitch_trim = 0.1;
 	input.yaw_input = -0.2;
 	input.yaw_trim = 0.05;
-	input.elevator_command = 0.1;
-	input.aileron_command = -0.2;
-	input.rudder_command = 0.3;
+	input.elevator_position_normalized = 0.1;
+	input.aileron_position_normalized = -0.2;
+	input.rudder_position_normalized = 0.3;
 	const auto output = Systems::update_fbw_controller(state, config, input);
 	expect_output(context, output, { 0.1125, -0.2, 0.288 });
 }
@@ -144,6 +144,14 @@ void test_fbw_commands(Tests::Context& context)
 	TEST_EXPECT(context, state.g_limiter_override);
 	Systems::toggle_fbw_g_limiter_override(state, true);
 	TEST_EXPECT(context, !state.g_limiter_override);
+}
+
+void test_actuator_feedback_is_consumed(Tests::Context& context)
+{
+	FBWTestRig rig;
+	rig.input.actuator_saturated = true;
+	rig.advance(kInitialSnapshotFrameCount);
+	TEST_EXPECT(context, rig.state.actuator_sat);
 }
 
 void test_fbw_reset(Tests::Context& context)
@@ -211,6 +219,7 @@ void run_fbw_controller_tests(Tests::Context& context)
 	test_hold_snapshot(context);
 	test_direct_mode_snapshot(context);
 	test_fbw_commands(context);
+	test_actuator_feedback_is_consumed(context);
 	test_fbw_reset(context);
 	test_limiters_and_actuator_bounds(context);
 	test_cat_transition_and_hold_degrade(context);

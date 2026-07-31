@@ -10,8 +10,9 @@ snapshot and does not call or own concrete Systems.
 
 | System | Rate | Timing evidence | Responsibility |
 |---|---:|---|---|
-| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | Pilot input shaping, AFCS state/controllers, and control demands |
-| `PrimaryFlightControls` | 64 Hz | Project-defined fallback | Elevator, aileron, and rudder actuators |
+| `PilotControls` | 64 Hz | Project-defined fallback | DCS command integration and normalized pilot-control signals |
+| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | FBW/AFCS laws and normalized actuator commands |
+| `FlightControlActuationSystem` | 256 Hz | Project-defined numerical integration rate | Elevator, aileron, and rudder actuator dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Project-defined fallback | Flaps, slats, and airbrake |
 | `LandingGear` | 64 Hz | Project-defined fallback | Gear, brakes, NWS, wheels, and suspension state |
 | `Engine` | 64 Hz | Project-defined fallback | Engine device state, spool, nozzle, and fuel demand |
@@ -23,8 +24,9 @@ The FCC rate is based on NASA's description of F-16XL DFLCS control laws
 running at 64 cycles per second:
 [NASA TP-3547](https://ntrs.nasa.gov/api/citations/20040040334/downloads/20040040334.pdf).
 No reliable device-specific F-16 or F-CK-1C rate was identified for the other
-current Systems, so their 64 Hz values are explicitly project-defined
-fallbacks, not aircraft facts.
+current Systems. Their 64 Hz values are explicitly project-defined fallbacks,
+not aircraft facts. The 256 Hz actuation rate is a project-defined numerical
+integration choice, not a claimed real-aircraft sampling or servo rate.
 
 ## System contract
 
@@ -98,9 +100,10 @@ Adding a System must not require changes to `Fck1cEfm`,
 directory, implementation, tests, and `Entry.cpp`; the shared MSBuild rules
 discover the Entry for both production and native tests.
 
-`FlightSetupContext` contains `StartMode` and the initial fuel load needed to
-construct one flight. A System-specific Entry captures that System's immutable
-production configuration and passes it to the concrete factory. Simulation
+`FlightSetupContext` contains `StartMode`, the initial fuel load, and the
+composition-root-derived initial throttle-lever signal needed to construct one
+flight. A System-specific Entry captures that System's immutable production
+configuration and passes it to the concrete factory. Simulation
 policies, including infinite fuel, invincibility, and easy flight, do not
 belong in a System.
 
@@ -123,6 +126,11 @@ observations whose availability flag is set, retains missing samples, and gives
 the completed observation to the Pipeline. The Pipeline publishes both inputs
 through the same typed snapshot; Systems do not know which DCS callback
 produced them.
+
+`PilotControls` separately publishes `PilotControlSignal` and the physical
+`ThrottleLeverSignal`. While legacy A/T placement remains deliberately out of
+scope, the FCC publishes its composed value as `EngineThrottleCommand`; this
+transitional command must not be mistaken for physical lever position.
 
 Commands have one registered handler per semantic `CommandId`. A handler may
 latch intent immediately, but an observation-dependent transition or reference

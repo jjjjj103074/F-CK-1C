@@ -20,7 +20,7 @@ constexpr double kPositionOffset = 20.0;
 constexpr double kTolerance = 1e-12;
 constexpr double kFullIntegrity = 1.0;
 constexpr int kFirstCall = 0;
-constexpr std::size_t kCurrentCatalogSize = 8;
+constexpr std::size_t kCurrentCatalogSize = 9;
 constexpr std::uint32_t kInvalidUpdateRateHz = 0;
 constexpr SystemScheduledTime kZeroUpdatePeriod = {};
 constexpr SystemScheduledTime kNegativeUpdatePeriod =
@@ -42,14 +42,14 @@ SystemDefinition demand_publisher(const DemandPublisherOptions& options)
 		[options](SystemSetup& setup)
 		{
 			setup.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(options.initial));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(options.initial));
 		},
 		[options](const AircraftDataView&, SystemResult& result)
 		{
 			result.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(options.next));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(options.next));
 		}
 	};
 }
@@ -61,17 +61,17 @@ SystemDefinition demand_observer(SystemGroup group)
 		group,
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlDemand);
+			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
 			setup.publish(
-				AircraftDataKeys::kPrimaryControlPosition,
-				position(kNeutralValue));
+				AircraftDataKeys::kFlightControlActuatorState,
+				actuator_state(kNeutralValue));
 		},
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
 			const double pitch =
-				aircraft.read(AircraftDataKeys::kFlightControlDemand).pitch;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
 			result.publish(
-				AircraftDataKeys::kPrimaryControlPosition, position(pitch));
+				AircraftDataKeys::kFlightControlActuatorState, actuator_state(pitch));
 		}
 	};
 }
@@ -83,7 +83,7 @@ void test_missing_provider_fails(Tests::Context& context)
 		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlDemand);
+			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
 		},
 		no_step()
 	};
@@ -92,8 +92,8 @@ void test_missing_provider_fails(Tests::Context& context)
 
 void test_type_mismatch_fails(Tests::Context& context)
 {
-	const AircraftDataKey<PrimaryControlPosition> wrong_key = {
-		AircraftDataId::FlightControlDemand,
+	const AircraftDataKey<FlightControlActuatorState> wrong_key = {
+		AircraftDataId::FlightControlActuatorCommand,
 		"wrong_demand_type"
 	};
 	const SystemDefinition publisher = {
@@ -101,7 +101,7 @@ void test_type_mismatch_fails(Tests::Context& context)
 		SystemGroup::Control,
 		[wrong_key](SystemSetup& setup)
 		{
-			setup.publish(wrong_key, position(kNeutralValue));
+			setup.publish(wrong_key, actuator_state(kNeutralValue));
 		},
 		no_step()
 	};
@@ -115,7 +115,7 @@ void test_required_initial_value_fails(Tests::Context& context)
 		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
-			setup.publish(AircraftDataKeys::kFlightControlDemand);
+			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
 		},
 		no_step()
 	};
@@ -124,7 +124,7 @@ void test_required_initial_value_fails(Tests::Context& context)
 		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlDemand);
+			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
 		},
 		no_step()
 	};
@@ -141,7 +141,7 @@ void test_optional_initial_value_is_explicit(Tests::Context& context)
 		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
-			setup.publish(AircraftDataKeys::kFlightControlDemand);
+			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
 		},
 		no_step()
 	};
@@ -151,7 +151,7 @@ void test_optional_initial_value_is_explicit(Tests::Context& context)
 		[](SystemSetup& setup)
 		{
 			setup.read(
-				AircraftDataKeys::kFlightControlDemand,
+				AircraftDataKeys::kFlightControlActuatorCommand,
 				InitialValueRequirement::Optional);
 		},
 		no_step()
@@ -160,7 +160,7 @@ void test_optional_initial_value_is_explicit(Tests::Context& context)
 		flight_setup(), { entry(reader), entry(publisher) });
 	TEST_EXPECT(
 		context,
-		!pipeline.snapshot().has(AircraftDataKeys::kFlightControlDemand));
+		!pipeline.snapshot().has(AircraftDataKeys::kFlightControlActuatorCommand));
 }
 
 void test_undeclared_read_fails(Tests::Context& context)
@@ -217,7 +217,7 @@ void test_declared_optional_has_reports_missing(Tests::Context& context)
 		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
-			setup.publish(AircraftDataKeys::kFlightControlDemand);
+			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
 		},
 		no_step()
 	};
@@ -227,13 +227,13 @@ void test_declared_optional_has_reports_missing(Tests::Context& context)
 		[](SystemSetup& setup)
 		{
 			setup.read(
-				AircraftDataKeys::kFlightControlDemand,
+				AircraftDataKeys::kFlightControlActuatorCommand,
 				InitialValueRequirement::Optional);
 		},
 		[observed](const AircraftDataView& aircraft, SystemResult&)
 		{
 			*observed =
-				aircraft.has(AircraftDataKeys::kFlightControlDemand);
+				aircraft.has(AircraftDataKeys::kFlightControlActuatorCommand);
 		}
 	};
 	SystemPipeline pipeline(
@@ -316,12 +316,12 @@ void test_same_time_bucket_reads_fixed_snapshot(Tests::Context& context)
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlDemand).pitch,
+		output.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kNextDemand,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
 		kInitialDemand,
 		kTolerance);
 }
@@ -337,7 +337,7 @@ void test_group_metadata_does_not_create_a_commit(
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
 		kInitialDemand,
 		kTolerance);
 }
@@ -352,15 +352,15 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlDemand);
+			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
 			setup.publish(
-				AircraftDataKeys::kPrimaryControlPosition,
-				position(kNeutralValue));
+				AircraftDataKeys::kFlightControlActuatorState,
+				actuator_state(kNeutralValue));
 		},
 		[observed](const AircraftDataView& aircraft, SystemResult&)
 		{
 			*observed =
-				aircraft.read(AircraftDataKeys::kFlightControlDemand).pitch;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
 			throw std::runtime_error("expected equipment failure");
 		}
 	};
@@ -384,12 +384,12 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, *observed, kInitialDemand, kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		unchanged.read(AircraftDataKeys::kFlightControlDemand).pitch,
+		unchanged.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kInitialDemand,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		unchanged.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		unchanged.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
 		kNeutralValue,
 		kTolerance);
 	TEST_EXPECT_NEAR(
@@ -408,16 +408,16 @@ void test_missing_new_value_retains_last_commit(Tests::Context& context)
 		[](SystemSetup& setup)
 		{
 			setup.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(kInitialDemand));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(kInitialDemand));
 		},
 		[calls](const AircraftDataView&, SystemResult& result)
 		{
 			if ((*calls)++ == kFirstCall)
 			{
 				result.publish(
-					AircraftDataKeys::kFlightControlDemand,
-					demand(kNextDemand));
+					AircraftDataKeys::kFlightControlActuatorCommand,
+					actuator_command(kNextDemand));
 			}
 		}
 	};
@@ -426,7 +426,7 @@ void test_missing_new_value_retains_last_commit(Tests::Context& context)
 	const AircraftDataSnapshot second = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		second.read(AircraftDataKeys::kFlightControlDemand).pitch,
+		second.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kNextDemand,
 		kTolerance);
 }
@@ -440,16 +440,16 @@ void test_pending_storage_does_not_leak(Tests::Context& context)
 		[](SystemSetup& setup)
 		{
 			setup.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(kNeutralValue));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(kNeutralValue));
 		},
 		[calls](const AircraftDataView&, SystemResult& result)
 		{
 			if ((*calls)++ == kFirstCall)
 			{
 				result.publish(
-					AircraftDataKeys::kFlightControlDemand,
-					demand(kPendingDemand));
+					AircraftDataKeys::kFlightControlActuatorCommand,
+					actuator_command(kPendingDemand));
 				throw std::runtime_error("expected test failure");
 			}
 		}
@@ -467,7 +467,7 @@ void test_pending_storage_does_not_leak(Tests::Context& context)
 	const AircraftDataSnapshot next = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		next.read(AircraftDataKeys::kFlightControlDemand).pitch,
+		next.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kNeutralValue,
 		kTolerance);
 }
@@ -483,18 +483,18 @@ SystemDefinition cross_reader(
 			SystemGroup::Control,
 			[](SystemSetup& setup)
 			{
-				setup.read(AircraftDataKeys::kPrimaryControlPosition);
+				setup.read(AircraftDataKeys::kFlightControlActuatorState);
 				setup.publish(
-					AircraftDataKeys::kFlightControlDemand,
-					demand(kInitialDemand));
+					AircraftDataKeys::kFlightControlActuatorCommand,
+					actuator_command(kInitialDemand));
 			},
 			[](const AircraftDataView& aircraft, SystemResult& result)
 			{
 				const double source = aircraft.read(
-					AircraftDataKeys::kPrimaryControlPosition).elevator;
+					AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position;
 				result.publish(
-					AircraftDataKeys::kFlightControlDemand,
-					demand(source + kDemandOffset));
+					AircraftDataKeys::kFlightControlActuatorCommand,
+					actuator_command(source + kDemandOffset));
 			}
 		};
 	}
@@ -503,18 +503,18 @@ SystemDefinition cross_reader(
 		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlDemand);
+			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
 			setup.publish(
-				AircraftDataKeys::kPrimaryControlPosition,
-				position(kInitialCrossPosition));
+				AircraftDataKeys::kFlightControlActuatorState,
+				actuator_state(kInitialCrossPosition));
 		},
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
 			const double source =
-				aircraft.read(AircraftDataKeys::kFlightControlDemand).pitch;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
 			result.publish(
-				AircraftDataKeys::kPrimaryControlPosition,
-				position(source + kPositionOffset));
+				AircraftDataKeys::kFlightControlActuatorState,
+				actuator_state(source + kPositionOffset));
 		}
 	};
 }
@@ -525,12 +525,12 @@ void expect_order_independent_result(
 {
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlDemand).pitch,
+		output.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kInitialCrossPosition + kDemandOffset,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
 		kInitialDemand + kPositionOffset,
 		kTolerance);
 }
@@ -581,12 +581,12 @@ void test_phase_three_generated_catalog(Tests::Context& context)
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kPilotControlState).pitch,
+		output.read(AircraftDataKeys::kPilotControlSignal).pitch_axis_normalized,
 		kNeutralValue,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
 		kNeutralValue,
 		kTolerance);
 	TEST_EXPECT(

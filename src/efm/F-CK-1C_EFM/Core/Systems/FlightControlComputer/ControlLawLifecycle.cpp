@@ -63,16 +63,6 @@ void reset_pitch_loop(Systems::FBWControllerState& state, double alpha, double g
 	state.q_ref_filtered = 0.0;
 }
 
-void reset_actuators(Systems::FBWControllerState& state)
-{
-	state.ail_rate_state_deg = 0.0;
-	state.ail_lag_state_deg = 0.0;
-	state.ele_rate_state_deg = 0.0;
-	state.ele_lag_state_deg = 0.0;
-	state.rud_rate_state_deg = 0.0;
-	state.rud_lag_state_deg = 0.0;
-}
-
 void reset_limiters(Systems::FBWControllerState& state)
 {
 	state.aoa_limit_active = false;
@@ -93,7 +83,6 @@ void reset_fbw_state(
 	reset_hold_state(state, input.roll, input.pitch);
 	reset_rate_loop(state);
 	reset_pitch_loop(state, input.alpha, input.g);
-	reset_actuators(state);
 	reset_limiters(state);
 }
 

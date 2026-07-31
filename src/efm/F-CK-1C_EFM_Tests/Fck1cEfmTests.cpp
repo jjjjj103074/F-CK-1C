@@ -98,9 +98,12 @@ void expect_control_baseline(
 	TEST_EXPECT_NEAR(context, actual.pitch_input, 0.2, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.roll_input, -0.3, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.yaw_input, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.elevator_command, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.aileron_command, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.rudder_command, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.elevator_command,
+		-0.0013021675833063736, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.aileron_command,
+		-0.00047348484848484844, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.rudder_command,
+		-0.00048977425611098485, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.flaps_position, 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.slats_position, 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.airbrake_position, 0.0, kTolerance);
@@ -133,9 +136,9 @@ void expect_golden_frame(
 	const Core::FrameOutput& actual)
 {
 	expect_vec3(context, actual.force_moment.force,
-		{ 17848.989928072871, 106874.82565441626, 7487.9574978378678 });
+		{ 17848.989928072871, 106942.81643657925, 7483.5040063691395 });
 	expect_vec3(context, actual.force_moment.moment,
-		{ 32828.903011561015, -2123.1697994807978, -41958.780729388171 });
+		{ 32740.45631341288, -2156.3037760081329, -42464.632148680888 });
 	expect_vec3(context, actual.force_moment.center_of_mass, { 0.2, -0.1, 0.3 });
 	expect_engine_baseline(context, actual.engines[0]);
 	expect_engine_baseline(context, actual.engines[1]);
@@ -196,7 +199,7 @@ void test_frame_output_golden_contract(Tests::Context& context)
 		Core::CommandId::SetCommonThrottleAxis, 0.2 });
 	const Core::FrameInput input = make_frame_input();
 	const Core::FrameOutput output = efm.step(input);
-	// Golden values captured from 401f44c with this exact translated callback input.
+	// Rebaselined for the typed 256 Hz flight-control actuation seam.
 	expect_golden_frame(context, output);
 	expect_availability(context, output.availability, input.availability);
 	TEST_EXPECT_NEAR(context, output.simulation_time_s, input.dt_s, kTolerance);
@@ -514,26 +517,75 @@ void test_automatic_flight_commands_drive_outputs(
 	efm.handle_command({ Core::CommandId::EngageAutopilot, 1.0 });
 	efm.handle_command({ Core::CommandId::EngageAutoThrottle, 1.0 });
 	Core::FrameOutput output = efm.step(input);
+	const Core::AutomaticFlightControlSnapshot first_afcs =
+		output.cockpit.automatic_flight_control;
+	const double automatic_throttle =
+		first_afcs.throttle_command_normalized;
+	TEST_EXPECT(context, first_afcs.master_engaged);
+	TEST_EXPECT(context, first_afcs.auto_throttle_engaged);
+	TEST_EXPECT_NEAR(context, output.controls.pitch_input, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, output.controls.roll_input, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		output.engines[0].throttle_input,
+		automatic_throttle,
+		kTolerance);
+	output = efm.step(input);
+	output = efm.step(input);
 	const Core::AutomaticFlightControlSnapshot& afcs =
 		output.cockpit.automatic_flight_control;
 	TEST_EXPECT(context, afcs.master_engaged);
 	TEST_EXPECT(context, afcs.auto_throttle_engaged);
-	TEST_EXPECT_NEAR(
-		context,
-		output.controls.pitch_input,
-		afcs.pitch_command_normalized,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		output.controls.roll_input,
-		afcs.roll_command_normalized,
-		kTolerance);
+	TEST_EXPECT(context, output.controls.elevator_command != 0.0);
+	TEST_EXPECT(context, output.controls.aileron_command != 0.0);
 	TEST_EXPECT_NEAR(
 		context,
 		output.engines[0].throttle_input,
-		afcs.throttle_command_normalized,
+		automatic_throttle,
 		kTolerance);
 	TEST_EXPECT(context, output.engines[0].thrust_force > 0.0);
+}
+
+void test_unavailable_developer_g_override_cannot_affect_flight(
+	Tests::Context& context)
+{
+	Core::Fck1cEfm baseline(make_test_config());
+	Core::Fck1cEfm unavailable(make_test_config());
+	(void)baseline.start(Core::StartMode::HotAir);
+	(void)unavailable.start(Core::StartMode::HotAir);
+	unavailable.handle_command({
+		Core::CommandId::SetGLimiterOverride, 1.0 });
+	const Core::FrameOutput baseline_output =
+		baseline.step(make_airborne_frame_input());
+	const Core::FrameOutput output =
+		unavailable.step(make_airborne_frame_input());
+	TEST_EXPECT(context, !output.cockpit.flight_control_computer.
+		developer_g_limiter_override_available);
+	TEST_EXPECT(context, !output.cockpit.flight_control_computer.
+		developer_g_limiter_override_active);
+	TEST_EXPECT_NEAR(context, output.controls.elevator_command,
+		baseline_output.controls.elevator_command, kTolerance);
+	TEST_EXPECT_NEAR(context, output.controls.aileron_command,
+		baseline_output.controls.aileron_command, kTolerance);
+}
+
+void test_available_developer_g_override_is_visible_in_telemetry(
+	Tests::Context& context)
+{
+	auto config = make_test_config();
+	config.flight_control_computer.
+		developer_g_limiter_override_available = true;
+	Core::Fck1cEfm efm(config);
+	(void)efm.start(Core::StartMode::HotAir);
+	efm.handle_command({ Core::CommandId::SetGLimiterOverride, 1.0 });
+	const Core::FrameOutput output =
+		efm.step(make_airborne_frame_input());
+	TEST_EXPECT(context,
+		output.cockpit.flight_control_computer.status.available);
+	TEST_EXPECT(context, output.cockpit.flight_control_computer.
+		developer_g_limiter_override_available);
+	TEST_EXPECT(context, output.cockpit.flight_control_computer.
+		developer_g_limiter_override_active);
 }
 
 void test_propulsion_diagnostics_commands_drive_outputs(
@@ -609,6 +661,8 @@ void run_fck1c_efm_tests(Tests::Context& context)
 	test_frame_output_isolation(context);
 	test_simulation_pipeline(context);
 	test_automatic_flight_commands_drive_outputs(context);
+	test_unavailable_developer_g_override_cannot_affect_flight(context);
+	test_available_developer_g_override_is_visible_in_telemetry(context);
 	test_propulsion_diagnostics_commands_drive_outputs(context);
 	test_neutral_cockpit_input_completes_step(context);
 	test_damage_returns_immediate_result(context);

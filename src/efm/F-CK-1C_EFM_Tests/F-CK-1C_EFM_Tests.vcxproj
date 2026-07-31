@@ -80,7 +80,8 @@
     <ClCompile Include="FBWControllerTests.cpp" />
     <ClCompile Include="Fck1cEfmCharacterizationTests.cpp" />
     <ClCompile Include="Fck1cEfmTests.cpp" />
-    <ClCompile Include="FrameInputCollectorTests.cpp" />
+		<ClCompile Include="FrameInputCollectorTests.cpp" />
+		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />
     <ClCompile Include="LandingGearSystemTests.cpp" />

@@ -13,5 +13,10 @@ inline constexpr std::uint32_t kF16XlDflcsReferenceUpdateRateHz = 64;
 // Project-defined fallback: use 64 Hz where no reliable F-16 or F-CK-1C
 // device-specific update rate has been identified.
 inline constexpr std::uint32_t kProjectDefinedFallbackUpdateRateHz = 64;
+
+// Project-defined numerical integration rate. This is not a confirmed
+// F-CK-1C actuator or position-sensor update rate.
+inline constexpr std::uint32_t
+	kFlightControlActuationProjectUpdateRateHz = 256;
 }
 }

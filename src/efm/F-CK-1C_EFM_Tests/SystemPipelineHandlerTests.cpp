@@ -125,8 +125,8 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 		[requested](SystemSetup& setup)
 		{
 			setup.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(kNeutralValue));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(kNeutralValue));
 			setup.register_command_handler(
 				CommandId::SetPitchAxis,
 				[requested](const Command& command)
@@ -137,8 +137,8 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 		[requested](const AircraftDataView&, SystemResult& result)
 		{
 			result.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(*requested));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(*requested));
 		}
 	};
 	SystemPipeline pipeline(flight_setup(), { entry(system) });
@@ -151,13 +151,13 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		pipeline.snapshot().read(
-			AircraftDataKeys::kFlightControlDemand).pitch,
+			AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kNeutralValue,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
 		step_pipeline(pipeline).read(
-			AircraftDataKeys::kFlightControlDemand).pitch,
+			AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kCommandValue,
 		kTolerance);
 }
@@ -253,8 +253,8 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 		[](SystemSetup& setup)
 		{
 			setup.publish(
-				AircraftDataKeys::kFlightControlDemand,
-				demand(kNeutralValue));
+				AircraftDataKeys::kFlightControlActuatorCommand,
+				actuator_command(kNeutralValue));
 			setup.register_command_handler(
 				CommandId::SetPitchAxis,
 				[](const Command&)
@@ -283,7 +283,7 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		pipeline.snapshot().read(
-			AircraftDataKeys::kFlightControlDemand).pitch,
+			AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
 		kNeutralValue,
 		kTolerance);
 }

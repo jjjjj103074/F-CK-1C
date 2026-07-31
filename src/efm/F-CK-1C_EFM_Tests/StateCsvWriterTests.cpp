@@ -15,7 +15,7 @@
 
 namespace
 {
-constexpr std::size_t kExpectedColumnCount = 94;
+constexpr std::size_t kExpectedColumnCount = 96;
 constexpr std::chrono::seconds kWriterTimeout(3);
 constexpr std::chrono::milliseconds kPollInterval(10);
 
@@ -44,7 +44,7 @@ std::vector<std::string> expected_header()
 		"suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
 		"suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
 		"suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
-		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,"
+		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,flight_control_developer_g_limiter_override_available,flight_control_developer_g_limiter_override_active,"
 		"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,afcs_vertical_mode,afcs_lateral_mode,afcs_pitch_command_normalized,afcs_roll_command_normalized,afcs_throttle_command_normalized,afcs_target_altitude_m,afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,afcs_target_vertical_speed_mps,afcs_ap_engage_rejection_reason,afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,shake_amplitude",
 		',');
 }
@@ -78,6 +78,10 @@ void assign_gear_suspension_and_fuel(Core::FrameOutput& output)
 void assign_automatic_flight_and_diagnostics(Core::FrameOutput& output)
 {
 	auto& afcs = output.cockpit.automatic_flight_control;
+	output.cockpit.flight_control_computer.
+		developer_g_limiter_override_available = true;
+	output.cockpit.flight_control_computer.
+		developer_g_limiter_override_active = true;
 	afcs.master_engaged = true;
 	afcs.auto_throttle_engaged = true;
 	afcs.vertical_mode = Core::AutomaticFlightControlVerticalMode::AltitudeHold;
@@ -121,7 +125,7 @@ std::vector<std::string> expected_numbered_row()
 		"True,18,19,20,21,22,False,23,False,24,25,26,27,28,True,29,"
 		"30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,"
 		"46,47,48,49,50,True,51,52,53,54,55,False,56,57,58,59,60,True,"
-		"True,False,61,62,63,64,"
+		"True,False,61,62,63,64,True,True,"
 		"True,False,True,3,2,65,66,67,68,69,70,71,72,4,5,6,1,True,73",
 		',');
 }

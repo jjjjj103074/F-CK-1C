@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../Contracts/Commands.h"
+#include "../Contracts/AircraftData.h"
 #include "../Contracts/Events.h"
-#include "../Contracts/FrameContracts.h"
 
 #include <chrono>
 #include <cstdint>
@@ -43,6 +43,7 @@ struct FlightSetupContext
 {
 	const StartMode start_mode;
 	const FlightFuelState fuel;
+	const ThrottleLeverSignal initial_throttle_levers;
 };
 
 class System
