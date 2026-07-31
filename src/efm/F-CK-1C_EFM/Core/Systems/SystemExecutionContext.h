@@ -21,8 +21,8 @@ inline constexpr const char* kReadFuelOperation = "read_fuel_state";
 inline constexpr const char* kCurrentFuelOperation = "read_current_fuel";
 inline constexpr const char* kSetInternalFuelOperation = "set_internal_fuel";
 inline constexpr const char* kSetExternalFuelOperation = "set_external_fuel";
-inline constexpr const char* kSuppressFuelOperation =
-	"suppress_next_fuel_consumption";
+inline constexpr const char* kBeginFuelFrameOperation =
+	"begin_fuel_frame";
 inline constexpr const char* kSystemCreateOperation = "create";
 inline constexpr const char* kSystemSetupOperation = "setup";
 
@@ -77,8 +77,8 @@ inline FuelManagementHandlers with_system_context(
 		with_system_context(
 			system_id, kSetExternalFuelOperation, std::move(handlers.set_external)),
 		with_system_context(
-			system_id, kSuppressFuelOperation,
-			std::move(handlers.suppress_next_consumption))
+			system_id, kBeginFuelFrameOperation,
+			std::move(handlers.begin_frame))
 	};
 }
 }

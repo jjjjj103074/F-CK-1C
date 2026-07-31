@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -37,13 +38,14 @@ struct FuelManagementHandlers
 	std::function<FuelData()> current_data;
 	std::function<void(double)> set_internal;
 	std::function<void(const ExternalFuelInput&)> set_external;
-	std::function<void()> suppress_next_consumption;
+	std::function<void(bool)> begin_frame;
 };
 
 struct SystemFrameInput
 {
 	const FrameInput& frame;
 	const AircraftObservation& observation;
+	SystemScheduledTime target_time;
 };
 
 struct RuntimeSystem;
@@ -187,6 +189,8 @@ public:
 	void register_damage_handler(DamageArea area, DamageHandler handler);
 	void register_repair_handler(RepairHandler handler);
 	void register_fuel_management(FuelManagementHandlers handlers);
+	void update_rate_hz(std::uint32_t rate_hz);
+	void update_period(SystemScheduledTime period);
 
 private:
 	struct State;
@@ -225,8 +229,9 @@ public:
 	FlightFuelState fuel_state() const;
 	void set_internal_fuel(double fuel);
 	void set_external_fuel(const ExternalFuelInput& fuel);
-	void suppress_next_fuel_consumption();
+	void begin_fuel_frame(bool suppress_consumption);
 	std::size_t system_count() const;
+	SystemScheduledTime advanced_through() const;
 
 private:
 	struct Implementation;

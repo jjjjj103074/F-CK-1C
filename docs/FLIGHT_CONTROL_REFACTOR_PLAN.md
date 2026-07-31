@@ -306,26 +306,29 @@ Phase 3 搬移的 Lua 行為只保留為 legacy behavior、測試資料與回歸
 - 冷啟動、通電時重設 scheduler epoch 或依電源狀態加入／移除 schedule。
 - 在 scheduler 以前建立 AP／FBW 的詳細實作或 commit 順序。
 
-## 8. 現有 `System` 架構的已確認特性
+## 8. 重構前 `System` 架構的已確認基線
 
-目前 `SystemPipeline`：
+重構前的 `SystemPipeline`：
 
 - 是 aircraft Systems 的唯一 production scheduler 與 commit point。
 - 透過 typed `AircraftData` 傳遞跨 System 狀態。
 - 驗證 read、publication、型別、初始值與 single writer。
 - 每個 semantic `CommandId` 只允許一個 handler。
 - concrete System 不需要直接呼叫另一個 concrete System。
-- 每個 System 透過 `setup()` 宣告 Interface，透過 `step()` 推進一個 frame。
+- 每個 System 透過 `setup()` 宣告 Interface，透過 `step()` 跟隨 host frame
+  推進。
 
-目前執行模型只有兩個 `SystemGroup`：
+重構前的執行模型只有兩個 `SystemGroup`：
 
 ```text
 Control
 Equipment
 ```
 
-每個 group 使用同一份 immutable input snapshot 執行。相同 group 的 System
-看不到彼此在該 frame 的 pending publication；整個 group 完成後才一次 commit。
+當時每個 group 使用同一份 immutable input snapshot 執行。相同 group 的
+System 看不到彼此在該 frame 的 pending publication；整個 group 完成後才一次
+commit。本節只記錄重構前基線，目前 runtime 已由第 10 節的 ordered time
+buckets 取代，`SystemGroup` 不再控制執行順序。
 
 來源：
 
@@ -368,7 +371,8 @@ frame rate 會改變延遲秒數。
 
 ## 10. 已選定的時間 scheduler 架構
 
-本節是已由使用者同意、待最後文件檢查的架構決策。它先於 AP 與飛控邏輯重構。
+本節是已由使用者同意並於 2026-07-31 完成實作的架構決策。它先於 AP 與飛控
+邏輯重構。
 
 ### 10.1 單一時間權威
 
@@ -386,7 +390,12 @@ frame rate 會改變延遲秒數。
 - Hz；或
 - 明確時間 duration。
 
-確切 C++ method 名稱留給實作設計，但 Interface 不暴露：
+實作 Interface 為：
+
+- `SystemSetup::update_rate_hz(std::uint32_t)`；或
+- `SystemSetup::update_period(SystemScheduledTime)`。
+
+Interface 不暴露：
 
 - phase。
 - 上次執行時間。
@@ -400,6 +409,25 @@ frame rate 會改變延遲秒數。
 - 該 System 自己的固定 `dt`。
 
 System 不得再把 DCS `FrameInput::dt_s` 當成自己的積分步長。
+
+### 10.2.1 目前 production rate 與證據標籤
+
+| System | Rate | 證據身分 |
+|---|---:|---|
+| `FlightControlComputer` | 64 Hz | **F-16XL reference**：NASA DFLCS control laws 為每秒 64 cycles；不是已確認的 F-CK-1C 資料 |
+| `PrimaryFlightControls` | 64 Hz | **Project-defined fallback** |
+| `SecondaryFlightControls` | 64 Hz | **Project-defined fallback** |
+| `LandingGear` | 64 Hz | **Project-defined fallback** |
+| `Engine` | 64 Hz | **Project-defined fallback** |
+| `Fuel` | 64 Hz | **Project-defined fallback** |
+| `AirframeStructure` | 64 Hz | **Project-defined fallback** |
+| `PropulsionDiagnostics` | 64 Hz | **Project-defined fallback** |
+
+F-16XL 來源：
+[NASA TP-3547](https://ntrs.nasa.gov/api/citations/20040040334/downloads/20040040334.pdf)。
+目前沒有找到其他現有裝置可靠的 F-16 或 F-CK-1C specific update rate，因此沒有
+把一般引擎模擬頻率或其他飛機資料冒充成 F-16 證據。共用的
+`kProjectDefinedFallbackUpdateRateHz` 名稱必須保留這項區別。
 
 ### 10.3 Ordered time buckets
 
@@ -565,6 +593,11 @@ plant 下調整。
 
 Auto-throttle demand 與 Engine、Engine 與 Fuel 等獨立裝置也遵守相同規則。
 
+Fuel 另外以 DCS callback 為 mass-effect 交付邊界：callback 開始時清除該次
+`consumed_mass` 累計，期間零個或多個 64 Hz Fuel ticks 的消耗會累加，最後由
+`SimulationPipeline` 一次交付給 DCS。Infinite Fuel 抑制整個 callback 期間，
+而不是只抑制第一個到期 Fuel tick。
+
 ### 11.3 scheduler 階段必須先修正的現有 AP 耦合
 
 在重設計 AP 模式與控制律以前，scheduler refactor 必須先移除兩個既有耦合：
@@ -597,8 +630,27 @@ scheduler 實作完成後，至少必須從 `SystemPipeline` Interface 驗證：
 11. AP engage 在下一次 FCC tick 使用當時最新可用 Observation 擷取 reference。
 12. FCC／actuator 同時間取樣的一週期延遲有明確 characterization test。
 
+上述 1 至 12 已由 native tests 覆蓋；其中長時間測試使用 3 Hz 跑一小時來檢查
+invocation count 與最後 scheduled time，64 Hz 則驗證一秒恰好 64 ticks。
+
 不同 DCS FPS 的完整飛行軌跡只能要求在定義容差內接近，不要求逐位元一致；該
 容差必須在取得實作測量結果後明確制定，不能用寬鬆 fallback 隱藏差異。
+
+### 12.1 DCS integration 驗證結果
+
+2026-07-31 已使用安裝後的 Release x64 DLL 完成兩次 `hot_air` flight lifecycle
+驗證。主要 run 為 157.338 秒，第二次重新進入任務為 7.116 秒；CSV 中 simulation
+time 均單調前進，沒有非有限值、Fuel 反向增加、EFM exception 或 scheduler error。
+主要 run 已觀察到 pitch／roll／yaw、throttle、flaps、airbrake、AP、A/T、ALT Hold、
+Heading Hold，以及連續兩次 vertical／heading reference command 的狀態變化；第二次
+flight 從 simulation time 0 與初始 Fuel 重新開始，確認 scheduler epoch 沒有跨 flight
+殘留。
+
+使用者沒有執行手動 Unlimited Fuel 情境，因為切換成本高且不是本次 scheduler
+重構的主要 DCS integration 風險。Infinite Fuel 對單一 callback 內所有 Fuel ticks 的
+抑制，以及同 callback 多 tick 的 consumption 累加，仍由 native regression tests
+直接覆蓋。本次 DCS log 只出現既有 baseline 問題：unknown command `2659`、damage
+model 缺失與 HMCS parent 缺失；沒有本次重構新增的錯誤。
 
 ## 13. Scheduler 之後才繼續決定的內容
 
@@ -611,7 +663,8 @@ scheduler 實作完成後，至少必須從 `SystemPipeline` Interface 驗證：
 - manual、automatic、safety command 的 physical command type。
 - control allocation 位於 FLCC 內部或獨立真實裝置的證據。
 - direct／reversion capability 是否只有未來 seam，或列入本次功能。
-- 真實或 Project-defined 的 FCC、actuator、engine、fuel 與其他 System rates。
+- 取得更可靠證據後，哪些 Project-defined 64 Hz fallback 可以替換為真實裝置
+  rate。
 
 Air data、inertial reference、stores configuration、AP panel、engine control 與未來
 safety source 的 System 身分也仍待後續逐一確認。
@@ -620,10 +673,11 @@ safety source 的 System 身分也仍待後續逐一確認。
 
 執行順序固定為：
 
-1. 使用者最後檢查並核准本文件的 scheduler 章節。
-2. 只重構 `SystemPipeline` 時間排程與必要的 System timing／command 相容修改。
-3. 完成自動化 scheduler 驗證與既有功能回歸。
-4. 若需要 DCS 驗證，提供明確測試方法並暫停等待結果。
+1. [x] 使用者最後檢查並核准本文件的 scheduler 章節。
+2. [x] 只重構 `SystemPipeline` 時間排程與必要的 System timing／command 相容修改。
+3. [x] 完成自動化 scheduler 驗證與既有功能回歸。
+4. [x] 完成 DCS callback、flight lifecycle、controls、AP／A/T 與 Fuel integration
+   驗證；Unlimited Fuel 的 callback 語意由 native tests 覆蓋。
 5. scheduler 通過後，重新開始 AP 與飛控裝置、Interface、模式和控制律討論。
 
 在第 1 至 4 項完成以前，不開始新的 AP／FBW 架構實作。

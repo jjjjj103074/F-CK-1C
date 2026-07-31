@@ -12,8 +12,8 @@ adapters remain in `DcsBridge`.
 - `Diagnostics/` defines the structured execution error that carries Core
   owner and operation context across the public boundary.
 - `Systems/` owns aircraft equipment state and behavior. `SystemPipeline`
-  validates declarations, routes commands/events, schedules groups, and
-  publishes one completed AircraftData snapshot.
+  validates declarations, routes commands/events, schedules fixed-rate
+  time buckets, and publishes one completed AircraftData snapshot.
 - `Simulation/` retains DCS-owned observations, schedules physical models,
   aggregates their effects, and projects one completed `FrameOutput`.
 - `Simulation/Models/<Owner>/` owns each physical model, its configuration,
@@ -64,15 +64,17 @@ Every valid frame follows one fixed path:
 ```text
 FrameInput
   -> retain available external observations
-  -> SystemPipeline: Control group, then commit
-  -> SystemPipeline: Equipment group, then commit
+  -> SystemPipeline: run every scheduled bucket through frame-end
+     (same-time Systems sample together, then commit together)
   -> SimulationPipeline: Aerodynamics, Propulsion,
                          GroundInteraction, MassProperties
   -> one complete FrameOutput
 ```
 
 Commands and events may be routed between frames, but continuous state advances
-only in `step()`. Output becomes visible only after the complete frame succeeds.
+only on each owner's scheduled tick. Observation-dependent command effects are
+latched until that tick. The SimulationPipeline remains host-driven and reads
+the latest completed System snapshot.
 
 See [`Systems/README.md`](Systems/README.md) for the System extension contract.
 Use the

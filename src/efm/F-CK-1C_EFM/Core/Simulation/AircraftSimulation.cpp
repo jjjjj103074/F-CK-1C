@@ -9,10 +9,15 @@
 #include "Models/Propulsion/PropulsionModel.h"
 #include "Models/ModelExecutionContext.h"
 
+#include <cmath>
+#include <limits>
+#include <stdexcept>
 #include <utility>
 
 namespace
 {
+constexpr long double kNanosecondsPerSecond = 1'000'000'000.0L;
+
 Core::Systems::FlightFuelState make_system_fuel_state(
 	const Core::Simulation::FlightFuelLoad& load)
 {
@@ -188,14 +193,12 @@ FrameOutput AircraftSimulation::step(const FrameInput& input)
 	apply_frame_input(input);
 	begin_frame(input.dt_s);
 	update_airspeed(aircraft_state_);
-	if (gameplay_.options.infinite_fuel)
-	{
-		system_pipeline_.suppress_next_fuel_consumption();
-	}
+	system_pipeline_.begin_fuel_frame(
+		gameplay_.options.infinite_fuel);
 	const AircraftObservation observation =
 		make_aircraft_observation(aircraft_state_);
 	const Systems::AircraftDataSnapshot aircraft =
-		system_pipeline_.step({ input, observation });
+		system_pipeline_.step({ input, observation, scheduled_time() });
 	const SimulationResult& simulation = simulation_pipeline_.step({
 		aircraft,
 		aircraft_state_,
@@ -210,8 +213,29 @@ FrameOutput AircraftSimulation::step(const FrameInput& input)
 
 void AircraftSimulation::begin_frame(double dt)
 {
+	if (!std::isfinite(dt) || dt < 0.0)
+	{
+		throw std::invalid_argument(
+			"AircraftSimulation dt must be finite and non-negative.");
+	}
 	simulation_time_s_ += dt;
 	++cockpit_snapshot_revision_;
+}
+
+Systems::SystemScheduledTime AircraftSimulation::scheduled_time() const
+{
+	const long double nanoseconds =
+		static_cast<long double>(simulation_time_s_) *
+		kNanosecondsPerSecond;
+	const long double maximum = static_cast<long double>(
+		(std::numeric_limits<std::int64_t>::max)());
+	if (nanoseconds > maximum)
+	{
+		throw std::overflow_error(
+			"AircraftSimulation exceeded its time range.");
+	}
+	return Systems::SystemScheduledTime(
+		static_cast<std::int64_t>(std::llround(nanoseconds)));
 }
 
 void AircraftSimulation::repair(const RepairEvent& event)

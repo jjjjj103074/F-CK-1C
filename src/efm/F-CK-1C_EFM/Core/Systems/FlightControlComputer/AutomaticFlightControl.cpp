@@ -1,5 +1,6 @@
 #include "AutomaticFlightControl.h"
 
+#include "../SystemPipeline.h"
 #include "Common/Clamp.h"
 #include "Common/Units.h"
 
@@ -49,16 +50,54 @@ AutomaticFlightControl::AutomaticFlightControl(
 	refresh_snapshot();
 }
 
+void AutomaticFlightControl::register_commands(SystemSetup& setup)
+{
+	const CommandId commands[] = {
+		CommandId::ToggleAutopilotMaster, CommandId::EngageAutopilot,
+		CommandId::DisengageAutopilot, CommandId::SetAutopilotBypass,
+		CommandId::SelectAutopilotPitchHold,
+		CommandId::SelectAutopilotVerticalSpeedHold,
+		CommandId::SelectAutopilotAltitudeHold,
+		CommandId::IncreaseAutopilotVerticalReference,
+		CommandId::DecreaseAutopilotVerticalReference,
+		CommandId::SelectAutopilotHeadingHold,
+		CommandId::SelectAutopilotHeading,
+		CommandId::SelectAutopilotNavigationTrack,
+		CommandId::IncreaseAutopilotLateralReference,
+		CommandId::DecreaseAutopilotLateralReference,
+		CommandId::ToggleAutoThrottle, CommandId::EngageAutoThrottle,
+		CommandId::DisengageAutoThrottle,
+		CommandId::IncreaseAutopilotSpeed,
+		CommandId::DecreaseAutopilotSpeed
+	};
+	for (CommandId id : commands)
+	{
+		setup.register_command_handler(
+			id,
+			[this](const Command& command) { handle_command(command); });
+	}
+}
+
 void AutomaticFlightControl::handle_command(const Command& command)
 {
-	const bool handled =
-		handle_master_command(command) ||
-		handle_vertical_command(command) ||
-		handle_lateral_command(command) ||
-		handle_auto_throttle_command(command);
-	if (!handled) return;
-	refresh_demand();
-	refresh_snapshot();
+	pending_commands_.push_back(command);
+}
+
+void AutomaticFlightControl::apply_pending_commands()
+{
+	for (const Command& command : pending_commands_)
+	{
+		apply_command(command);
+	}
+	pending_commands_.clear();
+}
+
+void AutomaticFlightControl::apply_command(const Command& command)
+{
+	if (handle_master_command(command)) return;
+	if (handle_vertical_command(command)) return;
+	if (handle_lateral_command(command)) return;
+	(void)handle_auto_throttle_command(command);
 }
 
 bool AutomaticFlightControl::handle_master_command(const Command& command)
@@ -395,6 +434,7 @@ const AutomaticFlightControlDemand& AutomaticFlightControl::step(
 	const AutomaticFlightControlObservation& observation)
 {
 	observation_ = observation;
+	apply_pending_commands();
 	apply_disconnect_guards();
 	if (bypass_active_)
 	{

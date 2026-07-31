@@ -25,6 +25,7 @@ public:
 
 	void setup(SystemSetup& setup) override;
 	void step(
+		const SystemStepContext& context,
 		const AircraftDataView& aircraft,
 		SystemResult& result) override;
 

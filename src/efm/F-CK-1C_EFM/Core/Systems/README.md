@@ -8,24 +8,34 @@ The Pipeline is the sole production scheduler and commit point for these
 aircraft owners. `AircraftSimulation` consumes only the completed aircraft
 snapshot and does not call or own concrete Systems.
 
-| System | Group | Responsibility |
-|---|---|---|
-| `FlightControlComputer` | Control | Pilot input shaping, AFCS state/controllers, and control demands |
-| `PrimaryFlightControls` | Equipment | Elevator, aileron, and rudder actuators |
-| `SecondaryFlightControls` | Equipment | Flaps, slats, and airbrake |
-| `LandingGear` | Equipment | Gear, brakes, NWS, wheels, and suspension state |
-| `Engine` | Equipment | Engine device state, spool, nozzle, and fuel demand |
-| `Fuel` | Equipment | Fuel storage, supply, transfer, and consumed mass |
-| `AirframeStructure` | Equipment | Component integrity and damage ownership |
-| `PropulsionDiagnostics` | Equipment | Flight-test thrust-cut intent |
+| System | Rate | Timing evidence | Responsibility |
+|---|---:|---|---|
+| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | Pilot input shaping, AFCS state/controllers, and control demands |
+| `PrimaryFlightControls` | 64 Hz | Project-defined fallback | Elevator, aileron, and rudder actuators |
+| `SecondaryFlightControls` | 64 Hz | Project-defined fallback | Flaps, slats, and airbrake |
+| `LandingGear` | 64 Hz | Project-defined fallback | Gear, brakes, NWS, wheels, and suspension state |
+| `Engine` | 64 Hz | Project-defined fallback | Engine device state, spool, nozzle, and fuel demand |
+| `Fuel` | 64 Hz | Project-defined fallback | Fuel storage, supply, transfer, and consumed mass |
+| `AirframeStructure` | 64 Hz | Project-defined fallback | Component integrity and damage ownership |
+| `PropulsionDiagnostics` | 64 Hz | Project-defined fallback | Flight-test thrust-cut intent |
+
+The FCC rate is based on NASA's description of F-16XL DFLCS control laws
+running at 64 cycles per second:
+[NASA TP-3547](https://ntrs.nasa.gov/api/citations/20040040334/downloads/20040040334.pdf).
+No reliable device-specific F-16 or F-CK-1C rate was identified for the other
+current Systems, so their 64 Hz values are explicitly project-defined
+fallbacks, not aircraft facts.
 
 ## System contract
 
 Every System is a class derived from `System` and has two lifecycle methods:
 
-- `setup()` declares AircraftData reads/publications and registers handlers.
-- `step()` advances one complete frame. Each System reads one immutable group
-  snapshot and publishes only through the Pipeline-owned reusable
+- `setup()` declares exactly one fixed update rate or period, declares
+  AircraftData reads/publications, and registers handlers.
+- `step()` advances one scheduled device tick. `SystemStepContext` supplies
+  that tick's scheduled simulation time and the System's own fixed `dt`.
+  Each System reads one immutable time-bucket snapshot and publishes only
+  through the Pipeline-owned reusable
   `SystemResult` buffer; the Pipeline returns the completed immutable
   AircraftData snapshot.
 
@@ -33,10 +43,14 @@ Setup completes in two stages. The Pipeline first collects every System's
 declarations, then validates providers, types, initial values, single writers,
 and handler ownership before committing any initial AircraftData.
 
-Control Systems run first and commit as one batch. Equipment Systems then read
-that completed Control snapshot and commit as a second batch. Systems in the
-same group never see each other's pending results. The completed frame becomes
-externally visible only after both groups finish successfully.
+`SystemPipeline` stores ordered scheduled-time buckets. All Systems due at the
+same time read one shared immutable snapshot and commit as one batch. A later
+bucket sees the preceding bucket's committed output. The next tick is derived
+from the common epoch and invocation count, so host lateness does not shift the
+device clock; a large host interval executes every due tick.
+
+The first dynamic tick occurs after one complete period. `SystemGroup` remains
+catalog metadata only and never controls production execution order.
 
 ## Adding an Entry
 
@@ -98,7 +112,10 @@ uninitialized value. A missing provider, wrong type, duplicate publisher, or
 missing required initial value fails setup. During `step()`, both `read()` and
 `has()` reject keys that the current System did not declare during `setup()`.
 
-`FrameInput` carries frame-local values such as `dt` and suspension samples.
+`FrameInput` carries DCS callback-local values such as suspension samples and
+the host `dt`. Systems may read callback-local samples when declared, but must
+not use `FrameInput::dt_s` as their integration step; scheduler-driven
+integration uses `SystemStepContext::dt_s`.
 Semantic pilot commands enter through registered command handlers; AP and A/T
 are not smuggled through per-frame parameter fields. `AircraftObservation`
 carries retained, normalized flight state. `AircraftSimulation` updates only
@@ -107,7 +124,10 @@ the completed observation to the Pipeline. The Pipeline publishes both inputs
 through the same typed snapshot; Systems do not know which DCS callback
 produced them.
 
-Commands have one registered handler per semantic `CommandId`. Damage areas
+Commands have one registered handler per semantic `CommandId`. A handler may
+latch intent immediately, but an observation-dependent transition or reference
+capture occurs on the owner's next scheduled tick. Edge actions are queued so
+multiple press/toggle/increase events cannot overwrite one another. Damage areas
 have one semantic owner. Repair may have multiple subscribers. An unregistered
 command or damage event returns `DispatchResult::Unhandled`; handlers are not
 broadcast.
@@ -120,16 +140,17 @@ boundary and DCSBridge records it once.
 Fuel registers only the preparation handlers used by the
 simulation façade. The Pipeline validates that the handler set is complete and
 belongs to the sole `FuelData` publisher. Fuel publishes the current frame's
-consumed mass in `FuelData`; Simulation converts that snapshot value into a
-mass effect. Infinite-fuel policy remains in Simulation: it requests one-frame
-consumption suppression before every step while enabled. Fuel still computes
-and publishes the true total flow, publishes zero consumed mass for that
-frame, and does not know why consumption was suppressed.
+accumulated consumed mass in `FuelData`; this is necessary when zero, one, or
+multiple Fuel ticks occur during one DCS callback. Simulation converts that
+value into one mass effect. Infinite-fuel policy remains in Simulation: it
+marks the entire callback's Fuel interval as consumption-suppressed. Fuel still
+computes and publishes the true total flow, publishes zero consumed mass for
+that callback, and does not know why consumption was suppressed.
 
 ## Verification
 
 Follow the
 [`DLL build guide`](../../../../../docs/BUILD_DLL.md). A System change must
 pass the native tests, architecture check, and System catalog fixtures. Add
-focused tests for its setup declarations, handlers, group timing, retained
+focused tests for its setup declarations, handlers, scheduled timing, retained
 data, and published frame output as applicable.

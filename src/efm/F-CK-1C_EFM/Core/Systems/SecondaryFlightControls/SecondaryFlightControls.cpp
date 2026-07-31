@@ -1,6 +1,7 @@
 #include "SecondaryFlightControls.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 
 namespace
 {
@@ -22,6 +23,7 @@ SecondaryFlightControls::SecondaryFlightControls(StartMode start_mode)
 
 void SecondaryFlightControls::setup(SystemSetup& setup)
 {
+	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kAircraftObservation);
 	setup.read(AircraftDataKeys::kLandingGearData);
 	setup.publish(AircraftDataKeys::kSecondaryControlPosition, position_);
@@ -47,9 +49,11 @@ void SecondaryFlightControls::register_commands(SystemSetup& setup)
 }
 
 void SecondaryFlightControls::step(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
+	(void)context;
 	const AircraftObservation& observation =
 		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	const double gear =

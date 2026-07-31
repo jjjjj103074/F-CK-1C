@@ -1,6 +1,7 @@
 #include "PropulsionDiagnostics.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 
 namespace
 {
@@ -13,6 +14,7 @@ namespace Systems
 {
 void PropulsionDiagnostics::setup(SystemSetup& setup)
 {
+	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.publish(AircraftDataKeys::kPropulsionTestIntent, intent_);
 	const CommandId commands[] = {
 		CommandId::ToggleThrustCutTest,
@@ -28,9 +30,11 @@ void PropulsionDiagnostics::setup(SystemSetup& setup)
 }
 
 void PropulsionDiagnostics::step(
+	const SystemStepContext& context,
 	const AircraftDataView&,
 	SystemResult& result)
 {
+	(void)context;
 	result.publish(AircraftDataKeys::kPropulsionTestIntent, intent_);
 }
 

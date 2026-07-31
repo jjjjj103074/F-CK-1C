@@ -84,6 +84,7 @@ private:
 	void apply_setup(const FlightSetupContext& setup);
 	void apply_frame_input(const FrameInput& input);
 	void begin_frame(double dt);
+	Systems::SystemScheduledTime scheduled_time() const;
 
 	AircraftState aircraft_state_;
 	GameplayState gameplay_;

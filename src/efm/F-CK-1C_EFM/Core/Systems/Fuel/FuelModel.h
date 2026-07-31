@@ -62,7 +62,7 @@ inline void consume_fuel(
 	const double external_consumed = consume_external_fuel(fuel, requested);
 	const double internal_consumed =
 		consume_internal_fuel(fuel, requested - external_consumed);
-	fuel.frame_consumed_mass =
+	fuel.frame_consumed_mass +=
 		external_consumed + internal_consumed;
 }
 
@@ -79,7 +79,6 @@ inline void record_fuel_demand_without_consumption(
 	double flow_rate)
 {
 	fuel.total_fuel_flow = flow_rate;
-	fuel.frame_consumed_mass = 0.0;
 }
 
 inline void set_internal_fuel(FuelSystem& fuel, double value)

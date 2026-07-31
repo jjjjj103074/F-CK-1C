@@ -1,6 +1,7 @@
 #include "PrimaryFlightControls.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 
 namespace Core
 {
@@ -8,14 +9,17 @@ namespace Systems
 {
 void PrimaryFlightControls::setup(SystemSetup& setup)
 {
+	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kFlightControlDemand);
 	setup.publish(AircraftDataKeys::kPrimaryControlPosition, position_);
 }
 
 void PrimaryFlightControls::step(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
+	(void)context;
 	result.publish(
 		AircraftDataKeys::kPrimaryControlPosition,
 		step(aircraft.read(AircraftDataKeys::kFlightControlDemand)));

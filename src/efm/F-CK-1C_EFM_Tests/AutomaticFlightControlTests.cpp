@@ -123,6 +123,7 @@ void prime_and_engage(
 {
 	(void)control.step(observation);
 	send(control, CommandId::EngageAutopilot);
+	(void)control.step(observation);
 }
 
 AltitudeCaptureMetrics run_altitude_capture()
@@ -224,6 +225,52 @@ void test_attitude_boundary_is_inclusive(Tests::Context& context)
 	TEST_EXPECT(context, control.snapshot().master_engaged);
 }
 
+void test_engage_command_uses_next_tick_observation(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	AutomaticFlightControlObservation observation = nominal_observation();
+	(void)control.step(observation);
+	send(control, CommandId::EngageAutopilot);
+	TEST_EXPECT(context, !control.snapshot().master_engaged);
+	observation.pitch_rad += Common::rad(1.0);
+	observation.heading_rad += Common::rad(2.0);
+	(void)control.step(observation);
+	TEST_EXPECT(context, control.snapshot().master_engaged);
+	TEST_EXPECT_NEAR(
+		context,
+		control.snapshot().target_pitch_rad,
+		observation.pitch_rad,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		control.snapshot().target_heading_rad,
+		observation.heading_rad,
+		kTolerance);
+}
+
+void test_pending_commands_preserve_arrival_order(Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	const AutomaticFlightControlObservation observation =
+		nominal_observation();
+	(void)control.step(observation);
+	send(control, CommandId::EngageAutopilot);
+	send(control, CommandId::SelectAutopilotAltitudeHold);
+	TEST_EXPECT(context, !control.snapshot().master_engaged);
+	(void)control.step(observation);
+	TEST_EXPECT(context, control.snapshot().master_engaged);
+	TEST_EXPECT(
+		context,
+		control.snapshot().vertical_mode ==
+			AutomaticFlightControlVerticalMode::AltitudeHold);
+	TEST_EXPECT_NEAR(
+		context,
+		control.snapshot().target_altitude_m,
+		observation.altitude_m,
+		kTolerance);
+}
+
 void test_default_capture_and_controller_direction(Tests::Context& context)
 {
 	AutomaticFlightControl control = make_control();
@@ -269,6 +316,7 @@ void test_vertical_speed_controller_characterization(
 	observation.vertical_speed_mps = 4.0;
 	prime_and_engage(control, observation);
 	send(control, CommandId::SelectAutopilotVerticalSpeedHold);
+	(void)control.step(observation);
 	observation.vertical_speed_mps = 3.0;
 	TEST_EXPECT_NEAR(
 		context,
@@ -314,12 +362,14 @@ void test_vertical_modes_and_adjustments(Tests::Context& context)
 	observation.vertical_speed_mps = 4.0;
 	prime_and_engage(control, observation);
 	send(control, CommandId::SelectAutopilotVerticalSpeedHold);
+	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		control.snapshot().target_vertical_speed_mps,
 		4.0,
 		kTolerance);
 	send(control, CommandId::IncreaseAutopilotVerticalReference);
+	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		control.snapshot().target_vertical_speed_mps,
@@ -330,6 +380,7 @@ void test_vertical_modes_and_adjustments(Tests::Context& context)
 
 	send(control, CommandId::SelectAutopilotAltitudeHold);
 	send(control, CommandId::IncreaseAutopilotVerticalReference);
+	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		control.snapshot().target_altitude_m,
@@ -346,12 +397,14 @@ void test_heading_wrap_and_navigation_placeholder(Tests::Context& context)
 	observation.heading_rad = Common::rad(359.5);
 	prime_and_engage(control, observation);
 	send(control, CommandId::IncreaseAutopilotLateralReference);
+	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		control.snapshot().target_heading_rad,
 		Common::rad(0.5),
 		kTolerance);
 	send(control, CommandId::SelectAutopilotNavigationTrack);
+	(void)control.step(observation);
 	TEST_EXPECT(
 		context,
 		control.snapshot().lateral_mode ==
@@ -370,6 +423,7 @@ void test_bypass_freeze_and_recapture(Tests::Context& context)
 	AutomaticFlightControlObservation observation = nominal_observation();
 	prime_and_engage(control, observation);
 	send(control, CommandId::SetAutopilotBypass);
+	(void)control.step(observation);
 	observation.pitch_rad += Common::rad(2.0);
 	observation.heading_rad += Common::rad(2.0);
 	const auto& bypass_demand = control.step(observation);
@@ -379,6 +433,7 @@ void test_bypass_freeze_and_recapture(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context, bypass_demand.roll_normalized, 0.0, kTolerance);
 	send(control, CommandId::SetAutopilotBypass, 0.0);
+	(void)control.step(observation);
 	TEST_EXPECT(context, !control.snapshot().bypass_active);
 	TEST_EXPECT_NEAR(
 		context,
@@ -400,10 +455,12 @@ void test_bypass_ignores_sub_threshold_change(Tests::Context& context)
 	const double target_pitch = control.snapshot().target_pitch_rad;
 	const double target_heading = control.snapshot().target_heading_rad;
 	send(control, CommandId::SetAutopilotBypass);
+	(void)control.step(observation);
 	observation.pitch_rad += Common::rad(0.5);
 	observation.heading_rad += Common::rad(0.5);
 	(void)control.step(observation);
 	send(control, CommandId::SetAutopilotBypass, 0.0);
+	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
 		context, control.snapshot().target_pitch_rad, target_pitch, kTolerance);
 	TEST_EXPECT_NEAR(
@@ -426,6 +483,7 @@ void test_disconnect_guards(Tests::Context& context)
 	observation = nominal_observation();
 	(void)control.step(observation);
 	send(control, CommandId::EngageAutoThrottle);
+	(void)control.step(observation);
 	TEST_EXPECT(context, control.snapshot().auto_throttle_engaged);
 	observation.mach = 1.0;
 	(void)control.step(observation);
@@ -446,12 +504,14 @@ void test_auto_throttle_engage_gates(Tests::Context& context)
 	AutomaticFlightControl boundary = make_control();
 	(void)boundary.step(observation);
 	send(boundary, CommandId::EngageAutoThrottle);
+	(void)boundary.step(observation);
 	TEST_EXPECT(context, boundary.snapshot().auto_throttle_engaged);
 
 	observation.mach = 0.951;
 	AutomaticFlightControl fast = make_control();
 	(void)fast.step(observation);
 	send(fast, CommandId::EngageAutoThrottle);
+	(void)fast.step(observation);
 	TEST_EXPECT(context, !fast.snapshot().auto_throttle_engaged);
 	TEST_EXPECT(
 		context,
@@ -463,6 +523,7 @@ void test_auto_throttle_engage_gates(Tests::Context& context)
 	AutomaticFlightControl ground = make_control();
 	(void)ground.step(observation);
 	send(ground, CommandId::EngageAutoThrottle);
+	(void)ground.step(observation);
 	TEST_EXPECT(context, !ground.snapshot().auto_throttle_engaged);
 	TEST_EXPECT(
 		context,
@@ -505,12 +566,14 @@ void test_auto_throttle_target_limits(Tests::Context& context)
 	(void)control.step(observation);
 	send(control, CommandId::EngageAutoThrottle);
 	send(control, CommandId::IncreaseAutopilotSpeed);
+	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		control.snapshot().target_speed_mps,
 		knots(550.0),
 		kTolerance);
 	send(control, CommandId::IncreaseAutopilotSpeed);
+	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		control.snapshot().target_speed_mps,
@@ -522,12 +585,14 @@ void test_auto_throttle_target_limits(Tests::Context& context)
 	(void)minimum.step(observation);
 	send(minimum, CommandId::EngageAutoThrottle);
 	send(minimum, CommandId::DecreaseAutopilotSpeed);
+	(void)minimum.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		minimum.snapshot().target_speed_mps,
 		knots(200.0),
 		kTolerance);
 	send(minimum, CommandId::DecreaseAutopilotSpeed);
+	(void)minimum.step(observation);
 	TEST_EXPECT_NEAR(
 		context,
 		minimum.snapshot().target_speed_mps,
@@ -542,6 +607,7 @@ void test_auto_throttle_controller_characterization(
 	AutomaticFlightControlObservation observation = nominal_observation();
 	(void)control.step(observation);
 	send(control, CommandId::EngageAutoThrottle);
+	(void)control.step(observation);
 	observation.indicated_airspeed_mps -= 1.0;
 	TEST_EXPECT_NEAR(
 		context,
@@ -559,6 +625,7 @@ void test_commanded_disconnect_resets_both_channels(
 	prime_and_engage(control, observation);
 	send(control, CommandId::EngageAutoThrottle);
 	send(control, CommandId::DisengageAutopilot);
+	(void)control.step(observation);
 	TEST_EXPECT(context, !control.snapshot().master_engaged);
 	TEST_EXPECT(context, !control.snapshot().auto_throttle_engaged);
 	TEST_EXPECT(
@@ -577,6 +644,8 @@ void run_automatic_flight_control_tests(Tests::Context& context)
 	test_autopilot_engage_boundaries(context);
 	test_attitude_and_ground_engage_gates(context);
 	test_attitude_boundary_is_inclusive(context);
+	test_engage_command_uses_next_tick_observation(context);
+	test_pending_commands_preserve_arrival_order(context);
 	test_default_capture_and_controller_direction(context);
 	test_pitch_controller_characterization(context);
 	test_vertical_speed_controller_characterization(context);

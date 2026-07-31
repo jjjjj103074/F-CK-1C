@@ -4,11 +4,14 @@
 #include "../../Contracts/Commands.h"
 
 #include <cstdint>
+#include <vector>
 
 namespace Core
 {
 namespace Systems
 {
+class SystemSetup;
+
 struct AutomaticFlightControlConfig
 {
 	double minimum_ias_mps = 0.0;
@@ -80,12 +83,15 @@ public:
 		const AutomaticFlightControlConfig& config,
 		bool initial_weight_on_wheels);
 
+	void register_commands(SystemSetup& setup);
 	void handle_command(const Command& command);
 	const AutomaticFlightControlDemand& step(
 		const AutomaticFlightControlObservation& observation);
 	const AutomaticFlightControlSnapshot& snapshot() const;
 
 private:
+	void apply_pending_commands();
+	void apply_command(const Command& command);
 	bool handle_master_command(const Command& command);
 	bool handle_vertical_command(const Command& command);
 	bool handle_lateral_command(const Command& command);
@@ -133,6 +139,7 @@ private:
 	AutomaticFlightControlObservation observation_;
 	AutomaticFlightControlDemand demand_;
 	AutomaticFlightControlSnapshot snapshot_;
+	std::vector<Command> pending_commands_;
 	std::uint64_t revision_ = 0;
 	bool master_engaged_ = false;
 	bool auto_throttle_engaged_ = false;

@@ -1,6 +1,7 @@
 #include "AirframeStructure.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 
 namespace Core
 {
@@ -8,6 +9,7 @@ namespace Systems
 {
 void AirframeStructure::setup(SystemSetup& setup)
 {
+	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.publish(AircraftDataKeys::kAirframeIntegrity, integrity_);
 	setup.register_damage_handler(
 		DamageArea::LeftWing,
@@ -23,9 +25,11 @@ void AirframeStructure::setup(SystemSetup& setup)
 }
 
 void AirframeStructure::step(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
+	(void)context;
 	(void)aircraft;
 	result.publish(AircraftDataKeys::kAirframeIntegrity, integrity_);
 }

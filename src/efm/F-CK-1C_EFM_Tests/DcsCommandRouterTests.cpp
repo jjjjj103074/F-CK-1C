@@ -10,7 +10,7 @@
 namespace
 {
 constexpr double kTolerance = 1e-6;
-constexpr double kSimulationStepS = 0.001;
+constexpr double kSimulationStepS = 0.04;
 constexpr float kMappingProbeValue = 1.0F;
 constexpr int kUnknownCommandId = 2659;
 constexpr int kDcsRadarOnOffCommandId = 86;
@@ -261,6 +261,7 @@ void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
 {
 	Core::Fck1cEfm efm;
 	(void)efm.start(Core::StartMode::HotAir);
+	efm.set_internal_fuel(100.0);
 	route_command(context, efm, { DcsIds::Commands::ThrottleAxis, -1.0F });
 	route_command(context, efm, { DcsIds::Commands::AirBrakesOn, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::FlapsDown, 1.0F });

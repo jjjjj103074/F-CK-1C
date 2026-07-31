@@ -22,6 +22,7 @@ public:
 
 	void setup(SystemSetup& setup) override;
 	void step(
+		const SystemStepContext& context,
 		const AircraftDataView& aircraft,
 		SystemResult& result) override;
 
@@ -46,9 +47,11 @@ private:
 	void refresh_pilot_controls(double pitch, double roll);
 	void refresh_outputs(const ::Systems::FBWControllerOutput& output);
 	AutomaticFlightControlObservation make_automatic_observation(
+		const SystemStepContext& context,
 		const AircraftDataView& aircraft) const;
 	double alpha_limit(double mach) const;
 	::Systems::FBWControllerInput make_pipeline_input(
+		const SystemStepContext& context,
 		const AircraftDataView& aircraft) const;
 
 	const FlightControlComputerConfig config_;

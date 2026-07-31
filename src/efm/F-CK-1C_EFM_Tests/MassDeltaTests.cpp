@@ -10,9 +10,11 @@ constexpr double kPendingConsumption = 12.5;
 constexpr double kFlowRate = 2.5;
 constexpr double kFrameDt = 0.2;
 constexpr double kExpectedConsumption = 0.5;
+constexpr double kExpectedTwoTickConsumption = 1.0;
 constexpr double kExternalFuel = 10.0;
 constexpr double kInternalFuel = 10.0;
 constexpr double kConsumedInternalFuel = 9.5;
+constexpr double kTwoTickRemainingInternalFuel = 9.0;
 constexpr double kBoundaryExternalFuel = 0.25;
 constexpr double kRemainingInternalFuel = 9.75;
 constexpr double kMassPositionX = -1.0;
@@ -55,6 +57,7 @@ void test_fuel_consumes_registered_demand(Tests::Context& context)
 {
 	Core::Systems::Fuel fuel;
 	fuel.set_external_fuel({ kFirstFuelStation, kExternalFuel, {} });
+	fuel.begin_frame(false);
 	const Core::FuelData& data =
 		fuel.step({ kFlowRate }, kFrameDt);
 	TEST_EXPECT_NEAR(
@@ -71,7 +74,7 @@ void test_fuel_suppression_is_one_frame_and_preserves_flow(
 {
 	Core::Systems::Fuel fuel;
 	fuel.set_internal_fuel(kInternalFuel);
-	fuel.suppress_next_consumption();
+	fuel.begin_frame(true);
 	const Core::FuelData suppressed =
 		fuel.step({ kFlowRate }, kFrameDt);
 	TEST_EXPECT_NEAR(
@@ -79,11 +82,32 @@ void test_fuel_suppression_is_one_frame_and_preserves_flow(
 	TEST_EXPECT_NEAR(
 		context, suppressed.total_fuel_flow, kFlowRate, kTolerance);
 	TEST_EXPECT_NEAR(context, suppressed.consumed_mass, 0.0, kTolerance);
+	fuel.begin_frame(false);
 	const Core::FuelData resumed = fuel.step({ kFlowRate }, kFrameDt);
 	TEST_EXPECT_NEAR(
 		context, fuel.internal_fuel(), kConsumedInternalFuel, kTolerance);
 	TEST_EXPECT_NEAR(
 		context, resumed.consumed_mass, kExpectedConsumption, kTolerance);
+}
+
+void test_fuel_accumulates_multiple_ticks_within_one_frame(
+	Tests::Context& context)
+{
+	Core::Systems::Fuel fuel;
+	fuel.set_internal_fuel(kInternalFuel);
+	fuel.begin_frame(false);
+	(void)fuel.step({ kFlowRate }, kFrameDt);
+	const Core::FuelData& second = fuel.step({ kFlowRate }, kFrameDt);
+	TEST_EXPECT_NEAR(
+		context,
+		second.consumed_mass,
+		kExpectedTwoTickConsumption,
+		kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		fuel.internal_fuel(),
+		kTwoTickRemainingInternalFuel,
+		kTolerance);
 }
 
 void test_external_fuel_is_aggregated_by_station(Tests::Context& context)
@@ -120,6 +144,7 @@ void test_consumption_crosses_external_fuel_boundary(Tests::Context& context)
 	fuel.set_external_fuel({
 		kFirstFuelStation, kBoundaryExternalFuel, {}
 	});
+	fuel.begin_frame(false);
 	fuel.step({ kFlowRate }, kFrameDt);
 	TEST_EXPECT_NEAR(context, fuel.external_fuel(), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(
@@ -135,6 +160,7 @@ void run_mass_delta_tests(Tests::Context& context)
 	test_mass_properties_ignores_zero_consumption(context);
 	test_fuel_consumes_registered_demand(context);
 	test_fuel_suppression_is_one_frame_and_preserves_flow(context);
+	test_fuel_accumulates_multiple_ticks_within_one_frame(context);
 	test_external_fuel_is_aggregated_by_station(context);
 	test_consumption_crosses_external_fuel_boundary(context);
 }

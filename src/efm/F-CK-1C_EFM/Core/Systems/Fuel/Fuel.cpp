@@ -1,6 +1,7 @@
 #include "Fuel.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 
 namespace Core
 {
@@ -22,7 +23,7 @@ Fuel::Fuel(const FlightFuelState& initial)
 
 void Fuel::setup(SystemSetup& setup)
 {
-	setup.read(AircraftDataKeys::kFrameInput);
+	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kFuelDemand);
 	setup.publish(AircraftDataKeys::kFuelData, data_);
 	setup.register_fuel_management({
@@ -33,27 +34,33 @@ void Fuel::setup(SystemSetup& setup)
 		{
 			set_external_fuel({ fuel.station, fuel.fuel, fuel.position });
 		},
-		[this]() { suppress_next_consumption(); }
+		[this](bool suppress_consumption)
+		{
+			begin_frame(suppress_consumption);
+		}
 	});
 }
 
 void Fuel::step(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const FuelDemand& demand =
 		aircraft.read(AircraftDataKeys::kFuelDemand);
 	result.publish(
 		AircraftDataKeys::kFuelData,
-		step(demand, frame.dt_s));
+		update(demand, context.dt_s));
 }
 
 const FuelData& Fuel::step(const FuelDemand& demand, double dt)
 {
-	const bool suppress_consumption = suppress_next_consumption_;
-	suppress_next_consumption_ = false;
-	if (suppress_consumption)
+	return update(demand, dt);
+}
+
+const FuelData& Fuel::update(const FuelDemand& demand, double dt)
+{
+	if (consumption_suppressed_)
 	{
 		::Systems::record_fuel_demand_without_consumption(
 			fuel_,
@@ -67,9 +74,11 @@ const FuelData& Fuel::step(const FuelDemand& demand, double dt)
 	return data_;
 }
 
-void Fuel::suppress_next_consumption()
+void Fuel::begin_frame(bool suppress_consumption)
 {
-	suppress_next_consumption_ = true;
+	fuel_.frame_consumed_mass = 0.0;
+	consumption_suppressed_ = suppress_consumption;
+	refresh_data();
 }
 
 void Fuel::set_internal_fuel(double fuel)

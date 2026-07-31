@@ -1,6 +1,7 @@
 #include "SystemPipelineTestFixture.h"
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 
 namespace
@@ -20,6 +21,10 @@ constexpr double kTolerance = 1e-12;
 constexpr double kFullIntegrity = 1.0;
 constexpr int kFirstCall = 0;
 constexpr std::size_t kCurrentCatalogSize = 8;
+constexpr std::uint32_t kInvalidUpdateRateHz = 0;
+constexpr SystemScheduledTime kZeroUpdatePeriod = {};
+constexpr SystemScheduledTime kNegativeUpdatePeriod =
+	std::chrono::nanoseconds(-1);
 
 struct DemandPublisherOptions
 {
@@ -253,7 +258,55 @@ void test_duplicate_writer_fails(Tests::Context& context)
 	TEST_EXPECT(context, construction_throws({ entry(second), entry(first) }));
 }
 
-void test_same_group_reads_fixed_snapshot(Tests::Context& context)
+void test_missing_update_rate_fails(Tests::Context& context)
+{
+	SystemDefinition system = {
+		"missing_rate",
+		SystemGroup::Equipment,
+		[](SystemSetup&) {},
+		no_step()
+	};
+	system.update_rate_hz = std::nullopt;
+	TEST_EXPECT(context, construction_throws({ entry(system) }));
+}
+
+void test_duplicate_update_rate_fails(Tests::Context& context)
+{
+	const SystemDefinition system = {
+		"duplicate_rate",
+		SystemGroup::Equipment,
+		[](SystemSetup& setup)
+		{
+			setup.update_rate_hz(kTestUpdateRateHz);
+		},
+		no_step()
+	};
+	TEST_EXPECT(context, construction_throws({ entry(system) }));
+}
+
+void test_invalid_update_timing_fails(Tests::Context& context)
+{
+	SystemDefinition zero_rate = {
+		"zero_rate", SystemGroup::Equipment, [](SystemSetup&) {}, no_step()
+	};
+	zero_rate.update_rate_hz = kInvalidUpdateRateHz;
+	TEST_EXPECT(context, construction_throws({ entry(zero_rate) }));
+
+	for (const SystemScheduledTime period :
+		{ kZeroUpdatePeriod, kNegativeUpdatePeriod })
+	{
+		SystemDefinition invalid_period = {
+			"invalid_period",
+			SystemGroup::Equipment,
+			[period](SystemSetup& setup) { setup.update_period(period); },
+			no_step()
+		};
+		invalid_period.update_rate_hz = std::nullopt;
+		TEST_EXPECT(context, construction_throws({ entry(invalid_period) }));
+	}
+}
+
+void test_same_time_bucket_reads_fixed_snapshot(Tests::Context& context)
 {
 	const SystemDefinition publisher = demand_publisher({
 		"publisher", SystemGroup::Control, kInitialDemand, kNextDemand });
@@ -273,7 +326,8 @@ void test_same_group_reads_fixed_snapshot(Tests::Context& context)
 		kTolerance);
 }
 
-void test_equipment_reads_control_commit(Tests::Context& context)
+void test_group_metadata_does_not_create_a_commit(
+	Tests::Context& context)
 {
 	const SystemDefinition publisher = demand_publisher({
 		"publisher", SystemGroup::Control, kInitialDemand, kNextDemand });
@@ -284,7 +338,7 @@ void test_equipment_reads_control_commit(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		output.read(AircraftDataKeys::kPrimaryControlPosition).elevator,
-		kNextDemand,
+		kInitialDemand,
 		kTolerance);
 }
 
@@ -320,10 +374,14 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 		action_throws([&pipeline, &failed_input]()
 		{
 			const Core::AircraftObservation observation;
-			(void)pipeline.step({ failed_input, observation });
+			(void)pipeline.step({
+				failed_input,
+				observation,
+				kTestUpdatePeriod
+			});
 		}));
 	const AircraftDataSnapshot unchanged = pipeline.snapshot();
-	TEST_EXPECT_NEAR(context, *observed, kNextDemand, kTolerance);
+	TEST_EXPECT_NEAR(context, *observed, kInitialDemand, kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
 		unchanged.read(AircraftDataKeys::kFlightControlDemand).pitch,
@@ -477,7 +535,7 @@ void expect_order_independent_result(
 		kTolerance);
 }
 
-void test_catalog_order_does_not_change_group_result(Tests::Context& context)
+void test_catalog_order_does_not_change_batch_result(Tests::Context& context)
 {
 	const SystemEntry first = entry(cross_reader("demand", true));
 	const SystemEntry second = entry(cross_reader("position", false));
@@ -623,12 +681,15 @@ void run_system_pipeline_data_tests(Tests::Context& context)
 	test_undeclared_has_fails(context);
 	test_declared_optional_has_reports_missing(context);
 	test_duplicate_writer_fails(context);
-	test_same_group_reads_fixed_snapshot(context);
-	test_equipment_reads_control_commit(context);
+	test_missing_update_rate_fails(context);
+	test_duplicate_update_rate_fails(context);
+	test_invalid_update_timing_fails(context);
+	test_same_time_bucket_reads_fixed_snapshot(context);
+	test_group_metadata_does_not_create_a_commit(context);
 	test_failed_equipment_keeps_previous_frame(context);
 	test_missing_new_value_retains_last_commit(context);
 	test_pending_storage_does_not_leak(context);
-	test_catalog_order_does_not_change_group_result(context);
+	test_catalog_order_does_not_change_batch_result(context);
 	test_systems_share_one_flight_result_buffer(context);
 	test_phase_three_generated_catalog(context);
 	test_factory_receives_start_mode(context);

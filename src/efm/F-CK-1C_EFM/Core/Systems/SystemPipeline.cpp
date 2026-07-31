@@ -1,6 +1,7 @@
 #include "SystemPipeline.h"
 #include "SystemExecutionContext.h"
 #include "SystemPipelineDataAccess.h"
+#include "SystemSchedule.h"
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -17,16 +18,13 @@ constexpr int kNoAircraftDataWriter = -1;
 constexpr int kExternalAircraftDataWriter = -2;
 using Detail::slot;
 using Detail::validate_key;
-
 std::string system_error(
 	const std::string& system_id,
 	const std::string& message)
 {
 	return "System '" + system_id + "': " + message;
 }
-
 }
-
 struct DataReadDeclaration
 {
 	AircraftDataId id;
@@ -34,7 +32,6 @@ struct DataReadDeclaration
 	std::string name;
 	InitialValueRequirement initial;
 };
-
 struct DataPublicationDeclaration
 {
 	AircraftDataId id;
@@ -42,7 +39,6 @@ struct DataPublicationDeclaration
 	std::string name;
 	std::optional<AircraftDataValue> initial;
 };
-
 struct CommandRegistration
 {
 	CommandId id;
@@ -64,11 +60,14 @@ struct SystemSetup::State
 	std::vector<DamageRegistration> damage_handlers;
 	std::vector<RepairHandler> repair_handlers;
 	std::optional<FuelManagementHandlers> fuel_management;
+	std::optional<std::uint32_t> update_rate_hz;
+	std::optional<SystemScheduledTime> update_period;
 };
 
 struct RuntimeSystem
 {
-	SystemGroup group;
+	std::uint32_t update_rate_hz = 0;
+	double update_dt_s = 0.0;
 	std::unique_ptr<System> system;
 	std::array<bool, kAircraftDataSlotCount> reads = {};
 	std::array<bool, kAircraftDataSlotCount> publications = {};
@@ -86,12 +85,16 @@ struct SystemPipeline::Implementation
 	AircraftDataSnapshot make_snapshot() const;
 	AircraftDataSnapshot make_snapshot(const Storage& storage) const;
 	AircraftDataSnapshot step(const SystemFrameInput& input);
-	void run_group(SystemGroup group, Storage& next);
+	void run_batch(
+		const ScheduledSystemBatch& batch,
+		Storage& next);
 	void create_systems(
 		const FlightSetupContext& context,
 		std::vector<SystemEntry> catalog);
 	void collect_declarations();
 	void validate_and_commit_setup();
+	void validate_timing();
+	SystemTiming validate_timing(RuntimeSystem& runtime);
 	void validate_publications(Storage& initial);
 	void validate_publication(
 		Storage& initial,
@@ -109,7 +112,7 @@ struct SystemPipeline::Implementation
 	void validate_fuel_management(
 		RuntimeSystem& runtime,
 		std::size_t system_index);
-	void commit_group(Storage& next);
+	void commit_batch(Storage& next);
 	const FuelManagementHandlers& require_fuel_management() const;
 	FuelManagementHandlers& require_fuel_management();
 	void commit_current_fuel_data();
@@ -122,6 +125,8 @@ struct SystemPipeline::Implementation
 	std::map<DamageArea, DamageHandler> damage_handlers;
 	std::vector<RepairHandler> repair_handlers;
 	std::optional<FuelManagementHandlers> fuel_management;
+	SystemSchedule schedule;
+	SystemScheduledTime advanced_through = {};
 };
 
 SystemSetup::SystemSetup(State& state)
@@ -181,6 +186,36 @@ void SystemSetup::register_fuel_management(FuelManagementHandlers handlers)
 	state_->fuel_management = std::move(handlers);
 }
 
+void SystemSetup::update_rate_hz(std::uint32_t rate_hz)
+{
+	if (state_->update_rate_hz || state_->update_period)
+	{
+		throw std::logic_error(
+			"System update rate was declared more than once.");
+	}
+	if (rate_hz == 0)
+	{
+		throw std::logic_error(
+			"System update rate must be greater than zero.");
+	}
+	state_->update_rate_hz = rate_hz;
+}
+
+void SystemSetup::update_period(SystemScheduledTime period)
+{
+	if (state_->update_rate_hz || state_->update_period)
+	{
+		throw std::logic_error(
+			"System timing was declared more than once.");
+	}
+	if (period.count() <= 0)
+	{
+		throw std::logic_error(
+			"System update period must be greater than zero.");
+	}
+	state_->update_period = period;
+}
+
 SystemPipeline::Implementation::Implementation(
 	const FlightSetupContext& context,
 	std::vector<SystemEntry> catalog)
@@ -224,7 +259,8 @@ void SystemPipeline::Implementation::create_systems(
 				return created;
 			});
 		systems.push_back({
-			entry.group,
+			0,
+			0.0,
 			std::move(instance),
 			{},
 			{},
@@ -248,10 +284,49 @@ void SystemPipeline::Implementation::collect_declarations()
 void SystemPipeline::Implementation::validate_and_commit_setup()
 {
 	Storage initial = committed;
+	validate_timing();
 	validate_publications(initial);
 	validate_reads(initial);
 	validate_handlers();
 	committed = std::move(initial);
+}
+
+void SystemPipeline::Implementation::validate_timing()
+{
+	std::vector<SystemTiming> timings;
+	timings.reserve(systems.size());
+	for (RuntimeSystem& runtime : systems)
+	{
+		timings.push_back(Detail::invoke_system_action(
+			runtime.setup.system_id,
+			Detail::kSystemSetupOperation,
+			[this, &runtime]()
+			{
+				return validate_timing(runtime);
+			}));
+	}
+	schedule.initialize(timings);
+}
+
+SystemTiming SystemPipeline::Implementation::validate_timing(
+	RuntimeSystem& runtime)
+{
+	if (!runtime.setup.update_rate_hz &&
+		!runtime.setup.update_period)
+	{
+		throw std::logic_error("update rate was not declared.");
+	}
+	if (runtime.setup.update_rate_hz)
+	{
+		runtime.update_rate_hz = *runtime.setup.update_rate_hz;
+		runtime.update_dt_s =
+			1.0 / static_cast<double>(runtime.update_rate_hz);
+		return { runtime.update_rate_hz, {} };
+	}
+	const SystemScheduledTime period = *runtime.setup.update_period;
+	runtime.update_dt_s =
+		std::chrono::duration<double>(period).count();
+	return { 0, period };
 }
 
 void SystemPipeline::Implementation::validate_publications(Storage& initial)
@@ -424,7 +499,7 @@ void SystemPipeline::Implementation::validate_fuel_management(
 		*runtime.setup.fuel_management;
 	const bool complete = handlers.read && handlers.current_data &&
 		handlers.set_internal && handlers.set_external &&
-		handlers.suppress_next_consumption;
+		handlers.begin_frame;
 	const int fuel_writer = writers[slot(AircraftDataId::FuelData)];
 	if (!complete || fuel_management ||
 		fuel_writer != static_cast<int>(system_index))
@@ -451,41 +526,56 @@ AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot(
 AircraftDataSnapshot SystemPipeline::Implementation::step(
 	const SystemFrameInput& input)
 {
+	if (input.target_time < advanced_through)
+	{
+		throw std::logic_error(
+			"SystemPipeline target time must be monotonic.");
+	}
 	Storage next = committed;
 	next[slot(AircraftDataId::FrameInput)] = input.frame;
 	next[slot(AircraftDataId::AircraftObservation)] =
 		input.observation;
-	run_group(SystemGroup::Control, next);
-	run_group(SystemGroup::Equipment, next);
+	SystemSchedule next_schedule = schedule;
+	while (next_schedule.has_due(input.target_time))
+	{
+		const ScheduledSystemBatch batch = next_schedule.next_due();
+		run_batch(batch, next);
+		next_schedule.complete_next_due();
+	}
 	committed = std::move(next);
+	schedule = std::move(next_schedule);
+	advanced_through = input.target_time;
 	return make_snapshot();
 }
 
-void SystemPipeline::Implementation::run_group(
-	SystemGroup group,
+void SystemPipeline::Implementation::run_batch(
+	const ScheduledSystemBatch& batch,
 	Storage& next)
 {
 	const AircraftDataSnapshot input = make_snapshot(next);
 	pending_result.clear();
-	for (RuntimeSystem& runtime : systems)
+	for (const std::size_t index : batch.system_indices)
 	{
-		if (runtime.group == group)
-		{
-			const AircraftDataView aircraft(input, runtime.reads);
-			pending_result.activate_publications(runtime.publications);
-			Detail::invoke_system_action(
-				runtime.setup.system_id,
-				Detail::kSystemStepOperation,
-				[&runtime, &aircraft, this]()
-				{
-					runtime.system->step(aircraft, pending_result);
-				});
-		}
+		RuntimeSystem& runtime = systems[index];
+		const AircraftDataView aircraft(input, runtime.reads);
+		pending_result.activate_publications(runtime.publications);
+		const SystemStepContext context = {
+			batch.scheduled_time,
+			runtime.update_dt_s
+		};
+		Detail::invoke_system_action(
+			runtime.setup.system_id,
+			Detail::kSystemStepOperation,
+			[&runtime, &context, &aircraft, this]()
+			{
+				runtime.system->step(
+					context, aircraft, pending_result);
+			});
 	}
-	commit_group(next);
+	commit_batch(next);
 }
 
-void SystemPipeline::Implementation::commit_group(Storage& next)
+void SystemPipeline::Implementation::commit_batch(Storage& next)
 {
 	for (std::size_t index = 0; index < kAircraftDataSlotCount; ++index)
 	{
@@ -587,14 +677,21 @@ void SystemPipeline::set_external_fuel(const ExternalFuelInput& fuel)
 	implementation_->commit_current_fuel_data();
 }
 
-void SystemPipeline::suppress_next_fuel_consumption()
+void SystemPipeline::begin_fuel_frame(bool suppress_consumption)
 {
-	implementation_->require_fuel_management().suppress_next_consumption();
+	implementation_->require_fuel_management().begin_frame(
+		suppress_consumption);
+	implementation_->commit_current_fuel_data();
 }
 
 std::size_t SystemPipeline::system_count() const
 {
 	return implementation_->systems.size();
+}
+
+SystemScheduledTime SystemPipeline::advanced_through() const
+{
+	return implementation_->advanced_through;
 }
 }
 }

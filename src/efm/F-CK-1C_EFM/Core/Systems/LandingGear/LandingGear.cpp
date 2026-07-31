@@ -1,6 +1,7 @@
 #include "LandingGear.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 
 namespace
 {
@@ -35,6 +36,7 @@ LandingGear::LandingGear(
 
 void LandingGear::setup(SystemSetup& setup)
 {
+	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
 	setup.read(AircraftDataKeys::kAircraftObservation);
 	setup.read(AircraftDataKeys::kPilotControlState);
@@ -67,6 +69,7 @@ void LandingGear::register_handlers(SystemSetup& setup)
 }
 
 void LandingGear::step(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
@@ -79,7 +82,7 @@ void LandingGear::step(
 	const LandingGearFrameInput input = {
 		observation.speed_scalar,
 		observation.ground_speed,
-		frame.dt_s,
+		context.dt_s,
 		observation.altitude_agl,
 		pilot.yaw
 	};

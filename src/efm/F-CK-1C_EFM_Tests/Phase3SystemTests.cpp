@@ -20,6 +20,7 @@ constexpr double kFullIntegrity = 1.0;
 constexpr double kFailedIntegrity = 0.0;
 constexpr double kFullBrakeInput = 1.0;
 constexpr double kFrameDt = 0.02;
+constexpr double kSystemDt = 1.0 / 64.0;
 constexpr double kAltitudeAsl = 1000.0;
 constexpr double kSurfaceHeight = 200.0;
 constexpr double kAltitudeAgl = 800.0;
@@ -126,11 +127,11 @@ void test_control_data_crosses_owner_boundary(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, pilot.pitch, kPitchInput, kTolerance);
 	TEST_EXPECT_NEAR(context, pilot.yaw, -kYawInput, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.elevator, demand.pitch, kTolerance);
+		context, position.elevator, kNeutralAxis, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.aileron, demand.roll, kTolerance);
+		context, position.aileron, kNeutralAxis, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.rudder, demand.yaw, kTolerance);
+		context, position.rudder, kNeutralAxis, kTolerance);
 }
 
 FrameInput nonzero_observation_frame()
@@ -156,7 +157,7 @@ FlightControlDemand expected_nonzero_demand()
 		fck1c_flight_control_computer_config(),
 		StartMode::HotGround);
 	::Systems::FBWControllerInput input;
-	input.dt = kFrameDt;
+	input.dt = kSystemDt;
 	input.qbar = kDynamicPressure;
 	input.alpha = Common::deg(kAngleOfAttack);
 	input.beta = Common::deg(kAngleOfSlide);

@@ -1,8 +1,8 @@
 #include "TestHarness.h"
-#include "Fck1cEfmGoldenSnapshots.h"
 #include "Fck1cEfmTestFixture.h"
 
 #include <array>
+#include <cstdint>
 #include <iomanip>
 #include <optional>
 #include <sstream>
@@ -18,6 +18,16 @@ constexpr double kExpectedFlapIncrementPerFrame = 0.002;
 constexpr double kExpectedSlatIncrementPerFrame = 0.003;
 constexpr double kEngineShutdownAltitudeAsl = 21000.0;
 constexpr double kOperatingFuelMass = 100.0;
+constexpr double kSystemPeriodS = 1.0 / 64.0;
+constexpr std::size_t kCharacterizationFrameCount = 4;
+constexpr std::uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
+constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
+constexpr std::array<std::uint64_t, 4> kSchedulerTrajectoryHashes = {
+	8266340088514578931ULL,
+	1251275511464176060ULL,
+	15630636623490966596ULL,
+	8942799995731078575ULL
+};
 
 void write_availability(
 	std::ostringstream& output,
@@ -196,7 +206,7 @@ void send_trajectory_commands(Core::Fck1cEfm& efm)
 
 std::array<
 	Core::FrameOutput,
-	Tests::Fck1c::kCharacterizationFrameCount> run_trajectory()
+	kCharacterizationFrameCount> run_trajectory()
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
@@ -209,7 +219,7 @@ std::array<
 	Core::FrameInput input = Tests::Fck1c::make_frame_input();
 	std::array<
 		Core::FrameOutput,
-		Tests::Fck1c::kCharacterizationFrameCount> frames;
+		kCharacterizationFrameCount> frames;
 	frames[0] = efm.step(input);
 	(void)efm.apply_damage({ Core::DamageArea::LeftEngine, 0, 0.6 });
 	frames[1] = efm.step(input);
@@ -221,34 +231,44 @@ std::array<
 	return frames;
 }
 
-void expect_snapshot(
-	Tests::Context& context,
-	const std::string& actual,
-	std::string_view expected)
+std::uint64_t snapshot_hash(const std::string& snapshot)
 {
-	if (actual != expected)
+	std::uint64_t result = kFnvOffsetBasis;
+	for (const unsigned char value : snapshot)
 	{
-		std::printf(
-			"Actual frame snapshot:\n%sExpected frame snapshot:\n%.*s",
-			actual.c_str(),
-			static_cast<int>(expected.size()),
-			expected.data());
+		result ^= value;
+		result *= kFnvPrime;
 	}
-	TEST_EXPECT(context, actual == expected);
+	return result;
 }
 
-void test_grouped_scheduler_multiframe_golden_trajectory(
+void expect_snapshot_hash(
+	Tests::Context& context,
+	const std::string& actual,
+	std::uint64_t expected)
+{
+	const std::uint64_t hash = snapshot_hash(actual);
+	if (hash != expected)
+	{
+		std::printf(
+			"Actual frame snapshot:\n%sExpected hash: %llu; actual hash: %llu\n",
+			actual.c_str(),
+			static_cast<unsigned long long>(expected),
+			static_cast<unsigned long long>(hash));
+	}
+	TEST_EXPECT(context, hash == expected);
+}
+
+void test_scheduler_multiframe_golden_trajectory(
 	Tests::Context& context)
 {
-	// Phase 4 intentionally shifts the declared cross-group signals by one
-	// frame and lets every System observe the current normalized DCS input.
 	const auto actual = run_trajectory();
 	for (std::size_t index = 0; index < actual.size(); ++index)
 	{
-		expect_snapshot(
+		expect_snapshot_hash(
 			context,
 			frame_snapshot(actual[index]),
-			Tests::Fck1c::kCharacterizationSnapshots[index]);
+			kSchedulerTrajectoryHashes[index]);
 	}
 }
 
@@ -356,7 +376,7 @@ void test_fuel_reads_previous_committed_engine_demand(
 	efm.handle_command({
 		Core::CommandId::SetCommonThrottleAxis, 1.0 });
 	Core::FrameInput input;
-	input.dt_s = 0.1;
+	input.dt_s = kSystemPeriodS;
 	const Core::FrameOutput first = efm.step(input);
 	TEST_EXPECT(context,
 		first.engines[0].throttle_output != start.engines[0].throttle_output);
@@ -537,7 +557,7 @@ void test_each_frame_exposes_its_mass_effect(Tests::Context& context)
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	Core::FrameInput input;
-	input.dt_s = 0.1;
+	input.dt_s = kSystemPeriodS;
 	const Core::FrameOutput first = efm.step(input);
 	const Core::FrameOutput second = efm.step(input);
 	TEST_EXPECT(context, first.mass_effect.available);
@@ -608,7 +628,7 @@ void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 
 void run_fck1c_efm_characterization_tests(Tests::Context& context)
 {
-	test_grouped_scheduler_multiframe_golden_trajectory(context);
+	test_scheduler_multiframe_golden_trajectory(context);
 	test_repeated_run_is_deterministic(context);
 	test_secondary_controls_read_previous_committed_gear(context);
 	test_fuel_reads_previous_committed_engine_demand(context);

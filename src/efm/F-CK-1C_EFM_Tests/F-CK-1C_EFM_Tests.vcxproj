@@ -57,7 +57,6 @@
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
     <ClInclude Include="FakeCockpitParameters.h" />
-    <ClInclude Include="Fck1cEfmGoldenSnapshots.h" />
     <ClInclude Include="Fck1cEfmTestFixture.h" />
     <ClInclude Include="SystemPipelineTestFixture.h" />
   </ItemGroup>

@@ -1,6 +1,7 @@
 #include "Engine.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 
 namespace
 {
@@ -38,7 +39,7 @@ void Engine::configure_start(StartMode start_mode)
 
 void Engine::setup(SystemSetup& setup)
 {
-	setup.read(AircraftDataKeys::kFrameInput);
+	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kAircraftObservation);
 	setup.read(AircraftDataKeys::kEngineControlDemand);
 	setup.read(AircraftDataKeys::kFuelData);
@@ -71,15 +72,15 @@ void Engine::register_handlers(SystemSetup& setup)
 }
 
 void Engine::step(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const AircraftObservation& observation =
 		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	const FuelData& fuel = aircraft.read(AircraftDataKeys::kFuelData);
 	step({
-		frame.dt_s,
+		context.dt_s,
 		aircraft.read(AircraftDataKeys::kEngineControlDemand),
 		fuel.internal_fuel,
 		observation.altitude_asl

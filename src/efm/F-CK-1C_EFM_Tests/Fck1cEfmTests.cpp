@@ -9,6 +9,7 @@ namespace
 {
 constexpr double kTolerance = 1e-9;
 constexpr double kSimulationStepS = 0.01;
+constexpr double kSchedulerAdvanceS = 0.02;
 constexpr double kPreparedInternalFuel = 240.0;
 constexpr double kPreparedExternalFuelLeft = 20.0;
 constexpr double kPreparedExternalFuelRight = 30.0;
@@ -81,13 +82,13 @@ void expect_engine_baseline(
 	const Core::EngineOutput& actual)
 {
 	TEST_EXPECT(context, actual.switch_on);
-	TEST_EXPECT_NEAR(context, actual.throttle_input, 0.4, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.throttle_output, 0.50224089635854341, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.power_readout, 0.50150000000000006, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.thrust_force, 12959.196801553151, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.throttle_input, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.throttle_output, 0.49384615384615382, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.power_readout, 0.5, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.thrust_force, 12742.589350616381, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.afterburner_ratio, 0.0, kTolerance);
 	TEST_EXPECT(context, !actual.afterburner_lit);
-	TEST_EXPECT_NEAR(context, actual.nozzle_aperture, 0.39300000000000002, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.nozzle_aperture, 0.39453125, kTolerance);
 }
 
 void expect_control_baseline(
@@ -97,9 +98,9 @@ void expect_control_baseline(
 	TEST_EXPECT_NEAR(context, actual.pitch_input, 0.2, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.roll_input, -0.3, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.yaw_input, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.elevator_command, -0.0037173599739788294, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.aileron_command, -0.028571428571428571, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.rudder_command, -0.0024916666666666659, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.elevator_command, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.aileron_command, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.rudder_command, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.flaps_position, 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.slats_position, 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.airbrake_position, 0.0, kTolerance);
@@ -132,9 +133,9 @@ void expect_golden_frame(
 	const Core::FrameOutput& actual)
 {
 	expect_vec3(context, actual.force_moment.force,
-		{ 18282.204829946411, 107068.92218657726, 7465.3009043063385 });
+		{ 17848.989928072871, 106874.82565441626, 7487.9574978378678 });
 	expect_vec3(context, actual.force_moment.moment,
-		{ 26922.073608154937, -2421.6993259174328, -43276.793392220876 });
+		{ 32828.903011561015, -2123.1697994807978, -41958.780729388171 });
 	expect_vec3(context, actual.force_moment.center_of_mass, { 0.2, -0.1, 0.3 });
 	expect_engine_baseline(context, actual.engines[0]);
 	expect_engine_baseline(context, actual.engines[1]);
@@ -488,7 +489,7 @@ void test_simulation_pipeline(Tests::Context& context)
 		first.cockpit.automatic_flight_control.status.available);
 	TEST_EXPECT(
 		context,
-		first.cockpit.automatic_flight_control.status.revision == 1);
+		first.cockpit.automatic_flight_control.status.revision == 0);
 	const Core::FrameOutput second = efm.step(input);
 	TEST_EXPECT_NEAR(
 		context, second.simulation_time_s, kSimulationStepS * 2.0, kTolerance);
@@ -567,9 +568,13 @@ void test_neutral_cockpit_input_completes_step(Tests::Context& context)
 	efm.handle_command({
 		Core::CommandId::SetPitchAxis, 0.3 });
 	Core::FrameInput input;
-	input.dt_s = kSimulationStepS;
+	input.dt_s = kSchedulerAdvanceS;
 	const Core::FrameOutput output = efm.step(input);
-	TEST_EXPECT_NEAR(context, output.simulation_time_s, kSimulationStepS, kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		output.simulation_time_s,
+		kSchedulerAdvanceS,
+		kTolerance);
 	TEST_EXPECT_NEAR(context, output.controls.pitch_input, 0.3, kTolerance);
 	TEST_EXPECT(context, output.engines[0].thrust_force > 0.0);
 	TEST_EXPECT(context, output.engines[1].thrust_force > 0.0);

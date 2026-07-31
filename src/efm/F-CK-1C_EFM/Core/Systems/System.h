@@ -4,6 +4,8 @@
 #include "../Contracts/Events.h"
 #include "../Contracts/FrameContracts.h"
 
+#include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -16,6 +18,14 @@ namespace Systems
 class AircraftDataView;
 class SystemResult;
 class SystemSetup;
+
+using SystemScheduledTime = std::chrono::nanoseconds;
+
+struct SystemStepContext
+{
+	SystemScheduledTime scheduled_time = {};
+	double dt_s = 0.0;
+};
 
 enum class SystemGroup
 {
@@ -42,6 +52,7 @@ public:
 
 	virtual void setup(SystemSetup& setup) = 0;
 	virtual void step(
+		const SystemStepContext& context,
 		const AircraftDataView& aircraft,
 		SystemResult& result) = 0;
 };

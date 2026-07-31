@@ -1,6 +1,7 @@
 #include "FlightControlComputer.h"
 
 #include "../SystemPipeline.h"
+#include "../SystemUpdateRates.h"
 #include "Common/Table.h"
 
 #include <stdexcept>
@@ -35,7 +36,7 @@ FlightControlComputer::FlightControlComputer(
 
 void FlightControlComputer::setup(SystemSetup& setup)
 {
-	setup.read(AircraftDataKeys::kFrameInput);
+	setup.update_rate_hz(kF16XlDflcsReferenceUpdateRateHz);
 	setup.read(AircraftDataKeys::kAircraftObservation);
 	setup.read(AircraftDataKeys::kLandingGearData);
 	setup.read(AircraftDataKeys::kPrimaryControlPosition);
@@ -61,23 +62,7 @@ void FlightControlComputer::register_commands(SystemSetup& setup)
 		CommandId::ToggleGLimiterOverride,
 		CommandId::SetCommonThrottleAxis, CommandId::SetLeftThrottleAxis,
 		CommandId::SetRightThrottleAxis, CommandId::StepCommonThrottle,
-		CommandId::StepLeftThrottle, CommandId::StepRightThrottle,
-		CommandId::ToggleAutopilotMaster, CommandId::EngageAutopilot,
-		CommandId::DisengageAutopilot, CommandId::SetAutopilotBypass,
-		CommandId::SelectAutopilotPitchHold,
-		CommandId::SelectAutopilotVerticalSpeedHold,
-		CommandId::SelectAutopilotAltitudeHold,
-		CommandId::IncreaseAutopilotVerticalReference,
-		CommandId::DecreaseAutopilotVerticalReference,
-		CommandId::SelectAutopilotHeadingHold,
-		CommandId::SelectAutopilotHeading,
-		CommandId::SelectAutopilotNavigationTrack,
-		CommandId::IncreaseAutopilotLateralReference,
-		CommandId::DecreaseAutopilotLateralReference,
-		CommandId::ToggleAutoThrottle, CommandId::EngageAutoThrottle,
-		CommandId::DisengageAutoThrottle,
-		CommandId::IncreaseAutopilotSpeed,
-		CommandId::DecreaseAutopilotSpeed
+		CommandId::StepLeftThrottle, CommandId::StepRightThrottle
 	};
 	for (CommandId id : commands)
 	{
@@ -85,15 +70,18 @@ void FlightControlComputer::register_commands(SystemSetup& setup)
 			id,
 			[this](const Command& command) { handle_command(command); });
 	}
+	automatic_flight_control_.register_commands(setup);
 }
 
 void FlightControlComputer::step(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
 	const AutomaticFlightControlDemand& automatic =
-		automatic_flight_control_.step(make_automatic_observation(aircraft));
-	step(make_pipeline_input(aircraft), automatic);
+		automatic_flight_control_.step(
+			make_automatic_observation(context, aircraft));
+	step(make_pipeline_input(context, aircraft), automatic);
 	result.publish(AircraftDataKeys::kPilotControlState, pilot_controls_);
 	result.publish(AircraftDataKeys::kFlightControlDemand, demand_);
 	result.publish(AircraftDataKeys::kEngineControlDemand, engine_demand_);
@@ -180,13 +168,13 @@ void FlightControlComputer::refresh_pilot_controls(
 }
 
 ::Systems::FBWControllerInput FlightControlComputer::make_pipeline_input(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft) const
 {
-	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const AircraftObservation& observation =
 		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	::Systems::FBWControllerInput input;
-	input.dt = frame.dt_s;
+	input.dt = context.dt_s;
 	input.qbar = observation.dynamic_pressure;
 	input.roll = observation.roll;
 	input.pitch = observation.pitch;
@@ -212,15 +200,15 @@ void FlightControlComputer::refresh_pilot_controls(
 
 AutomaticFlightControlObservation
 FlightControlComputer::make_automatic_observation(
+	const SystemStepContext& context,
 	const AircraftDataView& aircraft) const
 {
-	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
 	const AircraftObservation& observation =
 		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	const LandingGearData& gear =
 		aircraft.read(AircraftDataKeys::kLandingGearData);
 	return {
-		frame.dt_s,
+		context.dt_s,
 		observation.indicated_airspeed_mps,
 		observation.altitude_asl,
 		observation.vertical_speed_mps,
@@ -252,7 +240,6 @@ void FlightControlComputer::handle_command(const Command& command)
 	handle_yaw_command(command);
 	handle_fbw_command(command);
 	handle_throttle_command(command);
-	automatic_flight_control_.handle_command(command);
 	refresh_pilot_controls(
 		primary_controls_.pitch.input,
 		primary_controls_.roll.input);
