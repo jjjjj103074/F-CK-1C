@@ -27,10 +27,28 @@ constexpr double kReplacementSuspensionBase = 30.0;
 constexpr double kInvalidSuspensionBase = 40.0;
 constexpr double kConcurrentOldBase = 1000.0;
 constexpr double kConcurrentNewBase = 2000.0;
-constexpr Core::AutopilotCommand kAutopilotCommand = {
-	true, true, true, 0.1, 0.2, 0.3
-};
-constexpr Core::MaxPowerCommand kMaxPowerCommand = { 0.4, 0.5 };
+Core::CockpitObservation make_cockpit_observation()
+{
+	Core::CockpitObservation observation;
+	observation.radar.status = {
+		true,
+		12,
+		Core::ObservationInvalidReason::None
+	};
+	observation.radar.stt_range_m = 4500.0;
+	observation.ir_seeker.status = {
+		true,
+		13,
+		Core::ObservationInvalidReason::None
+	};
+	observation.weapon_stations.status = {
+		true,
+		14,
+		Core::ObservationInvalidReason::None
+	};
+	observation.weapon_stations.aim9_count = 2;
+	return observation;
+}
 
 Common::Vec3 make_vec(double base)
 {
@@ -208,8 +226,7 @@ void publish_complete_input(DcsBridge::Internal::FrameInputCollector& collector)
 		collector.publish_suspension(
 			make_suspension(index, kSuspensionBase + index * kSuspensionBaseStep));
 	}
-	collector.publish_autopilot(kAutopilotCommand);
-	collector.publish_max_power(kMaxPowerCommand);
+	collector.publish_cockpit_observation(make_cockpit_observation());
 }
 
 void expect_complete_availability(
@@ -243,20 +260,12 @@ void expect_complete_input(Tests::Context& context, const Core::FrameInput& inpu
 			input.suspension[index],
 			make_suspension(index, kSuspensionBase + index * kSuspensionBaseStep));
 	}
-	TEST_EXPECT(context, input.autopilot.master);
-	TEST_EXPECT(context, input.autopilot.bypass);
-	TEST_EXPECT(context, input.autopilot.auto_throttle_engaged);
-	TEST_EXPECT_NEAR(
-		context, input.autopilot.pitch_command, kAutopilotCommand.pitch_command, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, input.autopilot.roll_command, kAutopilotCommand.roll_command, kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		input.autopilot.throttle_command,
-		kAutopilotCommand.throttle_command,
-		kTolerance);
-	TEST_EXPECT_NEAR(context, input.max_power.ready, kMaxPowerCommand.ready, kTolerance);
-	TEST_EXPECT_NEAR(context, input.max_power.value, kMaxPowerCommand.value, kTolerance);
+	TEST_EXPECT(context, input.cockpit.radar.status.available);
+	TEST_EXPECT(context, input.cockpit.radar.status.revision == 12);
+	TEST_EXPECT_NEAR(context, input.cockpit.radar.stt_range_m, 4500.0, kTolerance);
+	TEST_EXPECT(context, input.cockpit.ir_seeker.status.revision == 13);
+	TEST_EXPECT(context, input.cockpit.weapon_stations.status.revision == 14);
+	TEST_EXPECT(context, input.cockpit.weapon_stations.aim9_count == 2);
 }
 
 void expect_reset_input(Tests::Context& context, const Core::FrameInput& input)
@@ -274,11 +283,8 @@ void expect_reset_input(Tests::Context& context, const Core::FrameInput& input)
 		expect_vec(context, input.suspension[index].acting_force, Common::Vec3());
 		TEST_EXPECT_NEAR(context, input.suspension[index].compression, 0.0, kTolerance);
 	}
-	TEST_EXPECT(context, !input.autopilot.master);
-	TEST_EXPECT(context, !input.autopilot.bypass);
-	TEST_EXPECT(context, !input.autopilot.auto_throttle_engaged);
-	TEST_EXPECT_NEAR(context, input.max_power.ready, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, input.max_power.value, 1.0, kTolerance);
+	TEST_EXPECT(context, !input.cockpit.radar.status.available);
+	TEST_EXPECT(context, input.cockpit.radar.status.revision == 0);
 }
 
 void test_complete_publish_and_snapshot(Tests::Context& context)

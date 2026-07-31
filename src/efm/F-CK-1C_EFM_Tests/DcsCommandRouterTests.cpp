@@ -105,7 +105,48 @@ constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 	EXPECT_COMMAND(WheelBrakeLeftOn, SetLeftBrake),
 	EXPECT_COMMAND(WheelBrakeLeftOff, SetLeftBrake),
 	EXPECT_COMMAND(WheelBrakeRightOn, SetRightBrake),
-	EXPECT_COMMAND(WheelBrakeRightOff, SetRightBrake)
+	EXPECT_COMMAND(WheelBrakeRightOff, SetRightBrake),
+	EXPECT_COMMAND(TriggerFirstStage, SetTriggerFirstStage),
+	EXPECT_COMMAND(CMSForward, StartCmsForward),
+	EXPECT_COMMAND(CMSAft, StartCmsAft),
+	EXPECT_COMMAND(CMSLeft, StartCmsLeft),
+	EXPECT_COMMAND(CMSRight, StartCmsRight),
+	EXPECT_COMMAND(CMSPress, PressCms),
+	EXPECT_COMMAND(TriggerSecondStage, SetTriggerSecondStage),
+	EXPECT_COMMAND(MasterArmOn, SetMasterArmOn),
+	EXPECT_COMMAND(MasterArmOff, SetMasterArmOff),
+	EXPECT_COMMAND(MasterArmSim, SetMasterArmSim),
+	EXPECT_COMMAND(DogfightSwitch, SelectDogfightMode),
+	EXPECT_COMMAND(MissileUncage, SetMissileUncage),
+	EXPECT_COMMAND(WeaponRelease, SetWeaponRelease),
+	EXPECT_COMMAND(TMSUp, SetTmsUp),
+	EXPECT_COMMAND(TMSDown, PressTmsDown),
+	EXPECT_COMMAND(TMSLeft, PressTmsLeft),
+	EXPECT_COMMAND(TMSRight, PressTmsRight),
+	EXPECT_COMMAND(NavMode, SelectNavigationMode),
+	EXPECT_COMMAND(MissileOverride, SelectMissileOverride),
+	EXPECT_COMMAND(APMasterToggle, ToggleAutopilotMaster),
+	EXPECT_COMMAND(APMasterOn, EngageAutopilot),
+	EXPECT_COMMAND(APMasterOff, DisengageAutopilot),
+	EXPECT_COMMAND(APBypass, SetAutopilotBypass),
+	EXPECT_COMMAND(APVertPitchHold, SelectAutopilotPitchHold),
+	EXPECT_COMMAND(APVertVSHold, SelectAutopilotVerticalSpeedHold),
+	EXPECT_COMMAND(APVertAltHold, SelectAutopilotAltitudeHold),
+	EXPECT_COMMAND(APVertIncrease, IncreaseAutopilotVerticalReference),
+	EXPECT_COMMAND(APVertDecrease, DecreaseAutopilotVerticalReference),
+	EXPECT_COMMAND(APLatHeadingHold, SelectAutopilotHeadingHold),
+	EXPECT_COMMAND(APLatHeadingSelect, SelectAutopilotHeading),
+	EXPECT_COMMAND(APLatNavTrack, SelectAutopilotNavigationTrack),
+	EXPECT_COMMAND(APLatIncrease, IncreaseAutopilotLateralReference),
+	EXPECT_COMMAND(APLatDecrease, DecreaseAutopilotLateralReference),
+	EXPECT_COMMAND(APAutoThrottleToggle, ToggleAutoThrottle),
+	EXPECT_COMMAND(APAutoThrottleOn, EngageAutoThrottle),
+	EXPECT_COMMAND(APAutoThrottleOff, DisengageAutoThrottle),
+	EXPECT_COMMAND(APSpeedIncrease, IncreaseAutopilotSpeed),
+	EXPECT_COMMAND(APSpeedDecrease, DecreaseAutopilotSpeed),
+	EXPECT_COMMAND(EngineThrustCutTestToggle, ToggleThrustCutTest),
+	EXPECT_COMMAND(EngineThrustCutTestEnable, EnableThrustCutTest),
+	EXPECT_COMMAND(EngineThrustCutTestDisable, DisableThrustCutTest)
 };
 
 #undef EXPECT_COMMAND
@@ -140,7 +181,6 @@ Core::FrameOutput step(Core::Fck1cEfm& efm)
 {
 	Core::FrameInput input;
 	input.dt_s = kSimulationStepS;
-	input.max_power = { 1.0, 1.0 };
 	return efm.step(input);
 }
 
@@ -285,10 +325,33 @@ void test_all_raw_commands_have_expected_semantics(Tests::Context& context)
 	for (const ExpectedSemanticCommand& expected : kExpectedSemanticCommands)
 	{
 		const DcsBridge::DcsCommandMapping mapping =
-			DcsBridge::map_command(expected.dcs_id, kMappingProbeValue);
+			DcsBridge::inspect_command_binding(
+				expected.dcs_id,
+				kMappingProbeValue);
 		TEST_EXPECT(context, mapping.should_dispatch());
 		TEST_EXPECT(context, mapping.command.id == expected.command_id);
 	}
+}
+
+void test_inactive_cockpit_binding_value_rules(Tests::Context& context)
+{
+	const DcsBridge::DcsCommandMapping held_release =
+		DcsBridge::inspect_command_binding(
+			DcsIds::Commands::MissileUncage,
+			0.0F);
+	TEST_EXPECT(context, held_release.should_dispatch());
+	TEST_EXPECT(
+		context,
+		held_release.command.id == Core::CommandId::SetMissileUncage);
+	TEST_EXPECT_NEAR(context, held_release.command.value, 0.0, kTolerance);
+	const DcsBridge::DcsCommandMapping press_release =
+		DcsBridge::inspect_command_binding(
+			DcsIds::Commands::TMSDown,
+			0.0F);
+	TEST_EXPECT(
+		context,
+		press_release.status ==
+			DcsBridge::DcsCommandMappingStatus::IgnoredRelease);
 }
 
 void test_generated_command_routes(Tests::Context& context)
@@ -348,6 +411,7 @@ void run_dcs_command_router_tests(Tests::Context& context)
 	test_routed_wheel_outputs(context);
 	test_mapping_rules_and_errors(context);
 	test_all_raw_commands_have_expected_semantics(context);
+	test_inactive_cockpit_binding_value_rules(context);
 	test_generated_command_routes(context);
 	test_generated_ignored_dcs_commands(context);
 	test_sensor_command_id_contract(context);

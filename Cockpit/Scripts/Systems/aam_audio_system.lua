@@ -4,6 +4,7 @@ local update_rate = 0.05
 make_default_activity(update_rate)
 
 dofile(LockOn_Options.script_path .. "command_defs.lua")
+dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 local AIM9_TONE_OFF = 0
 local AIM9_TONE_SEEK = 1
@@ -11,8 +12,7 @@ local AIM9_TONE_ACQUIRE = 2
 local AIM9_TONE_LOCK = 3
 local SOUND_TEST_CYCLE_CMD = device_commands.SoundTestCycle
 
-local tone_state = get_param_handle("AIM9_TONE_STATE")
-local aim9_weapon_active = get_param_handle("AIM9_WEAPON_ACTIVE")
+local tone_state = get_param_handle(cockpit_params.Aim9ToneState)
 
 local sound_host = nil
 local seek_sound = nil
@@ -145,9 +145,6 @@ local function set_active_tone(next_tone)
 end
 
 function post_initialize()
-    tone_state:set(AIM9_TONE_OFF)
-    aim9_weapon_active:set(0)
-
     if create_sound_host == nil then
         dlog("create_sound_host unavailable")
         return

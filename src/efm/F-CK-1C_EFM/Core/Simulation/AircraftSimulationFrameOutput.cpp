@@ -125,7 +125,17 @@ FrameOutput AircraftSimulation::make_frame_output(
 	output.suspension = project_suspension(landing_gear);
 	output.fuel = project_fuel(
 		aircraft.read(AircraftDataKeys::kFuelData));
+	const PropulsionTestIntent& diagnostics =
+		aircraft.read(AircraftDataKeys::kPropulsionTestIntent);
+	output.propulsion_diagnostics.thrust_cut_requested =
+		diagnostics.thrust_cut_requested;
 	output.mass_effect = simulation.mass_effect;
+	output.cockpit.status = { true, cockpit_snapshot_revision_ };
+	output.cockpit.simulation_time_s = simulation_time_s_;
+	output.cockpit.automatic_flight_control =
+		aircraft.read(AircraftDataKeys::kAutomaticFlightControlSnapshot);
+	output.cockpit.propulsion_test_thrust_cut_requested =
+		diagnostics.thrust_cut_requested;
 	output.shake_amplitude = simulation.shake_amplitude;
 	return output;
 }

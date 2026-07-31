@@ -147,12 +147,12 @@ void test_aerodynamics_model_effect_groups(Tests::Context& context)
 Core::Simulation::PropulsionResult run_propulsion(
 	const Core::Simulation::PropulsionConfig& config,
 	const Core::EngineData& engines,
-	const Core::MaxPowerCommand& max_power = {})
+	const Core::PropulsionTestIntent& diagnostics = {})
 {
 	Core::Simulation::PropulsionModel model(config);
 	Core::AircraftState observation;
 	observation.engine_alt_effect = 1.0;
-	return model.step({ engines, observation, max_power });
+	return model.step({ engines, observation, diagnostics });
 }
 
 void test_propulsion_operating_points(Tests::Context& context)
@@ -176,7 +176,7 @@ void test_propulsion_operating_points(Tests::Context& context)
 		context,
 		afterburner.left_thrust_force > dry.left_thrust_force);
 	const auto cut = run_propulsion(
-		config.propulsion, engines, { 1.0, 0.0 });
+		config.propulsion, engines, { true });
 	TEST_EXPECT_NEAR(context, cut.left_thrust_force, 0.0, kTolerance);
 }
 

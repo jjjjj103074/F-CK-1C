@@ -8,12 +8,207 @@ namespace CockpitParams
 {
 static const char* const TemperatureC = "FM_TEMPERATURE_C";
 static const char* const MaxPowerSwitch = "FM_MAXPOWER_SWITCH";
-static const char* const MaxPowerReady = "FM_MAXPOWER_READY";
 static const char* const ApMasterEngaged = "AP_MASTER_ENGAGED";
+static const char* const ApVerticalMode = "AP_VERT_MODE";
+static const char* const ApLateralMode = "AP_LAT_MODE";
 static const char* const ApPitchCommand = "AP_PITCH_CMD";
 static const char* const ApRollCommand = "AP_ROLL_CMD";
 static const char* const ApThrottleCommand = "AP_THROTTLE_CMD";
 static const char* const ApBypassActive = "AP_BYPASS_ACTIVE";
 static const char* const ApAutoThrottleEngaged = "AP_AT_ENGAGED";
+static const char* const ApTargetAltitudeFt = "AP_TARGET_ALT_FT";
+static const char* const ApTargetHeadingDeg = "AP_TARGET_HDG_DEG";
+static const char* const ApTargetSpeedKts = "AP_TARGET_SPD_KTS";
+static const char* const ApTargetPitchDeg = "AP_TARGET_PITCH_DEG";
+static const char* const ApTargetVerticalSpeedFpm = "AP_TARGET_VS_FPM";
+static const char* const ApEngageRejectionReason = "AP_ENGAGE_REJECTION_REASON";
+static const char* const ApDisengageReason = "AP_DISENGAGE_REASON";
+static const char* const ApAutoThrottleEngageRejectionReason = "AP_AT_ENGAGE_REJECTION_REASON";
+static const char* const ApAutoThrottleDisengageReason = "AP_AT_DISENGAGE_REASON";
+static const char* const HmcsIasKts = "HMCS_IAS_KTS";
+static const char* const HmcsAltitudeFt = "HMCS_ALT_FT";
+static const char* const HmcsHeadingDeg = "HMCS_HDG_DEG";
+static const char* const HmcsHeadingMinorOffset = "HMCS_HDG_MINOR_OFFSET";
+static const char* const HmcsHeadingSlotTickPrefix = "HMCS_HDG_SLOT_TICK_";
+static const char* const HmcsHeadingSlotLabelPrefix = "HMCS_HDG_SLOT_LABEL_";
+static const char* const HmcsMasterMode = "HMCS_MASTER_MODE";
+static const char* const HmcsWeaponClass = "HMCS_WEAPON_CLASS";
+static const char* const HmcsWeaponQuantity = "HMCS_WEAPON_QTY";
+static const char* const HmcsDogfightMode = "HMCS_DOGFIGHT_MODE";
+static const char* const HmcsFireControlMode = "HMCS_FC_MODE";
+static const char* const HmcsAamSubmode = "HMCS_AAM_SUBMODE";
+static const char* const HmcsGunFiring = "HMCS_GUN_FIRING";
+static const char* const HmcsEnabled = "HMCS_ENABLED";
+static const char* const HmcsDisplayMode = "HMCS_DISPLAY_MODE";
+static const char* const Aim9UncageHeld = "AIM9_UNCAGE_HELD";
+static const char* const Aim9ToneState = "AIM9_TONE_STATE";
+static const char* const Aim9SeekerState = "AIM9_SEEKER_STATE";
+static const char* const Aim9SeekerContact = "AIM9_SEEKER_CONTACT";
+static const char* const Aim9SeekerLock = "AIM9_SEEKER_LOCK";
+static const char* const Aim9TargetDesignated = "AIM9_TARGET_DESIGNATED";
+static const char* const Aim9WeaponActive = "AIM9_WEAPON_ACTIVE";
+static const char* const Aim9MissileStatus = "AIM9_MISSILE_STATUS";
+static const char* const Aim9MissileCount = "AIM9_MISSILE_COUNT";
+static const char* const Aim9SeekerAzimuth = "AIM9_SEEKER_AZIMUTH";
+static const char* const Aim9SeekerElevation = "AIM9_SEEKER_ELEVATION";
+static const char* const Aim9LockRange = "AIM9_LOCK_RANGE";
+static const char* const RadarState = "RADARSTATE";
+static const char* const RadarPowerState = "RADARPOWER_STATE";
+static const char* const WeaponObservationAvailable = "OBS_WEAPON_STATIONS_AVAILABLE";
+static const char* const WeaponObservationRevision = "OBS_WEAPON_STATIONS_REVISION";
+static const char* const WeaponObservationInvalidReason = "OBS_WEAPON_STATIONS_INVALID_REASON";
+static const char* const WeaponObservationAim9Count = "OBS_WEAPON_STATIONS_AIM9_COUNT";
+static const char* const WeaponObservationSelectedStation = "OBS_WEAPON_STATIONS_SELECTED";
+static const char* const WeaponObservationScannedStationCount = "OBS_WEAPON_STATIONS_SCANNED";
+static const char* const CockpitSnapshotAvailable = "CPP_COCKPIT_SNAPSHOT_AVAILABLE";
+static const char* const CockpitSnapshotRevision = "CPP_COCKPIT_SNAPSHOT_REVISION";
+static const char* const CockpitSnapshotTimeS = "CPP_COCKPIT_SNAPSHOT_TIME_S";
+static const char* const RadarRequestedPower = "CPP_RADAR_REQUESTED_POWER";
+static const char* const Aim9RequestedTone = "CPP_AIM9_REQUESTED_TONE";
+static const char* const WeaponRequestedStation = "CPP_WEAPON_REQUESTED_STATION";
+static const char* const ActionGunFireRequested = "CPP_ACTION_GUN_FIRE_REQUESTED";
+static const char* const ActionPickleRequested = "CPP_ACTION_PICKLE_REQUESTED";
+static const char* const ActionSensorMode = "CPP_ACTION_SENSOR_MODE";
+static const char* const ActionLockStartCount = "CPP_ACTION_LOCK_START_COUNT";
+static const char* const ActionLockFinishCount = "CPP_ACTION_LOCK_FINISH_COUNT";
+static const char* const ActionWeaponChangeCount = "CPP_ACTION_WEAPON_CHANGE_COUNT";
+static const char* const ActionFlareReleaseCount = "CPP_ACTION_FLARE_RELEASE_COUNT";
+static const char* const ActionChaffReleaseCount = "CPP_ACTION_CHAFF_RELEASE_COUNT";
+static const char* const ActionCombinedReleaseCount = "CPP_ACTION_COMBINED_RELEASE_COUNT";
+
+struct Entry
+{
+    const char* name;
+    const char* direction;
+    const char* unit;
+    const char* writer;
+    const char* target_owner;
+    const char* cpp_reader;
+};
+
+static constexpr Entry Catalog[] = {
+    { TemperatureC, "cpp_to_lua", "kelvin", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
+    { MaxPowerSwitch, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "PropulsionDiagnostics", nullptr },
+    { ApMasterEngaged, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApVerticalMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApLateralMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApPitchCommand, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApRollCommand, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApThrottleCommand, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApBypassActive, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApAutoThrottleEngaged, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApTargetAltitudeFt, "cpp_to_lua", "feet", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApTargetHeadingDeg, "cpp_to_lua", "degrees", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApTargetSpeedKts, "cpp_to_lua", "knots", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApTargetPitchDeg, "cpp_to_lua", "degrees", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApTargetVerticalSpeedFpm, "cpp_to_lua", "feet_per_minute", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApEngageRejectionReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApDisengageReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApAutoThrottleEngageRejectionReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApAutoThrottleDisengageReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { HmcsIasKts, "lua_internal", "knots", "Cockpit/Scripts/Systems/hmcs_system.lua", "CockpitSnapshotExporter", nullptr },
+    { HmcsAltitudeFt, "lua_internal", "feet", "Cockpit/Scripts/Systems/hmcs_system.lua", "CockpitSnapshotExporter", nullptr },
+    { HmcsHeadingDeg, "lua_internal", "degrees", "Cockpit/Scripts/Systems/hmcs_system.lua", "CockpitSnapshotExporter", nullptr },
+    { HmcsHeadingMinorOffset, "lua_internal", "normalized", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
+    { HmcsHeadingSlotTickPrefix, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
+    { HmcsHeadingSlotLabelPrefix, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
+    { HmcsMasterMode, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { HmcsWeaponClass, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "CombatAvionics", nullptr },
+    { HmcsWeaponQuantity, "lua_internal", "count", "Cockpit/Scripts/Systems/hmcs_system.lua", "CombatAvionics", nullptr },
+    { HmcsDogfightMode, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { HmcsFireControlMode, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { HmcsAamSubmode, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { HmcsGunFiring, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { HmcsEnabled, "lua_internal", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
+    { HmcsDisplayMode, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
+    { Aim9UncageHeld, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { Aim9ToneState, "lua_internal", "enum", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { Aim9SeekerState, "lua_internal", "enum", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { Aim9SeekerContact, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { Aim9SeekerLock, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { Aim9TargetDesignated, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { Aim9WeaponActive, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { Aim9MissileStatus, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { Aim9MissileCount, "lua_internal", "count", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { Aim9SeekerAzimuth, "lua_internal", "radians", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { Aim9SeekerElevation, "lua_internal", "radians", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { Aim9LockRange, "lua_internal", "meters", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
+    { RadarState, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", nullptr },
+    { RadarPowerState, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", nullptr },
+    { WeaponObservationAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponObservationRevision, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponObservationInvalidReason, "lua_to_cpp", "enum", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponObservationAim9Count, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponObservationSelectedStation, "lua_to_cpp", "station_index", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponObservationScannedStationCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { CockpitSnapshotAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
+    { CockpitSnapshotRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
+    { CockpitSnapshotTimeS, "cpp_to_lua", "seconds", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
+    { RadarRequestedPower, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
+    { Aim9RequestedTone, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },
+    { WeaponRequestedStation, "cpp_to_lua", "station_index", nullptr, "CombatAvionics", nullptr },
+    { ActionGunFireRequested, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
+    { ActionPickleRequested, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
+    { ActionSensorMode, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },
+    { ActionLockStartCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { ActionLockFinishCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { ActionWeaponChangeCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { ActionFlareReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { ActionChaffReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { ActionCombinedReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+};
+}
+
+namespace RawCockpitParams
+{
+static const char* const RadarMode = "RADAR_MODE";
+static const char* const RadarSttAzimuth = "RADAR_STT_AZIMUTH";
+static const char* const RadarSttElevation = "RADAR_STT_ELEVATION";
+static const char* const RadarSttRange = "RADAR_STT_RANGE";
+static const char* const RadarSttAzimuthStabilized = "RADAR_STT_AZIMUTH_STAB";
+static const char* const RadarSttElevationStabilized = "RADAR_STT_ELEVATION_STAB";
+static const char* const RadarTdcAzimuth = "RADAR_TDC_AZIMUTH";
+static const char* const RadarTdcRangeScaled = "RADAR_TDC_RANGE_SCALED";
+static const char* const RadarGateRangeScaled = "RADAR_GATE_RANGE_SCALED";
+static const char* const RadarContact01Azimuth = "RADAR_CONTACT_01_AZIMUTH";
+static const char* const RadarContact01RangeScaled = "RADAR_CONTACT_01_RANGE_SCALED";
+static const char* const WeaponTargetRange = "WS_TARGET_RANGE";
+static const char* const IrDesiredAzimuth = "WS_IR_MISSILE_SEEKER_DESIRED_AZIMUTH";
+static const char* const IrDesiredElevation = "WS_IR_MISSILE_SEEKER_DESIRED_ELEVATION";
+static const char* const IrLock = "WS_IR_MISSILE_LOCK";
+static const char* const IrTargetAzimuth = "WS_IR_MISSILE_TARGET_AZIMUTH";
+static const char* const IrTargetElevation = "WS_IR_MISSILE_TARGET_ELEVATION";
+
+struct Entry
+{
+    const char* name;
+    const char* data_direction;
+    const char* unit;
+    const char* axis_convention;
+    const char* source;
+    const char* verification_basis;
+    const char* reference;
+    const char* cpp_reader;
+};
+
+static constexpr Entry Catalog[] = {
+    { RadarMode, "dcs_to_cpp", "enum", "not_applicable", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_mode", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarSttAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_azimuth", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarSttElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_elevation", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarSttRange, "dcs_to_cpp", "meters", "non_negative_range", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_range", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarSttAzimuthStabilized, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarSttElevationStabilized, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarTdcAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_tdc_azimuth", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarTdcRangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarGateRangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarContact01Azimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_contact_xx_", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarContact01RangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponTargetRange, "dcs_to_cpp", "meters", "non_negative_range", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { IrDesiredAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { IrDesiredElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { IrLock, "dcs_to_cpp", "boolean", "not_applicable", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { IrTargetAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { IrTargetElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+};
 }
 }

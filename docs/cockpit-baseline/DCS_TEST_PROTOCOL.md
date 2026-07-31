@@ -77,6 +77,28 @@ Scenario,Area,Step,Expected,Observed,Result,Evidence
 
 AIR-CLEAN 的 2026-07-28 run 只證明初始化與 log 觀察，沒有完成上表所有人工操作，因此紀錄狀態是 `CAPTURED_PARTIAL`，不是完整 `PASS`。
 
+### Phase 2 被動 Device 動畫驗收
+
+使用 Phase 2 DLL 與 Cockpit scripts 載入 AIR-CLEAN，另以 COLD-CLEAN
+檢查起落架與前輪轉向。每一項都要以外部視角觀察並填入新的 evidence run：
+
+| Step | 操作 | 要觀察的行為 |
+|---:|---|---|
+| 1 | 載入 AIR-CLEAN | log 不再嘗試載入 Gear／Actuators Lua，也沒有缺檔錯誤 |
+| 2 | 左右踩 rudder 並回中 | arguments 17、18 同向到達兩端並回到中立 |
+| 3 | 操作 pitch／roll／flap／airbrake | elevator、flaperon、slat、airbrake 方向與 Phase 0 相同 |
+| 4 | 改變雙發推力 | afterburner 與左右 nozzle 對應正確 |
+| 5 | 載入 COLD-CLEAN，收放起落架 | nose、left、right gear 同步且方向正確 |
+| 6 | 地面左右轉向並滑行 | NWS 方向正確，三個 wheel-spin argument 持續更新 |
+
+2026-07-31 已完成 AIR-CLEAN、COLD-CLEAN 與 RWY-CLEAN 實機 run；結果與
+數值摘要保存在
+[`evidence/2026-07-31-phase2-passive-devices/`](evidence/2026-07-31-phase2-passive-devices/)。
+Phase 2 遷移範圍為 `PASS`。鼻輪 3D 外觀不隨 NWS 轉向仍為
+[Issue #21](https://github.com/jjjjj103074/F-CK-1C/issues/21) 的 `KNOWN_FAIL`；
+CSV 已證明 C++ NWS 輸出與 enable gate 正常，因此不歸類為本次 Lua device
+移除造成的 regression。
+
 ## 6. COLD-CLEAN
 
 目的：確認 device 初始化順序、冷啟動生命週期、重載與地面 gate。
@@ -124,7 +146,7 @@ AIR-CLEAN 的 2026-07-28 run 只證明初始化與 log 觀察，沒有完成上�
 
 ## 8. AP Characterization
 
-AP 目前 runtime 無法載入，所以有兩組判定：
+AP 有兩組互不取代的判定：
 
 ### 舊版 runtime
 
@@ -146,6 +168,88 @@ AP 目前 runtime 無法載入，所以有兩組判定：
 - 不規則 `dt` 下與固定 0.02 s reference 的時間行為。
 
 數值控制器優先使用 C++ characterization test；DCS 手動測試只驗證 command wiring、parameter presentation 與飛行方向是否合理。
+
+### Phase 3 C++ 實機驗收步驟
+
+測試前先關閉 DCS，從 repository 根目錄執行 `install.bat`。不能只建置
+repository 內的 DLL，因為 DCS 實際讀取的是
+`Saved Games/DCS/Mods/aircraft/F-CK-1C`。
+
+Keyboard 預設綁定：
+
+| 功能 | 預設鍵 |
+|---|---|
+| AP Master Toggle | `LAlt+A` |
+| AP Master OFF | `LAlt+LShift+A` |
+| AP Bypass（按住） | `LAlt+LCtrl+A` |
+| ALT／Pitch／VS Hold | `LAlt+H`／`LCtrl+H`／`LShift+H` |
+| Heading Hold／Select／NAV Track | `LAlt+U`／`LCtrl+U`／`LShift+U` |
+| A/T Toggle | `LAlt+T` |
+| Speed Increase／Decrease | `LAlt+LCtrl+T`／`LAlt+LShift+T` |
+| Thrust Cut Toggle | `RAlt+Y` |
+
+Vertical Ref Increase／Decrease 與 Heading Ref Increase／Decrease 沒有預設
+keyboard 組合鍵；測試前必須在 DCS Controls 的 `Autopilot` 分類自行綁定。
+不要為了測試修改 Lua route。
+
+#### COLD-CLEAN：地面 gate
+
+1. 載入後等待 10 秒。
+2. 按一次 AP Master Toggle，再按一次 A/T Toggle；每次操作後等待至少 1 秒。
+3. `fck1c_state.csv` 必須顯示：
+   `afcs_master_engaged=False`、`afcs_auto_throttle_engaged=False`、
+   `afcs_ap_engage_rejection_reason=2`、
+   `afcs_at_engage_rejection_reason=3`。
+   COLD-CLEAN 同時不符合 IAS 與 WOW；AP 沿用來源的判斷順序，先回報
+   `2 = BelowMinimumIndicatedAirspeed`。A/T 沒有最低 IAS gate，因此回報
+   `3 = WeightOnWheels`。
+4. Controls Indicator 的 thrust-test 狀態必須是 `NORM`。
+
+#### AIR-CLEAN：command、mode、parameter 與控制方向
+
+1. 載入後等待 10 秒，保持穩定飛行。
+2. 按 AP Master Toggle；CSV 必須出現 Master `True`、vertical mode `1`
+   （Pitch Hold）、lateral mode `1`（Heading Hold）。
+3. 依序切 Pitch、VS、ALT Hold；各等 1 秒。模式必須依序為 `1`、`2`、`3`，
+   reference 必須在切換當下捕捉目前值。
+4. 用綁定的 Vertical Ref Increase／Decrease 各操作一次；確認 target 依目前
+   mode 改變後可回到原值。
+5. 依序切 Heading Hold、Heading Select；用 Heading Ref
+   Increase／Decrease 驗證 target 可改變並跨 0/360 wrap。
+6. 切 NAV Track；CSV lateral mode 必須為 `3`，roll command 必須為 0。
+   這仍是明確的 placeholder，不應自行轉向 waypoint。
+7. 回到 Pitch Hold 與 Heading Hold。按住 Bypass 至少 2 秒，輕柔改變
+   pitch 或 heading 超過 1° 後放開；bypass 期間 pitch／roll command 為 0，
+   放開後 reference 重新捕捉目前姿態。
+8. 按 A/T Toggle；CSV 的 A/T 為 `True`。短按 Speed
+   Increase／Decrease，確認 target speed 變動；不要長按，因為
+   `pressed` 綁定會連續送 command。
+9. 按 AP Master OFF；Master、vertical、lateral 與 A/T 必須全部解除。
+10. 全程觀察飛行方向：目標 pitch 高於目前值時應給正 pitch command；
+    目標 heading 在左側時應給左滾 command。若有劇烈反向或持續發散，
+    判定 `FAIL`。
+
+#### RWY-CLEAN：獨立 Thrust Cut diagnostics
+
+1. 確認雙發有非零推力並等待 1 秒。
+2. 按 `RAlt+Y`；Controls Indicator 顯示 `CUT`，CSV 的
+   `propulsion_test_thrust_cut_requested=True`，雙發
+   `thrust_force_N` 都必須為 0。
+3. 再按一次 `RAlt+Y`；顯示回到 `NORM`，intent 為 `False`，雙發推力恢復。
+
+#### 必交證據
+
+- `dcs.log`
+- `fck1c_efm.log`
+- `fck1c_state.csv`
+- AIR-CLEAN、COLD-CLEAN、RWY-CLEAN 各一行人工觀察摘要
+
+`dcs.log` 不得出現 `autopilot_system.lua`、`more than 60 upvalues`，
+也不得有 AP／A/T／Thrust Cut 自訂 command 的 unknown-command 訊息。
+CSV 的 mode 與 reason 編碼以 C++ enum 為準：
+vertical `0/1/2/3 = Off/Pitch/VS/ALT`；
+lateral `0/1/2/3 = Off/Heading Hold/Heading Select/NAV`；
+reason `0/1/2/3/4/5/6 = None/Commanded/IAS/WOW/Roll/Pitch/Mach`。
 
 ## 9. CMS 計時驗收
 

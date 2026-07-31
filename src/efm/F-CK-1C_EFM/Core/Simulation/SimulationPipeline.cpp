@@ -120,7 +120,7 @@ PropulsionModelInput
 	return {
 		input.aircraft.read(AircraftDataKeys::kEngineData),
 		input.observation,
-		input.frame.max_power
+		input.aircraft.read(AircraftDataKeys::kPropulsionTestIntent)
 	};
 }
 

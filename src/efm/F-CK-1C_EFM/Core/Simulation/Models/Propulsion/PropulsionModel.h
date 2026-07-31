@@ -16,7 +16,7 @@ struct PropulsionModelInput
 {
 	const EngineData& engines;
 	const AircraftState& observation;
-	const MaxPowerCommand& max_power;
+	const PropulsionTestIntent& diagnostics;
 };
 
 struct PropulsionResult

@@ -6,6 +6,9 @@
     "prepare": "husky",
     "build:efm": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1",
     "test:cockpit-baseline": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/capture_cockpit_baseline.ps1 -Mode Check",
+    "test:dcs-id-generator": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_dcs_id_generator.ps1",
+    "test:cockpit-architecture": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/check_cockpit_architecture.ps1 && powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_cockpit_architecture_checker.ps1",
+    "test:cockpit-phase1": "npm run test:dcs-id-generator && npm run test:cockpit-baseline && npm run test:cockpit-architecture",
     "commit": "czg --config ./cz.config.js"
   },
   "config": {

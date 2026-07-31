@@ -1,0 +1,48 @@
+2026-07-31 Phase 2 relevant DCS log
+
+Automated literal search:
+- dcs_1.log: gear_system.lua references=0; actuators Lua references=0
+- dcs_2.log: gear_system.lua references=0; actuators Lua references=0
+- dcs_3.log: gear_system.lua references=0; actuators Lua references=0
+
+===== dcs_1.log / AIR-CLEAN =====
+2026-07-31 03:45:51.015 INFO    APP (Main): DCS/2.9.28.26385 (x86_64; MT; Windows NT 10.0.26200)
+2026-07-31 03:45:51.016 INFO    APP (Main): Application revision: 266385
+2026-07-31 03:45:51.016 INFO    APP (Main): Renderer revision: 26305
+2026-07-31 03:45:51.016 INFO    APP (Main): Terrain revision: 27850
+2026-07-31 03:46:49.922 INFO    APP (Main): MissionSpawn:spawnLocalPlayer 1,F-CK-1C
+2026-07-31 03:46:49.974 INFO    EDCORE (Main): Loaded C:/Users/jjjjj/Saved Games/DCS/Mods/aircraft/F-CK-1C/bin/F-CK-1C_EFM.dll
+2026-07-31 03:46:50.008 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineFG".
+2026-07-31 03:46:50.008 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineLG".
+2026-07-31 03:46:50.008 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineRG".
+2026-07-31 03:46:50.008 ERROR   APP (Main): Error: Unit [F-CK-1C]: Corrupt damage model.
+2026-07-31 03:46:50.081 ERROR   COCKPITBASE (Main): ccLuaLoader::LuaDofile(L, "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua"): Can't execute Lua file C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua - [string "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Sc..."]:838: function at line 676 has more than 60 upvalues
+2026-07-31 03:46:50.115 ERROR   COCKPITBASE (Main): Cockpit:Parent 'hmcs_vr_tfov' for 'hmcs_vr_root' is not found
+
+===== dcs_2.log / COLD-CLEAN =====
+2026-07-31 03:50:03.765 INFO    APP (Main): DCS/2.9.28.26385 (x86_64; MT; Windows NT 10.0.26200)
+2026-07-31 03:50:03.765 INFO    APP (Main): Application revision: 266385
+2026-07-31 03:50:03.765 INFO    APP (Main): Renderer revision: 26305
+2026-07-31 03:50:03.765 INFO    APP (Main): Terrain revision: 27850
+2026-07-31 03:50:33.577 INFO    APP (Main): MissionSpawn:spawnLocalPlayer 1,F-CK-1C
+2026-07-31 03:50:33.589 INFO    EDCORE (Main): Loaded C:/Users/jjjjj/Saved Games/DCS/Mods/aircraft/F-CK-1C/bin/F-CK-1C_EFM.dll
+2026-07-31 03:50:33.607 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineFG".
+2026-07-31 03:50:33.607 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineLG".
+2026-07-31 03:50:33.607 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineRG".
+2026-07-31 03:50:33.607 ERROR   APP (Main): Error: Unit [F-CK-1C]: Corrupt damage model.
+2026-07-31 03:50:33.645 ERROR   COCKPITBASE (Main): ccLuaLoader::LuaDofile(L, "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua"): Can't execute Lua file C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua - [string "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Sc..."]:838: function at line 676 has more than 60 upvalues
+2026-07-31 03:50:33.650 ERROR   COCKPITBASE (Main): Cockpit:Parent 'hmcs_vr_tfov' for 'hmcs_vr_root' is not found
+
+===== dcs_3.log / RWY-CLEAN =====
+2026-07-31 03:54:15.466 INFO    APP (Main): DCS/2.9.28.26385 (x86_64; MT; Windows NT 10.0.26200)
+2026-07-31 03:54:15.466 INFO    APP (Main): Application revision: 266385
+2026-07-31 03:54:15.466 INFO    APP (Main): Renderer revision: 26305
+2026-07-31 03:54:15.466 INFO    APP (Main): Terrain revision: 27850
+2026-07-31 03:55:05.793 INFO    APP (Main): MissionSpawn:spawnLocalPlayer 2,F-CK-1C
+2026-07-31 03:55:05.800 INFO    EDCORE (Main): Loaded C:/Users/jjjjj/Saved Games/DCS/Mods/aircraft/F-CK-1C/bin/F-CK-1C_EFM.dll
+2026-07-31 03:55:05.812 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineFG".
+2026-07-31 03:55:05.812 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineLG".
+2026-07-31 03:55:05.812 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineRG".
+2026-07-31 03:55:05.812 ERROR   APP (Main): Error: Unit [F-CK-1C]: Corrupt damage model.
+2026-07-31 03:55:05.861 ERROR   COCKPITBASE (Main): ccLuaLoader::LuaDofile(L, "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua"): Can't execute Lua file C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua - [string "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Sc..."]:838: function at line 676 has more than 60 upvalues
+2026-07-31 03:55:05.865 ERROR   COCKPITBASE (Main): Cockpit:Parent 'hmcs_vr_tfov' for 'hmcs_vr_root' is not found

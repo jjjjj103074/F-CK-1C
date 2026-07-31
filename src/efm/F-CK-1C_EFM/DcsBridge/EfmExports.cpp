@@ -134,8 +134,8 @@ void ed_fm_simulate(double dt) try
 		output_available = bridge().output_store().read().has_value();
 		if (output_available)
 		{
-			bridge().input_collector().publish_autopilot(cockpit.autopilot);
-			bridge().input_collector().publish_max_power(cockpit.max_power);
+			bridge().input_collector().publish_cockpit_observation(
+				cockpit.cockpit);
 			output = bridge().core().step(bridge().input_collector().snapshot(dt));
 			bridge().output_store().publish(output);
 			bridge().param_exporter().observe(output);
@@ -150,6 +150,8 @@ void ed_fm_simulate(double dt) try
 	bridge().event_reporter().log_cockpit_parameter_events(
 		bridge().cockpit_bridge().export_temperature(
 			output.flight.atmosphere_temperature_k));
+	bridge().event_reporter().log_cockpit_parameter_events(
+		bridge().cockpit_snapshot_exporter().export_snapshot(output.cockpit));
 }
 EFM_ABI_CATCH_VOID("ed_fm_simulate", (void)0)
 

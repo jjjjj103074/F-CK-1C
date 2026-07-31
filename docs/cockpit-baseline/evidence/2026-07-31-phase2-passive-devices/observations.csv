@@ -1,0 +1,22 @@
+Scenario,Area,Step,Expected,Observed,Result,Evidence
+AIR-CLEAN,Environment,Version,DCS version and revisions are recorded,DCS 2.9.28.26385; application 266385; renderer 26305; terrain 27850,PASS,dcs-relevant.txt
+AIR-CLEAN,EFM,Load,Installed Phase 2 DLL loads,F-CK-1C_EFM.dll loaded from installed mod path,PASS,dcs-relevant.txt
+AIR-CLEAN,CockpitArchitecture,RemovedLuaDevices,DCS does not load Gear or Actuators Lua,gear_system.lua references 0; actuators Lua references 0,PASS,dcs-relevant.txt
+AIR-CLEAN,FlightControls,PitchRollYaw,All three inputs exercise both signs,Pitch -1..1; roll -1..1; yaw -1..1,PASS,state-summary.csv
+AIR-CLEAN,FlightControls,SurfaceCommands,Elevator flaperon and rudder commands react in both directions,Elevator -0.784650..0.941932; aileron -0.920103..0.791777; rudder -0.517644..0.852537,PASS,state-summary.csv
+AIR-CLEAN,FlightControls,FlapsSlats,Flaps and slats complete their range and return,Flaps 0..1; slats 0..1; both ended at 0,PASS,state-summary.csv
+AIR-CLEAN,FlightControls,Airbrake,Airbrake completes its range and returns,Airbrake 0..1 and ended at 0,PASS,state-summary.csv
+AIR-CLEAN,LandingGear,Cycle,All gear output completes up/down range,Gear position 0..1 and ended at 0,PASS,state-summary.csv
+AIR-CLEAN,Engines,AfterburnerNozzle,Left and right outputs remain correctly paired,Throttle/AB/nozzle left-right max difference 0; both AB lit for 1020 rows,PASS,state-summary.csv
+AIR-CLEAN,ExteriorAnimation,TesterObservation,No new exterior animation problem except the separately tracked NWS issue,Tester reported only NWS exterior issue,PASS,RUN.md
+COLD-CLEAN,EFM,StartMode,Cold mission uses cold-ground start,flight start mode=cold_ground,PASS,fck1c_efm_2.log hash in RUN.md
+COLD-CLEAN,LandingGear,InitialState,Three landing gear remain down on ground,Gear position remained 1; all suspension wheels reported weight on wheels,PASS,state-summary.csv
+COLD-CLEAN,NWS,StateAndGate,NWS output follows yaw when enabled and remains zero when disabled,NWS -0.75..0.75; 859 active rows and 363 gated-zero rows during yaw input,PASS,state-summary.csv
+COLD-CLEAN,NWS,ExteriorAnimation,Nose wheel model turns with NWS output,C++ NWS output changes but nose wheel exterior does not turn,KNOWN_FAIL,Issue #21
+RWY-CLEAN,EFM,StartMode,Runway mission uses hot-ground start,flight start mode=hot_ground,PASS,fck1c_efm_3.log hash in RUN.md
+RWY-CLEAN,NWS,State,NWS output reaches both directions,NWS -0.75..0.75,PASS,state-summary.csv
+RWY-CLEAN,Wheels,Spin,All three wheel-spin outputs update while taxiing,Nose max 0.999878; left/right max 0.999989; left-right max difference 0,PASS,state-summary.csv
+RWY-CLEAN,Brakes,ApplyRelease,Left and right brakes exercise full range together,Both brakes 0..1; both active for 1022 rows,PASS,state-summary.csv
+RWY-CLEAN,NWS,ExteriorAnimation,Nose wheel model turns with NWS output,C++ NWS output changes but nose wheel exterior does not turn,KNOWN_FAIL,Issue #21
+COMMON,KnownErrors,ExistingRuntimeFailures,Existing unrelated failures remain visible,Damage model corrupt; AP over 60 upvalues; HMCS parent missing,KNOWN_FAIL,dcs-relevant.txt
+COMMON,EFM,UnknownCommand,Unknown commands remain visible,Command 2659 was counted twice in each run; relationship to Phase 2 was not observed,CAPTURED,RUN.md

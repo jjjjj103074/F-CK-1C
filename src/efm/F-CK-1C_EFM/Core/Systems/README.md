@@ -10,13 +10,14 @@ snapshot and does not call or own concrete Systems.
 
 | System | Group | Responsibility |
 |---|---|---|
-| `FlightControlComputer` | Control | Input shaping and control demands |
+| `FlightControlComputer` | Control | Pilot input shaping, AFCS state/controllers, and control demands |
 | `PrimaryFlightControls` | Equipment | Elevator, aileron, and rudder actuators |
 | `SecondaryFlightControls` | Equipment | Flaps, slats, and airbrake |
 | `LandingGear` | Equipment | Gear, brakes, NWS, wheels, and suspension state |
 | `Engine` | Equipment | Engine device state, spool, nozzle, and fuel demand |
 | `Fuel` | Equipment | Fuel storage, supply, transfer, and consumed mass |
 | `AirframeStructure` | Equipment | Component integrity and damage ownership |
+| `PropulsionDiagnostics` | Equipment | Flight-test thrust-cut intent |
 
 ## System contract
 
@@ -97,12 +98,14 @@ uninitialized value. A missing provider, wrong type, duplicate publisher, or
 missing required initial value fails setup. During `step()`, both `read()` and
 `has()` reject keys that the current System did not declare during `setup()`.
 
-`FrameInput` carries frame-local values such as `dt`, autopilot commands, and
-suspension samples. `AircraftObservation` carries retained, normalized flight
-state. `AircraftSimulation` updates only observations whose availability flag
-is set, retains missing samples, and gives the completed observation to the
-Pipeline. The Pipeline publishes both inputs through the same typed snapshot;
-Systems do not know which DCS callback produced them.
+`FrameInput` carries frame-local values such as `dt` and suspension samples.
+Semantic pilot commands enter through registered command handlers; AP and A/T
+are not smuggled through per-frame parameter fields. `AircraftObservation`
+carries retained, normalized flight state. `AircraftSimulation` updates only
+observations whose availability flag is set, retains missing samples, and gives
+the completed observation to the Pipeline. The Pipeline publishes both inputs
+through the same typed snapshot; Systems do not know which DCS callback
+produced them.
 
 Commands have one registered handler per semantic `CommandId`. Damage areas
 have one semantic owner. Repair may have multiple subscribers. An unregistered

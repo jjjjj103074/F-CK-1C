@@ -13,8 +13,8 @@ $BaselineRepoRoot = if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
 } else {
     [System.IO.Path]::GetFullPath($RepoRoot)
 }
-$ExpectedCockpitFileCount = 25
-$ExpectedDeviceCount = 9
+$ExpectedCockpitFileCount = 21
+$ExpectedDeviceCount = 6
 $ExpectedIndicatorCount = 3
 $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $OutputRoot = Join-Path $BaselineRepoRoot "docs\cockpit-baseline\generated"
@@ -63,8 +63,13 @@ function Get-BaselineSourceFiles {
         "src\efm\F-CK-1C_EFM\DcsIds\CommandIds.json",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.h",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitParameterEndpoint.h",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitParameterEvents.h",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.cpp",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.h",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DcsCommandRouter.cpp",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DcsCommandRouter.h",
+        "src\efm\F-CK-1C_EFM\Core\Contracts\CockpitContracts.h",
         "src\efm\F-CK-1C_EFM\Core\Contracts\Commands.h",
         "src\efm\F-CK-1C_EFM\Core\Contracts\FrameContracts.h"
     )
@@ -258,6 +263,17 @@ function Get-ParamNameMap {
     return $map
 }
 
+function Get-OptionalObjectProperty {
+    param(
+        [object]$Value,
+        [string]$Name
+    )
+
+    $property = $Value.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $null }
+    return $property.Value
+}
+
 function Get-HandleAccess {
     param(
         [string]$Text,
@@ -374,20 +390,91 @@ function Get-PresentationRows {
     return @($rows)
 }
 
+function Get-GeneratedPresentationRows {
+    param(
+        [object[]]$ExistingRows,
+        [System.IO.FileInfo[]]$PresentationFiles,
+        [hashtable]$ParamMap
+    )
+
+    $existing = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($row in $ExistingRows) {
+        [void]$existing.Add("$($row.Parameter)|$($row.Source)")
+    }
+    $rows = [System.Collections.Generic.List[object]]::new()
+    foreach ($file in $PresentationFiles) {
+        $text = Get-Text $file.FullName
+        $path = Get-RelativePath $file.FullName
+        foreach ($match in [regex]::Matches(
+            $text,
+            '(?<![A-Za-z0-9_])cockpit_params\.([A-Za-z_][A-Za-z0-9_]*)')) {
+            $name = $match.Groups[1].Value
+            if (-not $ParamMap.ContainsKey($name)) {
+                throw "Unknown generated cockpit parameter '$name' in $path."
+            }
+            $parameter = $ParamMap[$name]
+            if ($existing.Add("$parameter|$path")) {
+                $rows.Add([pscustomobject]@{
+                    Parameter = $parameter
+                    Access = "PresentationRead"
+                    Layer = "Lua"
+                    Source = $path
+                })
+            }
+        }
+    }
+    return @($rows)
+}
+
 function Get-CppParameterRows {
     param([object]$Catalog)
 
-    $source = "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp"
-    return @($Catalog.cockpit_params | ForEach-Object {
-        $parameter = $_
-        $access = if ($parameter.name -eq "TemperatureC") { "Write" } else { "Read" }
-        [pscustomobject]@{
-            Parameter = $parameter.value
-            Access = $access
-            Layer = "C++"
-            Source = $source
+    $rows = [Collections.Generic.List[object]]::new()
+    $parametersByName = @{}
+    foreach ($parameter in $Catalog.cockpit_params) {
+        $parametersByName[[string]$parameter.name] = $parameter
+    }
+    $cppRoot = Join-Path $BaselineRepoRoot 'src\efm\F-CK-1C_EFM'
+    $writerPattern = (
+        'cockpit_parameter_writer\s*\(\s*' +
+        '(?:DcsIds::)?CockpitParams::([A-Za-z_][A-Za-z0-9_]*)\s*\)')
+    foreach ($file in Get-ChildItem $cppRoot -Recurse -File -Include '*.cpp','*.h') {
+        $text = Get-Text $file.FullName
+        foreach ($match in [regex]::Matches($text, $writerPattern)) {
+            $name = $match.Groups[1].Value
+            if (-not $parametersByName.ContainsKey($name)) {
+                throw "C++ registers unknown cockpit writer parameter: $name"
+            }
+            $rows.Add([pscustomobject]@{
+                Parameter = $parametersByName[$name].value
+                Access = "Write"
+                Layer = "C++"
+                Source = Get-RelativePath $file.FullName
+            })
         }
-    })
+    }
+    foreach ($parameter in $Catalog.cockpit_params) {
+        $reader = Get-OptionalObjectProperty $parameter 'cpp_reader'
+        if ($null -ne $reader) {
+            $rows.Add([pscustomobject]@{
+                Parameter = $parameter.value
+                Access = "Read"
+                Layer = "C++"
+                Source = $reader
+            })
+        }
+    }
+    foreach ($parameter in $Catalog.raw_dcs_cockpit_params) {
+        $reader = Get-OptionalObjectProperty $parameter 'cpp_reader'
+        if ($null -eq $reader) { continue }
+        $rows.Add([pscustomobject]@{
+            Parameter = $parameter.value
+            Access = "Read"
+            Layer = "C++"
+            Source = $reader
+        })
+    }
+    return @($rows)
 }
 
 function New-ParameterAccess {
@@ -401,11 +488,20 @@ function New-ParameterAccess {
         Get-DirectAndDynamicParamRows $file
     })
     $presentationFiles = @($luaFiles | Where-Object {
-        (Get-RelativePath $_.FullName) -like "Cockpit/Scripts/HMCS/*_page.lua"
+        $path = Get-RelativePath $_.FullName
+        $path -like "Cockpit/Scripts/HMCS/*_page.lua" -or
+            $path -like "Cockpit/Scripts/ControlsIndicator/*_page.lua"
     })
-    $presentationRows = @(Get-PresentationRows $handleRows $presentationFiles)
+    $literalPresentationRows = @(
+        Get-PresentationRows $handleRows $presentationFiles)
+    $generatedPresentationRows = @(Get-GeneratedPresentationRows (
+        $handleRows + $literalPresentationRows) $presentationFiles $paramMap)
     $cppRows = @(Get-CppParameterRows $Catalog)
-    $ordered = @($handleRows + $presentationRows + $cppRows |
+    $ordered = @(
+        $handleRows +
+        $literalPresentationRows +
+        $generatedPresentationRows +
+        $cppRows |
         Sort-Object Parameter, Layer, Source, Access -Unique)
     $unknownRows = @($ordered | Where-Object Access -eq "HandleOnly")
     if ($unknownRows.Count -gt 0) {

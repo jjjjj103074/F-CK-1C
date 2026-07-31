@@ -29,6 +29,19 @@ DCS setter callbacks
        -> Internal/StateCsvWriter
 ```
 
+Semantic input commands follow a separate direct path:
+
+```text
+DCS ed_fm_set_command
+  -> Internal/DcsCommandRouter
+  -> Core::CommandId
+  -> owning System command handler
+```
+
+Cockpit presentation is one-way. `CockpitSnapshotExporter` writes completed
+C++ snapshot values to generated DCS parameters. AP／A/T parameters are not
+read back into `FrameInput` or used as Core state.
+
 Fuel getters use `BridgeContext::query_core_preparation`; flight-preparation
 setters use `BridgeContext::perform_core_preparation`.
 Each completed `FrameOutput` mass effect is queued by `OutputStore`.
@@ -123,7 +136,8 @@ telemetry.
 - `ProcessBridgeContext` constructs one process-lifetime production context
   without running logger or worker-thread destruction under the Windows loader
   lock. `BridgeContext` owns Core, the collector and output store,
-  cockpit/carrier bridges, EventLog, StateCsvWriter, and the execution mutex.
+  cockpit/carrier bridges, CockpitSnapshotExporter, EventLog, StateCsvWriter,
+  and the execution mutex.
 - `Core::Fck1cEfm` is the stable façade and owns the current per-flight
   `AircraftSimulation`. DCSBridge reads per-frame simulation results only from
   a completed `FrameOutput`; it must not inspect System or Simulation state

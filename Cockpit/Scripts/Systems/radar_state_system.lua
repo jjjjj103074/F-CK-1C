@@ -84,17 +84,83 @@ local function telemetry_metric()
     return total
 end
 
-local function update_debug(weapon_active, contact_valid, lock_valid, ir_azimuth, ir_elevation, stt_azimuth, stt_elevation, stt_range, radar_mode_value, target_designated, use_fallback, missile_status, missile_count)
+local function update_debug(state)
     debug_timer = debug_timer + update_rate
     if debug_timer < debug_period then return end
 
     debug_timer = debug_timer - debug_period
 
-    local line = string.format("DBG uncage=%d aam=%d weapon=%d contact=%d lock=%d desig=%d status=%d aim9=%d src=%s radar=%d mode=%.1f ir=(%.4f,%.4f) stt=(%.4f,%.4f,%.1f) stab=(%.4f,%.4f) tdc=(%.4f,%.4f) gate=%.4f c1=(%.4f,%.4f) ws=%.1f", (num(aim9_uncage_held) > 0.5) and 1 or 0, in_aam_mode() and 1 or 0, weapon_active and 1 or 0, contact_valid and 1 or 0, lock_valid and 1 or 0, target_designated and 1 or 0, missile_status, missile_count, use_fallback and "fallback" or "telemetry", (num(radar_state) > 0.5 and num(radar_power_state) > 0.5) and 1 or 0, radar_mode_value, ir_azimuth, ir_elevation, stt_azimuth, stt_elevation, stt_range, num(radar_stt_azimuth_stab), num(radar_stt_elevation_stab), num(radar_tdc_azimuth), num(radar_tdc_range_scaled), num(radar_gate_range_scaled), num(radar_contact_01_azimuth), num(radar_contact_01_range_scaled), num(ws_target_range))
+    local line = string.format("DBG uncage=%d aam=%d weapon=%d contact=%d lock=%d desig=%d status=%d aim9=%d src=%s radar=%d mode=%.1f ir=(%.4f,%.4f) stt=(%.4f,%.4f,%.1f) stab=(%.4f,%.4f) tdc=(%.4f,%.4f) gate=%.4f c1=(%.4f,%.4f) ws=%.1f", state.uncage_held and 1 or 0, state.aam_mode and 1 or 0, state.weapon_active and 1 or 0, state.contact_valid and 1 or 0, state.lock_valid and 1 or 0, state.target_designated and 1 or 0, state.missile_status, state.missile_count, state.use_fallback and "fallback" or "telemetry", (num(radar_state) > 0.5 and num(radar_power_state) > 0.5) and 1 or 0, state.radar_mode_value, state.ir_azimuth, state.ir_elevation, state.stt_azimuth, state.stt_elevation, state.stt_range, num(radar_stt_azimuth_stab), num(radar_stt_elevation_stab), num(radar_tdc_azimuth), num(radar_tdc_range_scaled), num(radar_gate_range_scaled), num(radar_contact_01_azimuth), num(radar_contact_01_range_scaled), num(ws_target_range))
 
     if line ~= debug_last_line then
         debug_last_line = line
         dlog(line)
+    end
+end
+
+local function read_tracking_input()
+    local input = {
+        uncage_held = num(aim9_uncage_held) > 0.5,
+        aam_mode = in_aam_mode(),
+        target_designated = num(aim9_target_designated) > 0.5,
+        missile_status = math.floor(num(aim9_missile_status) + 0.5),
+        missile_count = math.max(0, math.floor(num(aim9_missile_count) + 0.5)),
+        ir_azimuth = num(ws_ir_slave_azimuth),
+        ir_elevation = num(ws_ir_slave_elevation),
+        stt_azimuth = num(radar_stt_azimuth),
+        stt_elevation = num(radar_stt_elevation),
+        stt_range = num(radar_stt_range),
+        radar_mode_value = num(radar_mode),
+        dcs_ir_lock = num(ws_ir_lock) > 0.5,
+        dcs_ir_target_azimuth = num(ws_ir_tgt_azimuth),
+        dcs_ir_target_elevation = num(ws_ir_tgt_elevation),
+    }
+    input.weapon_active = input.aam_mode and input.missile_count > 0 and input.missile_status ~= AIM9_STATUS_OFF
+    input.dcs_ir_has_signal = math.abs(input.dcs_ir_target_azimuth) > 0.001 or math.abs(input.dcs_ir_target_elevation) > 0.001
+    input.real_telemetry_active = telemetry_metric() > 0.00001
+    return input
+end
+
+local function resolve_tracking(input)
+    if input.dcs_ir_lock or input.dcs_ir_has_signal then
+        return input.weapon_active and (input.dcs_ir_has_signal or input.dcs_ir_lock), input.weapon_active and input.dcs_ir_lock, false
+    end
+    if input.real_telemetry_active then
+        local ir_contact = seeker_metric(input.ir_azimuth, input.ir_elevation) > 0.00001
+        return input.weapon_active and input.uncage_held and ir_contact, input.weapon_active and input.uncage_held and input.stt_range > 1.0, false
+    end
+    local contact = input.weapon_active and input.uncage_held
+    return contact, contact and input.target_designated, true
+end
+
+local function publish_tracking(input, contact_valid, lock_valid)
+    aim9_weapon_active:set(input.weapon_active and 1 or 0)
+    aim9_contact_state:set(contact_valid and 1 or 0)
+    aim9_lock_state:set(lock_valid and 1 or 0)
+    aim9_seeker_azimuth:set(input.ir_azimuth)
+    aim9_seeker_elevation:set(input.ir_elevation)
+    aim9_lock_range:set(input.stt_range)
+
+    if input.missile_status == AIM9_STATUS_OFF then
+        aim9_seeker_state:set(AIM9_SEEKER_OFF)
+    elseif input.missile_status == AIM9_STATUS_TRACK or lock_valid then
+        aim9_seeker_state:set(AIM9_SEEKER_TRACK)
+    elseif input.missile_status == AIM9_STATUS_RDY then
+        aim9_seeker_state:set(AIM9_SEEKER_SEARCH_UNCAGED)
+    else
+        aim9_seeker_state:set(AIM9_SEEKER_SEARCH_CAGED)
+    end
+
+    if not input.weapon_active then
+        aim9_tone_state:set(AIM9_TONE_OFF)
+    elseif lock_valid then
+        aim9_tone_state:set(AIM9_TONE_LOCK)
+    elseif contact_valid then
+        aim9_tone_state:set(AIM9_TONE_ACQUIRE)
+    elseif input.missile_status == AIM9_STATUS_COOL or input.missile_status == AIM9_STATUS_RDY then
+        aim9_tone_state:set(AIM9_TONE_SEEK)
+    else
+        aim9_tone_state:set(AIM9_TONE_OFF)
     end
 end
 
@@ -106,8 +172,6 @@ function post_initialize()
     aim9_contact_state:set(0)
     aim9_lock_state:set(0)
     aim9_weapon_active:set(0)
-    aim9_missile_status:set(AIM9_STATUS_OFF)
-    aim9_missile_count:set(0)
     aim9_seeker_azimuth:set(0)
     aim9_seeker_elevation:set(0)
     aim9_lock_range:set(0)
@@ -117,80 +181,13 @@ function update()
     radar_state:set(1)
     radar_power_state:set(1)
 
-    local uncage_held = num(aim9_uncage_held) > 0.5
-    local aam_mode = in_aam_mode()
-    local target_designated = num(aim9_target_designated) > 0.5
-    local missile_status = math.floor(num(aim9_missile_status) + 0.5)
-    local missile_count = math.max(0, math.floor(num(aim9_missile_count) + 0.5))
-    local weapon_active = aam_mode and missile_count > 0 and missile_status ~= AIM9_STATUS_OFF
-
-    local ir_azimuth = num(ws_ir_slave_azimuth)
-    local ir_elevation = num(ws_ir_slave_elevation)
-    local stt_azimuth = num(radar_stt_azimuth)
-    local stt_elevation = num(radar_stt_elevation)
-    local stt_range = num(radar_stt_range)
-    local radar_mode_value = num(radar_mode)
-
-    local ir_contact_valid = seeker_metric(ir_azimuth, ir_elevation) > 0.00001
-    local stt_valid = stt_range > 1.0
-    local real_telemetry_active = telemetry_metric() > 0.00001
-
-    -- DCS WS_IR_MISSILE_LOCK: 1 = 尋標器鎖定熱源 (由 avSimpleWeaponSystem 自動填入)
-    local dcs_ir_lock = num(ws_ir_lock) > 0.5
-    local dcs_ir_tgt_az = num(ws_ir_tgt_azimuth)
-    local dcs_ir_tgt_el = num(ws_ir_tgt_elevation)
-    local dcs_ir_has_signal = (math.abs(dcs_ir_tgt_az) > 0.001 or math.abs(dcs_ir_tgt_el) > 0.001)
-
-    -- 判斷資料來源優先序：
-    -- 1. DCS IR lock (最可靠，來自 avSimpleWeaponSystem select_station 後自動填入)
-    -- 2. 真實遙測 (雷達 STT 等)
-    -- 3. 按鍵 fallback (uncage + designate)
-    local use_fallback_logic = not real_telemetry_active and not dcs_ir_lock and not dcs_ir_has_signal
-    local fallback_contact_valid = weapon_active and uncage_held
-    local fallback_lock_valid = fallback_contact_valid and target_designated
-
-    if dcs_ir_lock or dcs_ir_has_signal then
-        -- DCS 引擎提供真實 IR 資料
-        contact_valid = weapon_active and (dcs_ir_has_signal or dcs_ir_lock)
-        lock_valid = weapon_active and dcs_ir_lock
-    elseif real_telemetry_active then
-        contact_valid = weapon_active and uncage_held and ir_contact_valid
-        lock_valid = weapon_active and uncage_held and stt_valid
-    else
-        contact_valid = fallback_contact_valid
-        lock_valid = fallback_lock_valid
-    end
-
-    aim9_weapon_active:set(weapon_active and 1 or 0)
-    aim9_contact_state:set(contact_valid and 1 or 0)
-    aim9_lock_state:set(lock_valid and 1 or 0)
-    aim9_seeker_azimuth:set(ir_azimuth)
-    aim9_seeker_elevation:set(ir_elevation)
-    aim9_lock_range:set(stt_range)
-
-    if missile_status == AIM9_STATUS_OFF then
-        aim9_seeker_state:set(AIM9_SEEKER_OFF)
-    elseif missile_status == AIM9_STATUS_TRACK or lock_valid then
-        aim9_seeker_state:set(AIM9_SEEKER_TRACK)
-    elseif missile_status == AIM9_STATUS_RDY then
-        aim9_seeker_state:set(AIM9_SEEKER_SEARCH_UNCAGED)
-    else
-        aim9_seeker_state:set(AIM9_SEEKER_SEARCH_CAGED)
-    end
-
-    if not weapon_active then
-        aim9_tone_state:set(AIM9_TONE_OFF)
-    elseif lock_valid then
-        aim9_tone_state:set(AIM9_TONE_LOCK)
-    elseif contact_valid then
-        aim9_tone_state:set(AIM9_TONE_ACQUIRE)
-    elseif missile_status == AIM9_STATUS_COOL or missile_status == AIM9_STATUS_RDY then
-        aim9_tone_state:set(AIM9_TONE_SEEK)
-    else
-        aim9_tone_state:set(AIM9_TONE_OFF)
-    end
-
-    update_debug(weapon_active, contact_valid, lock_valid, ir_azimuth, ir_elevation, stt_azimuth, stt_elevation, stt_range, radar_mode_value, target_designated, use_fallback_logic, missile_status, missile_count)
+    local input = read_tracking_input()
+    local contact_valid, lock_valid, use_fallback = resolve_tracking(input)
+    publish_tracking(input, contact_valid, lock_valid)
+    input.contact_valid = contact_valid
+    input.lock_valid = lock_valid
+    input.use_fallback = use_fallback
+    update_debug(input)
 end
 
 need_to_be_closed = false

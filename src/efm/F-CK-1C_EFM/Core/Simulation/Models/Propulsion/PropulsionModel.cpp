@@ -5,8 +5,6 @@
 namespace
 {
 constexpr std::size_t kEngineEffectCapacity = 2;
-constexpr double kMaxPowerReadyThreshold = 0.5;
-constexpr double kMaxPowerCutThreshold = 0.5;
 constexpr double kPerEngineThrustShare = 0.5;
 
 struct ThrustConditions
@@ -34,11 +32,6 @@ double calculate_channel_thrust(
 	return dry_force + afterburner_extra;
 }
 
-bool should_cut_thrust(const Core::MaxPowerCommand& command)
-{
-	return command.ready > kMaxPowerReadyThreshold &&
-		command.value < kMaxPowerCutThreshold;
-}
 }
 
 namespace Core
@@ -73,7 +66,7 @@ const PropulsionResult& PropulsionModel::step(
 	result_.right_thrust_force =
 		calculate_channel_thrust(input.engines.right, conditions);
 	if (input.engines.thrust_inhibited ||
-		should_cut_thrust(input.max_power))
+		input.diagnostics.thrust_cut_requested)
 	{
 		result_.left_thrust_force = 0.0;
 		result_.right_thrust_force = 0.0;

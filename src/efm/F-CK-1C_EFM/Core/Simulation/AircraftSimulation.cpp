@@ -94,6 +94,7 @@ void AircraftSimulation::apply_setup(const FlightSetupContext& setup)
 {
 	gameplay_.options = setup.options;
 	simulation_time_s_ = 0.0;
+	cockpit_snapshot_revision_ = 0;
 }
 
 FrameOutput AircraftSimulation::initial_output() const
@@ -210,6 +211,7 @@ FrameOutput AircraftSimulation::step(const FrameInput& input)
 void AircraftSimulation::begin_frame(double dt)
 {
 	simulation_time_s_ += dt;
+	++cockpit_snapshot_revision_;
 }
 
 void AircraftSimulation::repair(const RepairEvent& event)

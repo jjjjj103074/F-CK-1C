@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CockpitBridge.h"
+#include "CockpitParameterEvents.h"
 #include "EventLog.h"
 #include "OutputStore.h"
 #include "../../Core/Contracts/Events.h"

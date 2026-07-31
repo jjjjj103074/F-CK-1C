@@ -1,215 +1,455 @@
 param(
-    [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot)
+    [string]$RepoRoot = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$sourcePath = Join-Path $RepoRoot 'src\efm\F-CK-1C_EFM\DcsIds\CommandIds.json'
-$cppPath = Join-Path $RepoRoot 'src\efm\F-CK-1C_EFM\DcsIds\CustomCommands.g.h'
-$luaPath = Join-Path $RepoRoot 'Cockpit\Scripts\command_defs.lua'
-$cockpitCppPath = Join-Path $RepoRoot 'src\efm\F-CK-1C_EFM\DcsIds\CockpitParams.g.h'
-$cockpitLuaPath = Join-Path $RepoRoot 'Cockpit\Scripts\generated\CockpitParams.g.lua'
+$customCommandMinimum = 3000
+$customCommandMaximum = 3999
+$validRoutes = @('efm', 'cockpit')
+$validDirections = @('cpp_to_lua', 'lua_to_cpp', 'lua_internal')
+$validRawDirections = @('dcs_to_cpp')
+$validVerificationBases = @(
+    'community_documentation',
+    'existing_module_contract'
+)
+$validUnits = @(
+    'boolean',
+    'count',
+    'counter',
+    'degrees',
+    'enum',
+    'feet',
+    'feet_per_minute',
+    'kelvin',
+    'knots',
+    'meters',
+    'normalized',
+    'radians',
+    'revision',
+    'seconds',
+    'station_index'
+)
+$utf8NoBom = [Text.UTF8Encoding]::new($false)
 
-if (-not (Test-Path -LiteralPath $sourcePath)) {
+function Resolve-RepositoryRoot {
+    param([string]$RequestedRoot)
+
+    if ($RequestedRoot) {
+        return [IO.Path]::GetFullPath($RequestedRoot)
+    }
+    return [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
+}
+
+function Assert-Symbol {
+    param(
+        [string]$Name,
+        [string]$Kind
+    )
+
+    if ($Name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+        throw "Invalid $Kind name: $Name"
+    }
+}
+
+function Assert-Unique {
+    param(
+        [hashtable]$Seen,
+        [object]$Value,
+        [string]$Message
+    )
+
+    if ($Seen.ContainsKey($Value)) {
+        throw "$Message conflicts with $($Seen[$Value])"
+    }
+}
+
+function Assert-OptionalText {
+    param(
+        [object]$Value,
+        [string]$Message
+    )
+
+    if ($null -ne $Value -and [string]::IsNullOrWhiteSpace([string]$Value)) {
+        throw $Message
+    }
+}
+
+function Get-OptionalProperty {
+    param(
+        [object]$Value,
+        [string]$Name
+    )
+
+    $property = $Value.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+    return $property.Value
+}
+
+function Test-CommandCatalog {
+    param([object[]]$Commands)
+
+    $names = @{}
+    $values = @{}
+    foreach ($command in $Commands) {
+        $name = [string]$command.name
+        $value = [int]$command.value
+        $route = [string]$command.route
+        Assert-Symbol $name 'command'
+        Assert-Unique $names $name "Duplicate command name: $name"
+        Assert-Unique $values $value "Duplicate command ID: $name=$value"
+        if ($value -lt $customCommandMinimum -or $value -gt $customCommandMaximum) {
+            throw "Custom command ID outside reserved range: $name=$value"
+        }
+        if ($route -notin $validRoutes) {
+            throw "Invalid command route: $name=$route"
+        }
+        $names[$name] = $value
+        $values[$value] = $name
+    }
+    return $names
+}
+
+function Test-IgnoredCommandCatalog {
+    param([object[]]$Commands)
+
+    $names = @{}
+    $values = @{}
+    foreach ($command in $Commands) {
+        $name = [string]$command.name
+        $value = [int]$command.value
+        Assert-Symbol $name 'ignored DCS command'
+        Assert-Unique $names $name "Duplicate ignored DCS command name: $name"
+        Assert-Unique $values $value "Duplicate ignored DCS command ID: $name=$value"
+        if ($value -lt 0) {
+            throw "Invalid ignored DCS command ID: $name=$value"
+        }
+        if ([string]::IsNullOrWhiteSpace([string]$command.reason)) {
+            throw "Missing ignored DCS command reason: $name=$value"
+        }
+        $names[$name] = $value
+        $values[$value] = $name
+    }
+    return $names
+}
+
+function Test-CockpitParameterCatalog {
+    param([object[]]$Parameters)
+
+    $names = @{}
+    $values = @{}
+    foreach ($parameter in $Parameters) {
+        $name = [string]$parameter.name
+        $value = [string]$parameter.value
+        Assert-Symbol $name 'cockpit parameter'
+        Assert-Unique $names $name "Duplicate cockpit parameter name: $name"
+        Assert-Unique $values $value "Duplicate cockpit parameter value: $name=$value"
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            throw "Empty cockpit parameter value: $name"
+        }
+        if ([string]$parameter.direction -notin $validDirections) {
+            throw "Invalid cockpit parameter direction: $name=$($parameter.direction)"
+        }
+        if ([string]$parameter.unit -notin $validUnits) {
+            throw "Invalid cockpit parameter unit: $name=$($parameter.unit)"
+        }
+        Assert-OptionalText $parameter.writer "Empty cockpit parameter writer: $name"
+        Assert-OptionalText (
+            Get-OptionalProperty $parameter 'cpp_reader') `
+            "Empty cockpit parameter C++ reader: $name"
+        if ([string]::IsNullOrWhiteSpace([string]$parameter.target_owner)) {
+            throw "Missing cockpit parameter target owner: $name"
+        }
+        $names[$name] = $value
+        $values[$value] = $name
+    }
+}
+
+function Test-RawParameterCatalog {
+    param(
+        [object[]]$Parameters,
+        [object[]]$CustomParameters
+    )
+
+    $names = @{}
+    $values = @{}
+    foreach ($custom in $CustomParameters) {
+        $values[[string]$custom.value] = [string]$custom.name
+    }
+    foreach ($parameter in $Parameters) {
+        $name = [string]$parameter.name
+        $value = [string]$parameter.value
+        Assert-Symbol $name 'raw DCS cockpit parameter'
+        Assert-Unique $names $name "Duplicate raw DCS parameter name: $name"
+        Assert-Unique $values $value "Duplicate cockpit parameter value: $name=$value"
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            throw "Empty raw DCS cockpit parameter value: $name"
+        }
+        if ([string]$parameter.unit -notin $validUnits) {
+            throw "Invalid raw DCS parameter unit: $name=$($parameter.unit)"
+        }
+        if ([string]$parameter.data_direction -notin $validRawDirections) {
+            throw "Invalid raw DCS parameter direction: $name=$($parameter.data_direction)"
+        }
+        if ([string]::IsNullOrWhiteSpace([string]$parameter.axis_convention)) {
+            throw "Missing raw DCS parameter axis convention: $name"
+        }
+        if ([string]::IsNullOrWhiteSpace([string]$parameter.source)) {
+            throw "Missing raw DCS parameter source: $name"
+        }
+        if ([string]$parameter.verification_basis -notin $validVerificationBases) {
+            throw (
+                "Invalid raw DCS parameter verification basis: " +
+                "$name=$($parameter.verification_basis)")
+        }
+        if ([string]::IsNullOrWhiteSpace([string]$parameter.reference)) {
+            throw "Missing raw DCS parameter reference: $name"
+        }
+        Assert-OptionalText (
+            Get-OptionalProperty $parameter 'cpp_reader') `
+            "Empty raw DCS C++ reader: $name"
+        $names[$name] = $value
+        $values[$value] = $name
+    }
+}
+
+function Convert-ToCppText {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return 'nullptr'
+    }
+    return '"' + ([string]$Value).Replace('\', '\\').Replace('"', '\"') + '"'
+}
+
+function New-CommandCppLines {
+    param(
+        [object[]]$Commands,
+        [object[]]$IgnoredCommands
+    )
+
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.AddRange([string[]]@(
+        '#pragma once', '',
+        '// Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.',
+        '// Do not edit this file directly.', 'namespace DcsIds', '{',
+        'namespace Commands', '{'))
+    foreach ($command in $Commands) {
+        $lines.Add("static constexpr int $($command.name) = $([int]$command.value);")
+    }
+    $lines.AddRange([string[]]@('}', '', 'namespace DcsCommands', '{'))
+    foreach ($command in $IgnoredCommands) {
+        $lines.Add("static constexpr int $($command.name) = $([int]$command.value);")
+    }
+    $lines.AddRange([string[]]@(
+        '}', '', 'namespace CommandRouting', '{', 'enum class Route',
+        '{', '    Efm,', '    Cockpit', '};', '', 'struct Entry', '{',
+        '    int id;', '    Route route;', '};', '',
+        'static constexpr Entry CustomCommands[] = {'))
+    foreach ($command in $Commands) {
+        $route = if ([string]$command.route -eq 'efm') { 'Efm' } else { 'Cockpit' }
+        $lines.Add("    { Commands::$($command.name), Route::$route },")
+    }
+    $lines.AddRange([string[]]@('};', '', 'static constexpr int IgnoredDcsCommands[] = {'))
+    foreach ($command in $IgnoredCommands) {
+        $lines.Add("    DcsCommands::$($command.name),")
+    }
+    $lines.AddRange([string[]]@('};', '}', '}', ''))
+    return $lines.ToArray()
+}
+
+function New-CommandLuaLines {
+    param(
+        [object[]]$Commands,
+        [object[]]$IgnoredCommands
+    )
+
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.AddRange([string[]]@(
+        '-- Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.',
+        '-- Do not edit this file directly.', 'device_commands = {'))
+    foreach ($command in $Commands) {
+        $lines.Add("    $($command.name) = $([int]$command.value),")
+    }
+    $lines.AddRange([string[]]@('}', '', 'dcs_commands = {'))
+    foreach ($command in $IgnoredCommands) {
+        $lines.Add("    $($command.name) = $([int]$command.value),")
+    }
+    $lines.AddRange([string[]]@('}', ''))
+    return $lines.ToArray()
+}
+
+function New-CppParameterEntries {
+    param([object[]]$Parameters)
+
+    foreach ($parameter in $Parameters) {
+        Write-Output (
+            "    { $($parameter.name), " +
+            "$(Convert-ToCppText $parameter.direction), " +
+            "$(Convert-ToCppText $parameter.unit), " +
+            "$(Convert-ToCppText $parameter.writer), " +
+            "$(Convert-ToCppText $parameter.target_owner), " +
+            "$(Convert-ToCppText (Get-OptionalProperty $parameter 'cpp_reader')) },")
+    }
+}
+
+function New-RawCppParameterEntries {
+    param([object[]]$Parameters)
+
+    foreach ($parameter in $Parameters) {
+        Write-Output (
+            "    { $($parameter.name), " +
+            "$(Convert-ToCppText $parameter.data_direction), " +
+            "$(Convert-ToCppText $parameter.unit), " +
+            "$(Convert-ToCppText $parameter.axis_convention), " +
+            "$(Convert-ToCppText $parameter.source), " +
+            "$(Convert-ToCppText $parameter.verification_basis), " +
+            "$(Convert-ToCppText $parameter.reference), " +
+            "$(Convert-ToCppText (Get-OptionalProperty $parameter 'cpp_reader')) },")
+    }
+}
+
+function New-CockpitCppLines {
+    param(
+        [object[]]$Parameters,
+        [object[]]$RawParameters
+    )
+
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.AddRange([string[]]@(
+        '#pragma once', '',
+        '// Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.',
+        '// Do not edit this file directly.', 'namespace DcsIds', '{',
+        'namespace CockpitParams', '{'))
+    foreach ($parameter in $Parameters) {
+        $lines.Add("static const char* const $($parameter.name) = `"$($parameter.value)`";")
+    }
+    $lines.AddRange([string[]]@(
+        '', 'struct Entry', '{', '    const char* name;',
+        '    const char* direction;', '    const char* unit;',
+        '    const char* writer;', '    const char* target_owner;',
+        '    const char* cpp_reader;', '};', '',
+        'static constexpr Entry Catalog[] = {'))
+    $lines.AddRange([string[]](New-CppParameterEntries $Parameters))
+    $lines.AddRange([string[]]@('};', '}', '', 'namespace RawCockpitParams', '{'))
+    foreach ($parameter in $RawParameters) {
+        $lines.Add("static const char* const $($parameter.name) = `"$($parameter.value)`";")
+    }
+    $lines.AddRange([string[]]@(
+        '', 'struct Entry', '{', '    const char* name;',
+        '    const char* data_direction;', '    const char* unit;',
+        '    const char* axis_convention;', '    const char* source;',
+        '    const char* verification_basis;', '    const char* reference;',
+        '    const char* cpp_reader;', '};', '',
+        'static constexpr Entry Catalog[] = {'))
+    $lines.AddRange([string[]](New-RawCppParameterEntries $RawParameters))
+    $lines.AddRange([string[]]@('};', '}', '}', ''))
+    return $lines.ToArray()
+}
+
+function New-CockpitLuaLines {
+    param(
+        [object[]]$Parameters,
+        [object[]]$RawParameters
+    )
+
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.AddRange([string[]]@(
+        '-- Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.',
+        '-- Do not edit this file directly.', 'cockpit_params = {'))
+    foreach ($parameter in $Parameters) {
+        $lines.Add("    $($parameter.name) = `"$($parameter.value)`",")
+    }
+    $lines.AddRange([string[]]@('}', '', 'dcs_cockpit_params = {'))
+    foreach ($parameter in $RawParameters) {
+        $lines.Add("    $($parameter.name) = `"$($parameter.value)`",")
+    }
+    $lines.AddRange([string[]]@('}', ''))
+    return $lines.ToArray()
+}
+
+function Test-LuaCommandReferencesInFile {
+    param(
+        [IO.FileInfo]$File,
+        [hashtable]$CommandNames,
+        [hashtable]$IgnoredNames
+    )
+
+    $content = Get-Content -LiteralPath $File.FullName -Raw
+    foreach ($match in [regex]::Matches(
+        $content, 'device_commands\.([A-Za-z_][A-Za-z0-9_]*)')) {
+        if (-not $CommandNames.ContainsKey($match.Groups[1].Value)) {
+            throw "Lua references unknown device command '$($match.Groups[1].Value)' in $($File.FullName)"
+        }
+    }
+    foreach ($match in [regex]::Matches(
+        $content, 'dcs_commands\.([A-Za-z_][A-Za-z0-9_]*)')) {
+        if (-not $IgnoredNames.ContainsKey($match.Groups[1].Value)) {
+            throw "Lua references undeclared DCS command '$($match.Groups[1].Value)' in $($File.FullName)"
+        }
+    }
+}
+
+function Test-LuaCommandReferences {
+    param(
+        [string]$Root,
+        [hashtable]$CommandNames,
+        [hashtable]$IgnoredNames
+    )
+
+    foreach ($relativeRoot in @('Cockpit', 'Input')) {
+        $luaRoot = Join-Path $Root $relativeRoot
+        foreach ($file in Get-ChildItem -LiteralPath $luaRoot -Filter '*.lua' -File -Recurse) {
+            Test-LuaCommandReferencesInFile $file $CommandNames $IgnoredNames
+        }
+    }
+}
+
+function Write-GeneratedFile {
+    param(
+        [string]$Path,
+        [Collections.Generic.List[string]]$Lines
+    )
+
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $Path)) | Out-Null
+    [IO.File]::WriteAllText($Path, ($Lines -join "`r`n"), $utf8NoBom)
+    Write-Output "Generated: $Path"
+}
+
+$resolvedRoot = Resolve-RepositoryRoot $RepoRoot
+$sourcePath = Join-Path $resolvedRoot 'src\efm\F-CK-1C_EFM\DcsIds\CommandIds.json'
+if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
     throw "Command ID source not found: $sourcePath"
 }
 
 $document = Get-Content -LiteralPath $sourcePath -Raw | ConvertFrom-Json
-$seenNames = @{}
-$seenValues = @{}
-$validRoutes = @('efm', 'cockpit')
 $commands = @($document.commands)
-foreach ($command in $commands) {
-    $name = [string]$command.name
-    $value = [int]$command.value
-    $route = [string]$command.route
-    if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
-        throw "Invalid command name: $name"
-    }
-    if ($seenNames.ContainsKey($name)) {
-        throw "Duplicate command name: $name"
-    }
-    if ($seenValues.ContainsKey($value)) {
-        throw "Duplicate command ID: $name=$value conflicts with $($seenValues[$value])"
-    }
-    if ($value -lt 3000 -or $value -gt 3999) {
-        throw "Custom command ID outside reserved range 3000-3999: $name=$value"
-    }
-    if ($route -notin $validRoutes) {
-        throw "Invalid command route: $name=$route (expected efm or cockpit)"
-    }
-    $seenNames[$name] = $value
-    $seenValues[$value] = $name
-}
+$ignoredCommands = @($document.efm_ignored_dcs_commands)
+$parameters = @($document.cockpit_params)
+$rawParameters = @($document.raw_dcs_cockpit_params)
+$commandNames = Test-CommandCatalog $commands
+$ignoredNames = Test-IgnoredCommandCatalog $ignoredCommands
+Test-CockpitParameterCatalog $parameters
+Test-RawParameterCatalog $rawParameters $parameters
 
-$seenIgnoredDcsIds = @{}
-$seenIgnoredDcsNames = @{}
-$ignoredDcsCommands = @($document.efm_ignored_dcs_commands)
-foreach ($command in $ignoredDcsCommands) {
-    $name = [string]$command.name
-    $value = [int]$command.value
-    $reason = [string]$command.reason
-    if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
-        throw "Invalid ignored DCS command name: $name"
-    }
-    if ($value -lt 0) {
-        throw "Invalid ignored DCS command ID: $name=$value"
-    }
-    if ($seenIgnoredDcsIds.ContainsKey($value)) {
-        throw "Duplicate ignored DCS command ID: $name=$value"
-    }
-    if ($seenIgnoredDcsNames.ContainsKey($name)) {
-        throw "Duplicate ignored DCS command name: $name"
-    }
-    if ([string]::IsNullOrWhiteSpace($reason)) {
-        throw "Missing ignored DCS command reason: $name=$value"
-    }
-    $seenIgnoredDcsIds[$value] = $name
-    $seenIgnoredDcsNames[$name] = $value
-}
+$commandCpp = [Collections.Generic.List[string]](
+    [string[]](New-CommandCppLines $commands $ignoredCommands))
+$commandLua = [Collections.Generic.List[string]](
+    [string[]](New-CommandLuaLines $commands $ignoredCommands))
+$cockpitCpp = [Collections.Generic.List[string]](
+    [string[]](New-CockpitCppLines $parameters $rawParameters))
+$cockpitLua = [Collections.Generic.List[string]](
+    [string[]](New-CockpitLuaLines $parameters $rawParameters))
 
-$seenParamNames = @{}
-$cockpitParams = @($document.cockpit_params)
-foreach ($param in $cockpitParams) {
-    $name = [string]$param.name
-    $value = [string]$param.value
-    if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
-        throw "Invalid cockpit parameter name: $name"
-    }
-    if ($seenParamNames.ContainsKey($name)) {
-        throw "Duplicate cockpit parameter name: $name"
-    }
-    if ([string]::IsNullOrWhiteSpace($value)) {
-        throw "Empty cockpit parameter value: $name"
-    }
-    $seenParamNames[$name] = $value
-}
-
-$cpp = New-Object System.Collections.Generic.List[string]
-$cpp.Add('#pragma once')
-$cpp.Add('')
-$cpp.Add('// Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.')
-$cpp.Add('// Do not edit this file directly.')
-$cpp.Add('namespace DcsIds')
-$cpp.Add('{')
-$cpp.Add('namespace Commands')
-$cpp.Add('{')
-foreach ($command in $commands) {
-    $cpp.Add(('static constexpr int {0} = {1};' -f $command.name, [int]$command.value))
-}
-$cpp.Add('}')
-$cpp.Add('')
-$cpp.Add('namespace DcsCommands')
-$cpp.Add('{')
-foreach ($command in $ignoredDcsCommands) {
-    $cpp.Add(('static constexpr int {0} = {1};' -f $command.name, [int]$command.value))
-}
-$cpp.Add('}')
-$cpp.Add('')
-$cpp.Add('namespace CommandRouting')
-$cpp.Add('{')
-$cpp.Add('enum class Route')
-$cpp.Add('{')
-$cpp.Add('    Efm,')
-$cpp.Add('    Cockpit')
-$cpp.Add('};')
-$cpp.Add('')
-$cpp.Add('struct Entry')
-$cpp.Add('{')
-$cpp.Add('    int id;')
-$cpp.Add('    Route route;')
-$cpp.Add('};')
-$cpp.Add('')
-$cpp.Add('static constexpr Entry CustomCommands[] = {')
-foreach ($command in $commands) {
-    $route = if ([string]$command.route -eq 'efm') { 'Efm' } else { 'Cockpit' }
-    $cpp.Add(('    {{ Commands::{0}, Route::{1} }},' -f $command.name, $route))
-}
-$cpp.Add('};')
-$cpp.Add('')
-$cpp.Add('static constexpr int IgnoredDcsCommands[] = {')
-foreach ($command in $ignoredDcsCommands) {
-    $cpp.Add(('    DcsCommands::{0},' -f $command.name))
-}
-$cpp.Add('};')
-$cpp.Add('}')
-$cpp.Add('}')
-$cpp.Add('')
-
-$lua = New-Object System.Collections.Generic.List[string]
-$lua.Add('-- Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.')
-$lua.Add('-- Do not edit this file directly.')
-$lua.Add('device_commands = {')
-foreach ($command in $commands) {
-    $lua.Add(('    {0} = {1},' -f $command.name, [int]$command.value))
-}
-$lua.Add('}')
-$lua.Add('')
-$lua.Add('dcs_commands = {')
-foreach ($command in $ignoredDcsCommands) {
-    $lua.Add(('    {0} = {1},' -f $command.name, [int]$command.value))
-}
-$lua.Add('}')
-$lua.Add('')
-
-$cockpitCpp = New-Object System.Collections.Generic.List[string]
-$cockpitCpp.Add('#pragma once')
-$cockpitCpp.Add('')
-$cockpitCpp.Add('// Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.')
-$cockpitCpp.Add('// Do not edit this file directly.')
-$cockpitCpp.Add('namespace DcsIds')
-$cockpitCpp.Add('{')
-$cockpitCpp.Add('namespace CockpitParams')
-$cockpitCpp.Add('{')
-foreach ($param in $cockpitParams) {
-    $cockpitCpp.Add(('static const char* const {0} = "{1}";' -f $param.name, $param.value))
-}
-$cockpitCpp.Add('}')
-$cockpitCpp.Add('}')
-$cockpitCpp.Add('')
-
-$cockpitLua = New-Object System.Collections.Generic.List[string]
-$cockpitLua.Add('-- Generated by tools/generate_dcs_ids.ps1 from DcsIds/CommandIds.json.')
-$cockpitLua.Add('-- Do not edit this file directly.')
-$cockpitLua.Add('cockpit_params = {')
-foreach ($param in $cockpitParams) {
-    $cockpitLua.Add(('    {0} = "{1}",' -f $param.name, $param.value))
-}
-$cockpitLua.Add('}')
-$cockpitLua.Add('')
-
-$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-[System.IO.Directory]::CreateDirectory((Split-Path -Parent $cppPath)) | Out-Null
-[System.IO.Directory]::CreateDirectory((Split-Path -Parent $cockpitLuaPath)) | Out-Null
-[System.IO.File]::WriteAllText($cppPath, ($cpp -join "`r`n"), $utf8NoBom)
-[System.IO.File]::WriteAllText($luaPath, ($lua -join "`r`n"), $utf8NoBom)
-[System.IO.File]::WriteAllText($cockpitCppPath, ($cockpitCpp -join "`r`n"), $utf8NoBom)
-[System.IO.File]::WriteAllText($cockpitLuaPath, ($cockpitLua -join "`r`n"), $utf8NoBom)
-
-$luaRoots = @(
-    (Join-Path $RepoRoot 'Cockpit'),
-    (Join-Path $RepoRoot 'Input')
-)
-foreach ($luaRoot in $luaRoots) {
-    Get-ChildItem -LiteralPath $luaRoot -Filter '*.lua' -File -Recurse | ForEach-Object {
-        $content = Get-Content -LiteralPath $_.FullName -Raw
-        foreach ($match in [regex]::Matches($content, 'device_commands\.([A-Za-z_][A-Za-z0-9_]*)')) {
-            $referencedName = $match.Groups[1].Value
-            if (-not $seenNames.ContainsKey($referencedName)) {
-                throw "Lua references unknown device command '$referencedName' in $($_.FullName)"
-            }
-        }
-        foreach ($match in [regex]::Matches($content, 'dcs_commands\.([A-Za-z_][A-Za-z0-9_]*)')) {
-            $referencedName = $match.Groups[1].Value
-            if (-not $seenIgnoredDcsNames.ContainsKey($referencedName)) {
-                throw "Lua references undeclared DCS command '$referencedName' in $($_.FullName)"
-            }
-        }
-    }
-}
-
-Write-Output "Generated: $cppPath"
-Write-Output "Generated: $luaPath"
-Write-Output "Generated: $cockpitCppPath"
-Write-Output "Generated: $cockpitLuaPath"
+Write-GeneratedFile (
+    Join-Path $resolvedRoot 'src\efm\F-CK-1C_EFM\DcsIds\CustomCommands.g.h') $commandCpp
+Write-GeneratedFile (
+    Join-Path $resolvedRoot 'Cockpit\Scripts\command_defs.lua') $commandLua
+Write-GeneratedFile (
+    Join-Path $resolvedRoot 'src\efm\F-CK-1C_EFM\DcsIds\CockpitParams.g.h') $cockpitCpp
+Write-GeneratedFile (
+    Join-Path $resolvedRoot 'Cockpit\Scripts\generated\CockpitParams.g.lua') $cockpitLua
+Test-LuaCommandReferences $resolvedRoot $commandNames $ignoredNames

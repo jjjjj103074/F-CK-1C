@@ -22,8 +22,7 @@ public:
 	void publish_world_kinematics(const Core::WorldKinematicsInput& sample);
 	void publish_body_kinematics(const Core::BodyKinematicsInput& sample);
 	bool publish_suspension(const Core::SuspensionFeedbackInput& sample);
-	void publish_autopilot(const Core::AutopilotCommand& sample);
-	void publish_max_power(const Core::MaxPowerCommand& sample);
+	void publish_cockpit_observation(const Core::CockpitObservation& sample);
 	Core::FrameInput snapshot(double dt_s);
 
 private:

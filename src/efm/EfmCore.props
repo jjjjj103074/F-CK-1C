@@ -15,6 +15,7 @@
     <None Include="$(EfmCoreRoot)README.md" />
     <None Include="$(EfmSystemRoot)\README.md" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\AircraftData.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\CockpitContracts.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
     <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionContext.h" />
     <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionError.h" />

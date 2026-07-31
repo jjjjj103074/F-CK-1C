@@ -181,8 +181,6 @@ inline Core::FrameInput make_frame_input()
 		Core::SuspensionFeedbackInput{
 			2, { 0.0, 90.0, 0.0 }, { 7.0, 8.0, 9.0 }, 0.7, 0.30, 14.0 }
 	};
-	input.autopilot = { true, false, true, 0.2, -0.3, 0.4 };
-	input.max_power = { 1.0, 1.0 };
 	return input;
 }
 }

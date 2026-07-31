@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CockpitContracts.h"
 #include "../../Common/Vec3.h"
 
 #include <array>
@@ -84,22 +85,6 @@ struct SuspensionFeedbackInput
 	double wheel_speed_x = 0.0;
 };
 
-struct AutopilotCommand
-{
-	bool master = false;
-	bool bypass = false;
-	bool auto_throttle_engaged = false;
-	double pitch_command = 0.0;
-	double roll_command = 0.0;
-	double throttle_command = 0.0;
-};
-
-struct MaxPowerCommand
-{
-	double ready = 0.0;
-	double value = 1.0;
-};
-
 struct ExternalFuelInput
 {
 	int station = 0;
@@ -144,8 +129,7 @@ struct FrameInput
 		SuspensionFeedbackInput{ 1 },
 		SuspensionFeedbackInput{ 2 }
 	};
-	AutopilotCommand autopilot;
-	MaxPowerCommand max_power;
+	CockpitObservation cockpit;
 };
 
 struct FlightOutput
@@ -224,6 +208,11 @@ struct FuelOutput
 	double total_fuel_flow = 0.0;
 };
 
+struct PropulsionDiagnosticsOutput
+{
+	bool thrust_cut_requested = false;
+};
+
 struct FrameOutput
 {
 	double simulation_time_s = 0.0;
@@ -235,7 +224,9 @@ struct FrameOutput
 	LandingGearOutput landing_gear;
 	SuspensionOutput suspension;
 	FuelOutput fuel;
+	PropulsionDiagnosticsOutput propulsion_diagnostics;
 	MassDeltaResult mass_effect;
+	CockpitSnapshot cockpit;
 	double shake_amplitude = 0.0;
 };
 }

@@ -109,7 +109,48 @@ constexpr CommandBinding kBindings[] = {
 	BIND_CONST(WheelBrakeLeftOn, SetLeftBrake, 1.0),
 	BIND_CONST(WheelBrakeLeftOff, SetLeftBrake, 0.0),
 	BIND_CONST(WheelBrakeRightOn, SetRightBrake, 1.0),
-	BIND_CONST(WheelBrakeRightOff, SetRightBrake, 0.0)
+	BIND_CONST(WheelBrakeRightOff, SetRightBrake, 0.0),
+	BIND_INPUT(TriggerFirstStage, SetTriggerFirstStage),
+	BIND_PRESS(CMSForward, StartCmsForward),
+	BIND_PRESS(CMSAft, StartCmsAft),
+	BIND_PRESS(CMSLeft, StartCmsLeft),
+	BIND_PRESS(CMSRight, StartCmsRight),
+	BIND_PRESS(CMSPress, PressCms),
+	BIND_INPUT(TriggerSecondStage, SetTriggerSecondStage),
+	BIND_PRESS(MasterArmOn, SetMasterArmOn),
+	BIND_PRESS(MasterArmOff, SetMasterArmOff),
+	BIND_PRESS(MasterArmSim, SetMasterArmSim),
+	BIND_PRESS(DogfightSwitch, SelectDogfightMode),
+	BIND_INPUT(MissileUncage, SetMissileUncage),
+	BIND_INPUT(WeaponRelease, SetWeaponRelease),
+	BIND_INPUT(TMSUp, SetTmsUp),
+	BIND_PRESS(TMSDown, PressTmsDown),
+	BIND_PRESS(TMSLeft, PressTmsLeft),
+	BIND_PRESS(TMSRight, PressTmsRight),
+	BIND_PRESS(NavMode, SelectNavigationMode),
+	BIND_PRESS(MissileOverride, SelectMissileOverride),
+	BIND_PRESS(APMasterToggle, ToggleAutopilotMaster),
+	BIND_PRESS(APMasterOn, EngageAutopilot),
+	BIND_PRESS(APMasterOff, DisengageAutopilot),
+	BIND_INPUT(APBypass, SetAutopilotBypass),
+	BIND_PRESS(APVertPitchHold, SelectAutopilotPitchHold),
+	BIND_PRESS(APVertVSHold, SelectAutopilotVerticalSpeedHold),
+	BIND_PRESS(APVertAltHold, SelectAutopilotAltitudeHold),
+	BIND_PRESS(APVertIncrease, IncreaseAutopilotVerticalReference),
+	BIND_PRESS(APVertDecrease, DecreaseAutopilotVerticalReference),
+	BIND_PRESS(APLatHeadingHold, SelectAutopilotHeadingHold),
+	BIND_PRESS(APLatHeadingSelect, SelectAutopilotHeading),
+	BIND_PRESS(APLatNavTrack, SelectAutopilotNavigationTrack),
+	BIND_PRESS(APLatIncrease, IncreaseAutopilotLateralReference),
+	BIND_PRESS(APLatDecrease, DecreaseAutopilotLateralReference),
+	BIND_PRESS(APAutoThrottleToggle, ToggleAutoThrottle),
+	BIND_PRESS(APAutoThrottleOn, EngageAutoThrottle),
+	BIND_PRESS(APAutoThrottleOff, DisengageAutoThrottle),
+	BIND_PRESS(APSpeedIncrease, IncreaseAutopilotSpeed),
+	BIND_PRESS(APSpeedDecrease, DecreaseAutopilotSpeed),
+	BIND_PRESS(EngineThrustCutTestToggle, ToggleThrustCutTest),
+	BIND_PRESS(EngineThrustCutTestEnable, EnableThrustCutTest),
+	BIND_PRESS(EngineThrustCutTestDisable, DisableThrustCutTest)
 };
 
 #undef BIND_INPUT
@@ -201,12 +242,8 @@ CommandTableValidation validate_command_bindings()
 	return validation;
 }
 
-DcsCommandMapping map_command(int command, float value)
+DcsCommandMapping inspect_command_binding(int command, float value)
 {
-	if (is_ignored_command(command))
-	{
-		return { DcsCommandMappingStatus::IgnoredCommand };
-	}
 	if (!std::isfinite(value))
 	{
 		return { DcsCommandMappingStatus::InvalidValue };
@@ -235,5 +272,14 @@ DcsCommandMapping map_command(int command, float value)
 		}
 	}
 	return { DcsCommandMappingStatus::UnknownCommand };
+}
+
+DcsCommandMapping map_command(int command, float value)
+{
+	if (is_ignored_command(command))
+	{
+		return { DcsCommandMappingStatus::IgnoredCommand };
+	}
+	return inspect_command_binding(command, value);
 }
 }

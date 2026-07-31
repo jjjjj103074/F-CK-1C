@@ -1,0 +1,25 @@
+Scenario,Field,Minimum,Maximum,Notes
+AIR-CLEAN,controls_pitch_input,-1,1,Full input range
+AIR-CLEAN,controls_roll_input,-1,1,Full input range
+AIR-CLEAN,controls_yaw_input,-1,1,Full input range
+AIR-CLEAN,controls_elevator_command,-0.784650,0.941932,Bidirectional
+AIR-CLEAN,controls_aileron_command,-0.920103,0.791777,Bidirectional
+AIR-CLEAN,controls_rudder_command,-0.517644,0.852537,Bidirectional
+AIR-CLEAN,controls_flaps_position,0,1,Returned to 0
+AIR-CLEAN,controls_slats_position,0,1,Returned to 0
+AIR-CLEAN,controls_airbrake_position,0,1,Returned to 0
+AIR-CLEAN,landing_gear_gear_position,0,1,Returned to 0
+AIR-CLEAN,engine_0_afterburner_ratio,0,0.947152,Engine 1 identical
+AIR-CLEAN,engine_0_nozzle_aperture,0.000003,0.940546,Engine 1 identical
+COLD-CLEAN,landing_gear_gear_position,1,1,Down throughout
+COLD-CLEAN,landing_gear_nose_wheel_steering,-0.75,0.75,Numeric output works
+COLD-CLEAN,landing_gear_wheel_spin_0,0,0.023043,Near-static settling range
+COLD-CLEAN,landing_gear_wheel_spin_1,0,0.017282,Near-static settling range
+COLD-CLEAN,landing_gear_wheel_spin_2,0,0.017282,Near-static settling range
+RWY-CLEAN,controls_yaw_input,-1,1,Full input range
+RWY-CLEAN,landing_gear_nose_wheel_steering,-0.75,0.75,Numeric output works
+RWY-CLEAN,landing_gear_wheel_spin_0,0,0.999878,Nose wheel
+RWY-CLEAN,landing_gear_wheel_spin_1,0,0.999989,Left main wheel
+RWY-CLEAN,landing_gear_wheel_spin_2,0,0.999989,Right main wheel
+RWY-CLEAN,landing_gear_brake_left,0,1,Applied and released
+RWY-CLEAN,landing_gear_brake_right,0,1,Applied and released

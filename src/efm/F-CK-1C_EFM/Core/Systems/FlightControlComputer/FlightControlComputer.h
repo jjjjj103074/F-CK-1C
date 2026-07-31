@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AutomaticFlightControl.h"
 #include "ControlLaws.h"
 #include "FlightControlComputerConfig.h"
 #include "InputModel.h"
@@ -26,7 +27,7 @@ public:
 
 	const FlightControlDemand& step(
 		::Systems::FBWControllerInput input,
-		const AutopilotCommand& autopilot);
+		const AutomaticFlightControlDemand& automatic);
 	void handle_command(const Command& command);
 
 	const PilotControlState& pilot_controls() const;
@@ -39,9 +40,13 @@ private:
 	void handle_yaw_command(const Command& command);
 	void handle_fbw_command(const Command& command);
 	void handle_throttle_command(const Command& command);
-	void apply_autopilot(const AutopilotCommand& autopilot);
-	void refresh_pilot_controls();
+	void apply_automatic_flight_control(
+		::Systems::FBWControllerInput& input,
+		const AutomaticFlightControlDemand& automatic);
+	void refresh_pilot_controls(double pitch, double roll);
 	void refresh_outputs(const ::Systems::FBWControllerOutput& output);
+	AutomaticFlightControlObservation make_automatic_observation(
+		const AircraftDataView& aircraft) const;
 	double alpha_limit(double mach) const;
 	::Systems::FBWControllerInput make_pipeline_input(
 		const AircraftDataView& aircraft) const;
@@ -50,6 +55,7 @@ private:
 	::Systems::PrimaryControlState primary_controls_;
 	::Systems::ThrottleInputState throttle_inputs_;
 	::Systems::FBWControllerState fbw_;
+	AutomaticFlightControl automatic_flight_control_;
 	PilotControlState pilot_controls_;
 	FlightControlDemand demand_;
 	EngineControlDemand engine_demand_;

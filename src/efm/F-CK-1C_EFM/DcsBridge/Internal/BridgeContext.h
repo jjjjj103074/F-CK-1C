@@ -2,6 +2,7 @@
 
 #include "CarrierBridge.h"
 #include "CockpitBridge.h"
+#include "CockpitSnapshotExporter.h"
 #include "EfmEventReporter.h"
 #include "EventLog.h"
 #include "FrameInputCollector.h"
@@ -46,6 +47,7 @@ public:
 	OutputStore& output_store();
 	EfmEventReporter& event_reporter();
 	ParamExporter& param_exporter();
+	CockpitSnapshotExporter& cockpit_snapshot_exporter();
 	CockpitBridge& cockpit_bridge();
 	CarrierBridge& carrier_bridge();
 	std::mutex& execution_mutex();
@@ -107,6 +109,8 @@ private:
 	OutputStore output_store_;
 	EfmEventReporter event_reporter_;
 	ParamExporter param_exporter_;
+	const cockpit_param_api cockpit_api_;
+	CockpitSnapshotExporter cockpit_snapshot_exporter_;
 	CockpitBridge cockpit_bridge_;
 	CarrierBridge carrier_bridge_;
 	std::mutex execution_mutex_;

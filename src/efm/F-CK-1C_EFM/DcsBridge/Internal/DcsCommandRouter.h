@@ -43,5 +43,6 @@ struct DcsCommandMapping
 };
 
 CommandTableValidation validate_command_bindings();
+DcsCommandMapping inspect_command_binding(int command, float value);
 DcsCommandMapping map_command(int command, float value);
 }

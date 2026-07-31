@@ -207,7 +207,6 @@ std::array<
 	send_trajectory_commands(efm);
 
 	Core::FrameInput input = Tests::Fck1c::make_frame_input();
-	input.autopilot = {};
 	std::array<
 		Core::FrameOutput,
 		Tests::Fck1c::kCharacterizationFrameCount> frames;
@@ -298,7 +297,6 @@ void test_secondary_controls_read_previous_committed_gear(
 	efm.handle_command({
 		Core::CommandId::SetFlapsAuto, 1.0 });
 	Core::FrameInput input = Tests::Fck1c::make_frame_input();
-	input.autopilot = {};
 	const std::optional<GearCrossing> crossing =
 		find_gear_midpoint_crossing(efm, input, start);
 	TEST_EXPECT(context, crossing.has_value());

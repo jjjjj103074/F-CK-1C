@@ -41,7 +41,6 @@ local hmcs_hdg_minor_offset = get_param_handle("HMCS_HDG_MINOR_OFFSET")
 local hmcs_master_mode = get_param_handle("HMCS_MASTER_MODE")
 local hmcs_weapon_class = get_param_handle("HMCS_WEAPON_CLASS")
 local hmcs_weapon_qty = get_param_handle("HMCS_WEAPON_QTY")
-local hmcs_dogfight_mode = get_param_handle("HMCS_DOGFIGHT_MODE")
 local hmcs_fc_mode = get_param_handle("HMCS_FC_MODE")
 local hmcs_gun_firing = get_param_handle("HMCS_GUN_FIRING")
 local hmcs_enabled = get_param_handle("HMCS_ENABLED")
@@ -72,12 +71,6 @@ local function shared_master_mode()
     local value = hmcs_master_mode:get()
     if value >= MASTER_OFF - 0.1 and value <= MASTER_ON + 0.1 then return value end
     return master_mode
-end
-
-local function shared_dogfight_mode()
-    local value = hmcs_dogfight_mode:get()
-    if value > 0.5 then return 1 end
-    return 0
 end
 
 local function shared_fc_mode()
@@ -204,17 +197,8 @@ local function safe_gun_quantity()
     return -1.0
 end
 
-local function push_params()
-    local ias_mps = safe_sensor_call("getIndicatedAirSpeed", 0.0)
-    local baro_alt_m = safe_sensor_call("getBarometricAltitude", 0.0)
-    local heading_deg = safe_heading_deg()
+local function resolve_weapon_display(display_master_mode, display_fc_mode)
     local gun_quantity_live = safe_gun_quantity()
-    local display_master_mode = shared_master_mode()
-    local display_dogfight_mode = shared_dogfight_mode()
-    local display_fc_mode = shared_fc_mode()
-
-    update_display_mode_params()
-
     local gun_firing = hmcs_gun_firing:get() > 0.5 or hmcs_trigger_down
     local display_weapon_class = weapon_class
     local display_weapon_quantity = weapon_quantity
@@ -242,17 +226,26 @@ local function push_params()
         display_weapon_quantity = hmcs_gun_qty_sim
     end
 
+    if display_weapon_class == WEAPON_GUN then
+        return display_weapon_class, hmcs_gun_qty_sim
+    end
+    return display_weapon_class, display_weapon_quantity
+end
+
+local function push_params()
+    local ias_mps = safe_sensor_call("getIndicatedAirSpeed", 0.0)
+    local baro_alt_m = safe_sensor_call("getBarometricAltitude", 0.0)
+    local heading_deg = safe_heading_deg()
+    local display_master_mode = shared_master_mode()
+    local display_fc_mode = shared_fc_mode()
+    local display_weapon_class, display_weapon_quantity = resolve_weapon_display(display_master_mode, display_fc_mode)
+
+    update_display_mode_params()
     hmcs_ias_kts:set(math.max(0.0, ias_mps * 1.943844))
     hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084))
     hmcs_hdg_deg:set(heading_deg)
-    hmcs_master_mode:set(display_master_mode)
     hmcs_weapon_class:set(display_weapon_class)
-    if display_weapon_class == WEAPON_GUN then
-        hmcs_weapon_qty:set(hmcs_gun_qty_sim)
-    else
-        hmcs_weapon_qty:set(display_weapon_quantity)
-    end
-    hmcs_dogfight_mode:set(display_dogfight_mode)
+    hmcs_weapon_qty:set(display_weapon_quantity)
     update_heading_slots(heading_deg)
 end
 

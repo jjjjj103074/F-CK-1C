@@ -55,7 +55,9 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
 	state_csv_writer_(module_paths_.mod_root_path, event_log_),
 	event_reporter_(event_log_, output_store_),
 	param_exporter_(event_reporter_),
-	cockpit_bridge_(make_cockpit_api(config.cockpit_api_provider)),
+	cockpit_api_(make_cockpit_api(config.cockpit_api_provider)),
+	cockpit_snapshot_exporter_(cockpit_api_),
+	cockpit_bridge_(cockpit_api_),
 	carrier_bridge_(make_carrier_config()),
 	core_(make_core(config.core_factory))
 {
@@ -96,6 +98,11 @@ ParamExporter& BridgeContext::param_exporter()
 	return param_exporter_;
 }
 
+CockpitSnapshotExporter& BridgeContext::cockpit_snapshot_exporter()
+{
+	return cockpit_snapshot_exporter_;
+}
+
 CockpitBridge& BridgeContext::cockpit_bridge()
 {
 	return cockpit_bridge_;
@@ -124,10 +131,13 @@ Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
 		event_reporter_.log_repeated_start(mode);
 	}
 	param_exporter_.reset();
+	cockpit_snapshot_exporter_.reset();
 	carrier_bridge_.reset();
 	const Core::FrameOutput output = core_->start(mode);
 	output_store_.publish_start(output);
 	param_exporter_.observe(output);
+	event_reporter_.log_cockpit_parameter_events(
+		cockpit_snapshot_exporter_.export_snapshot(output.cockpit));
 	state_csv_writer_.publish_start(output);
 	return output;
 }

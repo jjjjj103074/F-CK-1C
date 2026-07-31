@@ -128,6 +128,13 @@ inline double ground_speed(const AircraftState& state)
 		state.velocity_world.z * state.velocity_world.z);
 }
 
+inline double indicated_airspeed(const AircraftState& state)
+{
+	constexpr double kSeaLevelAirDensityKgM3 = 1.225;
+	return state.speed_scalar * std::sqrt(
+		state.atmosphere_density / kSeaLevelAirDensityKgM3);
+}
+
 inline AircraftObservation make_aircraft_observation(
 	const AircraftState& state)
 {
@@ -138,12 +145,15 @@ inline AircraftObservation make_aircraft_observation(
 		state.atmosphere_density,
 		state.speed_scalar,
 		ground_speed(state),
+		indicated_airspeed(state),
+		state.velocity_world.y,
 		state.mach,
 		kDynamicPressureCoefficient * state.atmosphere_density *
 			state.speed_scalar * state.speed_scalar,
 		state.g,
 		state.alpha,
 		state.beta,
+		state.heading,
 		state.roll,
 		state.pitch,
 		state.roll_rate,

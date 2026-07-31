@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <cstdint>
 #include <vector>
 
 namespace Core
@@ -89,6 +90,7 @@ private:
 	Systems::SystemPipeline system_pipeline_;
 	SimulationPipeline simulation_pipeline_;
 	double simulation_time_s_ = 0.0;
+	std::uint64_t cockpit_snapshot_revision_ = 0;
 };
 
 AircraftSimulationFactory make_fck1c_aircraft_simulation_factory();

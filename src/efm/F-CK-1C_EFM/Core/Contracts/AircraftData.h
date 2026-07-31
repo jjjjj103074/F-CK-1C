@@ -15,11 +15,14 @@ struct AircraftObservation
 	double atmosphere_density = 0.0;
 	double speed_scalar = 0.0;
 	double ground_speed = 0.0;
+	double indicated_airspeed_mps = 0.0;
+	double vertical_speed_mps = 0.0;
 	double mach = 0.0;
 	double dynamic_pressure = 0.0;
 	double g_load = 0.0;
 	double alpha_deg = 0.0;
 	double beta_deg = 0.0;
+	double heading_rad = 0.0;
 	double roll = 0.0;
 	double pitch = 0.0;
 	double roll_rate = 0.0;
@@ -122,6 +125,11 @@ struct AirframeIntegrity
 	double tail = 1.0;
 };
 
+struct PropulsionTestIntent
+{
+	bool thrust_cut_requested = false;
+};
+
 enum class AircraftDataId
 {
 	FrameInput,
@@ -136,6 +144,8 @@ enum class AircraftDataId
 	FuelDemand,
 	FuelData,
 	AirframeIntegrity,
+	AutomaticFlightControlSnapshot,
+	PropulsionTestIntent,
 	Count
 };
 
@@ -208,6 +218,17 @@ inline constexpr AircraftDataKey<AirframeIntegrity> kAirframeIntegrity = {
 	AircraftDataId::AirframeIntegrity,
 	"airframe_integrity"
 };
+
+inline constexpr AircraftDataKey<AutomaticFlightControlSnapshot>
+	kAutomaticFlightControlSnapshot = {
+		AircraftDataId::AutomaticFlightControlSnapshot,
+		"automatic_flight_control_snapshot"
+	};
+
+inline constexpr AircraftDataKey<PropulsionTestIntent> kPropulsionTestIntent = {
+	AircraftDataId::PropulsionTestIntent,
+	"propulsion_test_intent"
+};
 }
 
 using AircraftDataValue = std::variant<
@@ -222,7 +243,9 @@ using AircraftDataValue = std::variant<
 	EngineData,
 	FuelDemand,
 	FuelData,
-	AirframeIntegrity>;
+	AirframeIntegrity,
+	AutomaticFlightControlSnapshot,
+	PropulsionTestIntent>;
 
 inline constexpr std::size_t kAircraftDataSlotCount =
 	static_cast<std::size_t>(AircraftDataId::Count);

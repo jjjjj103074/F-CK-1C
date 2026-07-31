@@ -19,7 +19,7 @@ constexpr double kPositionOffset = 20.0;
 constexpr double kTolerance = 1e-12;
 constexpr double kFullIntegrity = 1.0;
 constexpr int kFirstCall = 0;
-constexpr std::size_t kPhaseThreeCatalogSize = 7;
+constexpr std::size_t kCurrentCatalogSize = 8;
 
 struct DemandPublisherOptions
 {
@@ -519,7 +519,7 @@ void test_systems_share_one_flight_result_buffer(Tests::Context& context)
 void test_phase_three_generated_catalog(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup());
-	TEST_EXPECT(context, pipeline.system_count() == kPhaseThreeCatalogSize);
+	TEST_EXPECT(context, pipeline.system_count() == kCurrentCatalogSize);
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,

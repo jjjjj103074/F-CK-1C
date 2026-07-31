@@ -56,6 +56,7 @@
   <ItemGroup>
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
+    <ClInclude Include="FakeCockpitParameters.h" />
     <ClInclude Include="Fck1cEfmGoldenSnapshots.h" />
     <ClInclude Include="Fck1cEfmTestFixture.h" />
     <ClInclude Include="SystemPipelineTestFixture.h" />
@@ -63,12 +64,14 @@
   <ItemGroup>
     <ClCompile Include="AerodynamicsPhysicsTests.cpp" />
     <ClCompile Include="AirframeDeviceSystemTests.cpp" />
+    <ClCompile Include="AutomaticFlightControlTests.cpp" />
     <ClCompile Include="AbiBoundaryTests.cpp" />
     <ClCompile Include="BridgeContextTests.cpp" />
 	<ClCompile Include="BoundaryValidatorTests.cpp" />
     <ClCompile Include="CommonTests.cpp" />
     <ClCompile Include="CarrierBridgeTests.cpp" />
     <ClCompile Include="CockpitBridgeTests.cpp" />
+    <ClCompile Include="CockpitSnapshotExporterTests.cpp" />
     <ClCompile Include="DcsCommandRouterTests.cpp" />
     <ClCompile Include="DcsDamageMapperTests.cpp" />
     <ClCompile Include="OutputAdapterTests.cpp" />
@@ -85,6 +88,7 @@
     <ClCompile Include="MassDeltaTests.cpp" />
     <ClCompile Include="OutputStoreTests.cpp" />
     <ClCompile Include="ParamExportTests.cpp" />
+    <ClCompile Include="PropulsionDiagnosticsTests.cpp" />
     <ClCompile Include="Phase3SystemTests.cpp" />
     <ClCompile Include="Phase4SystemTimingTests.cpp" />
     <ClCompile Include="SimulationModelTests.cpp" />
@@ -104,6 +108,7 @@
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\BridgeContext.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CarrierBridge.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\OutputStore.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\StateCsvWriter.cpp" />

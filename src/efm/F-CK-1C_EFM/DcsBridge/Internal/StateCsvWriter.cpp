@@ -51,7 +51,16 @@ constexpr const char* kStateCsvHeader =
 	"suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
 	"suspension_any_weight_on_wheels,suspension_on_ground,"
 	"fuel_internal_kg,fuel_external_kg,fuel_total_kg,"
-	"fuel_total_flow_kg_per_s,shake_amplitude\n";
+	"fuel_total_flow_kg_per_s,"
+	"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,"
+	"afcs_vertical_mode,afcs_lateral_mode,"
+	"afcs_pitch_command_normalized,afcs_roll_command_normalized,"
+	"afcs_throttle_command_normalized,afcs_target_altitude_m,"
+	"afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,"
+	"afcs_target_vertical_speed_mps,afcs_ap_engage_rejection_reason,"
+	"afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,"
+	"afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,"
+	"shake_amplitude\n";
 
 class CsvRowBuilder final
 {
@@ -235,6 +244,33 @@ bool append_fuel(CsvRowBuilder& row, const Core::FuelOutput& fuel)
 		row.append_double(fuel.total_fuel_flow);
 }
 
+bool append_automatic_flight_control(
+	CsvRowBuilder& row,
+	const Core::AutomaticFlightControlSnapshot& afcs)
+{
+	return row.append_bool(afcs.master_engaged) &&
+		row.append_bool(afcs.bypass_active) &&
+		row.append_bool(afcs.auto_throttle_engaged) &&
+		row.append_double(static_cast<double>(afcs.vertical_mode)) &&
+		row.append_double(static_cast<double>(afcs.lateral_mode)) &&
+		row.append_double(afcs.pitch_command_normalized) &&
+		row.append_double(afcs.roll_command_normalized) &&
+		row.append_double(afcs.throttle_command_normalized) &&
+		row.append_double(afcs.target_altitude_m) &&
+		row.append_double(afcs.target_heading_rad) &&
+		row.append_double(afcs.target_speed_mps) &&
+		row.append_double(afcs.target_pitch_rad) &&
+		row.append_double(afcs.target_vertical_speed_mps) &&
+		row.append_double(static_cast<double>(
+			afcs.autopilot_engage_rejection_reason)) &&
+		row.append_double(static_cast<double>(
+			afcs.autopilot_disengage_reason)) &&
+		row.append_double(static_cast<double>(
+			afcs.auto_throttle_engage_rejection_reason)) &&
+		row.append_double(static_cast<double>(
+			afcs.auto_throttle_disengage_reason));
+}
+
 int io_error_code()
 {
 	return errno != 0 ? errno : EIO;
@@ -317,6 +353,11 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 		append_landing_gear(row, output.landing_gear) &&
 		append_suspension(row, output) &&
 		append_fuel(row, output.fuel) &&
+		append_automatic_flight_control(
+			row,
+			output.cockpit.automatic_flight_control) &&
+		row.append_bool(
+			output.propulsion_diagnostics.thrust_cut_requested) &&
 		row.append_double(output.shake_amplitude);
 	if (appended)
 	{

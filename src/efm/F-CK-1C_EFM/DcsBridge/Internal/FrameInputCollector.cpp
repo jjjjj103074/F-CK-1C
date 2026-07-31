@@ -65,16 +65,11 @@ bool FrameInputCollector::publish_suspension(const Core::SuspensionFeedbackInput
 	return true;
 }
 
-void FrameInputCollector::publish_autopilot(const Core::AutopilotCommand& sample)
+void FrameInputCollector::publish_cockpit_observation(
+	const Core::CockpitObservation& sample)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
-	latest_.autopilot = sample;
-}
-
-void FrameInputCollector::publish_max_power(const Core::MaxPowerCommand& sample)
-{
-	std::lock_guard<std::mutex> lock(mutex_);
-	latest_.max_power = sample;
+	latest_.cockpit = sample;
 }
 
 Core::FrameInput FrameInputCollector::snapshot(double dt_s)

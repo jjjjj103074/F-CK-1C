@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CockpitParameterEndpoint.h"
 #include "../../Core/Contracts/FrameContracts.h"
 #include "../../include/Cockpit/ccParametersAPI.h"
 
@@ -11,33 +12,16 @@ namespace DcsBridge
 {
 namespace Internal
 {
-enum class CockpitParameterEventType
-{
-	Error,
-	Recovery
-};
-
-struct CockpitParameterEvent
-{
-	CockpitParameterEventType type = CockpitParameterEventType::Error;
-	const char* parameter_name = nullptr;
-	const char* reason = nullptr;
-	double value = 0.0;
-	bool has_value = false;
-};
-
-inline constexpr std::size_t kCockpitParameterEventCapacity = 9;
-
-struct CockpitParameterEvents
-{
-	std::array<CockpitParameterEvent, kCockpitParameterEventCapacity> items = {};
-	std::size_t count = 0;
-};
-
 struct CockpitStepInput
 {
-	Core::AutopilotCommand autopilot;
-	Core::MaxPowerCommand max_power;
+	Core::CockpitObservation cockpit;
+	CockpitParameterEvents events;
+};
+
+template<typename TValue>
+struct CockpitValueResult
+{
+	TValue value;
 	CockpitParameterEvents events;
 };
 
@@ -56,49 +40,63 @@ private:
 	enum class Parameter : std::size_t
 	{
 		Temperature,
-		MaxPowerSwitch,
-		MaxPowerReady,
-		AutopilotMaster,
-		AutopilotPitch,
-		AutopilotRoll,
-		AutopilotThrottle,
-		AutopilotBypass,
-		AutopilotAutoThrottle,
+		RadarMode,
+		RadarSttAzimuth,
+		RadarSttElevation,
+		RadarSttRange,
+		RadarSttAzimuthStabilized,
+		RadarSttElevationStabilized,
+		RadarTdcAzimuth,
+		RadarTdcRangeScaled,
+		RadarGateRangeScaled,
+		RadarContact01Azimuth,
+		RadarContact01RangeScaled,
+		WeaponTargetRange,
+		IrDesiredAzimuth,
+		IrDesiredElevation,
+		IrLock,
+		IrTargetAzimuth,
+		IrTargetElevation,
+		WeaponObservationAvailable,
+		WeaponObservationRevision,
+		WeaponObservationInvalidReason,
+		WeaponObservationAim9Count,
+		WeaponObservationSelectedStation,
+		WeaponObservationScannedStationCount,
 		Count
 	};
 
-	enum class Availability
+	struct WeaponStationValues
 	{
-		Unknown,
-		Available,
-		Unavailable
+		bool readable = false;
+		double available = 0.0;
+		double revision = 0.0;
+		double invalid_reason = 0.0;
+		double aim9_count = 0.0;
+		double selected_station = 0.0;
+		double scanned_station_count = 0.0;
 	};
 
-	struct ParameterSlot
-	{
-		const char* name = nullptr;
-		void* handle = nullptr;
-		Availability availability = Availability::Unknown;
-		const char* failure_reason = nullptr;
-	};
+	using ParameterSlots =
+		std::array<
+			CockpitParameterEndpoint,
+			static_cast<std::size_t>(Parameter::Count)>;
 
-	bool read_parameter(
-		Parameter parameter,
-		double& value,
-		CockpitParameterEvents& events);
-	bool ensure_handle(ParameterSlot& slot);
-	void record_failure(
-		ParameterSlot& slot,
-		const CockpitParameterEvent& event,
-		CockpitParameterEvents& events);
-	void record_available(
-		ParameterSlot& slot,
-		CockpitParameterEvents& events);
-	Core::AutopilotCommand read_autopilot(CockpitParameterEvents& events);
-	Core::MaxPowerCommand read_max_power(CockpitParameterEvents& events);
+	static ParameterSlots make_parameter_slots();
+	CockpitParameterReadResult read_parameter(Parameter parameter);
+	CockpitValueResult<Core::RadarObservation> read_radar();
+	CockpitValueResult<Core::IrSeekerObservation> read_ir_seeker();
+	CockpitValueResult<Core::WeaponStationObservation> read_weapon_stations();
+	CockpitValueResult<WeaponStationValues> read_weapon_station_values();
+	static Core::ObservationStatus validate_weapon_station_status(
+		const WeaponStationValues& values);
+	static Core::WeaponStationObservation build_weapon_station_observation(
+		const WeaponStationValues& values);
 
 	const cockpit_param_api api_;
-	std::array<ParameterSlot, static_cast<std::size_t>(Parameter::Count)> slots_;
+	ParameterSlots slots_;
+	std::uint64_t radar_revision_ = 0;
+	std::uint64_t ir_seeker_revision_ = 0;
 	std::mutex mutex_;
 };
 }

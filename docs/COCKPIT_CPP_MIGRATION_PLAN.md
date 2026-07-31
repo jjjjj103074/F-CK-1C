@@ -623,6 +623,14 @@ Lua 保留：
 | 9 HMCS | 補齊 C++ display Snapshot；Lua 只讀；移除 command/ammo simulation；保留 tape/argument gating；重新命名 |
 | 10 Audio | 改讀 requested tone；移除 weapon writes；保留 resource lifecycle/test playlist；重新命名 |
 | 11 清理 | 移除 legacy params 與舊 FrameInput bridge；檢查 Lua 責任；替換舊 tests；更新 README；跑完整自動與 DCS 驗收 |
+
+### Phase 執行狀態
+| Phase | 狀態與證據 |
+|---|---|
+| 1 ID／Interface | 已完成；見 [`COCKPIT_PHASE_1_INTERFACE_REPORT.md`](COCKPIT_PHASE_1_INTERFACE_REPORT.md) |
+| 2 被動 device | 程式、自動驗證與 DCS 實機驗收完成；見 [`COCKPIT_PHASE_2_PASSIVE_DEVICE_REPORT.md`](COCKPIT_PHASE_2_PASSIVE_DEVICE_REPORT.md) 與 [`cockpit-baseline/evidence/2026-07-31-phase2-passive-devices/`](cockpit-baseline/evidence/2026-07-31-phase2-passive-devices/) |
+| 3 Autopilot | 程式與自動驗證已完成；首次 DCS 驗收發現 ALT Hold 失穩，已完成針對性修正並安裝待複測，目前仍為 `FAIL`；見 [`COCKPIT_PHASE_3_AUTOPILOT_REPORT.md`](COCKPIT_PHASE_3_AUTOPILOT_REPORT.md)、[`首次 FAIL 證據`](cockpit-baseline/evidence/2026-07-31-phase3-autopilot-fail/RUN.md) 與 [`cockpit-baseline/DCS_TEST_PROTOCOL.md`](cockpit-baseline/DCS_TEST_PROTOCOL.md) 第 8 節 |
+
 ## 9. 自動化架構檢查
 
 建議新增 `tools/check_cockpit_architecture.ps1`，檢查：
@@ -642,7 +650,8 @@ Lua 保留：
 - 不新增完整 radar mode。
 - 不新增 HMCS targeting。
 - 不完成 NAV Track。
-- 不重新調校 Autopilot gains。
+- 不做全面 Autopilot gain 調校；實機驗收證明失穩時，允許以量測證據與
+  閉迴路 regression 做最小、模式專用的穩定性修正。
 - 不修正 AIM-9 legacy fallback 的真實性。
 - 不改 Countermeasure program 內容。
 - 不新增 3D clickable cockpit。
@@ -671,8 +680,8 @@ Lua 保留：
 - [ ] C++ 是 AP、Fire Control、Radar、Weapon、Stores、CMS 的唯一權威。
 - [ ] Lua 不再從 HMCS parameter 反推 domain state。
 - [ ] `radar_state_system.lua` 已刪除。
-- [ ] `autopilot_system.lua` 已刪除。
-- [ ] `gear_system.lua` 與 `actuators*.lua` 已刪除。
+- [x] `autopilot_system.lua` 已刪除。
+- [x] `gear_system.lua` 與 `actuators*.lua` 已刪除。
 - [ ] `cms_system.lua` 已縮成 DCS Action Adapter。
 - [ ] `weapon_system.lua` 已縮成 Weapon Station Adapter。
 - [ ] `hmcs_system.lua` 已縮成 HMCS Presenter。

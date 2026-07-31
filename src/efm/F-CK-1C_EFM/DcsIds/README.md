@@ -4,6 +4,30 @@
 owner, known DCS commands intentionally ignored by the EFM, and cockpit
 parameter names shared by C++ and Lua.
 
+Every module-owned cockpit parameter declares:
+
+- `direction`: `cpp_to_lua`, `lua_to_cpp`, or `lua_internal`.
+- `unit`: the explicit boundary unit.
+- `writer`: the current single writer, or `null` before a later migration
+  phase activates the output.
+- `target_owner`: the intended long-term owner.
+- optional `cpp_reader`: the DCSBridge importer that reads the parameter.
+
+`raw_dcs_cockpit_params` is a separate whitelist for parameters populated by
+DCS devices such as `avSimpleRadar` and `avSimpleWeaponSystem`. These are
+observations, not module-owned state. Every raw entry declares:
+
+- `data_direction`: currently `dcs_to_cpp`.
+- `unit`: the boundary unit delivered to Core.
+- `axis_convention`: `native_dcs_*_unmodified` means DcsBridge preserves the
+  DCS sign without guessing a left/right or up/down convention.
+- `verification_basis` and `reference`: where the contract came from.
+
+`community_documentation` identifies a published parameter contract.
+`existing_module_contract` identifies a pre-existing integration whose unit
+and sign are preserved unchanged until a DCS runtime probe can make the
+physical positive-axis convention more specific.
+
 Raw DCS numeric IDs stop at DCSBridge. A supported flight-model command is
 translated into the semantic `Core::CommandId` declared in
 `Core/Contracts/Commands.h`; concrete Systems never compare DCS numbers.
@@ -14,6 +38,10 @@ Every custom command declares one route:
   `DcsCommandRouter` must provide a Core binding.
 - `cockpit`: the input profile targets a `cockpit_device_id`; if the same
   numeric ID reaches `ed_fm_set_command`, the EFM intentionally ignores it.
+
+Phase 3 routes all AP, A/T, and Engine Thrust Cut Test commands to `efm`.
+Their input bindings must not specify the reserved `devices.AUTOPILOT` ID.
+The ID remains reserved only to keep the DCS device table stable.
 
 Custom command names and numeric IDs are unique. Rename all in-repository
 callers together instead of retaining legacy aliases.
@@ -35,6 +63,10 @@ files. The generator updates:
 - `Cockpit/Scripts/generated/CockpitParams.g.lua`
 
 Do not edit generated files directly.
+
+Run `tools/test_dcs_id_generator.ps1` after generation. It verifies that the
+tracked outputs were already current and that invalid duplicate parameter
+values are rejected.
 
 `command_defs.lua` exposes custom IDs as `device_commands` and declared DCS
 IDs as `dcs_commands`. Cockpit Lua that calls `dispatch_action` must use the

@@ -17,15 +17,12 @@
 
 | Device | DCS class | Lua 入口 | 更新週期 |
 |---|---|---|---:|
-| Gear | `avLuaDevice` | `Systems/gear_system.lua` | 0.01 s |
-| Actuators | `avLuaDevice` | `Systems/actuators_system.lua` | 0.01 s |
 | CMS | `avLuaDevice` | `Systems/cms_system.lua` | 0.02 s |
 | WEAPON_SYSTEM | `avSimpleWeaponSystem` | `Systems/weapon_system.lua` | 0.05 s |
 | RADAR | `avSimpleRadar` | `RADAR/FCK1C_Radar.lua` | 由 DCS class 驅動 |
 | RADAR_STATE | `avLuaDevice` | `Systems/radar_state_system.lua` | 0.02 s |
 | HMCS | `avLuaDevice` | `Systems/hmcs_system.lua` | 0.05 s |
 | AAM_AUDIO | `avLuaDevice` | `Systems/aam_audio_system.lua` | 0.05 s |
-| AUTOPILOT | `avLuaDevice` | `Systems/autopilot_system.lua` | 0.02 s |
 
 另外載入：
 
@@ -35,32 +32,38 @@
 
 完整且可機器檢查的順序見 [device-load-chain.csv](generated/device-load-chain.csv)。
 
+Phase 3 已移除 AUTOPILOT creator 與 `autopilot_system.lua`；`devices.lua`
+仍保留 ID 9，禁止壓縮或重用。AP／A/T command 現在由 DCS Input
+直接送入 EFM，沒有 Lua device 中繼。
+
 ## 3. Gear 與 Actuators
 
 ### Gear
 
-- `gear_system.lua` 保留 DCS device 入口。
-- `post_initialize()` 與 `update()` 都沒有系統行為。
-- 起落架狀態與動畫由 EFM C++ 管理。
+- Phase 2 已移除沒有系統行為的 `gear_system.lua` 與 creator。
+- 起落架與前輪轉向狀態、動畫仍由 EFM C++ 管理。
+- `devices.lua` 保留 ID 1，但不再註冊 DCS device。
 
 ### Actuators
 
-來源意圖：
+Phase 2 前的來源意圖：
 
 - `actuators_system.lua` 載入 `actuators.lua`。
 - 讀取左右 rudder sensor。
 - 把 `85 .. -85` 的 sensor 值映射到座艙 argument。
 - 更新左右 rudder draw argument。
 
-目前邊界事實：
+Phase 2 結果：
 
-- C++ 已經寫入 rudder draw arguments 17、18。
-- Lua actuator 不是狀態權威，且與 C++ 呈現責任重疊。
-- 實機載入因 argument 名稱不存在而失敗，詳見第 10 節。
+- C++ 繼續寫入 rudder draw arguments 17、18，方向與上下限由 native
+  draw-argument tests 固定。
+- `actuators.lua`、`actuators_system.lua` 與 creator 已移除。
+- `devices.lua` 保留 ID 2，但不再註冊 DCS device。
+- 舊 Lua 實機原本就因 argument 名稱不存在而載入失敗；移除後不再產生該錯誤。
 
 ## 4. Autopilot／Auto Throttle
 
-### 初始狀態
+### Phase 0 來源初始狀態
 
 - 更新週期：0.02 s。
 - AP Master：關閉。
@@ -75,6 +78,9 @@
 |---|---|---|
 | AP Master | IAS ≥ 240 kt、無 Weight-on-Wheels、`abs(roll) ≤ 45°`、`abs(pitch) ≤ 45°` | IAS < 240 kt 或 Weight-on-Wheels |
 | Auto Throttle | Mach ≤ 0.95、無 Weight-on-Wheels | Mach > 1.00 |
+
+AP engage 的來源判斷順序是 IAS、WOW、roll、pitch；同時不符合多個 gate
+時，rejection reason 回報第一個失敗條件。
 
 ### 模式與 reference
 
@@ -105,12 +111,16 @@
 |---|---|
 | Pitch | `kp=2.5`、`kd=0.3`、輸出 ±0.6 |
 | VS | `kp=0.08`、`ki=0.02`、integrator ±5 |
-| ALT | fine band 50 ft、hold band 500 ft、capture band 1000 ft、VS 最大 40 m/s、comfort 0.6 g |
+| ALT 來源 | VS inner `kp=0.08`、`ki=0.015`、integrator ±3；fine band 50 ft、hold band 500 ft、capture band 1000 ft、VS 最大 40 m/s、comfort 0.6 g |
 | Heading outer | `kp=2.5`、`ki=0.1`、integrator ±0.5、bank limit 60° |
 | Heading inner | `kp=1.8`、`kd=0.2` |
 | Auto Throttle | base 0.5、`kp=0.015`、`ki=0.003`、integrator ±30、輸出 0–0.95 |
 
 Mach 高於 0.95 時，Lua 每次 update 額外減少 0.01 throttle command。這是綁定更新頻率的現況；遷移到 C++ 時應先用 0.02 s reference step 做 characterization，再改成真正的 `dt` 等價形式。
+
+Phase 3 首次 DCS 驗收證明 ALT 的來源 `kp=0.08` 在現有 FBW 增益與延遲下
+失穩；C++ ALT 改用獨立 `kp=0.04`，其餘 ALT 常數不變。VS Hold 仍使用
+`kp=0.08`，避免把 ALT 修正擴散到未回報異常的模式。
 
 ### 輸出 parameter
 
@@ -127,8 +137,34 @@ Mach 高於 0.95 時，Lua 每次 update 額外減少 0.01 throttle command。�
 - `AP_TARGET_SPD_KTS`
 - `AP_TARGET_PITCH_DEG`
 - `AP_TARGET_VS_FPM`
+- `AP_ENGAGE_REJECTION_REASON`
+- `AP_DISENGAGE_REASON`
+- `AP_AT_ENGAGE_REJECTION_REASON`
+- `AP_AT_DISENGAGE_REASON`
 
-目前 C++ `CockpitBridge` 讀取 AP master、pitch、roll、throttle、bypass、A/T engaged，再送入 C++ Core。這代表現況是「Lua 算控制，C++ 套用」，不是目標中的 C++ 唯一權威。
+### Phase 3 遷移結果
+
+- `FlightControlComputer::AutomaticFlightControl` 是 AP／A/T 狀態、模式、
+  reference、integrator、bypass 與解除原因的唯一權威。
+- AP／A/T 自訂 command 全部 route 到 EFM；Input profile 不再指定
+  `devices.AUTOPILOT`。
+- `CockpitSnapshotExporter` 只把 C++ snapshot 寫成 DCS presentation
+  parameter，Lua 不再回寫 AP 狀態。
+- IAS 由 EFM 的 TAS 與空氣密度換算；高度、垂直速度、Mach、heading、
+  pitch、roll 與角速度使用 EFM 每幀 observation。控制器內部採 SI 單位，
+  只有 exporter 在 DCS 邊界換成 ft、deg、kt、ft/min。
+- 舊 Lua 每 0.02 s 減少 0.01 的 Mach guard 已改為每秒 0.5，使用真實
+  `dt`；在 0.02 s reference step 下數值等價。
+- ALT Hold 首次 DCS 驗收的失穩 trace 已固定成閉迴路 regression；
+  ALT 使用模式專用 `kp=0.04`，等待新 DLL 的 DCS 複測。
+- `Engine Thrust Cut Test` 已移至獨立的 C++ `PropulsionDiagnostics`；
+  propulsion model 只讀其 test intent。`FM_MAXPOWER_SWITCH` 僅保留為
+  Controls Indicator 的相容 presentation parameter，正常為 1、切斷為 0，
+  writer 也是 C++。
+- 原本的 `FM_MAXPOWER_READY` 已移除，因為沒有 presentation reader 或
+  系統語意。
+- 舊版 DCS runtime 的 `more than 60 upvalues` 仍保留為 Phase 0
+  `KNOWN_FAIL` 證據；Phase 3 C++ runtime 必須另行實機驗收，不能沿用舊證據。
 
 ## 5. Fire Control 與 Countermeasures
 
@@ -209,11 +245,15 @@ CMS Lua 目前呼叫 DCS 擁有的 radar、sensor mode、lock、weapon change、
 - 目前掃描常數 `NUM_STATIONS=7`，索引 0..6。
 - AIM-9 判定優先用 `wsType level2=4`、`level3=7`，再以 CLSID 包含 `AIM-9`、`AIM_9` 或 `CATM-9` 補判斷。
 - 進入 DGFT／MSL 時掃描，選第一個找到的 AIM-9 station。
-- 把全部找到的 AIM-9 count 寫入 `AIM9_MISSILE_COUNT`。
-- 掃描結果為 0 時不會把 `AIM9_MISSILE_COUNT` 清成 0，parameter 可能保留舊值。
+- 掃描結果透過 `OBS_WEAPON_STATIONS_*` observation 發布給 C++；Lua 不再寫
+  `AIM9_MISSILE_COUNT`，該狀態由 CMS 單一持有。
+- 掃描成功但沒有 AIM-9 時，observation 會明確發布 count 0 與 no-station。
 - 收到 `WeaponRearmComplete` 或 `UnlimitedWeaponStationRestore` 時重掃。
 - 目前選定 station 變空時重掃。
-- DCS station API 用 `pcall` 暴露錯誤並記錄 log。
+- DCS station API 用 `pcall` 暴露錯誤並記錄 log；scan 或
+  `select_station()` 失敗時 observation 明確標為 unavailable。
+- 定期讀取已選 station 時，`get_station_info()` 失敗或回傳 nil 會清除
+  selection、發布 unavailable／`StationApiError` 新 revision，並於下一幀重試。
 
 已確認飛機定義有 9 個 pylons，翼尖是 station 1 與 9。`NUM_STATIONS=7` 因此可能漏掉 station 8／9 對應的 DCS 索引；這是已知缺陷，不能在 baseline 中假裝不存在。
 
@@ -295,7 +335,8 @@ Tone state：
 - sound test playlist 共 23 個項目。
 - tone 變化時才切換 sound；相同 tone 維持播放。
 
-目前 `post_initialize()` 會把 `AIM9_TONE_STATE` 與 `AIM9_WEAPON_ACTIVE` 寫成 0。Audio 因此會修改不屬於自己的武器狀態，這是已知所有權問題。遷移後 Audio adapter 應只讀 requested tone，不再成為 writer。
+Audio adapter 只讀 `AIM9_TONE_STATE` 與播放 sound，不會初始化或改寫
+`AIM9_TONE_STATE`、`AIM9_WEAPON_ACTIVE`。
 
 ## 10. 已知 Runtime 事實與缺陷
 

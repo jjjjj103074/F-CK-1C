@@ -19,7 +19,10 @@ namespace Systems
 FlightControlComputer::FlightControlComputer(
 	const FlightControlComputerConfig& config,
 	StartMode start_mode)
-	: config_(config)
+	: config_(config),
+	automatic_flight_control_(
+		fck1c_automatic_flight_control_config(),
+		start_mode != StartMode::HotAir)
 {
 	validate_flight_control_computer_config(config_);
 	const double throttle = start_mode == StartMode::HotAir
@@ -39,6 +42,9 @@ void FlightControlComputer::setup(SystemSetup& setup)
 	setup.publish(AircraftDataKeys::kPilotControlState, pilot_controls_);
 	setup.publish(AircraftDataKeys::kFlightControlDemand, demand_);
 	setup.publish(AircraftDataKeys::kEngineControlDemand, engine_demand_);
+	setup.publish(
+		AircraftDataKeys::kAutomaticFlightControlSnapshot,
+		automatic_flight_control_.snapshot());
 	register_commands(setup);
 }
 
@@ -55,7 +61,23 @@ void FlightControlComputer::register_commands(SystemSetup& setup)
 		CommandId::ToggleGLimiterOverride,
 		CommandId::SetCommonThrottleAxis, CommandId::SetLeftThrottleAxis,
 		CommandId::SetRightThrottleAxis, CommandId::StepCommonThrottle,
-		CommandId::StepLeftThrottle, CommandId::StepRightThrottle
+		CommandId::StepLeftThrottle, CommandId::StepRightThrottle,
+		CommandId::ToggleAutopilotMaster, CommandId::EngageAutopilot,
+		CommandId::DisengageAutopilot, CommandId::SetAutopilotBypass,
+		CommandId::SelectAutopilotPitchHold,
+		CommandId::SelectAutopilotVerticalSpeedHold,
+		CommandId::SelectAutopilotAltitudeHold,
+		CommandId::IncreaseAutopilotVerticalReference,
+		CommandId::DecreaseAutopilotVerticalReference,
+		CommandId::SelectAutopilotHeadingHold,
+		CommandId::SelectAutopilotHeading,
+		CommandId::SelectAutopilotNavigationTrack,
+		CommandId::IncreaseAutopilotLateralReference,
+		CommandId::DecreaseAutopilotLateralReference,
+		CommandId::ToggleAutoThrottle, CommandId::EngageAutoThrottle,
+		CommandId::DisengageAutoThrottle,
+		CommandId::IncreaseAutopilotSpeed,
+		CommandId::DecreaseAutopilotSpeed
 	};
 	for (CommandId id : commands)
 	{
@@ -69,46 +91,52 @@ void FlightControlComputer::step(
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
-	step(make_pipeline_input(aircraft), frame.autopilot);
+	const AutomaticFlightControlDemand& automatic =
+		automatic_flight_control_.step(make_automatic_observation(aircraft));
+	step(make_pipeline_input(aircraft), automatic);
 	result.publish(AircraftDataKeys::kPilotControlState, pilot_controls_);
 	result.publish(AircraftDataKeys::kFlightControlDemand, demand_);
 	result.publish(AircraftDataKeys::kEngineControlDemand, engine_demand_);
+	result.publish(
+		AircraftDataKeys::kAutomaticFlightControlSnapshot,
+		automatic_flight_control_.snapshot());
 }
 
 const FlightControlDemand& FlightControlComputer::step(
 	::Systems::FBWControllerInput input,
-	const AutopilotCommand& autopilot)
+	const AutomaticFlightControlDemand& automatic)
 {
 	input.alpha_limit_deg = alpha_limit(input.mach);
 	::Systems::update_primary_control_inputs(primary_controls_);
-	apply_autopilot(autopilot);
+	::Systems::update_pilot_throttle_cmds(throttle_inputs_);
+	input.pitch_input = primary_controls_.pitch.input;
 	input.roll_input = primary_controls_.roll.input;
 	input.roll_trim = primary_controls_.roll.trim;
-	input.pitch_input = primary_controls_.pitch.input;
 	input.pitch_trim = primary_controls_.pitch.trim;
 	input.yaw_input = primary_controls_.yaw.input;
 	input.yaw_trim = primary_controls_.yaw.trim;
+	apply_automatic_flight_control(input, automatic);
+	refresh_pilot_controls(input.pitch_input, input.roll_input);
 	const ::Systems::FBWControllerOutput output =
 		::Systems::update_fbw_controller(
 			fbw_, config_.control_laws, input);
-	::Systems::update_pilot_throttle_cmds(throttle_inputs_);
 	refresh_outputs(output);
 	return demand_;
 }
 
-void FlightControlComputer::apply_autopilot(
-	const AutopilotCommand& autopilot)
+void FlightControlComputer::apply_automatic_flight_control(
+	::Systems::FBWControllerInput& input,
+	const AutomaticFlightControlDemand& automatic)
 {
-	if (autopilot.master && !autopilot.bypass)
+	if (automatic.pitch_roll_engaged)
 	{
-		primary_controls_.pitch.input = autopilot.pitch_command;
-		primary_controls_.roll.input = autopilot.roll_command;
+		input.pitch_input = automatic.pitch_normalized;
+		input.roll_input = automatic.roll_normalized;
 	}
-	if (autopilot.auto_throttle_engaged)
+	if (automatic.auto_throttle_engaged)
 	{
-		fbw_.throttle_cmd_left = autopilot.throttle_command;
-		fbw_.throttle_cmd_right = autopilot.throttle_command;
+		fbw_.throttle_cmd_left = automatic.throttle_normalized;
+		fbw_.throttle_cmd_right = automatic.throttle_normalized;
 		fbw_.throttle_blend = 1.0;
 		fbw_.throttle_override = false;
 		return;
@@ -119,7 +147,6 @@ void FlightControlComputer::apply_autopilot(
 void FlightControlComputer::refresh_outputs(
 	const ::Systems::FBWControllerOutput& output)
 {
-	refresh_pilot_controls();
 	demand_ = {
 		output.elevator_command,
 		output.aileron_command,
@@ -141,11 +168,13 @@ void FlightControlComputer::refresh_outputs(
 	};
 }
 
-void FlightControlComputer::refresh_pilot_controls()
+void FlightControlComputer::refresh_pilot_controls(
+	double pitch,
+	double roll)
 {
 	pilot_controls_ = {
-		primary_controls_.pitch.input,
-		primary_controls_.roll.input,
+		pitch,
+		roll,
 		primary_controls_.yaw.input
 	};
 }
@@ -181,6 +210,31 @@ void FlightControlComputer::refresh_pilot_controls()
 	return input;
 }
 
+AutomaticFlightControlObservation
+FlightControlComputer::make_automatic_observation(
+	const AircraftDataView& aircraft) const
+{
+	const FrameInput& frame = aircraft.read(AircraftDataKeys::kFrameInput);
+	const AircraftObservation& observation =
+		aircraft.read(AircraftDataKeys::kAircraftObservation);
+	const LandingGearData& gear =
+		aircraft.read(AircraftDataKeys::kLandingGearData);
+	return {
+		frame.dt_s,
+		observation.indicated_airspeed_mps,
+		observation.altitude_asl,
+		observation.vertical_speed_mps,
+		observation.mach,
+		observation.heading_rad,
+		observation.pitch,
+		observation.roll,
+		// Lua used getAngularVelocityX/Y for these two damping terms.
+		observation.roll_rate,
+		observation.yaw_rate,
+		gear.any_weight_on_wheels
+	};
+}
+
 double FlightControlComputer::alpha_limit(double mach) const
 {
 	return Common::lerp(
@@ -198,7 +252,10 @@ void FlightControlComputer::handle_command(const Command& command)
 	handle_yaw_command(command);
 	handle_fbw_command(command);
 	handle_throttle_command(command);
-	refresh_pilot_controls();
+	automatic_flight_control_.handle_command(command);
+	refresh_pilot_controls(
+		primary_controls_.pitch.input,
+		primary_controls_.roll.input);
 }
 
 void FlightControlComputer::handle_primary_command(const Command& command)

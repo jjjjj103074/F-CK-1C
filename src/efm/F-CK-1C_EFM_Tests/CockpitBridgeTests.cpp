@@ -1,224 +1,170 @@
+#include "FakeCockpitParameters.h"
 #include "TestHarness.h"
 
 #include "DcsBridge/Internal/CockpitBridge.h"
 #include "DcsIds/CockpitParams.g.h"
 
-#include <array>
-#include <cstring>
-#include <limits>
-
 namespace
 {
 constexpr double kTolerance = 1e-9;
 
-struct FakeParameter
+void test_temperature_export(Tests::Context& context)
 {
-	const char* name;
-	double value;
-	bool available;
-};
-
-class FakeCockpit final
-{
-public:
-	FakeCockpit()
-		: parameters_({ {
-			{ DcsIds::CockpitParams::TemperatureC, 0.0, true },
-			{ DcsIds::CockpitParams::MaxPowerSwitch, 0.0, true },
-			{ DcsIds::CockpitParams::MaxPowerReady, 0.0, true },
-			{ DcsIds::CockpitParams::ApMasterEngaged, 0.0, true },
-			{ DcsIds::CockpitParams::ApPitchCommand, 0.0, true },
-			{ DcsIds::CockpitParams::ApRollCommand, 0.0, true },
-			{ DcsIds::CockpitParams::ApThrottleCommand, 0.0, true },
-			{ DcsIds::CockpitParams::ApBypassActive, 0.0, true },
-			{ DcsIds::CockpitParams::ApAutoThrottleEngaged, 0.0, true }
-		} })
-	{
-	}
-
-	void set(const char* name, double value)
-	{
-		find(name)->value = value;
-	}
-
-	void set_available(const char* name, bool available)
-	{
-		find(name)->available = available;
-	}
-
-	double value(const char* name)
-	{
-		return find(name)->value;
-	}
-
-	void* handle(const char* name)
-	{
-		FakeParameter* parameter = find(name);
-		return parameter->available ? parameter : nullptr;
-	}
-
-private:
-	FakeParameter* find(const char* name)
-	{
-		for (FakeParameter& parameter : parameters_)
-		{
-			if (std::strcmp(parameter.name, name) == 0)
-			{
-				return &parameter;
-			}
-		}
-		return nullptr;
-	}
-
-	std::array<FakeParameter, 9> parameters_;
-};
-
-FakeCockpit* g_fake_cockpit = nullptr;
-
-void* get_parameter_handle(const char* name)
-{
-	return g_fake_cockpit->handle(name);
-}
-
-void update_parameter_number(void* handle, double value)
-{
-	static_cast<FakeParameter*>(handle)->value = value;
-}
-
-bool parameter_value_to_number(
-	const void* handle,
-	double& result,
-	bool interpolated)
-{
-	(void)interpolated;
-	result = static_cast<const FakeParameter*>(handle)->value;
-	return true;
-}
-
-cockpit_param_api make_api(FakeCockpit& cockpit)
-{
-	g_fake_cockpit = &cockpit;
-	cockpit_param_api api = {};
-	api.pfn_ed_cockpit_get_parameter_handle = get_parameter_handle;
-	api.pfn_ed_cockpit_update_parameter_with_number = update_parameter_number;
-	api.pfn_ed_cockpit_parameter_value_to_number = parameter_value_to_number;
-	return api;
-}
-
-void test_autopilot_typed_values(Tests::Context& context)
-{
-	FakeCockpit cockpit;
-	cockpit.set(DcsIds::CockpitParams::ApMasterEngaged, 1.0);
-	cockpit.set(DcsIds::CockpitParams::ApPitchCommand, 1.5);
-	cockpit.set(DcsIds::CockpitParams::ApRollCommand, -1.5);
-	cockpit.set(DcsIds::CockpitParams::ApThrottleCommand, 0.4);
-	cockpit.set(DcsIds::CockpitParams::ApAutoThrottleEngaged, 1.0);
-	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	const Core::AutopilotCommand command = bridge.read_step_input().autopilot;
-	TEST_EXPECT(context, command.master);
-	TEST_EXPECT(context, !command.bypass);
-	TEST_EXPECT(context, command.auto_throttle_engaged);
-	TEST_EXPECT_NEAR(context, command.pitch_command, 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, command.roll_command, -1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, command.throttle_command, 0.4, kTolerance);
-}
-
-void test_autopilot_neutral_rules(Tests::Context& context)
-{
-	FakeCockpit cockpit;
-	cockpit.set(DcsIds::CockpitParams::ApMasterEngaged, 1.0);
-	cockpit.set(DcsIds::CockpitParams::ApBypassActive, 1.0);
-	cockpit.set(DcsIds::CockpitParams::ApPitchCommand, 0.8);
-	cockpit.set(DcsIds::CockpitParams::ApThrottleCommand, 0.7);
-	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	const Core::AutopilotCommand command = bridge.read_step_input().autopilot;
-	TEST_EXPECT(context, command.master && command.bypass);
-	TEST_EXPECT_NEAR(context, command.pitch_command, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, command.roll_command, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, command.throttle_command, 0.0, kTolerance);
-}
-
-void test_missing_autopilot_parameter_is_neutral(Tests::Context& context)
-{
-	FakeCockpit cockpit;
-	cockpit.set_available(DcsIds::CockpitParams::ApRollCommand, false);
-	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	const DcsBridge::Internal::CockpitStepInput first = bridge.read_step_input();
-	const Core::AutopilotCommand command = first.autopilot;
-	TEST_EXPECT(context, !command.master);
-	TEST_EXPECT(context, !command.auto_throttle_engaged);
-	TEST_EXPECT_NEAR(context, command.pitch_command, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, command.throttle_command, 0.0, kTolerance);
-	TEST_EXPECT(context, first.events.count == 1);
-	TEST_EXPECT(context, std::strcmp(
-		first.events.items[0].parameter_name,
-		DcsIds::CockpitParams::ApRollCommand) == 0);
-	TEST_EXPECT(
-		context,
-		first.events.items[0].type ==
-			DcsBridge::Internal::CockpitParameterEventType::Error);
-	TEST_EXPECT(context, bridge.read_step_input().events.count == 0);
-	cockpit.set_available(DcsIds::CockpitParams::ApRollCommand, true);
-	const DcsBridge::Internal::CockpitStepInput recovered = bridge.read_step_input();
-	TEST_EXPECT(context, recovered.events.count == 1);
-	TEST_EXPECT(
-		context,
-		recovered.events.items[0].type ==
-			DcsBridge::Internal::CockpitParameterEventType::Recovery);
-}
-
-void test_max_power_and_temperature(Tests::Context& context)
-{
-	FakeCockpit cockpit;
-	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	Core::MaxPowerCommand max_power = bridge.read_step_input().max_power;
-	TEST_EXPECT_NEAR(context, max_power.ready, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, max_power.value, 1.0, kTolerance);
-	cockpit.set(DcsIds::CockpitParams::MaxPowerReady, 1.0);
-	cockpit.set(DcsIds::CockpitParams::MaxPowerSwitch, 0.0);
-	max_power = bridge.read_step_input().max_power;
-	TEST_EXPECT_NEAR(context, max_power.ready, 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, max_power.value, 0.0, kTolerance);
-	cockpit.set(DcsIds::CockpitParams::MaxPowerSwitch, 1.0);
-	max_power = bridge.read_step_input().max_power;
-	TEST_EXPECT_NEAR(context, max_power.value, 1.0, kTolerance);
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
 	TEST_EXPECT(context, bridge.export_temperature(15.0).count == 0);
 	TEST_EXPECT_NEAR(context, cockpit.value(
 		DcsIds::CockpitParams::TemperatureC), 288.0, kTolerance);
 }
 
-void test_invalid_numeric_is_neutral_then_recovers(Tests::Context& context)
+void test_zero_radar_and_ir_samples_are_available(Tests::Context& context)
 {
-	FakeCockpit cockpit;
-	cockpit.set(DcsIds::CockpitParams::ApMasterEngaged, 1.0);
-	cockpit.set(
-		DcsIds::CockpitParams::ApPitchCommand,
-		std::numeric_limits<double>::infinity());
-	DcsBridge::Internal::CockpitBridge bridge(make_api(cockpit));
-	const DcsBridge::Internal::CockpitStepInput invalid = bridge.read_step_input();
-	TEST_EXPECT(context, !invalid.autopilot.master);
-	TEST_EXPECT(context, invalid.events.count == 1);
-	TEST_EXPECT(context, invalid.events.items[0].has_value);
-	TEST_EXPECT(context, std::strcmp(
-		invalid.events.items[0].reason,
-		"invalid_numeric") == 0);
-	cockpit.set(DcsIds::CockpitParams::ApPitchCommand, 0.25);
-	const DcsBridge::Internal::CockpitStepInput recovered = bridge.read_step_input();
-	TEST_EXPECT(context, recovered.autopilot.master);
-	TEST_EXPECT_NEAR(context, recovered.autopilot.pitch_command, 0.25, kTolerance);
-	TEST_EXPECT(context, recovered.events.count == 1);
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const Core::CockpitObservation observation =
+		bridge.read_step_input().cockpit;
+	TEST_EXPECT(context, observation.radar.status.available);
+	TEST_EXPECT(context, observation.radar.status.revision == 1);
 	TEST_EXPECT(
 		context,
-		recovered.events.items[0].type ==
-			DcsBridge::Internal::CockpitParameterEventType::Recovery);
+		observation.radar.status.invalid_reason ==
+			Core::ObservationInvalidReason::None);
+	TEST_EXPECT(context, observation.ir_seeker.status.available);
+	TEST_EXPECT(context, observation.ir_seeker.status.revision == 1);
+	TEST_EXPECT_NEAR(
+		context, observation.radar.stt_range_m, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, observation.ir_seeker.target_range_m, 0.0, kTolerance);
+}
+
+void test_typed_radar_and_ir_units(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::RawCockpitParams::RadarMode, 3.0);
+	cockpit.set(DcsIds::RawCockpitParams::RadarSttAzimuth, 0.25);
+	cockpit.set(DcsIds::RawCockpitParams::RadarSttRange, 4200.0);
+	cockpit.set(DcsIds::RawCockpitParams::IrLock, 1.0);
+	cockpit.set(DcsIds::RawCockpitParams::IrDesiredElevation, -0.15);
+	cockpit.set(DcsIds::RawCockpitParams::WeaponTargetRange, 3100.0);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const Core::CockpitObservation observation =
+		bridge.read_step_input().cockpit;
+	TEST_EXPECT(
+		context,
+		observation.radar.mode == Core::RadarMode::SingleTargetTrack);
+	TEST_EXPECT_NEAR(
+		context, observation.radar.stt_azimuth_rad, 0.25, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, observation.radar.stt_range_m, 4200.0, kTolerance);
+	TEST_EXPECT(context, observation.ir_seeker.locked);
+	TEST_EXPECT_NEAR(
+		context, observation.ir_seeker.desired_elevation_rad, -0.15, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, observation.ir_seeker.target_range_m, 3100.0, kTolerance);
+}
+
+void test_missing_radar_parameter_marks_only_radar_unavailable(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set_available(
+		DcsIds::RawCockpitParams::RadarSttRange,
+		false);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const DcsBridge::Internal::CockpitStepInput input =
+		bridge.read_step_input();
+	TEST_EXPECT(context, !input.cockpit.radar.status.available);
+	TEST_EXPECT(
+		context,
+		input.cockpit.radar.status.invalid_reason ==
+			Core::ObservationInvalidReason::ParameterUnavailable);
+	TEST_EXPECT(context, input.cockpit.ir_seeker.status.available);
+	TEST_EXPECT(context, input.events.count == 1);
+}
+
+void test_unknown_radar_mode_is_invalid(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::RawCockpitParams::RadarMode, 3.0);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const Core::RadarObservation valid =
+		bridge.read_step_input().cockpit.radar;
+	cockpit.set(DcsIds::RawCockpitParams::RadarMode, 99.0);
+	const Core::RadarObservation observation =
+		bridge.read_step_input().cockpit.radar;
+	TEST_EXPECT(context, !observation.status.available);
+	TEST_EXPECT(context, observation.status.revision == valid.status.revision);
+	TEST_EXPECT(
+		context,
+		observation.status.invalid_reason ==
+			Core::ObservationInvalidReason::InvalidNumeric);
+}
+
+void test_weapon_station_observation_contract(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 7.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationInvalidReason, 0.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationAim9Count, 2.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationSelectedStation, 3.0);
+	cockpit.set(
+		DcsIds::CockpitParams::WeaponObservationScannedStationCount,
+		7.0);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const Core::WeaponStationObservation observation =
+		bridge.read_step_input().cockpit.weapon_stations;
+	TEST_EXPECT(context, observation.status.available);
+	TEST_EXPECT(context, observation.status.revision == 7);
+	TEST_EXPECT(context, observation.aim9_count == 2);
+	TEST_EXPECT(context, observation.selected_station == 3);
+	TEST_EXPECT(context, observation.scanned_station_count == 7);
+}
+
+void test_weapon_station_invalid_revision_is_explicit(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 1.5);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const Core::WeaponStationObservation observation =
+		bridge.read_step_input().cockpit.weapon_stations;
+	TEST_EXPECT(context, !observation.status.available);
+	TEST_EXPECT(
+		context,
+		observation.status.invalid_reason ==
+			Core::ObservationInvalidReason::InvalidRevision);
+}
+
+void test_weapon_station_unavailable_reason_is_preserved(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 9.0);
+	cockpit.set(
+		DcsIds::CockpitParams::WeaponObservationInvalidReason,
+		static_cast<double>(Core::ObservationInvalidReason::StationApiError));
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const Core::WeaponStationObservation observation =
+		bridge.read_step_input().cockpit.weapon_stations;
+	TEST_EXPECT(context, !observation.status.available);
+	TEST_EXPECT(context, observation.status.revision == 9);
+	TEST_EXPECT(
+		context,
+		observation.status.invalid_reason ==
+			Core::ObservationInvalidReason::StationApiError);
 }
 }
 
 void run_cockpit_bridge_tests(Tests::Context& context)
 {
-	test_autopilot_typed_values(context);
-	test_autopilot_neutral_rules(context);
-	test_missing_autopilot_parameter_is_neutral(context);
-	test_max_power_and_temperature(context);
-	test_invalid_numeric_is_neutral_then_recovers(context);
+	test_temperature_export(context);
+	test_zero_radar_and_ir_samples_are_available(context);
+	test_typed_radar_and_ir_units(context);
+	test_missing_radar_parameter_marks_only_radar_unavailable(context);
+	test_unknown_radar_mode_is_invalid(context);
+	test_weapon_station_observation_contract(context);
+	test_weapon_station_invalid_revision_is_explicit(context);
+	test_weapon_station_unavailable_reason_is_preserved(context);
 }
