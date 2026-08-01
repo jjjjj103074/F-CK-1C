@@ -32,6 +32,20 @@ double wrap_two_pi(double angle)
 	return angle;
 }
 
+Core::Systems::AuthorityState authority_state(
+	bool master_engaged,
+	bool bypass_active,
+	bool stick_steering_active)
+{
+	if (stick_steering_active)
+		return Core::Systems::AuthorityState::StickSteering;
+	if (bypass_active)
+		return Core::Systems::AuthorityState::Bypassed;
+	return master_engaged
+		? Core::Systems::AuthorityState::Automatic
+		: Core::Systems::AuthorityState::Manual;
+}
+
 }
 
 namespace Core
@@ -220,6 +234,7 @@ void AutomaticFlightControl::disengage_all(
 	reset_lateral_controller();
 	auto_throttle_.disengage(reason);
 	bypass_active_ = false;
+	pitch_stick_steering_active_ = false;
 }
 
 void AutomaticFlightControl::engage_pitch_hold()
@@ -309,9 +324,6 @@ void AutomaticFlightControl::enter_bypass()
 {
 	if (!master_engaged_ || bypass_active_) return;
 	bypass_active_ = true;
-	bypass_start_pitch_rad_ = observation_.pitch_rad;
-	bypass_start_roll_rad_ = observation_.roll_rad;
-	bypass_start_heading_rad_ = observation_.heading_rad;
 	pitch_command_ = 0.0;
 	roll_command_ = 0.0;
 }
@@ -320,24 +332,8 @@ void AutomaticFlightControl::exit_bypass()
 {
 	if (!bypass_active_) return;
 	bypass_active_ = false;
-	if (bypass_change_is_meaningful())
-	{
-		recapture_vertical_reference();
-		recapture_lateral_reference();
-	}
-}
-
-bool AutomaticFlightControl::bypass_change_is_meaningful() const
-{
-	const double pitch_change =
-		std::abs(observation_.pitch_rad - bypass_start_pitch_rad_);
-	const double roll_change =
-		std::abs(observation_.roll_rad - bypass_start_roll_rad_);
-	const double heading_change = std::abs(wrap_pi(
-		observation_.heading_rad - bypass_start_heading_rad_));
-	return pitch_change > config_.bypass_attitude_threshold_rad ||
-		roll_change > config_.bypass_attitude_threshold_rad ||
-		heading_change > config_.bypass_attitude_threshold_rad;
+	recapture_vertical_reference();
+	recapture_lateral_reference();
 }
 
 void AutomaticFlightControl::recapture_vertical_reference()
@@ -372,6 +368,7 @@ const LegacyAutomaticFlightControlDemand& AutomaticFlightControl::step(
 	observation_ = observation;
 	apply_pending_commands();
 	apply_disconnect_guards();
+	update_pitch_stick_steering();
 	if (bypass_active_)
 	{
 		pitch_command_ = 0.0;
@@ -403,6 +400,30 @@ const LegacyAutomaticFlightControlDemand& AutomaticFlightControl::step(
 	return demand_;
 }
 
+void AutomaticFlightControl::update_pitch_stick_steering()
+{
+	const bool supported_mode =
+		master_engaged_ &&
+		vertical_mode_ == AutomaticFlightControlVerticalMode::PitchHold &&
+		!bypass_active_;
+	const bool requested = supported_mode &&
+		std::abs(observation_.conditioned_pitch_input_normalized) >
+			config_.pitch_stick_steering_threshold_normalized;
+	if (requested)
+	{
+		pitch_stick_steering_active_ = true;
+		target_pitch_rad_ = observation_.pitch_rad;
+		vertical_guidance_.reset();
+		return;
+	}
+	if (pitch_stick_steering_active_)
+	{
+		target_pitch_rad_ = observation_.pitch_rad;
+		vertical_guidance_.reset();
+	}
+	pitch_stick_steering_active_ = false;
+}
+
 void AutomaticFlightControl::apply_disconnect_guards()
 {
 	if (master_engaged_ &&
@@ -424,6 +445,7 @@ void AutomaticFlightControl::reset_vertical_controller()
 	vertical_mode_ = AutomaticFlightControlVerticalMode::Off;
 	pitch_command_ = 0.0;
 	vertical_guidance_.reset();
+	pitch_stick_steering_active_ = false;
 }
 
 void AutomaticFlightControl::reset_lateral_controller()
@@ -438,7 +460,9 @@ void AutomaticFlightControl::refresh_demand()
 	const ExperimentalAutoThrottleResult& auto_throttle =
 		auto_throttle_.result();
 	demand_ = {
-		master_engaged_ && !bypass_active_,
+		authority_state(
+			master_engaged_, bypass_active_, pitch_stick_steering_active_),
+		authority_state(master_engaged_, bypass_active_, false),
 		auto_throttle.engaged,
 		pitch_command_,
 		roll_command_,

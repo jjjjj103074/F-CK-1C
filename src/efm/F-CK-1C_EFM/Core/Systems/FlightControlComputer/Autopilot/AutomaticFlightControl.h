@@ -48,9 +48,9 @@ private:
 	void set_bypass(bool requested);
 	void enter_bypass();
 	void exit_bypass();
-	bool bypass_change_is_meaningful() const;
 	void recapture_vertical_reference();
 	void recapture_lateral_reference();
+	void update_pitch_stick_steering();
 	void apply_disconnect_guards();
 	void reset_vertical_controller();
 	void reset_lateral_controller();
@@ -68,6 +68,7 @@ private:
 	std::uint64_t revision_ = 0;
 	bool master_engaged_ = false;
 	bool bypass_active_ = false;
+	bool pitch_stick_steering_active_ = false;
 	bool heading_select_initialized_ = false;
 	double target_pitch_rad_ = 0.0;
 	double target_vertical_speed_mps_ = 0.0;
@@ -76,9 +77,6 @@ private:
 	double target_heading_select_rad_ = 0.0;
 	double pitch_command_ = 0.0;
 	double roll_command_ = 0.0;
-	double bypass_start_pitch_rad_ = 0.0;
-	double bypass_start_roll_rad_ = 0.0;
-	double bypass_start_heading_rad_ = 0.0;
 	AutomaticFlightControlVerticalMode vertical_mode_ =
 		AutomaticFlightControlVerticalMode::Off;
 	AutomaticFlightControlLateralMode lateral_mode_ =

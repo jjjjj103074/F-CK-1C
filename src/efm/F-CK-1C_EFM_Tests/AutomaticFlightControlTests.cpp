@@ -447,13 +447,11 @@ void test_bypass_freeze_and_recapture(Tests::Context& context)
 		kTolerance);
 }
 
-void test_bypass_ignores_sub_threshold_change(Tests::Context& context)
+void test_bypass_always_recaptures_on_release(Tests::Context& context)
 {
 	AutomaticFlightControl control = make_control();
 	AutomaticFlightControlObservation observation = nominal_observation();
 	prime_and_engage(control, observation);
-	const double target_pitch = control.snapshot().target_pitch_rad;
-	const double target_heading = control.snapshot().target_heading_rad;
 	send(control, CommandId::SetAutopilotBypass);
 	(void)control.step(observation);
 	observation.pitch_rad += Common::rad(0.5);
@@ -462,9 +460,66 @@ void test_bypass_ignores_sub_threshold_change(Tests::Context& context)
 	send(control, CommandId::SetAutopilotBypass, 0.0);
 	(void)control.step(observation);
 	TEST_EXPECT_NEAR(
-		context, control.snapshot().target_pitch_rad, target_pitch, kTolerance);
+		context,
+		control.snapshot().target_pitch_rad,
+		observation.pitch_rad,
+		kTolerance);
 	TEST_EXPECT_NEAR(
-		context, control.snapshot().target_heading_rad, target_heading, kTolerance);
+		context,
+		control.snapshot().target_heading_rad,
+		observation.heading_rad,
+		kTolerance);
+}
+
+void test_pitch_hold_stick_steering_is_axis_specific(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	AutomaticFlightControlObservation observation = nominal_observation();
+	prime_and_engage(control, observation);
+	observation.pitch_rad += Common::rad(3.0);
+	observation.conditioned_pitch_input_normalized = 0.2;
+	const auto steering = control.step(observation);
+	TEST_EXPECT(
+		context,
+		steering.longitudinal_authority ==
+			Core::Systems::AuthorityState::StickSteering);
+	TEST_EXPECT(
+		context,
+		steering.lateral_authority ==
+			Core::Systems::AuthorityState::Automatic);
+	TEST_EXPECT_NEAR(
+		context,
+		control.snapshot().target_pitch_rad,
+		observation.pitch_rad,
+		kTolerance);
+	observation.pitch_rad += Common::rad(1.0);
+	observation.conditioned_pitch_input_normalized = 0.0;
+	const auto recaptured = control.step(observation);
+	TEST_EXPECT(
+		context,
+		recaptured.longitudinal_authority ==
+			Core::Systems::AuthorityState::Automatic);
+	TEST_EXPECT_NEAR(
+		context,
+		control.snapshot().target_pitch_rad,
+		observation.pitch_rad,
+		kTolerance);
+}
+
+void test_path_modes_do_not_use_attitude_stick_steering(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	AutomaticFlightControlObservation observation = nominal_observation();
+	prime_and_engage(control, observation);
+	send(control, CommandId::SelectAutopilotVerticalSpeedHold);
+	observation.conditioned_pitch_input_normalized = 0.5;
+	const auto demand = control.step(observation);
+	TEST_EXPECT(
+		context,
+		demand.longitudinal_authority ==
+			Core::Systems::AuthorityState::Automatic);
 }
 
 void test_disconnect_guards(Tests::Context& context)
@@ -654,7 +709,9 @@ void run_automatic_flight_control_tests(Tests::Context& context)
 	test_vertical_modes_and_adjustments(context);
 	test_heading_wrap_and_navigation_placeholder(context);
 	test_bypass_freeze_and_recapture(context);
-	test_bypass_ignores_sub_threshold_change(context);
+	test_bypass_always_recaptures_on_release(context);
+	test_pitch_hold_stick_steering_is_axis_specific(context);
+	test_path_modes_do_not_use_attitude_stick_steering(context);
 	test_disconnect_guards(context);
 	test_auto_throttle_engage_gates(context);
 	test_mach_guard_uses_elapsed_time(context);

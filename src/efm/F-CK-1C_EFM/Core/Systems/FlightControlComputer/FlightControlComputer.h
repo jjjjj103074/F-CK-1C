@@ -15,7 +15,6 @@ namespace Systems
 struct FlightControlComputerStepInput
 {
 	RawFlightControlInput flight_control;
-	LegacyAutomaticFlightControlDemand automatic;
 	ThrottleLeverSignal throttle_levers;
 };
 
@@ -42,15 +41,15 @@ public:
 private:
 	void register_commands(SystemSetup& setup);
 	void apply_automatic_flight_control(
-		RawFlightControlInput& input,
+		::Systems::ConditionedFlightControlInput& input,
 		const LegacyAutomaticFlightControlDemand& automatic);
 	void refresh_outputs(
 		const ::Systems::FlightControlLawResult& output,
 		const ThrottleLeverSignal& throttle_levers);
 	void refresh_diagnostics();
 	AutomaticFlightControlObservation make_automatic_observation(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft) const;
+		const RawFlightControlInput& raw,
+		const ::Systems::ConditionedFlightControlInput& conditioned) const;
 	double alpha_limit(double mach) const;
 	RawFlightControlInput make_pipeline_input(
 		const SystemStepContext& context,

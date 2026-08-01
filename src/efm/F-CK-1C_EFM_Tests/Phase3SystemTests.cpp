@@ -166,7 +166,7 @@ FlightControlActuatorCommand expected_nonzero_demand()
 	input.observation.mach = kMach;
 	input.observation.normal_acceleration_g = kExpectedGLoad;
 	input.landing_gear.position = kFullIntegrity;
-	return reference.step({ input, {}, {} });
+	return reference.step({ input, {} });
 }
 
 void expect_normalized_observation(

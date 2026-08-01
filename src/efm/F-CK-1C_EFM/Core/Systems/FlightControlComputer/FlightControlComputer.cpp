@@ -80,12 +80,8 @@ void FlightControlComputer::step(
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const LegacyAutomaticFlightControlDemand& automatic =
-		automatic_flight_control_.step(
-			make_automatic_observation(context, aircraft));
 	step({
 		make_pipeline_input(context, aircraft),
-		automatic,
 		aircraft.read(AircraftDataKeys::kThrottleLeverSignal)
 	});
 	result.publish(
@@ -107,9 +103,12 @@ const FlightControlActuatorCommand& FlightControlComputer::step(
 {
 	RawFlightControlInput raw = request.flight_control;
 	raw.alpha_limit_deg = alpha_limit(raw.observation.mach);
-	apply_automatic_flight_control(raw, request.automatic);
-	const ::Systems::ConditionedFlightControlInput input =
+	::Systems::ConditionedFlightControlInput input =
 		input_signals_.condition(raw, fbw_.mode_target);
+	const LegacyAutomaticFlightControlDemand& automatic =
+		automatic_flight_control_.step(
+			make_automatic_observation(raw, input));
+	apply_automatic_flight_control(input, automatic);
 	const ::Systems::FlightControlLawResult output =
 		::Systems::update_fbw_controller(
 			fbw_, config_.control_laws, input);
@@ -119,13 +118,18 @@ const FlightControlActuatorCommand& FlightControlComputer::step(
 }
 
 void FlightControlComputer::apply_automatic_flight_control(
-	RawFlightControlInput& input,
+	::Systems::ConditionedFlightControlInput& input,
 	const LegacyAutomaticFlightControlDemand& automatic)
 {
-	if (automatic.pitch_roll_engaged)
+	if (automatic.longitudinal_authority == AuthorityState::Automatic)
 	{
-		input.pilot.pitch_axis_normalized = automatic.pitch_normalized;
-		input.pilot.roll_axis_normalized = automatic.roll_normalized;
+		input.pilot_pitch_normalized = automatic.pitch_normalized;
+		input.pilot_pitch_raw_normalized = automatic.pitch_normalized;
+	}
+	if (automatic.lateral_authority == AuthorityState::Automatic)
+	{
+		input.pilot_roll_normalized = automatic.roll_normalized;
+		input.pilot_roll_raw_normalized = automatic.roll_normalized;
 	}
 	if (!automatic.auto_throttle_engaged)
 	{
@@ -192,15 +196,12 @@ RawFlightControlInput FlightControlComputer::make_pipeline_input(
 
 AutomaticFlightControlObservation
 FlightControlComputer::make_automatic_observation(
-	const SystemStepContext& context,
-	const AircraftDataView& aircraft) const
+	const RawFlightControlInput& raw,
+	const ::Systems::ConditionedFlightControlInput& conditioned) const
 {
-	const FlightControlObservation& observation =
-		aircraft.read(AircraftDataKeys::kFlightControlObservation);
-	const LandingGearData& gear =
-		aircraft.read(AircraftDataKeys::kLandingGearData);
+	const FlightControlObservation& observation = raw.observation;
 	return {
-		context.dt_s,
+		raw.dt_s,
 		observation.indicated_airspeed_mps,
 		observation.altitude_asl_m,
 		observation.vertical_speed_mps,
@@ -210,7 +211,8 @@ FlightControlComputer::make_automatic_observation(
 		observation.roll_rad,
 		observation.roll_rate_rad_s,
 		observation.yaw_rate_rad_s,
-		gear.any_weight_on_wheels
+		conditioned.pilot_pitch_normalized,
+		raw.landing_gear.any_weight_on_wheels
 	};
 }
 

@@ -42,7 +42,7 @@ AutomaticFlightControlConfig fck1c_automatic_flight_control_config()
 	config.altitude_comfort_acceleration_mps2 = 0.6 * kGravityMps2;
 	config.vertical_speed_limit_mps = 40.0;
 	config.vertical_speed_capture_taper_mps = 10.0;
-	config.bypass_attitude_threshold_rad = Common::rad(1.0);
+	config.pitch_stick_steering_threshold_normalized = 0.08;
 	config.speed_step_mps = 5.0 * kMetersPerSecondPerKnot;
 	config.minimum_target_speed_mps = 200.0 * kMetersPerSecondPerKnot;
 	config.maximum_target_speed_mps = 550.0 * kMetersPerSecondPerKnot;
@@ -83,6 +83,9 @@ void validate_automatic_flight_control_config(
 	require_positive(config.altitude_capture_band_m, "altitude capture band");
 	require_positive(config.altitude_comfort_acceleration_mps2, "comfort acceleration");
 	require_positive(config.vertical_speed_limit_mps, "vertical speed limit");
+	require_positive(
+		config.pitch_stick_steering_threshold_normalized,
+		"pitch stick-steering threshold");
 	require_positive(config.speed_step_mps, "speed step");
 	require_positive(config.altitude_step_m, "altitude step");
 	require_positive(config.heading_step_rad, "heading step");
@@ -94,6 +97,11 @@ void validate_automatic_flight_control_config(
 	{
 		throw std::invalid_argument(
 			"Automatic flight control thresholds are not ordered.");
+	}
+	if (config.pitch_stick_steering_threshold_normalized > 1.0)
+	{
+		throw std::invalid_argument(
+			"Automatic flight control stick-steering threshold is out of range.");
 	}
 }
 }

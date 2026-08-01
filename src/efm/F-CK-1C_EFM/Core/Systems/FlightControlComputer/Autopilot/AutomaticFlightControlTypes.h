@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../FlightControlStatus.h"
+
 namespace Core
 {
 namespace Systems
@@ -19,7 +21,7 @@ struct AutomaticFlightControlConfig
 	double altitude_comfort_acceleration_mps2 = 0.0;
 	double vertical_speed_limit_mps = 0.0;
 	double vertical_speed_capture_taper_mps = 0.0;
-	double bypass_attitude_threshold_rad = 0.0;
+	double pitch_stick_steering_threshold_normalized = 0.0;
 	double speed_step_mps = 0.0;
 	double minimum_target_speed_mps = 0.0;
 	double maximum_target_speed_mps = 0.0;
@@ -56,12 +58,14 @@ struct AutomaticFlightControlObservation
 	double roll_rad = 0.0;
 	double legacy_pitch_damping_rate_rad_s = 0.0;
 	double legacy_heading_damping_rate_rad_s = 0.0;
+	double conditioned_pitch_input_normalized = 0.0;
 	bool weight_on_wheels = false;
 };
 
 struct LegacyAutomaticFlightControlDemand
 {
-	bool pitch_roll_engaged = false;
+	AuthorityState longitudinal_authority = AuthorityState::Manual;
+	AuthorityState lateral_authority = AuthorityState::Manual;
 	bool auto_throttle_engaged = false;
 	double pitch_normalized = 0.0;
 	double roll_normalized = 0.0;
