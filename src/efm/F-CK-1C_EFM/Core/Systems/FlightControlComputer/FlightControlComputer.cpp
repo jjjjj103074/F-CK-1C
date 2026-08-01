@@ -116,6 +116,8 @@ const FlightControlActuatorCommand& FlightControlComputer::step(
 	const ::Systems::FlightControlLawResult output =
 		::Systems::update_fbw_controller(
 			fbw_, config_.control_laws, control_law_input);
+	automatic_flight_control_.observe_control_result(
+		make_mode_monitor_observation(input, automatic));
 	apply_experimental_auto_throttle(automatic);
 	refresh_outputs(output, request.throttle_levers);
 	refresh_diagnostics();
@@ -256,6 +258,45 @@ FlightControlComputer::make_automatic_observation(
 		conditioned.pilot_pitch_normalized,
 		raw.landing_gear.any_weight_on_wheels
 	};
+}
+
+AutopilotModeMonitorObservation
+FlightControlComputer::make_mode_monitor_observation(
+	const ::Systems::ConditionedFlightControlInput& flight,
+	const AutomaticFlightGuidanceReference& automatic) const
+{
+	double vertical_error = 0.0;
+	if (automatic.vertical_type ==
+		VerticalGuidanceReferenceType::PitchAttitude)
+	{
+		vertical_error = automatic.pitch_attitude_reference_rad -
+			flight.pitch_attitude_rad;
+	}
+	else if (automatic.vertical_type ==
+		VerticalGuidanceReferenceType::VerticalSpeed)
+	{
+		vertical_error = automatic.vertical_speed_reference_mps -
+			flight.vertical_speed_mps;
+	}
+	return {
+		flight.dt_s,
+		automatic.longitudinal_authority == AuthorityState::Automatic,
+		automatic.lateral_authority == AuthorityState::Automatic,
+		automatic.vertical_type,
+		vertical_error,
+		automatic.bank_angle_reference_rad - flight.roll_attitude_rad,
+		coordinated_reference_.constraint,
+		flight.actuator_saturated,
+		hard_protection_reason()
+	};
+}
+
+ConstraintReason FlightControlComputer::hard_protection_reason() const
+{
+	if (fbw_.aoa_limit_active) return ConstraintReason::HardAngleOfAttackLimit;
+	if (fbw_.g_limit_active) return ConstraintReason::HardLoadFactorLimit;
+	if (fbw_.rate_limit_active) return ConstraintReason::HardRateLimit;
+	return ConstraintReason::None;
 }
 
 double FlightControlComputer::alpha_limit(double mach) const

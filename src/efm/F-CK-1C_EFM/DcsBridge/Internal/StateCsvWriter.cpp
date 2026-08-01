@@ -71,7 +71,9 @@ constexpr const char* kStateCsvHeader =
 	"afcs_throttle_command_normalized,afcs_target_altitude_m,"
 	"afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,"
 	"afcs_target_vertical_speed_mps,afcs_longitudinal_authority,"
-	"afcs_lateral_authority,afcs_ap_engage_rejection_reason,"
+	"afcs_lateral_authority,afcs_constraint_reason,afcs_degradation_reason,"
+	"afcs_disconnect_reason,afcs_vertical_degraded,afcs_lateral_degraded,"
+	"afcs_ap_engage_rejection_reason,"
 	"afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,"
 	"afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,"
 	"shake_amplitude\n";
@@ -278,6 +280,11 @@ bool append_automatic_flight_control(
 		row.append_double(afcs.target_vertical_speed_mps) &&
 		row.append_double(static_cast<double>(afcs.longitudinal_authority)) &&
 		row.append_double(static_cast<double>(afcs.lateral_authority)) &&
+		row.append_double(static_cast<double>(afcs.constraint_reason)) &&
+		row.append_double(static_cast<double>(afcs.degradation_reason)) &&
+		row.append_double(static_cast<double>(afcs.disconnect_reason)) &&
+		row.append_bool(afcs.vertical_degraded) &&
+		row.append_bool(afcs.lateral_degraded) &&
 		row.append_double(static_cast<double>(
 			afcs.autopilot_engage_rejection_reason)) &&
 		row.append_double(static_cast<double>(

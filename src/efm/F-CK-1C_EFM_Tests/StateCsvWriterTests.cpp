@@ -15,7 +15,7 @@
 
 namespace
 {
-constexpr std::size_t kExpectedColumnCount = 110;
+constexpr std::size_t kExpectedColumnCount = 115;
 constexpr std::chrono::seconds kWriterTimeout(3);
 constexpr std::chrono::milliseconds kPollInterval(10);
 
@@ -46,7 +46,7 @@ std::vector<std::string> expected_header()
 		"suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
 		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,flight_control_developer_g_limiter_override_available,flight_control_developer_g_limiter_override_active,"
 		"flight_control_normal_acceleration_reference_g,flight_control_pitch_rate_feedforward_rad_s,flight_control_roll_rate_reference_rad_s,flight_control_sideslip_reference_rad,flight_control_yaw_rate_feedforward_rad_s,flight_control_elevator_command_normalized,flight_control_aileron_command_normalized,flight_control_rudder_command_normalized,flight_control_constraint_reason,flight_control_vertical_constrained,flight_control_lateral_constrained,"
-		"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,afcs_vertical_mode,afcs_lateral_mode,afcs_pitch_attitude_reference_rad,afcs_vertical_speed_reference_mps,afcs_bank_angle_reference_rad,afcs_throttle_command_normalized,afcs_target_altitude_m,afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,afcs_target_vertical_speed_mps,afcs_longitudinal_authority,afcs_lateral_authority,afcs_ap_engage_rejection_reason,afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,shake_amplitude",
+		"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,afcs_vertical_mode,afcs_lateral_mode,afcs_pitch_attitude_reference_rad,afcs_vertical_speed_reference_mps,afcs_bank_angle_reference_rad,afcs_throttle_command_normalized,afcs_target_altitude_m,afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,afcs_target_vertical_speed_mps,afcs_longitudinal_authority,afcs_lateral_authority,afcs_constraint_reason,afcs_degradation_reason,afcs_disconnect_reason,afcs_vertical_degraded,afcs_lateral_degraded,afcs_ap_engage_rejection_reason,afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,shake_amplitude",
 		',');
 }
 
@@ -110,6 +110,12 @@ void assign_automatic_flight_and_diagnostics(Core::FrameOutput& output)
 	afcs.target_vertical_speed_mps = 81;
 	afcs.longitudinal_authority = Core::FlightControlAuthorityState::Automatic;
 	afcs.lateral_authority = Core::FlightControlAuthorityState::Bypassed;
+	afcs.constraint_reason =
+		Core::FlightControlConstraintReason::LateralConstrainedByVerticalAuthority;
+	afcs.degradation_reason =
+		Core::FlightControlDegradationReason::SustainedLateralTrackingFailure;
+	afcs.disconnect_reason = Core::FlightControlDisconnectReason::SafetyCondition;
+	afcs.vertical_degraded = true;
 	afcs.autopilot_engage_rejection_reason =
 		Core::AutomaticFlightControlReason::RollLimit;
 	afcs.autopilot_disengage_reason =
@@ -143,7 +149,7 @@ std::vector<std::string> expected_numbered_row()
 		"46,47,48,49,50,True,51,52,53,54,55,False,56,57,58,59,60,True,"
 		"True,False,61,62,63,64,True,True,"
 		"65,66,67,68,69,70,71,72,4,True,False,"
-		"True,False,True,3,2,73,74,75,76,77,78,79,80,81,1,2,4,5,6,1,True,82",
+		"True,False,True,3,2,73,74,75,76,77,78,79,80,81,1,2,3,2,2,True,False,4,5,6,1,True,82",
 		',');
 }
 

@@ -31,6 +31,11 @@ struct AutomaticFlightControlConfig
 	double heading_step_rad = 0.0;
 	double pitch_step_rad = 0.0;
 	double vertical_speed_step_mps = 0.0;
+	double pitch_tracking_error_limit_rad = 0.0;
+	double vertical_speed_tracking_error_limit_mps = 0.0;
+	double bank_tracking_error_limit_rad = 0.0;
+	double tracking_failure_persistence_s = 0.0;
+	double actuator_saturation_persistence_s = 0.0;
 	double pitch_kp = 0.0;
 	double pitch_kd = 0.0;
 	double vertical_speed_kp = 0.0;

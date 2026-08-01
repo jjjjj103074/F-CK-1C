@@ -235,6 +235,14 @@ struct AutomaticFlightControlSnapshot
 		FlightControlAuthorityState::Manual;
 	FlightControlAuthorityState lateral_authority =
 		FlightControlAuthorityState::Manual;
+	FlightControlConstraintReason constraint_reason =
+		FlightControlConstraintReason::None;
+	FlightControlDegradationReason degradation_reason =
+		FlightControlDegradationReason::None;
+	FlightControlDisconnectReason disconnect_reason =
+		FlightControlDisconnectReason::None;
+	bool vertical_degraded = false;
+	bool lateral_degraded = false;
 	AutomaticFlightControlReason autopilot_engage_rejection_reason =
 		AutomaticFlightControlReason::None;
 	AutomaticFlightControlReason autopilot_disengage_reason =

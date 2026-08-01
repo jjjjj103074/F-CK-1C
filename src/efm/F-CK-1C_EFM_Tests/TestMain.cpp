@@ -13,6 +13,7 @@ void run_dcs_damage_mapper_tests(Tests::Context& context);
 void run_output_adapter_tests(Tests::Context& context);
 void run_airframe_device_system_tests(Tests::Context& context);
 void run_automatic_flight_control_tests(Tests::Context& context);
+void run_autopilot_mode_monitor_tests(Tests::Context& context);
 void run_engine_system_tests(Tests::Context& context);
 void run_event_log_tests(Tests::Context& context);
 void run_fbw_controller_tests(Tests::Context& context);
@@ -52,6 +53,7 @@ int main()
 	run_aerodynamics_physics_tests(context);
 	run_airframe_device_system_tests(context);
 	run_automatic_flight_control_tests(context);
+	run_autopilot_mode_monitor_tests(context);
 	run_input_system_tests(context);
 	run_input_signal_management_tests(context);
 	run_inner_loop_control_tests(context);

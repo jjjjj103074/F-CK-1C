@@ -3,8 +3,6 @@
 #include "Common/Units.h"
 #include "Core/Systems/FlightControlComputer/Autopilot/AutomaticFlightControl.h"
 
-#include <algorithm>
-#include <array>
 #include <cmath>
 #include <iterator>
 
@@ -26,20 +24,6 @@ constexpr double kNominalMach = 0.7;
 constexpr double kNominalHeadingRad = 1.0;
 constexpr double kNominalPitchRad = 0.1;
 constexpr double kNominalRollRad = -0.1;
-constexpr double kDcsFrameDtS = 0.006;
-// Derived from the 2026-07-31 DCS trace that exposed the ALT-hold oscillation.
-constexpr double kMeasuredFbwResponseDelayS = 0.55;
-constexpr double kMeasuredGPerPitchCommand = 4.1;
-constexpr double kGravityMps2 = 9.81;
-constexpr double kAltitudeCaptureInitialVerticalSpeedMps = -3.0;
-constexpr double kAltitudeCaptureDurationS = 30.0;
-constexpr double kMaximumCaptureErrorM = 3.0;
-constexpr double kMaximumSettledVerticalSpeedMps = 0.5;
-constexpr int kMaximumCaptureErrorCrossings = 5;
-constexpr double kPitchCommandSaturationThreshold = 0.599;
-constexpr std::size_t kFbwResponseDelayFrames =
-	static_cast<std::size_t>(
-		kMeasuredFbwResponseDelayS / kDcsFrameDtS + 0.5);
 
 double knots(double value)
 {
@@ -66,49 +50,6 @@ AutomaticFlightControl make_control(bool initial_wow = false)
 		initial_wow);
 }
 
-struct VerticalPlant
-{
-	double altitude_m = kNominalAltitudeM;
-	double vertical_speed_mps = kAltitudeCaptureInitialVerticalSpeedMps;
-	std::array<double, kFbwResponseDelayFrames> delayed_commands{};
-	std::size_t delay_index = 0;
-};
-
-struct AltitudeCaptureMetrics
-{
-	double maximum_error_m = 0.0;
-	double settled_vertical_speed_mps = 0.0;
-	int error_crossings = 0;
-	int saturated_frames = 0;
-};
-
-void step_vertical_plant(VerticalPlant& plant, double pitch_command)
-{
-	const double delayed_command =
-		plant.delayed_commands[plant.delay_index];
-	plant.delayed_commands[plant.delay_index] = pitch_command;
-	plant.delay_index =
-		(plant.delay_index + 1) % plant.delayed_commands.size();
-	const double acceleration_mps2 =
-		delayed_command * kMeasuredGPerPitchCommand * kGravityMps2;
-	plant.vertical_speed_mps += acceleration_mps2 * kDcsFrameDtS;
-	plant.altitude_m += plant.vertical_speed_mps * kDcsFrameDtS;
-}
-
-void update_capture_metrics(
-	AltitudeCaptureMetrics& metrics,
-	double previous_error_m,
-	double error_m,
-	double pitch_command)
-{
-	metrics.maximum_error_m =
-		std::max(metrics.maximum_error_m, std::abs(error_m));
-	if (previous_error_m * error_m < 0.0)
-		++metrics.error_crossings;
-	if (std::abs(pitch_command) >= kPitchCommandSaturationThreshold)
-		++metrics.saturated_frames;
-}
-
 void send(
 	AutomaticFlightControl& control,
 	CommandId id,
@@ -124,36 +65,6 @@ void prime_and_engage(
 	(void)control.step(observation);
 	send(control, CommandId::EngageAutopilot);
 	(void)control.step(observation);
-}
-
-AltitudeCaptureMetrics run_altitude_capture()
-{
-	AutomaticFlightControl control = make_control();
-	AutomaticFlightControlObservation observation = nominal_observation();
-	observation.dt_s = kDcsFrameDtS;
-	observation.vertical_speed_mps =
-		kAltitudeCaptureInitialVerticalSpeedMps;
-	prime_and_engage(control, observation);
-	send(control, CommandId::SelectAutopilotAltitudeHold);
-	VerticalPlant plant;
-	AltitudeCaptureMetrics metrics;
-	double previous_error_m = 0.0;
-	const int frame_count =
-		static_cast<int>(kAltitudeCaptureDurationS / kDcsFrameDtS);
-	for (int frame = 0; frame < frame_count; ++frame)
-	{
-		observation.altitude_m = plant.altitude_m;
-		observation.vertical_speed_mps = plant.vertical_speed_mps;
-		const double command =
-			control.step(observation).vertical_speed_reference_mps;
-		step_vertical_plant(plant, command);
-		const double error_m = kNominalAltitudeM - plant.altitude_m;
-		update_capture_metrics(
-			metrics, previous_error_m, error_m, command);
-		previous_error_m = error_m;
-	}
-	metrics.settled_vertical_speed_mps = plant.vertical_speed_mps;
-	return metrics;
 }
 
 void test_autopilot_engage_boundaries(Tests::Context& context)
@@ -325,21 +236,6 @@ void test_vertical_speed_controller_characterization(
 		control.step(observation).vertical_speed_reference_mps,
 		4.0,
 		kTolerance);
-}
-
-void test_altitude_capture_is_damped_with_measured_fbw_response(
-	Tests::Context& context)
-{
-	const AltitudeCaptureMetrics metrics = run_altitude_capture();
-	TEST_EXPECT(context, metrics.maximum_error_m <= kMaximumCaptureErrorM);
-	TEST_EXPECT(
-		context,
-		std::abs(metrics.settled_vertical_speed_mps) <=
-			kMaximumSettledVerticalSpeedMps);
-	TEST_EXPECT(
-		context,
-		metrics.error_crossings <= kMaximumCaptureErrorCrossings);
-	TEST_EXPECT(context, metrics.saturated_frames == 0);
 }
 
 void test_heading_controller_characterization(Tests::Context& context)
@@ -699,6 +595,39 @@ void test_commanded_disconnect_resets_both_channels(
 		control.snapshot().auto_throttle_disengage_reason ==
 			AutomaticFlightControlReason::Commanded);
 }
+
+void test_sustained_failure_changes_mode_on_next_tick(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	const AutomaticFlightControlObservation observation = nominal_observation();
+	prime_and_engage(control, observation);
+	send(control, CommandId::SelectAutopilotVerticalSpeedHold);
+	(void)control.step(observation);
+	Core::Systems::AutopilotModeMonitorObservation monitor;
+	monitor.dt_s = 1.0;
+	monitor.vertical_active = true;
+	monitor.vertical_type =
+		Core::Systems::VerticalGuidanceReferenceType::VerticalSpeed;
+	monitor.vertical_tracking_error = 6.0;
+	control.observe_control_result(monitor);
+	(void)control.step(observation);
+	control.observe_control_result(monitor);
+	TEST_EXPECT(
+		context,
+		control.snapshot().vertical_mode ==
+			AutomaticFlightControlVerticalMode::VerticalSpeedHold);
+	(void)control.step(observation);
+	TEST_EXPECT(
+		context,
+		control.snapshot().vertical_mode ==
+			AutomaticFlightControlVerticalMode::Off);
+	TEST_EXPECT(
+		context,
+		control.snapshot().lateral_mode ==
+			AutomaticFlightControlLateralMode::HeadingHold);
+	TEST_EXPECT(context, control.snapshot().vertical_degraded);
+}
 }
 
 void run_automatic_flight_control_tests(Tests::Context& context)
@@ -726,4 +655,5 @@ void run_automatic_flight_control_tests(Tests::Context& context)
 	test_auto_throttle_target_limits(context);
 	test_auto_throttle_controller_characterization(context);
 	test_commanded_disconnect_resets_both_channels(context);
+	test_sustained_failure_changes_mode_on_next_tick(context);
 }

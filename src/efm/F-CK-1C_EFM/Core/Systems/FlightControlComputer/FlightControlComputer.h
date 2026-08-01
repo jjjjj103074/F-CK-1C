@@ -54,6 +54,10 @@ private:
 	AutomaticFlightControlObservation make_automatic_observation(
 		const RawFlightControlInput& raw,
 		const ::Systems::ConditionedFlightControlInput& conditioned) const;
+	AutopilotModeMonitorObservation make_mode_monitor_observation(
+		const ::Systems::ConditionedFlightControlInput& flight,
+		const AutomaticFlightGuidanceReference& automatic) const;
+	ConstraintReason hard_protection_reason() const;
 	double alpha_limit(double mach) const;
 	RawFlightControlInput make_pipeline_input(
 		const SystemStepContext& context,

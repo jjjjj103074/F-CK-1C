@@ -57,6 +57,12 @@ AutomaticFlightControlConfig fck1c_automatic_flight_control_config()
 	config.heading_step_rad = Common::rad(1.0);
 	config.pitch_step_rad = Common::rad(1.0);
 	config.vertical_speed_step_mps = 1.0;
+	// Project-defined monitor tuning; Phase 9 closed-loop tests own refinement.
+	config.pitch_tracking_error_limit_rad = Common::rad(8.0);
+	config.vertical_speed_tracking_error_limit_mps = 5.0;
+	config.bank_tracking_error_limit_rad = Common::rad(12.0);
+	config.tracking_failure_persistence_s = 2.0;
+	config.actuator_saturation_persistence_s = 1.0;
 	config.pitch_kp = 2.5;
 	config.pitch_kd = 0.3;
 	config.vertical_speed_kp = 0.08;
@@ -101,6 +107,19 @@ void validate_automatic_flight_control_config(
 	require_positive(config.altitude_step_m, "altitude step");
 	require_positive(config.heading_step_rad, "heading step");
 	require_positive(config.mach_guard_throttle_rate_per_s, "Mach guard rate");
+	require_positive(
+		config.pitch_tracking_error_limit_rad, "pitch tracking error limit");
+	require_positive(
+		config.vertical_speed_tracking_error_limit_mps,
+		"vertical-speed tracking error limit");
+	require_positive(
+		config.bank_tracking_error_limit_rad, "bank tracking error limit");
+	require_positive(
+		config.tracking_failure_persistence_s,
+		"tracking failure persistence");
+	require_positive(
+		config.actuator_saturation_persistence_s,
+		"actuator saturation persistence");
 	if (config.altitude_fine_band_m >= config.altitude_hold_band_m ||
 		config.altitude_hold_band_m >= config.altitude_capture_band_m ||
 		config.maximum_auto_throttle_mach >
