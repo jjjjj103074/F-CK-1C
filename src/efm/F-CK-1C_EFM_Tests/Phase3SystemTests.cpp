@@ -157,15 +157,15 @@ FlightControlActuatorCommand expected_nonzero_demand()
 		fck1c_flight_control_computer_config(),
 		StartMode::HotGround,
 		{});
-	::Systems::FBWControllerInput input;
-	input.dt = kSystemDt;
-	input.qbar = kDynamicPressure;
-	input.alpha = Common::deg(kAngleOfAttack);
-	input.beta = Common::deg(kAngleOfSlide);
-	input.speed_scalar = kForwardSpeed;
+	::Systems::ConditionedFlightControlInput input;
+	input.dt_s = kSystemDt;
+	input.dynamic_pressure_pa = kDynamicPressure;
+	input.angle_of_attack_deg = Common::deg(kAngleOfAttack);
+	input.sideslip_deg = Common::deg(kAngleOfSlide);
+	input.indicated_airspeed_mps = kForwardSpeed;
 	input.mach = kMach;
-	input.g = kExpectedGLoad;
-	input.gear_pos = kFullIntegrity;
+	input.normal_acceleration_g = kExpectedGLoad;
+	input.gear_position_normalized = kFullIntegrity;
 	return reference.step({ input, {}, {}, {} });
 }
 

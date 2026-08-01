@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ControlLawTypes.h"
+#include "ControlLawConfig.h"
 #include "Common/Clamp.h"
 #include "Common/Units.h"
 #include <cmath>

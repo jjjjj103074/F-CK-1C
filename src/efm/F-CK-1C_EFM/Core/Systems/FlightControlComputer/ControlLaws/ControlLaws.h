@@ -1,6 +1,8 @@
 #pragma once
 
-#include "ControlLawTypes.h"
+#include "ControlLawConfig.h"
+#include "ControlLawSignals.h"
+#include "ControlLawState.h"
 #include "ControlLawLifecycle.h"
 
 namespace Systems
@@ -14,8 +16,8 @@ const char* fbw_mode_name(const FBWControllerState& state);
 const char* fbw_state_name(const FBWControllerState& state);
 const char* fbw_exit_reason_name(const FBWControllerState& state);
 
-FBWControllerOutput update_fbw_controller(
+FlightControlLawResult update_fbw_controller(
 	FBWControllerState& state,
 	const FBWControllerConfig& config,
-	const FBWControllerInput& input);
+	const ConditionedFlightControlInput& input);
 }

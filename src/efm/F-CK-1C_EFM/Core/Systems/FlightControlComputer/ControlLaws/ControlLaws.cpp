@@ -53,7 +53,7 @@ public:
 	FBWFrame(
 		Systems::FBWControllerState& state,
 		const Systems::FBWControllerConfig& config,
-		const Systems::FBWControllerInput& input)
+		const Systems::ConditionedFlightControlInput& input)
 		: state_(state),
 		config_(config),
 		input_(input),
@@ -63,7 +63,7 @@ public:
 	{
 	}
 
-	Systems::FBWControllerOutput run()
+	Systems::FlightControlLawResult run()
 	{
 		if (!state_.enabled)
 		{
@@ -89,24 +89,24 @@ public:
 	}
 
 private:
-	Systems::FBWControllerOutput update_direct_mode()
+	Systems::FlightControlLawResult update_direct_mode()
 	{
-		output_.elevator_command = Common::limit(
+		output_.surface_demand.elevator_command_normalized = Common::limit(
 			Common::actuator(
-				output_.elevator_command,
-				{ input_.pitch_input + input_.pitch_trim,
+				output_.surface_demand.elevator_command_normalized,
+				{ input_.pilot_pitch_normalized + input_.pitch_trim_normalized,
 					-kDirectElevatorStep, kDirectElevatorStep }),
 			-1.0, 1.0);
-		output_.aileron_command = Common::limit(
+		output_.surface_demand.aileron_command_normalized = Common::limit(
 			Common::actuator(
-				output_.aileron_command,
-				{ input_.roll_input + input_.roll_trim,
+				output_.surface_demand.aileron_command_normalized,
+				{ input_.pilot_roll_normalized + input_.roll_trim_normalized,
 					-kDirectAileronStep, kDirectAileronStep }),
 			-1.0, 1.0);
-		output_.rudder_command = Common::limit(
+		output_.surface_demand.rudder_command_normalized = Common::limit(
 			Common::actuator(
-				output_.rudder_command,
-				{ input_.yaw_input + input_.yaw_trim,
+				output_.surface_demand.rudder_command_normalized,
+				{ input_.pilot_yaw_normalized + input_.yaw_trim_normalized,
 					-kDirectRudderStep, kDirectRudderStep }),
 			-1.0, 1.0);
 		return output_;
@@ -124,15 +124,15 @@ private:
 
 	void capture_and_filter_signals()
 	{
-		state_.phi_raw = input_.roll;
-		state_.theta_raw = input_.pitch;
-		state_.p_raw = input_.roll_rate;
-		state_.q_raw = input_.pitch_rate;
-		state_.r_raw = input_.yaw_rate;
-		state_.alpha_raw = input_.alpha;
-		state_.beta_raw = input_.beta;
-		state_.qbar_raw = input_.qbar;
-		state_.ias_raw = input_.speed_scalar * kMetersPerSecondToKnots;
+		state_.phi_raw = input_.roll_attitude_rad;
+		state_.theta_raw = input_.pitch_attitude_rad;
+		state_.p_raw = input_.roll_rate_rad_s;
+		state_.q_raw = input_.pitch_rate_rad_s;
+		state_.r_raw = input_.yaw_rate_rad_s;
+		state_.alpha_raw = input_.angle_of_attack_deg;
+		state_.beta_raw = input_.sideslip_deg;
+		state_.qbar_raw = input_.dynamic_pressure_pa;
+		state_.ias_raw = input_.indicated_airspeed_mps * kMetersPerSecondToKnots;
 		state_.mach_raw = input_.mach;
 
 		state_.phi_f = filter_signal(state_.phi_f, state_.phi_raw);
@@ -158,15 +158,19 @@ private:
 		{
 			return target;
 		}
-		const double gain = Common::limit(input_.dt / (tau + input_.dt), 0.0, 1.0);
+		const double gain = Common::limit(
+			input_.dt_s / (tau + input_.dt_s), 0.0, 1.0);
 		return current + (target - current) * gain;
 	}
 
 	void shape_stick_commands()
 	{
-		state_.stick_roll_raw = Common::limit(input_.roll_input + input_.roll_trim, -1.0, 1.0);
-		state_.stick_pitch_raw = Common::limit(input_.pitch_input + input_.pitch_trim, -1.0, 1.0);
-		state_.stick_yaw_raw = Common::limit(input_.yaw_input + input_.yaw_trim, -1.0, 1.0);
+		state_.stick_roll_raw = Common::limit(
+			input_.pilot_roll_normalized + input_.roll_trim_normalized, -1.0, 1.0);
+		state_.stick_pitch_raw = Common::limit(
+			input_.pilot_pitch_normalized + input_.pitch_trim_normalized, -1.0, 1.0);
+		state_.stick_yaw_raw = Common::limit(
+			input_.pilot_yaw_normalized + input_.yaw_trim_normalized, -1.0, 1.0);
 		const double roll_target = shape_stick(state_.stick_roll_raw);
 		const double pitch_target = shape_stick(state_.stick_pitch_raw);
 		const double yaw_target = shape_stick(state_.stick_yaw_raw);
@@ -176,7 +180,7 @@ private:
 		state_.stick_roll_shaped = filter_stick(state_.stick_roll_shaped, roll_target);
 		state_.stick_pitch_shaped = filter_stick(state_.stick_pitch_shaped, pitch_target);
 		state_.stick_yaw_shaped = filter_stick(state_.stick_yaw_shaped, yaw_target);
-		const double maximum_step = cat_.command_shape_rate * input_.dt;
+		const double maximum_step = cat_.command_shape_rate * input_.dt_s;
 		state_.stick_roll_shaped = Common::limit(
 			state_.stick_roll_shaped, roll_previous - maximum_step, roll_previous + maximum_step);
 		state_.stick_pitch_shaped = Common::limit(
@@ -209,12 +213,12 @@ private:
 
 	void update_hold_entry()
 	{
-		if (input_.wow || !stick_in_deadband_)
+		if (input_.weight_on_wheels || !stick_in_deadband_)
 		{
 			reset_hold_for_rate_mode();
 			return;
 		}
-		state_.hold_timer += input_.dt;
+		state_.hold_timer += input_.dt_s;
 		if (state_.control_state != Systems::FBW_STATE_RATE ||
 			state_.hold_timer < cat_.hold_engage_time)
 		{
@@ -232,13 +236,13 @@ private:
 	void prepare_rate_commands()
 	{
 		gains_ = Systems::fbw_eval_gain_schedule(config_, state_.qbar_f);
-		state_.nz_raw = input_.g;
+		state_.nz_raw = input_.normal_acceleration_g;
 		state_.nz_f = first_order(state_.nz_f, state_.nz_raw, config_.nz_filter_tau);
 		state_.p_cmd_rate = state_.stick_roll_shaped * cat_.p_cmd_max * gains_.cmd_gain;
 		state_.r_cmd_rate = state_.stick_yaw_shaped * cat_.r_cmd_max * gains_.cmd_gain;
 
 		const bool pitch_stick_in_deadband = std::fabs(state_.stick_pitch_raw) <= cat_.deadband;
-		if (input_.wow || pitch_stick_in_deadband)
+		if (input_.weight_on_wheels || pitch_stick_in_deadband)
 		{
 			state_.alpha_trim_deg = first_order(
 				state_.alpha_trim_deg, state_.alpha_f, config_.alpha_trim_tau);
@@ -248,7 +252,8 @@ private:
 
 	void update_pitch_weights()
 	{
-		const double gear_weight = (input_.gear_pos > kGearDownThreshold) ? 1.0 : 0.0;
+		const double gear_weight =
+			(input_.gear_position_normalized > kGearDownThreshold) ? 1.0 : 0.0;
 		const double approach = Common::limit(
 			(config_.region_approach_kts - state_.ias_f) /
 			(config_.region_approach_kts - config_.region_min_kts), 0.0, 1.0);
@@ -360,9 +365,9 @@ private:
 		state_.q_ref_alpha = Common::limit(alpha_raw, -q_outer_limit_, q_outer_limit_);
 		state_.q_ref_nz = Common::limit(nz_raw, -q_outer_limit_, q_outer_limit_);
 		state_.alpha_outer_int += (gains.ki_alpha * alpha_error +
-			config_.outer_aw_gain * (state_.q_ref_alpha - alpha_raw)) * input_.dt;
+			config_.outer_aw_gain * (state_.q_ref_alpha - alpha_raw)) * input_.dt_s;
 		state_.nz_outer_int += (gains.ki_nz * nz_error +
-			config_.outer_aw_gain * (state_.q_ref_nz - nz_raw)) * input_.dt;
+			config_.outer_aw_gain * (state_.q_ref_nz - nz_raw)) * input_.dt_s;
 		state_.alpha_outer_int = Common::limit(
 			state_.alpha_outer_int, -config_.outer_int_limit, config_.outer_int_limit);
 		state_.nz_outer_int = Common::limit(
@@ -389,7 +394,8 @@ private:
 		const double previous = state_.q_ref_filtered;
 		state_.q_ref_filtered = first_order(
 			state_.q_ref_filtered, state_.q_ref_blended, config_.pitch_ref_tau);
-		const double maximum_step = Common::rad(config_.pitch_ref_rate_deg_s) * input_.dt;
+		const double maximum_step =
+			Common::rad(config_.pitch_ref_rate_deg_s) * input_.dt_s;
 		state_.q_ref_filtered = Common::limit(
 			state_.q_ref_filtered, previous - maximum_step, previous + maximum_step);
 		state_.q_cmd_rate = Common::limit(state_.q_ref_filtered, -q_outer_limit_, q_outer_limit_);
@@ -482,9 +488,15 @@ private:
 		aileron_command_ = Common::limit(aileron_pre, -1.0, 1.0);
 		elevator_command_ = Common::limit(elevator_pre, -1.0, 1.0);
 		rudder_command_ = Common::limit(rudder_pre, -1.0, 1.0);
-		state_.int_p += (state_.p_err + config_.aw_gain * (aileron_command_ - aileron_pre)) * input_.dt;
-		state_.int_q += (state_.q_err + config_.aw_gain * (elevator_command_ - elevator_pre)) * input_.dt;
-		state_.int_r += (state_.r_err + config_.aw_gain * (rudder_command_ - rudder_pre)) * input_.dt;
+		state_.int_p +=
+			(state_.p_err + config_.aw_gain * (aileron_command_ - aileron_pre)) *
+			input_.dt_s;
+		state_.int_q +=
+			(state_.q_err + config_.aw_gain * (elevator_command_ - elevator_pre)) *
+			input_.dt_s;
+		state_.int_r +=
+			(state_.r_err + config_.aw_gain * (rudder_command_ - rudder_pre)) *
+			input_.dt_s;
 		state_.int_p = Common::limit(state_.int_p, -config_.int_limit, config_.int_limit);
 		state_.int_q = Common::limit(state_.int_q, -config_.int_limit, config_.int_limit);
 		state_.int_r = Common::limit(state_.int_r, -config_.int_limit, config_.int_limit);
@@ -496,17 +508,20 @@ private:
 
 	void publish_actuator_commands()
 	{
-		output_.aileron_command = aileron_command_;
-		output_.elevator_command = elevator_command_;
-		output_.rudder_command = rudder_command_;
+		output_.surface_demand.aileron_command_normalized = aileron_command_;
+		output_.surface_demand.elevator_command_normalized = elevator_command_;
+		output_.surface_demand.rudder_command_normalized = rudder_command_;
 	}
 
 	void update_actuator_feedback()
 	{
 		state_.actuator_sat = input_.actuator_saturated;
 		state_.actuator_sat_timer = state_.actuator_sat
-			? state_.actuator_sat_timer + input_.dt
-			: Common::limit(state_.actuator_sat_timer - input_.dt, 0.0, kActuatorTimerMaximum);
+			? state_.actuator_sat_timer + input_.dt_s
+			: Common::limit(
+				state_.actuator_sat_timer - input_.dt_s,
+				0.0,
+				kActuatorTimerMaximum);
 		if (state_.control_state == Systems::FBW_STATE_HOLD &&
 			state_.actuator_sat_timer > cat_.sat_time)
 		{
@@ -518,8 +533,8 @@ private:
 
 	Systems::FBWControllerState& state_;
 	const Systems::FBWControllerConfig& config_;
-	const Systems::FBWControllerInput& input_;
-	Systems::FBWControllerOutput output_;
+	const Systems::ConditionedFlightControlInput& input_;
+	Systems::FlightControlLawResult output_;
 	Systems::FBWCatParams cat_;
 	Systems::FBWGainScheduleValues gains_;
 	bool stick_in_deadband_ = false;
@@ -601,10 +616,10 @@ const char* fbw_exit_reason_name(const FBWControllerState& state)
 	}
 }
 
-FBWControllerOutput update_fbw_controller(
+FlightControlLawResult update_fbw_controller(
 	FBWControllerState& state,
 	const FBWControllerConfig& config,
-	const FBWControllerInput& input)
+	const ConditionedFlightControlInput& input)
 {
 	return FBWFrame(state, config, input).run();
 }

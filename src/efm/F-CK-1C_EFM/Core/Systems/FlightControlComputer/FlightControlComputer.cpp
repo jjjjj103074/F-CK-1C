@@ -79,7 +79,7 @@ void FlightControlComputer::step(
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
-	const AutomaticFlightControlDemand& automatic =
+	const LegacyAutomaticFlightControlDemand& automatic =
 		automatic_flight_control_.step(
 			make_automatic_observation(context, aircraft));
 	const PilotControlSignal& pilot =
@@ -107,11 +107,11 @@ void FlightControlComputer::step(
 const FlightControlActuatorCommand& FlightControlComputer::step(
 	const FlightControlComputerStepInput& request)
 {
-	::Systems::FBWControllerInput input = request.flight_control;
+	::Systems::ConditionedFlightControlInput input = request.flight_control;
 	input.alpha_limit_deg = alpha_limit(input.mach);
 	input = apply_pilot_signal(input, request.pilot);
 	apply_automatic_flight_control(input, request.automatic);
-	const ::Systems::FBWControllerOutput output =
+	const ::Systems::FlightControlLawResult output =
 		::Systems::update_fbw_controller(
 			fbw_, config_.control_laws, input);
 	refresh_outputs(output, request.throttle_levers);
@@ -119,28 +119,28 @@ const FlightControlActuatorCommand& FlightControlComputer::step(
 	return actuator_command_;
 }
 
-::Systems::FBWControllerInput FlightControlComputer::apply_pilot_signal(
-	const ::Systems::FBWControllerInput& input,
+::Systems::ConditionedFlightControlInput FlightControlComputer::apply_pilot_signal(
+	const ::Systems::ConditionedFlightControlInput& input,
 	const PilotControlSignal& pilot) const
 {
-	::Systems::FBWControllerInput result = input;
-	result.pitch_input = pilot.pitch_axis_normalized;
-	result.roll_input = pilot.roll_axis_normalized;
-	result.yaw_input = pilot.yaw_axis_normalized;
-	result.pitch_trim = pilot.pitch_trim_normalized;
-	result.roll_trim = pilot.roll_trim_normalized;
-	result.yaw_trim = pilot.yaw_trim_normalized;
+	::Systems::ConditionedFlightControlInput result = input;
+	result.pilot_pitch_normalized = pilot.pitch_axis_normalized;
+	result.pilot_roll_normalized = pilot.roll_axis_normalized;
+	result.pilot_yaw_normalized = pilot.yaw_axis_normalized;
+	result.pitch_trim_normalized = pilot.pitch_trim_normalized;
+	result.roll_trim_normalized = pilot.roll_trim_normalized;
+	result.yaw_trim_normalized = pilot.yaw_trim_normalized;
 	return result;
 }
 
 void FlightControlComputer::apply_automatic_flight_control(
-	::Systems::FBWControllerInput& input,
-	const AutomaticFlightControlDemand& automatic)
+	::Systems::ConditionedFlightControlInput& input,
+	const LegacyAutomaticFlightControlDemand& automatic)
 {
 	if (automatic.pitch_roll_engaged)
 	{
-		input.pitch_input = automatic.pitch_normalized;
-		input.roll_input = automatic.roll_normalized;
+		input.pilot_pitch_normalized = automatic.pitch_normalized;
+		input.pilot_roll_normalized = automatic.roll_normalized;
 	}
 	if (!automatic.auto_throttle_engaged)
 	{
@@ -154,13 +154,13 @@ void FlightControlComputer::apply_automatic_flight_control(
 }
 
 void FlightControlComputer::refresh_outputs(
-	const ::Systems::FBWControllerOutput& output,
+	const ::Systems::FlightControlLawResult& output,
 	const ThrottleLeverSignal& throttle_levers)
 {
 	actuator_command_ = {
-		output.elevator_command,
-		output.aileron_command,
-		output.rudder_command
+		output.surface_demand.elevator_command_normalized,
+		output.surface_demand.aileron_command_normalized,
+		output.surface_demand.rudder_command_normalized
 	};
 	engine_throttle_command_ = {
 		::Systems::compose_engine_throttle_command({
@@ -185,29 +185,29 @@ void FlightControlComputer::refresh_diagnostics()
 		fbw_.g_limiter_override;
 }
 
-::Systems::FBWControllerInput FlightControlComputer::make_pipeline_input(
+::Systems::ConditionedFlightControlInput FlightControlComputer::make_pipeline_input(
 	const SystemStepContext& context,
 	const AircraftDataView& aircraft) const
 {
 	const FlightControlObservation& observation =
 		aircraft.read(AircraftDataKeys::kFlightControlObservation);
-	::Systems::FBWControllerInput input;
-	input.dt = context.dt_s;
-	input.qbar = observation.dynamic_pressure_pa;
-	input.roll = observation.roll_rad;
-	input.pitch = observation.pitch_rad;
-	input.roll_rate = observation.roll_rate_rad_s;
-	input.pitch_rate = observation.pitch_rate_rad_s;
-	input.yaw_rate = observation.yaw_rate_rad_s;
-	input.alpha = observation.alpha_deg;
-	input.beta = observation.beta_deg;
-	input.speed_scalar = observation.indicated_airspeed_mps;
+	::Systems::ConditionedFlightControlInput input;
+	input.dt_s = context.dt_s;
+	input.dynamic_pressure_pa = observation.dynamic_pressure_pa;
+	input.roll_attitude_rad = observation.roll_rad;
+	input.pitch_attitude_rad = observation.pitch_rad;
+	input.roll_rate_rad_s = observation.roll_rate_rad_s;
+	input.pitch_rate_rad_s = observation.pitch_rate_rad_s;
+	input.yaw_rate_rad_s = observation.yaw_rate_rad_s;
+	input.angle_of_attack_deg = observation.alpha_deg;
+	input.sideslip_deg = observation.beta_deg;
+	input.indicated_airspeed_mps = observation.indicated_airspeed_mps;
 	input.mach = observation.mach;
-	input.g = observation.normal_acceleration_g;
+	input.normal_acceleration_g = observation.normal_acceleration_g;
 	const LandingGearData& gear =
 		aircraft.read(AircraftDataKeys::kLandingGearData);
-	input.gear_pos = gear.position;
-	input.wow = gear.any_weight_on_wheels;
+	input.gear_position_normalized = gear.position;
+	input.weight_on_wheels = gear.any_weight_on_wheels;
 	const FlightControlActuatorState& actuator =
 		aircraft.read(AircraftDataKeys::kFlightControlActuatorState);
 	input.elevator_position_normalized =

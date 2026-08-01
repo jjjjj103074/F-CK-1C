@@ -1,12 +1,13 @@
 #pragma once
 
-#include "ControlLawTypes.h"
+#include "ControlLawSignals.h"
+#include "ControlLawState.h"
 
 namespace Systems
 {
 void reset_fbw_state(
 	FBWControllerState& state,
-	const FBWResetInput& input);
+	const FlightControlLawResetInput& input);
 
 void reset_fbw_throttle_interface(FBWControllerState& state);
 }

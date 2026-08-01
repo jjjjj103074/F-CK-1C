@@ -430,7 +430,7 @@ void AutomaticFlightControl::recapture_lateral_reference()
 	}
 }
 
-const AutomaticFlightControlDemand& AutomaticFlightControl::step(
+const LegacyAutomaticFlightControlDemand& AutomaticFlightControl::step(
 	const AutomaticFlightControlObservation& observation)
 {
 	observation_ = observation;

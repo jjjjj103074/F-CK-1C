@@ -13,8 +13,8 @@ namespace Systems
 {
 struct FlightControlComputerStepInput
 {
-	::Systems::FBWControllerInput flight_control;
-	AutomaticFlightControlDemand automatic;
+	::Systems::ConditionedFlightControlInput flight_control;
+	LegacyAutomaticFlightControlDemand automatic;
 	PilotControlSignal pilot;
 	ThrottleLeverSignal throttle_levers;
 };
@@ -41,21 +41,21 @@ public:
 
 private:
 	void register_commands(SystemSetup& setup);
-	::Systems::FBWControllerInput apply_pilot_signal(
-		const ::Systems::FBWControllerInput& input,
+	::Systems::ConditionedFlightControlInput apply_pilot_signal(
+		const ::Systems::ConditionedFlightControlInput& input,
 		const PilotControlSignal& pilot) const;
 	void apply_automatic_flight_control(
-		::Systems::FBWControllerInput& input,
-		const AutomaticFlightControlDemand& automatic);
+		::Systems::ConditionedFlightControlInput& input,
+		const LegacyAutomaticFlightControlDemand& automatic);
 	void refresh_outputs(
-		const ::Systems::FBWControllerOutput& output,
+		const ::Systems::FlightControlLawResult& output,
 		const ThrottleLeverSignal& throttle_levers);
 	void refresh_diagnostics();
 	AutomaticFlightControlObservation make_automatic_observation(
 		const SystemStepContext& context,
 		const AircraftDataView& aircraft) const;
 	double alpha_limit(double mach) const;
-	::Systems::FBWControllerInput make_pipeline_input(
+	::Systems::ConditionedFlightControlInput make_pipeline_input(
 		const SystemStepContext& context,
 		const AircraftDataView& aircraft) const;
 

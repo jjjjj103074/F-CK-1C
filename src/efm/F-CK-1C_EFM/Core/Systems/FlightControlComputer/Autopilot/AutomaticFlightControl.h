@@ -67,7 +67,7 @@ struct AutomaticFlightControlObservation
 	bool weight_on_wheels = false;
 };
 
-struct AutomaticFlightControlDemand
+struct LegacyAutomaticFlightControlDemand
 {
 	bool pitch_roll_engaged = false;
 	bool auto_throttle_engaged = false;
@@ -85,7 +85,7 @@ public:
 
 	void register_commands(SystemSetup& setup);
 	void handle_command(const Command& command);
-	const AutomaticFlightControlDemand& step(
+	const LegacyAutomaticFlightControlDemand& step(
 		const AutomaticFlightControlObservation& observation);
 	const AutomaticFlightControlSnapshot& snapshot() const;
 
@@ -137,7 +137,7 @@ private:
 
 	const AutomaticFlightControlConfig config_;
 	AutomaticFlightControlObservation observation_;
-	AutomaticFlightControlDemand demand_;
+	LegacyAutomaticFlightControlDemand demand_;
 	AutomaticFlightControlSnapshot snapshot_;
 	std::vector<Command> pending_commands_;
 	std::uint64_t revision_ = 0;

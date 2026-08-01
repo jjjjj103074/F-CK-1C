@@ -78,11 +78,12 @@ namespace Systems
 {
 void reset_fbw_state(
 	FBWControllerState& state,
-	const FBWResetInput& input)
+	const FlightControlLawResetInput& input)
 {
-	reset_hold_state(state, input.roll, input.pitch);
+	reset_hold_state(state, input.roll_attitude_rad, input.pitch_attitude_rad);
 	reset_rate_loop(state);
-	reset_pitch_loop(state, input.alpha, input.g);
+	reset_pitch_loop(
+		state, input.angle_of_attack_deg, input.normal_acceleration_g);
 	reset_limiters(state);
 }
 
