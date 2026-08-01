@@ -19,5 +19,5 @@ const char* fbw_exit_reason_name(const FBWControllerState& state);
 FlightControlLawResult update_fbw_controller(
 	FBWControllerState& state,
 	const FBWControllerConfig& config,
-	const ConditionedFlightControlInput& input);
+	const FlightControlLawStepInput& input);
 }

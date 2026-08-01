@@ -133,6 +133,10 @@ struct FBWControllerConfig
 	// Project-defined outer bound; control-law CAT limits remain authoritative.
 	double hard_bank_limit_rad = Common::rad(60.0);
 	double hard_min_normal_acceleration_g = -2.5;
+	double pitch_attitude_error_to_rate_gain = 2.5;
+	double vertical_speed_error_to_acceleration_gain = 0.4;
+	double bank_angle_error_to_roll_rate_gain = 2.0;
+	double coordinated_turn_minimum_speed_mps = 30.0;
 	FBWCatParams cat1 = make_fbw_cat1_params();
 	FBWCatParams cat3 = make_fbw_cat3_params();
 	FBWGainSchedulePoint gain_schedule[kFBWGainScheduleSize] = {

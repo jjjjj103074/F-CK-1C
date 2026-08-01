@@ -25,7 +25,7 @@ public:
 
 	void register_commands(SystemSetup& setup);
 	void handle_command(const Command& command);
-	const LegacyAutomaticFlightControlDemand& step(
+	const AutomaticFlightGuidanceReference& step(
 		const AutomaticFlightControlObservation& observation);
 	const AutomaticFlightControlSnapshot& snapshot() const;
 
@@ -54,7 +54,7 @@ private:
 	void apply_disconnect_guards();
 	void reset_vertical_controller();
 	void reset_lateral_controller();
-	void refresh_demand();
+	void refresh_reference();
 	void refresh_snapshot();
 
 	const AutomaticFlightControlConfig config_;
@@ -62,7 +62,7 @@ private:
 	LateralGuidance lateral_guidance_;
 	ExperimentalAutoThrottleAssist auto_throttle_;
 	AutomaticFlightControlObservation observation_;
-	LegacyAutomaticFlightControlDemand demand_;
+	AutomaticFlightGuidanceReference reference_;
 	AutomaticFlightControlSnapshot snapshot_;
 	std::vector<Command> pending_commands_;
 	std::uint64_t revision_ = 0;
@@ -75,8 +75,8 @@ private:
 	double target_altitude_m_ = 0.0;
 	double target_heading_rad_ = 0.0;
 	double target_heading_select_rad_ = 0.0;
-	double pitch_command_ = 0.0;
-	double roll_command_ = 0.0;
+	VerticalGuidanceReference vertical_reference_;
+	LateralGuidanceReference lateral_reference_;
 	AutomaticFlightControlVerticalMode vertical_mode_ =
 		AutomaticFlightControlVerticalMode::Off;
 	AutomaticFlightControlLateralMode lateral_mode_ =

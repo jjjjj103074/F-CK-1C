@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Autopilot/AutomaticFlightControl.h"
+#include "ControlLaws/ControlReferenceSelection.h"
+#include "ControlLaws/GuidanceCoordination.h"
 #include "ControlLaws/ControlLaws.h"
 #include "FlightControlComputerConfig.h"
 #include "InputSignalManagement.h"
@@ -40,9 +42,11 @@ public:
 
 private:
 	void register_commands(SystemSetup& setup);
-	void apply_automatic_flight_control(
-		::Systems::ConditionedFlightControlInput& input,
-		const LegacyAutomaticFlightControlDemand& automatic);
+	::Systems::FlightControlLawStepInput make_control_law_input(
+		const ::Systems::ConditionedFlightControlInput& flight,
+		const AutomaticFlightGuidanceReference& automatic);
+	void apply_experimental_auto_throttle(
+		const AutomaticFlightGuidanceReference& automatic);
 	void refresh_outputs(
 		const ::Systems::FlightControlLawResult& output,
 		const ThrottleLeverSignal& throttle_levers);
@@ -59,6 +63,8 @@ private:
 	InputSignalManagement input_signals_;
 	::Systems::FBWControllerState fbw_;
 	AutomaticFlightControl automatic_flight_control_;
+	SelectedFlightReference selected_reference_;
+	GuidanceCoordinationResult coordinated_reference_;
 	FlightControlActuatorCommand actuator_command_;
 	EngineThrottleCommand engine_throttle_command_;
 	FlightControlComputerSnapshot diagnostics_;

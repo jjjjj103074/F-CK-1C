@@ -38,7 +38,11 @@ AutomaticFlightControlConfig fck1c_automatic_flight_control_config()
 	config.bank_limit_rad =
 		fck1c_flight_control_computer_config()
 			.control_laws.guidance_bank_limit_rad;
-	config.pitch_command_limit = 0.6;
+	config.roll_reference_rate_rad_s =
+		fck1c_flight_control_computer_config()
+			.control_laws.guidance_roll_rate_limit_rad_s;
+	config.pitch_reference_rate_rad_s = Common::rad(10.0);
+	config.vertical_reference_acceleration_mps2 = 2.0;
 	config.altitude_fine_band_m = 50.0 * kMetersPerFoot;
 	config.altitude_hold_band_m = 500.0 * kMetersPerFoot;
 	config.altitude_capture_band_m = 1000.0 * kMetersPerFoot;
@@ -80,7 +84,11 @@ void validate_automatic_flight_control_config(
 	require_positive(config.engage_roll_limit_rad, "roll engage limit");
 	require_positive(config.engage_pitch_limit_rad, "pitch engage limit");
 	require_positive(config.bank_limit_rad, "bank limit");
-	require_positive(config.pitch_command_limit, "pitch command limit");
+	require_positive(config.roll_reference_rate_rad_s, "roll reference rate");
+	require_positive(config.pitch_reference_rate_rad_s, "pitch reference rate");
+	require_positive(
+		config.vertical_reference_acceleration_mps2,
+		"vertical reference acceleration");
 	require_positive(config.altitude_fine_band_m, "altitude fine band");
 	require_positive(config.altitude_hold_band_m, "altitude hold band");
 	require_positive(config.altitude_capture_band_m, "altitude capture band");

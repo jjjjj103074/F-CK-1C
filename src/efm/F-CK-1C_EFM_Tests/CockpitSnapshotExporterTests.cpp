@@ -59,7 +59,9 @@ void test_automatic_flight_control_snapshot_is_exported(
 		Core::AutomaticFlightControlVerticalMode::AltitudeHold;
 	afcs.lateral_mode =
 		Core::AutomaticFlightControlLateralMode::HeadingSelect;
-	afcs.pitch_command_normalized = 0.2;
+	afcs.pitch_attitude_reference_rad = 0.2;
+	afcs.vertical_speed_reference_mps = 3.0;
+	afcs.bank_angle_reference_rad = -0.1;
 	afcs.target_altitude_m = 1000.0 * kMetersPerFoot;
 	afcs.target_speed_mps = 300.0 * kMetersPerSecondPerKnot;
 	afcs.autopilot_disengage_reason =
@@ -72,7 +74,11 @@ void test_automatic_flight_control_snapshot_is_exported(
 	TEST_EXPECT_NEAR(context, cockpit.value(
 		DcsIds::CockpitParams::ApLateralMode), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApPitchCommand), 0.2, kTolerance);
+		DcsIds::CockpitParams::ApPitchAttitudeReference), 0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(
+		DcsIds::CockpitParams::ApVerticalSpeedReference), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(
+		DcsIds::CockpitParams::ApBankAngleReference), -0.1, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(
 		DcsIds::CockpitParams::ApTargetAltitudeFt), 1000.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(

@@ -78,6 +78,7 @@
 	<ClCompile Include="EventLogTests.cpp" />
 	<ClCompile Include="StateCsvWriterTests.cpp" />
     <ClCompile Include="FBWControllerTests.cpp" />
+    <ClCompile Include="FlightControlReferenceTests.cpp" />
     <ClCompile Include="Fck1cEfmCharacterizationTests.cpp" />
     <ClCompile Include="Fck1cEfmTests.cpp" />
 		<ClCompile Include="FrameInputCollectorTests.cpp" />

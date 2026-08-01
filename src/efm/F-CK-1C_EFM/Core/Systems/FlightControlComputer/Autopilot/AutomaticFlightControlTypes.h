@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../FlightControlStatus.h"
+#include "../FlightControlReferences.h"
 
 namespace Core
 {
@@ -14,7 +14,9 @@ struct AutomaticFlightControlConfig
 	double engage_roll_limit_rad = 0.0;
 	double engage_pitch_limit_rad = 0.0;
 	double bank_limit_rad = 0.0;
-	double pitch_command_limit = 0.0;
+	double roll_reference_rate_rad_s = 0.0;
+	double pitch_reference_rate_rad_s = 0.0;
+	double vertical_reference_acceleration_mps2 = 0.0;
 	double altitude_fine_band_m = 0.0;
 	double altitude_hold_band_m = 0.0;
 	double altitude_capture_band_m = 0.0;
@@ -62,14 +64,5 @@ struct AutomaticFlightControlObservation
 	bool weight_on_wheels = false;
 };
 
-struct LegacyAutomaticFlightControlDemand
-{
-	AuthorityState longitudinal_authority = AuthorityState::Manual;
-	AuthorityState lateral_authority = AuthorityState::Manual;
-	bool auto_throttle_engaged = false;
-	double pitch_normalized = 0.0;
-	double roll_normalized = 0.0;
-	double throttle_normalized = 0.0;
-};
 }
 }

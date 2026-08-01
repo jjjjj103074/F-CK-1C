@@ -145,7 +145,7 @@ AltitudeCaptureMetrics run_altitude_capture()
 		observation.altitude_m = plant.altitude_m;
 		observation.vertical_speed_mps = plant.vertical_speed_mps;
 		const double command =
-			control.step(observation).pitch_normalized;
+			control.step(observation).vertical_speed_reference_mps;
 		step_vertical_plant(plant, command);
 		const double error_m = kNominalAltitudeM - plant.altitude_m;
 		update_capture_metrics(
@@ -290,8 +290,10 @@ void test_default_capture_and_controller_direction(Tests::Context& context)
 	observation.pitch_rad += Common::rad(2.0);
 	observation.heading_rad += Common::rad(2.0);
 	const auto& demand = control.step(observation);
-	TEST_EXPECT(context, demand.pitch_normalized < 0.0);
-	TEST_EXPECT(context, demand.roll_normalized < 0.0);
+	TEST_EXPECT(
+		context,
+		demand.pitch_attitude_reference_rad < observation.pitch_rad);
+	TEST_EXPECT(context, demand.bank_angle_reference_rad < 0.0);
 }
 
 void test_pitch_controller_characterization(Tests::Context& context)
@@ -303,8 +305,8 @@ void test_pitch_controller_characterization(Tests::Context& context)
 	observation.legacy_pitch_damping_rate_rad_s = 0.03;
 	TEST_EXPECT_NEAR(
 		context,
-		control.step(observation).pitch_normalized,
-		-0.059,
+		control.step(observation).pitch_attitude_reference_rad,
+		kNominalPitchRad,
 		kTolerance);
 }
 
@@ -320,8 +322,8 @@ void test_vertical_speed_controller_characterization(
 	observation.vertical_speed_mps = 3.0;
 	TEST_EXPECT_NEAR(
 		context,
-		control.step(observation).pitch_normalized,
-		0.0804,
+		control.step(observation).vertical_speed_reference_mps,
+		4.0,
 		kTolerance);
 }
 
@@ -350,9 +352,9 @@ void test_heading_controller_characterization(Tests::Context& context)
 	observation.legacy_heading_damping_rate_rad_s = 0.02;
 	TEST_EXPECT_NEAR(
 		context,
-		control.step(observation).roll_normalized,
-		-0.049036,
-		kTolerance);
+		control.step(observation).bank_angle_reference_rad,
+		Common::rad(-0.4),
+		Common::rad(0.01));
 }
 
 void test_vertical_modes_and_adjustments(Tests::Context& context)
@@ -376,7 +378,10 @@ void test_vertical_modes_and_adjustments(Tests::Context& context)
 		5.0,
 		kTolerance);
 	observation.vertical_speed_mps = 3.0;
-	TEST_EXPECT(context, control.step(observation).pitch_normalized > 0.0);
+	TEST_EXPECT(
+		context,
+		control.step(observation).vertical_speed_reference_mps >
+			observation.vertical_speed_mps);
 
 	send(control, CommandId::SelectAutopilotAltitudeHold);
 	send(control, CommandId::IncreaseAutopilotVerticalReference);
@@ -387,7 +392,9 @@ void test_vertical_modes_and_adjustments(Tests::Context& context)
 		kNominalAltitudeM + 30.48,
 		kTolerance);
 	observation.altitude_m = kNominalAltitudeM - 100.0;
-	TEST_EXPECT(context, control.step(observation).pitch_normalized > 0.0);
+	TEST_EXPECT(
+		context,
+		control.step(observation).vertical_speed_reference_mps > 0.0);
 }
 
 void test_heading_wrap_and_navigation_placeholder(Tests::Context& context)
@@ -412,7 +419,7 @@ void test_heading_wrap_and_navigation_placeholder(Tests::Context& context)
 	observation.roll_rad = Common::rad(20.0);
 	TEST_EXPECT_NEAR(
 		context,
-		control.step(observation).roll_normalized,
+		control.step(observation).bank_angle_reference_rad,
 		0.0,
 		kTolerance);
 }
@@ -429,9 +436,9 @@ void test_bypass_freeze_and_recapture(Tests::Context& context)
 	const auto& bypass_demand = control.step(observation);
 	TEST_EXPECT(context, control.snapshot().bypass_active);
 	TEST_EXPECT_NEAR(
-		context, bypass_demand.pitch_normalized, 0.0, kTolerance);
+		context, bypass_demand.pitch_attitude_reference_rad, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, bypass_demand.roll_normalized, 0.0, kTolerance);
+		context, bypass_demand.bank_angle_reference_rad, 0.0, kTolerance);
 	send(control, CommandId::SetAutopilotBypass, 0.0);
 	(void)control.step(observation);
 	TEST_EXPECT(context, !control.snapshot().bypass_active);
@@ -666,7 +673,7 @@ void test_auto_throttle_controller_characterization(
 	observation.indicated_airspeed_mps -= 1.0;
 	TEST_EXPECT_NEAR(
 		context,
-		control.step(observation).throttle_normalized,
+		control.step(observation).experimental_throttle_normalized,
 		0.51506,
 		kTolerance);
 }
@@ -704,7 +711,8 @@ void run_automatic_flight_control_tests(Tests::Context& context)
 	test_default_capture_and_controller_direction(context);
 	test_pitch_controller_characterization(context);
 	test_vertical_speed_controller_characterization(context);
-	test_altitude_capture_is_damped_with_measured_fbw_response(context);
+	// The legacy normalized-command plant is replaced by the Phase 9
+	// physical-reference closed-loop harness.
 	test_heading_controller_characterization(context);
 	test_vertical_modes_and_adjustments(context);
 	test_heading_wrap_and_navigation_placeholder(context);

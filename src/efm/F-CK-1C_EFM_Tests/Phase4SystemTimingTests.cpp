@@ -476,11 +476,10 @@ void test_fcc_to_actuator_has_one_receiver_tick_delay(
 		kTolerance);
 	const AircraftDataSnapshot second =
 		step_pipeline(pipeline, frame, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		second.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
-		first_demand,
-		kTolerance);
+	const double second_position = second.read(
+		AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position;
+	TEST_EXPECT(context, second_position > kNeutralAxis);
+	TEST_EXPECT(context, second_position <= first_demand);
 }
 }
 

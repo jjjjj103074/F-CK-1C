@@ -25,6 +25,7 @@ $validUnits = @(
     'kelvin',
     'knots',
     'meters',
+    'meters_per_second',
     'normalized',
     'radians',
     'revision',

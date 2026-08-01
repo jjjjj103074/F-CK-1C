@@ -11,8 +11,9 @@ static const char* const MaxPowerSwitch = "FM_MAXPOWER_SWITCH";
 static const char* const ApMasterEngaged = "AP_MASTER_ENGAGED";
 static const char* const ApVerticalMode = "AP_VERT_MODE";
 static const char* const ApLateralMode = "AP_LAT_MODE";
-static const char* const ApPitchCommand = "AP_PITCH_CMD";
-static const char* const ApRollCommand = "AP_ROLL_CMD";
+static const char* const ApPitchAttitudeReference = "AP_PITCH_REFERENCE_RAD";
+static const char* const ApVerticalSpeedReference = "AP_VERTICAL_SPEED_REFERENCE_MPS";
+static const char* const ApBankAngleReference = "AP_BANK_REFERENCE_RAD";
 static const char* const ApThrottleCommand = "AP_THROTTLE_CMD";
 static const char* const ApBypassActive = "AP_BYPASS_ACTIVE";
 static const char* const ApAutoThrottleEngaged = "AP_AT_ENGAGED";
@@ -92,8 +93,9 @@ static constexpr Entry Catalog[] = {
     { ApMasterEngaged, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApVerticalMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApLateralMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
-    { ApPitchCommand, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
-    { ApRollCommand, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApPitchAttitudeReference, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApVerticalSpeedReference, "cpp_to_lua", "meters_per_second", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
+    { ApBankAngleReference, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApThrottleCommand, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApBypassActive, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApAutoThrottleEngaged, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },

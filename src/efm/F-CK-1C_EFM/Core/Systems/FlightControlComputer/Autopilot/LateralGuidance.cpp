@@ -7,8 +7,6 @@
 
 namespace
 {
-constexpr double kMinimumNormalizedCommand = -1.0;
-constexpr double kMaximumNormalizedCommand = 1.0;
 constexpr double kHeadingIntegralLimit = 0.5;
 
 double wrap_pi(double angle_rad)
@@ -27,14 +25,20 @@ LateralGuidance::LateralGuidance(
 {
 }
 
-double LateralGuidance::update(
+LateralGuidanceReference LateralGuidance::update(
 	const AutomaticFlightControlObservation& observation,
 	double target_heading_rad,
 	bool active)
 {
 	if (!active)
 	{
-		return 0.0;
+		reset();
+		return {};
+	}
+	if (!active_last_tick_)
+	{
+		bank_reference_rad_ = observation.roll_rad;
+		active_last_tick_ = true;
 	}
 	const double heading_error =
 		wrap_pi(target_heading_rad - observation.heading_rad);
@@ -47,16 +51,19 @@ double LateralGuidance::update(
 			config_.heading_ki * heading_integral_,
 		-config_.bank_limit_rad,
 		config_.bank_limit_rad);
-	const double bank_error = desired_bank - observation.roll_rad;
-	const double command = config_.bank_kp * bank_error -
-		config_.bank_kd * observation.legacy_heading_damping_rate_rad_s;
-	return Common::limit(
-		command, kMinimumNormalizedCommand, kMaximumNormalizedCommand);
+	const double maximum_step =
+		config_.roll_reference_rate_rad_s * observation.dt_s;
+	bank_reference_rad_ = Common::limit(
+		desired_bank,
+		bank_reference_rad_ - maximum_step,
+		bank_reference_rad_ + maximum_step);
+	return { bank_reference_rad_ };
 }
 
 void LateralGuidance::reset()
 {
 	heading_integral_ = 0.0;
+	active_last_tick_ = false;
 }
 }
 }

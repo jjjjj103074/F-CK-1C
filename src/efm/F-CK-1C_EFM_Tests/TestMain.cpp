@@ -20,6 +20,7 @@ void run_fck1c_efm_characterization_tests(Tests::Context& context);
 void run_fck1c_efm_tests(Tests::Context& context);
 void run_frame_input_collector_tests(Tests::Context& context);
 void run_flight_control_actuation_system_tests(Tests::Context& context);
+void run_flight_control_reference_tests(Tests::Context& context);
 void run_configuration_ownership_tests(Tests::Context& context);
 void run_configuration_and_mode_tests(Tests::Context& context);
 void run_input_system_tests(Tests::Context& context);
@@ -74,6 +75,7 @@ int main()
 	run_fck1c_efm_tests(context);
 	run_frame_input_collector_tests(context);
 	run_flight_control_actuation_system_tests(context);
+	run_flight_control_reference_tests(context);
 	run_configuration_ownership_tests(context);
 	run_configuration_and_mode_tests(context);
 	run_system_pipeline_data_tests(context);

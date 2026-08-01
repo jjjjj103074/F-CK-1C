@@ -54,12 +54,24 @@ constexpr const char* kStateCsvHeader =
 	"fuel_total_flow_kg_per_s,"
 	"flight_control_developer_g_limiter_override_available,"
 	"flight_control_developer_g_limiter_override_active,"
+	"flight_control_normal_acceleration_reference_g,"
+	"flight_control_pitch_rate_feedforward_rad_s,"
+	"flight_control_roll_rate_reference_rad_s,"
+	"flight_control_sideslip_reference_rad,"
+	"flight_control_yaw_rate_feedforward_rad_s,"
+	"flight_control_elevator_command_normalized,"
+	"flight_control_aileron_command_normalized,"
+	"flight_control_rudder_command_normalized,"
+	"flight_control_constraint_reason,flight_control_vertical_constrained,"
+	"flight_control_lateral_constrained,"
 	"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,"
 	"afcs_vertical_mode,afcs_lateral_mode,"
-	"afcs_pitch_command_normalized,afcs_roll_command_normalized,"
+	"afcs_pitch_attitude_reference_rad,afcs_vertical_speed_reference_mps,"
+	"afcs_bank_angle_reference_rad,"
 	"afcs_throttle_command_normalized,afcs_target_altitude_m,"
 	"afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,"
-	"afcs_target_vertical_speed_mps,afcs_ap_engage_rejection_reason,"
+	"afcs_target_vertical_speed_mps,afcs_longitudinal_authority,"
+	"afcs_lateral_authority,afcs_ap_engage_rejection_reason,"
 	"afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,"
 	"afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,"
 	"shake_amplitude\n";
@@ -255,14 +267,17 @@ bool append_automatic_flight_control(
 		row.append_bool(afcs.auto_throttle_engaged) &&
 		row.append_double(static_cast<double>(afcs.vertical_mode)) &&
 		row.append_double(static_cast<double>(afcs.lateral_mode)) &&
-		row.append_double(afcs.pitch_command_normalized) &&
-		row.append_double(afcs.roll_command_normalized) &&
+		row.append_double(afcs.pitch_attitude_reference_rad) &&
+		row.append_double(afcs.vertical_speed_reference_mps) &&
+		row.append_double(afcs.bank_angle_reference_rad) &&
 		row.append_double(afcs.throttle_command_normalized) &&
 		row.append_double(afcs.target_altitude_m) &&
 		row.append_double(afcs.target_heading_rad) &&
 		row.append_double(afcs.target_speed_mps) &&
 		row.append_double(afcs.target_pitch_rad) &&
 		row.append_double(afcs.target_vertical_speed_mps) &&
+		row.append_double(static_cast<double>(afcs.longitudinal_authority)) &&
+		row.append_double(static_cast<double>(afcs.lateral_authority)) &&
 		row.append_double(static_cast<double>(
 			afcs.autopilot_engage_rejection_reason)) &&
 		row.append_double(static_cast<double>(
@@ -271,6 +286,25 @@ bool append_automatic_flight_control(
 			afcs.auto_throttle_engage_rejection_reason)) &&
 		row.append_double(static_cast<double>(
 			afcs.auto_throttle_disengage_reason));
+}
+
+bool append_flight_control_computer(
+	CsvRowBuilder& row,
+	const Core::FlightControlComputerSnapshot& fcc)
+{
+	return row.append_bool(fcc.developer_g_limiter_override_available) &&
+		row.append_bool(fcc.developer_g_limiter_override_active) &&
+		row.append_double(fcc.normal_acceleration_reference_g) &&
+		row.append_double(fcc.pitch_rate_feedforward_rad_s) &&
+		row.append_double(fcc.roll_rate_reference_rad_s) &&
+		row.append_double(fcc.sideslip_reference_rad) &&
+		row.append_double(fcc.yaw_rate_feedforward_rad_s) &&
+		row.append_double(fcc.elevator_command_normalized) &&
+		row.append_double(fcc.aileron_command_normalized) &&
+		row.append_double(fcc.rudder_command_normalized) &&
+		row.append_double(static_cast<double>(fcc.constraint_reason)) &&
+		row.append_bool(fcc.vertical_constrained) &&
+		row.append_bool(fcc.lateral_constrained);
 }
 
 int io_error_code()
@@ -355,10 +389,8 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 		append_landing_gear(row, output.landing_gear) &&
 		append_suspension(row, output) &&
 		append_fuel(row, output.fuel) &&
-		row.append_bool(output.cockpit.flight_control_computer.
-			developer_g_limiter_override_available) &&
-		row.append_bool(output.cockpit.flight_control_computer.
-			developer_g_limiter_override_active) &&
+		append_flight_control_computer(
+			row, output.cockpit.flight_control_computer) &&
 		append_automatic_flight_control(
 			row,
 			output.cockpit.automatic_flight_control) &&

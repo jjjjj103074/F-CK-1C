@@ -6,8 +6,6 @@
 
 namespace
 {
-constexpr double kVerticalSpeedIntegralLimit = 5.0;
-constexpr double kAltitudeVerticalSpeedIntegralLimit = 3.0;
 constexpr double kFineAltitudeGain = 0.15;
 constexpr double kHoldAltitudeGain = 0.5;
 constexpr double kCaptureAltitudeGain = 1.5;
@@ -35,77 +33,93 @@ VerticalGuidance::VerticalGuidance(
 {
 }
 
-double VerticalGuidance::update(
+VerticalGuidanceReference VerticalGuidance::update(
 	const AutomaticFlightControlObservation& observation,
 	const VerticalGuidanceTarget& target,
 	bool active)
 {
 	if (!active)
 	{
-		return 0.0;
+		reset();
+		return {};
+	}
+	if (target.mode != previous_mode_)
+	{
+		pitch_reference_rad_ = observation.pitch_rad;
+		vertical_speed_reference_mps_ = observation.vertical_speed_mps;
+		previous_mode_ = target.mode;
 	}
 	switch (target.mode)
 	{
 	case AutomaticFlightControlVerticalMode::PitchHold:
-		return update_pitch_hold(observation, target.pitch_attitude_rad);
+		return update_pitch_reference(observation, target.pitch_attitude_rad);
 	case AutomaticFlightControlVerticalMode::VerticalSpeedHold:
-		return update_vertical_speed_hold(
+		return update_vertical_speed_reference(
 			observation, target.vertical_speed_mps);
 	case AutomaticFlightControlVerticalMode::AltitudeHold:
-		return update_altitude_hold(observation, target.altitude_m);
+		return update_altitude_reference(observation, target.altitude_m);
 	default:
-		return 0.0;
+		reset();
+		return {};
 	}
+}
+
+VerticalGuidanceReference VerticalGuidance::update_pitch_reference(
+	const AutomaticFlightControlObservation& observation,
+	double target_pitch_rad)
+{
+	pitch_reference_rad_ = rate_limit(
+		pitch_reference_rad_,
+		target_pitch_rad,
+		config_.pitch_reference_rate_rad_s,
+		observation.dt_s);
+	return {
+		VerticalGuidanceReferenceType::PitchAttitude,
+		pitch_reference_rad_,
+		0.0
+	};
+}
+
+VerticalGuidanceReference VerticalGuidance::update_vertical_speed_reference(
+	const AutomaticFlightControlObservation& observation,
+	double target_vertical_speed_mps)
+{
+	vertical_speed_reference_mps_ = rate_limit(
+		vertical_speed_reference_mps_,
+		target_vertical_speed_mps,
+		config_.vertical_reference_acceleration_mps2,
+		observation.dt_s);
+	return {
+		VerticalGuidanceReferenceType::VerticalSpeed,
+		0.0,
+		vertical_speed_reference_mps_
+	};
+}
+
+VerticalGuidanceReference VerticalGuidance::update_altitude_reference(
+	const AutomaticFlightControlObservation& observation,
+	double target_altitude_m)
+{
+	const double target_vertical_speed_mps =
+		altitude_desired_vertical_speed(
+			observation, target_altitude_m - observation.altitude_m);
+	return update_vertical_speed_reference(
+		observation, target_vertical_speed_mps);
 }
 
 void VerticalGuidance::reset()
 {
-	vertical_speed_integral_ = 0.0;
+	previous_mode_ = AutomaticFlightControlVerticalMode::Off;
 }
 
-double VerticalGuidance::update_pitch_hold(
-	const AutomaticFlightControlObservation& observation,
-	double target_pitch_rad) const
+double VerticalGuidance::rate_limit(
+	double current,
+	double target,
+	double maximum_rate_per_s,
+	double dt_s) const
 {
-	const double error = target_pitch_rad - observation.pitch_rad;
-	const double command = config_.pitch_kp * error -
-		config_.pitch_kd * observation.legacy_pitch_damping_rate_rad_s;
-	return Common::limit(
-		command, -config_.pitch_command_limit, config_.pitch_command_limit);
-}
-
-double VerticalGuidance::update_vertical_speed_hold(
-	const AutomaticFlightControlObservation& observation,
-	double target_vertical_speed_mps)
-{
-	const double error =
-		target_vertical_speed_mps - observation.vertical_speed_mps;
-	vertical_speed_integral_ = Common::limit(
-		vertical_speed_integral_ + error * observation.dt_s,
-		-kVerticalSpeedIntegralLimit,
-		kVerticalSpeedIntegralLimit);
-	const double command = config_.vertical_speed_kp * error +
-		config_.vertical_speed_ki * vertical_speed_integral_;
-	return Common::limit(
-		command, -config_.pitch_command_limit, config_.pitch_command_limit);
-}
-
-double VerticalGuidance::update_altitude_hold(
-	const AutomaticFlightControlObservation& observation,
-	double target_altitude_m)
-{
-	const double altitude_error = target_altitude_m - observation.altitude_m;
-	const double desired_vertical_speed =
-		altitude_desired_vertical_speed(observation, altitude_error);
-	const double error = desired_vertical_speed - observation.vertical_speed_mps;
-	vertical_speed_integral_ = Common::limit(
-		vertical_speed_integral_ + error * observation.dt_s,
-		-kAltitudeVerticalSpeedIntegralLimit,
-		kAltitudeVerticalSpeedIntegralLimit);
-	const double command = config_.altitude_vertical_speed_kp * error +
-		config_.altitude_vertical_speed_ki * vertical_speed_integral_;
-	return Common::limit(
-		command, -config_.pitch_command_limit, config_.pitch_command_limit);
+	const double maximum_step = maximum_rate_per_s * dt_s;
+	return Common::limit(target, current - maximum_step, current + maximum_step);
 }
 
 double VerticalGuidance::altitude_desired_vertical_speed(

@@ -2,6 +2,9 @@
 
 #include "../SystemPipeline.h"
 #include "../SystemUpdateRates.h"
+#include "ControlLaws/ConfigurationAndMode.h"
+#include "ControlLaws/ControlLawMath.h"
+#include "ControlLaws/PilotCommandLaw.h"
 #include "Common/Table.h"
 
 namespace
@@ -105,39 +108,55 @@ const FlightControlActuatorCommand& FlightControlComputer::step(
 	raw.alpha_limit_deg = alpha_limit(raw.observation.mach);
 	::Systems::ConditionedFlightControlInput input =
 		input_signals_.condition(raw, fbw_.mode_target);
-	const LegacyAutomaticFlightControlDemand& automatic =
+	const AutomaticFlightGuidanceReference& automatic =
 		automatic_flight_control_.step(
 			make_automatic_observation(raw, input));
-	apply_automatic_flight_control(input, automatic);
+	const ::Systems::FlightControlLawStepInput control_law_input =
+		make_control_law_input(input, automatic);
 	const ::Systems::FlightControlLawResult output =
 		::Systems::update_fbw_controller(
-			fbw_, config_.control_laws, input);
+			fbw_, config_.control_laws, control_law_input);
+	apply_experimental_auto_throttle(automatic);
 	refresh_outputs(output, request.throttle_levers);
 	refresh_diagnostics();
 	return actuator_command_;
 }
 
-void FlightControlComputer::apply_automatic_flight_control(
-	::Systems::ConditionedFlightControlInput& input,
-	const LegacyAutomaticFlightControlDemand& automatic)
+::Systems::FlightControlLawStepInput
+FlightControlComputer::make_control_law_input(
+	const ::Systems::ConditionedFlightControlInput& flight,
+	const AutomaticFlightGuidanceReference& automatic)
 {
-	if (automatic.longitudinal_authority == AuthorityState::Automatic)
-	{
-		input.pilot_pitch_normalized = automatic.pitch_normalized;
-		input.pilot_pitch_raw_normalized = automatic.pitch_normalized;
-	}
-	if (automatic.lateral_authority == AuthorityState::Automatic)
-	{
-		input.pilot_roll_normalized = automatic.roll_normalized;
-		input.pilot_roll_raw_normalized = automatic.roll_normalized;
-	}
-	if (!automatic.auto_throttle_engaged)
+	const ::Systems::FBWCatParams cat = ::Systems::fbw_blend_cat_params(
+		config_.control_laws.cat1,
+		config_.control_laws.cat3,
+		flight.cat_mode_blend);
+	const ::Systems::FBWGainScheduleValues gains =
+		::Systems::fbw_eval_gain_schedule(
+			config_.control_laws, flight.dynamic_pressure_pa);
+	const ::Systems::ManeuverEnvelope envelope =
+		::Systems::make_maneuver_envelope(
+			config_.control_laws,
+			{ cat, flight.alpha_limit_deg, fbw_.g_limiter_override });
+	const CoordinatedManeuverReference manual =
+		::Systems::make_pilot_maneuver_reference(
+			{ flight, config_.control_laws, cat, gains, envelope });
+	selected_reference_ = select_flight_reference(manual, automatic);
+	coordinated_reference_ = coordinate_guidance(
+		{ flight, selected_reference_, envelope, config_.control_laws });
+	return { flight, coordinated_reference_.reference };
+}
+
+void FlightControlComputer::apply_experimental_auto_throttle(
+	const AutomaticFlightGuidanceReference& automatic)
+{
+	if (!automatic.experimental_auto_throttle_engaged)
 	{
 		fbw_.throttle_blend = 0.0;
 		return;
 	}
-	fbw_.throttle_cmd_left = automatic.throttle_normalized;
-	fbw_.throttle_cmd_right = automatic.throttle_normalized;
+	fbw_.throttle_cmd_left = automatic.experimental_throttle_normalized;
+	fbw_.throttle_cmd_right = automatic.experimental_throttle_normalized;
 	fbw_.throttle_blend = 1.0;
 	fbw_.throttle_override = false;
 }
@@ -172,6 +191,29 @@ void FlightControlComputer::refresh_diagnostics()
 	++diagnostics_.status.revision;
 	diagnostics_.developer_g_limiter_override_active =
 		fbw_.g_limiter_override;
+	const CoordinatedManeuverReference& reference =
+		coordinated_reference_.reference;
+	diagnostics_.normal_acceleration_reference_g =
+		reference.longitudinal.normal_acceleration_reference_g;
+	diagnostics_.pitch_rate_feedforward_rad_s =
+		reference.longitudinal.pitch_rate_feedforward_rad_s;
+	diagnostics_.roll_rate_reference_rad_s =
+		reference.lateral_directional.roll_rate_reference_rad_s;
+	diagnostics_.sideslip_reference_rad =
+		reference.lateral_directional.sideslip_reference_rad;
+	diagnostics_.yaw_rate_feedforward_rad_s =
+		reference.lateral_directional.yaw_rate_feedforward_rad_s;
+	diagnostics_.elevator_command_normalized =
+		actuator_command_.elevator_normalized;
+	diagnostics_.aileron_command_normalized =
+		actuator_command_.aileron_normalized;
+	diagnostics_.rudder_command_normalized =
+		actuator_command_.rudder_normalized;
+	diagnostics_.constraint_reason = coordinated_reference_.constraint.reason;
+	diagnostics_.vertical_constrained =
+		coordinated_reference_.constraint.vertical_constrained;
+	diagnostics_.lateral_constrained =
+		coordinated_reference_.constraint.lateral_constrained;
 }
 
 RawFlightControlInput FlightControlComputer::make_pipeline_input(

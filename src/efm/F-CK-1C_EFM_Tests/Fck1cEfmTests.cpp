@@ -99,7 +99,7 @@ void expect_control_baseline(
 	TEST_EXPECT_NEAR(context, actual.roll_input, -0.3, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.yaw_input, 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.elevator_command,
-		-0.0013021675833063736, kTolerance);
+		-0.0015025377407544614, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.aileron_command,
 		-0.00047348484848484844, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.rudder_command,
@@ -136,9 +136,9 @@ void expect_golden_frame(
 	const Core::FrameOutput& actual)
 {
 	expect_vec3(context, actual.force_moment.force,
-		{ 17848.989928072871, 106942.81643657925, 7483.5040063691395 });
+		{ 17848.989928072871, 106953.27847226626, 7483.5040063691395 });
 	expect_vec3(context, actual.force_moment.moment,
-		{ 32740.45631341288, -2156.3037760081329, -42464.632148680888 });
+		{ 32743.594924118985, -2156.3037760081329, -42542.469694192245 });
 	expect_vec3(context, actual.force_moment.center_of_mass, { 0.2, -0.1, 0.3 });
 	expect_engine_baseline(context, actual.engines[0]);
 	expect_engine_baseline(context, actual.engines[1]);

@@ -1,44 +1,14 @@
 #pragma once
 
+#include "../../Contracts/CockpitContracts.h"
+
 namespace Core
 {
 namespace Systems
 {
-enum class AuthorityState
-{
-	Manual,
-	Automatic,
-	Bypassed,
-	StickSteering
-};
-
-enum class ConstraintReason
-{
-	None,
-	GuidanceBankLimit,
-	GuidanceLoadFactorLimit,
-	LateralConstrainedByVerticalAuthority,
-	VerticalReferenceUnmaintainable,
-	HardAngleOfAttackLimit,
-	HardLoadFactorLimit,
-	HardRateLimit,
-	ActuatorAuthority
-};
-
-enum class DegradationReason
-{
-	None,
-	SustainedVerticalTrackingFailure,
-	SustainedLateralTrackingFailure,
-	SustainedActuatorSaturation
-};
-
-enum class DisconnectReason
-{
-	None,
-	PilotCommand,
-	SafetyCondition,
-	InvalidInput
-};
+using AuthorityState = Core::FlightControlAuthorityState;
+using ConstraintReason = Core::FlightControlConstraintReason;
+using DegradationReason = Core::FlightControlDegradationReason;
+using DisconnectReason = Core::FlightControlDisconnectReason;
 }
 }

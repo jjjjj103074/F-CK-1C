@@ -50,6 +50,43 @@ enum class AutomaticFlightControlReason
 	MachLimit = 6
 };
 
+enum class FlightControlAuthorityState
+{
+	Manual,
+	Automatic,
+	Bypassed,
+	StickSteering
+};
+
+enum class FlightControlConstraintReason
+{
+	None,
+	GuidanceBankLimit,
+	GuidanceLoadFactorLimit,
+	LateralConstrainedByVerticalAuthority,
+	VerticalReferenceUnmaintainable,
+	HardAngleOfAttackLimit,
+	HardLoadFactorLimit,
+	HardRateLimit,
+	ActuatorAuthority
+};
+
+enum class FlightControlDegradationReason
+{
+	None,
+	SustainedVerticalTrackingFailure,
+	SustainedLateralTrackingFailure,
+	SustainedActuatorSaturation
+};
+
+enum class FlightControlDisconnectReason
+{
+	None,
+	PilotCommand,
+	SafetyCondition,
+	InvalidInput
+};
+
 enum class MasterArmMode
 {
 	Off = 0,
@@ -161,6 +198,18 @@ struct FlightControlComputerSnapshot
 	SnapshotStatus status;
 	bool developer_g_limiter_override_available = false;
 	bool developer_g_limiter_override_active = false;
+	double normal_acceleration_reference_g = 1.0;
+	double pitch_rate_feedforward_rad_s = 0.0;
+	double roll_rate_reference_rad_s = 0.0;
+	double sideslip_reference_rad = 0.0;
+	double yaw_rate_feedforward_rad_s = 0.0;
+	double elevator_command_normalized = 0.0;
+	double aileron_command_normalized = 0.0;
+	double rudder_command_normalized = 0.0;
+	FlightControlConstraintReason constraint_reason =
+		FlightControlConstraintReason::None;
+	bool vertical_constrained = false;
+	bool lateral_constrained = false;
 };
 
 struct AutomaticFlightControlSnapshot
@@ -173,14 +222,19 @@ struct AutomaticFlightControlSnapshot
 		AutomaticFlightControlVerticalMode::Off;
 	AutomaticFlightControlLateralMode lateral_mode =
 		AutomaticFlightControlLateralMode::Off;
-	double pitch_command_normalized = 0.0;
-	double roll_command_normalized = 0.0;
+	double pitch_attitude_reference_rad = 0.0;
+	double vertical_speed_reference_mps = 0.0;
+	double bank_angle_reference_rad = 0.0;
 	double throttle_command_normalized = 0.0;
 	double target_altitude_m = 0.0;
 	double target_heading_rad = 0.0;
 	double target_speed_mps = 0.0;
 	double target_pitch_rad = 0.0;
 	double target_vertical_speed_mps = 0.0;
+	FlightControlAuthorityState longitudinal_authority =
+		FlightControlAuthorityState::Manual;
+	FlightControlAuthorityState lateral_authority =
+		FlightControlAuthorityState::Manual;
 	AutomaticFlightControlReason autopilot_engage_rejection_reason =
 		AutomaticFlightControlReason::None;
 	AutomaticFlightControlReason autopilot_disengage_reason =

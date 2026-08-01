@@ -30,8 +30,12 @@ CockpitSnapshotExporter::CockpitSnapshotExporter(cockpit_param_api api)
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApLateralMode),
 		cockpit_parameter_writer(
 			DcsIds::CockpitParams::ApAutoThrottleEngaged),
-		cockpit_parameter_writer(DcsIds::CockpitParams::ApPitchCommand),
-		cockpit_parameter_writer(DcsIds::CockpitParams::ApRollCommand),
+		cockpit_parameter_writer(
+			DcsIds::CockpitParams::ApPitchAttitudeReference),
+		cockpit_parameter_writer(
+			DcsIds::CockpitParams::ApVerticalSpeedReference),
+		cockpit_parameter_writer(
+			DcsIds::CockpitParams::ApBankAngleReference),
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApThrottleCommand),
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApBypassActive),
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApTargetAltitudeFt),
@@ -94,8 +98,11 @@ CockpitSnapshotExporter::export_automatic_flight_control(
 	WRITE_AP(ApLateralMode, static_cast<double>(snapshot.lateral_mode));
 	WRITE_AP(ApAutoThrottleEngaged,
 		snapshot.auto_throttle_engaged ? 1.0 : 0.0);
-	WRITE_AP(ApPitchCommand, snapshot.pitch_command_normalized);
-	WRITE_AP(ApRollCommand, snapshot.roll_command_normalized);
+	WRITE_AP(ApPitchAttitudeReference,
+		snapshot.pitch_attitude_reference_rad);
+	WRITE_AP(ApVerticalSpeedReference,
+		snapshot.vertical_speed_reference_mps);
+	WRITE_AP(ApBankAngleReference, snapshot.bank_angle_reference_rad);
 	WRITE_AP(ApThrottleCommand, snapshot.throttle_command_normalized);
 	WRITE_AP(ApBypassActive, snapshot.bypass_active ? 1.0 : 0.0);
 	WRITE_AP(ApTargetAltitudeFt,

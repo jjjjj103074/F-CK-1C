@@ -129,11 +129,21 @@ bool valid_controller_parameters(const Systems::FBWControllerConfig& config)
 		config.region_low_kts, config.region_high_kts,
 		config.region_approach_kts, config.region_min_kts,
 		config.region_alpha1_deg, config.region_alpha2_deg,
-		config.alpha_cmd_per_stick_deg, config.q_cmd_land_max_deg
+		config.alpha_cmd_per_stick_deg, config.q_cmd_land_max_deg,
+		config.pitch_attitude_error_to_rate_gain,
+		config.vertical_speed_error_to_acceleration_gain,
+		config.bank_angle_error_to_roll_rate_gain,
+		config.coordinated_turn_minimum_speed_mps
 	});
+	const bool valid_guidance_coordination =
+		config.pitch_attitude_error_to_rate_gain > 0.0 &&
+		config.vertical_speed_error_to_acceleration_gain > 0.0 &&
+		config.bank_angle_error_to_roll_rate_gain > 0.0 &&
+		config.coordinated_turn_minimum_speed_mps > 0.0;
 	return finite && valid_controller_regions(config) &&
 		valid_signal_time_constants(config) &&
-		valid_controller_outer_limits(config);
+		valid_controller_outer_limits(config) &&
+		valid_guidance_coordination;
 }
 }
 

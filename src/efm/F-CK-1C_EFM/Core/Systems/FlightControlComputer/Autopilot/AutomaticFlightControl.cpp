@@ -63,7 +63,7 @@ AutomaticFlightControl::AutomaticFlightControl(
 	validate_automatic_flight_control_config(config_);
 	observation_.weight_on_wheels = initial_weight_on_wheels;
 	snapshot_.status = { true, 0 };
-	refresh_demand();
+	refresh_reference();
 	refresh_snapshot();
 }
 
@@ -324,8 +324,8 @@ void AutomaticFlightControl::enter_bypass()
 {
 	if (!master_engaged_ || bypass_active_) return;
 	bypass_active_ = true;
-	pitch_command_ = 0.0;
-	roll_command_ = 0.0;
+	vertical_reference_ = {};
+	lateral_reference_ = {};
 }
 
 void AutomaticFlightControl::exit_bypass()
@@ -362,7 +362,7 @@ void AutomaticFlightControl::recapture_lateral_reference()
 	}
 }
 
-const LegacyAutomaticFlightControlDemand& AutomaticFlightControl::step(
+const AutomaticFlightGuidanceReference& AutomaticFlightControl::step(
 	const AutomaticFlightControlObservation& observation)
 {
 	observation_ = observation;
@@ -371,12 +371,12 @@ const LegacyAutomaticFlightControlDemand& AutomaticFlightControl::step(
 	update_pitch_stick_steering();
 	if (bypass_active_)
 	{
-		pitch_command_ = 0.0;
-		roll_command_ = 0.0;
+		vertical_reference_ = {};
+		lateral_reference_ = {};
 	}
 	else
 	{
-		pitch_command_ = vertical_guidance_.update(
+		vertical_reference_ = vertical_guidance_.update(
 			observation_,
 			{ vertical_mode_,
 				target_pitch_rad_,
@@ -390,14 +390,14 @@ const LegacyAutomaticFlightControlDemand& AutomaticFlightControl::step(
 		const double target_heading =
 			lateral_mode_ == AutomaticFlightControlLateralMode::HeadingSelect
 			? target_heading_select_rad_ : target_heading_rad_;
-		roll_command_ = lateral_guidance_.update(
+		lateral_reference_ = lateral_guidance_.update(
 			observation_, target_heading, lateral_active);
 	}
 	(void)auto_throttle_.update(observation_);
 	++revision_;
-	refresh_demand();
+	refresh_reference();
 	refresh_snapshot();
-	return demand_;
+	return reference_;
 }
 
 void AutomaticFlightControl::update_pitch_stick_steering()
@@ -443,7 +443,7 @@ void AutomaticFlightControl::apply_disconnect_guards()
 void AutomaticFlightControl::reset_vertical_controller()
 {
 	vertical_mode_ = AutomaticFlightControlVerticalMode::Off;
-	pitch_command_ = 0.0;
+	vertical_reference_ = {};
 	vertical_guidance_.reset();
 	pitch_stick_steering_active_ = false;
 }
@@ -451,21 +451,24 @@ void AutomaticFlightControl::reset_vertical_controller()
 void AutomaticFlightControl::reset_lateral_controller()
 {
 	lateral_mode_ = AutomaticFlightControlLateralMode::Off;
-	roll_command_ = 0.0;
+	lateral_reference_ = {};
 	lateral_guidance_.reset();
 }
 
-void AutomaticFlightControl::refresh_demand()
+void AutomaticFlightControl::refresh_reference()
 {
 	const ExperimentalAutoThrottleResult& auto_throttle =
 		auto_throttle_.result();
-	demand_ = {
+	reference_ = {
 		authority_state(
 			master_engaged_, bypass_active_, pitch_stick_steering_active_),
 		authority_state(master_engaged_, bypass_active_, false),
+		vertical_reference_.type,
+		vertical_reference_.pitch_attitude_rad,
+		vertical_reference_.vertical_speed_mps,
+		lateral_reference_.bank_angle_rad,
+		0.0,
 		auto_throttle.engaged,
-		pitch_command_,
-		roll_command_,
 		auto_throttle.throttle_normalized
 	};
 }
@@ -480,8 +483,12 @@ void AutomaticFlightControl::refresh_snapshot()
 	snapshot_.auto_throttle_engaged = auto_throttle.engaged;
 	snapshot_.vertical_mode = vertical_mode_;
 	snapshot_.lateral_mode = lateral_mode_;
-	snapshot_.pitch_command_normalized = pitch_command_;
-	snapshot_.roll_command_normalized = roll_command_;
+	snapshot_.pitch_attitude_reference_rad =
+		vertical_reference_.pitch_attitude_rad;
+	snapshot_.vertical_speed_reference_mps =
+		vertical_reference_.vertical_speed_mps;
+	snapshot_.bank_angle_reference_rad =
+		lateral_reference_.bank_angle_rad;
 	snapshot_.throttle_command_normalized = auto_throttle.throttle_normalized;
 	snapshot_.target_altitude_m = target_altitude_m_;
 	snapshot_.target_heading_rad =
@@ -490,6 +497,8 @@ void AutomaticFlightControl::refresh_snapshot()
 	snapshot_.target_speed_mps = auto_throttle.target_speed_mps;
 	snapshot_.target_pitch_rad = target_pitch_rad_;
 	snapshot_.target_vertical_speed_mps = target_vertical_speed_mps_;
+	snapshot_.longitudinal_authority = reference_.longitudinal_authority;
+	snapshot_.lateral_authority = reference_.lateral_authority;
 	snapshot_.autopilot_engage_rejection_reason =
 		autopilot_rejection_reason_;
 	snapshot_.autopilot_disengage_reason =
