@@ -1,6 +1,6 @@
 #include "TestHarness.h"
 
-#include "Core/Systems/FlightControlComputer/ControlLaws.h"
+#include "Core/Systems/FlightControlComputer/ControlLaws/ControlLaws.h"
 
 namespace
 {

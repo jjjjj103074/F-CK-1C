@@ -1,6 +1,6 @@
 #include "AutomaticFlightControl.h"
 
-#include "../SystemPipeline.h"
+#include "../../SystemPipeline.h"
 #include "Common/Clamp.h"
 #include "Common/Units.h"
 

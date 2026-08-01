@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AutomaticFlightControl.h"
-#include "ControlLaws.h"
+#include "Autopilot/AutomaticFlightControl.h"
+#include "ControlLaws/ControlLaws.h"
 #include "FlightControlComputerConfig.h"
 #include "ThrottleCommandComposition.h"
 #include "../System.h"

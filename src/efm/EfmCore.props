@@ -31,7 +31,9 @@
     <ClInclude Include="$(EfmCoreRoot)Systems\SystemPipelineDataAccess.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\SystemSchedule.h" />
     <ClInclude Include="$(EfmCoreRoot)Systems\SystemUpdateRates.h" />
-    <ClInclude Include="$(EfmSystemRoot)\*\*.h" />
+    <ClInclude
+      Include="$(EfmSystemRoot)\**\*.h"
+      Exclude="$(EfmSystemRoot)\*.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(EfmCoreRoot)Fck1cEfm.cpp">
@@ -60,9 +62,9 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <EfmSystemSource
-      Include="$(EfmSystemRoot)\*\*.cpp"
-      Exclude="$(EfmSystemRoot)\*\Entry.cpp">
-      <ObjectFileName>$(IntDir)SystemSources\$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('%(FullPath)')))).%(Filename).obj</ObjectFileName>
+      Include="$(EfmSystemRoot)\**\*.cpp"
+      Exclude="$(EfmSystemRoot)\*.cpp;$(EfmSystemRoot)\*\Entry.cpp">
+      <ObjectFileName>$(IntDir)SystemSources\%(RecursiveDir)%(Filename).obj</ObjectFileName>
     </EfmSystemSource>
     <ClCompile Include="@(EfmSystemSource)">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

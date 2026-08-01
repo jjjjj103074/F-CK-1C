@@ -1,7 +1,7 @@
 #include "TestHarness.h"
 
 #include "Common/Units.h"
-#include "Core/Systems/FlightControlComputer/AutomaticFlightControl.h"
+#include "Core/Systems/FlightControlComputer/Autopilot/AutomaticFlightControl.h"
 
 #include <algorithm>
 #include <array>

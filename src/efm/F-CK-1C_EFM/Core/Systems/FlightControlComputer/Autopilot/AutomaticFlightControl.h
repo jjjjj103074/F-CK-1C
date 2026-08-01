@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Contracts/CockpitContracts.h"
-#include "../../Contracts/Commands.h"
+#include "../../../Contracts/CockpitContracts.h"
+#include "../../../Contracts/Commands.h"
 
 #include <cstdint>
 #include <vector>

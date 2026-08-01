@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ControlLawTypes.h"
+#include "ControlLaws/ControlLawTypes.h"
 
 #include <vector>
 
