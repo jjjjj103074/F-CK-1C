@@ -1,4 +1,5 @@
 #include "AutomaticFlightControl.h"
+#include "../FlightControlComputerConfig.h"
 
 #include "Common/Units.h"
 
@@ -34,7 +35,9 @@ AutomaticFlightControlConfig fck1c_automatic_flight_control_config()
 	config.auto_throttle_disconnect_mach = 1.0;
 	config.engage_roll_limit_rad = Common::rad(45.0);
 	config.engage_pitch_limit_rad = Common::rad(45.0);
-	config.bank_limit_rad = Common::rad(60.0);
+	config.bank_limit_rad =
+		fck1c_flight_control_computer_config()
+			.control_laws.guidance_bank_limit_rad;
 	config.pitch_command_limit = 0.6;
 	config.altitude_fine_band_m = 50.0 * kMetersPerFoot;
 	config.altitude_hold_band_m = 500.0 * kMetersPerFoot;

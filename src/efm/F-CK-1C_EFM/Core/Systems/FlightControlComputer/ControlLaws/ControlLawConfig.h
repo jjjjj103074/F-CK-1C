@@ -125,6 +125,14 @@ inline FBWCatParams make_fbw_cat3_params()
 
 struct FBWControllerConfig
 {
+	// F-16 reference-derived AP guidance envelope.
+	double guidance_bank_limit_rad = Common::rad(30.0);
+	double guidance_roll_rate_limit_rad_s = Common::rad(20.0);
+	double guidance_min_normal_acceleration_g = 0.5;
+	double guidance_max_normal_acceleration_g = 2.0;
+	// Project-defined outer bound; control-law CAT limits remain authoritative.
+	double hard_bank_limit_rad = Common::rad(60.0);
+	double hard_min_normal_acceleration_g = -2.5;
 	FBWCatParams cat1 = make_fbw_cat1_params();
 	FBWCatParams cat3 = make_fbw_cat3_params();
 	FBWGainSchedulePoint gain_schedule[kFBWGainScheduleSize] = {

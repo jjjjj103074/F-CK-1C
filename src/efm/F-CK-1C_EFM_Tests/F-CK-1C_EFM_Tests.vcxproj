@@ -83,8 +83,10 @@
 		<ClCompile Include="FrameInputCollectorTests.cpp" />
 		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
+	<ClCompile Include="ConfigurationAndModeTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />
 	<ClCompile Include="InputSignalManagementTests.cpp" />
+	<ClCompile Include="InnerLoopControlTests.cpp" />
     <ClCompile Include="LandingGearSystemTests.cpp" />
     <ClCompile Include="MassDeltaTests.cpp" />
     <ClCompile Include="OutputStoreTests.cpp" />

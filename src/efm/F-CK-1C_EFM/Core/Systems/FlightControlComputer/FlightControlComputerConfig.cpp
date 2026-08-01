@@ -1,4 +1,5 @@
 #include "FlightControlComputerConfig.h"
+#include "ControlLaws/ConfigurationAndMode.h"
 
 #include "../../../Common/ConfigValidation.h"
 
@@ -162,6 +163,14 @@ void validate_flight_control_computer_config(
 			"FlightControlComputerConfig requires valid control laws and "
 			"a complete flight envelope.");
 	}
+	const double minimum_alpha_limit_deg = *std::min_element(
+		config.alpha_limit_deg.begin(), config.alpha_limit_deg.end());
+	(void)::Systems::make_maneuver_envelope(
+		config.control_laws,
+		{ config.control_laws.cat1, minimum_alpha_limit_deg, false });
+	(void)::Systems::make_maneuver_envelope(
+		config.control_laws,
+		{ config.control_laws.cat3, minimum_alpha_limit_deg, false });
 }
 
 const FlightControlComputerConfig& fck1c_flight_control_computer_config()
