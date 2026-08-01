@@ -84,6 +84,7 @@
 		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />
+	<ClCompile Include="InputSignalManagementTests.cpp" />
     <ClCompile Include="LandingGearSystemTests.cpp" />
     <ClCompile Include="MassDeltaTests.cpp" />
     <ClCompile Include="OutputStoreTests.cpp" />

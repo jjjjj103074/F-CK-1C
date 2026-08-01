@@ -3,6 +3,7 @@
 #include "Autopilot/AutomaticFlightControl.h"
 #include "ControlLaws/ControlLaws.h"
 #include "FlightControlComputerConfig.h"
+#include "InputSignalManagement.h"
 #include "ThrottleCommandComposition.h"
 #include "../System.h"
 #include "../../Contracts/AircraftData.h"
@@ -13,9 +14,8 @@ namespace Systems
 {
 struct FlightControlComputerStepInput
 {
-	::Systems::ConditionedFlightControlInput flight_control;
+	RawFlightControlInput flight_control;
 	LegacyAutomaticFlightControlDemand automatic;
-	PilotControlSignal pilot;
 	ThrottleLeverSignal throttle_levers;
 };
 
@@ -41,11 +41,8 @@ public:
 
 private:
 	void register_commands(SystemSetup& setup);
-	::Systems::ConditionedFlightControlInput apply_pilot_signal(
-		const ::Systems::ConditionedFlightControlInput& input,
-		const PilotControlSignal& pilot) const;
 	void apply_automatic_flight_control(
-		::Systems::ConditionedFlightControlInput& input,
+		RawFlightControlInput& input,
 		const LegacyAutomaticFlightControlDemand& automatic);
 	void refresh_outputs(
 		const ::Systems::FlightControlLawResult& output,
@@ -55,11 +52,12 @@ private:
 		const SystemStepContext& context,
 		const AircraftDataView& aircraft) const;
 	double alpha_limit(double mach) const;
-	::Systems::ConditionedFlightControlInput make_pipeline_input(
+	RawFlightControlInput make_pipeline_input(
 		const SystemStepContext& context,
 		const AircraftDataView& aircraft) const;
 
 	const FlightControlComputerConfig config_;
+	InputSignalManagement input_signals_;
 	::Systems::FBWControllerState fbw_;
 	AutomaticFlightControl automatic_flight_control_;
 	FlightControlActuatorCommand actuator_command_;

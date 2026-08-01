@@ -157,16 +157,16 @@ FlightControlActuatorCommand expected_nonzero_demand()
 		fck1c_flight_control_computer_config(),
 		StartMode::HotGround,
 		{});
-	::Systems::ConditionedFlightControlInput input;
+	RawFlightControlInput input;
 	input.dt_s = kSystemDt;
-	input.dynamic_pressure_pa = kDynamicPressure;
-	input.angle_of_attack_deg = Common::deg(kAngleOfAttack);
-	input.sideslip_deg = Common::deg(kAngleOfSlide);
-	input.indicated_airspeed_mps = kForwardSpeed;
-	input.mach = kMach;
-	input.normal_acceleration_g = kExpectedGLoad;
-	input.gear_position_normalized = kFullIntegrity;
-	return reference.step({ input, {}, {}, {} });
+	input.observation.dynamic_pressure_pa = kDynamicPressure;
+	input.observation.alpha_deg = Common::deg(kAngleOfAttack);
+	input.observation.beta_deg = Common::deg(kAngleOfSlide);
+	input.observation.indicated_airspeed_mps = kForwardSpeed;
+	input.observation.mach = kMach;
+	input.observation.normal_acceleration_g = kExpectedGLoad;
+	input.landing_gear.position = kFullIntegrity;
+	return reference.step({ input, {}, {} });
 }
 
 void expect_normalized_observation(

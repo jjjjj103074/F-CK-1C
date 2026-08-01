@@ -94,19 +94,19 @@ private:
 		output_.surface_demand.elevator_command_normalized = Common::limit(
 			Common::actuator(
 				output_.surface_demand.elevator_command_normalized,
-				{ input_.pilot_pitch_normalized + input_.pitch_trim_normalized,
+				{ input_.pilot_pitch_raw_normalized,
 					-kDirectElevatorStep, kDirectElevatorStep }),
 			-1.0, 1.0);
 		output_.surface_demand.aileron_command_normalized = Common::limit(
 			Common::actuator(
 				output_.surface_demand.aileron_command_normalized,
-				{ input_.pilot_roll_normalized + input_.roll_trim_normalized,
+				{ input_.pilot_roll_raw_normalized,
 					-kDirectAileronStep, kDirectAileronStep }),
 			-1.0, 1.0);
 		output_.surface_demand.rudder_command_normalized = Common::limit(
 			Common::actuator(
 				output_.surface_demand.rudder_command_normalized,
-				{ input_.pilot_yaw_normalized + input_.yaw_trim_normalized,
+				{ input_.pilot_yaw_raw_normalized,
 					-kDirectRudderStep, kDirectRudderStep }),
 			-1.0, 1.0);
 		return output_;
@@ -114,11 +114,7 @@ private:
 
 	void update_mode()
 	{
-		const double target = (state_.mode_target == Systems::FBW_CAT3) ? 1.0 : 0.0;
-		state_.mode_blend = first_order(
-			state_.mode_blend,
-			target,
-			config_.mode_switch_tau);
+		state_.mode_blend = input_.cat_mode_blend;
 		cat_ = Systems::fbw_blend_cat_params(config_.cat1, config_.cat3, state_.mode_blend);
 	}
 
@@ -135,21 +131,16 @@ private:
 		state_.ias_raw = input_.indicated_airspeed_mps * kMetersPerSecondToKnots;
 		state_.mach_raw = input_.mach;
 
-		state_.phi_f = filter_signal(state_.phi_f, state_.phi_raw);
-		state_.theta_f = filter_signal(state_.theta_f, state_.theta_raw);
-		state_.p_f = filter_signal(state_.p_f, state_.p_raw);
-		state_.q_f = filter_signal(state_.q_f, state_.q_raw);
-		state_.r_f = filter_signal(state_.r_f, state_.r_raw);
-		state_.alpha_f = filter_signal(state_.alpha_f, state_.alpha_raw);
-		state_.beta_f = filter_signal(state_.beta_f, state_.beta_raw);
-		state_.qbar_f = first_order(state_.qbar_f, state_.qbar_raw, config_.qbar_filter_tau);
-		state_.ias_f = filter_signal(state_.ias_f, state_.ias_raw);
-		state_.mach_f = filter_signal(state_.mach_f, state_.mach_raw);
-	}
-
-	double filter_signal(double current, double target) const
-	{
-		return first_order(current, target, config_.signal_filter_tau);
+		state_.phi_f = state_.phi_raw;
+		state_.theta_f = state_.theta_raw;
+		state_.p_f = state_.p_raw;
+		state_.q_f = state_.q_raw;
+		state_.r_f = state_.r_raw;
+		state_.alpha_f = state_.alpha_raw;
+		state_.beta_f = state_.beta_raw;
+		state_.qbar_f = state_.qbar_raw;
+		state_.ias_f = state_.ias_raw;
+		state_.mach_f = state_.mach_raw;
 	}
 
 	double first_order(double current, double target, double tau) const
@@ -165,40 +156,13 @@ private:
 
 	void shape_stick_commands()
 	{
-		state_.stick_roll_raw = Common::limit(
-			input_.pilot_roll_normalized + input_.roll_trim_normalized, -1.0, 1.0);
-		state_.stick_pitch_raw = Common::limit(
-			input_.pilot_pitch_normalized + input_.pitch_trim_normalized, -1.0, 1.0);
-		state_.stick_yaw_raw = Common::limit(
-			input_.pilot_yaw_normalized + input_.yaw_trim_normalized, -1.0, 1.0);
-		const double roll_target = shape_stick(state_.stick_roll_raw);
-		const double pitch_target = shape_stick(state_.stick_pitch_raw);
-		const double yaw_target = shape_stick(state_.stick_yaw_raw);
-		const double roll_previous = state_.stick_roll_shaped;
-		const double pitch_previous = state_.stick_pitch_shaped;
-		const double yaw_previous = state_.stick_yaw_shaped;
-		state_.stick_roll_shaped = filter_stick(state_.stick_roll_shaped, roll_target);
-		state_.stick_pitch_shaped = filter_stick(state_.stick_pitch_shaped, pitch_target);
-		state_.stick_yaw_shaped = filter_stick(state_.stick_yaw_shaped, yaw_target);
-		const double maximum_step = cat_.command_shape_rate * input_.dt_s;
-		state_.stick_roll_shaped = Common::limit(
-			state_.stick_roll_shaped, roll_previous - maximum_step, roll_previous + maximum_step);
-		state_.stick_pitch_shaped = Common::limit(
-			state_.stick_pitch_shaped, pitch_previous - maximum_step, pitch_previous + maximum_step);
-		state_.stick_yaw_shaped = Common::limit(
-			state_.stick_yaw_shaped, yaw_previous - maximum_step, yaw_previous + maximum_step);
-		stick_in_deadband_ = std::fabs(state_.stick_roll_raw) <= cat_.deadband &&
-			std::fabs(state_.stick_pitch_raw) <= cat_.deadband;
-	}
-
-	double shape_stick(double value) const
-	{
-		return (1.0 - cat_.stick_expo) * value + cat_.stick_expo * value * value * value;
-	}
-
-	double filter_stick(double current, double target) const
-	{
-		return first_order(current, target, cat_.command_shape_tau);
+		state_.stick_roll_raw = input_.pilot_roll_raw_normalized;
+		state_.stick_pitch_raw = input_.pilot_pitch_raw_normalized;
+		state_.stick_yaw_raw = input_.pilot_yaw_raw_normalized;
+		state_.stick_roll_shaped = input_.pilot_roll_normalized;
+		state_.stick_pitch_shaped = input_.pilot_pitch_normalized;
+		state_.stick_yaw_shaped = input_.pilot_yaw_normalized;
+		stick_in_deadband_ = input_.roll_pitch_in_deadband;
 	}
 
 	void reset_hold_for_rate_mode()
@@ -237,12 +201,11 @@ private:
 	{
 		gains_ = Systems::fbw_eval_gain_schedule(config_, state_.qbar_f);
 		state_.nz_raw = input_.normal_acceleration_g;
-		state_.nz_f = first_order(state_.nz_f, state_.nz_raw, config_.nz_filter_tau);
+		state_.nz_f = state_.nz_raw;
 		state_.p_cmd_rate = state_.stick_roll_shaped * cat_.p_cmd_max * gains_.cmd_gain;
 		state_.r_cmd_rate = state_.stick_yaw_shaped * cat_.r_cmd_max * gains_.cmd_gain;
 
-		const bool pitch_stick_in_deadband = std::fabs(state_.stick_pitch_raw) <= cat_.deadband;
-		if (input_.weight_on_wheels || pitch_stick_in_deadband)
+		if (input_.weight_on_wheels || input_.pitch_in_deadband)
 		{
 			state_.alpha_trim_deg = first_order(
 				state_.alpha_trim_deg, state_.alpha_f, config_.alpha_trim_tau);

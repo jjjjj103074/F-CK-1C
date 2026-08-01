@@ -1,6 +1,7 @@
 #include "TestHarness.h"
 
 #include "Core/Systems/FlightControlComputer/ControlLaws/ControlLaws.h"
+#include "Core/Systems/FlightControlComputer/InputSignalManagement.h"
 
 namespace
 {
@@ -11,43 +12,43 @@ constexpr int kModeTransitionFrameCount = 50;
 constexpr int kHoldEngagementFrameCount = 30;
 constexpr int kAoaDegradeFrameCount = 20;
 
-Systems::ConditionedFlightControlInput make_reference_input()
+Core::Systems::RawFlightControlInput make_reference_input()
 {
-	Systems::ConditionedFlightControlInput input;
+	Core::Systems::RawFlightControlInput input;
 	input.dt_s = 0.01;
-	input.dynamic_pressure_pa = 5000.0;
 	input.alpha_limit_deg = 20.0;
-	input.roll_attitude_rad = 0.1;
-	input.pitch_attitude_rad = 0.05;
-	input.roll_rate_rad_s = 0.02;
-	input.pitch_rate_rad_s = -0.03;
-	input.yaw_rate_rad_s = 0.01;
-	input.angle_of_attack_deg = 3.0;
-	input.sideslip_deg = 1.0;
-	input.indicated_airspeed_mps = 150.0;
-	input.mach = 0.5;
-	input.normal_acceleration_g = 1.0;
-	input.pilot_roll_normalized = 0.2;
-	input.pilot_pitch_normalized = -0.15;
-	input.pilot_yaw_normalized = 0.1;
+	input.observation.dynamic_pressure_pa = 5000.0;
+	input.observation.roll_rad = 0.1;
+	input.observation.pitch_rad = 0.05;
+	input.observation.roll_rate_rad_s = 0.02;
+	input.observation.pitch_rate_rad_s = -0.03;
+	input.observation.yaw_rate_rad_s = 0.01;
+	input.observation.alpha_deg = 3.0;
+	input.observation.beta_deg = 1.0;
+	input.observation.indicated_airspeed_mps = 150.0;
+	input.observation.mach = 0.5;
+	input.observation.normal_acceleration_g = 1.0;
+	input.pilot.roll_axis_normalized = 0.2;
+	input.pilot.pitch_axis_normalized = -0.15;
+	input.pilot.yaw_axis_normalized = 0.1;
 	return input;
 }
 
 void carry_output(
-	Systems::ConditionedFlightControlInput& input,
+	Core::Systems::RawFlightControlInput& input,
 	const Systems::FlightControlLawResult& output)
 {
-	input.elevator_position_normalized =
+	input.actuator.elevator.normalized_position =
 		output.surface_demand.elevator_command_normalized;
-	input.aileron_position_normalized =
+	input.actuator.aileron.normalized_position =
 		output.surface_demand.aileron_command_normalized;
-	input.rudder_position_normalized =
+	input.actuator.rudder.normalized_position =
 		output.surface_demand.rudder_command_normalized;
 }
 
 struct FBWTestRig
 {
-	FBWTestRig()
+	FBWTestRig() : input_signals(config)
 	{
 		reset();
 	}
@@ -57,10 +58,10 @@ struct FBWTestRig
 		state = Systems::FBWControllerState();
 		Systems::reset_fbw_state(
 			state,
-			{ input.roll_attitude_rad,
-				input.pitch_attitude_rad,
-				input.angle_of_attack_deg,
-				input.normal_acceleration_g });
+			{ input.observation.roll_rad,
+				input.observation.pitch_rad,
+				input.observation.alpha_deg,
+				input.observation.normal_acceleration_g });
 		output = Systems::FlightControlLawResult();
 	}
 
@@ -69,12 +70,16 @@ struct FBWTestRig
 		for (int frame = 0; frame < frame_count; ++frame)
 		{
 			carry_output(input, output);
-			output = Systems::update_fbw_controller(state, config, input);
+			const auto conditioned = input_signals.condition(
+				input, state.mode_target);
+			output = Systems::update_fbw_controller(
+				state, config, conditioned);
 		}
 	}
 
 	Systems::FBWControllerConfig config;
-	Systems::ConditionedFlightControlInput input = make_reference_input();
+	Core::Systems::InputSignalManagement input_signals;
+	Core::Systems::RawFlightControlInput input = make_reference_input();
 	Systems::FBWControllerState state;
 	Systems::FlightControlLawResult output;
 };
@@ -119,9 +124,9 @@ void test_reference_frame_snapshots(Tests::Context& context)
 void test_hold_snapshot(Tests::Context& context)
 {
 	FBWTestRig rig;
-	rig.input.pilot_roll_normalized = 0.0;
-	rig.input.pilot_pitch_normalized = 0.0;
-	rig.input.pilot_yaw_normalized = 0.0;
+	rig.input.pilot.roll_axis_normalized = 0.0;
+	rig.input.pilot.pitch_axis_normalized = 0.0;
+	rig.input.pilot.yaw_axis_normalized = 0.0;
 	rig.reset();
 	rig.advance(kHoldEngagementFrameCount);
 	expect_output(context, rig.output, { 0.026739925853, -0.022681454009, -0.023911647820 });
@@ -136,12 +141,9 @@ void test_direct_mode_snapshot(Tests::Context& context)
 	state.enabled = false;
 	Systems::ConditionedFlightControlInput input;
 	input.dt_s = 0.01;
-	input.pilot_roll_normalized = -0.25;
-	input.roll_trim_normalized = 0.05;
-	input.pilot_pitch_normalized = 0.4;
-	input.pitch_trim_normalized = 0.1;
-	input.pilot_yaw_normalized = -0.2;
-	input.yaw_trim_normalized = 0.05;
+	input.pilot_roll_raw_normalized = -0.2;
+	input.pilot_pitch_raw_normalized = 0.5;
+	input.pilot_yaw_raw_normalized = -0.15;
 	input.elevator_position_normalized = 0.1;
 	input.aileron_position_normalized = -0.2;
 	input.rudder_position_normalized = 0.3;
@@ -167,7 +169,7 @@ void test_fbw_commands(Tests::Context& context)
 void test_actuator_feedback_is_consumed(Tests::Context& context)
 {
 	FBWTestRig rig;
-	rig.input.actuator_saturated = true;
+	rig.input.actuator.any_saturated = true;
 	rig.advance(kInitialSnapshotFrameCount);
 	TEST_EXPECT(context, rig.state.actuator_sat);
 }
@@ -202,8 +204,11 @@ void test_limiters_and_actuator_bounds(Tests::Context& context)
 	config.cat1.g_soft = 1.1;
 	config.cat1.g_hard = 3.0;
 	config.alpha_cmd_per_stick_deg = 100.0;
-	Systems::ConditionedFlightControlInput input = make_reference_input();
-	input.pilot_pitch_normalized = 0.5;
+	Core::Systems::RawFlightControlInput raw = make_reference_input();
+	raw.pilot.pitch_axis_normalized = 0.5;
+	Core::Systems::InputSignalManagement input_signals(config);
+	const Systems::ConditionedFlightControlInput input =
+		input_signals.condition(raw, Systems::FBW_CAT1);
 	Systems::FBWControllerState state;
 	Systems::reset_fbw_state(
 		state,
@@ -234,11 +239,11 @@ void test_cat_transition_and_hold_degrade(Tests::Context& context)
 	Systems::set_fbw_cat_mode(rig.state, Systems::FBW_CAT3);
 	rig.advance(kModeTransitionFrameCount);
 	TEST_EXPECT(context, rig.state.mode_blend > 0.5);
-	rig.input.pilot_roll_normalized = 0.0;
-	rig.input.pilot_pitch_normalized = 0.0;
+	rig.input.pilot.roll_axis_normalized = 0.0;
+	rig.input.pilot.pitch_axis_normalized = 0.0;
 	rig.advance(kHoldEngagementFrameCount);
 	TEST_EXPECT(context, rig.state.control_state == Systems::FBW_STATE_HOLD);
-	rig.input.angle_of_attack_deg = 30.0;
+	rig.input.observation.alpha_deg = 30.0;
 	rig.advance(kAoaDegradeFrameCount);
 	TEST_EXPECT(context, rig.state.control_state == Systems::FBW_STATE_DEGRADE);
 	TEST_EXPECT(context, rig.state.hold_exit_reason == Systems::FBW_HOLD_EXIT_AOA);
