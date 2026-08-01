@@ -1,12 +1,12 @@
 #include "ConfigurationAndMode.h"
 
+#include "ControlLawMath.h"
+
 #include <cmath>
 #include <stdexcept>
 
 namespace
 {
-constexpr double kDeveloperGLimiterOverrideMarginG = 2.0;
-
 bool finite(double value)
 {
 	return std::isfinite(value);
@@ -21,7 +21,7 @@ ManeuverEnvelope make_maneuver_envelope(
 {
 	const double maximum_normal_acceleration_g = input.cat.g_hard +
 		(input.developer_g_limiter_override_active
-			? kDeveloperGLimiterOverrideMarginG : 0.0);
+			? config.developer_g_limiter_override_margin_g : 0.0);
 	ManeuverEnvelope result = {
 		{
 			config.guidance_bank_limit_rad,
@@ -41,6 +41,22 @@ ManeuverEnvelope make_maneuver_envelope(
 	};
 	validate_maneuver_envelope(result);
 	return result;
+}
+
+FlightControlConfiguration make_flight_control_configuration(
+	const FBWControllerConfig& config,
+	const FlightControlConfigurationInput& input)
+{
+	const FBWCatParams cat = fbw_blend_cat_params(
+		config.cat1, config.cat3, input.cat_mode_blend);
+	return {
+		cat,
+		fbw_eval_gain_schedule(config, input.dynamic_pressure_pa),
+		make_maneuver_envelope(
+			config,
+			{ cat, input.sensed_angle_of_attack_limit_deg,
+				input.developer_g_limiter_override_active })
+	};
 }
 
 void validate_maneuver_envelope(const ManeuverEnvelope& envelope)

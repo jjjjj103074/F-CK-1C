@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConfigurationAndMode.h"
 #include "../FlightControlReferences.h"
 
 namespace Systems
@@ -55,7 +56,6 @@ struct FlightControlLawResetInput
 {
 	double roll_attitude_rad = 0.0;
 	double pitch_attitude_rad = 0.0;
-	double angle_of_attack_deg = 0.0;
 	double normal_acceleration_g = 1.0;
 };
 
@@ -63,5 +63,6 @@ struct FlightControlLawStepInput
 {
 	ConditionedFlightControlInput flight;
 	Core::Systems::CoordinatedManeuverReference maneuver;
+	FlightControlConfiguration configuration;
 };
 }

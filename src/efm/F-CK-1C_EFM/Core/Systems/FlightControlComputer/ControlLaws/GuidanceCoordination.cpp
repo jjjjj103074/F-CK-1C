@@ -10,11 +10,6 @@ namespace
 constexpr double kGravityMps2 = 9.80665;
 constexpr double kCosineFloor = 0.1;
 
-bool is_automatic(Core::Systems::AuthorityState authority)
-{
-	return authority == Core::Systems::AuthorityState::Automatic;
-}
-
 double maximum_feasible_bank_rad(double nz_reference_g, double maximum_nz_g)
 {
 	const double ratio = std::fabs(nz_reference_g) / maximum_nz_g;
@@ -26,12 +21,15 @@ class CoordinationFrame
 public:
 	explicit CoordinationFrame(
 		const Core::Systems::GuidanceCoordinationInput& input)
-		: input_(input), result_{ input.selected.manual, {} },
-		  automatic_longitudinal_(
-			  is_automatic(input.selected.longitudinal_authority)),
-		  automatic_lateral_(
-			  is_automatic(input.selected.lateral_authority))
+		: input_(input),
+		  automatic_longitudinal_(std::holds_alternative<
+			  Core::Systems::AutomaticLongitudinalFlightReference>(
+				  input.selected.longitudinal)),
+		  automatic_lateral_(std::holds_alternative<
+			  Core::Systems::AutomaticLateralFlightReference>(
+				  input.selected.lateral))
 	{
+		initialize_selected_payloads();
 		result_.reference.longitudinal_authority =
 			input_.selected.longitudinal_authority;
 		result_.reference.lateral_authority =
@@ -52,12 +50,43 @@ public:
 	}
 
 private:
+	void initialize_selected_payloads()
+	{
+		if (const auto* manual = std::get_if<
+			Core::Systems::LongitudinalManeuverReference>(
+				&input_.selected.longitudinal))
+		{
+			result_.reference.longitudinal = *manual;
+		}
+		if (const auto* manual = std::get_if<
+			Core::Systems::ManualLateralFlightReference>(
+				&input_.selected.lateral))
+		{
+			result_.reference.lateral_directional.roll_rate_reference_rad_s =
+				manual->roll_rate_reference_rad_s;
+		}
+		result_.reference.lateral_directional.sideslip_reference_rad =
+			input_.selected.directional.sideslip_reference_rad;
+		result_.reference.lateral_directional.yaw_rate_feedforward_rad_s =
+			input_.selected.directional.yaw_rate_feedforward_rad_s;
+	}
+
+	const Core::Systems::AutomaticLongitudinalFlightReference&
+		automatic_longitudinal() const
+	{
+		return std::get<Core::Systems::AutomaticLongitudinalFlightReference>(
+			input_.selected.longitudinal);
+	}
+
 	void select_bank_reference()
 	{
 		bank_reference_rad_ = input_.flight.roll_attitude_rad;
 		if (!automatic_lateral_) return;
+		const auto& automatic =
+			std::get<Core::Systems::AutomaticLateralFlightReference>(
+				input_.selected.lateral);
 		bank_reference_rad_ = Common::limit(
-			input_.selected.automatic.bank_angle_reference_rad,
+			automatic.bank_angle_reference_rad,
 			-input_.envelope.guidance.bank_limit_rad,
 			input_.envelope.guidance.bank_limit_rad);
 	}
@@ -67,7 +96,7 @@ private:
 		vertical_nz_reference_g_ =
 			result_.reference.longitudinal.normal_acceleration_reference_g;
 		if (!automatic_longitudinal_) return;
-		const auto type = input_.selected.automatic.vertical_type;
+		const auto type = automatic_longitudinal().type;
 		if (type == Core::Systems::VerticalGuidanceReferenceType::PitchAttitude)
 		{
 			make_pitch_attitude_reference();
@@ -85,7 +114,7 @@ private:
 		result_.reference.longitudinal = {
 			vertical_nz_reference_g_,
 			input_.config.pitch_attitude_error_to_rate_gain *
-				(input_.selected.automatic.pitch_attitude_reference_rad -
+				(automatic_longitudinal().pitch_attitude_reference_rad -
 					input_.flight.pitch_attitude_rad)
 		};
 	}
@@ -93,7 +122,7 @@ private:
 	void make_vertical_speed_reference()
 	{
 		const double error_mps =
-			input_.selected.automatic.vertical_speed_reference_mps -
+			automatic_longitudinal().vertical_speed_reference_mps -
 			input_.flight.vertical_speed_mps;
 		vertical_nz_reference_g_ = 1.0 +
 			input_.config.vertical_speed_error_to_acceleration_gain *
@@ -157,7 +186,7 @@ private:
 	void apply_bank_to_lift_compensation()
 	{
 		const bool vertical_path = automatic_longitudinal_ &&
-			input_.selected.automatic.vertical_type ==
+			automatic_longitudinal().type ==
 				Core::Systems::VerticalGuidanceReferenceType::VerticalSpeed;
 		if (!vertical_path) return;
 		const double lift_fraction = std::max(

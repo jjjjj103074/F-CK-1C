@@ -7,9 +7,26 @@
 #include "ControlLaws/PilotCommandLaw.h"
 #include "Common/Table.h"
 
+#include <stdexcept>
+
 namespace
 {
 constexpr double kEnabledCommandThreshold = 0.5;
+
+Core::FlightControlVerticalReferenceType to_snapshot_reference_type(
+	Core::Systems::VerticalGuidanceReferenceType type)
+{
+	switch (type)
+	{
+	case Core::Systems::VerticalGuidanceReferenceType::None:
+		return Core::FlightControlVerticalReferenceType::None;
+	case Core::Systems::VerticalGuidanceReferenceType::PitchAttitude:
+		return Core::FlightControlVerticalReferenceType::PitchAttitude;
+	case Core::Systems::VerticalGuidanceReferenceType::VerticalSpeed:
+		return Core::FlightControlVerticalReferenceType::VerticalSpeed;
+	}
+	throw std::logic_error("Unknown vertical guidance reference type.");
+}
 }
 
 namespace Core
@@ -23,7 +40,7 @@ FlightControlComputer::FlightControlComputer(
 	: config_(config),
 	input_signals_(config.control_laws),
 	automatic_flight_control_(
-		fck1c_automatic_flight_control_config(),
+		config.automatic_flight_control,
 		start_mode != StartMode::HotAir)
 {
 	validate_flight_control_computer_config(config_);
@@ -108,11 +125,13 @@ const FlightControlActuatorCommand& FlightControlComputer::step(
 	raw.alpha_limit_deg = alpha_limit(raw.observation.mach);
 	::Systems::ConditionedFlightControlInput input =
 		input_signals_.condition(raw, fbw_.mode_target);
+	const ::Systems::FlightControlConfiguration configuration =
+		make_configuration(input);
 	const AutomaticFlightGuidanceReference& automatic =
 		automatic_flight_control_.step(
-			make_automatic_observation(raw, input));
+			make_automatic_observation(raw, input), configuration.envelope);
 	const ::Systems::FlightControlLawStepInput control_law_input =
-		make_control_law_input(input, automatic);
+		make_control_law_input(input, automatic, configuration);
 	const ::Systems::FlightControlLawResult output =
 		::Systems::update_fbw_controller(
 			fbw_, config_.control_laws, control_law_input);
@@ -124,29 +143,33 @@ const FlightControlActuatorCommand& FlightControlComputer::step(
 	return actuator_command_;
 }
 
+::Systems::FlightControlConfiguration
+FlightControlComputer::make_configuration(
+	const ::Systems::ConditionedFlightControlInput& flight) const
+{
+	return ::Systems::make_flight_control_configuration(
+		config_.control_laws,
+		{ flight.cat_mode_blend,
+			flight.dynamic_pressure_pa,
+			flight.alpha_limit_deg,
+			fbw_.g_limiter_override });
+}
+
 ::Systems::FlightControlLawStepInput
 FlightControlComputer::make_control_law_input(
 	const ::Systems::ConditionedFlightControlInput& flight,
-	const AutomaticFlightGuidanceReference& automatic)
+	const AutomaticFlightGuidanceReference& automatic,
+	const ::Systems::FlightControlConfiguration& configuration)
 {
-	const ::Systems::FBWCatParams cat = ::Systems::fbw_blend_cat_params(
-		config_.control_laws.cat1,
-		config_.control_laws.cat3,
-		flight.cat_mode_blend);
-	const ::Systems::FBWGainScheduleValues gains =
-		::Systems::fbw_eval_gain_schedule(
-			config_.control_laws, flight.dynamic_pressure_pa);
-	const ::Systems::ManeuverEnvelope envelope =
-		::Systems::make_maneuver_envelope(
-			config_.control_laws,
-			{ cat, flight.alpha_limit_deg, fbw_.g_limiter_override });
 	const CoordinatedManeuverReference manual =
 		::Systems::make_pilot_maneuver_reference(
-			{ flight, config_.control_laws, cat, gains, envelope });
+			{ flight, config_.control_laws, configuration.cat,
+				configuration.gains, configuration.envelope });
 	selected_reference_ = select_flight_reference(manual, automatic);
 	coordinated_reference_ = coordinate_guidance(
-		{ flight, selected_reference_, envelope, config_.control_laws });
-	return { flight, coordinated_reference_.reference };
+		{ flight, selected_reference_, configuration.envelope,
+			config_.control_laws });
+	return { flight, coordinated_reference_.reference, configuration };
 }
 
 void FlightControlComputer::apply_experimental_auto_throttle(
@@ -193,6 +216,7 @@ void FlightControlComputer::refresh_diagnostics()
 	++diagnostics_.status.revision;
 	diagnostics_.developer_g_limiter_override_active =
 		fbw_.g_limiter_override;
+	refresh_selected_reference_diagnostics();
 	const CoordinatedManeuverReference& reference =
 		coordinated_reference_.reference;
 	diagnostics_.normal_acceleration_reference_g =
@@ -216,6 +240,74 @@ void FlightControlComputer::refresh_diagnostics()
 		coordinated_reference_.constraint.vertical_constrained;
 	diagnostics_.lateral_constrained =
 		coordinated_reference_.constraint.lateral_constrained;
+}
+
+void FlightControlComputer::refresh_selected_reference_diagnostics()
+{
+	diagnostics_.selected_normal_acceleration_reference_g = 0.0;
+	diagnostics_.selected_pitch_rate_feedforward_rad_s = 0.0;
+	diagnostics_.selected_pitch_attitude_reference_rad = 0.0;
+	diagnostics_.selected_vertical_speed_reference_mps = 0.0;
+	diagnostics_.selected_roll_rate_reference_rad_s = 0.0;
+	diagnostics_.selected_bank_angle_reference_rad = 0.0;
+	refresh_selected_longitudinal_diagnostics();
+	refresh_selected_lateral_diagnostics();
+	diagnostics_.selected_directional_source =
+		FlightControlReferenceSource::Manual;
+	diagnostics_.selected_sideslip_reference_rad =
+		selected_reference_.directional.sideslip_reference_rad;
+	diagnostics_.selected_yaw_rate_feedforward_rad_s =
+		selected_reference_.directional.yaw_rate_feedforward_rad_s;
+}
+
+void FlightControlComputer::refresh_selected_longitudinal_diagnostics()
+{
+	if (const auto* manual = std::get_if<LongitudinalManeuverReference>(
+		&selected_reference_.longitudinal))
+	{
+		diagnostics_.selected_longitudinal_source =
+			FlightControlReferenceSource::Manual;
+		diagnostics_.selected_vertical_reference_type =
+			FlightControlVerticalReferenceType::None;
+		diagnostics_.selected_normal_acceleration_reference_g =
+			manual->normal_acceleration_reference_g;
+		diagnostics_.selected_pitch_rate_feedforward_rad_s =
+			manual->pitch_rate_feedforward_rad_s;
+	}
+	else
+	{
+		const auto& automatic =
+			std::get<AutomaticLongitudinalFlightReference>(
+				selected_reference_.longitudinal);
+		diagnostics_.selected_longitudinal_source =
+			FlightControlReferenceSource::Automatic;
+		diagnostics_.selected_vertical_reference_type =
+			to_snapshot_reference_type(automatic.type);
+		diagnostics_.selected_pitch_attitude_reference_rad =
+			automatic.pitch_attitude_reference_rad;
+		diagnostics_.selected_vertical_speed_reference_mps =
+			automatic.vertical_speed_reference_mps;
+	}
+}
+
+void FlightControlComputer::refresh_selected_lateral_diagnostics()
+{
+	if (const auto* manual = std::get_if<ManualLateralFlightReference>(
+		&selected_reference_.lateral))
+	{
+		diagnostics_.selected_lateral_source =
+			FlightControlReferenceSource::Manual;
+		diagnostics_.selected_roll_rate_reference_rad_s =
+			manual->roll_rate_reference_rad_s;
+	}
+	else
+	{
+		diagnostics_.selected_lateral_source =
+			FlightControlReferenceSource::Automatic;
+		diagnostics_.selected_bank_angle_reference_rad =
+			std::get<AutomaticLateralFlightReference>(
+				selected_reference_.lateral).bank_angle_reference_rad;
+	}
 }
 
 RawFlightControlInput FlightControlComputer::make_pipeline_input(
@@ -253,9 +345,8 @@ FlightControlComputer::make_automatic_observation(
 		observation.heading_rad,
 		observation.pitch_rad,
 		observation.roll_rad,
-		observation.roll_rate_rad_s,
-		observation.yaw_rate_rad_s,
 		conditioned.pilot_pitch_normalized,
+		conditioned.pilot_roll_normalized,
 		raw.landing_gear.any_weight_on_wheels
 	};
 }
@@ -338,6 +429,8 @@ void FlightControlComputer::handle_command(const Command& command)
 		}
 		break;
 	default:
+		if (AutomaticFlightControl::handles(command.id))
+			automatic_flight_control_.handle_command(command);
 		break;
 	}
 }
@@ -349,9 +442,21 @@ const FlightControlActuatorCommand&
 }
 
 const EngineThrottleCommand&
-	FlightControlComputer::engine_throttle_command() const
+FlightControlComputer::engine_throttle_command() const
 {
 	return engine_throttle_command_;
+}
+
+const FlightControlComputerSnapshot&
+FlightControlComputer::diagnostics() const
+{
+	return diagnostics_;
+}
+
+const AutomaticFlightControlSnapshot&
+FlightControlComputer::automatic_flight_control_snapshot() const
+{
+	return automatic_flight_control_.snapshot();
 }
 }
 }

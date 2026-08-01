@@ -27,7 +27,6 @@ struct FBWCatParams
 	double command_shape_rate = 0.0;
 	double stick_expo = 0.0;
 	double p_cmd_max = 0.0;
-	double q_cmd_max = 0.0;
 	double r_cmd_max = 0.0;
 	double aoa_soft_deg = 0.0;
 	double aoa_hard_deg = 0.0;
@@ -57,6 +56,38 @@ struct FBWGainScheduleValues
 	double limiter_gain = 0.0;
 };
 
+struct FBWDirectModeConfig
+{
+	// Project-defined per-FCC-tick fallback surface slew.
+	double elevator_command_step_normalized = 0.0125;
+	double aileron_command_step_normalized = 0.02;
+	double rudder_command_step_normalized = 0.012;
+};
+
+struct FBWNormalAccelerationConfig
+{
+	// Project-defined pending F-CK-1C-specific control-law evidence.
+	double positive_buffer_minimum_g = 0.25;
+	double negative_soft_minimum_g = 1.0;
+	double negative_soft_ratio = 0.65;
+	double outer_kp_cat1 = 0.34;
+	double outer_kp_cat3 = 0.24;
+	double outer_ki_cat1 = 0.11;
+	double outer_ki_cat3 = 0.06;
+	double limit_range_minimum_g = 0.1;
+	double minimum_aoa_soft_limit_deg = 0.1;
+	double alpha_protection_rate_gain_s_inv = 2.0;
+	double g_limit_activation_tolerance_g = 0.02;
+};
+
+struct FBWHoldDegradeConfig
+{
+	// Project-defined state-transition thresholds.
+	double alpha_limit_ratio = 0.95;
+	double gain_zero_threshold = 1e-3;
+	double actuator_timer_maximum_s = 10.0;
+};
+
 constexpr unsigned kFBWGainScheduleSize = 4;
 
 inline FBWCatParams make_fbw_cat1_params()
@@ -77,7 +108,6 @@ inline FBWCatParams make_fbw_cat1_params()
 	params.command_shape_rate = 9.5;
 	params.stick_expo = 0.10;
 	params.p_cmd_max = Common::rad(190.0);
-	params.q_cmd_max = Common::rad(145.0);
 	params.r_cmd_max = Common::rad(80.0);
 	params.aoa_soft_deg = 15.0;
 	params.aoa_hard_deg = 21.0;
@@ -109,7 +139,6 @@ inline FBWCatParams make_fbw_cat3_params()
 	params.command_shape_rate = 5.5;
 	params.stick_expo = 0.20;
 	params.p_cmd_max = Common::rad(140.0);
-	params.q_cmd_max = Common::rad(110.0);
 	params.r_cmd_max = Common::rad(60.0);
 	params.aoa_soft_deg = 12.5;
 	params.aoa_hard_deg = 17.5;
@@ -125,6 +154,9 @@ inline FBWCatParams make_fbw_cat3_params()
 
 struct FBWControllerConfig
 {
+	FBWDirectModeConfig direct_mode;
+	FBWNormalAccelerationConfig normal_acceleration;
+	FBWHoldDegradeConfig hold_degrade;
 	// F-16 reference-derived AP guidance envelope.
 	double guidance_bank_limit_rad = Common::rad(30.0);
 	double guidance_roll_rate_limit_rad_s = Common::rad(20.0);
@@ -133,8 +165,10 @@ struct FBWControllerConfig
 	// Project-defined outer bound; control-law CAT limits remain authoritative.
 	double hard_bank_limit_rad = Common::rad(60.0);
 	double hard_min_normal_acceleration_g = -2.5;
+	// Project-defined developer-only override; not an aircraft capability.
+	double developer_g_limiter_override_margin_g = 2.0;
 	double pitch_attitude_error_to_rate_gain = 2.5;
-	double vertical_speed_error_to_acceleration_gain = 0.4;
+	double vertical_speed_error_to_acceleration_gain = 0.25;
 	double bank_angle_error_to_roll_rate_gain = 2.0;
 	double coordinated_turn_minimum_speed_mps = 30.0;
 	FBWCatParams cat1 = make_fbw_cat1_params();
@@ -158,20 +192,11 @@ struct FBWControllerConfig
 	double int_limit = 1.20;
 	double outer_aw_gain = 1.10;
 	double outer_int_limit = Common::rad(75.0);
-	double alpha_trim_tau = 1.20;
-	double nz_trim_tau = 1.60;
 	double nz_filter_tau = 0.26;
 	double pitch_ref_tau = 0.14;
 	double pitch_ref_rate_deg_s = 90.0;
 	double nz_limit_gain_floor = 0.58;
 	double nz_limit_buffer_bias = 0.15;
-	double region_low_kts = 220.0;
-	double region_high_kts = 380.0;
-	double region_approach_kts = 240.0;
-	double region_min_kts = 110.0;
-	double region_alpha1_deg = 12.0;
-	double region_alpha2_deg = 18.0;
-	double alpha_cmd_per_stick_deg = 13.5;
 	double q_cmd_land_max_deg = 50.0;
 };
 }

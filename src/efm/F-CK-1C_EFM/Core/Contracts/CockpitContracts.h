@@ -58,6 +58,19 @@ enum class FlightControlAuthorityState
 	StickSteering
 };
 
+enum class FlightControlReferenceSource
+{
+	Manual,
+	Automatic
+};
+
+enum class FlightControlVerticalReferenceType
+{
+	None,
+	PitchAttitude,
+	VerticalSpeed
+};
+
 enum class FlightControlConstraintReason
 {
 	None,
@@ -198,6 +211,22 @@ struct FlightControlComputerSnapshot
 	SnapshotStatus status;
 	bool developer_g_limiter_override_available = false;
 	bool developer_g_limiter_override_active = false;
+	FlightControlReferenceSource selected_longitudinal_source =
+		FlightControlReferenceSource::Manual;
+	FlightControlReferenceSource selected_lateral_source =
+		FlightControlReferenceSource::Manual;
+	FlightControlReferenceSource selected_directional_source =
+		FlightControlReferenceSource::Manual;
+	FlightControlVerticalReferenceType selected_vertical_reference_type =
+		FlightControlVerticalReferenceType::None;
+	double selected_normal_acceleration_reference_g = 0.0;
+	double selected_pitch_rate_feedforward_rad_s = 0.0;
+	double selected_pitch_attitude_reference_rad = 0.0;
+	double selected_vertical_speed_reference_mps = 0.0;
+	double selected_roll_rate_reference_rad_s = 0.0;
+	double selected_bank_angle_reference_rad = 0.0;
+	double selected_sideslip_reference_rad = 0.0;
+	double selected_yaw_rate_feedforward_rad_s = 0.0;
 	double normal_acceleration_reference_g = 1.0;
 	double pitch_rate_feedforward_rad_s = 0.0;
 	double roll_rate_reference_rad_s = 0.0;

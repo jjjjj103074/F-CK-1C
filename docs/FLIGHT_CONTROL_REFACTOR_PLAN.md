@@ -1291,3 +1291,62 @@ Interface 另立計畫，不阻擋本次 AP／FBW 架構工作。
 tracking error threshold 與 failure persistence。它們都是 immutable config 的數值整定，不會
 改變 System 邊界、Module seam、訊號 schema 或 mode transition 類型，因此不需要再做前置架構
 決策。若未來取得與 Reference 衝突的 Confirmed F-CK-1 資料，再以新證據另立變更計畫。
+
+## 16. 施工與驗證紀錄
+
+### 16.1 Phase 0–8
+
+Phase 0–8 已依序完成並各自形成可建置、可測試的 commit：
+
+| Phase | Commit | 結果 |
+|---:|---|---|
+| 0 | `84dce51` | 固定重構 baseline 與完整計畫 |
+| 1 | `98886e2` | 巢狀 Module source discovery 與 System entry 邊界 |
+| 2 | `b90caec` | typed flight-control signals |
+| 3 | `e9d36db` | 單一 input conditioning path |
+| 4 | `7dbc376` | AP mode／vertical／lateral／A/T Module 邊界 |
+| 5 | `ae490f1` | disconnect／paddle／stick-steering authority |
+| 6 | `62adb1f` | 單一 maneuver envelope source |
+| 7 | `e34a7fe` | normalized AP seam 原子替換為 physical references |
+| 8 | `e92289e` | mode monitor、degradation 與下一 tick 失效鏈 |
+
+### 16.2 Phase 9 deterministic closed-loop baseline
+
+測試使用真正的 `FlightControlComputer`、256 Hz
+`FlightControlActuationSystem` 與明確的小訊號 airframe plant。名目案例在 150 m/s、CAT I、
+初始 2000 m 高度同時要求 +100 ft 高度與 +10° 航向，執行 30 秒。rise time 定義為兩軸誤差
+都進入初始誤差的 10%；settling band 是高度 ±2 m 且航向 ±1°。以下數值只供專案回歸與調參，
+不是 F-CK-1C 性能或 certification threshold：
+
+| 量測 | 結果 |
+|---|---:|
+| combined rise time | 22.046875 s |
+| altitude maximum overshoot | 0.267292 m |
+| combined settling time | 23.109375 s |
+| final altitude error（target - actual） | -0.246761 m |
+| final heading error（target - actual） | -0.014318 rad |
+| cumulative elevator＋aileron activity | 0.517554 normalized command |
+| maximum surface-command rate | 0.388378 normalized/s |
+| command-direction reversals | 8 |
+| maximum absolute surface command | 0.154022 normalized |
+| final five-second altitude peak-to-peak | 0.967228 m |
+| saturated FCC ticks | 0 |
+
+Automated matrix 另涵蓋 130／150／220 m/s、CAT I／CAT III、vertical/lateral command
+arrival order、combined constraint／recovery、heading wrap、reference 方向、monitor persistence、
+anti-windup 與 actuator limit。scheduler fixtures 比較 30／60／144 FPS 與 irregular host frame
+partition，確認固定 System tick 不受 host FPS 改變。另有完整 paddle-release capture matrix、
+path-mode stick authority、engage／bypass／release／disconnect command-step regression，以及
+manual／automatic active-source diagnostics 與 CSV schema 測試。名目案例的最後十秒拆成前後兩半，
+要求後半 peak-to-peak 不得成長，避免只看最後五秒而漏掉持續振盪。所有 guidance、monitor、
+experimental A/T 與 developer-only override 的 tuning limit 均由 immutable production config
+持有並在 FCC 建立時驗證。高度、重量與真實非線性 airframe response 不由小訊號 plant 假裝
+覆蓋，保留給第 13.3 節的 DCS 實飛矩陣。
+
+### 16.3 尚待使用者驗證
+
+目前 Release x64 solution build、2536 項 native checks、architecture check／fixtures、System catalog
+generator fixtures、DCS ID generator fixtures 與 37-name DLL export baseline 均已通過；最終
+Standards／Spec code review 均無未處理 finding。安裝本次 DLL 後開始第 13.3 節 DCS 測試。DCS
+實飛、CSV／log 檢查與使用者對操縱品質的判定完成前，Phase 9／10 不標記為完整完成，也不關閉
+已知 AP defects。

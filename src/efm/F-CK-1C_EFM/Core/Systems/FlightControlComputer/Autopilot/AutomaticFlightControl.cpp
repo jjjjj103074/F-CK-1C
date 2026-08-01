@@ -42,7 +42,7 @@ AutomaticFlightControl::AutomaticFlightControl(
 	mode_logic_(config),
 	vertical_guidance_(config),
 	lateral_guidance_(config),
-	auto_throttle_(config),
+	auto_throttle_(config.experimental_auto_throttle),
 	mode_monitor_(monitor_config(config))
 {
 	validate_automatic_flight_control_config(config_);
@@ -50,6 +50,22 @@ AutomaticFlightControl::AutomaticFlightControl(
 	snapshot_.status = { true, 0 };
 	refresh_reference();
 	refresh_snapshot();
+}
+
+bool AutomaticFlightControl::handles(CommandId id)
+{
+	if (AutopilotModeLogic::handles(id)) return true;
+	switch (id)
+	{
+	case CommandId::ToggleAutoThrottle:
+	case CommandId::EngageAutoThrottle:
+	case CommandId::DisengageAutoThrottle:
+	case CommandId::IncreaseAutopilotSpeed:
+	case CommandId::DecreaseAutopilotSpeed:
+		return true;
+	default:
+		return false;
+	}
 }
 
 void AutomaticFlightControl::register_commands(SystemSetup& setup)
@@ -91,16 +107,12 @@ void AutomaticFlightControl::handle_command(const Command& command)
 }
 
 const AutomaticFlightGuidanceReference& AutomaticFlightControl::step(
-	const AutomaticFlightControlObservation& observation)
+	const AutomaticFlightControlObservation& observation,
+	const ::Systems::ManeuverEnvelope& envelope)
 {
 	observation_ = observation;
 	const bool previously_engaged = mode_logic_.state().master_engaged;
-	mode_logic_.update(observation_, pending_monitor_result_);
-	if (pending_monitor_result_.release_vertical)
-		mode_monitor_.reset_vertical();
-	if (pending_monitor_result_.release_lateral)
-		mode_monitor_.reset_lateral();
-	pending_monitor_result_ = {};
+	mode_logic_.update(observation_, pending_monitor_result_, envelope);
 	apply_auto_throttle_commands();
 	if (previously_engaged && !mode_logic_.state().master_engaged)
 	{
@@ -109,6 +121,7 @@ const AutomaticFlightGuidanceReference& AutomaticFlightControl::step(
 	}
 	synchronize_guidance_lifecycle();
 	update_guidance();
+	pending_monitor_result_ = {};
 	(void)auto_throttle_.update(observation_);
 	++revision_;
 	refresh_reference();
@@ -128,14 +141,26 @@ void AutomaticFlightControl::apply_auto_throttle_commands()
 void AutomaticFlightControl::synchronize_guidance_lifecycle()
 {
 	const AutopilotModeLogicState& state = mode_logic_.state();
+	if (!state.master_engaged || state.bypass_active)
+	{
+		mode_monitor_.reset_all();
+		pending_monitor_result_.vertical_constrained = false;
+		pending_monitor_result_.lateral_constrained = false;
+	}
 	if (applied_vertical_revision_ != state.vertical_reference_revision)
 	{
 		vertical_guidance_.reset();
+		mode_monitor_.reset_vertical();
+		mode_monitor_.reset_saturation();
+		pending_monitor_result_.vertical_constrained = false;
 		applied_vertical_revision_ = state.vertical_reference_revision;
 	}
 	if (applied_lateral_revision_ != state.lateral_reference_revision)
 	{
 		lateral_guidance_.reset();
+		mode_monitor_.reset_lateral();
+		mode_monitor_.reset_saturation();
+		pending_monitor_result_.lateral_constrained = false;
 		applied_lateral_revision_ = state.lateral_reference_revision;
 	}
 }
@@ -161,7 +186,8 @@ void AutomaticFlightControl::update_guidance()
 		AutomaticFlightControlLateralMode::HeadingSelect
 		? state.target_heading_select_rad : state.target_heading_rad;
 	lateral_reference_ = lateral_guidance_.update(
-		observation_, target_heading_rad, lateral_active);
+		{ observation_, target_heading_rad, lateral_active,
+			pending_monitor_result_.lateral_constrained });
 }
 
 void AutomaticFlightControl::observe_control_result(
@@ -191,7 +217,6 @@ void AutomaticFlightControl::refresh_reference()
 		vertical_reference_.pitch_attitude_rad,
 		vertical_reference_.vertical_speed_mps,
 		lateral_reference_.bank_angle_rad,
-		0.0,
 		auto_throttle.engaged,
 		auto_throttle.throttle_normalized
 	};

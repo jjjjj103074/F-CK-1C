@@ -10,38 +10,10 @@
 
 namespace
 {
-constexpr double kDirectElevatorStep = 0.0125;
-constexpr double kDirectAileronStep = 0.02;
-constexpr double kDirectRudderStep = 0.012;
-constexpr double kMetersPerSecondToKnots = 1.943844;
-constexpr double kGearDownThreshold = 0.5;
-constexpr double kApproachPitchRateWeight = 0.35;
-constexpr double kPitchWeightEpsilon = 1e-6;
-constexpr double kNzPositiveBufferMinimum = 0.25;
-constexpr double kNzNegativeSoftMinimum = 1.0;
-constexpr double kNzNegativeSoftRatio = 0.65;
-constexpr double kAlphaOuterKpCat1 = 2.4;
-constexpr double kAlphaOuterKpCat3 = 1.7;
-constexpr double kAlphaOuterKiCat1 = 1.05;
-constexpr double kAlphaOuterKiCat3 = 0.60;
-constexpr double kNzOuterKpCat1 = 0.34;
-constexpr double kNzOuterKpCat3 = 0.24;
-constexpr double kNzOuterKiCat1 = 0.11;
-constexpr double kNzOuterKiCat3 = 0.06;
-constexpr double kNzLimitRangeMinimum = 0.1;
-constexpr double kInactivePitchWeight = 0.05;
-constexpr double kInactiveIntegratorDecayTau = 0.35;
-constexpr double kAoaLimitTolerance = 0.05;
-constexpr double kGLimitTolerance = 0.02;
-constexpr double kAoaDegradeRatio = 0.95;
-constexpr double kAlphaProtectionRateGain = 2.0;
-constexpr double kHoldGainMinimum = 1e-3;
-constexpr double kActuatorTimerMaximum = 10.0;
+constexpr double kMinimumTimeConstantS = 1e-6;
 
 struct FBWOuterPitchGains
 {
-	double kp_alpha;
-	double ki_alpha;
 	double kp_nz;
 	double ki_nz;
 };
@@ -54,10 +26,11 @@ public:
 		const Systems::FBWControllerConfig& config,
 		const Systems::FlightControlLawStepInput& request)
 		: state_(state),
-		config_(config),
-		input_(request.flight),
-		maneuver_(request.maneuver),
-		output_{ request.flight.elevator_position_normalized,
+		  config_(config),
+		  input_(request.flight),
+		  maneuver_(request.maneuver),
+		  request_configuration_(request.configuration),
+		  output_{ request.flight.elevator_position_normalized,
 			request.flight.aileron_position_normalized,
 			request.flight.rudder_position_normalized }
 	{
@@ -69,12 +42,11 @@ public:
 		{
 			return update_direct_mode();
 		}
-		update_mode();
+		apply_configuration();
 		capture_and_filter_signals();
 		shape_stick_commands();
 		update_hold_entry();
 		prepare_rate_commands();
-		update_pitch_weights();
 		update_hold_commands();
 		update_pitch_demands();
 		update_outer_pitch_loop();
@@ -94,30 +66,32 @@ private:
 			Common::actuator(
 				output_.surface_demand.elevator_command_normalized,
 				{ input_.pilot_pitch_raw_normalized,
-					-kDirectElevatorStep, kDirectElevatorStep }),
+					-config_.direct_mode.elevator_command_step_normalized,
+					config_.direct_mode.elevator_command_step_normalized }),
 			-1.0, 1.0);
 		output_.surface_demand.aileron_command_normalized = Common::limit(
 			Common::actuator(
 				output_.surface_demand.aileron_command_normalized,
 				{ input_.pilot_roll_raw_normalized,
-					-kDirectAileronStep, kDirectAileronStep }),
+					-config_.direct_mode.aileron_command_step_normalized,
+					config_.direct_mode.aileron_command_step_normalized }),
 			-1.0, 1.0);
 		output_.surface_demand.rudder_command_normalized = Common::limit(
 			Common::actuator(
 				output_.surface_demand.rudder_command_normalized,
 				{ input_.pilot_yaw_raw_normalized,
-					-kDirectRudderStep, kDirectRudderStep }),
+					-config_.direct_mode.rudder_command_step_normalized,
+					config_.direct_mode.rudder_command_step_normalized }),
 			-1.0, 1.0);
 		return output_;
 	}
 
-	void update_mode()
+	void apply_configuration()
 	{
 		state_.mode_blend = input_.cat_mode_blend;
-		cat_ = Systems::fbw_blend_cat_params(config_.cat1, config_.cat3, state_.mode_blend);
-		envelope_ = Systems::make_maneuver_envelope(
-			config_,
-			{ cat_, input_.alpha_limit_deg, state_.g_limiter_override });
+		cat_ = request_configuration_.cat;
+		gains_ = request_configuration_.gains;
+		envelope_ = request_configuration_.envelope;
 	}
 
 	void capture_and_filter_signals()
@@ -130,8 +104,6 @@ private:
 		state_.alpha_raw = input_.angle_of_attack_deg;
 		state_.beta_raw = input_.sideslip_deg;
 		state_.qbar_raw = input_.dynamic_pressure_pa;
-		state_.ias_raw = input_.indicated_airspeed_mps * kMetersPerSecondToKnots;
-		state_.mach_raw = input_.mach;
 
 		state_.phi_f = state_.phi_raw;
 		state_.theta_f = state_.theta_raw;
@@ -141,13 +113,11 @@ private:
 		state_.alpha_f = state_.alpha_raw;
 		state_.beta_f = state_.beta_raw;
 		state_.qbar_f = state_.qbar_raw;
-		state_.ias_f = state_.ias_raw;
-		state_.mach_f = state_.mach_raw;
 	}
 
 	double first_order(double current, double target, double tau) const
 	{
-		if (tau <= 1e-6)
+		if (tau <= kMinimumTimeConstantS)
 		{
 			return target;
 		}
@@ -158,12 +128,6 @@ private:
 
 	void shape_stick_commands()
 	{
-		state_.stick_roll_raw = input_.pilot_roll_raw_normalized;
-		state_.stick_pitch_raw = input_.pilot_pitch_raw_normalized;
-		state_.stick_yaw_raw = input_.pilot_yaw_raw_normalized;
-		state_.stick_roll_shaped = input_.pilot_roll_normalized;
-		state_.stick_pitch_shaped = input_.pilot_pitch_normalized;
-		state_.stick_yaw_shaped = input_.pilot_yaw_normalized;
 		stick_in_deadband_ = input_.roll_pitch_in_deadband;
 	}
 
@@ -201,7 +165,6 @@ private:
 
 	void prepare_rate_commands()
 	{
-		gains_ = Systems::fbw_eval_gain_schedule(config_, state_.qbar_f);
 		state_.nz_raw = input_.normal_acceleration_g;
 		state_.nz_f = state_.nz_raw;
 		state_.p_cmd_rate =
@@ -209,19 +172,6 @@ private:
 		state_.r_cmd_rate =
 			maneuver_.lateral_directional.yaw_rate_feedforward_rad_s;
 
-		if (input_.weight_on_wheels || input_.pitch_in_deadband)
-		{
-			state_.alpha_trim_deg = first_order(
-				state_.alpha_trim_deg, state_.alpha_f, config_.alpha_trim_tau);
-			state_.nz_trim_g = first_order(state_.nz_trim_g, state_.nz_f, config_.nz_trim_tau);
-		}
-	}
-
-	void update_pitch_weights()
-	{
-		state_.w_alpha = 0.0;
-		state_.w_nz = 1.0;
-		state_.w_q = 0.0;
 	}
 
 	void update_hold_commands()
@@ -255,21 +205,20 @@ private:
 		alpha_abs_ = std::fabs(state_.alpha_f);
 		alpha_soft_ = Common::limit(
 			cat_.aoa_soft_deg,
-			0.1,
+			config_.normal_acceleration.minimum_aoa_soft_limit_deg,
 			envelope_.hard_protection.angle_of_attack_limit_deg);
-		state_.alpha_cmd_deg = state_.alpha_trim_deg;
-		state_.alpha_cmd_lim_deg = state_.alpha_cmd_deg;
-
 		nz_positive_limit_ =
 			envelope_.hard_protection.maximum_normal_acceleration_g;
 		const double positive_buffer = Systems::fbw_max(
-			kNzPositiveBufferMinimum, config_.nz_limit_buffer_bias);
+			config_.normal_acceleration.positive_buffer_minimum_g,
+			config_.nz_limit_buffer_bias);
 		nz_positive_soft_ = Systems::fbw_min(cat_.g_soft, nz_positive_limit_ - positive_buffer);
 		const double negative_hard =
 			envelope_.hard_protection.minimum_normal_acceleration_g;
 		const double negative_soft = -Systems::fbw_max(
-			kNzNegativeSoftMinimum,
-			-1.0 * negative_hard * kNzNegativeSoftRatio);
+			config_.normal_acceleration.negative_soft_minimum_g,
+			-1.0 * negative_hard *
+				config_.normal_acceleration.negative_soft_ratio);
 		state_.nz_cmd =
 			maneuver_.longitudinal.normal_acceleration_reference_g;
 		state_.nz_cmd_lim = state_.nz_cmd;
@@ -288,43 +237,38 @@ private:
 	void update_outer_pitch_loop()
 	{
 		q_outer_limit_ = cat_.q_rate_limit * gains_.limiter_gain;
-		const double kp_alpha = Systems::fbw_blend_value(
-			kAlphaOuterKpCat1, kAlphaOuterKpCat3, state_.mode_blend) * gains_.cmd_gain;
-		const double ki_alpha = Systems::fbw_blend_value(
-			kAlphaOuterKiCat1, kAlphaOuterKiCat3, state_.mode_blend) * gains_.hold_gain;
 		double nz_gain_scale = 1.0;
 		if (state_.nz_cmd > 1.0)
 		{
 			const double ratio = Common::limit(
 				(state_.nz_f - nz_positive_soft_) /
-				Systems::fbw_max(nz_positive_limit_ - nz_positive_soft_, kNzLimitRangeMinimum), 0.0, 1.0);
+				Systems::fbw_max(
+					nz_positive_limit_ - nz_positive_soft_,
+					config_.normal_acceleration.limit_range_minimum_g),
+				0.0, 1.0);
 			nz_gain_scale = Systems::fbw_blend_value(
 				1.0, config_.nz_limit_gain_floor, Systems::fbw_smoothstep01(ratio));
 		}
 		const double kp_nz = Systems::fbw_blend_value(
-			kNzOuterKpCat1, kNzOuterKpCat3, state_.mode_blend) * gains_.cmd_gain * nz_gain_scale;
+			config_.normal_acceleration.outer_kp_cat1,
+			config_.normal_acceleration.outer_kp_cat3,
+			state_.mode_blend) * gains_.cmd_gain * nz_gain_scale;
 		const double ki_nz = Systems::fbw_blend_value(
-			kNzOuterKiCat1, kNzOuterKiCat3, state_.mode_blend) * gains_.hold_gain * nz_gain_scale;
-		integrate_outer_pitch_loop({ kp_alpha, ki_alpha, kp_nz, ki_nz });
+			config_.normal_acceleration.outer_ki_cat1,
+			config_.normal_acceleration.outer_ki_cat3,
+			state_.mode_blend) * gains_.hold_gain * nz_gain_scale;
+		integrate_outer_pitch_loop({ kp_nz, ki_nz });
 	}
 
 	void integrate_outer_pitch_loop(const FBWOuterPitchGains& gains)
 	{
 		const double nz_error = state_.nz_cmd_lim - state_.nz_f;
 		const double nz_raw = gains.kp_nz * nz_error + state_.nz_outer_int;
-		state_.q_ref_alpha = 0.0;
 		state_.q_ref_nz = Common::limit(nz_raw, -q_outer_limit_, q_outer_limit_);
 		state_.nz_outer_int += (gains.ki_nz * nz_error +
 			config_.outer_aw_gain * (state_.q_ref_nz - nz_raw)) * input_.dt_s;
-		state_.alpha_outer_int = first_order(
-			state_.alpha_outer_int, 0.0, kInactiveIntegratorDecayTau);
 		state_.nz_outer_int = Common::limit(
 			state_.nz_outer_int, -config_.outer_int_limit, config_.outer_int_limit);
-		if (state_.w_nz < kInactivePitchWeight)
-		{
-			state_.nz_outer_int = first_order(
-				state_.nz_outer_int, 0.0, kInactiveIntegratorDecayTau);
-		}
 	}
 
 	void update_pitch_reference()
@@ -335,7 +279,8 @@ private:
 		state_.q_ref_blended = state_.q_ref_nz + state_.q_ref_q;
 		if (state_.alpha_f > alpha_soft_ && state_.q_ref_blended > 0.0)
 		{
-			state_.q_ref_blended = -kAlphaProtectionRateGain *
+			state_.q_ref_blended =
+				-config_.normal_acceleration.alpha_protection_rate_gain_s_inv *
 				Common::rad(state_.alpha_f - alpha_soft_);
 		}
 		const double previous = state_.q_ref_filtered;
@@ -347,13 +292,16 @@ private:
 			state_.q_ref_filtered, previous - maximum_step, previous + maximum_step);
 		state_.q_cmd_rate = Common::limit(state_.q_ref_filtered, -q_outer_limit_, q_outer_limit_);
 		state_.aoa_limit_active = state_.alpha_f > alpha_soft_;
-		state_.g_limit_active = std::fabs(state_.nz_cmd - state_.nz_cmd_lim) > kGLimitTolerance;
+		state_.g_limit_active =
+			std::fabs(state_.nz_cmd - state_.nz_cmd_lim) >
+			config_.normal_acceleration.g_limit_activation_tolerance_g;
 	}
 
 	void update_hold_degrade()
 	{
 		const bool aoa = alpha_abs_ > cat_.alpha_hold_degrade_deg ||
-			alpha_abs_ > input_.alpha_limit_deg * kAoaDegradeRatio;
+			alpha_abs_ > input_.alpha_limit_deg *
+				config_.hold_degrade.alpha_limit_ratio;
 		const bool qbar = state_.qbar_f < cat_.qbar_min_hold;
 		if (state_.control_state == Systems::FBW_STATE_HOLD && (aoa || qbar || hold_cmd_overlimit_))
 		{
@@ -367,7 +315,8 @@ private:
 			return;
 		}
 		state_.hold_gain_scale = first_order(state_.hold_gain_scale, 0.0, cat_.hold_decay_tau);
-		if (state_.hold_gain_scale < kHoldGainMinimum)
+		if (state_.hold_gain_scale <
+			config_.hold_degrade.gain_zero_threshold)
 		{
 			state_.hold_gain_scale = 0.0;
 		}
@@ -422,9 +371,6 @@ private:
 		state_.q_cmd = limited.value.pitch_rate_rad_s;
 		state_.r_cmd = limited.value.yaw_rate_rad_s;
 		state_.rate_limit_active = limited.constrained;
-		state_.p_err = state_.p_cmd - state_.p_f;
-		state_.q_err = state_.q_cmd - state_.q_f;
-		state_.r_err = state_.r_cmd - state_.r_f;
 	}
 
 	void update_inner_rate_loop()
@@ -458,7 +404,7 @@ private:
 			: Common::limit(
 				state_.actuator_sat_timer - input_.dt_s,
 				0.0,
-				kActuatorTimerMaximum);
+				config_.hold_degrade.actuator_timer_maximum_s);
 		if (state_.control_state == Systems::FBW_STATE_HOLD &&
 			state_.actuator_sat_timer > cat_.sat_time)
 		{
@@ -472,13 +418,13 @@ private:
 	const Systems::FBWControllerConfig& config_;
 	const Systems::ConditionedFlightControlInput& input_;
 	const Core::Systems::CoordinatedManeuverReference& maneuver_;
+	const Systems::FlightControlConfiguration& request_configuration_;
 	Systems::FlightControlLawResult output_;
 	Systems::FBWCatParams cat_;
 	Systems::ManeuverEnvelope envelope_;
 	Systems::FBWGainScheduleValues gains_;
 	bool stick_in_deadband_ = false;
 	bool hold_cmd_overlimit_ = false;
-	double high_speed_weight_ = 0.0;
 	double alpha_abs_ = 0.0;
 	double alpha_soft_ = 0.0;
 	double nz_positive_limit_ = 0.0;

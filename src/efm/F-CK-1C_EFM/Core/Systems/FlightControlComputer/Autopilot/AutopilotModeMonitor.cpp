@@ -31,19 +31,40 @@ AutopilotModeMonitorResult AutopilotModeMonitor::update(
 		invalid.disconnect_reason = DisconnectReason::InvalidInput;
 		return invalid;
 	}
+	update_failure_timers(observation);
+	return make_result(observation);
+}
+
+void AutopilotModeMonitor::update_failure_timers(
+	const AutopilotModeMonitorObservation& observation)
+{
 	vertical_failure_time_s_ = update_timer(
 		vertical_failure_time_s_,
-		vertical_tracking_failed(observation) ||
-			observation.constraint.vertical_constrained,
+		observation.vertical_active &&
+			(vertical_tracking_failed(observation) ||
+				observation.constraint.vertical_constrained),
 		observation.dt_s);
 	lateral_failure_time_s_ = update_timer(
 		lateral_failure_time_s_,
-		lateral_tracking_failed(observation) ||
-			observation.constraint.lateral_constrained,
+		observation.lateral_active &&
+			(lateral_tracking_failed(observation) ||
+				observation.constraint.lateral_constrained),
 		observation.dt_s);
 	saturation_time_s_ = update_timer(
-		saturation_time_s_, observation.actuator_saturated, observation.dt_s);
+		saturation_time_s_,
+		observation.actuator_saturated &&
+			(observation.vertical_active || observation.lateral_active),
+		observation.dt_s);
+}
+
+AutopilotModeMonitorResult AutopilotModeMonitor::make_result(
+	const AutopilotModeMonitorObservation& observation) const
+{
 	AutopilotModeMonitorResult result;
+	result.vertical_constrained = observation.vertical_active &&
+		observation.constraint.vertical_constrained;
+	result.lateral_constrained = observation.lateral_active &&
+		observation.constraint.lateral_constrained;
 	result.constraint_reason = observation.constraint.reason !=
 		ConstraintReason::None
 		? observation.constraint.reason
@@ -120,6 +141,11 @@ void AutopilotModeMonitor::reset_all()
 {
 	reset_vertical();
 	reset_lateral();
+	reset_saturation();
+}
+
+void AutopilotModeMonitor::reset_saturation()
+{
 	saturation_time_s_ = 0.0;
 }
 }

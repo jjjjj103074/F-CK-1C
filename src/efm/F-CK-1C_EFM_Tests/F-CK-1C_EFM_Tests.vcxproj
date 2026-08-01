@@ -64,6 +64,9 @@
     <ClCompile Include="AerodynamicsPhysicsTests.cpp" />
     <ClCompile Include="AirframeDeviceSystemTests.cpp" />
     <ClCompile Include="AutomaticFlightControlTests.cpp" />
+    <ClCompile Include="AutomaticFlightControlLifecycleTests.cpp" />
+    <ClCompile Include="AutomaticFlightControlTakeoverTests.cpp" />
+    <ClCompile Include="AutopilotClosedLoopTests.cpp" />
     <ClCompile Include="AutopilotModeMonitorTests.cpp" />
     <ClCompile Include="AbiBoundaryTests.cpp" />
     <ClCompile Include="BridgeContextTests.cpp" />

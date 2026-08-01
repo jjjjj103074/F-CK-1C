@@ -80,6 +80,37 @@ void test_sustained_saturation_releases_active_axes(
 			Core::Systems::DegradationReason::SustainedActuatorSaturation);
 }
 
+void test_inactive_saturation_does_not_cross_engagement_boundary(
+	Tests::Context& context)
+{
+	Core::Systems::AutopilotModeMonitor monitor(test_config());
+	auto observation = vertical_failure();
+	observation.vertical_active = false;
+	observation.vertical_tracking_error = 0.0;
+	observation.actuator_saturated = true;
+	(void)monitor.update(observation);
+	(void)monitor.update(observation);
+	observation.vertical_active = true;
+	const auto result = monitor.update(observation);
+	TEST_EXPECT(context, !result.release_vertical);
+}
+
+void test_transient_constraints_are_exposed_to_guidance(
+	Tests::Context& context)
+{
+	Core::Systems::AutopilotModeMonitor monitor(test_config());
+	auto observation = vertical_failure();
+	observation.vertical_tracking_error = 0.0;
+	observation.lateral_active = true;
+	observation.constraint.vertical_constrained = true;
+	observation.constraint.lateral_constrained = true;
+	const auto result = monitor.update(observation);
+	TEST_EXPECT(context, result.vertical_constrained);
+	TEST_EXPECT(context, result.lateral_constrained);
+	TEST_EXPECT(context, !result.release_vertical);
+	TEST_EXPECT(context, !result.release_lateral);
+}
+
 void test_invalid_input_requests_typed_disconnect(Tests::Context& context)
 {
 	Core::Systems::AutopilotModeMonitor monitor(test_config());
@@ -100,5 +131,7 @@ void run_autopilot_mode_monitor_tests(Tests::Context& context)
 	test_sustained_vertical_failure_releases_only_vertical(context);
 	test_recovery_clears_persistence_timer(context);
 	test_sustained_saturation_releases_active_axes(context);
+	test_inactive_saturation_does_not_cross_engagement_boundary(context);
+	test_transient_constraints_are_exposed_to_guidance(context);
 	test_invalid_input_requests_typed_disconnect(context);
 }

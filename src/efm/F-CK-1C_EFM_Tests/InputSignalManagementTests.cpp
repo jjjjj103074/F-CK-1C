@@ -70,8 +70,8 @@ void test_heading_is_wrapped(Tests::Context& context)
 	auto raw = valid_input();
 	raw.observation.heading_rad = 3.5;
 	const auto result = manager.condition(raw, Systems::FBW_CAT1);
-	TEST_EXPECT(context, result.heading_rad < 0.0);
-	TEST_EXPECT_NEAR(context, result.heading_rad, -2.7831853071795862, kTolerance);
+	TEST_EXPECT(context, result.heading_rad >= 0.0);
+	TEST_EXPECT_NEAR(context, result.heading_rad, 3.5, kTolerance);
 }
 
 void test_invalid_input_is_exposed(Tests::Context& context)

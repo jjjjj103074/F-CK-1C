@@ -30,12 +30,17 @@ public:
 	double cat_mode_blend() const;
 
 private:
-	double filter(double current, double target, double tau_s, double dt_s) const;
-	double filter_angle(
-		double current_rad,
-		double target_rad,
-		double tau_s,
-		double dt_s) const;
+	struct FilterInput
+	{
+		double current = 0.0;
+		double target = 0.0;
+		double tau_s = 0.0;
+		double dt_s = 0.0;
+	};
+
+	double filter(const FilterInput& input) const;
+	double filter_signed_angle(const FilterInput& input) const;
+	double filter_heading(const FilterInput& input) const;
 	double shape_stick(double value, double exponent_weight) const;
 	void validate(const RawFlightControlInput& raw) const;
 	void update_observation(

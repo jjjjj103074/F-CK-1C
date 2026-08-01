@@ -39,18 +39,27 @@ public:
 
 	const FlightControlActuatorCommand& actuator_command() const;
 	const EngineThrottleCommand& engine_throttle_command() const;
+	const FlightControlComputerSnapshot& diagnostics() const;
+	const AutomaticFlightControlSnapshot& automatic_flight_control_snapshot()
+		const;
 
 private:
 	void register_commands(SystemSetup& setup);
+	::Systems::FlightControlConfiguration make_configuration(
+		const ::Systems::ConditionedFlightControlInput& flight) const;
 	::Systems::FlightControlLawStepInput make_control_law_input(
 		const ::Systems::ConditionedFlightControlInput& flight,
-		const AutomaticFlightGuidanceReference& automatic);
+		const AutomaticFlightGuidanceReference& automatic,
+		const ::Systems::FlightControlConfiguration& configuration);
 	void apply_experimental_auto_throttle(
 		const AutomaticFlightGuidanceReference& automatic);
 	void refresh_outputs(
 		const ::Systems::FlightControlLawResult& output,
 		const ThrottleLeverSignal& throttle_levers);
 	void refresh_diagnostics();
+	void refresh_selected_reference_diagnostics();
+	void refresh_selected_longitudinal_diagnostics();
+	void refresh_selected_lateral_diagnostics();
 	AutomaticFlightControlObservation make_automatic_observation(
 		const RawFlightControlInput& raw,
 		const ::Systems::ConditionedFlightControlInput& conditioned) const;

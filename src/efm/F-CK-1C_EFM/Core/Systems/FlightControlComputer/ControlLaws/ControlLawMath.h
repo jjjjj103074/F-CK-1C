@@ -97,7 +97,6 @@ inline FBWCatParams fbw_blend_cat_params(const FBWCatParams& cat1, const FBWCatP
 	out.command_shape_rate = fbw_blend_value(cat1.command_shape_rate, cat3.command_shape_rate, blend);
 	out.stick_expo = fbw_blend_value(cat1.stick_expo, cat3.stick_expo, blend);
 	out.p_cmd_max = fbw_blend_value(cat1.p_cmd_max, cat3.p_cmd_max, blend);
-	out.q_cmd_max = fbw_blend_value(cat1.q_cmd_max, cat3.q_cmd_max, blend);
 	out.r_cmd_max = fbw_blend_value(cat1.r_cmd_max, cat3.r_cmd_max, blend);
 	out.aoa_soft_deg = fbw_blend_value(cat1.aoa_soft_deg, cat3.aoa_soft_deg, blend);
 	out.aoa_hard_deg = fbw_blend_value(cat1.aoa_hard_deg, cat3.aoa_hard_deg, blend);

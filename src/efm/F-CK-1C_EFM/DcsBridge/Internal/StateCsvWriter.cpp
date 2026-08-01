@@ -54,6 +54,18 @@ constexpr const char* kStateCsvHeader =
 	"fuel_total_flow_kg_per_s,"
 	"flight_control_developer_g_limiter_override_available,"
 	"flight_control_developer_g_limiter_override_active,"
+	"flight_control_selected_longitudinal_source,"
+	"flight_control_selected_lateral_source,"
+	"flight_control_selected_directional_source,"
+	"flight_control_selected_vertical_reference_type,"
+	"flight_control_selected_normal_acceleration_reference_g,"
+	"flight_control_selected_pitch_rate_feedforward_rad_s,"
+	"flight_control_selected_pitch_attitude_reference_rad,"
+	"flight_control_selected_vertical_speed_reference_mps,"
+	"flight_control_selected_roll_rate_reference_rad_s,"
+	"flight_control_selected_bank_angle_reference_rad,"
+	"flight_control_selected_sideslip_reference_rad,"
+	"flight_control_selected_yaw_rate_feedforward_rad_s,"
 	"flight_control_normal_acceleration_reference_g,"
 	"flight_control_pitch_rate_feedforward_rad_s,"
 	"flight_control_roll_rate_reference_rad_s,"
@@ -295,12 +307,35 @@ bool append_automatic_flight_control(
 			afcs.auto_throttle_disengage_reason));
 }
 
+bool append_selected_flight_reference(
+	CsvRowBuilder& row,
+	const Core::FlightControlComputerSnapshot& fcc)
+{
+	return row.append_double(static_cast<double>(
+			fcc.selected_longitudinal_source)) &&
+		row.append_double(static_cast<double>(
+			fcc.selected_lateral_source)) &&
+		row.append_double(static_cast<double>(
+			fcc.selected_directional_source)) &&
+		row.append_double(static_cast<double>(
+			fcc.selected_vertical_reference_type)) &&
+		row.append_double(fcc.selected_normal_acceleration_reference_g) &&
+		row.append_double(fcc.selected_pitch_rate_feedforward_rad_s) &&
+		row.append_double(fcc.selected_pitch_attitude_reference_rad) &&
+		row.append_double(fcc.selected_vertical_speed_reference_mps) &&
+		row.append_double(fcc.selected_roll_rate_reference_rad_s) &&
+		row.append_double(fcc.selected_bank_angle_reference_rad) &&
+		row.append_double(fcc.selected_sideslip_reference_rad) &&
+		row.append_double(fcc.selected_yaw_rate_feedforward_rad_s);
+}
+
 bool append_flight_control_computer(
 	CsvRowBuilder& row,
 	const Core::FlightControlComputerSnapshot& fcc)
 {
 	return row.append_bool(fcc.developer_g_limiter_override_available) &&
 		row.append_bool(fcc.developer_g_limiter_override_active) &&
+		append_selected_flight_reference(row, fcc) &&
 		row.append_double(fcc.normal_acceleration_reference_g) &&
 		row.append_double(fcc.pitch_rate_feedforward_rad_s) &&
 		row.append_double(fcc.roll_rate_reference_rad_s) &&

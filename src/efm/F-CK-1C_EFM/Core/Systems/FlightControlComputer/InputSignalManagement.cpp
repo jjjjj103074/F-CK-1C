@@ -1,6 +1,7 @@
 #include "InputSignalManagement.h"
 
 #include "ControlLaws/ControlLawMath.h"
+#include "Common/Angles.h"
 #include "Common/Clamp.h"
 
 #include <cmath>
@@ -43,10 +44,6 @@ void require_unit_interval(double value, const char* field)
 	}
 }
 
-double wrap_pi(double angle_rad)
-{
-	return std::atan2(std::sin(angle_rad), std::cos(angle_rad));
-}
 }
 
 namespace Core
@@ -66,11 +63,12 @@ InputSignalManagement::InputSignalManagement(
 	validate(raw);
 	const double target_blend =
 		cat_mode == ::Systems::FBW_CAT3 ? 1.0 : 0.0;
-	state_.cat_mode_blend = filter(
+	state_.cat_mode_blend = filter({
 		state_.cat_mode_blend,
 		target_blend,
 		config_.mode_switch_tau,
-		raw.dt_s);
+		raw.dt_s
+	});
 	const ::Systems::FBWCatParams cat = ::Systems::fbw_blend_cat_params(
 		config_.cat1, config_.cat3, state_.cat_mode_blend);
 	state_.dt_s = raw.dt_s;
@@ -87,17 +85,15 @@ double InputSignalManagement::cat_mode_blend() const
 }
 
 double InputSignalManagement::filter(
-	double current,
-	double target,
-	double tau_s,
-	double dt_s) const
+	const FilterInput& input) const
 {
-	if (tau_s <= kMinimumTimeConstantS)
+	if (input.tau_s <= kMinimumTimeConstantS)
 	{
-		return target;
+		return input.target;
 	}
-	const double gain = Common::limit(dt_s / (tau_s + dt_s), 0.0, 1.0);
-	return current + (target - current) * gain;
+	const double gain = Common::limit(
+		input.dt_s / (input.tau_s + input.dt_s), 0.0, 1.0);
+	return input.current + (input.target - input.current) * gain;
 }
 
 double InputSignalManagement::shape_stick(
@@ -108,14 +104,30 @@ double InputSignalManagement::shape_stick(
 		exponent_weight * value * value * value;
 }
 
-double InputSignalManagement::filter_angle(
-	double current_rad,
-	double target_rad,
-	double tau_s,
-	double dt_s) const
+double InputSignalManagement::filter_signed_angle(
+	const FilterInput& input) const
 {
-	const double delta_rad = wrap_pi(target_rad - current_rad);
-	return wrap_pi(filter(current_rad, current_rad + delta_rad, tau_s, dt_s));
+	const double delta_rad = Common::shortest_angle_difference_rad(
+		input.target, input.current);
+	return Common::wrap_signed_angle_rad(filter({
+		input.current,
+		input.current + delta_rad,
+		input.tau_s,
+		input.dt_s
+	}));
+}
+
+double InputSignalManagement::filter_heading(
+	const FilterInput& input) const
+{
+	const double delta_rad = Common::shortest_angle_difference_rad(
+		input.target, input.current);
+	return Common::wrap_heading_rad(filter({
+		input.current,
+		input.current + delta_rad,
+		input.tau_s,
+		input.dt_s
+	}));
 }
 
 void InputSignalManagement::validate(const RawFlightControlInput& raw) const
@@ -175,41 +187,44 @@ void InputSignalManagement::update_observation(
 	const double dt_s = raw.dt_s;
 	const double tau_s = config_.signal_filter_tau;
 	output.altitude_asl_m = filter(
-		output.altitude_asl_m, source.altitude_asl_m, tau_s, dt_s);
+		{ output.altitude_asl_m, source.altitude_asl_m, tau_s, dt_s });
 	output.vertical_speed_mps = filter(
-		output.vertical_speed_mps, source.vertical_speed_mps, tau_s, dt_s);
-	output.heading_rad = filter_angle(
-		output.heading_rad, source.heading_rad, tau_s, dt_s);
-	output.roll_attitude_rad = filter_angle(
-		output.roll_attitude_rad, source.roll_rad, tau_s, dt_s);
+		{ output.vertical_speed_mps, source.vertical_speed_mps, tau_s, dt_s });
+	output.heading_rad = filter_heading(
+		{ output.heading_rad, source.heading_rad, tau_s, dt_s });
+	output.roll_attitude_rad = filter_signed_angle(
+		{ output.roll_attitude_rad, source.roll_rad, tau_s, dt_s });
 	output.pitch_attitude_rad = filter(
-		output.pitch_attitude_rad, source.pitch_rad, tau_s, dt_s);
+		{ output.pitch_attitude_rad, source.pitch_rad, tau_s, dt_s });
 	output.roll_rate_rad_s = filter(
-		output.roll_rate_rad_s, source.roll_rate_rad_s, tau_s, dt_s);
+		{ output.roll_rate_rad_s, source.roll_rate_rad_s, tau_s, dt_s });
 	output.pitch_rate_rad_s = filter(
-		output.pitch_rate_rad_s, source.pitch_rate_rad_s, tau_s, dt_s);
+		{ output.pitch_rate_rad_s, source.pitch_rate_rad_s, tau_s, dt_s });
 	output.yaw_rate_rad_s = filter(
-		output.yaw_rate_rad_s, source.yaw_rate_rad_s, tau_s, dt_s);
+		{ output.yaw_rate_rad_s, source.yaw_rate_rad_s, tau_s, dt_s });
 	output.angle_of_attack_deg = filter(
-		output.angle_of_attack_deg, source.alpha_deg, tau_s, dt_s);
+		{ output.angle_of_attack_deg, source.alpha_deg, tau_s, dt_s });
 	output.sideslip_deg = filter(
-		output.sideslip_deg, source.beta_deg, tau_s, dt_s);
-	output.dynamic_pressure_pa = filter(
+		{ output.sideslip_deg, source.beta_deg, tau_s, dt_s });
+	output.dynamic_pressure_pa = filter({
 		output.dynamic_pressure_pa,
 		source.dynamic_pressure_pa,
 		config_.qbar_filter_tau,
-		dt_s);
-	output.indicated_airspeed_mps = filter(
+		dt_s
+	});
+	output.indicated_airspeed_mps = filter({
 		output.indicated_airspeed_mps,
 		source.indicated_airspeed_mps,
 		tau_s,
-		dt_s);
-	output.mach = filter(output.mach, source.mach, tau_s, dt_s);
-	output.normal_acceleration_g = filter(
+		dt_s
+	});
+	output.mach = filter({ output.mach, source.mach, tau_s, dt_s });
+	output.normal_acceleration_g = filter({
 		output.normal_acceleration_g,
 		source.normal_acceleration_g,
 		config_.nz_filter_tau,
-		dt_s);
+		dt_s
+	});
 }
 
 void InputSignalManagement::update_pilot_signal(
@@ -231,15 +246,18 @@ void InputSignalManagement::update_pilot_signal(
 		output.pilot_yaw_raw_normalized, cat.stick_expo);
 	const double maximum_step = cat.command_shape_rate * output.dt_s;
 	shaped_roll_normalized_ = Common::limit(
-		filter(shaped_roll_normalized_, roll_target, cat.command_shape_tau, output.dt_s),
+		filter({ shaped_roll_normalized_, roll_target,
+			cat.command_shape_tau, output.dt_s }),
 		shaped_roll_normalized_ - maximum_step,
 		shaped_roll_normalized_ + maximum_step);
 	shaped_pitch_normalized_ = Common::limit(
-		filter(shaped_pitch_normalized_, pitch_target, cat.command_shape_tau, output.dt_s),
+		filter({ shaped_pitch_normalized_, pitch_target,
+			cat.command_shape_tau, output.dt_s }),
 		shaped_pitch_normalized_ - maximum_step,
 		shaped_pitch_normalized_ + maximum_step);
 	shaped_yaw_normalized_ = Common::limit(
-		filter(shaped_yaw_normalized_, yaw_target, cat.command_shape_tau, output.dt_s),
+		filter({ shaped_yaw_normalized_, yaw_target,
+			cat.command_shape_tau, output.dt_s }),
 		shaped_yaw_normalized_ - maximum_step,
 		shaped_yaw_normalized_ + maximum_step);
 	output.pilot_roll_normalized = shaped_roll_normalized_;

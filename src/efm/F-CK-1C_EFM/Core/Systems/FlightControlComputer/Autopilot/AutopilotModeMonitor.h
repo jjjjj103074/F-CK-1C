@@ -34,6 +34,8 @@ struct AutopilotModeMonitorResult
 	ConstraintReason constraint_reason = ConstraintReason::None;
 	DegradationReason degradation_reason = DegradationReason::None;
 	DisconnectReason disconnect_reason = DisconnectReason::None;
+	bool vertical_constrained = false;
+	bool lateral_constrained = false;
 	bool release_vertical = false;
 	bool release_lateral = false;
 };
@@ -47,9 +49,14 @@ public:
 		const AutopilotModeMonitorObservation& observation);
 	void reset_vertical();
 	void reset_lateral();
+	void reset_saturation();
 	void reset_all();
 
 private:
+	void update_failure_timers(
+		const AutopilotModeMonitorObservation& observation);
+	AutopilotModeMonitorResult make_result(
+		const AutopilotModeMonitorObservation& observation) const;
 	bool vertical_tracking_failed(
 		const AutopilotModeMonitorObservation& observation) const;
 	bool lateral_tracking_failed(

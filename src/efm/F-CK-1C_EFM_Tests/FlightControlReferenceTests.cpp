@@ -8,6 +8,7 @@
 #include "Core/Systems/FlightControlComputer/ControlLaws/PilotCommandLaw.h"
 
 #include <cmath>
+#include <variant>
 
 namespace
 {
@@ -52,6 +53,14 @@ Core::Systems::GuidanceCoordinationInput automatic_input()
 	};
 }
 
+Core::Systems::AutomaticLongitudinalFlightReference&
+automatic_longitudinal(
+	Core::Systems::GuidanceCoordinationInput& input)
+{
+	return std::get<Core::Systems::AutomaticLongitudinalFlightReference>(
+		input.selected.longitudinal);
+}
+
 void test_pilot_mapping_uses_physical_references(Tests::Context& context)
 {
 	Systems::FBWControllerConfig config;
@@ -74,6 +83,7 @@ void test_reference_selection_preserves_axis_authority(
 {
 	Core::Systems::CoordinatedManeuverReference manual;
 	manual.longitudinal.normal_acceleration_reference_g = 1.5;
+	manual.lateral_directional.roll_rate_reference_rad_s = 0.25;
 	Core::Systems::AutomaticFlightGuidanceReference automatic;
 	automatic.longitudinal_authority =
 		Core::Systems::AuthorityState::Automatic;
@@ -87,11 +97,20 @@ void test_reference_selection_preserves_axis_authority(
 	TEST_EXPECT(
 		context,
 		selected.lateral_authority == Core::Systems::AuthorityState::Bypassed);
+	TEST_EXPECT(
+		context,
+		std::holds_alternative<
+			Core::Systems::AutomaticLongitudinalFlightReference>(
+				selected.longitudinal));
+	TEST_EXPECT(
+		context,
+		std::holds_alternative<Core::Systems::ManualLateralFlightReference>(
+			selected.lateral));
 	TEST_EXPECT_NEAR(
 		context,
-		selected.manual.longitudinal.normal_acceleration_reference_g,
-		1.5,
-		kTolerance);
+		std::get<Core::Systems::ManualLateralFlightReference>(
+			selected.lateral).roll_rate_reference_rad_s,
+		0.25, kTolerance);
 }
 
 void test_level_turn_compensation_is_applied_once(Tests::Context& context)
@@ -110,8 +129,10 @@ void test_level_turn_compensation_is_applied_once(Tests::Context& context)
 
 void test_joint_feasibility_reports_limiting_axis(Tests::Context& context)
 {
+	constexpr double kHighClimbReferenceMps = 30.0;
 	auto input = automatic_input();
-	input.selected.automatic.vertical_speed_reference_mps = 22.0;
+	automatic_longitudinal(input).vertical_speed_reference_mps =
+		kHighClimbReferenceMps;
 	const auto result = Core::Systems::coordinate_guidance(input);
 	TEST_EXPECT(
 		context,
@@ -126,8 +147,10 @@ void test_joint_feasibility_reports_limiting_axis(Tests::Context& context)
 
 void test_vertical_overload_keeps_vertical_reason(Tests::Context& context)
 {
+	constexpr double kUnmaintainableClimbReferenceMps = 45.0;
 	auto input = automatic_input();
-	input.selected.automatic.vertical_speed_reference_mps = 30.0;
+	automatic_longitudinal(input).vertical_speed_reference_mps =
+		kUnmaintainableClimbReferenceMps;
 	const auto result = Core::Systems::coordinate_guidance(input);
 	TEST_EXPECT(
 		context,
@@ -136,11 +159,29 @@ void test_vertical_overload_keeps_vertical_reason(Tests::Context& context)
 	TEST_EXPECT(context, result.constraint.vertical_constrained);
 }
 
+void test_combined_constraint_recovers_when_request_becomes_feasible(
+	Tests::Context& context)
+{
+	constexpr double kConstrainedClimbReferenceMps = 30.0;
+	auto input = automatic_input();
+	automatic_longitudinal(input).vertical_speed_reference_mps =
+		kConstrainedClimbReferenceMps;
+	const auto constrained = Core::Systems::coordinate_guidance(input);
+	TEST_EXPECT(context, constrained.constraint.lateral_constrained);
+	automatic_longitudinal(input).vertical_speed_reference_mps = 0.0;
+	const auto recovered = Core::Systems::coordinate_guidance(input);
+	TEST_EXPECT(
+		context,
+		recovered.constraint.reason == Core::Systems::ConstraintReason::None);
+	TEST_EXPECT(context, !recovered.constraint.vertical_constrained);
+	TEST_EXPECT(context, !recovered.constraint.lateral_constrained);
+}
+
 void test_coordinated_turn_preserves_manual_yaw(Tests::Context& context)
 {
 	auto input = automatic_input();
 	const double manual_yaw_rate_rad_s = 0.2;
-	input.selected.manual.lateral_directional.yaw_rate_feedforward_rad_s =
+	input.selected.directional.yaw_rate_feedforward_rad_s =
 		manual_yaw_rate_rad_s;
 	const auto result = Core::Systems::coordinate_guidance(input);
 	TEST_EXPECT(
@@ -161,5 +202,6 @@ void run_flight_control_reference_tests(Tests::Context& context)
 	test_level_turn_compensation_is_applied_once(context);
 	test_joint_feasibility_reports_limiting_axis(context);
 	test_vertical_overload_keeps_vertical_reason(context);
+	test_combined_constraint_recovers_when_request_becomes_feasible(context);
 	test_coordinated_turn_preserves_manual_yaw(context);
 }

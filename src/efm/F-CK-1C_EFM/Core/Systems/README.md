@@ -145,6 +145,59 @@ handler receive that System's catalog ID and operation in a structured
 `ExecutionError`. Systems do not write DCS logs; the error crosses the Core
 boundary and DCSBridge records it once.
 
+## Flight-control ownership
+
+`FlightControlComputer` is one physical-box System. Its `Autopilot/` and
+`ControlLaws/` directories are software Modules inside that box, not additional
+Systems and not independently scheduled devices. One 64 Hz FCC tick uses one
+conditioned observation snapshot and follows this chain:
+
+```text
+FlightControlObservation + PilotControlSignal + actuator feedback
+-> InputSignalManagement
+-> ConfigurationAndMode (CAT schedule + this-tick maneuver envelope)
+-> AP ModeLogic and vertical/lateral guidance
+-> PilotCommandLaw
+-> per-axis ControlReferenceSelection
+-> joint GuidanceCoordination
+-> common FBW inner loops and protection
+-> FlightControlActuatorCommand
+-> FlightControlActuationSystem
+-> FlightControlActuatorState feedback
+```
+
+The AP owns selected targets, capture shaping, mode state, bypass,
+stick-steering, and tracking/degradation monitoring. It publishes physical
+pitch-attitude, vertical-speed, and bank-angle references; it never overwrites
+pilot axes or publishes stick-equivalent pitch/roll commands. Manual and AP
+references meet at `ControlReferenceSelection`, then use the same coordination,
+CAT schedule, protection, inner-rate loop, and actuator-feedback path.
+
+`GuidanceCoordination` consumes all selected axes together. It owns the single
+bank-to-lift compensation and coordinated-turn calculation, returns an explicit
+constraint reason when the combined request is infeasible, and stores no
+cross-tick state. `AutopilotModeMonitor` observes that result and can change
+authority on the following FCC tick; the same tick is never recalculated after
+a mode change.
+
+Flight-control commands have one owner: the FCC handler queues AP, provisional
+CAT, and developer G-limiter actions for the next FCC tick. `PilotControls`
+alone integrates controller/button bindings into `PilotControlSignal` and
+`ThrottleLeverSignal`. The FCC alone publishes
+`FlightControlActuatorCommand`, `FlightControlComputerSnapshot`, and
+`AutomaticFlightControlSnapshot`; Actuation alone publishes
+`FlightControlActuatorState`. Snapshots and CSV are read-only projections and
+must not feed control calculations.
+
+Evidence labels are part of the contract. The 30-degree AP bank limit,
+20-degree-per-second AP roll-reference limit, and 0.5-to-2.0-g AP guidance
+envelope are F-16 Reference-derived project decisions, not confirmed F-CK-1C
+values. Capture gains, reference steps, monitor thresholds, CAT behavior, and
+the 256 Hz actuator integration rate are Project-defined. G-limiter override is
+Developer-only and unavailable in the production configuration. Experimental
+A/T remains isolated compatibility behavior; its aircraft authenticity is not
+claimed by this architecture.
+
 Fuel registers only the preparation handlers used by the
 simulation façade. The Pipeline validates that the handler set is complete and
 belongs to the sole `FuelData` publisher. Fuel publishes the current frame's

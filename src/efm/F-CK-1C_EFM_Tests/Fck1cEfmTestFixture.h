@@ -61,6 +61,9 @@ inline TestAircraftConfig make_test_config()
 		config.aerodynamics.mach_table;
 	config.flight_control_computer.alpha_limit_deg =
 		config.aerodynamics.alpha_max_table;
+	config.flight_control_computer.automatic_flight_control =
+		Core::Systems::fck1c_automatic_flight_control_config(
+			config.flight_control_computer.control_laws);
 	config.engine.start_time = 5.0;
 	config.engine.spool_up_tau = 1.0;
 	config.engine.spool_down_tau = 1.0;

@@ -15,7 +15,7 @@
 
 namespace
 {
-constexpr std::size_t kExpectedColumnCount = 115;
+constexpr std::size_t kExpectedColumnCount = 127;
 constexpr std::chrono::seconds kWriterTimeout(3);
 constexpr std::chrono::milliseconds kPollInterval(10);
 
@@ -45,6 +45,7 @@ std::vector<std::string> expected_header()
 		"suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
 		"suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
 		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,flight_control_developer_g_limiter_override_available,flight_control_developer_g_limiter_override_active,"
+		"flight_control_selected_longitudinal_source,flight_control_selected_lateral_source,flight_control_selected_directional_source,flight_control_selected_vertical_reference_type,flight_control_selected_normal_acceleration_reference_g,flight_control_selected_pitch_rate_feedforward_rad_s,flight_control_selected_pitch_attitude_reference_rad,flight_control_selected_vertical_speed_reference_mps,flight_control_selected_roll_rate_reference_rad_s,flight_control_selected_bank_angle_reference_rad,flight_control_selected_sideslip_reference_rad,flight_control_selected_yaw_rate_feedforward_rad_s,"
 		"flight_control_normal_acceleration_reference_g,flight_control_pitch_rate_feedforward_rad_s,flight_control_roll_rate_reference_rad_s,flight_control_sideslip_reference_rad,flight_control_yaw_rate_feedforward_rad_s,flight_control_elevator_command_normalized,flight_control_aileron_command_normalized,flight_control_rudder_command_normalized,flight_control_constraint_reason,flight_control_vertical_constrained,flight_control_lateral_constrained,"
 		"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,afcs_vertical_mode,afcs_lateral_mode,afcs_pitch_attitude_reference_rad,afcs_vertical_speed_reference_mps,afcs_bank_angle_reference_rad,afcs_throttle_command_normalized,afcs_target_altitude_m,afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,afcs_target_vertical_speed_mps,afcs_longitudinal_authority,afcs_lateral_authority,afcs_constraint_reason,afcs_degradation_reason,afcs_disconnect_reason,afcs_vertical_degraded,afcs_lateral_degraded,afcs_ap_engage_rejection_reason,afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,shake_amplitude",
 		',');
@@ -76,38 +77,58 @@ void assign_gear_suspension_and_fuel(Core::FrameOutput& output)
 	output.fuel = { 61, 62, 63, 64 };
 }
 
-void assign_automatic_flight_and_diagnostics(Core::FrameOutput& output)
+void assign_flight_control_computer_diagnostics(Core::FrameOutput& output)
 {
-	auto& afcs = output.cockpit.automatic_flight_control;
+	auto& fcc = output.cockpit.flight_control_computer;
 	output.cockpit.flight_control_computer.
 		developer_g_limiter_override_available = true;
 	output.cockpit.flight_control_computer.
 		developer_g_limiter_override_active = true;
-	auto& fcc = output.cockpit.flight_control_computer;
-	fcc.normal_acceleration_reference_g = 65;
-	fcc.pitch_rate_feedforward_rad_s = 66;
-	fcc.roll_rate_reference_rad_s = 67;
-	fcc.sideslip_reference_rad = 68;
-	fcc.yaw_rate_feedforward_rad_s = 69;
-	fcc.elevator_command_normalized = 70;
-	fcc.aileron_command_normalized = 71;
-	fcc.rudder_command_normalized = 72;
+	fcc.selected_longitudinal_source =
+		Core::FlightControlReferenceSource::Automatic;
+	fcc.selected_lateral_source =
+		Core::FlightControlReferenceSource::Automatic;
+	fcc.selected_directional_source =
+		Core::FlightControlReferenceSource::Manual;
+	fcc.selected_vertical_reference_type =
+		Core::FlightControlVerticalReferenceType::VerticalSpeed;
+	fcc.selected_normal_acceleration_reference_g = 65;
+	fcc.selected_pitch_rate_feedforward_rad_s = 66;
+	fcc.selected_pitch_attitude_reference_rad = 67;
+	fcc.selected_vertical_speed_reference_mps = 68;
+	fcc.selected_roll_rate_reference_rad_s = 69;
+	fcc.selected_bank_angle_reference_rad = 70;
+	fcc.selected_sideslip_reference_rad = 71;
+	fcc.selected_yaw_rate_feedforward_rad_s = 72;
+	fcc.normal_acceleration_reference_g = 73;
+	fcc.pitch_rate_feedforward_rad_s = 74;
+	fcc.roll_rate_reference_rad_s = 75;
+	fcc.sideslip_reference_rad = 76;
+	fcc.yaw_rate_feedforward_rad_s = 77;
+	fcc.elevator_command_normalized = 78;
+	fcc.aileron_command_normalized = 79;
+	fcc.rudder_command_normalized = 80;
 	fcc.constraint_reason =
 		Core::FlightControlConstraintReason::VerticalReferenceUnmaintainable;
 	fcc.vertical_constrained = true;
+}
+
+void assign_automatic_flight_control_diagnostics(Core::FrameOutput& output)
+{
+	auto& afcs = output.cockpit.automatic_flight_control;
 	afcs.master_engaged = true;
 	afcs.auto_throttle_engaged = true;
 	afcs.vertical_mode = Core::AutomaticFlightControlVerticalMode::AltitudeHold;
 	afcs.lateral_mode = Core::AutomaticFlightControlLateralMode::HeadingSelect;
-	afcs.pitch_attitude_reference_rad = 73;
-	afcs.vertical_speed_reference_mps = 74;
-	afcs.bank_angle_reference_rad = 75;
-	afcs.throttle_command_normalized = 76;
-	afcs.target_altitude_m = 77;
-	afcs.target_heading_rad = 78;
-	afcs.target_speed_mps = 79;
-	afcs.target_pitch_rad = 80;
-	afcs.target_vertical_speed_mps = 81;
+	afcs.pitch_attitude_reference_rad = 81;
+	afcs.vertical_speed_reference_mps = 82;
+	afcs.bank_angle_reference_rad = 83;
+	afcs.throttle_command_normalized = 84;
+	afcs.target_altitude_m = 85;
+	afcs.target_heading_rad = 86;
+	afcs.target_speed_mps = 87;
+	afcs.target_pitch_rad = 88;
+	afcs.target_vertical_speed_mps = 89;
 	afcs.longitudinal_authority = Core::FlightControlAuthorityState::Automatic;
 	afcs.lateral_authority = Core::FlightControlAuthorityState::Bypassed;
 	afcs.constraint_reason =
@@ -124,8 +145,14 @@ void assign_automatic_flight_and_diagnostics(Core::FrameOutput& output)
 		Core::AutomaticFlightControlReason::MachLimit;
 	afcs.auto_throttle_disengage_reason =
 		Core::AutomaticFlightControlReason::Commanded;
+}
+
+void assign_automatic_flight_and_diagnostics(Core::FrameOutput& output)
+{
+	assign_flight_control_computer_diagnostics(output);
+	assign_automatic_flight_control_diagnostics(output);
 	output.propulsion_diagnostics.thrust_cut_requested = true;
-	output.shake_amplitude = 82;
+	output.shake_amplitude = 90;
 }
 
 Core::FrameOutput numbered_output()
@@ -148,8 +175,9 @@ std::vector<std::string> expected_numbered_row()
 		"30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,"
 		"46,47,48,49,50,True,51,52,53,54,55,False,56,57,58,59,60,True,"
 		"True,False,61,62,63,64,True,True,"
-		"65,66,67,68,69,70,71,72,4,True,False,"
-		"True,False,True,3,2,73,74,75,76,77,78,79,80,81,1,2,3,2,2,True,False,4,5,6,1,True,82",
+		"1,1,0,2,65,66,67,68,69,70,71,72,"
+		"73,74,75,76,77,78,79,80,4,True,False,"
+		"True,False,True,3,2,81,82,83,84,85,86,87,88,89,1,2,3,2,2,True,False,4,5,6,1,True,90",
 		',');
 }
 

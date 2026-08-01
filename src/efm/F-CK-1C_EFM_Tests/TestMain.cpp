@@ -1,5 +1,6 @@
 #include "TestHarness.h"
 
+
 void run_common_tests(Tests::Context& context);
 void run_abi_boundary_tests(Tests::Context& context);
 void run_boundary_validator_tests(Tests::Context& context);
@@ -13,6 +14,9 @@ void run_dcs_damage_mapper_tests(Tests::Context& context);
 void run_output_adapter_tests(Tests::Context& context);
 void run_airframe_device_system_tests(Tests::Context& context);
 void run_automatic_flight_control_tests(Tests::Context& context);
+void run_automatic_flight_control_lifecycle_tests(Tests::Context& context);
+void run_automatic_flight_control_takeover_tests(Tests::Context& context);
+void run_autopilot_closed_loop_tests(Tests::Context& context);
 void run_autopilot_mode_monitor_tests(Tests::Context& context);
 void run_engine_system_tests(Tests::Context& context);
 void run_event_log_tests(Tests::Context& context);
@@ -53,6 +57,9 @@ int main()
 	run_aerodynamics_physics_tests(context);
 	run_airframe_device_system_tests(context);
 	run_automatic_flight_control_tests(context);
+	run_automatic_flight_control_lifecycle_tests(context);
+	run_automatic_flight_control_takeover_tests(context);
+	run_autopilot_closed_loop_tests(context);
 	run_autopilot_mode_monitor_tests(context);
 	run_input_system_tests(context);
 	run_input_signal_management_tests(context);

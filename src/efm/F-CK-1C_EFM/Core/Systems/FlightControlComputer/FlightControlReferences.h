@@ -2,6 +2,8 @@
 
 #include "FlightControlStatus.h"
 
+#include <variant>
+
 namespace Core
 {
 namespace Systems
@@ -22,7 +24,6 @@ struct AutomaticFlightGuidanceReference
 	double pitch_attitude_reference_rad = 0.0;
 	double vertical_speed_reference_mps = 0.0;
 	double bank_angle_reference_rad = 0.0;
-	double sideslip_reference_rad = 0.0;
 	bool experimental_auto_throttle_engaged = false;
 	double experimental_throttle_normalized = 0.0;
 };
@@ -49,10 +50,42 @@ struct CoordinatedManeuverReference
 	AuthorityState directional_authority = AuthorityState::Manual;
 };
 
+struct AutomaticLongitudinalFlightReference
+{
+	VerticalGuidanceReferenceType type =
+		VerticalGuidanceReferenceType::None;
+	double pitch_attitude_reference_rad = 0.0;
+	double vertical_speed_reference_mps = 0.0;
+};
+
+struct ManualLateralFlightReference
+{
+	double roll_rate_reference_rad_s = 0.0;
+};
+
+struct AutomaticLateralFlightReference
+{
+	double bank_angle_reference_rad = 0.0;
+};
+
+struct SelectedDirectionalFlightReference
+{
+	double sideslip_reference_rad = 0.0;
+	double yaw_rate_feedforward_rad_s = 0.0;
+};
+
+using SelectedLongitudinalFlightReference = std::variant<
+	LongitudinalManeuverReference,
+	AutomaticLongitudinalFlightReference>;
+using SelectedLateralFlightReference = std::variant<
+	ManualLateralFlightReference,
+	AutomaticLateralFlightReference>;
+
 struct SelectedFlightReference
 {
-	AutomaticFlightGuidanceReference automatic;
-	CoordinatedManeuverReference manual;
+	SelectedLongitudinalFlightReference longitudinal;
+	SelectedLateralFlightReference lateral;
+	SelectedDirectionalFlightReference directional;
 	AuthorityState longitudinal_authority = AuthorityState::Manual;
 	AuthorityState lateral_authority = AuthorityState::Manual;
 	AuthorityState directional_authority = AuthorityState::Manual;

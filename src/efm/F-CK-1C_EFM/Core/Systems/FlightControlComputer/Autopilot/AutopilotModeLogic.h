@@ -2,6 +2,7 @@
 
 #include "AutomaticFlightControlTypes.h"
 #include "AutopilotModeMonitor.h"
+#include "../ControlLaws/ConfigurationAndMode.h"
 #include "../../../Contracts/CockpitContracts.h"
 #include "../../../Contracts/Commands.h"
 
@@ -46,7 +47,8 @@ public:
 	void handle_command(const Command& command);
 	void update(
 		const AutomaticFlightControlObservation& observation,
-		const AutopilotModeMonitorResult& monitor_result);
+		const AutopilotModeMonitorResult& monitor_result,
+		const ::Systems::ManeuverEnvelope& envelope);
 	const AutopilotModeLogicState& state() const;
 
 private:
@@ -78,6 +80,7 @@ private:
 
 	const AutomaticFlightControlConfig config_;
 	AutomaticFlightControlObservation observation_;
+	::Systems::ManeuverEnvelope envelope_;
 	AutopilotModeLogicState state_;
 	std::vector<Command> pending_commands_;
 	bool heading_select_initialized_ = false;

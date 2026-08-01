@@ -11,14 +11,19 @@ struct LateralGuidanceReference
 	double bank_angle_rad = 0.0;
 };
 
+struct LateralGuidanceStepInput
+{
+	AutomaticFlightControlObservation observation;
+	double target_heading_rad = 0.0;
+	bool active = false;
+	bool constrained = false;
+};
+
 class LateralGuidance
 {
 public:
 	explicit LateralGuidance(const AutomaticFlightControlConfig& config);
-	LateralGuidanceReference update(
-		const AutomaticFlightControlObservation& observation,
-		double target_heading_rad,
-		bool active);
+	LateralGuidanceReference update(const LateralGuidanceStepInput& input);
 	void reset();
 
 private:

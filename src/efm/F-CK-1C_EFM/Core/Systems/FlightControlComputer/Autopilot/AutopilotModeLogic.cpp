@@ -1,5 +1,6 @@
 #include "AutopilotModeLogic.h"
 
+#include "Common/Angles.h"
 #include "Common/Units.h"
 
 #include <cmath>
@@ -7,19 +8,48 @@
 namespace
 {
 constexpr double kEnabledCommandThreshold = 0.5;
-constexpr double kTwo = 2.0;
+constexpr int kLastAutopilotModeCommandOffset = 13;
+
+// Commands.h intentionally keeps the AP mode command block contiguous.
+static_assert(
+	static_cast<int>(Core::CommandId::ToggleAutopilotMaster) +
+		kLastAutopilotModeCommandOffset ==
+	static_cast<int>(Core::CommandId::DecreaseAutopilotLateralReference),
+	"AutopilotModeLogic::handles requires a contiguous command block.");
 
 bool pressed(const Core::Command& command)
 {
 	return command.value > kEnabledCommandThreshold;
 }
 
-double wrap_two_pi(double angle)
+bool is_vertical_command(Core::CommandId id)
 {
-	const double period = kTwo * Common::kPi;
-	while (angle >= period) angle -= period;
-	while (angle < 0.0) angle += period;
-	return angle;
+	switch (id)
+	{
+	case Core::CommandId::SelectAutopilotPitchHold:
+	case Core::CommandId::SelectAutopilotVerticalSpeedHold:
+	case Core::CommandId::SelectAutopilotAltitudeHold:
+	case Core::CommandId::IncreaseAutopilotVerticalReference:
+	case Core::CommandId::DecreaseAutopilotVerticalReference:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool is_lateral_command(Core::CommandId id)
+{
+	switch (id)
+	{
+	case Core::CommandId::SelectAutopilotHeadingHold:
+	case Core::CommandId::SelectAutopilotHeading:
+	case Core::CommandId::SelectAutopilotNavigationTrack:
+	case Core::CommandId::IncreaseAutopilotLateralReference:
+	case Core::CommandId::DecreaseAutopilotLateralReference:
+		return true;
+	default:
+		return false;
+	}
 }
 }
 
@@ -46,11 +76,13 @@ void AutopilotModeLogic::handle_command(const Command& command)
 
 void AutopilotModeLogic::update(
 	const AutomaticFlightControlObservation& observation,
-	const AutopilotModeMonitorResult& monitor_result)
+	const AutopilotModeMonitorResult& monitor_result,
+	const ::Systems::ManeuverEnvelope& envelope)
 {
 	observation_ = observation;
-	apply_pending_commands();
+	envelope_ = envelope;
 	apply_monitor_result(monitor_result);
+	apply_pending_commands();
 	apply_disconnect_guards();
 	update_pitch_stick_steering();
 }
@@ -101,23 +133,24 @@ bool AutopilotModeLogic::handle_master_command(const Command& command)
 
 bool AutopilotModeLogic::handle_vertical_command(const Command& command)
 {
-	if (!pressed(command)) return false;
+	if (!is_vertical_command(command.id)) return false;
+	if (!pressed(command) || !state_.master_engaged) return true;
 	switch (command.id)
 	{
 	case CommandId::SelectAutopilotPitchHold:
-		if (state_.master_engaged) engage_pitch_hold();
+		engage_pitch_hold();
 		return true;
 	case CommandId::SelectAutopilotVerticalSpeedHold:
-		if (state_.master_engaged) engage_vertical_speed_hold();
+		engage_vertical_speed_hold();
 		return true;
 	case CommandId::SelectAutopilotAltitudeHold:
-		if (state_.master_engaged) engage_altitude_hold();
+		engage_altitude_hold();
 		return true;
 	case CommandId::IncreaseAutopilotVerticalReference:
-		if (state_.master_engaged) adjust_vertical_reference(1.0);
+		adjust_vertical_reference(1.0);
 		return true;
 	case CommandId::DecreaseAutopilotVerticalReference:
-		if (state_.master_engaged) adjust_vertical_reference(-1.0);
+		adjust_vertical_reference(-1.0);
 		return true;
 	default:
 		return false;
@@ -126,28 +159,26 @@ bool AutopilotModeLogic::handle_vertical_command(const Command& command)
 
 bool AutopilotModeLogic::handle_lateral_command(const Command& command)
 {
-	if (!pressed(command)) return false;
+	if (!is_lateral_command(command.id)) return false;
+	if (!pressed(command) || !state_.master_engaged) return true;
 	switch (command.id)
 	{
 	case CommandId::SelectAutopilotHeadingHold:
-		if (state_.master_engaged) engage_heading_hold();
+		engage_heading_hold();
 		return true;
 	case CommandId::SelectAutopilotHeading:
-		if (state_.master_engaged) engage_heading_select();
+		engage_heading_select();
 		return true;
 	case CommandId::SelectAutopilotNavigationTrack:
-		if (state_.master_engaged)
-		{
-			state_.lateral_mode =
-				AutomaticFlightControlLateralMode::NavigationTrack;
-			++state_.lateral_reference_revision;
-		}
+		state_.lateral_mode =
+			AutomaticFlightControlLateralMode::NavigationTrack;
+		++state_.lateral_reference_revision;
 		return true;
 	case CommandId::IncreaseAutopilotLateralReference:
-		if (state_.master_engaged) adjust_lateral_reference(1.0);
+		adjust_lateral_reference(1.0);
 		return true;
 	case CommandId::DecreaseAutopilotLateralReference:
-		if (state_.master_engaged) adjust_lateral_reference(-1.0);
+		adjust_lateral_reference(-1.0);
 		return true;
 	default:
 		return false;
@@ -220,7 +251,8 @@ void AutopilotModeLogic::engage_altitude_hold()
 void AutopilotModeLogic::engage_heading_hold()
 {
 	state_.lateral_mode = AutomaticFlightControlLateralMode::HeadingHold;
-	state_.target_heading_rad = observation_.heading_rad;
+	state_.target_heading_rad =
+		Common::wrap_heading_rad(observation_.heading_rad);
 	++state_.lateral_reference_revision;
 }
 
@@ -229,7 +261,8 @@ void AutopilotModeLogic::engage_heading_select()
 	state_.lateral_mode = AutomaticFlightControlLateralMode::HeadingSelect;
 	if (!heading_select_initialized_)
 	{
-		state_.target_heading_select_rad = observation_.heading_rad;
+		state_.target_heading_select_rad =
+			Common::wrap_heading_rad(observation_.heading_rad);
 		heading_select_initialized_ = true;
 	}
 	++state_.lateral_reference_revision;
@@ -246,9 +279,11 @@ void AutopilotModeLogic::adjust_vertical_reference(double direction)
 	case AutomaticFlightControlVerticalMode::VerticalSpeedHold:
 		state_.target_vertical_speed_mps +=
 			direction * config_.vertical_speed_step_mps;
+		++state_.vertical_reference_revision;
 		break;
 	case AutomaticFlightControlVerticalMode::PitchHold:
 		state_.target_pitch_rad += direction * config_.pitch_step_rad;
+		++state_.vertical_reference_revision;
 		break;
 	default:
 		break;
@@ -259,14 +294,17 @@ void AutopilotModeLogic::adjust_lateral_reference(double direction)
 {
 	if (state_.lateral_mode == AutomaticFlightControlLateralMode::HeadingHold)
 	{
-		state_.target_heading_rad = wrap_two_pi(
+		state_.target_heading_rad = Common::wrap_heading_rad(
 			state_.target_heading_rad + direction * config_.heading_step_rad);
+		++state_.lateral_reference_revision;
+		return;
 	}
 	if (state_.lateral_mode == AutomaticFlightControlLateralMode::HeadingSelect)
 	{
-		state_.target_heading_select_rad = wrap_two_pi(
+		state_.target_heading_select_rad = Common::wrap_heading_rad(
 			state_.target_heading_select_rad +
 				direction * config_.heading_step_rad);
+		++state_.lateral_reference_revision;
 	}
 }
 
@@ -343,6 +381,14 @@ void AutopilotModeLogic::apply_disconnect_guards()
 	{
 		disengage_all(
 			AutomaticFlightControlReason::WeightOnWheels,
+			DisconnectReason::SafetyCondition);
+		return;
+	}
+	if (std::abs(observation_.roll_rad) >
+		envelope_.hard_protection.bank_limit_rad)
+	{
+		disengage_all(
+			AutomaticFlightControlReason::RollLimit,
 			DisconnectReason::SafetyCondition);
 	}
 }

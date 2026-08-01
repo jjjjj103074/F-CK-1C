@@ -56,18 +56,17 @@ Systems::FlightControlLawStepInput make_manual_request(
 	const Systems::FBWControllerConfig& config,
 	const Systems::FBWControllerState& state)
 {
-	const Systems::FBWCatParams cat = Systems::fbw_blend_cat_params(
-		config.cat1, config.cat3, flight.cat_mode_blend);
-	const Systems::FBWGainScheduleValues gains =
-		Systems::fbw_eval_gain_schedule(config, flight.dynamic_pressure_pa);
-	const Systems::ManeuverEnvelope envelope =
-		Systems::make_maneuver_envelope(
+	const Systems::FlightControlConfiguration configuration =
+		Systems::make_flight_control_configuration(
 			config,
-			{ cat, flight.alpha_limit_deg, state.g_limiter_override });
+			{ flight.cat_mode_blend, flight.dynamic_pressure_pa,
+				flight.alpha_limit_deg, state.g_limiter_override });
 	return {
 		flight,
 		Systems::make_pilot_maneuver_reference(
-			{ flight, config, cat, gains, envelope })
+			{ flight, config, configuration.cat, configuration.gains,
+				configuration.envelope }),
+		configuration
 	};
 }
 
@@ -85,7 +84,6 @@ struct FBWTestRig
 			state,
 			{ input.observation.roll_rad,
 				input.observation.pitch_rad,
-				input.observation.alpha_deg,
 				input.observation.normal_acceleration_g });
 		output = Systems::FlightControlLawResult();
 	}
@@ -212,12 +210,10 @@ void test_fbw_reset(Tests::Context& context)
 	state.int_p = 0.5;
 	state.actuator_sat = true;
 	state.throttle_cmd_left = 0.7;
-	Systems::reset_fbw_state(state, { 0.2, -0.1, 4.0, 1.3 });
+	Systems::reset_fbw_state(state, { 0.2, -0.1, 1.3 });
 	TEST_EXPECT(context, state.control_state == Systems::FBW_STATE_RATE);
 	TEST_EXPECT_NEAR(context, state.phi_ref, 0.2, kSnapshotTolerance);
 	TEST_EXPECT_NEAR(context, state.theta_ref, -0.1, kSnapshotTolerance);
-	TEST_EXPECT_NEAR(context, state.alpha_trim_deg, 4.0, kSnapshotTolerance);
-	TEST_EXPECT_NEAR(context, state.nz_trim_g, 1.3, kSnapshotTolerance);
 	TEST_EXPECT_NEAR(context, state.int_p, 0.0, kSnapshotTolerance);
 	TEST_EXPECT(context, !state.actuator_sat);
 	TEST_EXPECT_NEAR(context, state.throttle_cmd_left, 0.7, kSnapshotTolerance);
@@ -235,7 +231,6 @@ void test_limiters_and_actuator_bounds(Tests::Context& context)
 	config.cat3.aoa_soft_deg = 1.0;
 	config.cat1.g_soft = 1.1;
 	config.cat1.g_hard = 3.0;
-	config.alpha_cmd_per_stick_deg = 100.0;
 	Core::Systems::RawFlightControlInput raw = make_reference_input();
 	raw.pilot.pitch_axis_normalized = 0.5;
 	raw.observation.alpha_deg = 30.0;
@@ -247,7 +242,6 @@ void test_limiters_and_actuator_bounds(Tests::Context& context)
 		state,
 		{ input.roll_attitude_rad,
 			input.pitch_attitude_rad,
-			input.angle_of_attack_deg,
 			input.normal_acceleration_g });
 	const auto output = Systems::update_fbw_controller(
 		state, config, make_manual_request(input, config, state));

@@ -7,7 +7,6 @@ namespace
 constexpr double kEnabledCommandThreshold = 0.5;
 constexpr double kMinimumThrottleCommand = 0.0;
 constexpr double kMaximumNormalizedCommand = 1.0;
-constexpr double kSpeedIntegralLimit = 30.0;
 
 bool pressed(const Core::Command& command)
 {
@@ -20,7 +19,7 @@ namespace Core
 namespace Systems
 {
 ExperimentalAutoThrottleAssist::ExperimentalAutoThrottleAssist(
-	const AutomaticFlightControlConfig& config)
+	const ExperimentalAutoThrottleAssistConfig& config)
 	: config_(config)
 {
 }
@@ -33,26 +32,46 @@ bool ExperimentalAutoThrottleAssist::handle_command(
 	switch (command.id)
 	{
 	case CommandId::ToggleAutoThrottle:
-		if (result_.engaged)
-			disengage(AutomaticFlightControlReason::Commanded);
-		else
-			engage(observation);
+		toggle(observation);
 		return true;
 	case CommandId::EngageAutoThrottle:
-		if (!result_.engaged) engage(observation);
+		engage_if_needed(observation);
 		return true;
 	case CommandId::DisengageAutoThrottle:
 		disengage(AutomaticFlightControlReason::Commanded);
 		return true;
 	case CommandId::IncreaseAutopilotSpeed:
-		if (result_.engaged) adjust_speed_reference(1.0);
+		adjust_speed_if_engaged(1.0);
 		return true;
 	case CommandId::DecreaseAutopilotSpeed:
-		if (result_.engaged) adjust_speed_reference(-1.0);
+		adjust_speed_if_engaged(-1.0);
 		return true;
 	default:
 		return false;
 	}
+}
+
+void ExperimentalAutoThrottleAssist::toggle(
+	const AutomaticFlightControlObservation& observation)
+{
+	if (result_.engaged)
+	{
+		disengage(AutomaticFlightControlReason::Commanded);
+		return;
+	}
+	engage(observation);
+}
+
+void ExperimentalAutoThrottleAssist::engage_if_needed(
+	const AutomaticFlightControlObservation& observation)
+{
+	if (!result_.engaged) engage(observation);
+}
+
+void ExperimentalAutoThrottleAssist::adjust_speed_if_engaged(
+	double direction)
+{
+	if (result_.engaged) adjust_speed_reference(direction);
 }
 
 const ExperimentalAutoThrottleResult& ExperimentalAutoThrottleAssist::update(
@@ -63,12 +82,12 @@ const ExperimentalAutoThrottleResult& ExperimentalAutoThrottleAssist::update(
 		result_.throttle_normalized = 0.0;
 		return result_;
 	}
-	if (observation.mach > config_.auto_throttle_disconnect_mach)
+	if (observation.mach > config_.disconnect_mach)
 	{
 		disengage(AutomaticFlightControlReason::MachLimit);
 		return result_;
 	}
-	if (observation.mach > config_.maximum_auto_throttle_mach)
+	if (observation.mach > config_.maximum_mach)
 	{
 		result_.throttle_normalized = Common::limit(
 			result_.throttle_normalized -
@@ -81,15 +100,15 @@ const ExperimentalAutoThrottleResult& ExperimentalAutoThrottleAssist::update(
 		result_.target_speed_mps - observation.indicated_airspeed_mps;
 	speed_integral_ = Common::limit(
 		speed_integral_ + error * observation.dt_s,
-		-kSpeedIntegralLimit,
-		kSpeedIntegralLimit);
-	const double command = config_.auto_throttle_base +
-		config_.auto_throttle_kp * error +
-		config_.auto_throttle_ki * speed_integral_;
+		-config_.speed_error_integral_limit_m,
+		config_.speed_error_integral_limit_m);
+	const double command = config_.base_command_normalized +
+		config_.speed_kp * error +
+		config_.speed_ki * speed_integral_;
 	result_.throttle_normalized = Common::limit(
 		command,
 		kMinimumThrottleCommand,
-		config_.auto_throttle_command_limit);
+		config_.command_limit_normalized);
 	return result_;
 }
 
@@ -113,7 +132,7 @@ bool ExperimentalAutoThrottleAssist::can_engage(
 	const AutomaticFlightControlObservation& observation)
 {
 	result_.engage_rejection_reason = AutomaticFlightControlReason::None;
-	if (observation.mach > config_.maximum_auto_throttle_mach)
+	if (observation.mach > config_.maximum_mach)
 	{
 		result_.engage_rejection_reason = AutomaticFlightControlReason::MachLimit;
 	}

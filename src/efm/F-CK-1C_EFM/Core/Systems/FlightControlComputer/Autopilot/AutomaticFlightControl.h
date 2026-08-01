@@ -12,6 +12,11 @@
 #include <cstdint>
 #include <vector>
 
+namespace Systems
+{
+struct FBWControllerConfig;
+}
+
 namespace Core
 {
 namespace Systems
@@ -25,10 +30,12 @@ public:
 		const AutomaticFlightControlConfig& config,
 		bool initial_weight_on_wheels);
 
+	static bool handles(CommandId id);
 	void register_commands(SystemSetup& setup);
 	void handle_command(const Command& command);
 	const AutomaticFlightGuidanceReference& step(
-		const AutomaticFlightControlObservation& observation);
+		const AutomaticFlightControlObservation& observation,
+		const ::Systems::ManeuverEnvelope& envelope);
 	void observe_control_result(
 		const AutopilotModeMonitorObservation& observation);
 	const AutomaticFlightControlSnapshot& snapshot() const;
@@ -60,6 +67,8 @@ private:
 };
 
 AutomaticFlightControlConfig fck1c_automatic_flight_control_config();
+AutomaticFlightControlConfig fck1c_automatic_flight_control_config(
+	const ::Systems::FBWControllerConfig& control_laws);
 void validate_automatic_flight_control_config(
 	const AutomaticFlightControlConfig& config);
 }

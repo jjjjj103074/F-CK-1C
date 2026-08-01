@@ -23,7 +23,7 @@ class ExperimentalAutoThrottleAssist
 {
 public:
 	explicit ExperimentalAutoThrottleAssist(
-		const AutomaticFlightControlConfig& config);
+		const ExperimentalAutoThrottleAssistConfig& config);
 	bool handle_command(
 		const Command& command,
 		const AutomaticFlightControlObservation& observation);
@@ -33,12 +33,16 @@ public:
 	void disengage(AutomaticFlightControlReason reason);
 
 private:
+	void toggle(const AutomaticFlightControlObservation& observation);
+	void engage_if_needed(
+		const AutomaticFlightControlObservation& observation);
+	void adjust_speed_if_engaged(double direction);
 	bool can_engage(const AutomaticFlightControlObservation& observation);
 	void engage(const AutomaticFlightControlObservation& observation);
 	void adjust_speed_reference(double direction);
 	void reset_controller();
 
-	const AutomaticFlightControlConfig config_;
+	const ExperimentalAutoThrottleAssistConfig config_;
 	ExperimentalAutoThrottleResult result_;
 	double speed_integral_ = 0.0;
 };

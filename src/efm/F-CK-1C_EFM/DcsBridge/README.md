@@ -227,6 +227,24 @@ CSV tests. Scalars retain their existing units, vectors expand as fixed
 `x,y,z` columns, booleans use `True`/`False`, and unavailable data uses `-`.
 CSV publication must remain non-blocking for `ed_fm_simulate`.
 
+Flight-control telemetry uses explicit layers rather than a generic `command`:
+
+- `afcs_target_*` records selected/captured mode targets.
+- `afcs_*_reference_*` records the AP's shaped physical guidance references.
+- `flight_control_selected_*` records the active manual or automatic payload
+  after per-axis reference selection and before guidance coordination.
+- `flight_control_*_reference_*` records the coordinated maneuver reference
+  consumed by the shared FBW control path.
+- `flight_control_*_command_normalized` records FCC effector demand.
+- `flight_control_constraint_*` and `afcs_*reason` record typed constraint,
+  degradation, disconnect, and engage/disengage results.
+
+Angles use radians, angular rates use radians per second, altitude uses metres,
+vertical speed uses metres per second, normal acceleration uses g, and effector
+commands remain normalized authority. The FCC and AFCS snapshot revisions make
+the row a read-only observation; CSV values must never be read back into Core
+control state.
+
 ## Project references and verification
 
 Non-Core production sources belong in `F-CK-1C_EFM.vcxproj`. A DCSBridge

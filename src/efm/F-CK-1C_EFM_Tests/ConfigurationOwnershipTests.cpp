@@ -270,16 +270,96 @@ void test_engine_owner_rejects_invalid_config(Tests::Context& context)
 		}));
 }
 
-void test_fcc_owner_rejects_invalid_config(Tests::Context& context)
+void test_fcc_owner_rejects_invalid_control_law_config(
+	Tests::Context& context)
 {
-	auto invalid_region =
+	auto invalid_time_constant =
 		Core::Systems::fck1c_flight_control_computer_config();
-	invalid_region.control_laws.region_high_kts =
-		invalid_region.control_laws.region_low_kts;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_region]()
+	invalid_time_constant.control_laws.pitch_ref_tau = 0.0;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_time_constant]()
 		{
 			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_region);
+				invalid_time_constant);
+		}));
+	auto invalid_developer_override =
+		Core::Systems::fck1c_flight_control_computer_config();
+	invalid_developer_override.control_laws.
+		developer_g_limiter_override_margin_g = 0.0;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_developer_override]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				invalid_developer_override);
+		}));
+	auto invalid_direct_mode =
+		Core::Systems::fck1c_flight_control_computer_config();
+	invalid_direct_mode.control_laws.direct_mode.
+		elevator_command_step_normalized = 0.0;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_direct_mode]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				invalid_direct_mode);
+		}));
+	auto invalid_normal_acceleration =
+		Core::Systems::fck1c_flight_control_computer_config();
+	invalid_normal_acceleration.control_laws.normal_acceleration.outer_kp_cat1 =
+		0.0;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_normal_acceleration]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				invalid_normal_acceleration);
+		}));
+	auto invalid_hold_degrade =
+		Core::Systems::fck1c_flight_control_computer_config();
+	invalid_hold_degrade.control_laws.hold_degrade.alpha_limit_ratio = 0.0;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_hold_degrade]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				invalid_hold_degrade);
+		}));
+}
+
+void test_fcc_owner_rejects_invalid_ap_config(Tests::Context& context)
+{
+	auto invalid_heading_integral =
+		Core::Systems::fck1c_flight_control_computer_config();
+	invalid_heading_integral.automatic_flight_control.
+		heading_error_integral_limit_rad_s = 0.0;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_heading_integral]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				invalid_heading_integral);
+		}));
+	auto invalid_speed_integral =
+		Core::Systems::fck1c_flight_control_computer_config();
+	invalid_speed_integral.automatic_flight_control.experimental_auto_throttle.
+		speed_error_integral_limit_m = 0.0;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_speed_integral]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				invalid_speed_integral);
+		}));
+	auto invalid_capture =
+		Core::Systems::fck1c_flight_control_computer_config();
+	invalid_capture.automatic_flight_control.vertical_speed_capture_taper_mps =
+		invalid_capture.automatic_flight_control.vertical_speed_limit_mps;
+	TEST_EXPECT(context, rejects_invalid_config([invalid_capture]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				invalid_capture);
+		}));
+}
+
+void test_fcc_owner_rejects_incoherent_config(Tests::Context& context)
+{
+	constexpr double kInconsistentLimitScale = 0.5;
+	auto inconsistent_guidance =
+		Core::Systems::fck1c_flight_control_computer_config();
+	inconsistent_guidance.automatic_flight_control.bank_limit_rad *=
+		kInconsistentLimitScale;
+	TEST_EXPECT(context, rejects_invalid_config([inconsistent_guidance]()
+		{
+			(void)Core::Systems::make_flight_control_computer_system_entry(
+				inconsistent_guidance);
 		}));
 	auto invalid_schedule =
 		Core::Systems::fck1c_flight_control_computer_config();
@@ -344,7 +424,9 @@ void run_configuration_ownership_tests(Tests::Context& context)
 	test_ground_interaction_production_config(context);
 	test_fcc_and_landing_gear_production_config(context);
 	test_engine_owner_rejects_invalid_config(context);
-	test_fcc_owner_rejects_invalid_config(context);
+	test_fcc_owner_rejects_invalid_control_law_config(context);
+	test_fcc_owner_rejects_invalid_ap_config(context);
+	test_fcc_owner_rejects_incoherent_config(context);
 	test_landing_owner_rejects_invalid_config(context);
 	test_model_owners_reject_invalid_config(context);
 }

@@ -36,8 +36,26 @@ struct ManeuverEnvelopeInput
 	bool developer_g_limiter_override_active = false;
 };
 
+struct FlightControlConfigurationInput
+{
+	double cat_mode_blend = 0.0;
+	double dynamic_pressure_pa = 0.0;
+	double sensed_angle_of_attack_limit_deg = 0.0;
+	bool developer_g_limiter_override_active = false;
+};
+
+struct FlightControlConfiguration
+{
+	FBWCatParams cat;
+	FBWGainScheduleValues gains;
+	ManeuverEnvelope envelope;
+};
+
 ManeuverEnvelope make_maneuver_envelope(
 	const FBWControllerConfig& config,
 	const ManeuverEnvelopeInput& input);
+FlightControlConfiguration make_flight_control_configuration(
+	const FBWControllerConfig& config,
+	const FlightControlConfigurationInput& input);
 void validate_maneuver_envelope(const ManeuverEnvelope& envelope);
 }

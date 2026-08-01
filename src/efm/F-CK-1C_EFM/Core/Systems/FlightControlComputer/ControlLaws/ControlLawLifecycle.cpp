@@ -21,9 +21,6 @@ void reset_rate_loop(Systems::FBWControllerState& state)
 	state.int_p = 0.0;
 	state.int_q = 0.0;
 	state.int_r = 0.0;
-	state.stick_roll_shaped = 0.0;
-	state.stick_pitch_shaped = 0.0;
-	state.stick_yaw_shaped = 0.0;
 	state.p_cmd = 0.0;
 	state.q_cmd = 0.0;
 	state.r_cmd = 0.0;
@@ -33,30 +30,18 @@ void reset_rate_loop(Systems::FBWControllerState& state)
 	state.p_cmd_hold = 0.0;
 	state.q_cmd_hold = 0.0;
 	state.r_cmd_damper = 0.0;
-	state.p_err = 0.0;
-	state.q_err = 0.0;
-	state.r_err = 0.0;
 	state.phi_err = 0.0;
 	state.theta_err = 0.0;
 }
 
-void reset_pitch_loop(Systems::FBWControllerState& state, double alpha, double g)
+void reset_pitch_loop(Systems::FBWControllerState& state, double g)
 {
 	state.nz_raw = g;
 	state.nz_f = g;
-	state.alpha_trim_deg = alpha;
-	state.nz_trim_g = g;
-	state.alpha_outer_int = 0.0;
 	state.nz_outer_int = 0.0;
-	state.w_alpha = 1.0;
-	state.w_nz = 0.0;
-	state.w_q = 0.0;
-	state.alpha_cmd_deg = alpha;
-	state.alpha_cmd_lim_deg = alpha;
 	state.nz_cmd = g;
 	state.nz_cmd_lim = g;
 	state.q_cmd_direct = 0.0;
-	state.q_ref_alpha = 0.0;
 	state.q_ref_nz = 0.0;
 	state.q_ref_q = 0.0;
 	state.q_ref_blended = 0.0;
@@ -82,8 +67,7 @@ void reset_fbw_state(
 {
 	reset_hold_state(state, input.roll_attitude_rad, input.pitch_attitude_rad);
 	reset_rate_loop(state);
-	reset_pitch_loop(
-		state, input.angle_of_attack_deg, input.normal_acceleration_g);
+	reset_pitch_loop(state, input.normal_acceleration_g);
 	reset_limiters(state);
 }
 

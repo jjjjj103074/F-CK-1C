@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ExperimentalAutoThrottleAssistConfig.h"
 #include "../FlightControlReferences.h"
 
 namespace Core
@@ -9,8 +10,6 @@ namespace Systems
 struct AutomaticFlightControlConfig
 {
 	double minimum_ias_mps = 0.0;
-	double maximum_auto_throttle_mach = 0.0;
-	double auto_throttle_disconnect_mach = 0.0;
 	double engage_roll_limit_rad = 0.0;
 	double engage_pitch_limit_rad = 0.0;
 	double bank_limit_rad = 0.0;
@@ -21,12 +20,16 @@ struct AutomaticFlightControlConfig
 	double altitude_hold_band_m = 0.0;
 	double altitude_capture_band_m = 0.0;
 	double altitude_comfort_acceleration_mps2 = 0.0;
+	double altitude_fine_gain_s_inv = 0.0;
+	double altitude_hold_gain_s_inv = 0.0;
+	double altitude_capture_gain_s_inv = 0.0;
+	double altitude_approach_gain_s_inv = 0.0;
+	double capture_minimum_vertical_speed_mps = 0.0;
+	double capture_comfort_distance_factor = 0.0;
+	double approach_comfort_distance_factor = 0.0;
 	double vertical_speed_limit_mps = 0.0;
 	double vertical_speed_capture_taper_mps = 0.0;
 	double pitch_stick_steering_threshold_normalized = 0.0;
-	double speed_step_mps = 0.0;
-	double minimum_target_speed_mps = 0.0;
-	double maximum_target_speed_mps = 0.0;
 	double altitude_step_m = 0.0;
 	double heading_step_rad = 0.0;
 	double pitch_step_rad = 0.0;
@@ -36,21 +39,10 @@ struct AutomaticFlightControlConfig
 	double bank_tracking_error_limit_rad = 0.0;
 	double tracking_failure_persistence_s = 0.0;
 	double actuator_saturation_persistence_s = 0.0;
-	double pitch_kp = 0.0;
-	double pitch_kd = 0.0;
-	double vertical_speed_kp = 0.0;
-	double vertical_speed_ki = 0.0;
-	double altitude_vertical_speed_kp = 0.0;
-	double altitude_vertical_speed_ki = 0.0;
 	double heading_kp = 0.0;
 	double heading_ki = 0.0;
-	double bank_kp = 0.0;
-	double bank_kd = 0.0;
-	double auto_throttle_base = 0.0;
-	double auto_throttle_kp = 0.0;
-	double auto_throttle_ki = 0.0;
-	double auto_throttle_command_limit = 0.0;
-	double mach_guard_throttle_rate_per_s = 0.0;
+	double heading_error_integral_limit_rad_s = 0.0;
+	ExperimentalAutoThrottleAssistConfig experimental_auto_throttle;
 };
 
 struct AutomaticFlightControlObservation
@@ -63,9 +55,8 @@ struct AutomaticFlightControlObservation
 	double heading_rad = 0.0;
 	double pitch_rad = 0.0;
 	double roll_rad = 0.0;
-	double legacy_pitch_damping_rate_rad_s = 0.0;
-	double legacy_heading_damping_rate_rad_s = 0.0;
 	double conditioned_pitch_input_normalized = 0.0;
+	double conditioned_roll_input_normalized = 0.0;
 	bool weight_on_wheels = false;
 };
 
