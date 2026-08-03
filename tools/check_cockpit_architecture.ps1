@@ -147,6 +147,110 @@ function Test-RemovedCockpitDevices {
     }
 }
 
+function Test-DebugIndicatorFiles {
+    param([string]$Directory)
+
+    $expectedFiles = @('DebugIndicator_init.lua', 'DebugIndicator_page.lua')
+    $files = @(Get-ChildItem $Directory -File -Filter '*.lua')
+    $names = @($files.Name | Sort-Object)
+    if (($names -join ',') -cne (($expectedFiles | Sort-Object) -join ',')) {
+        Write-Output 'Debug Indicator must contain only its init and page Lua files.'
+        return
+    }
+}
+
+function Test-DebugIndicatorPage {
+    param([string]$Directory)
+
+    $init = [IO.File]::ReadAllText(
+        (Join-Path $Directory 'DebugIndicator_init.lua'))
+    $page = [IO.File]::ReadAllText(
+        (Join-Path $Directory 'DebugIndicator_page.lua'))
+    if ($init -notmatch (
+        'purposes\s*=\s*\{\s*' +
+        'render_purpose\.SCREENSPACE_INSIDE_COCKPIT\s*\}')) {
+        Write-Output 'Debug Indicator must render only inside the cockpit.'
+    }
+    $forbidden = 'ControlsIndicator|avLuaDevice|get_param_handle|' +
+        'GetSelf|listen_command|dispatch_action|make_default_activity'
+    if (($init + $page) -match $forbidden) {
+        Write-Output 'Debug Indicator Lua must remain display-only.'
+    }
+
+    $parameterMatches = [regex]::Matches(
+        $page,
+        'cockpit_params\.([A-Za-z_][A-Za-z0-9_]*)')
+    $parameters = @($parameterMatches | ForEach-Object {
+        $_.Groups[1].Value
+    } | Sort-Object -Unique)
+    if (($parameters -join ',') -cne
+        ('DebugIndicatorStatus,DebugIndicatorText1,DebugIndicatorText2,' +
+        'DebugIndicatorText3,DebugIndicatorText4,DebugIndicatorText5,' +
+        'DebugIndicatorText6,DebugIndicatorVisible')) {
+        Write-Output (
+            'Debug Indicator must use only its visible, six text-block, ' +
+            'and status parameters.')
+    }
+    if ([regex]::Matches($page, 'CreateElement\("ceStringPoly"\)').Count -ne 1) {
+        Write-Output 'Debug Indicator must use one reusable text-element factory.'
+    }
+    if ($page -notmatch
+        'for\s+index,\s*parameter\s+in\s+ipairs\(text_parameters\)') {
+        Write-Output 'Debug Indicator text blocks must be generated from data.'
+    }
+    if ($page -notmatch 'LockOn_Options\.screen\.aspect' -or
+        $page -notmatch 'local\s+column_count\s*=\s*2' -or
+        $page -notmatch 'local\s+blocks_per_column\s*=\s*3') {
+        Write-Output 'Debug Indicator must keep its responsive two-by-three layout.'
+    }
+}
+
+function Test-DebugIndicatorRegistration {
+    param([string]$Root)
+
+    $deviceInit = [IO.File]::ReadAllText(
+        (Join-Path $Root 'Cockpit\Scripts\device_init.lua'))
+    $registrations = [regex]::Matches(
+        $deviceInit,
+        '(?m)^.*DebugIndicator/DebugIndicator_init\.lua.*$')
+    if ($registrations.Count -ne 1 -or
+        $registrations[0].Value -notmatch
+            '\{\s*"ccControlsIndicatorBase"\s*,') {
+        Write-Output (
+            'Debug Indicator must be registered once with the ' +
+            'screen-space ccControlsIndicatorBase host.')
+    }
+}
+
+function Test-DebugIndicatorBindings {
+    param([string]$Root)
+
+    foreach ($profile in @('keyboard', 'joystick')) {
+        $path = Join-Path $Root "Input\F-CK-1C\$profile\default.lua"
+        $text = [IO.File]::ReadAllText($path)
+        $bindings = [regex]::Matches(
+            $text,
+            '(?m)^.*down\s*=\s*device_commands\.DebugIndicatorToggle.*$')
+        if ($bindings.Count -ne 1 -or
+            $bindings[0].Value -match 'combos|cockpit_device_id|pressed|\bup\s*=' -or
+            $bindings[0].Value -notmatch 'value_down\s*=\s*1\.0') {
+            Write-Output (
+                "Debug Indicator $profile binding must emit value_down=1.0 " +
+                'with no default binding.')
+        }
+    }
+}
+
+function Test-DebugIndicatorBoundary {
+    param([string]$Root)
+
+    $directory = Join-Path $Root 'Cockpit\Scripts\DebugIndicator'
+    Test-DebugIndicatorFiles $directory
+    Test-DebugIndicatorPage $directory
+    Test-DebugIndicatorRegistration $Root
+    Test-DebugIndicatorBindings $Root
+}
+
 function Find-CatalogParameter {
     param(
         [hashtable]$Maps,
@@ -343,6 +447,7 @@ $parameterRows = @(
 $findings = @(
     Test-DeviceIds $resolvedRoot
     Test-RemovedCockpitDevices $resolvedRoot
+    Test-DebugIndicatorBoundary $resolvedRoot
     Test-SingleWriters $parameterRows $maps
     Test-CatalogWritersObserved $parameterRows $catalog
     Test-ParameterReferences $resolvedRoot $maps

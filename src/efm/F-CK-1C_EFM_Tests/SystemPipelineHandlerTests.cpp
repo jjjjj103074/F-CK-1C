@@ -96,7 +96,7 @@ void test_duplicate_command_handler_fails(Tests::Context& context)
 	{
 		setup.register_command_handler(
 			CommandId::SetPitchAxis,
-			[](const Command&) {});
+			[](const SystemActionContext&, const Command&) {});
 	};
 	TEST_EXPECT(
 		context,
@@ -129,7 +129,7 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 				actuator_command(kNeutralValue));
 			setup.register_command_handler(
 				CommandId::SetPitchAxis,
-				[requested](const Command& command)
+				[requested](const SystemActionContext&, const Command& command)
 				{
 					*requested = command.value;
 				});
@@ -162,13 +162,35 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 		kTolerance);
 }
 
+void test_handler_receives_current_simulation_time(Tests::Context& context)
+{
+	auto captured = std::make_shared<SystemScheduledTime>();
+	const SystemDefinition system = handler_system(
+		"timed",
+		[captured](SystemSetup& setup)
+		{
+			setup.register_command_handler(
+				CommandId::SetPitchAxis,
+				[captured](
+					const SystemActionContext& action,
+					const Command&)
+				{
+					*captured = action.simulation_time;
+				});
+		});
+	SystemPipeline pipeline(flight_setup(), { entry(system) });
+	(void)step_pipeline(pipeline);
+	(void)pipeline.send({ CommandId::SetPitchAxis, kCommandValue });
+	TEST_EXPECT(context, *captured == pipeline.advanced_through());
+}
+
 void test_duplicate_damage_owner_fails(Tests::Context& context)
 {
 	const SetupAction register_left_wing = [](SystemSetup& setup)
 	{
 		setup.register_damage_handler(
 			DamageArea::LeftWing,
-			[](const DamageEvent&) {});
+			[](const SystemActionContext&, const DamageEvent&) {});
 	};
 	TEST_EXPECT(
 		context,
@@ -188,7 +210,8 @@ void test_damage_routes_to_semantic_owner(Tests::Context& context)
 		{
 			setup.register_damage_handler(
 				DamageArea::LeftWing,
-				[left_hits](const DamageEvent&) { ++*left_hits; });
+				[left_hits](const SystemActionContext&, const DamageEvent&)
+				{ ++*left_hits; });
 		});
 	const SystemDefinition right = handler_system(
 		"right",
@@ -196,7 +219,8 @@ void test_damage_routes_to_semantic_owner(Tests::Context& context)
 		{
 			setup.register_damage_handler(
 				DamageArea::RightWing,
-				[right_hits](const DamageEvent&) { ++*right_hits; });
+				[right_hits](const SystemActionContext&, const DamageEvent&)
+				{ ++*right_hits; });
 		});
 	SystemPipeline pipeline(flight_setup(), { entry(right), entry(left) });
 	TEST_EXPECT(
@@ -228,14 +252,16 @@ void test_repair_reaches_every_subscriber(Tests::Context& context)
 		[first_repairs](SystemSetup& setup)
 		{
 			setup.register_repair_handler(
-				[first_repairs](const RepairEvent&) { ++*first_repairs; });
+				[first_repairs](const SystemActionContext&, const RepairEvent&)
+				{ ++*first_repairs; });
 		});
 	const SystemDefinition second = handler_system(
 		"second",
 		[second_repairs](SystemSetup& setup)
 		{
 			setup.register_repair_handler(
-				[second_repairs](const RepairEvent&) { ++*second_repairs; });
+				[second_repairs](const SystemActionContext&, const RepairEvent&)
+				{ ++*second_repairs; });
 		});
 	SystemPipeline pipeline(flight_setup(), { entry(first), entry(second) });
 	TEST_EXPECT(
@@ -257,7 +283,7 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 				actuator_command(kNeutralValue));
 			setup.register_command_handler(
 				CommandId::SetPitchAxis,
-				[](const Command&)
+				[](const SystemActionContext&, const Command&)
 				{
 					throw std::runtime_error("expected handler failure");
 				});
@@ -297,6 +323,7 @@ void run_system_pipeline_handler_tests(Tests::Context& context)
 	test_duplicate_command_handler_fails(context);
 	test_unregistered_command_is_explicitly_ignored(context);
 	test_command_only_changes_next_step_request(context);
+	test_handler_receives_current_simulation_time(context);
 	test_duplicate_damage_owner_fails(context);
 	test_damage_routes_to_semantic_owner(context);
 	test_repair_reaches_every_subscriber(context);

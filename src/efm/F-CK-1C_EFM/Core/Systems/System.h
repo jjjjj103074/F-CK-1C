@@ -2,6 +2,7 @@
 
 #include "../Contracts/Commands.h"
 #include "../Contracts/AircraftData.h"
+#include "../Contracts/Diagnostics/DebugTelemetry.h"
 #include "../Contracts/Events.h"
 
 #include <chrono>
@@ -19,12 +20,17 @@ class AircraftDataView;
 class SystemResult;
 class SystemSetup;
 
-using SystemScheduledTime = std::chrono::nanoseconds;
+using SystemScheduledTime = DebugSimulationTime;
 
 struct SystemStepContext
 {
 	SystemScheduledTime scheduled_time = {};
 	double dt_s = 0.0;
+};
+
+struct SystemActionContext
+{
+	SystemScheduledTime simulation_time = {};
 };
 
 enum class SystemGroup
@@ -44,6 +50,7 @@ struct FlightSetupContext
 	const StartMode start_mode;
 	const FlightFuelState fuel;
 	const ThrottleLeverSignal initial_throttle_levers;
+	DebugTelemetrySink& debug_telemetry;
 };
 
 class System

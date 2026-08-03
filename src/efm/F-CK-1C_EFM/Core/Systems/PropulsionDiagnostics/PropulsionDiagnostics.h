@@ -20,6 +20,7 @@ public:
 
 private:
 	PropulsionTestIntent intent_;
+	DebugTelemetryChannel<bool> thrust_cut_debug_;
 };
 }
 }

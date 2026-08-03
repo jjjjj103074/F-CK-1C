@@ -58,6 +58,7 @@
     <ClInclude Include="TestFileUtils.h" />
     <ClInclude Include="FakeCockpitParameters.h" />
     <ClInclude Include="Fck1cEfmTestFixture.h" />
+    <ClInclude Include="DebugTelemetryTestSupport.h" />
     <ClInclude Include="SystemPipelineTestFixture.h" />
   </ItemGroup>
   <ItemGroup>
@@ -77,6 +78,9 @@
     <ClCompile Include="CockpitSnapshotExporterTests.cpp" />
     <ClCompile Include="DcsCommandRouterTests.cpp" />
     <ClCompile Include="DcsDamageMapperTests.cpp" />
+    <ClCompile Include="DebugCsvWriterTests.cpp" />
+	<ClCompile Include="DebugIndicatorExporterTests.cpp" />
+    <ClCompile Include="DebugTelemetryHubTests.cpp" />
     <ClCompile Include="OutputAdapterTests.cpp" />
     <ClCompile Include="EngineSystemTests.cpp" />
 	<ClCompile Include="EventLogTests.cpp" />
@@ -84,6 +88,7 @@
     <ClCompile Include="FBWControllerTests.cpp" />
     <ClCompile Include="FlightControlReferenceTests.cpp" />
     <ClCompile Include="Fck1cEfmCharacterizationTests.cpp" />
+    <ClCompile Include="Fck1cEfmSystemIntegrationTests.cpp" />
     <ClCompile Include="Fck1cEfmTests.cpp" />
 		<ClCompile Include="FrameInputCollectorTests.cpp" />
 		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
@@ -108,6 +113,10 @@
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DcsDamageMapper.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\AbiBoundary.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\BoundaryValidator.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugCsvWriter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugTelemetryHub.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EfmEventReporter.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EventLog.cpp" />
 	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\LogFileLifecycle.cpp" />

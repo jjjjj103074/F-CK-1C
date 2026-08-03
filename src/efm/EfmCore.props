@@ -17,6 +17,8 @@
     <ClInclude Include="$(EfmCoreRoot)Contracts\AircraftData.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\CockpitContracts.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetry.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetryTypes.h" />
     <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionContext.h" />
     <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionError.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Events.h" />

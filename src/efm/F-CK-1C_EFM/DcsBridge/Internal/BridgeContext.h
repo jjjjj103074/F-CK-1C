@@ -3,6 +3,9 @@
 #include "CarrierBridge.h"
 #include "CockpitBridge.h"
 #include "CockpitSnapshotExporter.h"
+#include "DebugTelemetry/DebugCsvWriter.h"
+#include "DebugTelemetry/DebugIndicatorExporter.h"
+#include "DebugTelemetry/DebugTelemetryHub.h"
 #include "EfmEventReporter.h"
 #include "EventLog.h"
 #include "FrameInputCollector.h"
@@ -23,7 +26,8 @@ namespace Internal
 {
 using CockpitApiProvider = cockpit_param_api (*)();
 using CoreFactory =
-	std::function<std::unique_ptr<Core::Fck1cEfm>()>;
+	std::function<std::unique_ptr<Core::Fck1cEfm>(
+		Core::DebugTelemetrySink&)>;
 
 struct BridgeContextConfig
 {
@@ -43,6 +47,9 @@ public:
 	const ModulePaths& module_paths() const;
 	EventLog& event_log();
 	StateCsvWriter& state_csv_writer();
+	DebugTelemetryHub& debug_telemetry_hub();
+	DebugCsvWriter& debug_csv_writer();
+	DebugIndicatorExporter& debug_indicator_exporter();
 	FrameInputCollector& input_collector();
 	OutputStore& output_store();
 	EfmEventReporter& event_reporter();
@@ -105,11 +112,14 @@ private:
 	ModulePaths module_paths_;
 	EventLog event_log_;
 	StateCsvWriter state_csv_writer_;
+	DebugTelemetryHub debug_telemetry_hub_;
+	DebugCsvWriter debug_csv_writer_;
 	FrameInputCollector input_collector_;
 	OutputStore output_store_;
 	EfmEventReporter event_reporter_;
 	ParamExporter param_exporter_;
 	const cockpit_param_api cockpit_api_;
+	DebugIndicatorExporter debug_indicator_exporter_;
 	CockpitSnapshotExporter cockpit_snapshot_exporter_;
 	CockpitBridge cockpit_bridge_;
 	CarrierBridge carrier_bridge_;

@@ -19,8 +19,8 @@ Baseline 分成兩層，不能混在一起：
 
 | 交付物 | 狀態 | 用途 |
 |---|---:|---|
-| [來源與介面清冊](generated/source-manifest.csv) | 完成 | 固定目前 21 個 Cockpit 檔案及 15 個飛機定義／輸入／C++ 邊界檔案的 hash |
-| [DCS device 載入鏈](generated/device-load-chain.csv) | 完成 | 固定目前 6 個 device 與 3 個 indicator 的 class、script、順序 |
+| [來源與介面清冊](generated/source-manifest.csv) | 完成 | 固定目前 43 個 Cockpit、飛機定義、輸入與 C++ 邊界檔案的 hash |
+| [DCS device 載入鏈](generated/device-load-chain.csv) | 完成 | 固定目前 6 個 device 與 4 個 indicator 的 class、script、順序 |
 | [自訂 command 路由](generated/command-routing.csv) | 完成 | 固定 command ID、EFM／Cockpit route、Input 綁定與 Lua 引用 |
 | [DCS action 使用清冊](generated/dcs-action-usage.csv) | 完成 | 固定由 DCS 擁有、C++ Router 忽略的 action |
 | [parameter 讀寫清冊](generated/parameter-access.csv) | 完成 | 列出 Lua／C++ 的 reader、writer 與 presentation reader |
@@ -55,8 +55,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/capture_cockpit_ba
 
 工具有意採取明確失敗：
 
-- Cockpit 檔案不是 21 個時失敗。
-- 6 個 device 或 3 個 indicator 缺少時失敗。
+- 預期的 Cockpit／邊界檔案清單或數量改變時失敗。
+- 6 個 device 或 4 個 indicator 缺少時失敗。
 - 必要的輸入／C++ 邊界檔案缺少時失敗。
 - 產物不存在或與來源不同時失敗。
 - 不會自行接受漂移，也不會產生假資料讓檢查通過。
@@ -93,11 +93,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/capture_cockpit_ba
 
 ## 清冊直接揭露的現況
 
-Phase 3 程式遷移後，目前自動清冊共有：
+目前自動清冊共有：
 
-- 36 個來源／邊界檔案：21 個 Cockpit 檔案加 15 個飛機定義／Input／C++ contract 檔案。
-- 63 個自訂 command：43 個 route 到 EFM，20 個 route 到 Cockpit。
-- 74 個不同 parameter 名稱，133 筆 reader／writer／presentation 關係。
+- 43 個來源／邊界檔案。
+- 64 個自訂 command：43 個 route 到 EFM、20 個 route 到 Cockpit、1 個 route 到 DCSBridge 開發工具。
+- 83 個不同 parameter 名稱，142 筆 reader／writer／presentation 關係。
 - 26 個由 DCS 擁有、EFM Router 明確忽略的 DCS command。
 
 Phase 0 曾記錄下列多 writer；Phase 1 已整理成唯一 writer：

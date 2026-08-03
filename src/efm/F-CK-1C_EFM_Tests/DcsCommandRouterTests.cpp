@@ -1,4 +1,5 @@
 #include "TestHarness.h"
+#include "DebugTelemetryTestSupport.h"
 
 #include "Core/Fck1cEfm.h"
 #include "DcsBridge/Internal/DcsCommandRouter.h"
@@ -226,7 +227,7 @@ void test_system_command_mappings(Tests::Context& context)
 
 void test_routed_primary_and_engine_outputs(Tests::Context& context)
 {
-	Core::Fck1cEfm efm;
+	Core::Fck1cEfm efm(Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	route_command(context, efm, { DcsIds::Commands::JoystickPitch, 0.4F });
@@ -244,8 +245,8 @@ void test_routed_primary_and_engine_outputs(Tests::Context& context)
 
 void test_routed_trim_changes_control_output(Tests::Context& context)
 {
-	Core::Fck1cEfm baseline;
-	Core::Fck1cEfm trimmed;
+	Core::Fck1cEfm baseline(Tests::disabled_debug_telemetry());
+	Core::Fck1cEfm trimmed(Tests::disabled_debug_telemetry());
 	(void)baseline.start(Core::StartMode::HotGround);
 	(void)trimmed.start(Core::StartMode::HotGround);
 	route_command(context, trimmed, { DcsIds::Commands::TrimUp, 1.0F });
@@ -259,7 +260,7 @@ void test_routed_trim_changes_control_output(Tests::Context& context)
 
 void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
 {
-	Core::Fck1cEfm efm;
+	Core::Fck1cEfm efm(Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotAir);
 	efm.set_internal_fuel(100.0);
 	route_command(context, efm, { DcsIds::Commands::ThrottleAxis, -1.0F });
@@ -279,7 +280,7 @@ void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
 
 void test_routed_wheel_outputs(Tests::Context& context)
 {
-	Core::Fck1cEfm efm;
+	Core::Fck1cEfm efm(Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	route_command(context, efm, { DcsIds::Commands::NoseTurnUp, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::PedalYaw, 0.5F });
@@ -370,12 +371,20 @@ void test_generated_command_routes(Tests::Context& context)
 			TEST_EXPECT(context, mapping.should_dispatch());
 			continue;
 		}
-		TEST_EXPECT(context,
-			mapping.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
 		const DcsBridge::DcsCommandMapping non_finite =
 			DcsBridge::map_command(entry.id, std::numeric_limits<float>::infinity());
-		TEST_EXPECT(context,
-			non_finite.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+		if (entry.route == DcsIds::CommandRouting::Route::Cockpit)
+		{
+			TEST_EXPECT(context, mapping.status ==
+				DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+			TEST_EXPECT(context, non_finite.status ==
+				DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+			continue;
+		}
+		TEST_EXPECT(context, mapping.status ==
+			DcsBridge::DcsCommandMappingStatus::UnknownCommand);
+		TEST_EXPECT(context, non_finite.status ==
+			DcsBridge::DcsCommandMappingStatus::InvalidValue);
 	}
 }
 

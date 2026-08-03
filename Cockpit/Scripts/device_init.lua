@@ -62,5 +62,6 @@ indicators = {}
 indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "ControlsIndicator/ControlsIndicator.lua" }
 indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "HMCS/HMCS_init.lua" }
 indicators[#indicators + 1] = { "ccIndicator", LockOn_Options.script_path .. "HMCS/HMCS_VR_init.lua" }
+indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "DebugIndicator/DebugIndicator_init.lua" }
 
 need_to_be_closed = true

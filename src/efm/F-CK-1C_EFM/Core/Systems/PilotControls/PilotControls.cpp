@@ -41,7 +41,8 @@ void PilotControls::register_commands(SystemSetup& setup)
 	{
 		setup.register_command_handler(
 			id,
-			[this](const Command& command) { handle_command(command); });
+			[this](const SystemActionContext&, const Command& command)
+			{ handle_command(command); });
 	}
 }
 

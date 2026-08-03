@@ -20,6 +20,12 @@ function Copy-CheckerFixture {
     Copy-Item -LiteralPath (
         Join-Path $resolvedRoot 'Cockpit') `
         -Destination (Join-Path $Root 'Cockpit') -Recurse
+    $inputDirectory = Join-Path $Root 'Input\F-CK-1C'
+    [IO.Directory]::CreateDirectory(
+        [IO.Path]::GetDirectoryName($inputDirectory)) | Out-Null
+    Copy-Item -LiteralPath (
+        Join-Path $resolvedRoot 'Input\F-CK-1C') `
+        -Destination $inputDirectory -Recurse
     $catalogDirectory = Join-Path $Root 'src\efm\F-CK-1C_EFM\DcsIds'
     [IO.Directory]::CreateDirectory($catalogDirectory) | Out-Null
     Copy-Item -LiteralPath (
@@ -27,10 +33,18 @@ function Copy-CheckerFixture {
         -Destination $catalogDirectory
     $bridgeDirectory = Join-Path $Root 'src\efm\F-CK-1C_EFM\DcsBridge\Internal'
     [IO.Directory]::CreateDirectory($bridgeDirectory) | Out-Null
-    foreach ($name in @('CockpitBridge.cpp', 'CockpitSnapshotExporter.cpp')) {
+    $writerSources = @(
+        'CockpitBridge.cpp',
+        'CockpitSnapshotExporter.cpp',
+        'DebugTelemetry\DebugIndicatorExporter.cpp'
+    )
+    foreach ($name in $writerSources) {
+        $destination = Join-Path $bridgeDirectory $name
+        [IO.Directory]::CreateDirectory(
+            [IO.Path]::GetDirectoryName($destination)) | Out-Null
         Copy-Item -LiteralPath (
             Join-Path $resolvedRoot "src\efm\F-CK-1C_EFM\DcsBridge\Internal\$name") `
-            -Destination $bridgeDirectory
+            -Destination $destination
     }
     $inventoryDirectory = Join-Path $Root 'docs\cockpit-baseline\generated'
     [IO.Directory]::CreateDirectory($inventoryDirectory) | Out-Null
@@ -168,6 +182,59 @@ try {
             'local dev = GetSelf()',
             $utf8NoBom)
     } 'Removed cockpit device file was restored' $temporaryRoot
+
+    $debugPage = Join-Path (
+        $temporaryRoot) 'Cockpit\Scripts\DebugIndicator\DebugIndicator_page.lua'
+    $originalDebugPage = [IO.File]::ReadAllText($debugPage)
+    Assert-Rejected {
+        [IO.File]::AppendAllText(
+            $debugPage,
+            "dispatch_action(nil, 1, 1)`r`n",
+            $utf8NoBom)
+    } 'Debug Indicator Lua must remain display-only' $temporaryRoot
+    [IO.File]::WriteAllText($debugPage, $originalDebugPage, $utf8NoBom)
+
+    Assert-Rejected {
+        $missingTextBlock = $originalDebugPage.Replace(
+            'cockpit_params.DebugIndicatorText6,',
+            'cockpit_params.DebugIndicatorText5,')
+        [IO.File]::WriteAllText(
+            $debugPage,
+            $missingTextBlock,
+            $utf8NoBom)
+    } 'six text-block' $temporaryRoot
+    [IO.File]::WriteAllText($debugPage, $originalDebugPage, $utf8NoBom)
+
+    $debugKeyboard = Join-Path (
+        $temporaryRoot) 'Input\F-CK-1C\keyboard\default.lua'
+    $originalDebugKeyboard = [IO.File]::ReadAllText($debugKeyboard)
+    Assert-Rejected {
+        $zeroValueBinding = $originalDebugKeyboard.Replace(
+            'down = device_commands.DebugIndicatorToggle, value_down = 1.0',
+            'down = device_commands.DebugIndicatorToggle, value_down = 0.0')
+        [IO.File]::WriteAllText(
+            $debugKeyboard,
+            $zeroValueBinding,
+            $utf8NoBom)
+    } 'must emit value_down=1.0' $temporaryRoot
+    [IO.File]::WriteAllText(
+        $debugKeyboard,
+        $originalDebugKeyboard,
+        $utf8NoBom)
+
+    $deviceInit = Join-Path $temporaryRoot 'Cockpit\Scripts\device_init.lua'
+    $originalDeviceInit = [IO.File]::ReadAllText($deviceInit)
+    Assert-Rejected {
+        $wrongIndicatorType = $originalDeviceInit.Replace(
+            '{ "ccControlsIndicatorBase", LockOn_Options.script_path .. ' +
+            '"DebugIndicator/DebugIndicator_init.lua" }',
+            '{ "ccIndicator", LockOn_Options.script_path .. ' +
+            '"DebugIndicator/DebugIndicator_init.lua" }')
+        [IO.File]::WriteAllText(
+            $deviceInit,
+            $wrongIndicatorType,
+            $utf8NoBom)
+    } 'screen-space ccControlsIndicatorBase host' $temporaryRoot
     Write-Output 'Cockpit architecture checker fixtures passed.'
 }
 finally {

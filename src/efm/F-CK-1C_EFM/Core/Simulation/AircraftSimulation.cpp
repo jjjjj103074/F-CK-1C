@@ -51,7 +51,8 @@ Core::Systems::FlightSetupContext make_system_setup(
 	return {
 		setup.start_mode,
 		make_system_fuel_state(setup.fuel),
-		make_initial_throttle_levers(setup.start_mode)
+		make_initial_throttle_levers(setup.start_mode),
+		setup.debug_telemetry
 	};
 }
 

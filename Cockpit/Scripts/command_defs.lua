@@ -64,6 +64,7 @@ device_commands = {
     EngineThrustCutTestToggle = 3135,
     EngineThrustCutTestEnable = 3136,
     EngineThrustCutTestDisable = 3137,
+    DebugIndicatorToggle = 3140,
 }
 
 dcs_commands = {

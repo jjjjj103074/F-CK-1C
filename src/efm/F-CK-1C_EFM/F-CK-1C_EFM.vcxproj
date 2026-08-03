@@ -82,9 +82,16 @@
 	<ClInclude Include="DcsBridge\Internal\DrawArgs.h" />
 	<ClInclude Include="DcsBridge\Internal\AbiBoundary.h" />
 	<ClInclude Include="DcsBridge\Internal\BoundaryValidator.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugCsvWriter.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryHub.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryStatus.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryValueFormat.h" />
 	<ClInclude Include="DcsBridge\Internal\EfmEventReporter.h" />
 	<ClInclude Include="DcsBridge\Internal\EventLog.h" />
 	<ClInclude Include="DcsBridge\Internal\LogFileLifecycle.h" />
+	<ClInclude Include="DcsBridge\Internal\LegacyDebugInfoAdapter.h" />
     <ClInclude Include="DcsBridge\Internal\BridgeContext.h" />
     <ClInclude Include="DcsBridge\Internal\CarrierBridge.h" />
     <ClInclude Include="DcsBridge\Internal\CockpitBridge.h" />
@@ -130,6 +137,18 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
 	<ClCompile Include="DcsBridge\Internal\BoundaryValidator.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugCsvWriter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryHub.cpp">
 	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
 	</ClCompile>
 	<ClCompile Include="DcsBridge\Internal\EfmEventReporter.cpp">

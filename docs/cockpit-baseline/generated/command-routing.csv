@@ -62,3 +62,4 @@
 "EngineThrustCutTestToggle","3135","efm","","Input/F-CK-1C/joystick/default.lua:2;Input/F-CK-1C/keyboard/default.lua:2",""
 "EngineThrustCutTestEnable","3136","efm","","Input/F-CK-1C/joystick/default.lua:2;Input/F-CK-1C/keyboard/default.lua:2",""
 "EngineThrustCutTestDisable","3137","efm","","Input/F-CK-1C/joystick/default.lua:2;Input/F-CK-1C/keyboard/default.lua:2",""
+"DebugIndicatorToggle","3140","bridge","","Input/F-CK-1C/joystick/default.lua:1;Input/F-CK-1C/keyboard/default.lua:1",""

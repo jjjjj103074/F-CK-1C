@@ -64,7 +64,8 @@
     { "name": "APSpeedDecrease", "value": 3134, "route": "efm" },
     { "name": "EngineThrustCutTestToggle", "value": 3135, "route": "efm" },
     { "name": "EngineThrustCutTestEnable", "value": 3136, "route": "efm" },
-    { "name": "EngineThrustCutTestDisable", "value": 3137, "route": "efm" }
+    { "name": "EngineThrustCutTestDisable", "value": 3137, "route": "efm" },
+    { "name": "DebugIndicatorToggle", "value": 3140, "route": "bridge" }
   ],
   "efm_ignored_dcs_commands": [
     {
@@ -266,6 +267,14 @@
     { "name": "CockpitSnapshotAvailable", "value": "CPP_COCKPIT_SNAPSHOT_AVAILABLE", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "CockpitSnapshotExporter" },
     { "name": "CockpitSnapshotRevision", "value": "CPP_COCKPIT_SNAPSHOT_REVISION", "direction": "cpp_to_lua", "unit": "revision", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "CockpitSnapshotExporter" },
     { "name": "CockpitSnapshotTimeS", "value": "CPP_COCKPIT_SNAPSHOT_TIME_S", "direction": "cpp_to_lua", "unit": "seconds", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "DebugIndicatorVisible", "value": "DEBUG_INDICATOR_VISIBLE", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText1", "value": "DEBUG_INDICATOR_TEXT_1", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText2", "value": "DEBUG_INDICATOR_TEXT_2", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText3", "value": "DEBUG_INDICATOR_TEXT_3", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText4", "value": "DEBUG_INDICATOR_TEXT_4", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText5", "value": "DEBUG_INDICATOR_TEXT_5", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText6", "value": "DEBUG_INDICATOR_TEXT_6", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorStatus", "value": "DEBUG_INDICATOR_STATUS", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
     { "name": "RadarRequestedPower", "value": "CPP_RADAR_REQUESTED_POWER", "direction": "cpp_to_lua", "unit": "boolean", "writer": null, "target_owner": "CombatAvionics" },
     { "name": "Aim9RequestedTone", "value": "CPP_AIM9_REQUESTED_TONE", "direction": "cpp_to_lua", "unit": "enum", "writer": null, "target_owner": "CombatAvionics" },
     { "name": "WeaponRequestedStation", "value": "CPP_WEAPON_REQUESTED_STATION", "direction": "cpp_to_lua", "unit": "station_index", "writer": null, "target_owner": "CombatAvionics" },

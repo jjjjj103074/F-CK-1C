@@ -12,7 +12,15 @@ Core::FlightOutput project_flight(const Core::AircraftState& source)
 		source.g,
 		source.alpha,
 		source.beta,
-		source.atmosphere_temperature
+		source.atmosphere_temperature,
+		indicated_airspeed(source),
+		source.velocity_world.y,
+		source.heading,
+		source.pitch,
+		source.roll,
+		source.roll_rate,
+		source.pitch_rate,
+		source.yaw_rate
 	};
 }
 

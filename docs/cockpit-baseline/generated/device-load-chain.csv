@@ -8,3 +8,4 @@
 "7","Indicator","","ccControlsIndicatorBase","Cockpit/Scripts/ControlsIndicator/ControlsIndicator.lua"
 "8","Indicator","","ccControlsIndicatorBase","Cockpit/Scripts/HMCS/HMCS_init.lua"
 "9","Indicator","","ccIndicator","Cockpit/Scripts/HMCS/HMCS_VR_init.lua"
+"10","Indicator","","ccControlsIndicatorBase","Cockpit/Scripts/DebugIndicator/DebugIndicator_init.lua"

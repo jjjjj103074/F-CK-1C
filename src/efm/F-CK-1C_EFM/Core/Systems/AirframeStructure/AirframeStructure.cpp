@@ -13,15 +13,19 @@ void AirframeStructure::setup(SystemSetup& setup)
 	setup.publish(AircraftDataKeys::kAirframeIntegrity, integrity_);
 	setup.register_damage_handler(
 		DamageArea::LeftWing,
-		[this](const DamageEvent& event) { apply_damage(event); });
+		[this](const SystemActionContext&, const DamageEvent& event)
+		{ apply_damage(event); });
 	setup.register_damage_handler(
 		DamageArea::RightWing,
-		[this](const DamageEvent& event) { apply_damage(event); });
+		[this](const SystemActionContext&, const DamageEvent& event)
+		{ apply_damage(event); });
 	setup.register_damage_handler(
 		DamageArea::Tail,
-		[this](const DamageEvent& event) { apply_damage(event); });
+		[this](const SystemActionContext&, const DamageEvent& event)
+		{ apply_damage(event); });
 	setup.register_repair_handler(
-		[this](const RepairEvent& event) { repair(event); });
+		[this](const SystemActionContext&, const RepairEvent& event)
+		{ repair(event); });
 }
 
 void AirframeStructure::step(

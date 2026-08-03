@@ -5,6 +5,7 @@
 #include "ControlLaws/GuidanceCoordination.h"
 #include "ControlLaws/ControlLaws.h"
 #include "FlightControlComputerConfig.h"
+#include "FlightControlComputerDebugTelemetry.h"
 #include "InputSignalManagement.h"
 #include "ThrottleCommandComposition.h"
 #include "../System.h"
@@ -81,6 +82,7 @@ private:
 	FlightControlActuatorCommand actuator_command_;
 	EngineThrottleCommand engine_throttle_command_;
 	FlightControlComputerSnapshot diagnostics_;
+	FlightControlComputerDebugTelemetry debug_telemetry_;
 };
 
 SystemEntry make_flight_control_computer_system_entry(

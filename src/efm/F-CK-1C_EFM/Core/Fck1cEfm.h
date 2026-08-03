@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Contracts/Commands.h"
+#include "Contracts/Diagnostics/DebugTelemetry.h"
 #include "Contracts/Events.h"
 #include "Contracts/FrameContracts.h"
 #include "Simulation/AircraftSimulationFactory.h"
@@ -17,9 +18,10 @@ class AircraftSimulation;
 class Fck1cEfm
 {
 public:
-	Fck1cEfm();
+	explicit Fck1cEfm(DebugTelemetrySink& debug_telemetry);
 	explicit Fck1cEfm(
-		Simulation::AircraftSimulationFactory simulation_factory);
+		Simulation::AircraftSimulationFactory simulation_factory,
+		DebugTelemetrySink& debug_telemetry);
 	~Fck1cEfm();
 
 	Fck1cEfm(const Fck1cEfm&) = delete;
@@ -47,6 +49,7 @@ private:
 	void synchronize_preparation();
 
 	const Simulation::AircraftSimulationFactory simulation_factory_;
+	DebugTelemetrySink& debug_telemetry_;
 	std::unique_ptr<FlightPreparation> preparation_;
 	std::unique_ptr<Simulation::AircraftSimulation> simulation_;
 };

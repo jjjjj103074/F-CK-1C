@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <typeindex>
+#include <utility>
 #include <vector>
 
 namespace Core
@@ -28,9 +29,12 @@ enum class DispatchResult
 	Unhandled
 };
 
-using CommandHandler = std::function<void(const Command&)>;
-using DamageHandler = std::function<void(const DamageEvent&)>;
-using RepairHandler = std::function<void(const RepairEvent&)>;
+using CommandHandler =
+	std::function<void(const SystemActionContext&, const Command&)>;
+using DamageHandler =
+	std::function<void(const SystemActionContext&, const DamageEvent&)>;
+using RepairHandler =
+	std::function<void(const SystemActionContext&, const RepairEvent&)>;
 
 struct FuelManagementHandlers
 {
@@ -160,6 +164,13 @@ class SystemSetup final
 {
 public:
 	template <typename T>
+	DebugTelemetryChannel<T> declare_debug_channel(
+		DebugTelemetryChannelDescriptor descriptor)
+	{
+		return debug_telemetry().declare_channel<T>(std::move(descriptor));
+	}
+
+	template <typename T>
 	void read(
 		const AircraftDataKey<T>& key,
 		InitialValueRequirement initial =
@@ -202,6 +213,7 @@ private:
 	void declare_publication(
 		const AircraftDataDescriptor& descriptor,
 		const AircraftDataValue* initial);
+	DebugTelemetrySink& debug_telemetry();
 
 	State* state_;
 

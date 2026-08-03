@@ -13,14 +13,18 @@ struct Fck1cEfm::FlightPreparation
 	Simulation::SimulationOptions options;
 };
 
-Fck1cEfm::Fck1cEfm()
-	: Fck1cEfm(Simulation::make_fck1c_aircraft_simulation_factory())
+Fck1cEfm::Fck1cEfm(DebugTelemetrySink& debug_telemetry)
+	: Fck1cEfm(
+		Simulation::make_fck1c_aircraft_simulation_factory(),
+		debug_telemetry)
 {
 }
 
 Fck1cEfm::Fck1cEfm(
-	Simulation::AircraftSimulationFactory simulation_factory)
+	Simulation::AircraftSimulationFactory simulation_factory,
+	DebugTelemetrySink& debug_telemetry)
 	: simulation_factory_(std::move(simulation_factory)),
+	debug_telemetry_(debug_telemetry),
 	preparation_(std::make_unique<FlightPreparation>())
 {
 	if (!simulation_factory_)
@@ -38,7 +42,8 @@ FrameOutput Fck1cEfm::start(StartMode mode)
 	const Simulation::FlightSetupContext setup = {
 		mode,
 		preparation_->fuel,
-		preparation_->options
+		preparation_->options,
+		debug_telemetry_
 	};
 	auto simulation = simulation_factory_(setup);
 	if (!simulation)

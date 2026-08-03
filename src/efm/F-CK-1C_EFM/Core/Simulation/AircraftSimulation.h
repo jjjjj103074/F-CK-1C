@@ -42,6 +42,7 @@ struct FlightSetupContext
 	const StartMode start_mode = StartMode::ColdGround;
 	const FlightFuelLoad fuel;
 	const SimulationOptions options;
+	DebugTelemetrySink& debug_telemetry;
 };
 
 struct GameplayState

@@ -64,6 +64,14 @@ static const char* const WeaponObservationScannedStationCount = "OBS_WEAPON_STAT
 static const char* const CockpitSnapshotAvailable = "CPP_COCKPIT_SNAPSHOT_AVAILABLE";
 static const char* const CockpitSnapshotRevision = "CPP_COCKPIT_SNAPSHOT_REVISION";
 static const char* const CockpitSnapshotTimeS = "CPP_COCKPIT_SNAPSHOT_TIME_S";
+static const char* const DebugIndicatorVisible = "DEBUG_INDICATOR_VISIBLE";
+static const char* const DebugIndicatorText1 = "DEBUG_INDICATOR_TEXT_1";
+static const char* const DebugIndicatorText2 = "DEBUG_INDICATOR_TEXT_2";
+static const char* const DebugIndicatorText3 = "DEBUG_INDICATOR_TEXT_3";
+static const char* const DebugIndicatorText4 = "DEBUG_INDICATOR_TEXT_4";
+static const char* const DebugIndicatorText5 = "DEBUG_INDICATOR_TEXT_5";
+static const char* const DebugIndicatorText6 = "DEBUG_INDICATOR_TEXT_6";
+static const char* const DebugIndicatorStatus = "DEBUG_INDICATOR_STATUS";
 static const char* const RadarRequestedPower = "CPP_RADAR_REQUESTED_POWER";
 static const char* const Aim9RequestedTone = "CPP_AIM9_REQUESTED_TONE";
 static const char* const WeaponRequestedStation = "CPP_WEAPON_REQUESTED_STATION";
@@ -146,6 +154,14 @@ static constexpr Entry Catalog[] = {
     { CockpitSnapshotAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotTimeS, "cpp_to_lua", "seconds", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
+    { DebugIndicatorVisible, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
+    { DebugIndicatorText1, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
+    { DebugIndicatorText2, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
+    { DebugIndicatorText3, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
+    { DebugIndicatorText4, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
+    { DebugIndicatorText5, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
+    { DebugIndicatorText6, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
+    { DebugIndicatorStatus, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
     { RadarRequestedPower, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
     { Aim9RequestedTone, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },
     { WeaponRequestedStation, "cpp_to_lua", "station_index", nullptr, "CombatAvionics", nullptr },

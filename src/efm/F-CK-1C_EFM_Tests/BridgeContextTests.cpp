@@ -2,6 +2,8 @@
 #include "TestHarness.h"
 
 #include "../F-CK-1C_EFM/DcsBridge/Internal/BridgeContext.h"
+#include "../F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
+#include "../F-CK-1C_EFM/DcsIds/CustomCommands.g.h"
 
 #include <algorithm>
 #include <array>
@@ -103,7 +105,10 @@ DcsBridge::Internal::BridgeContextEnvironment make_environment()
 	static const int module_address_anchor = 0;
 	return {
 		provide_cockpit_api,
-		[]() { return std::make_unique<Core::Fck1cEfm>(); },
+		[](Core::DebugTelemetrySink& debug_telemetry)
+		{
+			return std::make_unique<Core::Fck1cEfm>(debug_telemetry);
+		},
 		&module_address_anchor
 	};
 }
@@ -131,7 +136,12 @@ void start_flight(
 void release_flight(DcsBridge::Internal::BridgeContext& context)
 {
 	const std::lock_guard<std::mutex> lock(context.execution_mutex());
+	const auto output = context.output_store().read();
+	context.debug_indicator_exporter().release_flight();
+	context.debug_csv_writer().release_flight(
+		output ? output->simulation_time_s : 0.0);
 	context.core().release();
+	context.debug_telemetry_hub().release_flight();
 	context.input_collector().reset();
 	context.output_store().mark_released();
 }
@@ -211,15 +221,62 @@ void test_files_ready_before_flight(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
 	const std::filesystem::path log_path = root.path() / "log" / "fck1c_efm.log";
 	const std::filesystem::path csv_path = root.path() / "log" / "fck1c_state.csv";
+	const std::filesystem::path debug_path = root.path() / "log" / "debug.csv";
 	TEST_EXPECT(tests, context.event_log().is_open());
 	TEST_EXPECT(tests, context.state_csv_writer().is_ready());
 	TEST_EXPECT(tests, std::filesystem::exists(log_path));
 	TEST_EXPECT(tests, std::filesystem::exists(csv_path));
+	TEST_EXPECT(tests, !std::filesystem::exists(debug_path));
 	TEST_EXPECT(tests, !context.output_store().read().has_value());
 	TEST_EXPECT(
 		tests,
 		TestFiles::read_text_while_open(csv_path) ==
 			DcsBridge::Internal::state_csv_header());
+}
+
+void test_debug_tools_share_core_channels(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcd");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	auto& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotAir);
+	TEST_EXPECT(tests, context.debug_csv_writer().is_ready());
+	TEST_EXPECT(tests, !context.debug_indicator_exporter().visible());
+	TEST_EXPECT(tests,
+		context.debug_indicator_exporter().toggle().count == 0);
+	TEST_EXPECT(tests, context.debug_indicator_exporter().visible());
+	TEST_EXPECT(tests,
+		context.debug_indicator_exporter().export_latest(
+			context.debug_csv_writer().status()).count == 0);
+	release_flight(context);
+	const auto path = root.path() / "log" / "debug.csv";
+	const std::string csv = TestFiles::read_text_while_open(path);
+	TEST_EXPECT(tests, csv.find("sequence,simulation_time_s,") == 0);
+	TEST_EXPECT(tests, csv.find("afcs_master_engaged") != std::string::npos);
+}
+
+void test_debug_indicator_command_is_owned_by_bridge(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bdc");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	auto& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotAir);
+	TEST_EXPECT(tests, !DcsBridge::Internal::handle_debug_indicator_command(
+		context, -1, 1.0F));
+	TEST_EXPECT(tests, DcsBridge::Internal::handle_debug_indicator_command(
+		context, DcsIds::Commands::DebugIndicatorToggle, 0.0F));
+	TEST_EXPECT(tests, !context.debug_indicator_exporter().visible());
+	TEST_EXPECT(tests, DcsBridge::Internal::handle_debug_indicator_command(
+		context, DcsIds::Commands::DebugIndicatorToggle, 1.0F));
+	TEST_EXPECT(tests, context.debug_indicator_exporter().visible());
+	TEST_EXPECT(tests, DcsBridge::Internal::handle_debug_indicator_command(
+		context, DcsIds::Commands::DebugIndicatorToggle, 1.0F));
+	TEST_EXPECT(tests, !context.debug_indicator_exporter().visible());
+	release_flight(context);
 }
 
 void test_release_then_start_reuses_context(Tests::Context& tests)
@@ -533,6 +590,8 @@ void run_bridge_context_tests(Tests::Context& context)
 {
 	test_first_callback_initializes_once(context);
 	test_files_ready_before_flight(context);
+	test_debug_tools_share_core_channels(context);
+	test_debug_indicator_command_is_owned_by_bridge(context);
 	test_release_then_start_reuses_context(context);
 	test_repeated_start_warns_without_resetting_input(context);
 	test_mass_delivery_drains_output_queue(context);

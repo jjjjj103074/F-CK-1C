@@ -56,6 +56,7 @@ FlightControlComputer::FlightControlComputer(
 
 void FlightControlComputer::setup(SystemSetup& setup)
 {
+	debug_telemetry_.declare_channels(setup);
 	setup.update_rate_hz(kF16XlDflcsReferenceUpdateRateHz);
 	setup.read(AircraftDataKeys::kFlightControlObservation);
 	setup.read(AircraftDataKeys::kPilotControlSignal);
@@ -75,6 +76,8 @@ void FlightControlComputer::setup(SystemSetup& setup)
 		AircraftDataKeys::kFlightControlComputerSnapshot,
 		diagnostics_);
 	register_commands(setup);
+	debug_telemetry_.publish_initial(
+		diagnostics_, automatic_flight_control_.snapshot());
 }
 
 void FlightControlComputer::register_commands(SystemSetup& setup)
@@ -90,7 +93,8 @@ void FlightControlComputer::register_commands(SystemSetup& setup)
 	{
 		setup.register_command_handler(
 			id,
-			[this](const Command& command) { handle_command(command); });
+			[this](const SystemActionContext&, const Command& command)
+			{ handle_command(command); });
 	}
 	automatic_flight_control_.register_commands(setup);
 }
@@ -100,10 +104,17 @@ void FlightControlComputer::step(
 	const AircraftDataView& aircraft,
 	SystemResult& result)
 {
+	const RawFlightControlInput flight =
+		make_pipeline_input(context, aircraft);
 	step({
-		make_pipeline_input(context, aircraft),
+		flight,
 		aircraft.read(AircraftDataKeys::kThrottleLeverSignal)
 	});
+	debug_telemetry_.publish_step({
+		context.scheduled_time,
+		flight.observation,
+		diagnostics_,
+		automatic_flight_control_.snapshot() });
 	result.publish(
 		AircraftDataKeys::kFlightControlActuatorCommand,
 		actuator_command_);

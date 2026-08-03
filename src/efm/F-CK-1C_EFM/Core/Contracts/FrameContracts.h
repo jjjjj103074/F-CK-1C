@@ -142,6 +142,14 @@ struct FlightOutput
 	double angle_of_attack_deg = 0.0;
 	double angle_of_slide_deg = 0.0;
 	double atmosphere_temperature_k = 0.0;
+	double indicated_airspeed_mps = 0.0;
+	double vertical_speed_mps = 0.0;
+	double heading_rad = 0.0;
+	double pitch_attitude_rad = 0.0;
+	double roll_attitude_rad = 0.0;
+	double roll_rate_rad_s = 0.0;
+	double pitch_rate_rad_s = 0.0;
+	double yaw_rate_rad_s = 0.0;
 };
 
 struct ForceMomentOutput

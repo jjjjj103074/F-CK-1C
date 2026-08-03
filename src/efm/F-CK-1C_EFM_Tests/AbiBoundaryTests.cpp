@@ -3,6 +3,7 @@
 
 #include "DcsBridge/Internal/AbiBoundary.h"
 #include "DcsBridge/Internal/EventLog.h"
+#include "DcsBridge/Internal/LegacyDebugInfoAdapter.h"
 #include "DcsBridge/Internal/ProcessBridgeContext.h"
 #include "Core/Diagnostics/ExecutionError.h"
 
@@ -16,7 +17,8 @@ namespace
 constexpr int kUnknownThrownValue = 42;
 constexpr double kNeutralResult = -1.0;
 
-std::unique_ptr<Core::Fck1cEfm> throw_during_core_creation()
+std::unique_ptr<Core::Fck1cEfm> throw_during_core_creation(
+	Core::DebugTelemetrySink&)
 {
 	throw std::runtime_error("configuration failure");
 }
@@ -233,6 +235,23 @@ void test_process_context_exposes_initialization_failure(Tests::Context& context
 	}
 	TEST_EXPECT(context, initialization_error_caught);
 }
+
+void test_legacy_debug_info_returns_neutral_values(Tests::Context& context)
+{
+	char buffer[] = "stale";
+	TEST_EXPECT(context,
+		!DcsBridge::Internal::legacy_debug_info_enabled());
+	TEST_EXPECT(context,
+		DcsBridge::Internal::clear_legacy_debug_watch_buffer(
+			buffer, sizeof(buffer)) == 0);
+	TEST_EXPECT(context, buffer[0] == '\0');
+	TEST_EXPECT(context,
+		DcsBridge::Internal::clear_legacy_debug_watch_buffer(nullptr, 8) == 0);
+	buffer[0] = 'x';
+	TEST_EXPECT(context,
+		DcsBridge::Internal::clear_legacy_debug_watch_buffer(buffer, 0) == 0);
+	TEST_EXPECT(context, buffer[0] == 'x');
+}
 }
 
 void run_abi_boundary_tests(Tests::Context& context)
@@ -241,4 +260,5 @@ void run_abi_boundary_tests(Tests::Context& context)
 	test_guard_returns_neutral_and_runs_cleanup(context);
 	test_missing_log_does_not_throw(context);
 	test_process_context_exposes_initialization_failure(context);
+	test_legacy_debug_info_returns_neutral_values(context);
 }

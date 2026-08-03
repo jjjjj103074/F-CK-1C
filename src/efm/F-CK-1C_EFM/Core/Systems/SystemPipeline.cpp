@@ -7,7 +7,6 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-
 namespace Core
 {
 namespace Systems
@@ -52,6 +51,7 @@ struct DamageRegistration
 struct SystemSetup::State
 {
 	std::string system_id;
+	DebugTelemetrySink* debug_telemetry = nullptr;
 	std::vector<DataReadDeclaration> reads;
 	std::vector<DataPublicationDeclaration> publications;
 	std::vector<CommandRegistration> commands;
@@ -76,7 +76,6 @@ struct SystemPipeline::Implementation
 	explicit Implementation(
 		const FlightSetupContext& context,
 		std::vector<SystemEntry> catalog);
-
 	AircraftDataSnapshot make_snapshot() const;
 	AircraftDataSnapshot make_snapshot(const Storage& storage) const;
 	AircraftDataSnapshot step(const SystemFrameInput& input);
@@ -111,7 +110,6 @@ struct SystemPipeline::Implementation
 	const FuelManagementHandlers& require_fuel_management() const;
 	FuelManagementHandlers& require_fuel_management();
 	void commit_current_fuel_data();
-
 	std::vector<RuntimeSystem> systems;
 	Storage committed;
 	SystemResult pending_result;
@@ -123,10 +121,17 @@ struct SystemPipeline::Implementation
 	SystemSchedule schedule;
 	SystemScheduledTime advanced_through = {};
 };
-
 SystemSetup::SystemSetup(State& state)
 	: state_(&state)
 {
+}
+DebugTelemetrySink& SystemSetup::debug_telemetry()
+{
+	if (state_->debug_telemetry == nullptr)
+	{
+		throw std::logic_error("System setup has no debug telemetry dependency.");
+	}
+	return *state_->debug_telemetry;
 }
 void SystemSetup::declare_read(
 	const AircraftDataDescriptor& descriptor,
@@ -180,7 +185,6 @@ void SystemSetup::register_fuel_management(FuelManagementHandlers handlers)
 	}
 	state_->fuel_management = std::move(handlers);
 }
-
 void SystemSetup::update_rate_hz(std::uint32_t rate_hz)
 {
 	if (state_->update_rate_hz || state_->update_period)
@@ -195,7 +199,6 @@ void SystemSetup::update_rate_hz(std::uint32_t rate_hz)
 	}
 	state_->update_rate_hz = rate_hz;
 }
-
 void SystemSetup::update_period(SystemScheduledTime period)
 {
 	if (state_->update_rate_hz || state_->update_period)
@@ -210,7 +213,6 @@ void SystemSetup::update_period(SystemScheduledTime period)
 	}
 	state_->update_period = period;
 }
-
 SystemPipeline::Implementation::Implementation(
 	const FlightSetupContext& context,
 	std::vector<SystemEntry> catalog)
@@ -234,7 +236,6 @@ SystemPipeline::Implementation::Implementation(
 	collect_declarations();
 	validate_and_commit_setup();
 }
-
 void SystemPipeline::Implementation::create_systems(
 	const FlightSetupContext& context,
 	std::vector<SystemEntry> catalog)
@@ -265,11 +266,10 @@ void SystemPipeline::Implementation::create_systems(
 			std::move(instance),
 			{},
 			{},
-			SystemSetup::State{ entry.id }
+			SystemSetup::State{ entry.id, &context.debug_telemetry }
 		});
 	}
 }
-
 void SystemPipeline::Implementation::collect_declarations()
 {
 	for (RuntimeSystem& runtime : systems)
@@ -617,7 +617,7 @@ DispatchResult SystemPipeline::send(const Command& command)
 	{
 		return DispatchResult::Unhandled;
 	}
-	handler->second(command);
+	handler->second({ implementation_->advanced_through }, command);
 	return DispatchResult::Handled;
 }
 DispatchResult SystemPipeline::apply(const DamageEvent& event)
@@ -627,14 +627,14 @@ DispatchResult SystemPipeline::apply(const DamageEvent& event)
 	{
 		return DispatchResult::Unhandled;
 	}
-	handler->second(event);
+	handler->second({ implementation_->advanced_through }, event);
 	return DispatchResult::Handled;
 }
 std::size_t SystemPipeline::apply(const RepairEvent& event)
 {
 	for (const RepairHandler& handler : implementation_->repair_handlers)
 	{
-		handler(event);
+		handler({ implementation_->advanced_through }, event);
 	}
 	return implementation_->repair_handlers.size();
 }

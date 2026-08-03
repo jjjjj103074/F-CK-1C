@@ -23,10 +23,10 @@ constexpr std::size_t kCharacterizationFrameCount = 4;
 constexpr std::uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
 constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
 constexpr std::array<std::uint64_t, 4> kSchedulerTrajectoryHashes = {
-	8026299644685146403ULL,
-	16152851720650718600ULL,
-	5686415219146821553ULL,
-	11507081946861448881ULL
+	1256905148398990797ULL,
+	9786908295813509718ULL,
+	9092308663601901439ULL,
+	12810110985274937007ULL
 };
 
 void write_availability(
@@ -56,6 +56,15 @@ void write_flight(std::ostringstream& output, const Core::FlightOutput& value)
 	output << "flight.angle_of_slide_deg=" << value.angle_of_slide_deg << '\n';
 	output << "flight.atmosphere_temperature_k="
 		<< value.atmosphere_temperature_k << '\n';
+	output << "flight.indicated_airspeed_mps="
+		<< value.indicated_airspeed_mps << '\n';
+	output << "flight.vertical_speed_mps=" << value.vertical_speed_mps << '\n';
+	output << "flight.heading_rad=" << value.heading_rad << '\n';
+	output << "flight.pitch_attitude_rad=" << value.pitch_attitude_rad << '\n';
+	output << "flight.roll_attitude_rad=" << value.roll_attitude_rad << '\n';
+	output << "flight.roll_rate_rad_s=" << value.roll_rate_rad_s << '\n';
+	output << "flight.pitch_rate_rad_s=" << value.pitch_rate_rad_s << '\n';
+	output << "flight.yaw_rate_rad_s=" << value.yaw_rate_rad_s << '\n';
 }
 
 void write_vec3(
@@ -210,7 +219,7 @@ std::array<
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(500.0);
 	efm.set_external_fuel({ 1, 120.0, { 0.5, -0.2, 0.1 } });
@@ -310,7 +319,9 @@ std::optional<GearCrossing> find_gear_midpoint_crossing(
 void test_secondary_controls_read_previous_committed_gear(
 	Tests::Context& context)
 {
-	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config());
+	Core::Fck1cEfm efm(
+		Tests::Fck1c::make_test_config(),
+		Tests::disabled_debug_telemetry());
 	const Core::FrameOutput start = efm.start(Core::StartMode::HotAir);
 	efm.handle_command({
 		Core::CommandId::SetGear, 1.0 });
@@ -370,7 +381,7 @@ void test_fuel_reads_previous_committed_engine_demand(
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	const Core::FrameOutput start = efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	efm.handle_command({
@@ -397,7 +408,9 @@ Core::FrameOutput run_engine_shutdown_frame(
 	double internal_fuel,
 	double altitude_asl)
 {
-	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config());
+	Core::Fck1cEfm efm(
+		Tests::Fck1c::make_test_config(),
+		Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(internal_fuel);
 	efm.handle_command({
@@ -460,7 +473,7 @@ Core::FrameOutput run_ground_frame(
 	Tests::Fck1c::TestAircraftConfig config,
 	bool feedback_available)
 {
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	return efm.step(make_ground_input(feedback_available));
@@ -469,8 +482,12 @@ Core::FrameOutput run_ground_frame(
 struct PairedHotGroundEfms
 {
 	PairedHotGroundEfms()
-		: subject(Tests::Fck1c::make_test_config()),
-		control(Tests::Fck1c::make_test_config())
+		: subject(
+			Tests::Fck1c::make_test_config(),
+			Tests::disabled_debug_telemetry()),
+		control(
+			Tests::Fck1c::make_test_config(),
+			Tests::disabled_debug_telemetry())
 	{
 		(void)subject.start(Core::StartMode::HotGround);
 		(void)control.start(Core::StartMode::HotGround);
@@ -553,7 +570,7 @@ void test_each_frame_exposes_its_mass_effect(Tests::Context& context)
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
 	Core::FrameInput input;
@@ -578,8 +595,8 @@ void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm subject(config);
-	Core::Fck1cEfm control(config);
+	Core::Fck1cEfm subject(config, Tests::disabled_debug_telemetry());
+	Core::Fck1cEfm control(config, Tests::disabled_debug_telemetry());
 	(void)subject.start(Core::StartMode::HotGround);
 	(void)control.start(Core::StartMode::HotGround);
 	subject.set_internal_fuel(100.0);

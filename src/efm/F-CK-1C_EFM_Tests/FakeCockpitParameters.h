@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace Tests
@@ -13,6 +14,8 @@ struct FakeCockpitParameter
 {
 	const char* name = nullptr;
 	double value = 0.0;
+	std::string text;
+	std::size_t string_write_count = 0;
 	bool available = true;
 };
 
@@ -62,6 +65,16 @@ public:
 		return find(name)->value;
 	}
 
+	const std::string& text(const char* name)
+	{
+		return find(name)->text;
+	}
+
+	std::size_t string_write_count(const char* name)
+	{
+		return find(name)->string_write_count;
+	}
+
 	void* handle(const char* name)
 	{
 		FakeCockpitParameter* parameter = find(name);
@@ -74,6 +87,7 @@ public:
 	{
 		cockpit_param_api result = {};
 		result.pfn_ed_cockpit_get_parameter_handle = get_parameter_handle;
+		result.pfn_ed_cockpit_update_parameter_with_string = update_string;
 		result.pfn_ed_cockpit_update_parameter_with_number = update_number;
 		result.pfn_ed_cockpit_parameter_value_to_number = read_number;
 		return result;
@@ -94,6 +108,14 @@ private:
 	static void update_number(void* handle, double value)
 	{
 		static_cast<FakeCockpitParameter*>(handle)->value = value;
+	}
+
+	static void update_string(void* handle, const char* value)
+	{
+		FakeCockpitParameter* parameter =
+			static_cast<FakeCockpitParameter*>(handle);
+		parameter->text = value;
+		++parameter->string_write_count;
 	}
 
 	static bool read_number(

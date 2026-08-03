@@ -14,6 +14,13 @@ namespace Systems
 {
 void PropulsionDiagnostics::setup(SystemSetup& setup)
 {
+	thrust_cut_debug_ = setup.declare_debug_channel<bool>({
+		"propulsion_test_thrust_cut_requested",
+		"Propulsion Test Thrust Cut",
+		DebugTelemetryValueType::Boolean,
+		"",
+		"Developer-only propulsion test intent."
+	});
 	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.publish(AircraftDataKeys::kPropulsionTestIntent, intent_);
 	const CommandId commands[] = {
@@ -25,8 +32,15 @@ void PropulsionDiagnostics::setup(SystemSetup& setup)
 	{
 		setup.register_command_handler(
 			id,
-			[this](const Command& command) { handle_command(command); });
+			[this](const SystemActionContext& context, const Command& command)
+			{
+				handle_command(command);
+				thrust_cut_debug_.publish(
+					context.simulation_time,
+					intent_.thrust_cut_requested);
+			});
 	}
+	thrust_cut_debug_.publish({}, intent_.thrust_cut_requested);
 }
 
 void PropulsionDiagnostics::step(
@@ -34,8 +48,10 @@ void PropulsionDiagnostics::step(
 	const AircraftDataView&,
 	SystemResult& result)
 {
-	(void)context;
 	result.publish(AircraftDataKeys::kPropulsionTestIntent, intent_);
+	thrust_cut_debug_.publish(
+		context.scheduled_time,
+		intent_.thrust_cut_requested);
 }
 
 void PropulsionDiagnostics::handle_command(const Command& command)

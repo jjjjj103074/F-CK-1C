@@ -29,6 +29,20 @@ DCS setter callbacks
        -> Internal/StateCsvWriter
 ```
 
+Core debug producers follow a separate, DCS-neutral path:
+
+```text
+Core setup declares typed debug channels
+  -> Core producers push timestamped values
+  -> Internal/DebugTelemetryHub
+       -> latest snapshot -> Internal/DebugIndicatorExporter
+       -> 64 Hz zero-order-hold samples -> Internal/DebugCsvWriter
+```
+
+Debug publication is observational. It does not pass through `FrameOutput`,
+does not participate in a System's AircraftData commit, and is never read back
+into simulation state.
+
 Semantic input commands follow a separate direct path:
 
 ```text
@@ -98,27 +112,63 @@ them.
 
 ## Runtime diagnostics
 
-Both files are created under `<module-root>/log`, opened with sharing enabled,
-and may be read by another application while DCS is running:
+The bridge exposes three distinct diagnostics under `<module-root>/log`.
+Files are opened with sharing enabled and may be read while DCS is running:
 
 - `fck1c_efm.log` contains code events only. Each line includes wall-clock
   time, simulation time, severity, and a traceable message. It is flushed
   immediately.
 - `fck1c_state.csv` contains CSV sequence, simulation time, and completed
-  `FrameOutput` values. Scalars keep their contract units, vectors expand to
-  `x,y,z`, booleans are `True`/`False`, and unavailable data is `-`.
+  physical aircraft-state `FrameOutput` values. It deliberately excludes FCC,
+  AFCS, and developer-tool internals.
+- `debug.csv` is the reusable history for Core-pushed debug channels. It uses
+  the fixed header `sequence,simulation_time_s,<channel...>` and samples the
+  latest values at the project-defined 64 Hz rate, independent of DCS frame
+  rate. A value that has not yet been published is `-`.
+
+The dedicated EFM Debug Indicator presents the same channels' latest values in
+DCS. Bind `[Developer] EFM Debug Indicator - Toggle` under `Developer Tools`;
+the display starts hidden on every flight. The Indicator uses the generated
+`DEBUG_INDICATOR_VISIBLE`, six `DEBUG_INDICATOR_TEXT_n` blocks, and the
+independent `DEBUG_INDICATOR_STATUS` cockpit parameter. Its responsive
+two-column by three-block layout displays up to 60 channels without paging and
+is independent of the operational Controls Indicator. Values retain their
+declaration order; only changed blocks are rewritten. Indicator doubles use
+six significant digits for display, while `debug.csv` retains full round-trip
+precision. Additional channels produce an explicit status directing the user
+to `debug.csv`. A `debug.csv` I/O failure also appears in the status row and in
+`fck1c_efm.log` with the failed operation and OS error.
+Invalid runtime publication is isolated from aircraft control, remains visible
+in the Indicator, and is written to `fck1c_efm.log` on the next diagnostics pass.
+The first error identifies its channel, attempted simulation time, and original
+detail; a per-flight count exposes later failures without losing the root
+cause. Production explicitly selects isolation; tests may select the strict
+report-and-rethrow policy when publication failure must stop a run.
+
+The legacy DCS debug-info ABI exports remain present for compatibility:
+`ed_fm_enable_debug_info()` returns `false`, while `ed_fm_debug_watch()` clears
+the supplied buffer and returns `0`. The module does not depend on DCS Debug
+Watch activation, `autoexec.cfg`, or the frame-rate overlay shortcut.
 
 At the next DLL execution, the active file becomes `.old` and the previous
 `.old` is removed. Files are not reopened between flights; CSV sequence resets
-to `0` for each new flight.
+to `0` for each new flight. With no declared channels, an existing active file
+is still rotated, but a new empty `debug.csv` is not created.
 
-CSV uses a worker thread and a single latest-record mailbox. Publishing never
-waits for disk I/O: if the writer falls behind, the pending older row is
-replaced by the newest row. Sequence gaps expose this condition without
-building an unbounded queue. The writer flushes dirty data at most
-approximately 100 ms after publication. `StateCsvWriter` joins its worker when
-explicitly destroyed; the production process context intentionally avoids DLL
+Both CSV writers use a worker thread and a single latest-record or latest-batch
+mailbox. Publishing never waits for disk I/O. If a writer falls behind, pending
+older data is replaced by newer data; sequence gaps expose this condition
+without an unbounded queue. Dirty data is flushed within approximately 100 ms,
+and `ed_fm_release` explicitly waits for the pending `debug.csv` batch to be
+written and flushed. The production process context intentionally avoids DLL
 detach-time teardown and lets process termination reclaim process resources.
+
+The writers deliberately keep separate worker and mailbox implementations.
+State CSV starts with the bridge and consumes one latest `FrameOutput`; debug
+CSV starts only after a non-empty schema, consumes resampled batches, and must
+support a synchronous release flush. Keeping these failure and lifetime rules
+independent prevents the developer tool from coupling state telemetry. Their
+shared path and rotation policy remains centralized in `LogFileLifecycle`.
 
 Unknown Command and Param IDs write one counted warning per ID on first use.
 Repeated uses are counted, and `ed_fm_release` writes the total. Declared
@@ -137,7 +187,9 @@ telemetry.
   without running logger or worker-thread destruction under the Windows loader
   lock. `BridgeContext` owns Core, the collector and output store,
   cockpit/carrier bridges, CockpitSnapshotExporter, EventLog, StateCsvWriter,
-  and the execution mutex.
+  DebugTelemetryHub, DebugCsvWriter, DebugIndicatorExporter, and the execution
+  mutex. The Hub is constructed before Core and is injected through the Core
+  debug-telemetry contract; no production global publisher exists.
 - `Core::Fck1cEfm` is the stable façade and owns the current per-flight
   `AircraftSimulation`. DCSBridge reads per-frame simulation results only from
   a completed `FrameOutput`; it must not inspect System or Simulation state
@@ -219,13 +271,35 @@ Commands have three explicit outcomes:
 4. Add input/output tests. Do not expose a full Core snapshot to make testing
    easier.
 
-## Adding a CSV field
+## Adding a physical state CSV field
 
 CSV mirrors `FrameOutput` explicitly. In `Internal/StateCsvWriter.cpp`, update
 the header and the matching row formatter in the same order, then update the
 CSV tests. Scalars retain their existing units, vectors expand as fixed
 `x,y,z` columns, booleans use `True`/`False`, and unavailable data uses `-`.
 CSV publication must remain non-blocking for `ed_fm_simulate`.
+
+Do not add System internals, control-law intermediates, or temporary developer
+values to `FrameOutput` solely for logging. Add those through a debug channel.
+
+## Adding a Debug Indicator / `debug.csv` channel
+
+1. Store a typed `DebugTelemetryChannel<T>` handle in the Core producer that
+   owns the value. Supported types are `double`, signed 64-bit integer, `bool`,
+   and UTF-8 `std::string`.
+2. Declare the channel during setup with a unique stable `name`, readable
+   `label`, actual unit, and description.
+3. Publish from the location whose state you need to observe, using that
+   operation's simulation timestamp. The tool intentionally does not require
+   an AircraftData commit.
+4. Update native tests for descriptor stability, timestamp order, visible
+   value, and escaping when applicable. A channel cannot be added or renamed
+   after the process has locked its first-flight schema.
+
+Core does not know CSV paths, the DCS Indicator, cockpit parameters, or display
+formatting. DcsBridge consumes only
+`Core/Contracts/Diagnostics/DebugTelemetry.h`; it must never include the
+concrete producer to obtain a debug value.
 
 Flight-control telemetry uses explicit layers rather than a generic `command`:
 

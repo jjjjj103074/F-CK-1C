@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 
 $customCommandMinimum = 3000
 $customCommandMaximum = 3999
-$validRoutes = @('efm', 'cockpit')
+$validRoutes = @('efm', 'bridge', 'cockpit')
 $validDirections = @('cpp_to_lua', 'lua_to_cpp', 'lua_internal')
 $validRawDirections = @('dcs_to_cpp')
 $validVerificationBases = @(
@@ -30,7 +30,8 @@ $validUnits = @(
     'radians',
     'revision',
     'seconds',
-    'station_index'
+    'station_index',
+    'text'
 )
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 
@@ -247,11 +248,15 @@ function New-CommandCppLines {
     }
     $lines.AddRange([string[]]@(
         '}', '', 'namespace CommandRouting', '{', 'enum class Route',
-        '{', '    Efm,', '    Cockpit', '};', '', 'struct Entry', '{',
+        '{', '    Efm,', '    Bridge,', '    Cockpit', '};', '', 'struct Entry', '{',
         '    int id;', '    Route route;', '};', '',
         'static constexpr Entry CustomCommands[] = {'))
     foreach ($command in $Commands) {
-        $route = if ([string]$command.route -eq 'efm') { 'Efm' } else { 'Cockpit' }
+        $route = switch ([string]$command.route) {
+            'efm' { 'Efm' }
+            'bridge' { 'Bridge' }
+            'cockpit' { 'Cockpit' }
+        }
         $lines.Add("    { Commands::$($command.name), Route::$route },")
     }
     $lines.AddRange([string[]]@('};', '', 'static constexpr int IgnoredDcsCommands[] = {'))

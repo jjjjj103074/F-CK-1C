@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TestHarness.h"
+#include "DebugTelemetryTestSupport.h"
 #include "../F-CK-1C_EFM/Core/Diagnostics/ExecutionError.h"
 #include "../F-CK-1C_EFM/Core/Simulation/AircraftState.h"
 #include "../F-CK-1C_EFM/Core/Systems/SystemPipeline.h"
@@ -97,7 +98,9 @@ inline Core::Systems::FlightSetupContext flight_setup()
 {
 	return {
 		Core::StartMode::HotGround,
-		{}
+		{},
+		{},
+		Tests::disabled_debug_telemetry()
 	};
 }
 

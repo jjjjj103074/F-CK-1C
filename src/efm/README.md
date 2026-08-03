@@ -66,8 +66,10 @@ DCSBridge creates these share-readable files under the installed module's
 `log` directory:
 
 - `fck1c_efm.log` - program events, warnings, and errors.
-- `fck1c_state.csv` - the latest completed Core `FrameOutput` values for
-  debugging calculations.
+- `fck1c_state.csv` - completed physical aircraft-state `FrameOutput` values.
+- `debug.csv` - reusable 64 Hz history of Core-pushed System and development
+  diagnostics; the same latest values are available through the dedicated EFM
+  Debug Indicator.
 
 See the
 [`DcsBridge` guide](F-CK-1C_EFM/DcsBridge/README.md) for file rotation,

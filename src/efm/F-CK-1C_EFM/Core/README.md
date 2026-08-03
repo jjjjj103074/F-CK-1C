@@ -8,7 +8,8 @@ adapters remain in `DcsBridge`.
 
 - `Fck1cEfm.h/.cpp` is the only source-level facade in the Core root.
 - `Contracts/` defines semantic commands, events, AircraftData, frame
-  input/output, and other passive data shared across Core modules.
+  input/output, and the DCS-neutral typed debug-telemetry boundary shared
+  across Core modules.
 - `Diagnostics/` defines the structured execution error that carries Core
   owner and operation context across the public boundary.
 - `Systems/` owns aircraft equipment state and behavior. `SystemPipeline`
@@ -51,6 +52,13 @@ registered owner and lifecycle operation (`create`, `setup`, `step`, or a
 handler operation) to unexpected exceptions as an `ExecutionError`;
 DCSBridge remains the single owner that writes those errors to the runtime
 EventLog.
+
+Debug telemetry is a separate observational contract. The composition root
+injects a `DebugTelemetrySink`; producers declare stable typed channels during
+setup and may push values at the operation that owns them with an explicit
+simulation timestamp. Publication is not limited to committed AircraftData,
+but it also cannot change simulation state. Core never knows about the DCS
+Indicator, cockpit parameters, CSV paths, files, buffers, or writer threads.
 
 ## Flight and frame execution
 

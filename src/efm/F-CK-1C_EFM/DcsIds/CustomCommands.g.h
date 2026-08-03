@@ -69,6 +69,7 @@ static constexpr int APSpeedDecrease = 3134;
 static constexpr int EngineThrustCutTestToggle = 3135;
 static constexpr int EngineThrustCutTestEnable = 3136;
 static constexpr int EngineThrustCutTestDisable = 3137;
+static constexpr int DebugIndicatorToggle = 3140;
 }
 
 namespace DcsCommands
@@ -107,6 +108,7 @@ namespace CommandRouting
 enum class Route
 {
     Efm,
+    Bridge,
     Cockpit
 };
 
@@ -180,6 +182,7 @@ static constexpr Entry CustomCommands[] = {
     { Commands::EngineThrustCutTestToggle, Route::Efm },
     { Commands::EngineThrustCutTestEnable, Route::Efm },
     { Commands::EngineThrustCutTestDisable, Route::Efm },
+    { Commands::DebugIndicatorToggle, Route::Bridge },
 };
 
 static constexpr int IgnoredDcsCommands[] = {

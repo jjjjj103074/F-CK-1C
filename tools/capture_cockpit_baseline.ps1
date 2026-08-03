@@ -13,9 +13,9 @@ $BaselineRepoRoot = if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
 } else {
     [System.IO.Path]::GetFullPath($RepoRoot)
 }
-$ExpectedCockpitFileCount = 21
+$ExpectedCockpitFileCount = 23
 $ExpectedDeviceCount = 6
-$ExpectedIndicatorCount = 3
+$ExpectedIndicatorCount = 4
 $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $OutputRoot = Join-Path $BaselineRepoRoot "docs\cockpit-baseline\generated"
 $CommandCatalogPath = Join-Path $BaselineRepoRoot "src\efm\F-CK-1C_EFM\DcsIds\CommandIds.json"
@@ -67,8 +67,13 @@ function Get-BaselineSourceFiles {
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitParameterEvents.h",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.cpp",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.h",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.cpp",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.h",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.cpp",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.h",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DcsCommandRouter.cpp",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DcsCommandRouter.h",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\LegacyDebugInfoAdapter.h",
         "src\efm\F-CK-1C_EFM\Core\Contracts\CockpitContracts.h",
         "src\efm\F-CK-1C_EFM\Core\Contracts\Commands.h",
         "src\efm\F-CK-1C_EFM\Core\Contracts\FrameContracts.h"

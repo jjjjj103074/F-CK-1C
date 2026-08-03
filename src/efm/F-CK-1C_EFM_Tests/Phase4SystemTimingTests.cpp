@@ -152,7 +152,9 @@ void test_production_output_ignores_catalog_entry_order(
 	std::reverse(reversed_catalog.begin(), reversed_catalog.end());
 	const FlightSetupContext setup = {
 		StartMode::HotGround,
-		{ kInitialFuel, {} }
+		{ kInitialFuel, {} },
+		{},
+		Tests::disabled_debug_telemetry()
 	};
 	SystemPipeline forward(setup, std::move(forward_catalog));
 	SystemPipeline reversed(setup, std::move(reversed_catalog));

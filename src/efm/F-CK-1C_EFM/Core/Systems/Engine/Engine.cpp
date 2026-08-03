@@ -57,16 +57,20 @@ void Engine::register_handlers(SystemSetup& setup)
 	{
 		setup.register_command_handler(
 			id,
-			[this](const Command& command) { handle_command(command); });
+			[this](const SystemActionContext&, const Command& command)
+			{ handle_command(command); });
 	}
 	setup.register_damage_handler(
 		DamageArea::LeftEngine,
-		[this](const DamageEvent& event) { apply_damage(event); });
+		[this](const SystemActionContext&, const DamageEvent& event)
+		{ apply_damage(event); });
 	setup.register_damage_handler(
 		DamageArea::RightEngine,
-		[this](const DamageEvent& event) { apply_damage(event); });
+		[this](const SystemActionContext&, const DamageEvent& event)
+		{ apply_damage(event); });
 	setup.register_repair_handler(
-		[this](const RepairEvent& event) { repair(event); });
+		[this](const SystemActionContext&, const RepairEvent& event)
+		{ repair(event); });
 }
 
 void Engine::step(

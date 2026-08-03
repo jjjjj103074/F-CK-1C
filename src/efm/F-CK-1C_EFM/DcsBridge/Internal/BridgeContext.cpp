@@ -29,13 +29,14 @@ cockpit_param_api make_cockpit_api(
 }
 
 std::unique_ptr<Core::Fck1cEfm> make_core(
-	const DcsBridge::Internal::CoreFactory& factory)
+	const DcsBridge::Internal::CoreFactory& factory,
+	Core::DebugTelemetrySink& debug_telemetry)
 {
 	if (!factory)
 	{
 		throw std::invalid_argument("BridgeContext requires a Core factory.");
 	}
-	std::unique_ptr<Core::Fck1cEfm> core = factory();
+	std::unique_ptr<Core::Fck1cEfm> core = factory(debug_telemetry);
 	if (!core)
 	{
 		throw std::invalid_argument(
@@ -53,13 +54,22 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
 	: module_paths_(make_module_paths(config.path_source)),
 	event_log_(module_paths_.mod_root_path),
 	state_csv_writer_(module_paths_.mod_root_path, event_log_),
+	debug_telemetry_hub_(
+		Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport),
+	debug_csv_writer_(
+		module_paths_.mod_root_path,
+		event_log_,
+		debug_telemetry_hub_),
 	event_reporter_(event_log_, output_store_),
 	param_exporter_(event_reporter_),
 	cockpit_api_(make_cockpit_api(config.cockpit_api_provider)),
+	debug_indicator_exporter_(
+		cockpit_api_,
+		debug_telemetry_hub_),
 	cockpit_snapshot_exporter_(cockpit_api_),
 	cockpit_bridge_(cockpit_api_),
 	carrier_bridge_(make_carrier_config()),
-	core_(make_core(config.core_factory))
+	core_(make_core(config.core_factory, debug_telemetry_hub_))
 {
 }
 
@@ -98,6 +108,21 @@ ParamExporter& BridgeContext::param_exporter()
 	return param_exporter_;
 }
 
+DebugTelemetryHub& BridgeContext::debug_telemetry_hub()
+{
+	return debug_telemetry_hub_;
+}
+
+DebugCsvWriter& BridgeContext::debug_csv_writer()
+{
+	return debug_csv_writer_;
+}
+
+DebugIndicatorExporter& BridgeContext::debug_indicator_exporter()
+{
+	return debug_indicator_exporter_;
+}
+
 CockpitSnapshotExporter& BridgeContext::cockpit_snapshot_exporter()
 {
 	return cockpit_snapshot_exporter_;
@@ -133,12 +158,17 @@ Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
 	param_exporter_.reset();
 	cockpit_snapshot_exporter_.reset();
 	carrier_bridge_.reset();
+	event_reporter_.log_cockpit_parameter_events(
+		debug_indicator_exporter_.begin_flight());
+	debug_telemetry_hub_.begin_flight();
 	const Core::FrameOutput output = core_->start(mode);
+	debug_telemetry_hub_.seal_schema();
 	output_store_.publish_start(output);
 	param_exporter_.observe(output);
 	event_reporter_.log_cockpit_parameter_events(
 		cockpit_snapshot_exporter_.export_snapshot(output.cockpit));
 	state_csv_writer_.publish_start(output);
+	debug_csv_writer_.publish_start(output.simulation_time_s);
 	return output;
 }
 

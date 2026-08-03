@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DebugTelemetryTestSupport.h"
 #include "Core/Fck1cEfm.h"
 #include "Core/Simulation/AircraftSimulation.h"
 #include "Core/Simulation/Models/Aerodynamics/AerodynamicsConfig.h"

@@ -9,10 +9,17 @@ namespace
 {
 constexpr double kTolerance = 1e-9;
 constexpr double kSimulationStepS = 0.01;
-constexpr double kSchedulerAdvanceS = 0.02;
 constexpr double kPreparedInternalFuel = 240.0;
 constexpr double kPreparedExternalFuelLeft = 20.0;
 constexpr double kPreparedExternalFuelRight = 30.0;
+constexpr double kExpectedIndicatedAirspeedMps = 137.484693025538;
+constexpr double kExpectedVerticalSpeedMps = 4.0;
+constexpr double kExpectedHeadingRad = 0.3;
+constexpr double kExpectedPitchAttitudeRad = 0.1;
+constexpr double kExpectedRollAttitudeRad = -0.2;
+constexpr double kExpectedRollRateRadS = 0.05;
+constexpr double kExpectedPitchRateRadS = 0.07;
+constexpr double kExpectedYawRateRadS = 0.06;
 constexpr int kLeftExternalFuelStation = 1;
 constexpr int kRightExternalFuelStation = 2;
 constexpr std::size_t kFirstDamageSegment = 0;
@@ -135,6 +142,22 @@ void expect_golden_frame(
 	Tests::Context& context,
 	const Core::FrameOutput& actual)
 {
+	TEST_EXPECT_NEAR(context, actual.flight.indicated_airspeed_mps,
+		kExpectedIndicatedAirspeedMps, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flight.vertical_speed_mps,
+		kExpectedVerticalSpeedMps, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flight.heading_rad,
+		kExpectedHeadingRad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flight.pitch_attitude_rad,
+		kExpectedPitchAttitudeRad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flight.roll_attitude_rad,
+		kExpectedRollAttitudeRad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flight.roll_rate_rad_s,
+		kExpectedRollRateRadS, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flight.pitch_rate_rad_s,
+		kExpectedPitchRateRadS, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.flight.yaw_rate_rad_s,
+		kExpectedYawRateRadS, kTolerance);
 	expect_vec3(context, actual.force_moment.force,
 		{ 17848.989928072871, 106953.27847226626, 7483.5040063691395 });
 	expect_vec3(context, actual.force_moment.moment,
@@ -174,7 +197,8 @@ void test_all_start_mode_outputs(Tests::Context& context)
 	};
 	for (Core::StartMode mode : modes)
 	{
-		Core::Fck1cEfm efm(make_test_config());
+		Core::Fck1cEfm efm(
+			make_test_config(), Tests::disabled_debug_telemetry());
 		const Core::FrameOutput output = efm.start(mode);
 		expect_availability(context, output.availability, {});
 		expect_start_output(context, output, mode);
@@ -183,7 +207,8 @@ void test_all_start_mode_outputs(Tests::Context& context)
 
 void test_frame_output_golden_contract(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
+	Core::Fck1cEfm efm(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(500.0);
 	efm.set_external_fuel({ 1, 120.0, { 0.5, -0.2, 0.1 } });
@@ -207,7 +232,8 @@ void test_frame_output_golden_contract(Tests::Context& context)
 
 void test_unavailable_input_preserves_latest_values(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
+	Core::Fck1cEfm efm(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	const Core::FrameOutput first = efm.step(make_frame_input());
 	Core::FrameInput next_input;
@@ -231,7 +257,7 @@ void test_start_reinitializes_output(Tests::Context& context)
 {
 	auto config = make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	const Core::FrameOutput previous = efm.step(make_frame_input());
 	TEST_EXPECT(context, previous.fuel.total_fuel_flow > 0.0);
@@ -251,7 +277,7 @@ void test_release_preparation_survives_start(Tests::Context& context)
 {
 	auto config = make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::ColdGround);
 	efm.set_internal_fuel(100.0);
 	const Core::FrameOutput easy_flight_disabled =
@@ -294,7 +320,8 @@ bool step_throws_without_active_flight(Core::Fck1cEfm& efm)
 
 void test_step_requires_active_flight(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
+	Core::Fck1cEfm efm(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	TEST_EXPECT(context, step_throws_without_active_flight(efm));
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.release();
@@ -328,8 +355,10 @@ void expect_prepared_fuel(
 
 void test_active_preparation_updates_next_flight(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
-	Core::Fck1cEfm normal_flight(make_test_config());
+	Core::Fck1cEfm efm(
+		make_test_config(), Tests::disabled_debug_telemetry());
+	Core::Fck1cEfm normal_flight(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	configure_active_preparation(efm);
 	expect_prepared_fuel(context, efm.step(make_frame_input()));
@@ -354,7 +383,7 @@ void test_release_synchronizes_consumed_fuel(Tests::Context& context)
 {
 	auto config = make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotAir);
 	efm.set_internal_fuel(kPreparedInternalFuel);
 	efm.set_external_fuel({
@@ -372,7 +401,7 @@ void test_active_restart_synchronizes_consumed_fuel(Tests::Context& context)
 {
 	auto config = make_test_config();
 	config.engine.fuel_consumption_rate = 3.0;
-	Core::Fck1cEfm efm(config);
+	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotAir);
 	efm.set_internal_fuel(kPreparedInternalFuel);
 	efm.set_external_fuel({
@@ -387,8 +416,10 @@ void test_active_restart_synchronizes_consumed_fuel(Tests::Context& context)
 
 void test_released_commands_and_damage_do_not_persist(Tests::Context& context)
 {
-	Core::Fck1cEfm subject(make_test_config());
-	Core::Fck1cEfm baseline(make_test_config());
+	Core::Fck1cEfm subject(
+		make_test_config(), Tests::disabled_debug_telemetry());
+	Core::Fck1cEfm baseline(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	(void)subject.start(Core::StartMode::HotAir);
 	subject.release();
 	subject.repair({});
@@ -414,7 +445,8 @@ void test_released_commands_and_damage_do_not_persist(Tests::Context& context)
 
 void test_repeated_start_release_cycles(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
+	Core::Fck1cEfm efm(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	for (const Core::StartMode mode : kLifecycleModes)
 	{
 		expect_start_output(context, efm.start(mode), mode);
@@ -430,7 +462,7 @@ void test_repeated_start_release_cycles(Tests::Context& context)
 void test_config_is_owned_by_core(Tests::Context& context)
 {
 	auto source = make_test_config();
-	Core::Fck1cEfm efm(source);
+	Core::Fck1cEfm efm(source, Tests::disabled_debug_telemetry());
 	source.propulsion.max_thrust_table[0] = 0.0;
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
@@ -446,7 +478,9 @@ void test_invalid_config_rejected(Tests::Context& context)
 	bool rejected = false;
 	try
 	{
-		Core::Fck1cEfm efm(Tests::Fck1c::TestAircraftConfig{});
+		Core::Fck1cEfm efm(
+			Tests::Fck1c::TestAircraftConfig{},
+			Tests::disabled_debug_telemetry());
 		(void)efm.start(Core::StartMode::HotGround);
 	}
 	catch (const std::invalid_argument&)
@@ -458,7 +492,8 @@ void test_invalid_config_rejected(Tests::Context& context)
 
 void test_frame_output_isolation(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
+	Core::Fck1cEfm efm(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(1200.0);
 	Core::FrameInput input;
@@ -473,7 +508,8 @@ void test_frame_output_isolation(Tests::Context& context)
 
 void test_simulation_pipeline(Tests::Context& context)
 {
-	Core::Fck1cEfm efm(make_test_config());
+	Core::Fck1cEfm efm(
+		make_test_config(), Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::ColdGround);
 	efm.set_internal_fuel(100.0);
 	Core::FrameInput input;
@@ -499,147 +535,6 @@ void test_simulation_pipeline(Tests::Context& context)
 	TEST_EXPECT(context, second.cockpit.status.revision == 2);
 }
 
-Core::FrameInput make_airborne_frame_input()
-{
-	Core::FrameInput input = make_frame_input();
-	input.suspension = {};
-	return input;
-}
-
-void test_automatic_flight_commands_drive_outputs(
-	Tests::Context& context)
-{
-	Core::Fck1cEfm efm(make_test_config());
-	(void)efm.start(Core::StartMode::HotAir);
-	efm.set_internal_fuel(100.0);
-	const Core::FrameInput input = make_airborne_frame_input();
-	(void)efm.step(input);
-	efm.handle_command({ Core::CommandId::EngageAutopilot, 1.0 });
-	efm.handle_command({ Core::CommandId::EngageAutoThrottle, 1.0 });
-	Core::FrameOutput output = efm.step(input);
-	const Core::AutomaticFlightControlSnapshot first_afcs =
-		output.cockpit.automatic_flight_control;
-	const double automatic_throttle =
-		first_afcs.throttle_command_normalized;
-	TEST_EXPECT(context, first_afcs.master_engaged);
-	TEST_EXPECT(context, first_afcs.auto_throttle_engaged);
-	TEST_EXPECT_NEAR(context, output.controls.pitch_input, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, output.controls.roll_input, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		output.engines[0].throttle_input,
-		automatic_throttle,
-		kTolerance);
-	output = efm.step(input);
-	output = efm.step(input);
-	const Core::AutomaticFlightControlSnapshot& afcs =
-		output.cockpit.automatic_flight_control;
-	TEST_EXPECT(context, afcs.master_engaged);
-	TEST_EXPECT(context, afcs.auto_throttle_engaged);
-	TEST_EXPECT(context, output.controls.elevator_command != 0.0);
-	TEST_EXPECT(context, output.controls.aileron_command != 0.0);
-	TEST_EXPECT_NEAR(
-		context,
-		output.engines[0].throttle_input,
-		automatic_throttle,
-		kTolerance);
-	TEST_EXPECT(context, output.engines[0].thrust_force > 0.0);
-}
-
-void test_unavailable_developer_g_override_cannot_affect_flight(
-	Tests::Context& context)
-{
-	Core::Fck1cEfm baseline(make_test_config());
-	Core::Fck1cEfm unavailable(make_test_config());
-	(void)baseline.start(Core::StartMode::HotAir);
-	(void)unavailable.start(Core::StartMode::HotAir);
-	unavailable.handle_command({
-		Core::CommandId::SetGLimiterOverride, 1.0 });
-	const Core::FrameOutput baseline_output =
-		baseline.step(make_airborne_frame_input());
-	const Core::FrameOutput output =
-		unavailable.step(make_airborne_frame_input());
-	TEST_EXPECT(context, !output.cockpit.flight_control_computer.
-		developer_g_limiter_override_available);
-	TEST_EXPECT(context, !output.cockpit.flight_control_computer.
-		developer_g_limiter_override_active);
-	TEST_EXPECT_NEAR(context, output.controls.elevator_command,
-		baseline_output.controls.elevator_command, kTolerance);
-	TEST_EXPECT_NEAR(context, output.controls.aileron_command,
-		baseline_output.controls.aileron_command, kTolerance);
-}
-
-void test_available_developer_g_override_is_visible_in_telemetry(
-	Tests::Context& context)
-{
-	auto config = make_test_config();
-	config.flight_control_computer.
-		developer_g_limiter_override_available = true;
-	Core::Fck1cEfm efm(config);
-	(void)efm.start(Core::StartMode::HotAir);
-	efm.handle_command({ Core::CommandId::SetGLimiterOverride, 1.0 });
-	const Core::FrameOutput output =
-		efm.step(make_airborne_frame_input());
-	TEST_EXPECT(context,
-		output.cockpit.flight_control_computer.status.available);
-	TEST_EXPECT(context, output.cockpit.flight_control_computer.
-		developer_g_limiter_override_available);
-	TEST_EXPECT(context, output.cockpit.flight_control_computer.
-		developer_g_limiter_override_active);
-}
-
-void test_propulsion_diagnostics_commands_drive_outputs(
-	Tests::Context& context)
-{
-	Core::Fck1cEfm efm(make_test_config());
-	(void)efm.start(Core::StartMode::HotAir);
-	efm.set_internal_fuel(100.0);
-	const Core::FrameInput input = make_airborne_frame_input();
-	Core::FrameOutput output = efm.step(input);
-	TEST_EXPECT(context, output.engines[0].thrust_force > 0.0);
-	efm.handle_command({ Core::CommandId::EnableThrustCutTest, 1.0 });
-	output = efm.step(input);
-	TEST_EXPECT(
-		context,
-		output.propulsion_diagnostics.thrust_cut_requested);
-	TEST_EXPECT_NEAR(context, output.engines[0].thrust_force, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, output.engines[1].thrust_force, 0.0, kTolerance);
-	efm.handle_command({ Core::CommandId::DisableThrustCutTest, 1.0 });
-	output = efm.step(input);
-	TEST_EXPECT(
-		context,
-		!output.propulsion_diagnostics.thrust_cut_requested);
-	TEST_EXPECT(context, output.engines[0].thrust_force > 0.0);
-}
-
-void test_neutral_cockpit_input_completes_step(Tests::Context& context)
-{
-	Core::Fck1cEfm efm(make_test_config());
-	(void)efm.start(Core::StartMode::HotGround);
-	efm.set_internal_fuel(100.0);
-	efm.handle_command({
-		Core::CommandId::SetPitchAxis, 0.3 });
-	Core::FrameInput input;
-	input.dt_s = kSchedulerAdvanceS;
-	const Core::FrameOutput output = efm.step(input);
-	TEST_EXPECT_NEAR(
-		context,
-		output.simulation_time_s,
-		kSchedulerAdvanceS,
-		kTolerance);
-	TEST_EXPECT_NEAR(context, output.controls.pitch_input, 0.3, kTolerance);
-	TEST_EXPECT(context, output.engines[0].thrust_force > 0.0);
-	TEST_EXPECT(context, output.engines[1].thrust_force > 0.0);
-}
-
-void test_damage_returns_immediate_result(Tests::Context& context)
-{
-	Core::Fck1cEfm efm(make_test_config());
-	const Core::DamageEvent damage = { Core::DamageArea::LeftWing, 0, 0.2 };
-	TEST_EXPECT(context, !efm.apply_damage(damage).invincible);
-	efm.set_invincible(true);
-	TEST_EXPECT(context, efm.apply_damage(damage).invincible);
-}
 }
 
 void run_fck1c_efm_tests(Tests::Context& context)
@@ -660,10 +555,4 @@ void run_fck1c_efm_tests(Tests::Context& context)
 	test_invalid_config_rejected(context);
 	test_frame_output_isolation(context);
 	test_simulation_pipeline(context);
-	test_automatic_flight_commands_drive_outputs(context);
-	test_unavailable_developer_g_override_cannot_affect_flight(context);
-	test_available_developer_g_override_is_visible_in_telemetry(context);
-	test_propulsion_diagnostics_commands_drive_outputs(context);
-	test_neutral_cockpit_input_completes_step(context);
-	test_damage_returns_immediate_result(context);
 }

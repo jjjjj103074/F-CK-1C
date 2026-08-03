@@ -4,6 +4,7 @@ dofile(cscripts .. "devices.lua")
 dofile(cscripts .. "command_defs.lua")
 
 join(res.keyCommands, {
+    { down = device_commands.DebugIndicatorToggle, value_down = 1.0, name = _("[Developer] EFM Debug Indicator - Toggle"), category = { _("Developer Tools") } },
     { combos = defaultDeviceAssignmentFor("pitch_up"), down = iCommandPlaneUpStart, up = iCommandPlaneUpStop, name = _("Aircraft Pitch Down"), category = { _("Flight Control") } },
     { combos = defaultDeviceAssignmentFor("pitch_down"), down = iCommandPlaneDownStart, up = iCommandPlaneDownStop, name = _("Aircraft Pitch Up"), category = { _("Flight Control") } },
 

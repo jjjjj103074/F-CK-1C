@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstring>
 #include <optional>
+#include <string>
 
 namespace DcsBridge
 {
@@ -102,6 +103,26 @@ public:
 			return { false, record_failure({ "api_unavailable" }) };
 		}
 		api.pfn_ed_cockpit_update_parameter_with_number(handle_, value);
+		return { true, record_available() };
+	}
+
+	CockpitParameterWriteResult write_string(
+		const cockpit_param_api& api,
+		const std::string& value)
+	{
+		if (access_ != CockpitParameterAccess::Write)
+		{
+			return { false, record_failure({ "wrong_access" }) };
+		}
+		if (!ensure_handle(api))
+		{
+			return { false, record_failure({ "missing_handle" }) };
+		}
+		if (api.pfn_ed_cockpit_update_parameter_with_string == nullptr)
+		{
+			return { false, record_failure({ "api_unavailable" }) };
+		}
+		api.pfn_ed_cockpit_update_parameter_with_string(handle_, value.c_str());
 		return { true, record_available() };
 	}
 

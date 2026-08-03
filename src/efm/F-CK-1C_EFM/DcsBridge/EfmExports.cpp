@@ -7,7 +7,9 @@
 #include "Internal/DcsCommandRouter.h"
 #include "Internal/DcsDamageMapper.h"
 #include "Internal/DcsSuspensionAdapter.h"
+#include "Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
 #include "Internal/DrawArgs.h"
+#include "Internal/LegacyDebugInfoAdapter.h"
 #include "Internal/ProcessBridgeContext.h"
 #include "../include/FM/API_Declare.h"
 
@@ -18,7 +20,10 @@ DcsBridge::Internal::ProcessBridgeContext& bridge_access() noexcept
 	static const int module_address_anchor = 0;
 	static DcsBridge::Internal::ProcessBridgeContext access(
 		ed_get_cockpit_param_api,
-		[]() { return std::make_unique<Core::Fck1cEfm>(); },
+		[](Core::DebugTelemetrySink& debug_telemetry)
+		{
+			return std::make_unique<Core::Fck1cEfm>(debug_telemetry);
+		},
 		&module_address_anchor);
 	return access;
 }
@@ -53,7 +58,12 @@ void release_active_flight()
 {
 	const std::optional<double> final_simulation_time =
 		current_simulation_time();
+	bridge().event_reporter().log_cockpit_parameter_events(
+		bridge().debug_indicator_exporter().release_flight());
+	bridge().debug_csv_writer().release_flight(
+		final_simulation_time.value_or(0.0));
 	bridge().core().release();
+	bridge().debug_telemetry_hub().release_flight();
 	bridge().input_collector().reset();
 	bridge().output_store().mark_released();
 	bridge().event_reporter().log_release(final_simulation_time);
@@ -140,6 +150,7 @@ void ed_fm_simulate(double dt) try
 			bridge().output_store().publish(output);
 			bridge().param_exporter().observe(output);
 			bridge().state_csv_writer().publish_step(output);
+			bridge().debug_csv_writer().publish_step(output.simulation_time_s);
 		}
 	}
 	if (!output_available)
@@ -152,6 +163,9 @@ void ed_fm_simulate(double dt) try
 			output.flight.atmosphere_temperature_k));
 	bridge().event_reporter().log_cockpit_parameter_events(
 		bridge().cockpit_snapshot_exporter().export_snapshot(output.cockpit));
+	bridge().event_reporter().log_cockpit_parameter_events(
+		bridge().debug_indicator_exporter().export_latest(
+			bridge().debug_csv_writer().status()));
 }
 EFM_ABI_CATCH_VOID("ed_fm_simulate", (void)0)
 
@@ -307,6 +321,11 @@ EFM_ABI_CATCH_VOID("ed_fm_set_current_state_body_axis", (void)0)
 void ed_fm_set_command(int command, float value) try
 {
 	ensure_module_initialized();
+	if (DcsBridge::Internal::handle_debug_indicator_command(
+		bridge(), command, value))
+	{
+		return;
+	}
 	(void)bridge().perform_core_action(
 		{ "ed_fm_set_command", "command", command },
 		[command, value](Core::Fck1cEfm& core)
@@ -657,19 +676,17 @@ EFM_ABI_CATCH_RETURN("ed_fm_add_global_moment_component", false, (void)0)
 bool ed_fm_enable_debug_info() try
 {
 	ensure_module_initialized();
-	return false;
+	return DcsBridge::Internal::legacy_debug_info_enabled();
 }
 EFM_ABI_CATCH_RETURN("ed_fm_enable_debug_info", false, (void)0)
 
 size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen) try
 {
-	if (buffer != nullptr && maxlen > 0)
-	{
-		buffer[0] = '\0';
-	}
+	const std::size_t result =
+		DcsBridge::Internal::clear_legacy_debug_watch_buffer(buffer, maxlen);
 	ensure_module_initialized();
 	(void)level;
-	return 0;
+	return result;
 }
 EFM_ABI_CATCH_RETURN("ed_fm_debug_watch", 0, (void)0)
 

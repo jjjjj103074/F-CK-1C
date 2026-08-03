@@ -24,6 +24,9 @@ constexpr const char* kStateCsvHeader =
 	"flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,"
 	"flight_mach,flight_g_load,flight_angle_of_attack_deg,"
 	"flight_angle_of_slide_deg,flight_atmosphere_temperature_k,"
+	"flight_indicated_airspeed_mps,flight_vertical_speed_mps,"
+	"flight_heading_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,"
+	"flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
 	"force_moment_force_x_N,force_moment_force_y_N,force_moment_force_z_N,"
 	"force_moment_moment_x_N_m,force_moment_moment_y_N_m,force_moment_moment_z_N_m,"
 	"force_moment_center_of_mass_x_m,force_moment_center_of_mass_y_m,"
@@ -52,42 +55,6 @@ constexpr const char* kStateCsvHeader =
 	"suspension_any_weight_on_wheels,suspension_on_ground,"
 	"fuel_internal_kg,fuel_external_kg,fuel_total_kg,"
 	"fuel_total_flow_kg_per_s,"
-	"flight_control_developer_g_limiter_override_available,"
-	"flight_control_developer_g_limiter_override_active,"
-	"flight_control_selected_longitudinal_source,"
-	"flight_control_selected_lateral_source,"
-	"flight_control_selected_directional_source,"
-	"flight_control_selected_vertical_reference_type,"
-	"flight_control_selected_normal_acceleration_reference_g,"
-	"flight_control_selected_pitch_rate_feedforward_rad_s,"
-	"flight_control_selected_pitch_attitude_reference_rad,"
-	"flight_control_selected_vertical_speed_reference_mps,"
-	"flight_control_selected_roll_rate_reference_rad_s,"
-	"flight_control_selected_bank_angle_reference_rad,"
-	"flight_control_selected_sideslip_reference_rad,"
-	"flight_control_selected_yaw_rate_feedforward_rad_s,"
-	"flight_control_normal_acceleration_reference_g,"
-	"flight_control_pitch_rate_feedforward_rad_s,"
-	"flight_control_roll_rate_reference_rad_s,"
-	"flight_control_sideslip_reference_rad,"
-	"flight_control_yaw_rate_feedforward_rad_s,"
-	"flight_control_elevator_command_normalized,"
-	"flight_control_aileron_command_normalized,"
-	"flight_control_rudder_command_normalized,"
-	"flight_control_constraint_reason,flight_control_vertical_constrained,"
-	"flight_control_lateral_constrained,"
-	"afcs_master_engaged,afcs_bypass_active,afcs_auto_throttle_engaged,"
-	"afcs_vertical_mode,afcs_lateral_mode,"
-	"afcs_pitch_attitude_reference_rad,afcs_vertical_speed_reference_mps,"
-	"afcs_bank_angle_reference_rad,"
-	"afcs_throttle_command_normalized,afcs_target_altitude_m,"
-	"afcs_target_heading_rad,afcs_target_speed_mps,afcs_target_pitch_rad,"
-	"afcs_target_vertical_speed_mps,afcs_longitudinal_authority,"
-	"afcs_lateral_authority,afcs_constraint_reason,afcs_degradation_reason,"
-	"afcs_disconnect_reason,afcs_vertical_degraded,afcs_lateral_degraded,"
-	"afcs_ap_engage_rejection_reason,"
-	"afcs_ap_disengage_reason,afcs_at_engage_rejection_reason,"
-	"afcs_at_disengage_reason,propulsion_test_thrust_cut_requested,"
 	"shake_amplitude\n";
 
 class CsvRowBuilder final
@@ -185,7 +152,17 @@ bool append_flight(CsvRowBuilder& row, const Core::FrameOutput& output)
 		row.append_double(flight.g_load, available.body_kinematics) &&
 		row.append_double(flight.angle_of_attack_deg, available.body_kinematics) &&
 		row.append_double(flight.angle_of_slide_deg, available.body_kinematics) &&
-		row.append_double(flight.atmosphere_temperature_k, available.atmosphere);
+		row.append_double(flight.atmosphere_temperature_k, available.atmosphere) &&
+		row.append_double(
+			flight.indicated_airspeed_mps,
+			available.atmosphere && available.world_kinematics) &&
+		row.append_double(flight.vertical_speed_mps, available.world_kinematics) &&
+		row.append_double(flight.heading_rad, available.body_kinematics) &&
+		row.append_double(flight.pitch_attitude_rad, available.body_kinematics) &&
+		row.append_double(flight.roll_attitude_rad, available.body_kinematics) &&
+		row.append_double(flight.roll_rate_rad_s, available.body_kinematics) &&
+		row.append_double(flight.pitch_rate_rad_s, available.body_kinematics) &&
+		row.append_double(flight.yaw_rate_rad_s, available.body_kinematics);
 }
 
 bool append_vector(CsvRowBuilder& row, const Common::Vec3& value, bool available = true)
@@ -272,83 +249,6 @@ bool append_fuel(CsvRowBuilder& row, const Core::FuelOutput& fuel)
 		row.append_double(fuel.total_fuel_flow);
 }
 
-bool append_automatic_flight_control(
-	CsvRowBuilder& row,
-	const Core::AutomaticFlightControlSnapshot& afcs)
-{
-	return row.append_bool(afcs.master_engaged) &&
-		row.append_bool(afcs.bypass_active) &&
-		row.append_bool(afcs.auto_throttle_engaged) &&
-		row.append_double(static_cast<double>(afcs.vertical_mode)) &&
-		row.append_double(static_cast<double>(afcs.lateral_mode)) &&
-		row.append_double(afcs.pitch_attitude_reference_rad) &&
-		row.append_double(afcs.vertical_speed_reference_mps) &&
-		row.append_double(afcs.bank_angle_reference_rad) &&
-		row.append_double(afcs.throttle_command_normalized) &&
-		row.append_double(afcs.target_altitude_m) &&
-		row.append_double(afcs.target_heading_rad) &&
-		row.append_double(afcs.target_speed_mps) &&
-		row.append_double(afcs.target_pitch_rad) &&
-		row.append_double(afcs.target_vertical_speed_mps) &&
-		row.append_double(static_cast<double>(afcs.longitudinal_authority)) &&
-		row.append_double(static_cast<double>(afcs.lateral_authority)) &&
-		row.append_double(static_cast<double>(afcs.constraint_reason)) &&
-		row.append_double(static_cast<double>(afcs.degradation_reason)) &&
-		row.append_double(static_cast<double>(afcs.disconnect_reason)) &&
-		row.append_bool(afcs.vertical_degraded) &&
-		row.append_bool(afcs.lateral_degraded) &&
-		row.append_double(static_cast<double>(
-			afcs.autopilot_engage_rejection_reason)) &&
-		row.append_double(static_cast<double>(
-			afcs.autopilot_disengage_reason)) &&
-		row.append_double(static_cast<double>(
-			afcs.auto_throttle_engage_rejection_reason)) &&
-		row.append_double(static_cast<double>(
-			afcs.auto_throttle_disengage_reason));
-}
-
-bool append_selected_flight_reference(
-	CsvRowBuilder& row,
-	const Core::FlightControlComputerSnapshot& fcc)
-{
-	return row.append_double(static_cast<double>(
-			fcc.selected_longitudinal_source)) &&
-		row.append_double(static_cast<double>(
-			fcc.selected_lateral_source)) &&
-		row.append_double(static_cast<double>(
-			fcc.selected_directional_source)) &&
-		row.append_double(static_cast<double>(
-			fcc.selected_vertical_reference_type)) &&
-		row.append_double(fcc.selected_normal_acceleration_reference_g) &&
-		row.append_double(fcc.selected_pitch_rate_feedforward_rad_s) &&
-		row.append_double(fcc.selected_pitch_attitude_reference_rad) &&
-		row.append_double(fcc.selected_vertical_speed_reference_mps) &&
-		row.append_double(fcc.selected_roll_rate_reference_rad_s) &&
-		row.append_double(fcc.selected_bank_angle_reference_rad) &&
-		row.append_double(fcc.selected_sideslip_reference_rad) &&
-		row.append_double(fcc.selected_yaw_rate_feedforward_rad_s);
-}
-
-bool append_flight_control_computer(
-	CsvRowBuilder& row,
-	const Core::FlightControlComputerSnapshot& fcc)
-{
-	return row.append_bool(fcc.developer_g_limiter_override_available) &&
-		row.append_bool(fcc.developer_g_limiter_override_active) &&
-		append_selected_flight_reference(row, fcc) &&
-		row.append_double(fcc.normal_acceleration_reference_g) &&
-		row.append_double(fcc.pitch_rate_feedforward_rad_s) &&
-		row.append_double(fcc.roll_rate_reference_rad_s) &&
-		row.append_double(fcc.sideslip_reference_rad) &&
-		row.append_double(fcc.yaw_rate_feedforward_rad_s) &&
-		row.append_double(fcc.elevator_command_normalized) &&
-		row.append_double(fcc.aileron_command_normalized) &&
-		row.append_double(fcc.rudder_command_normalized) &&
-		row.append_double(static_cast<double>(fcc.constraint_reason)) &&
-		row.append_bool(fcc.vertical_constrained) &&
-		row.append_bool(fcc.lateral_constrained);
-}
-
 int io_error_code()
 {
 	return errno != 0 ? errno : EIO;
@@ -431,13 +331,6 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 		append_landing_gear(row, output.landing_gear) &&
 		append_suspension(row, output) &&
 		append_fuel(row, output.fuel) &&
-		append_flight_control_computer(
-			row, output.cockpit.flight_control_computer) &&
-		append_automatic_flight_control(
-			row,
-			output.cockpit.automatic_flight_control) &&
-		row.append_bool(
-			output.propulsion_diagnostics.thrust_cut_requested) &&
 		row.append_double(output.shake_amplitude);
 	if (appended)
 	{
@@ -497,7 +390,11 @@ void StateCsvWriter::initialize_execution_file()
 	Common::copy_path(active_path_, sizeof(active_path_), location.active_path);
 	if (!location.ready)
 	{
-		report_error({ location.failed_operation, location.error_code, std::nullopt, 0 });
+		report_error({
+			log_file_operation_name(location.failed_operation),
+			location.error_code,
+			std::nullopt,
+			0 });
 		return;
 	}
 	rotation_complete_ = true;
@@ -591,7 +488,7 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 		if (!location.ready)
 		{
 			fail_current_flight({
-				location.failed_operation,
+				log_file_operation_name(location.failed_operation),
 				location.error_code,
 				record.output.simulation_time_s,
 				record.flight_id });

@@ -100,9 +100,13 @@ Adding a System must not require changes to `Fck1cEfm`,
 directory, implementation, tests, and `Entry.cpp`; the shared MSBuild rules
 discover the Entry for both production and native tests.
 
-`FlightSetupContext` contains `StartMode`, the initial fuel load, and the
-composition-root-derived initial throttle-lever signal needed to construct one
-flight. A System-specific Entry captures that System's immutable production
+`FlightSetupContext` contains `StartMode`, the initial fuel load, the
+composition-root-derived initial throttle-lever signal, and the injected
+DCS-neutral debug-telemetry sink needed to construct one flight. A System may
+declare typed channels through `SystemSetup::declare_debug_channel()` and push
+them with its scheduled simulation time. Debug publication is observational;
+it neither reads nor writes AircraftData and does not wait for bucket commit.
+A System-specific Entry captures that System's immutable production
 configuration and passes it to the concrete factory. Simulation
 policies, including infinite fuel, invincibility, and easy flight, do not
 belong in a System.
@@ -138,7 +142,10 @@ capture occurs on the owner's next scheduled tick. Edge actions are queued so
 multiple press/toggle/increase events cannot overwrite one another. Damage areas
 have one semantic owner. Repair may have multiple subscribers. An unregistered
 command or damage event returns `DispatchResult::Unhandled`; handlers are not
-broadcast.
+broadcast. Command, damage, and repair handlers receive a
+`SystemActionContext` containing the Pipeline's current simulation time. This
+lets an immediate diagnostic push carry the real operation time without using
+wall-clock time or waiting for the next System tick.
 
 Unexpected exceptions from System creation, setup, step, or a registered
 handler receive that System's catalog ID and operation in a structured

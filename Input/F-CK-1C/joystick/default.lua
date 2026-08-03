@@ -19,6 +19,7 @@ join(res.axisCommands, {
 })
 
 join(res.keyCommands, {
+    { down = device_commands.DebugIndicatorToggle, value_down = 1.0, name = _("[Developer] EFM Debug Indicator - Toggle"), category = { _("Developer Tools") } },
     { down = iCommandPlaneGear, name = _("LG Handle - UP/DN"), category = { _("Left Auxiliary Console") } },
     { down = iCommandPlaneGearUp, name = _("LG Handle - UP"), category = { _("Left Auxiliary Console") } },
     { down = iCommandPlaneGearDown, name = _("LG Handle - DN"), category = { _("Left Auxiliary Console") } },

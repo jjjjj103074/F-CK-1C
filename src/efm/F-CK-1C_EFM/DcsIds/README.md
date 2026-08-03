@@ -36,6 +36,9 @@ Every custom command declares one route:
 
 - `efm`: the input profile sends the command to `ed_fm_set_command`, where
   `DcsCommandRouter` must provide a Core binding.
+- `bridge`: the input profile sends the command to `ed_fm_set_command`, where
+  a focused DcsBridge adapter consumes it before Core command routing. Use this
+  only for DCS integration tools that are not aircraft behavior.
 - `cockpit`: the input profile targets a `cockpit_device_id`; if the same
   numeric ID reaches `ed_fm_set_command`, the EFM intentionally ignores it.
 
