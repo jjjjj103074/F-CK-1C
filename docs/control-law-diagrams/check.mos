@@ -1,0 +1,17 @@
+loadModel(Modelica);
+print(getErrorString());
+
+loadFile("ControlLawDiagrams/package.mo");
+print(getErrorString());
+
+checkModel(ControlLawDiagrams.F16Block25.LongitudinalGainsVerification);
+print(getErrorString());
+
+checkModel(ControlLawDiagrams.F16Block25.LongitudinalControl);
+print(getErrorString());
+
+checkModel(ControlLawDiagrams.F16Block25.LongitudinalControlVerification);
+print(getErrorString());
+
+instantiateModel(ControlLawDiagrams.F16Block25.LongitudinalControl);
+print(getErrorString());

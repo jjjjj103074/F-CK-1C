@@ -1,0 +1,18 @@
+loadModel(Modelica);
+print(getErrorString());
+
+loadFile("ControlLawDiagrams/package.mo");
+print(getErrorString());
+
+checkModel(ControlLawDiagrams.F16Block25.LongitudinalGainsVerification);
+print(getErrorString());
+
+simulate(
+  ControlLawDiagrams.F16Block25.LongitudinalGainsVerification,
+  startTime=0.0,
+  stopTime=0.01,
+  numberOfIntervals=1,
+  method="dassl",
+  outputFormat="mat",
+  fileNamePrefix="figure32_gains_verify");
+print(getErrorString());
