@@ -1,5 +1,12 @@
 # F-CK-1C 飛行控制電腦與自動駕駛重構計畫
 
+> 歷史施工文件：其中以 `normal_acceleration_reference_g` 與
+> `pitch_rate_feedforward_rad_s` 並行的縱向設計已撤銷。現行縱向規範以
+> [`LONGITUDINAL_FLIGHT_CONTROL_REDESIGN.md`](LONGITUDINAL_FLIGHT_CONTROL_REDESIGN.md)
+> 為準；正式 FLCC 邊界以
+> [`FLIGHT_CONTROL_ARCHITECTURE_REFACTOR_PLAN.md`](FLIGHT_CONTROL_ARCHITECTURE_REFACTOR_PLAN.md)
+> 為準。
+
 ## 文件狀態
 
 - 狀態：架構決策與施工順序已完成，尚未授權開始實作。
@@ -390,12 +397,17 @@ FCC 提供完整結果。ModeLogic 先決定 active mode 和 captured reference�
 第一版 Project-defined guidance Interface 固定為：
 
 - Pitch Hold：AP 保存 `target_pitch_attitude_rad`，發布平滑的 pitch-attitude reference。
-- Vertical-Speed Hold：AP 保存並發布平滑的 `vertical_speed_reference_mps`。
 - Altitude Hold：AP 保存 `target_altitude_m`，但先經 capture law 轉成隨時間變化且受垂直
   acceleration 約束的 `vertical_speed_reference_mps`；不得把 raw altitude target 直接交給
   inner loop。
-- Heading Hold／Select：AP 保存 `target_heading_rad`，但先經 wrap-aware capture law、bank
-  與 roll-rate shaping，發布 `bank_angle_reference_rad`。
+- Heading Select：AP 保存 0–359 的整數 `target_heading_deg`；只有 guidance 計算時轉成
+  radians，再經 wrap-aware capture law、bank 與 roll-rate shaping，發布
+  `bank_angle_reference_rad`。
+
+航空語意的 Heading 使用 cockpit `getMagneticHeading()` 形成的 typed observation。
+DCS body-kinematics yaw 只叫 `world_yaw_rad`，保留給模擬姿態／物理與 state CSV，不能當成
+AP Heading。磁航向缺失時 `HDG SEL` 必須明確拒絕接通或釋放 lateral channel，不得靜默
+改用 world yaw。因找不到已確認的 F-CK-1C 採樣率，Lua Adapter 暫採 Project-defined 64 Hz。
 
 上述選擇是民航／航太 Guidance 分層與現有模式共同支持的 Project-defined Interface，不是
 已確認的 F-CK-1C command law。未來取得真機資料時，可更換 AP 內部 target-to-reference
@@ -431,7 +443,7 @@ composition 產生 `FlightControlActuatorCommand`。AP 不得繞過 protection�
 2. **Paddle Bypass**：明確的 momentary command；按住時全部 AP axis 暫時交回 manual，
    mode selection 保留，放開時依 mode 的 target rule 恢復。它不依搖桿位移或姿態變化 threshold。
 3. **Attitude Stick Steering**：只在支援的 attitude-hold mode 逐軸生效。第一版只有 Pitch
-   Hold 支援 longitudinal stick steering；VS Hold、ALT Hold、Heading Hold／Select 不會因一般
+   Hold 支援 longitudinal stick steering；ALT Hold、Heading Select 不會因一般
    stick input 暗中釋放 AP。未來若新增 Roll Attitude Hold，才新增相同的 lateral 規則。
 
 此處「全部 AP axis」只指 flight-control longitudinal／lateral／directional authority；
@@ -443,9 +455,7 @@ composition 產生 `FlightControlActuatorCommand`。AP 不得繞過 protection�
 | Mode | Paddle 放開後的行為 |
 |---|---|
 | Pitch Hold | capture 當前 pitch attitude |
-| Vertical-Speed Hold | capture 當前 vertical speed |
 | Altitude Hold | capture 當前 altitude |
-| Heading Hold | capture 當前 heading |
 | Heading Select | 保留原 selected heading |
 
 每次 paddle release 都執行表中的規則，不保留現有任意的「姿態改變夠大才 recapture」判斷。
@@ -801,47 +811,49 @@ Core/Systems/FlightControlComputer/
 |-- FlightControlComputer.cpp
 |-- FlightControlComputerConfig.h
 |-- FlightControlComputerConfig.cpp
-|-- FlightControlComputerSignals.h
+|-- FlightControlExecutive.h/.cpp
+|-- FlightControlCommandSystem.h/.cpp
+|-- FlightControlOutputSystem.h/.cpp
+|-- FlightControlDiagnostics.h/.cpp
+|-- FlightStateComputation.h/.cpp
 |-- InputSignalManagement.h
 |-- InputSignalManagement.cpp
-|-- Diagnostics.h
-|-- Autopilot/
-|   |-- Autopilot.h
-|   |-- Autopilot.cpp
-|   |-- AutopilotTypes.h
-|   |-- AutopilotConfig.h
-|   |-- AutopilotConfig.cpp
-|   |-- AutopilotInternal.h
-|   |-- AutopilotModeLogic.cpp
-|   |-- AutopilotModeMonitor.cpp
-|   |-- VerticalGuidance.cpp
-|   `-- LateralGuidance.cpp
+|-- CommandSystem/
+|   |-- AutomaticFlightControlTypes.h
+|   |-- AutomaticFlightControlConfig.cpp
+|   |-- ExperimentalAutoThrottleAssistConfig.h
+|   `-- Internal/
+|       |-- PilotCommandLaw.cpp
+|       |-- ControlReferenceSelection.cpp
+|       |-- GuidanceCoordination.cpp
+|       `-- Autopilot/
+|           |-- AutomaticFlightControl.cpp
+|           |-- AutopilotModeLogic.cpp
+|           |-- AutopilotModeMonitor.cpp
+|           |-- VerticalGuidance.cpp
+|           `-- LateralGuidance.cpp
 |-- ControlLaws/
-|   |-- FlightControlLaws.h
-|   |-- FlightControlLaws.cpp
-|   |-- ControlLawTypes.h
+|   |-- ControlLaws.h
+|   |-- ControlLaws.cpp
 |   |-- ControlLawConfig.h
-|   |-- ControlLawConfig.cpp
-|   |-- ControlLawInternal.h
-|   |-- ConfigurationAndMode.cpp
-|   |-- PilotCommandLaw.cpp
-|   |-- ControlReferenceSelection.cpp
-|   |-- GuidanceCoordination.cpp
-|   |-- LongitudinalControlLaw.cpp
-|   |-- LateralDirectionalControlLaw.cpp
-|   |-- EnvelopeProtection.cpp
-|   `-- ControlLawLifecycle.cpp
-`-- ExperimentalAssist/
-    |-- AutoThrottleAssist.h
-    `-- AutoThrottleAssist.cpp
+|   |-- ControlLawSignals.h
+|   |-- ControlLawState.h
+|   `-- Internal/
+|       |-- ControlLawMath.h
+|       `-- InnerLoopControl.cpp
+`-- ModeAndGainScheduling/
+    |-- ModeAndGainScheduling.h/.cpp
+    `-- Internal/ModeAndGainMath.h
 ```
 
-這是目標責任拓樸，不要求一次建立全部空檔案。施工時只在對應邏輯被搬入時建立檔案；
-`AutopilotInternal.h` 與 `ControlLawInternal.h` 只供同一 Module 的 implementation 使用，不是
-FCC public Interface，也不得變成所有內部 state 都能互改的 shared header。
-`FlightControlComputer.h` 的 public method、parameter 與 return type 不得暴露內部 controller
-state。內部 Module 可以先由 FCC 以 value member 擁有；目前不為隱藏 include 成本額外加入
-PImpl 或 heap allocation。
+這是目標責任拓樸，不要求一次建立全部空檔案。施工時只在對應邏輯被搬入時建立檔案。
+`CommandSystem/Internal/` 與 `ControlLaws/Internal/` 是各自深 Module 的私有實作樹，不能被
+FCC adapter、其他 Module 或測試直接依賴，也不得變成所有內部 state 都能互改的 shared
+header。`FlightControlCommandSystem` 使用 PImpl 持有其 command／AFCS implementation，目的
+是從編譯期強制隱藏 `CommandSystem/Internal/Autopilot`，讓 production caller 與測試都只使用
+public facade。這個 PImpl 是邊界機制，不是為每個小型 Module 統一引入 heap allocation。
+`FlightControlComputer.h` 的 public method、parameter 與 return type 仍不得暴露任何內部
+controller state。
 
 ### 11.1 Build 前置修改
 
@@ -999,8 +1011,8 @@ guidance／hard limit 不複製 magic number；Phase 0 手動飛行與 AP output
 工作：
 
 - AP vertical／lateral channel 由 selected target 產生同 tick immutable physical reference：
-  Pitch Hold -> pitch attitude、VS Hold -> vertical speed、ALT Hold -> 經 capture law 的 vertical
-  speed、Heading modes -> 經 capture law 的 bank angle。
+  Pitch Hold -> pitch attitude、ALT Hold -> 經 capture law 的 vertical speed、Heading Select ->
+  經 capture law 的 bank angle。
 - 建立並在同一變更接入 `AutomaticFlightGuidanceReference`、`SelectedFlightReference` 與
   `CoordinatedManeuverReference`；不得先提交未使用的 final-seam type。
 - `PilotCommandLaw` 把 controller signal 轉成 mode-dependent physical manual reference，保留現有
@@ -1293,6 +1305,36 @@ tracking error threshold 與 failure persistence。它們都是 immutable config
 決策。若未來取得與 Reference 衝突的 Confirmed F-CK-1 資料，再以新證據另立變更計畫。
 
 ## 16. 施工與驗證紀錄
+
+### DCS 實機驗證後的修正決策
+
+本輪依 `debug.csv` 與玩家操作確認三項根因，且不改變既定 System／Module 邊界：
+
+1. DCS body callback 使用模擬器數學座標，必須只在 `DcsKinematicsAdapter` 轉成
+   Core/DCS 本體座標慣例：`x -> roll`、`z -> pitch`、`y -> yaw`，保留 DCS
+   右手座標正負號；右滾與抬頭為正、向左偏航為正。角度使用 rad、角速度
+   使用 rad/s、角加速度使用 rad/s²；正值分別代表右滾、抬頭與左偏航。
+2. `PITCH ATT HOLD` 產生 pitch-rate objective。其 Nz 迴路保留瞬時比例回饋與既有
+   保護，但不得累積積分量去抵銷 pitch-rate reference；ALT／vertical-path 模式仍由
+   normal-acceleration tracking objective 負責。
+3. `ROLL ATT HOLD` 的捕捉、stick-steering recapture、shaped reference 與 monitor
+   必須共享相同 guidance bank limit。成功重新接通 lateral／vertical channel 時，清除
+   該 channel 的舊 degradation 狀態，不留下與目前模式矛盾的 reason。
+
+全專案的權威規範由 [`EFM_UNIT_CONVENTIONS.md`](EFM_UNIT_CONVENTIONS.md)
+維護；本節只是飛控重構如何套用該規範，不能解讀成單位規範只適用於 AP 或 FCC。
+
+各階段單位契約固定如下：DCS raw 值在 adapter seam 轉換；Core 姿態與所有角度控制
+計算使用 rad，角速度使用 rad/s，線性距離使用 m，速度使用 m/s，壓力使用 Pa，法向
+加速度使用 g，控制權限使用 `[-1, 1]` normalized 值。唯一刻意保留 degree 的控制狀態是
+玩家 Heading Set：內部保存 `0..359` 的整數度，只在送入 lateral guidance 時轉成 rad。
+`world_yaw_rad` 僅代表 DCS 世界姿態，不得當成航空磁航向；航空航向只取
+`getMagneticHeading()` 的獨立 observation。
+
+此規範不只約束 AP：`FrameInput`、`AircraftState`、`SystemPipeline` 的跨系統資料、
+FCC/AP、致動器、氣動模型私有輸入、DCS 力／力矩輸出與 CSV 欄位都必須遵守。
+物理量欄位名稱必須明示單位；只有無量綱值、布林值或列舉可以不帶單位後綴。
+註解只補充座標軸、正方向與有效範圍，不能取代欄位名稱中的單位。
 
 ### 16.1 Phase 0–8
 
