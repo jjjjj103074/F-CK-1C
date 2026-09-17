@@ -21,7 +21,7 @@
 | WEAPON_SYSTEM | `avSimpleWeaponSystem` | `Systems/weapon_system.lua` | 0.05 s |
 | RADAR | `avSimpleRadar` | `RADAR/FCK1C_Radar.lua` | 由 DCS class 驅動 |
 | RADAR_STATE | `avLuaDevice` | `Systems/radar_state_system.lua` | 0.02 s |
-| HMCS | `avLuaDevice` | `Systems/hmcs_system.lua` | 0.05 s |
+| HMCS | `avLuaDevice` | `Systems/hmcs_system.lua` | 0.015625 s（Project-defined 64 Hz） |
 | AAM_AUDIO | `avLuaDevice` | `Systems/aam_audio_system.lua` | 0.05 s |
 
 另外載入：
@@ -150,8 +150,9 @@ Phase 3 首次 DCS 驗收證明 ALT 的來源 `kp=0.08` 在現有 FBW 增益與�
   `devices.AUTOPILOT`。
 - `CockpitSnapshotExporter` 只把 C++ snapshot 寫成 DCS presentation
   parameter，Lua 不再回寫 AP 狀態。
-- IAS 由 EFM 的 TAS 與空氣密度換算；高度、垂直速度、Mach、heading、
-  pitch、roll 與角速度使用 EFM 每幀 observation。控制器內部採 SI 單位，
+- IAS 由 EFM 的 TAS 與空氣密度換算；高度、垂直速度、Mach、pitch、roll
+  與角速度使用 EFM 每幀 observation。磁航向由 DCS cockpit-only API 形成
+  獨立 typed observation。控制器內部採 SI 單位，
   只有 exporter 在 DCS 邊界換成 ft、deg、kt、ft/min。
 - 舊 Lua 每 0.02 s 減少 0.01 的 Mach guard 已改為每秒 0.5，使用真實
   `dt`；在 0.02 s reference step 下數值等價。
@@ -315,7 +316,8 @@ Tone state：
 - 顯示預設：Master ON、weapon class GUN、gun quantity 523、AAM fallback quantity 1。
 - cockpit argument 509 接近 0，容許範圍 ±0.25 時視為 helmet installed／enabled。
 - cockpit argument 510 ≥ 0.5 時切換 display mode。
-- heading 優先使用 magnetic heading，否則使用負的 heading。
+- heading 只使用 `getMagneticHeading()`；不可用時發布 unavailable 並隱藏
+  數值／tape，不以 EFM world yaw 或 `getHeading()` 靜默替代。
 - heading tape 有 13 個 slot，每 15° 一個 tick，每 30° 顯示 label。
 - IAS：m/s × 1.943844 轉 knot。
 - Altitude：m × 3.28084 轉 feet。

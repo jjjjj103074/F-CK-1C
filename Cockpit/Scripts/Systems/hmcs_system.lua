@@ -2,8 +2,13 @@ local dev = GetSelf()
 local sensor_data = get_base_data()
 
 dofile(LockOn_Options.script_path .. "command_defs.lua")
+dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
-local update_rate = 0.05
+-- Project-defined 64 Hz: no confirmed F-CK-1C heading-reference sampling
+-- rate is public. This keeps the DCS-only magnetic observation aligned with
+-- the current FCC reference rate until an aircraft source is available.
+local HEADING_OBSERVATION_RATE_HZ = 64
+local update_rate = 1.0 / HEADING_OBSERVATION_RATE_HZ
 make_default_activity(update_rate)
 
 local CMD_MASTER_ARM_ON = device_commands.MasterArmOn
@@ -36,7 +41,11 @@ local submode_dogfight = 0
 
 local hmcs_ias_kts = get_param_handle("HMCS_IAS_KTS")
 local hmcs_alt_ft = get_param_handle("HMCS_ALT_FT")
+local pressure_altitude_available = get_param_handle(cockpit_params.PressureAltitudeAvailable)
+local pressure_altitude_m = get_param_handle(cockpit_params.PressureAltitudeM)
 local hmcs_hdg_deg = get_param_handle("HMCS_HDG_DEG")
+local magnetic_heading_available = get_param_handle(cockpit_params.MagneticHeadingAvailable)
+local magnetic_heading_rad = get_param_handle(cockpit_params.MagneticHeadingRad)
 local hmcs_hdg_minor_offset = get_param_handle("HMCS_HDG_MINOR_OFFSET")
 local hmcs_master_mode = get_param_handle("HMCS_MASTER_MODE")
 local hmcs_weapon_class = get_param_handle("HMCS_WEAPON_CLASS")
@@ -128,19 +137,31 @@ local function try_sensor_call(method_name)
     return false, nil
 end
 
-local function normalize_heading_deg(heading_rad)
-    local heading_deg = math.deg(heading_rad or 0.0)
-    heading_deg = heading_deg % 360.0
-    if heading_deg < 0.0 then heading_deg = heading_deg + 360.0 end
-    return heading_deg
+local function normalize_heading_rad(heading_rad)
+    local normalized = heading_rad % (2.0 * math.pi)
+    if normalized < 0.0 then normalized = normalized + 2.0 * math.pi end
+    return normalized
 end
 
-local function safe_heading_deg()
-    local has_magnetic_heading, magnetic_heading = try_sensor_call("getMagneticHeading")
-    if has_magnetic_heading then return normalize_heading_deg(magnetic_heading + math.rad(hmcs_heading_bias_deg)) end
+local function read_magnetic_heading()
+    local available, heading_rad = try_sensor_call("getMagneticHeading")
+    magnetic_heading_available:set(available and 1 or 0)
+    if not available then return nil end
 
-    local heading = safe_sensor_call("getHeading", 0.0)
-    return normalize_heading_deg(-heading + math.rad(hmcs_heading_bias_deg))
+    local normalized = normalize_heading_rad(
+        heading_rad + math.rad(hmcs_heading_bias_deg)
+    )
+    magnetic_heading_rad:set(normalized)
+    return normalized
+end
+
+local function read_pressure_altitude()
+    local available, altitude_m = try_sensor_call("getBarometricAltitude")
+    pressure_altitude_available:set(available and 1 or 0)
+    if not available then return nil end
+
+    pressure_altitude_m:set(altitude_m)
+    return altitude_m
 end
 
 local function heading_label_code(heading_deg)
@@ -234,19 +255,21 @@ end
 
 local function push_params()
     local ias_mps = safe_sensor_call("getIndicatedAirSpeed", 0.0)
-    local baro_alt_m = safe_sensor_call("getBarometricAltitude", 0.0)
-    local heading_deg = safe_heading_deg()
+    local baro_alt_m = read_pressure_altitude()
+    local heading_rad = read_magnetic_heading()
     local display_master_mode = shared_master_mode()
     local display_fc_mode = shared_fc_mode()
     local display_weapon_class, display_weapon_quantity = resolve_weapon_display(display_master_mode, display_fc_mode)
 
     update_display_mode_params()
     hmcs_ias_kts:set(math.max(0.0, ias_mps * 1.943844))
-    hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084))
-    hmcs_hdg_deg:set(heading_deg)
+    if baro_alt_m ~= nil then
+        hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084))
+    end
+    if heading_rad ~= nil then hmcs_hdg_deg:set(math.deg(heading_rad)) end
     hmcs_weapon_class:set(display_weapon_class)
     hmcs_weapon_qty:set(display_weapon_quantity)
-    update_heading_slots(heading_deg)
+    if heading_rad ~= nil then update_heading_slots(math.deg(heading_rad)) end
 end
 
 dev:listen_command(CMD_MASTER_ARM_ON)

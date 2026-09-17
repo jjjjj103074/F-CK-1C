@@ -88,28 +88,25 @@ join(res.keyCommands, {
     { combos = { { key = "G", reformers = { "RCtrl" } } }, down = device_commands.FBWGLimiterOverride, up = device_commands.FBWGLimiterOverride, value_down = 1.0, value_up = 0.0, name = _("[Developer] FBW G-Limiter Override (Hold)"), category = { _("Flight Control") } },
     { combos = { { key = "G", reformers = { "RAlt" } } }, down = device_commands.FBWGLimiterOverrideToggle, name = _("[Developer] FBW G-Limiter Override (Toggle)"), category = { _("Flight Control") } },
 
-    -- Autopilot
-    { combos = { { key = "A", reformers = { "LAlt" } } }, down = device_commands.APMasterToggle, up = device_commands.APMasterToggle, value_down = 1.0, value_up = 0.0, name = _("AP Master - Toggle"), category = { _("Autopilot") } },
-    { combos = { { key = "A", reformers = { "LAlt", "LShift" } } }, down = device_commands.APMasterOff, up = device_commands.APMasterOff, value_down = 1.0, value_up = 0.0, name = _("AP Master - OFF"), category = { _("Autopilot") } },
+    -- F-16A/B-reference controls: a separate AUTOPILOT master plus two-position
+    -- PITCH and ROLL mode switches. This is not a confirmed F-CK-1C panel.
+    { combos = { { key = "A", reformers = { "LAlt" } } }, down = device_commands.APMasterOn, value_down = 1.0, name = _("AP AUTOPILOT Switch - ON"), category = { _("Autopilot") } },
+    { combos = { { key = "A", reformers = { "LAlt", "LShift" } } }, down = device_commands.APMasterOff, value_down = 1.0, name = _("AP AUTOPILOT Switch - OFF"), category = { _("Autopilot") } },
     { combos = { { key = "A", reformers = { "LAlt", "LCtrl" } } }, down = device_commands.APBypass, up = device_commands.APBypass, value_down = 1.0, value_up = 0.0, name = _("AP Bypass (Hold)"), category = { _("Autopilot") } },
 
-    { combos = { { key = "H", reformers = { "LAlt" } } }, down = device_commands.APVertAltHold, up = device_commands.APVertAltHold, value_down = 1.0, value_up = 0.0, name = _("AP Vertical - ALT Hold"), category = { _("Autopilot") } },
-    { combos = { { key = "H", reformers = { "LCtrl" } } }, down = device_commands.APVertPitchHold, up = device_commands.APVertPitchHold, value_down = 1.0, value_up = 0.0, name = _("AP Vertical - Pitch Hold"), category = { _("Autopilot") } },
-    { combos = { { key = "H", reformers = { "LShift" } } }, down = device_commands.APVertVSHold, up = device_commands.APVertVSHold, value_down = 1.0, value_up = 0.0, name = _("AP Vertical - VS Hold"), category = { _("Autopilot") } },
-    { down = device_commands.APVertIncrease, up = device_commands.APVertIncrease, value_down = 1.0, value_up = 0.0, name = _("AP Vertical Ref - Increase"), category = { _("Autopilot") } },
-    { down = device_commands.APVertDecrease, up = device_commands.APVertDecrease, value_down = 1.0, value_up = 0.0, name = _("AP Vertical Ref - Decrease"), category = { _("Autopilot") } },
+    { combos = { { key = "H", reformers = { "LCtrl" } } }, down = device_commands.APPitchAttitudeHold, value_down = 1.0, name = _("AP PITCH Switch - ATT HOLD"), category = { _("Autopilot") } },
+    { combos = { { key = "H", reformers = { "LAlt" } } }, down = device_commands.APPitchAltitudeHold, value_down = 1.0, name = _("AP PITCH Switch - ALT HOLD"), category = { _("Autopilot") } },
 
-    { combos = { { key = "U", reformers = { "LAlt" } } }, down = device_commands.APLatHeadingHold, up = device_commands.APLatHeadingHold, value_down = 1.0, value_up = 0.0, name = _("AP Lateral - Heading Hold"), category = { _("Autopilot") } },
-    { combos = { { key = "U", reformers = { "LCtrl" } } }, down = device_commands.APLatHeadingSelect, up = device_commands.APLatHeadingSelect, value_down = 1.0, value_up = 0.0, name = _("AP Lateral - Heading Select"), category = { _("Autopilot") } },
-    { combos = { { key = "U", reformers = { "LShift" } } }, down = device_commands.APLatNavTrack, up = device_commands.APLatNavTrack, value_down = 1.0, value_up = 0.0, name = _("AP Lateral - NAV Track"), category = { _("Autopilot") } },
-    { down = device_commands.APLatIncrease, up = device_commands.APLatIncrease, value_down = 1.0, value_up = 0.0, name = _("AP Heading Ref - Increase"), category = { _("Autopilot") } },
-    { down = device_commands.APLatDecrease, up = device_commands.APLatDecrease, value_down = 1.0, value_up = 0.0, name = _("AP Heading Ref - Decrease"), category = { _("Autopilot") } },
+    { combos = { { key = "U", reformers = { "LAlt" } } }, down = device_commands.APRollAttitudeHold, value_down = 1.0, name = _("AP ROLL Switch - ATT HOLD"), category = { _("Autopilot") } },
+    { combos = { { key = "U", reformers = { "LCtrl" } } }, down = device_commands.APRollHeadingSelect, value_down = 1.0, name = _("AP ROLL Switch - HDG SEL"), category = { _("Autopilot") } },
+    { combos = { { key = "Right", reformers = { "LAlt" } } }, down = device_commands.APHeadingSetIncrease, value_down = 1.0, name = _("Heading Set - Increase 1 Degree"), category = { _("Autopilot") } },
+    { combos = { { key = "Left", reformers = { "LAlt" } } }, down = device_commands.APHeadingSetDecrease, value_down = 1.0, name = _("Heading Set - Decrease 1 Degree"), category = { _("Autopilot") } },
 
-    { combos = { { key = "T", reformers = { "LAlt" } } }, down = device_commands.APAutoThrottleToggle, up = device_commands.APAutoThrottleToggle, value_down = 1.0, value_up = 0.0, name = _("AP Auto Throttle - Toggle"), category = { _("Autopilot") } },
-    { down = device_commands.APAutoThrottleOn, up = device_commands.APAutoThrottleOn, value_down = 1.0, value_up = 0.0, name = _("AP Auto Throttle - ON"), category = { _("Autopilot") } },
-    { down = device_commands.APAutoThrottleOff, up = device_commands.APAutoThrottleOff, value_down = 1.0, value_up = 0.0, name = _("AP Auto Throttle - OFF"), category = { _("Autopilot") } },
-    { combos = { { key = "T", reformers = { "LAlt", "LCtrl" } } }, pressed = device_commands.APSpeedIncrease, up = device_commands.APSpeedIncrease, value_pressed = 1.0, value_up = 0.0, name = _("AP Speed Ref - Increase"), category = { _("Autopilot") } },
-    { combos = { { key = "T", reformers = { "LAlt", "LShift" } } }, pressed = device_commands.APSpeedDecrease, up = device_commands.APSpeedDecrease, value_pressed = 1.0, value_up = 0.0, name = _("AP Speed Ref - Decrease"), category = { _("Autopilot") } },
+    { combos = { { key = "T", reformers = { "LAlt" } } }, down = device_commands.APAutoThrottleToggle, up = device_commands.APAutoThrottleToggle, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental Auto-Throttle - Toggle"), category = { _("Developer Tools") } },
+    { down = device_commands.APAutoThrottleOn, up = device_commands.APAutoThrottleOn, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental Auto-Throttle - ON"), category = { _("Developer Tools") } },
+    { down = device_commands.APAutoThrottleOff, up = device_commands.APAutoThrottleOff, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental Auto-Throttle - OFF"), category = { _("Developer Tools") } },
+    { combos = { { key = "T", reformers = { "LAlt", "LCtrl" } } }, pressed = device_commands.APSpeedIncrease, up = device_commands.APSpeedIncrease, value_pressed = 1.0, value_up = 0.0, name = _("[Developer] Experimental A/T Speed Ref - Increase"), category = { _("Developer Tools") } },
+    { combos = { { key = "T", reformers = { "LAlt", "LShift" } } }, pressed = device_commands.APSpeedDecrease, up = device_commands.APSpeedDecrease, value_pressed = 1.0, value_up = 0.0, name = _("[Developer] Experimental A/T Speed Ref - Decrease"), category = { _("Developer Tools") } },
 
     { combos = { { key = "Y", reformers = { "RAlt" } } }, down = device_commands.EngineThrustCutTestToggle, up = device_commands.EngineThrustCutTestToggle, value_down = 1.0, value_up = 0.0, name = _("Engine Thrust Cut Test - Toggle"), category = { _("Flight Test") } },
     { down = device_commands.EngineThrustCutTestEnable, up = device_commands.EngineThrustCutTestEnable, value_down = 1.0, value_up = 0.0, name = _("Engine Thrust Cut Test - Enable (Thrust = 0)"), category = { _("Flight Test") } },

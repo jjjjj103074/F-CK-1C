@@ -222,6 +222,37 @@ try {
         $originalDebugKeyboard,
         $utf8NoBom)
 
+    Assert-Rejected {
+        $missingAutopilotPressValue = $originalDebugKeyboard.Replace(
+            'down = device_commands.APPitchAltitudeHold, value_down = 1.0',
+            'down = device_commands.APPitchAltitudeHold')
+        [IO.File]::WriteAllText(
+            $debugKeyboard,
+            $missingAutopilotPressValue,
+            $utf8NoBom)
+    } 'APPitchAltitudeHold must emit value_down=1.0' $temporaryRoot
+    [IO.File]::WriteAllText(
+        $debugKeyboard,
+        $originalDebugKeyboard,
+        $utf8NoBom)
+
+    $hmcsSystem = Join-Path (
+        $temporaryRoot) 'Cockpit\Scripts\Systems\hmcs_system.lua'
+    $originalHmcsSystem = [IO.File]::ReadAllText($hmcsSystem)
+    Assert-Rejected {
+        $worldYawFallback = $originalHmcsSystem.Replace(
+            'try_sensor_call("getMagneticHeading")',
+            'try_sensor_call("getHeading")')
+        [IO.File]::WriteAllText(
+            $hmcsSystem,
+            $worldYawFallback,
+            $utf8NoBom)
+    } 'must use getMagneticHeading' $temporaryRoot
+    [IO.File]::WriteAllText(
+        $hmcsSystem,
+        $originalHmcsSystem,
+        $utf8NoBom)
+
     $deviceInit = Join-Path $temporaryRoot 'Cockpit\Scripts\device_init.lua'
     $originalDeviceInit = [IO.File]::ReadAllText($deviceInit)
     Assert-Rejected {

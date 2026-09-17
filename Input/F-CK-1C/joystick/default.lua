@@ -4,11 +4,8 @@ dofile(cscripts .. "devices.lua")
 dofile(cscripts .. "command_defs.lua")
 
 join(res.axisCommands, {
-    -- curvature {0,0,20,0,0}：5 點貝氏曲線，第 3 點（中心）+20 = 中心柔化 20%。
-    -- 模擬 F-CK-1C FBW 飛控的中立區靈敏度降低（參考 F-16 FLCS 內建 20% 曲線設定）。
-    -- 可在 DCS 選項 > 控制器 > 軸設定中由玩家進一步調整。
-    { combos = defaultDeviceAssignmentFor("pitch"), action = 2001, name = _("Pitch Axis"), curvature = { 0, 0, 20, 0, 0 }, category = { _("Flight Control") } },
-    { combos = defaultDeviceAssignmentFor("roll"), action = 2002, name = _("Roll Axis"), curvature = { 0, 0, 20, 0, 0 }, category = { _("Flight Control") } },
+    { combos = defaultDeviceAssignmentFor("pitch"), action = 2001, name = _("Pitch Axis"), category = { _("Flight Control") } },
+    { combos = defaultDeviceAssignmentFor("roll"), action = 2002, name = _("Roll Axis"), category = { _("Flight Control") } },
     { combos = defaultDeviceAssignmentFor("rudder"), action = 2003, name = _("Yaw Axis"), category = { _("Flight Control") } },
     { combos = defaultDeviceAssignmentFor("thrust"), action = 2004, name = _("Throttle Axis - Both"), category = { _("Throttle Quadrant"), _("Flight Control") } },
     { combos = defaultDeviceAssignmentFor("thrust_left"), action = 2005, name = _("Throttle Axis - Left"), category = { _("Throttle Quadrant"), _("Flight Control") } },
@@ -96,29 +93,24 @@ join(res.keyCommands, {
     { down = device_commands.NoseTurnUp, name = _("Nose Wheel Steering - OFF"), category = { _("Systems") } },
     { down = device_commands.NoseTurnDown, name = _("Nose Wheel Steering - ON"), category = { _("Systems") } },
 
-    -- Autopilot
-    { down = device_commands.APMasterToggle, up = device_commands.APMasterToggle, value_down = 1.0, value_up = 0.0, name = _("AP Master - Toggle"), category = { _("Autopilot") } },
-    { down = device_commands.APMasterOn, up = device_commands.APMasterOn, value_down = 1.0, value_up = 0.0, name = _("AP Master - ON"), category = { _("Autopilot") } },
-    { down = device_commands.APMasterOff, up = device_commands.APMasterOff, value_down = 1.0, value_up = 0.0, name = _("AP Master - OFF"), category = { _("Autopilot") } },
+    -- F-16A/B-reference master and mode switches; not confirmed F-CK-1C data.
+    { down = device_commands.APMasterOn, value_down = 1.0, name = _("AP AUTOPILOT Switch - ON"), category = { _("Autopilot") } },
+    { down = device_commands.APMasterOff, value_down = 1.0, name = _("AP AUTOPILOT Switch - OFF"), category = { _("Autopilot") } },
     { down = device_commands.APBypass, up = device_commands.APBypass, value_down = 1.0, value_up = 0.0, name = _("AP Bypass (Hold)"), category = { _("Autopilot") } },
 
-    { down = device_commands.APVertPitchHold, up = device_commands.APVertPitchHold, value_down = 1.0, value_up = 0.0, name = _("AP Vertical - Pitch Hold"), category = { _("Autopilot") } },
-    { down = device_commands.APVertVSHold, up = device_commands.APVertVSHold, value_down = 1.0, value_up = 0.0, name = _("AP Vertical - VS Hold"), category = { _("Autopilot") } },
-    { down = device_commands.APVertAltHold, up = device_commands.APVertAltHold, value_down = 1.0, value_up = 0.0, name = _("AP Vertical - ALT Hold"), category = { _("Autopilot") } },
-    { down = device_commands.APVertIncrease, up = device_commands.APVertIncrease, value_down = 1.0, value_up = 0.0, name = _("AP Vertical Ref - Increase"), category = { _("Autopilot") } },
-    { down = device_commands.APVertDecrease, up = device_commands.APVertDecrease, value_down = 1.0, value_up = 0.0, name = _("AP Vertical Ref - Decrease"), category = { _("Autopilot") } },
+    { down = device_commands.APPitchAttitudeHold, value_down = 1.0, name = _("AP PITCH Switch - ATT HOLD"), category = { _("Autopilot") } },
+    { down = device_commands.APPitchAltitudeHold, value_down = 1.0, name = _("AP PITCH Switch - ALT HOLD"), category = { _("Autopilot") } },
 
-    { down = device_commands.APLatHeadingHold, up = device_commands.APLatHeadingHold, value_down = 1.0, value_up = 0.0, name = _("AP Lateral - Heading Hold"), category = { _("Autopilot") } },
-    { down = device_commands.APLatHeadingSelect, up = device_commands.APLatHeadingSelect, value_down = 1.0, value_up = 0.0, name = _("AP Lateral - Heading Select"), category = { _("Autopilot") } },
-    { down = device_commands.APLatNavTrack, up = device_commands.APLatNavTrack, value_down = 1.0, value_up = 0.0, name = _("AP Lateral - NAV Track"), category = { _("Autopilot") } },
-    { down = device_commands.APLatIncrease, up = device_commands.APLatIncrease, value_down = 1.0, value_up = 0.0, name = _("AP Heading Ref - Increase"), category = { _("Autopilot") } },
-    { down = device_commands.APLatDecrease, up = device_commands.APLatDecrease, value_down = 1.0, value_up = 0.0, name = _("AP Heading Ref - Decrease"), category = { _("Autopilot") } },
+    { down = device_commands.APRollAttitudeHold, value_down = 1.0, name = _("AP ROLL Switch - ATT HOLD"), category = { _("Autopilot") } },
+    { down = device_commands.APRollHeadingSelect, value_down = 1.0, name = _("AP ROLL Switch - HDG SEL"), category = { _("Autopilot") } },
+    { down = device_commands.APHeadingSetIncrease, value_down = 1.0, name = _("Heading Set - Increase 1 Degree"), category = { _("Autopilot") } },
+    { down = device_commands.APHeadingSetDecrease, value_down = 1.0, name = _("Heading Set - Decrease 1 Degree"), category = { _("Autopilot") } },
 
-    { down = device_commands.APAutoThrottleToggle, up = device_commands.APAutoThrottleToggle, value_down = 1.0, value_up = 0.0, name = _("AP Auto Throttle - Toggle"), category = { _("Autopilot") } },
-    { down = device_commands.APAutoThrottleOn, up = device_commands.APAutoThrottleOn, value_down = 1.0, value_up = 0.0, name = _("AP Auto Throttle - ON"), category = { _("Autopilot") } },
-    { down = device_commands.APAutoThrottleOff, up = device_commands.APAutoThrottleOff, value_down = 1.0, value_up = 0.0, name = _("AP Auto Throttle - OFF"), category = { _("Autopilot") } },
-    { down = device_commands.APSpeedIncrease, up = device_commands.APSpeedIncrease, value_down = 1.0, value_up = 0.0, name = _("AP Speed Ref - Increase"), category = { _("Autopilot") } },
-    { down = device_commands.APSpeedDecrease, up = device_commands.APSpeedDecrease, value_down = 1.0, value_up = 0.0, name = _("AP Speed Ref - Decrease"), category = { _("Autopilot") } },
+    { down = device_commands.APAutoThrottleToggle, up = device_commands.APAutoThrottleToggle, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental Auto-Throttle - Toggle"), category = { _("Developer Tools") } },
+    { down = device_commands.APAutoThrottleOn, up = device_commands.APAutoThrottleOn, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental Auto-Throttle - ON"), category = { _("Developer Tools") } },
+    { down = device_commands.APAutoThrottleOff, up = device_commands.APAutoThrottleOff, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental Auto-Throttle - OFF"), category = { _("Developer Tools") } },
+    { down = device_commands.APSpeedIncrease, up = device_commands.APSpeedIncrease, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental A/T Speed Ref - Increase"), category = { _("Developer Tools") } },
+    { down = device_commands.APSpeedDecrease, up = device_commands.APSpeedDecrease, value_down = 1.0, value_up = 0.0, name = _("[Developer] Experimental A/T Speed Ref - Decrease"), category = { _("Developer Tools") } },
 
     { down = device_commands.EngineThrustCutTestToggle, up = device_commands.EngineThrustCutTestToggle, value_down = 1.0, value_up = 0.0, name = _("Engine Thrust Cut Test - Toggle"), category = { _("Flight Test") } },
     { down = device_commands.EngineThrustCutTestEnable, up = device_commands.EngineThrustCutTestEnable, value_down = 1.0, value_up = 0.0, name = _("Engine Thrust Cut Test - Enable (Thrust = 0)"), category = { _("Flight Test") } },

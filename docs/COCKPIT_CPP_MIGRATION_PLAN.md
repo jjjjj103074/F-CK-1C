@@ -12,7 +12,8 @@
 3. 控制器命令直接進入 EFM；未來的可點擊座艙也必須轉成同一組語意命令。
 4. `avSimpleRadar` 與 `avSimpleWeaponSystem` 必須保留，但其 Lua 只作為 Adapter。
 5. AIM-9 聲音的決策移入 C++；真正的 DCS 座艙聲音播放保留在 Lua。
-6. HMCS 圖面完整保留；資料來源改為 C++，Lua 只做顯示格式與 DCS 畫面操作。
+6. HMCS 圖面完整保留；飛機系統狀態來自 C++，只有 DCS 座艙專用感測 API
+   由 Lua Adapter 採樣後送成 typed Observation。
 7. `gear_system.lua`、`actuators*.lua`、`autopilot_system.lua`、
    `radar_state_system.lua` 最終刪除。
 8. `cms_system.lua`、`weapon_system.lua`、`hmcs_system.lua`、
@@ -24,7 +25,7 @@
 | `Cockpit/Scripts/` 根目錄 | 完整保留其 DCS 啟動與定義角色 | device、command、材質、argument、panel 註冊 |
 | `ControlsIndicator/` | 完整保留 | DCS 控制指示器呈現 |
 | `generated/` | 完整保留 | C++／Lua 共用 ID 的生成結果 |
-| `HMCS/` | 部分遷移 | 圖面留 Lua，狀態與資料來源移 C++ |
+| `HMCS/` | 部分遷移 | 圖面留 Lua；系統狀態由 C++ 提供，DCS-only 感測資料由 Lua Adapter 輸入 |
 | `RADAR/` | 部分遷移 | `avSimpleRadar` Adapter 留 Lua，雷達狀態移 C++ |
 | `Systems/` | 大部分遷移 | 最終只容納必要的 DCS Adapter |
 
@@ -207,8 +208,9 @@ Controller / Clickable
 - Momentary command 只在 press edge 執行。
 - 不用 Lua parameter 模擬 command pulse。
 - `SoundTestCycle` 是呈現診斷，可繼續直接送給 Audio Adapter。
-- `CMSPress`、`APLatNavTrack` 等目前未完成命令仍需被明確處理，
-  不得悄悄產生新功能。
+- `CMSPress` 等目前未完成命令仍需被明確處理，不得悄悄產生新功能。
+- 現階段採用 F-16A/B Blocks 10/15 參考，因此未提供 `STRG SEL`；未來若
+  導航 System 與更合適的 F-CK-1C 證據齊備，再另行定義航點導引命令。
 
 目前 route 為 `cockpit` 的 domain commands，遷移後改為 `efm`：
 
@@ -383,16 +385,18 @@ Lua 不回寫 Snapshot 中的 domain 欄位。
 - weapon class 與 weapon quantity 的語意選擇。
 - gun quantity 與 AIM-9 quantity。
 - trigger state。
-- IAS、altitude、heading 的權威資料來源。
+- IAS、altitude 與其他飛機系統狀態的權威資料來源。
 - 所有 command listener 與 `SetCommand()` domain 邏輯。
 - fallback gun ammunition simulation。
 
 保留於 Lua Presenter：
 
+- 以 Project-defined 64 Hz 呼叫 DCS `getMagneticHeading()`，發布明確
+  availability 與 radians；不得以 EFM world yaw 靜默替代。
 - 讀取 HMCS 安裝 argument 509。
 - 讀取 2D／VR display mode argument 510。
 - 寫入 `HMCS_ENABLED` 與 `HMCS_DISPLAY_MODE`。
-- heading tape 的 slot、tick、label 排版。
+- magnetic heading tape 的 slot、tick、label 排版。
 - SI 到 knots／feet／degrees 的最終顯示格式，可選擇由 Exporter 統一完成。
 
 目標檔名：`Systems/hmcs_presenter.lua`。

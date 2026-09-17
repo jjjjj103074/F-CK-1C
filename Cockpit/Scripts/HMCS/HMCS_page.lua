@@ -1,4 +1,5 @@
 dofile(LockOn_Options.common_script_path .. "elements_defs.lua")
+dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 SetCustomScale(1.0)
 
@@ -80,6 +81,29 @@ local function add_numeric_text(name, pos, alignment, format_string, param_name,
     return add_text(name, "000", pos, alignment, "font_hmcs", size, nil, { param_name }, { { "text_using_parameter", 0, 0 } }, { format_string })
 end
 
+local function add_available_numeric_text(name, pos, format_string, param_name, size)
+    local parameters = {
+        param_name,
+        cockpit_params.MagneticHeadingAvailable,
+    }
+    local controllers = {
+        { "text_using_parameter", 0, 0 },
+        { "parameter_in_range", 1, 0.9, 1.1 },
+    }
+    return add_text(
+        name,
+        "000",
+        pos,
+        "CenterCenter",
+        "font_hmcs",
+        size,
+        nil,
+        parameters,
+        controllers,
+        { format_string }
+    )
+end
+
 local function add_numeric_text_range(name, pos, alignment, format_string, param_name, gate_param_name, min_value, max_value, size)
     return add_text(name, "0", pos, alignment, "font_hmcs_small", size, nil, { param_name, gate_param_name }, { { "text_using_parameter", 0, 0 }, { "parameter_in_range", 1, min_value, max_value } }, { format_string })
 end
@@ -102,8 +126,8 @@ local function add_heading_tape()
     local tape = CreateElement("ceSimple")
     tape.name = "hmcs_heading_tape"
     tape.init_pos = { 0.0, -0.275, 0 }
-    tape.element_params = { "HMCS_HDG_MINOR_OFFSET" }
-    tape.controllers = { { "move_left_right_using_parameter", 0, 1.0 } }
+    tape.element_params = { "HMCS_HDG_MINOR_OFFSET", cockpit_params.MagneticHeadingAvailable }
+    tape.controllers = { { "move_left_right_using_parameter", 0, 1.0 }, { "parameter_in_range", 1, 0.9, 1.1 } }
     AddElement(tape)
 
     local center_index = math.floor(heading_slot_count / 2)
@@ -156,7 +180,7 @@ add_text("hmcs_hdg_label", "HDG", { 0.0, -0.301 }, "CenterCenter", "font_hmcs_sm
 
 add_numeric_text("hmcs_speed", { -0.29, 0.11 }, "CenterCenter", "%03.0f", "HMCS_IAS_KTS", text_size_numeric_box)
 add_numeric_text("hmcs_altitude", { 0.29, 0.11 }, "CenterCenter", "%05.0f", "HMCS_ALT_FT", text_size_numeric_box)
-add_numeric_text("hmcs_heading", { 0.0, -0.325 }, "CenterCenter", "%03.0f", "HMCS_HDG_DEG", text_size_numeric)
+add_available_numeric_text("hmcs_heading", { 0.0, -0.325 }, "%03.0f", "HMCS_HDG_DEG", text_size_numeric)
 
 add_text("hmcs_weapon_title", "WPN", { -0.255, -0.018 }, "RightCenter", "font_hmcs_small", text_size_title)
 add_numeric_text_range("hmcs_weapon_aam", { -0.245, -0.048 }, "LeftCenter", "AAM-%1.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 0.9, 1.1, text_size_value)

@@ -251,6 +251,61 @@ function Test-DebugIndicatorBoundary {
     Test-DebugIndicatorBindings $Root
 }
 
+function Test-EfmAutopilotBindings {
+    param([string]$Root)
+
+    $commands = @(
+        'APMasterOn',
+        'APMasterOff',
+        'APPitchAttitudeHold',
+        'APPitchAltitudeHold',
+        'APRollAttitudeHold',
+        'APRollHeadingSelect',
+        'APHeadingSetIncrease',
+        'APHeadingSetDecrease'
+    )
+    foreach ($profile in @('keyboard', 'joystick')) {
+        $path = Join-Path $Root "Input\F-CK-1C\$profile\default.lua"
+        $text = [IO.File]::ReadAllText($path)
+        foreach ($command in $commands) {
+            $bindings = [regex]::Matches(
+                $text,
+                "(?m)^.*down\s*=\s*device_commands\.$command.*$")
+            if ($bindings.Count -ne 1 -or
+                $bindings[0].Value -notmatch 'value_down\s*=\s*1\.0') {
+                Write-Output (
+                    "EFM autopilot $profile binding $command must emit " +
+                    'value_down=1.0 exactly once.')
+            }
+        }
+    }
+}
+
+function Test-MagneticHeadingObservationBoundary {
+    param([string]$Root)
+
+    $systemPath = Join-Path $Root 'Cockpit\Scripts\Systems\hmcs_system.lua'
+    $pagePath = Join-Path $Root 'Cockpit\Scripts\HMCS\HMCS_page.lua'
+    $system = [IO.File]::ReadAllText($systemPath)
+    $page = [IO.File]::ReadAllText($pagePath)
+    if ($system -notmatch 'try_sensor_call\("getMagneticHeading"\)' -or
+        $system -match 'try_sensor_call\("getHeading"\)') {
+        Write-Output (
+            'Heading observation must use getMagneticHeading with no ' +
+            'world-yaw fallback.')
+    }
+    if ($system -notmatch 'HEADING_OBSERVATION_RATE_HZ\s*=\s*64' -or
+        $system -notmatch 'cockpit_params\.MagneticHeadingAvailable' -or
+        $system -notmatch 'cockpit_params\.MagneticHeadingRad') {
+        Write-Output (
+            'Heading observation adapter must publish the typed 64 Hz ' +
+            'availability and magnetic-heading contract.')
+    }
+    if ($page -notmatch 'cockpit_params\.MagneticHeadingAvailable') {
+        Write-Output 'HMCS heading presentation must honor heading availability.'
+    }
+}
+
 function Find-CatalogParameter {
     param(
         [hashtable]$Maps,
@@ -448,6 +503,8 @@ $findings = @(
     Test-DeviceIds $resolvedRoot
     Test-RemovedCockpitDevices $resolvedRoot
     Test-DebugIndicatorBoundary $resolvedRoot
+    Test-EfmAutopilotBindings $resolvedRoot
+    Test-MagneticHeadingObservationBoundary $resolvedRoot
     Test-SingleWriters $parameterRows $maps
     Test-CatalogWritersObserved $parameterRows $catalog
     Test-ParameterReferences $resolvedRoot $maps

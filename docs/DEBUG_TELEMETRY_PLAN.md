@@ -369,13 +369,13 @@ Wide format 讓 Indicator 與 CSV 都使用「一組具名通道的最新快照�
 `fck1c_state.csv` 以飛機可觀察狀態為主，包括：
 
 - 位置、速度、姿態、角速度與其他飛行狀態。
-- 空速、垂直速度與航向。
+- 空速、垂直速度與 DCS world yaw。
 - 力與力矩。
 - 引擎與燃油的飛機輸出狀態。
 - 飛行員輸入與控制面實際位置。
 - 起落架、懸吊、損傷、震動等飛機狀態。
 
-目前工作樹新增的 IAS、垂直速度、heading、pitch／roll attitude、p／q／r 屬於這個責任，應保留在 state CSV。
+目前工作樹新增的 IAS、垂直速度、`world_yaw_rad`、pitch／roll attitude、p／q／r 屬於這個責任，應保留在 state CSV。航空語意的磁航向不是 world yaw。
 
 ### 9.2 遷移到 Debug Telemetry 的內容
 
@@ -405,7 +405,7 @@ Wide format 讓 Indicator 與 CSV 都使用「一組具名通道的最新快照�
 - manual／automatic reference source selection結果。
 - coordinated flight-control reference。
 - normalized actuator demands。
-- 為目前測試有用的實際 heading、pitch、roll、vertical speed、p、q、r。
+- 為目前測試有用的 magnetic-heading availability／實際磁航向、pitch、roll、vertical speed、p、q、r。
 
 最後一組即使同時存在於 state CSV 也可註冊，因為 Indicator 需要即時對照；資料重複是兩個工具面向不同用途的刻意選擇。
 
@@ -437,7 +437,7 @@ Wide format 讓 Indicator 與 CSV 都使用「一組具名通道的最新快照�
 
 ### Step 0：保留目前飛機狀態基線
 
-- 保留已加入 FrameOutput／state CSV 的 IAS、垂直速度、heading、姿態與角速度。
+- 保留已加入 FrameOutput／state CSV 的 IAS、垂直速度、world yaw、姿態與角速度。
 - 固定現有 native tests 與 export baseline。
 - 不在此步修改控制行為。
 
