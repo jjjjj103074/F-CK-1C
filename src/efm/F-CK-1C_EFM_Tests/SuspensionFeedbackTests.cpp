@@ -15,7 +15,7 @@ void test_feedback_value_input(Tests::Context& context)
 	TEST_EXPECT(context, state.feedback_valid[1]);
 	TEST_EXPECT(context, state.weight_on_wheel[1]);
 	TEST_EXPECT_NEAR(
-		context, state.force_magnitude[1], 5.0, kTolerance);
+		context, state.force_magnitude_n[1], 5.0, kTolerance);
 	TEST_EXPECT(
 		context,
 		!Core::Systems::update_suspension_feedback(

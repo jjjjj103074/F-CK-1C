@@ -56,6 +56,61 @@ Cockpit presentation is one-way. `CockpitSnapshotExporter` writes completed
 C++ snapshot values to generated DCS parameters. AP／A/T parameters are not
 read back into `FrameInput` or used as Core state.
 
+Cockpit-only DCS sensor APIs are a separate observation path. The HMCS Lua
+adapter samples `getMagneticHeading()` at the Project-defined 64 Hz rate and
+writes `OBS_MAGNETIC_HEADING_AVAILABLE` plus
+`OBS_MAGNETIC_HEADING_RAD`. `CockpitBridge` converts the DCS parameter radians
+once into the typed continuous-degree `MagneticHeadingObservation`. Missing
+data stays explicitly unavailable;
+the bridge never substitutes EFM world yaw. DCS body yaw is preserved as
+`world_yaw_rad` for simulator orientation and state CSV output.
+
+The same adapter samples `getBarometricAltitude()` and writes
+`OBS_PRESSURE_ALTITUDE_AVAILABLE` plus `OBS_PRESSURE_ALTITUDE_M`.
+`CockpitBridge` converts metres to the typed feet-based
+`PressureAltitudeObservation`. Missing data stays unavailable; the bridge and
+Core never substitute geometric ASL altitude for an AFCS pressure-altitude
+measurement.
+
+## Kinematics adapter and unit contract
+
+The project-wide normative contract is
+[`docs/EFM_UNIT_CONVENTIONS.md`](../../../../docs/EFM_UNIT_CONVENTIONS.md).
+DCSBridge owns only the conversions at the simulator ABI boundary.
+
+The DCS body-state callback establishes the Core local-body handedness.
+`DcsKinematicsAdapter` names the rotational components once without changing
+their signs:
+
+| DCS body component | Canonical aircraft signal | Core unit | Positive direction |
+|---|---|---|---|
+| `x` angular component | roll | rad/s or rad/s^2 | right roll |
+| `z` angular component | pitch | rad/s or rad/s^2 | nose up |
+| `y` angular component | yaw | rad/s or rad/s^2 | nose left |
+
+All DCS callback contracts name their physical units. Atmosphere uses m, K,
+m/s, kg/m^3, and Pa. Surface height and mass geometry use m; mass and inertia
+use kg and kg*m^2. World/body kinematics use m, m/s, m/s^2, rad, rad/s, and
+rad/s^2. Suspension uses N, m, and m/s. DCS `yaw` remains `world_yaw_rad`; it
+is simulator world orientation and must not be substituted for aviation
+heading.
+
+This convention continues through manual controls, FCC/AFCS references,
+actuator commands, aerodynamic forces and moments, telemetry, and CSV. A right
+yaw or right rudder command is negative; a left yaw is positive. Force/moment
+outputs retain DCS local axes (x forward, y up, z right) and use N, N*m, and m.
+
+Aviation heading is a separate cockpit observation. Lua publishes
+`getMagneticHeading()` in radians and `CockpitBridge` converts it once to the
+continuous magnetic degrees used by the AFCS and whole-degree Heading Set
+storage. Heading Set is wrapped to 0..359 degrees; lateral guidance converts
+its completed bank-reference output to radians at the guidance/control-law
+seam.
+
+DCS's engine-temperature parameter uses Celsius. Core retains atmosphere
+temperature in kelvin; `ParamExport` performs the only K-to-C conversion before
+adding the project-defined engine temperature rise.
+
 Fuel getters use `BridgeContext::query_core_preparation`; flight-preparation
 setters use `BridgeContext::perform_core_preparation`.
 Each completed `FrameOutput` mass effect is queued by `OutputStore`.
@@ -309,13 +364,14 @@ Flight-control telemetry uses explicit layers rather than a generic `command`:
   after per-axis reference selection and before guidance coordination.
 - `flight_control_*_reference_*` records the coordinated maneuver reference
   consumed by the shared FBW control path.
-- `flight_control_*_command_normalized` records FCC effector demand.
+- `flight_control_*_demand_rad` records physical FCC primary-surface demand.
 - `flight_control_constraint_*` and `afcs_*reason` record typed constraint,
   degradation, disconnect, and engage/disengage results.
 
-Angles use radians, angular rates use radians per second, altitude uses metres,
-vertical speed uses metres per second, normal acceleration uses g, and effector
-commands remain normalized authority. The FCC and AFCS snapshot revisions make
+Attitude and aerodynamic angles use radians, angular rates use radians per
+second, AFCS altitude uses feet, AFCS vertical speed uses feet per second,
+magnetic heading uses degrees, normal acceleration uses g, and primary-surface
+demands use radians. The FCC and AFCS snapshot revisions make
 the row a read-only observation; CSV values must never be read back into Core
 control state.
 

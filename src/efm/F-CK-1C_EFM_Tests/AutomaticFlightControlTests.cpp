@@ -2,7 +2,6 @@
 #include "AutomaticFlightControlTestSupport.h"
 
 #include "Common/Units.h"
-#include "Core/Systems/FlightControlComputer/Autopilot/LateralGuidance.h"
 
 #include <cmath>
 #include <iterator>
@@ -12,11 +11,11 @@ namespace
 using namespace AutomaticFlightControlTestSupport;
 
 constexpr double kNegativeHeadingCaptureDeg = -10.0;
-constexpr double kCanonicalCapturedHeadingDeg = 350.0;
-constexpr double kCanonicalAdjustedHeadingDeg = 351.0;
+constexpr int kCanonicalCapturedHeadingDeg = 350;
+constexpr int kCanonicalAdjustedHeadingDeg = 351;
 constexpr double kHardEnvelopeViolationRollDeg = 60.1;
 constexpr double kIntegralTestDtS = 0.1;
-constexpr double kIntegralTestHeadingErrorRad = 1.0;
+constexpr int kIntegralTestHeadingErrorDeg = 1;
 constexpr int kConstrainedIntegralTicks = 20;
 
 void test_autopilot_engage_boundaries(Tests::Context& context)
@@ -38,11 +37,11 @@ void test_autopilot_engage_boundaries(Tests::Context& context)
 	TEST_EXPECT(
 		context,
 		boundary.snapshot().vertical_mode ==
-			AutomaticFlightControlVerticalMode::PitchHold);
+			AutomaticFlightControlVerticalMode::PitchAttitudeHold);
 	TEST_EXPECT(
 		context,
 		boundary.snapshot().lateral_mode ==
-			AutomaticFlightControlLateralMode::HeadingHold);
+			AutomaticFlightControlLateralMode::RollAttitudeHold);
 }
 
 void test_attitude_and_ground_engage_gates(Tests::Context& context)
@@ -88,6 +87,91 @@ void test_attitude_boundary_is_inclusive(Tests::Context& context)
 	TEST_EXPECT(context, control.snapshot().master_engaged);
 }
 
+void test_heading_select_requires_magnetic_heading(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	auto observation = nominal_observation();
+	observation.magnetic_heading_available = false;
+	(void)step(control, observation);
+	send(control, CommandId::SelectAutopilotHeadingSelect);
+	(void)step(control, observation);
+	send(control, CommandId::EngageAutopilot);
+	(void)step(control, observation);
+	TEST_EXPECT(context, !control.snapshot().master_engaged);
+	TEST_EXPECT(
+		context,
+		control.snapshot().autopilot_engage_rejection_reason ==
+			AutomaticFlightControlReason::MagneticHeadingUnavailable);
+}
+
+void test_heading_select_releases_lateral_channel_when_heading_is_lost(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	auto observation = nominal_observation();
+	(void)step(control, observation);
+	send(control, CommandId::SelectAutopilotHeadingSelect);
+	prime_and_engage(control, observation);
+	observation.magnetic_heading_available = false;
+	(void)step(control, observation);
+	TEST_EXPECT(context, control.snapshot().master_engaged);
+	TEST_EXPECT(
+		context,
+		control.snapshot().lateral_mode ==
+			AutomaticFlightControlLateralMode::Off);
+	TEST_EXPECT(context, control.snapshot().lateral_degraded);
+	TEST_EXPECT(
+		context,
+		control.snapshot().degradation_reason ==
+			Core::FlightControlDegradationReason::MagneticHeadingUnavailable);
+
+	observation.magnetic_heading_available = true;
+	send(control, CommandId::SelectAutopilotHeadingSelect);
+	(void)step(control, observation);
+	TEST_EXPECT(
+		context,
+		control.snapshot().lateral_mode ==
+			AutomaticFlightControlLateralMode::HeadingSelect);
+	TEST_EXPECT(context, !control.snapshot().lateral_degraded);
+}
+
+void test_altitude_hold_requires_pressure_altitude(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	auto observation = nominal_observation();
+	observation.pressure_altitude_available = false;
+	(void)step(control, observation);
+	send(control, CommandId::SelectAutopilotAltitudeHold);
+	send(control, CommandId::EngageAutopilot);
+	(void)step(control, observation);
+	TEST_EXPECT(context, !control.snapshot().master_engaged);
+	TEST_EXPECT(context,
+		control.snapshot().autopilot_engage_rejection_reason ==
+			AutomaticFlightControlReason::PressureAltitudeUnavailable);
+}
+
+void test_altitude_hold_releases_vertical_channel_when_altitude_is_lost(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	auto observation = nominal_observation();
+	(void)step(control, observation);
+	send(control, CommandId::SelectAutopilotAltitudeHold);
+	prime_and_engage(control, observation);
+	observation.pressure_altitude_available = false;
+	(void)step(control, observation);
+	TEST_EXPECT(context, control.snapshot().master_engaged);
+	TEST_EXPECT(context,
+		control.snapshot().vertical_mode ==
+			AutomaticFlightControlVerticalMode::Off);
+	TEST_EXPECT(context, control.snapshot().vertical_degraded);
+	TEST_EXPECT(context,
+		control.snapshot().degradation_reason ==
+			Core::FlightControlDegradationReason::PressureAltitudeUnavailable);
+}
+
 void test_engage_command_uses_next_tick_observation(
 	Tests::Context& context)
 {
@@ -97,7 +181,7 @@ void test_engage_command_uses_next_tick_observation(
 	send(control, CommandId::EngageAutopilot);
 	TEST_EXPECT(context, !control.snapshot().master_engaged);
 	observation.pitch_rad += Common::rad(1.0);
-	observation.heading_rad += Common::rad(2.0);
+	observation.roll_rad += Common::rad(2.0);
 	(void)step(control, observation);
 	TEST_EXPECT(context, control.snapshot().master_engaged);
 	TEST_EXPECT_NEAR(
@@ -105,11 +189,9 @@ void test_engage_command_uses_next_tick_observation(
 		control.snapshot().target_pitch_rad,
 		observation.pitch_rad,
 		kTolerance);
-	TEST_EXPECT_NEAR(
+	TEST_EXPECT(
 		context,
-		control.snapshot().target_heading_rad,
-		observation.heading_rad,
-		kTolerance);
+		control.snapshot().bank_angle_reference_rad < 0.0);
 }
 
 void test_pending_commands_preserve_arrival_order(Tests::Context& context)
@@ -118,8 +200,8 @@ void test_pending_commands_preserve_arrival_order(Tests::Context& context)
 	const AutomaticFlightControlObservation observation =
 		nominal_observation();
 	(void)step(control, observation);
-	send(control, CommandId::EngageAutopilot);
 	send(control, CommandId::SelectAutopilotAltitudeHold);
+	send(control, CommandId::EngageAutopilot);
 	TEST_EXPECT(context, !control.snapshot().master_engaged);
 	(void)step(control, observation);
 	TEST_EXPECT(context, control.snapshot().master_engaged);
@@ -129,9 +211,40 @@ void test_pending_commands_preserve_arrival_order(Tests::Context& context)
 			AutomaticFlightControlVerticalMode::AltitudeHold);
 	TEST_EXPECT_NEAR(
 		context,
-		control.snapshot().target_altitude_m,
-		observation.altitude_m,
+		control.snapshot().target_altitude_ft,
+		observation.pressure_altitude_ft,
 		kTolerance);
+}
+
+void test_f16ab_mode_switches_preselect_without_engaging(
+	Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	const AutomaticFlightControlObservation observation =
+		nominal_observation();
+	(void)step(control, observation);
+	send(control, CommandId::SelectAutopilotAltitudeHold);
+	send(control, CommandId::SelectAutopilotHeadingSelect);
+	(void)step(control, observation);
+	TEST_EXPECT(context, !control.snapshot().master_engaged);
+	TEST_EXPECT(
+		context,
+		control.snapshot().vertical_mode ==
+			AutomaticFlightControlVerticalMode::Off);
+	TEST_EXPECT(
+		context,
+		control.snapshot().lateral_mode ==
+			AutomaticFlightControlLateralMode::Off);
+	send(control, CommandId::EngageAutopilot);
+	(void)step(control, observation);
+	TEST_EXPECT(
+		context,
+		control.snapshot().vertical_mode ==
+			AutomaticFlightControlVerticalMode::AltitudeHold);
+	TEST_EXPECT(
+		context,
+		control.snapshot().lateral_mode ==
+			AutomaticFlightControlLateralMode::HeadingSelect);
 }
 
 void test_default_capture_and_controller_direction(Tests::Context& context)
@@ -147,16 +260,18 @@ void test_default_capture_and_controller_direction(Tests::Context& context)
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		control.snapshot().target_heading_rad,
-		observation.heading_rad,
+		control.snapshot().bank_angle_reference_rad,
+		observation.roll_rad,
 		kTolerance);
 	observation.pitch_rad += Common::rad(2.0);
-	observation.heading_rad += Common::rad(2.0);
+	observation.roll_rad += Common::rad(2.0);
 	const auto& demand = step(control, observation);
 	TEST_EXPECT(
 		context,
 		demand.pitch_attitude_reference_rad < observation.pitch_rad);
-	TEST_EXPECT(context, demand.bank_angle_reference_rad < 0.0);
+	TEST_EXPECT(
+		context,
+		demand.bank_angle_reference_rad < observation.roll_rad);
 }
 
 void test_pitch_controller_characterization(Tests::Context& context)
@@ -172,30 +287,16 @@ void test_pitch_controller_characterization(Tests::Context& context)
 		kTolerance);
 }
 
-void test_vertical_speed_controller_characterization(
-	Tests::Context& context)
-{
-	AutomaticFlightControl control = make_control();
-	AutomaticFlightControlObservation observation = nominal_observation();
-	observation.vertical_speed_mps = 4.0;
-	prime_and_engage(control, observation);
-	send(control, CommandId::SelectAutopilotVerticalSpeedHold);
-	(void)step(control, observation);
-	observation.vertical_speed_mps = 3.0;
-	TEST_EXPECT_NEAR(
-		context,
-		step(control, observation).vertical_speed_reference_mps,
-		4.0,
-		kTolerance);
-}
-
 void test_heading_controller_characterization(Tests::Context& context)
 {
 	AutomaticFlightControl control = make_control();
 	AutomaticFlightControlObservation observation = nominal_observation();
+	observation.magnetic_heading_deg = 0.0;
 	observation.roll_rad = 0.0;
+	(void)step(control, observation);
+	send(control, CommandId::SelectAutopilotHeadingSelect);
 	prime_and_engage(control, observation);
-	observation.heading_rad += 0.01;
+	observation.magnetic_heading_deg += Common::deg(0.01);
 	TEST_EXPECT_NEAR(
 		context,
 		step(control, observation).bank_angle_reference_rad,
@@ -203,71 +304,40 @@ void test_heading_controller_characterization(Tests::Context& context)
 		Common::rad(0.01));
 }
 
-void test_vertical_modes_and_adjustments(Tests::Context& context)
+void test_altitude_hold_captures_current_altitude(Tests::Context& context)
 {
 	AutomaticFlightControl control = make_control();
 	AutomaticFlightControlObservation observation = nominal_observation();
-	observation.vertical_speed_mps = 4.0;
 	prime_and_engage(control, observation);
-	send(control, CommandId::SelectAutopilotVerticalSpeedHold);
-	(void)step(control, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		control.snapshot().target_vertical_speed_mps,
-		4.0,
-		kTolerance);
-	send(control, CommandId::IncreaseAutopilotVerticalReference);
-	(void)step(control, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		control.snapshot().target_vertical_speed_mps,
-		5.0,
-		kTolerance);
-	observation.vertical_speed_mps = 3.0;
-	TEST_EXPECT(
-		context,
-		step(control, observation).vertical_speed_reference_mps >
-			observation.vertical_speed_mps);
-
 	send(control, CommandId::SelectAutopilotAltitudeHold);
-	send(control, CommandId::IncreaseAutopilotVerticalReference);
 	(void)step(control, observation);
 	TEST_EXPECT_NEAR(
 		context,
-		control.snapshot().target_altitude_m,
-		kNominalAltitudeM + 30.48,
+		control.snapshot().target_altitude_ft,
+		kNominalAltitudeFt,
 		kTolerance);
-	observation.altitude_m = kNominalAltitudeM - 100.0;
+	observation.pressure_altitude_ft = kNominalAltitudeFt - 100.0;
+	send(control, CommandId::SelectAutopilotAltitudeHold);
 	TEST_EXPECT(
 		context,
-		step(control, observation).vertical_speed_reference_mps > 0.0);
+		step(control, observation).vertical_speed_reference_ft_s > 0.0);
+	TEST_EXPECT_NEAR(
+		context,
+		control.snapshot().target_altitude_ft,
+		kNominalAltitudeFt,
+		kTolerance);
 }
 
-void test_heading_wrap_and_navigation_placeholder(Tests::Context& context)
+void test_heading_wrap(Tests::Context& context)
 {
 	AutomaticFlightControl control = make_control();
 	AutomaticFlightControlObservation observation = nominal_observation();
-	observation.heading_rad = Common::rad(359.5);
-	prime_and_engage(control, observation);
-	send(control, CommandId::IncreaseAutopilotLateralReference);
+	observation.magnetic_heading_deg = 359.0;
 	(void)step(control, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		control.snapshot().target_heading_rad,
-		Common::rad(0.5),
-		kTolerance);
-	send(control, CommandId::SelectAutopilotNavigationTrack);
+	send(control, CommandId::SelectAutopilotHeadingSelect);
+	send(control, CommandId::IncreaseAutopilotHeadingSelect);
 	(void)step(control, observation);
-	TEST_EXPECT(
-		context,
-		control.snapshot().lateral_mode ==
-			AutomaticFlightControlLateralMode::NavigationTrack);
-	observation.roll_rad = Common::rad(20.0);
-	TEST_EXPECT_NEAR(
-		context,
-		step(control, observation).bank_angle_reference_rad,
-		0.0,
-		kTolerance);
+	TEST_EXPECT(context, control.snapshot().target_heading_deg == 0);
 }
 
 void test_negative_heading_capture_uses_canonical_display_range(
@@ -275,20 +345,27 @@ void test_negative_heading_capture_uses_canonical_display_range(
 {
 	AutomaticFlightControl control = make_control();
 	AutomaticFlightControlObservation observation = nominal_observation();
-	observation.heading_rad = Common::rad(kNegativeHeadingCaptureDeg);
-	prime_and_engage(control, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		control.snapshot().target_heading_rad,
-		Common::rad(kCanonicalCapturedHeadingDeg),
-		kTolerance);
-	send(control, CommandId::IncreaseAutopilotLateralReference);
+	observation.magnetic_heading_deg = kNegativeHeadingCaptureDeg;
 	(void)step(control, observation);
-	TEST_EXPECT_NEAR(
+	send(control, CommandId::SelectAutopilotHeadingSelect);
+	(void)step(control, observation);
+	TEST_EXPECT(
 		context,
-		control.snapshot().target_heading_rad,
-		Common::rad(kCanonicalAdjustedHeadingDeg),
-		kTolerance);
+		control.snapshot().target_heading_deg ==
+			kCanonicalCapturedHeadingDeg);
+	send(control, CommandId::IncreaseAutopilotHeadingSelect);
+	(void)step(control, observation);
+	TEST_EXPECT(
+		context,
+		control.snapshot().target_heading_deg ==
+			kCanonicalAdjustedHeadingDeg);
+	observation.magnetic_heading_deg = 90.0;
+	send(control, CommandId::SelectAutopilotHeadingSelect);
+	(void)step(control, observation);
+	TEST_EXPECT(
+		context,
+		control.snapshot().target_heading_deg ==
+			kCanonicalAdjustedHeadingDeg);
 }
 
 void test_lateral_constraint_freezes_integral(Tests::Context& context)
@@ -298,27 +375,40 @@ void test_lateral_constraint_freezes_integral(Tests::Context& context)
 	config.heading_ki = 1.0;
 	config.bank_limit_rad = 1.0;
 	config.roll_reference_rate_rad_s = 1.0;
-	Core::Systems::LateralGuidance constrained(config);
-	Core::Systems::LateralGuidance fresh(config);
+	config.heading_select_step_deg = kIntegralTestHeadingErrorDeg;
+	AutomaticFlightControl constrained(config, false);
+	AutomaticFlightControl fresh(config, false);
 	auto observation = nominal_observation();
 	observation.dt_s = kIntegralTestDtS;
-	observation.heading_rad = 0.0;
+	observation.magnetic_heading_deg = 0.0;
 	observation.roll_rad = 0.0;
+	for (AutomaticFlightControl* control : { &constrained, &fresh })
+	{
+		(void)step(*control, observation);
+		send(*control, CommandId::SelectAutopilotHeadingSelect);
+		send(*control, CommandId::IncreaseAutopilotHeadingSelect);
+		send(*control, CommandId::EngageAutopilot);
+		(void)step(*control, observation);
+	}
+	Core::Systems::FlightControlCommandMonitorInput monitor;
+	monitor.dt_s = observation.dt_s;
+	monitor.lateral_active = true;
+	monitor.constraint.lateral_constrained = true;
+	monitor.constraint.reason =
+		Core::Systems::ConstraintReason::LateralConstrainedByVerticalAuthority;
 	for (int tick = 0; tick < kConstrainedIntegralTicks; ++tick)
 	{
-		const auto reference = constrained.update(
-			{ observation, kIntegralTestHeadingErrorRad, true, true });
-		TEST_EXPECT_NEAR(context, reference.bank_angle_rad, 0.0, kTolerance);
+		constrained.observe_control_result(monitor);
+		(void)step(constrained, observation);
 	}
-	const auto recovered = constrained.update(
-		{ observation, kIntegralTestHeadingErrorRad, true, false });
-	const auto first_unconstrained = fresh.update(
-		{ observation, kIntegralTestHeadingErrorRad, true, false });
+	monitor.constraint = {};
+	constrained.observe_control_result(monitor);
+	const double recovered =
+		step(constrained, observation).bank_angle_reference_rad;
+	const double first_unconstrained =
+		step(fresh, observation).bank_angle_reference_rad;
 	TEST_EXPECT_NEAR(
-		context,
-		recovered.bank_angle_rad,
-		first_unconstrained.bank_angle_rad,
-		kTolerance);
+		context, recovered, first_unconstrained, kTolerance);
 }
 
 void test_bypass_freeze_and_recapture(Tests::Context& context)
@@ -329,7 +419,7 @@ void test_bypass_freeze_and_recapture(Tests::Context& context)
 	send(control, CommandId::SetAutopilotBypass);
 	(void)step(control, observation);
 	observation.pitch_rad += Common::rad(2.0);
-	observation.heading_rad += Common::rad(2.0);
+	observation.roll_rad += Common::rad(2.0);
 	const auto& bypass_demand = step(control, observation);
 	TEST_EXPECT(context, control.snapshot().bypass_active);
 	TEST_EXPECT_NEAR(
@@ -344,11 +434,9 @@ void test_bypass_freeze_and_recapture(Tests::Context& context)
 		control.snapshot().target_pitch_rad,
 		observation.pitch_rad,
 		kTolerance);
-	TEST_EXPECT_NEAR(
+	TEST_EXPECT(
 		context,
-		control.snapshot().target_heading_rad,
-		observation.heading_rad,
-		kTolerance);
+		control.snapshot().bank_angle_reference_rad < 0.0);
 }
 
 void test_bypass_always_recaptures_on_release(Tests::Context& context)
@@ -359,7 +447,7 @@ void test_bypass_always_recaptures_on_release(Tests::Context& context)
 	send(control, CommandId::SetAutopilotBypass);
 	(void)step(control, observation);
 	observation.pitch_rad += Common::rad(0.5);
-	observation.heading_rad += Common::rad(0.5);
+	observation.roll_rad += Common::rad(0.5);
 	(void)step(control, observation);
 	send(control, CommandId::SetAutopilotBypass, 0.0);
 	(void)step(control, observation);
@@ -368,11 +456,9 @@ void test_bypass_always_recaptures_on_release(Tests::Context& context)
 		control.snapshot().target_pitch_rad,
 		observation.pitch_rad,
 		kTolerance);
-	TEST_EXPECT_NEAR(
+	TEST_EXPECT(
 		context,
-		control.snapshot().target_heading_rad,
-		observation.heading_rad,
-		kTolerance);
+		control.snapshot().bank_angle_reference_rad < 0.0);
 }
 
 void test_pitch_hold_stick_steering_is_axis_specific(
@@ -417,7 +503,7 @@ void test_path_modes_do_not_use_attitude_stick_steering(
 	AutomaticFlightControl control = make_control();
 	AutomaticFlightControlObservation observation = nominal_observation();
 	prime_and_engage(control, observation);
-	send(control, CommandId::SelectAutopilotVerticalSpeedHold);
+	send(control, CommandId::SelectAutopilotAltitudeHold);
 	observation.conditioned_pitch_input_normalized = 0.5;
 	const auto demand = step(control, observation);
 	TEST_EXPECT(
@@ -473,148 +559,7 @@ void test_hard_envelope_disconnects_engaged_autopilot(
 	TEST_EXPECT(
 		context,
 		control.snapshot().disconnect_reason ==
-			Core::Systems::DisconnectReason::SafetyCondition);
-}
-
-void test_auto_throttle_engage_gates(Tests::Context& context)
-{
-	AutomaticFlightControlObservation observation = nominal_observation();
-	observation.mach = 0.95;
-	AutomaticFlightControl boundary = make_control();
-	(void)step(boundary, observation);
-	send(boundary, CommandId::EngageAutoThrottle);
-	(void)step(boundary, observation);
-	TEST_EXPECT(context, boundary.snapshot().auto_throttle_engaged);
-
-	observation.mach = 0.951;
-	AutomaticFlightControl fast = make_control();
-	(void)step(fast, observation);
-	send(fast, CommandId::EngageAutoThrottle);
-	(void)step(fast, observation);
-	TEST_EXPECT(context, !fast.snapshot().auto_throttle_engaged);
-	TEST_EXPECT(
-		context,
-		fast.snapshot().auto_throttle_engage_rejection_reason ==
-			AutomaticFlightControlReason::MachLimit);
-
-	observation = nominal_observation();
-	observation.weight_on_wheels = true;
-	AutomaticFlightControl ground = make_control();
-	(void)step(ground, observation);
-	send(ground, CommandId::EngageAutoThrottle);
-	(void)step(ground, observation);
-	TEST_EXPECT(context, !ground.snapshot().auto_throttle_engaged);
-	TEST_EXPECT(
-		context,
-		ground.snapshot().auto_throttle_engage_rejection_reason ==
-			AutomaticFlightControlReason::WeightOnWheels);
-}
-
-double run_mach_guard(const double* steps, std::size_t count)
-{
-	AutomaticFlightControl control = make_control();
-	AutomaticFlightControlObservation observation = nominal_observation();
-	(void)step(control, observation);
-	send(control, CommandId::EngageAutoThrottle);
-	(void)step(control, observation);
-	observation.mach = 0.96;
-	for (std::size_t index = 0; index < count; ++index)
-	{
-		observation.dt_s = steps[index];
-		(void)step(control, observation);
-	}
-	return control.snapshot().throttle_command_normalized;
-}
-
-void test_mach_guard_uses_elapsed_time(Tests::Context& context)
-{
-	const double fixed[] = { 0.02 };
-	const double irregular[] = { 0.003, 0.007, 0.01 };
-	TEST_EXPECT_NEAR(
-		context,
-		run_mach_guard(fixed, std::size(fixed)),
-		run_mach_guard(irregular, std::size(irregular)),
-		kTolerance);
-}
-
-void test_auto_throttle_target_limits(Tests::Context& context)
-{
-	AutomaticFlightControl control = make_control();
-	AutomaticFlightControlObservation observation = nominal_observation();
-	observation.indicated_airspeed_mps = knots(548.0);
-	(void)step(control, observation);
-	send(control, CommandId::EngageAutoThrottle);
-	send(control, CommandId::IncreaseAutopilotSpeed);
-	(void)step(control, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		control.snapshot().target_speed_mps,
-		knots(550.0),
-		kTolerance);
-	send(control, CommandId::IncreaseAutopilotSpeed);
-	(void)step(control, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		control.snapshot().target_speed_mps,
-		knots(550.0),
-		kTolerance);
-
-	AutomaticFlightControl minimum = make_control();
-	observation.indicated_airspeed_mps = knots(202.0);
-	(void)step(minimum, observation);
-	send(minimum, CommandId::EngageAutoThrottle);
-	send(minimum, CommandId::DecreaseAutopilotSpeed);
-	(void)step(minimum, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		minimum.snapshot().target_speed_mps,
-		knots(200.0),
-		kTolerance);
-	send(minimum, CommandId::DecreaseAutopilotSpeed);
-	(void)step(minimum, observation);
-	TEST_EXPECT_NEAR(
-		context,
-		minimum.snapshot().target_speed_mps,
-		knots(200.0),
-		kTolerance);
-}
-
-void test_auto_throttle_controller_characterization(
-	Tests::Context& context)
-{
-	AutomaticFlightControl control = make_control();
-	AutomaticFlightControlObservation observation = nominal_observation();
-	(void)step(control, observation);
-	send(control, CommandId::EngageAutoThrottle);
-	(void)step(control, observation);
-	observation.indicated_airspeed_mps -= 1.0;
-	TEST_EXPECT_NEAR(
-		context,
-		step(control, observation).experimental_throttle_normalized,
-		0.51506,
-		kTolerance);
-}
-
-void test_commanded_disconnect_resets_both_channels(
-	Tests::Context& context)
-{
-	AutomaticFlightControl control = make_control();
-	const AutomaticFlightControlObservation observation =
-		nominal_observation();
-	prime_and_engage(control, observation);
-	send(control, CommandId::EngageAutoThrottle);
-	send(control, CommandId::DisengageAutopilot);
-	(void)step(control, observation);
-	TEST_EXPECT(context, !control.snapshot().master_engaged);
-	TEST_EXPECT(context, !control.snapshot().auto_throttle_engaged);
-	TEST_EXPECT(
-		context,
-		control.snapshot().autopilot_disengage_reason ==
-			AutomaticFlightControlReason::Commanded);
-	TEST_EXPECT(
-		context,
-		control.snapshot().auto_throttle_disengage_reason ==
-			AutomaticFlightControlReason::Commanded);
+			Core::FlightControlDisconnectReason::SafetyCondition);
 }
 
 }
@@ -624,16 +569,20 @@ void run_automatic_flight_control_tests(Tests::Context& context)
 	test_autopilot_engage_boundaries(context);
 	test_attitude_and_ground_engage_gates(context);
 	test_attitude_boundary_is_inclusive(context);
+	test_heading_select_requires_magnetic_heading(context);
+	test_heading_select_releases_lateral_channel_when_heading_is_lost(context);
+	test_altitude_hold_requires_pressure_altitude(context);
+	test_altitude_hold_releases_vertical_channel_when_altitude_is_lost(context);
 	test_engage_command_uses_next_tick_observation(context);
 	test_pending_commands_preserve_arrival_order(context);
+	test_f16ab_mode_switches_preselect_without_engaging(context);
 	test_default_capture_and_controller_direction(context);
 	test_pitch_controller_characterization(context);
-	test_vertical_speed_controller_characterization(context);
 	// The legacy normalized-command plant is replaced by the Phase 9
 	// physical-reference closed-loop harness.
 	test_heading_controller_characterization(context);
-	test_vertical_modes_and_adjustments(context);
-	test_heading_wrap_and_navigation_placeholder(context);
+	test_altitude_hold_captures_current_altitude(context);
+	test_heading_wrap(context);
 	test_negative_heading_capture_uses_canonical_display_range(context);
 	test_lateral_constraint_freezes_integral(context);
 	test_bypass_freeze_and_recapture(context);
@@ -642,9 +591,4 @@ void run_automatic_flight_control_tests(Tests::Context& context)
 	test_path_modes_do_not_use_attitude_stick_steering(context);
 	test_disconnect_guards(context);
 	test_hard_envelope_disconnects_engaged_autopilot(context);
-	test_auto_throttle_engage_gates(context);
-	test_mach_guard_uses_elapsed_time(context);
-	test_auto_throttle_target_limits(context);
-	test_auto_throttle_controller_characterization(context);
-	test_commanded_disconnect_resets_both_channels(context);
 }

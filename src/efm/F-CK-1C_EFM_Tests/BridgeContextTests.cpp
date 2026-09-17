@@ -188,9 +188,10 @@ void expect_prepared_frame_input(
 		tests,
 		input.availability.suspension[kPreparedSuspensionIndex]);
 	TEST_EXPECT_NEAR(
-		tests, input.atmosphere.altitude_asl, kPreparedAltitudeAslM, 0.0);
+		tests, input.atmosphere.altitude_asl_m, kPreparedAltitudeAslM, 0.0);
 	TEST_EXPECT_NEAR(
-		tests, input.world_kinematics.position.z, kPreparedPositionWorldZM, 0.0);
+		tests, input.world_kinematics.position_world_m.z,
+		kPreparedPositionWorldZM, 0.0);
 }
 
 void test_first_callback_initializes_once(Tests::Context& tests)
@@ -318,7 +319,7 @@ void test_repeated_start_warns_without_resetting_input(Tests::Context& tests)
 		context.input_collector().snapshot(kPreparedStepS);
 	TEST_EXPECT(tests, retained.availability.atmosphere);
 	TEST_EXPECT_NEAR(
-		tests, retained.atmosphere.altitude_asl, kPreparedAltitudeAslM, 0.0);
+		tests, retained.atmosphere.altitude_asl_m, kPreparedAltitudeAslM, 0.0);
 	const std::string log = TestFiles::read_text_while_open(
 		root.path() / "log" / "fck1c_efm.log");
 	const std::size_t warning = log.find(kRepeatedStartWarning);
@@ -350,9 +351,9 @@ void test_mass_delivery_drains_output_queue(Tests::Context& tests)
 	TEST_EXPECT(tests, first_result.available);
 	TEST_EXPECT(tests, second_result.available);
 	TEST_EXPECT_NEAR(
-		tests, first_result.delta.mass, kFirstQueuedMassKg, 0.0);
+		tests, first_result.delta.mass_kg, kFirstQueuedMassKg, 0.0);
 	TEST_EXPECT_NEAR(
-		tests, second_result.delta.mass, kSecondQueuedMassKg, 0.0);
+		tests, second_result.delta.mass_kg, kSecondQueuedMassKg, 0.0);
 	TEST_EXPECT(tests, !context.take_flight_mass_delta().available);
 }
 
@@ -544,7 +545,7 @@ void expect_first_step_uses_prepared_input(
 		0.0);
 	TEST_EXPECT_NEAR(
 		tests,
-		first_step.force_moment.center_of_mass.x,
+		first_step.force_moment.center_of_mass_body_m.x,
 		kPreparedCenterOfMassXM,
 		0.0);
 }
@@ -563,7 +564,7 @@ void test_release_allows_next_flight_preparation(Tests::Context& tests)
 	TEST_EXPECT_NEAR(
 		tests,
 		context.query_core_preparation(
-			[](const Core::Fck1cEfm& core) { return core.internal_fuel(); }),
+			[](const Core::Fck1cEfm& core) { return core.internal_fuel_kg(); }),
 		kPreparedInternalFuelKg,
 		0.0);
 	TEST_EXPECT(tests, !context.take_flight_mass_delta().available);
@@ -578,9 +579,9 @@ void test_release_allows_next_flight_preparation(Tests::Context& tests)
 	const std::optional<Core::FrameOutput> output = context.output_store().read();
 	TEST_EXPECT(tests, output.has_value());
 	TEST_EXPECT_NEAR(
-		tests, output->fuel.internal_fuel, kPreparedInternalFuelKg, 0.0);
+		tests, output->fuel.internal_fuel_kg, kPreparedInternalFuelKg, 0.0);
 	TEST_EXPECT_NEAR(
-		tests, output->fuel.external_fuel, kPreparedExternalFuelKg, 0.0);
+		tests, output->fuel.external_fuel_kg, kPreparedExternalFuelKg, 0.0);
 	expect_first_step_uses_prepared_input(tests, context);
 }
 

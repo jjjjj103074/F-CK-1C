@@ -19,18 +19,18 @@ public:
 		const AircraftDataView& aircraft,
 		SystemResult& result) override;
 
-	const FuelData& step(const FuelDemand& demand, double dt);
+	const FuelData& step(const FuelDemand& demand, double dt_s);
 	void begin_frame(bool suppress_consumption);
-	void set_internal_fuel(double fuel);
+	void set_internal_fuel(double fuel_kg);
 	void set_external_fuel(const ::Systems::ExternalFuelState& fuel);
-	double internal_fuel() const;
-	double external_fuel() const;
+	double internal_fuel_kg() const;
+	double external_fuel_kg() const;
 	const ::Systems::FuelSystem& state() const;
 	const FuelData& data() const;
 
 private:
 	FlightFuelState management_state() const;
-	const FuelData& update(const FuelDemand& demand, double dt);
+	const FuelData& update(const FuelDemand& demand, double dt_s);
 	void refresh_data();
 
 	::Systems::FuelSystem fuel_;

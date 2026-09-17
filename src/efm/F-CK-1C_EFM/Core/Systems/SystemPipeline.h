@@ -239,7 +239,7 @@ public:
 	DispatchResult apply(const DamageEvent& event);
 	std::size_t apply(const RepairEvent& event);
 	FlightFuelState fuel_state() const;
-	void set_internal_fuel(double fuel);
+	void set_internal_fuel(double fuel_kg);
 	void set_external_fuel(const ExternalFuelInput& fuel);
 	void begin_fuel_frame(bool suppress_consumption);
 	std::size_t system_count() const;

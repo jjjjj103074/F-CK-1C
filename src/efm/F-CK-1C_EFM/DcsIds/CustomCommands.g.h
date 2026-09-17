@@ -47,20 +47,15 @@ static constexpr int TMSRight = 3049;
 static constexpr int NavMode = 3050;
 static constexpr int MissileOverride = 3051;
 static constexpr int SoundTestCycle = 3052;
-static constexpr int APMasterToggle = 3100;
 static constexpr int APMasterOn = 3101;
 static constexpr int APMasterOff = 3102;
 static constexpr int APBypass = 3103;
-static constexpr int APVertPitchHold = 3110;
-static constexpr int APVertVSHold = 3111;
-static constexpr int APVertAltHold = 3112;
-static constexpr int APVertIncrease = 3113;
-static constexpr int APVertDecrease = 3114;
-static constexpr int APLatHeadingHold = 3120;
-static constexpr int APLatHeadingSelect = 3121;
-static constexpr int APLatNavTrack = 3122;
-static constexpr int APLatIncrease = 3123;
-static constexpr int APLatDecrease = 3124;
+static constexpr int APPitchAttitudeHold = 3110;
+static constexpr int APPitchAltitudeHold = 3112;
+static constexpr int APRollAttitudeHold = 3120;
+static constexpr int APRollHeadingSelect = 3121;
+static constexpr int APHeadingSetIncrease = 3123;
+static constexpr int APHeadingSetDecrease = 3124;
 static constexpr int APAutoThrottleToggle = 3130;
 static constexpr int APAutoThrottleOn = 3131;
 static constexpr int APAutoThrottleOff = 3132;
@@ -160,20 +155,15 @@ static constexpr Entry CustomCommands[] = {
     { Commands::NavMode, Route::Cockpit },
     { Commands::MissileOverride, Route::Cockpit },
     { Commands::SoundTestCycle, Route::Cockpit },
-    { Commands::APMasterToggle, Route::Efm },
     { Commands::APMasterOn, Route::Efm },
     { Commands::APMasterOff, Route::Efm },
     { Commands::APBypass, Route::Efm },
-    { Commands::APVertPitchHold, Route::Efm },
-    { Commands::APVertVSHold, Route::Efm },
-    { Commands::APVertAltHold, Route::Efm },
-    { Commands::APVertIncrease, Route::Efm },
-    { Commands::APVertDecrease, Route::Efm },
-    { Commands::APLatHeadingHold, Route::Efm },
-    { Commands::APLatHeadingSelect, Route::Efm },
-    { Commands::APLatNavTrack, Route::Efm },
-    { Commands::APLatIncrease, Route::Efm },
-    { Commands::APLatDecrease, Route::Efm },
+    { Commands::APPitchAttitudeHold, Route::Efm },
+    { Commands::APPitchAltitudeHold, Route::Efm },
+    { Commands::APRollAttitudeHold, Route::Efm },
+    { Commands::APRollHeadingSelect, Route::Efm },
+    { Commands::APHeadingSetIncrease, Route::Efm },
+    { Commands::APHeadingSetDecrease, Route::Efm },
     { Commands::APAutoThrottleToggle, Route::Efm },
     { Commands::APAutoThrottleOn, Route::Efm },
     { Commands::APAutoThrottleOff, Route::Efm },

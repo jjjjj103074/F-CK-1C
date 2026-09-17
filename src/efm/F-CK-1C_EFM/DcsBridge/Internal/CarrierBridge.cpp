@@ -15,7 +15,7 @@ namespace DcsBridge
 namespace Internal
 {
 CarrierBridge::CarrierBridge(const CarrierBridgeConfig& config)
-	: reference_thrust_N_(config.reference_thrust_N)
+	: reference_thrust_n_(config.reference_thrust_n)
 {
 }
 
@@ -31,7 +31,7 @@ bool CarrierBridge::pop_event(
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	if (phase_ != LaunchPhase::Armed ||
-		input.left_throttle_output <= kLaunchThrottleThreshold)
+		input.left_throttle_output_normalized <= kLaunchThrottleThreshold)
 	{
 		return false;
 	}
@@ -39,7 +39,7 @@ bool CarrierBridge::pop_event(
 	output.event_params[0] = kReadyEventPhase;
 	output.event_params[1] = kLaunchStartDelayS;
 	output.event_params[2] = kLaunchAddedVelocityMps;
-	output.event_params[3] = static_cast<float>(reference_thrust_N_);
+	output.event_params[3] = static_cast<float>(reference_thrust_n_);
 	phase_ = LaunchPhase::Issued;
 	return true;
 }

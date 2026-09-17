@@ -41,22 +41,23 @@ void test_invalid_sample_preserves_latest(Tests::Context& context)
 	TEST_EXPECT(context, fixture.root.valid());
 	DcsBridge::Internal::FrameInputCollector collector;
 	Core::AtmosphereInput valid = {};
-	valid.density = kOriginalDensity;
+	valid.density_kg_m3 = kOriginalDensity;
 	TEST_EXPECT(context, DcsBridge::Internal::validate_atmosphere_input(
 		valid, fixture.reporter));
 	collector.publish_atmosphere(valid);
 	Core::AtmosphereInput invalid = valid;
-	invalid.density = std::numeric_limits<double>::quiet_NaN();
+	invalid.density_kg_m3 = std::numeric_limits<double>::quiet_NaN();
 	if (DcsBridge::Internal::validate_atmosphere_input(invalid, fixture.reporter))
 	{
 		collector.publish_atmosphere(invalid);
 	}
 	const Core::FrameInput snapshot = collector.snapshot(kFrameDt);
-	TEST_EXPECT_NEAR(context, snapshot.atmosphere.density, kOriginalDensity, 0.0);
+	TEST_EXPECT_NEAR(
+		context, snapshot.atmosphere.density_kg_m3, kOriginalDensity, 0.0);
 	const std::string log = TestFiles::read_text_while_open(
 		fixture.root.path() / "log" / "fck1c_efm.log");
 	TEST_EXPECT(context, log.find(
-		"callback=ed_fm_set_atmosphere field=density invalid numeric value=nan") !=
+		"callback=ed_fm_set_atmosphere field=density_kg_m3 invalid numeric value=nan") !=
 		std::string::npos);
 }
 
@@ -76,11 +77,11 @@ void test_invalid_typed_inputs_are_rejected(Tests::Context& context)
 	ValidationFixture fixture;
 	const double infinity = std::numeric_limits<double>::infinity();
 	Core::SurfaceInput surface = {};
-	surface.normal.x = infinity;
+	surface.normal_world_unit.x = infinity;
 	TEST_EXPECT(context, !DcsBridge::Internal::validate_surface_input(
 		surface, fixture.reporter));
 	Core::MassStateInput mass = {};
-	mass.mass = infinity;
+	mass.mass_kg = infinity;
 	TEST_EXPECT(context, !DcsBridge::Internal::validate_mass_input(
 		mass, fixture.reporter));
 	Core::WorldKinematicsInput world = {};
@@ -88,11 +89,11 @@ void test_invalid_typed_inputs_are_rejected(Tests::Context& context)
 	TEST_EXPECT(context, !DcsBridge::Internal::validate_world_kinematics_input(
 		world, fixture.reporter));
 	Core::BodyKinematicsInput body = {};
-	body.angle_of_attack = infinity;
+	body.angle_of_attack_rad = infinity;
 	TEST_EXPECT(context, !DcsBridge::Internal::validate_body_kinematics_input(
 		body, fixture.reporter));
 	Core::ExternalFuelInput external = {};
-	external.position.z = infinity;
+	external.position_body_m.z = infinity;
 	TEST_EXPECT(context, !DcsBridge::Internal::validate_external_fuel_input(
 		external, fixture.reporter));
 	TEST_EXPECT(context, !DcsBridge::Internal::validate_internal_fuel_input(
@@ -153,7 +154,7 @@ void test_suspension_rejection_preserves_latest(Tests::Context& context)
 	const Core::FrameInput snapshot = collector.snapshot(kFrameDt);
 	TEST_EXPECT_NEAR(
 		context,
-		snapshot.suspension[0].compression,
+		snapshot.suspension[0].compression_m,
 		kOriginalCompression,
 		0.0);
 }

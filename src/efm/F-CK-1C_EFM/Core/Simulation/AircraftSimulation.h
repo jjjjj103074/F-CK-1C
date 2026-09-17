@@ -20,13 +20,13 @@ namespace Simulation
 {
 struct ExternalFuelLoad
 {
-	double fuel = 0.0;
-	Common::Vec3 position;
+	double fuel_kg = 0.0;
+	Common::Vec3 position_body_m;
 };
 
 struct FlightFuelLoad
 {
-	double internal_fuel = 0.0;
+	double internal_fuel_kg = 0.0;
 	std::map<int, ExternalFuelLoad> external_fuel_by_station;
 };
 
@@ -66,10 +66,10 @@ public:
 	FrameOutput initial_output() const;
 	FrameOutput step(const FrameInput& input);
 	void handle_command(const Command& command);
-	double internal_fuel() const;
-	double external_fuel() const;
+	double internal_fuel_kg() const;
+	double external_fuel_kg() const;
 	FlightFuelLoad fuel_load() const;
-	void set_internal_fuel(double fuel);
+	void set_internal_fuel(double fuel_kg);
 	void set_external_fuel(int station, const ExternalFuelLoad& fuel);
 	void set_infinite_fuel(bool enabled);
 	void set_easy_flight(bool enabled);
@@ -84,7 +84,7 @@ private:
 		const FrameDataAvailability& availability) const;
 	void apply_setup(const FlightSetupContext& setup);
 	void apply_frame_input(const FrameInput& input);
-	void begin_frame(double dt);
+	void begin_frame(double dt_s);
 	Systems::SystemScheduledTime scheduled_time() const;
 
 	AircraftState aircraft_state_;
@@ -96,6 +96,6 @@ private:
 };
 
 AircraftSimulationFactory make_fck1c_aircraft_simulation_factory();
-double carrier_launch_reference_thrust();
+double carrier_launch_reference_thrust_n();
 }
 }

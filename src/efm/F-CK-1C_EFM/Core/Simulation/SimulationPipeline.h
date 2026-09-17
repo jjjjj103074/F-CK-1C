@@ -47,9 +47,9 @@ struct SimulationFrameInput
 struct SimulationResult
 {
 	ForceMomentOutput force_moment;
-	std::array<double, kFrameEngineCount> thrust_force = {};
+	std::array<double, kFrameEngineCount> thrust_force_n = {};
 	MassDeltaResult mass_effect;
-	double shake_amplitude = 0.0;
+	double shake_amplitude_normalized = 0.0;
 };
 
 class SimulationPipeline final

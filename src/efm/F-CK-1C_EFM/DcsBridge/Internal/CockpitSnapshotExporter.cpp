@@ -5,10 +5,7 @@
 
 namespace
 {
-constexpr double kFeetPerMeter = 3.280839895013123;
 constexpr double kKnotsPerMeterPerSecond = 1.943844492440605;
-constexpr double kFeetPerMinutePerMeterPerSecond =
-	kFeetPerMeter * 60.0;
 }
 
 namespace DcsBridge
@@ -42,8 +39,6 @@ CockpitSnapshotExporter::CockpitSnapshotExporter(cockpit_param_api api)
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApTargetHeadingDeg),
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApTargetSpeedKts),
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApTargetPitchDeg),
-		cockpit_parameter_writer(
-			DcsIds::CockpitParams::ApTargetVerticalSpeedFpm),
 		cockpit_parameter_writer(
 			DcsIds::CockpitParams::ApEngageRejectionReason),
 		cockpit_parameter_writer(DcsIds::CockpitParams::ApDisengageReason),
@@ -101,21 +96,17 @@ CockpitSnapshotExporter::export_automatic_flight_control(
 	WRITE_AP(ApPitchAttitudeReference,
 		snapshot.pitch_attitude_reference_rad);
 	WRITE_AP(ApVerticalSpeedReference,
-		snapshot.vertical_speed_reference_mps);
+		Common::metres(snapshot.vertical_speed_reference_ft_s));
 	WRITE_AP(ApBankAngleReference, snapshot.bank_angle_reference_rad);
 	WRITE_AP(ApThrottleCommand, snapshot.throttle_command_normalized);
 	WRITE_AP(ApBypassActive, snapshot.bypass_active ? 1.0 : 0.0);
-	WRITE_AP(ApTargetAltitudeFt,
-		snapshot.target_altitude_m * kFeetPerMeter);
+	WRITE_AP(ApTargetAltitudeFt, snapshot.target_altitude_ft);
 	WRITE_AP(ApTargetHeadingDeg,
-		snapshot.target_heading_rad * Common::kDegPerRad);
+		static_cast<double>(snapshot.target_heading_deg));
 	WRITE_AP(ApTargetSpeedKts,
 		snapshot.target_speed_mps * kKnotsPerMeterPerSecond);
 	WRITE_AP(ApTargetPitchDeg,
 		snapshot.target_pitch_rad * Common::kDegPerRad);
-	WRITE_AP(ApTargetVerticalSpeedFpm,
-		snapshot.target_vertical_speed_mps *
-			kFeetPerMinutePerMeterPerSecond);
 	WRITE_AP(ApEngageRejectionReason,
 		static_cast<double>(snapshot.autopilot_engage_rejection_reason));
 	WRITE_AP(ApDisengageReason,

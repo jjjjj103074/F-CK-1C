@@ -14,7 +14,7 @@ DcsBridge::ModulePaths make_module_paths(
 
 DcsBridge::Internal::CarrierBridgeConfig make_carrier_config()
 {
-	return { Core::carrier_launch_reference_thrust() };
+	return { Core::carrier_launch_reference_thrust_n() };
 }
 
 cockpit_param_api make_cockpit_api(

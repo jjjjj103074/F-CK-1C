@@ -13,6 +13,7 @@
 #include "Core/Systems/Engine/Engine.h"
 #include "Core/Systems/FlightControlComputer/FlightControlComputer.h"
 #include "Core/Systems/LandingGear/LandingGear.h"
+#include "Common/Units.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -47,35 +48,45 @@ struct TestAircraftConfig
 inline TestAircraftConfig make_test_config()
 {
 	TestAircraftConfig config;
-	config.aerodynamics.wing_area = 24.26;
-	config.aerodynamics.wingspan = 8.53;
-	config.aerodynamics.length = 14.48;
-	config.aerodynamics.height = 4.7;
+	config.flight_control_computer =
+		Core::Systems::fck1c_flight_control_computer_config();
+	config.aerodynamics.wing_area_m2 = 24.26;
+	config.aerodynamics.wingspan_m = 8.53;
+	config.aerodynamics.length_m = 14.48;
+	config.aerodynamics.height_m = 4.7;
 	config.aerodynamics.mach_max = 1.5;
 	config.aerodynamics.mach_table = { 0.0, 1.0 };
 	config.aerodynamics.cx_zero_table = { 0.025, 0.030 };
 	config.aerodynamics.cy_alpha_table = { 0.05, 0.04 };
-	config.aerodynamics.roll_rate_max_table = { 3.0, 2.0 };
-	config.aerodynamics.alpha_max_table = { 20.0, 18.0 };
+	config.aerodynamics.alpha_max_table_deg = { 20.0, 18.0 };
 	config.aerodynamics.cy_max_table = { 1.2, 1.0 };
-	config.flight_control_computer.mach_table =
+	config.aerodynamics.easy_flight_stabilator_limit_rad = Common::rad(25.0);
+	config.aerodynamics.easy_flight_flaperon_limit_rad = Common::rad(22.0);
+	config.aerodynamics.easy_flight_rudder_limit_rad = Common::rad(30.0);
+	config.flight_control_computer.mode_and_gain.angle_of_attack_mach =
 		config.aerodynamics.mach_table;
-	config.flight_control_computer.alpha_limit_deg =
-		config.aerodynamics.alpha_max_table;
+	config.flight_control_computer.mode_and_gain.angle_of_attack_limit_rad = {
+		Common::rad(config.aerodynamics.alpha_max_table_deg[0]),
+		Common::rad(config.aerodynamics.alpha_max_table_deg[1])
+	};
+	config.flight_control_computer.mode_and_gain.
+		cruise_angle_of_attack_blend_start_rad = Common::rad(16.0);
 	config.flight_control_computer.automatic_flight_control =
 		Core::Systems::fck1c_automatic_flight_control_config(
-			config.flight_control_computer.control_laws);
-	config.engine.start_time = 5.0;
-	config.engine.spool_up_tau = 1.0;
-	config.engine.spool_down_tau = 1.0;
-	config.engine.throttle_input_table = { 0.0, 1.0 };
-	config.engine.power_table = { 0.1, 1.0 };
+			config.flight_control_computer.mode_and_gain);
+	config.engine.start_time_s = 5.0;
+	config.engine.spool_up_tau_s = 1.0;
+	config.engine.spool_down_tau_s = 1.0;
+	config.engine.throttle_input_table_normalized = { 0.0, 1.0 };
+	config.engine.power_table_normalized = { 0.1, 1.0 };
 	config.propulsion.mach_table = { 0.0, 1.0 };
-	config.propulsion.max_thrust_table = { 54000.0, 50000.0 };
+	config.propulsion.max_thrust_table_n = { 54000.0, 50000.0 };
 	config.propulsion.afterburner_thrust_factor =
 		kTestAfterburnerThrustFactor;
-	config.propulsion.left_engine_position = { -3.793, -0.391, -0.716 };
-	config.propulsion.right_engine_position = { -3.793, -0.391, 0.716 };
+	config.propulsion.left_engine_position_body_m = {
+		-3.793, -0.391, -0.716 };
+	config.propulsion.right_engine_position_body_m = {
+		-3.793, -0.391, 0.716 };
 	config.landing_gear =
 		Core::Systems::fck1c_landing_gear_config();
 	config.ground_interaction =
@@ -174,9 +185,22 @@ inline Core::FrameInput make_frame_input()
 	};
 	input.body_kinematics = {
 		{ 0.0, 9.81, 0.0 }, { 140.0, 3.0, 1.0 }, { 4.0, 0.5, -1.0 },
-		{ 0.02, 0.03, 0.04 }, { 0.05, 0.06, 0.07 },
+		{ 0.02, 0.04, 0.03, 0.05, 0.07, 0.06 },
 		0.3, 0.1, -0.2, 0.15, -0.04
 	};
+	input.cockpit.magnetic_heading.status = {
+		true,
+		1,
+		Core::ObservationInvalidReason::None
+	};
+	input.cockpit.magnetic_heading.magnetic_heading_deg = Common::deg(0.3);
+	input.cockpit.pressure_altitude.status = {
+		true,
+		1,
+		Core::ObservationInvalidReason::None
+	};
+	input.cockpit.pressure_altitude.pressure_altitude_ft =
+		Common::feet(1200.0);
 	input.suspension = {
 		Core::SuspensionFeedbackInput{
 			0, { 3.0, 4.0, 0.0 }, { 1.0, 2.0, 3.0 }, 0.9, 0.10, 12.0 },

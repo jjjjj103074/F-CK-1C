@@ -10,7 +10,7 @@ namespace Systems
 {
 struct LandingGearConfig
 {
-	std::array<double, kFrameSuspensionWheelCount> wheel_radius = {};
+	std::array<double, kFrameSuspensionWheelCount> wheel_radius_m = {};
 };
 
 void validate_landing_gear_config(const LandingGearConfig& config);

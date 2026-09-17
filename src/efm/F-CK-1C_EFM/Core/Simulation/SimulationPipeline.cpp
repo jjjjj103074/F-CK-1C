@@ -29,7 +29,7 @@ class FrameAccumulator final
 public:
 	explicit FrameAccumulator(const Common::Vec3& center_of_mass)
 	{
-		output_.center_of_mass = center_of_mass;
+		output_.center_of_mass_body_m = center_of_mass;
 	}
 
 	void apply(const std::vector<ModelEffect>& effects)
@@ -39,12 +39,18 @@ public:
 			if (effect.type == ModelEffectType::LocalForce)
 			{
 				Core::add_local_force(
-					output_.force,
-					output_.moment,
-					{ output_.center_of_mass, effect.value, effect.position });
+					output_.force_body_n,
+					output_.moment_body_nm,
+					{
+						output_.center_of_mass_body_m,
+						effect.force_body_n,
+						effect.application_position_body_m
+					});
 				continue;
 			}
-			Core::add_local_moment(output_.moment, effect.value);
+			Core::add_local_moment(
+				output_.moment_body_nm,
+				effect.moment_body_nm);
 		}
 	}
 
@@ -134,8 +140,8 @@ GroundInteractionModelInput
 		input.aircraft.read(AircraftDataKeys::kLandingGearData),
 		input.observation,
 		input.frame.availability,
-		propulsion_result.left_thrust_force +
-			propulsion_result.right_thrust_force
+		propulsion_result.left_thrust_force_n +
+			propulsion_result.right_thrust_force_n
 	};
 }
 
@@ -206,20 +212,21 @@ const SimulationResult& SimulationPipeline::Implementation::step(
 		step_ground_interaction(input, propulsion_result);
 	const MassDeltaResult& mass_result = step_mass_properties(input);
 
-	FrameAccumulator accumulator(input.observation.center_of_mass);
+	FrameAccumulator accumulator(input.observation.center_of_mass_body_m);
 	// Preserve the established accumulation order so the refactor does not
 	// change floating-point results while model execution remains fixed above.
 	accumulator.apply(aerodynamics_result.primary_effects);
 	accumulator.apply(propulsion_result.effects);
-	accumulator.apply(aerodynamics_result.limiter_effects);
+	accumulator.apply(aerodynamics_result.supplemental_effects);
 	accumulator.apply(ground_result.effects);
 	current_result.force_moment = accumulator.output();
-	current_result.thrust_force = {
-		propulsion_result.left_thrust_force,
-		propulsion_result.right_thrust_force
+	current_result.thrust_force_n = {
+		propulsion_result.left_thrust_force_n,
+		propulsion_result.right_thrust_force_n
 	};
 	current_result.mass_effect = mass_result;
-	current_result.shake_amplitude = aerodynamics_result.shake_amplitude;
+	current_result.shake_amplitude_normalized =
+		aerodynamics_result.shake_amplitude_normalized;
 	return current_result;
 }
 

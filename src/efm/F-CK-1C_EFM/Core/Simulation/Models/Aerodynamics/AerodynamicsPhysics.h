@@ -14,78 +14,80 @@ namespace Simulation
 {
 namespace AerodynamicsPhysics
 {
+inline constexpr double kStabilatorTrimRad = Common::rad(5.25);
+inline constexpr double kStabilatorEffectiveness = 21.6;
+inline constexpr double kFlaperonEffectiveness = 4.0 * 30.0 / 22.0;
+
 struct AerodynamicsState
 {
-	Common::Vec3 left_wing_pos;
-	Common::Vec3 right_wing_pos;
-	Common::Vec3 tail_pos;
-	Common::Vec3 elevator_pos;
-	Common::Vec3 left_aileron_pos;
-	Common::Vec3 right_aileron_pos;
-	Common::Vec3 rudder_pos;
+	Common::Vec3 left_wing_position_body_m;
+	Common::Vec3 right_wing_position_body_m;
+	Common::Vec3 tail_position_body_m;
+	Common::Vec3 elevator_position_body_m;
+	Common::Vec3 left_aileron_position_body_m;
+	Common::Vec3 right_aileron_position_body_m;
+	Common::Vec3 rudder_position_body_m;
 	bool force_positions_initialized = false;
 
-	double dynamic_pressure = 0.0;
+	double dynamic_pressure_pa = 0.0;
 	double cy_alpha = 0.0;
 	double cx_zero = 0.0;
 	double cy_max = 0.0;
 	double alpha_max_deg = 0.0;
-	double roll_rate_max = 0.0;
 	double wing_lift_coefficient = 0.0;
 	double tail_lift_coefficient = 0.0;
 	double lift_coefficient = 0.0;
 	double induced_drag_coefficient = 0.0;
 	double drag_coefficient = 0.0;
 
-	Common::Vec3 left_wing_force;
-	Common::Vec3 right_wing_force;
-	Common::Vec3 tail_force;
-	Common::Vec3 elevator_force;
-	Common::Vec3 left_aileron_force;
-	Common::Vec3 right_aileron_force;
-	Common::Vec3 rudder_force;
-	double roll_yaw_moment = 0.0;
-	double roll_rate_limiter_moment = 0.0;
-	double yaw_rate_limiter_moment = 0.0;
-	double speed_limiter_force = 0.0;
-	double airbrake_pitch_comp_moment = 0.0;
-	double shake_amplitude = 0.0;
+	Common::Vec3 left_wing_force_body_n;
+	Common::Vec3 right_wing_force_body_n;
+	Common::Vec3 tail_force_body_n;
+	Common::Vec3 elevator_force_body_n;
+	Common::Vec3 left_aileron_force_body_n;
+	Common::Vec3 right_aileron_force_body_n;
+	Common::Vec3 rudder_force_body_n;
+	double speed_limiter_force_n = 0.0;
+	double airbrake_pitch_moment_nm = 0.0;
+	double shake_amplitude_normalized = 0.0;
 };
 
 struct AerodynamicsFrameInput
 {
-	Common::Vec3 center_of_mass;
+	// Private physics-stage contract. Field suffixes define units; local-body
+	// signs preserve the DCS/Core convention declared by FrameContracts.
+	Common::Vec3 center_of_mass_body_m;
 	double mach = 0.0;
-	double aoa = 0.0;
-	double alpha_deg = 0.0;
-	double aos = 0.0;
-	double roll = 0.0;
-	double pitch_rate = 0.0;
-	double roll_rate = 0.0;
-	double yaw_rate = 0.0;
-	double elevator_command = 0.0;
-	double aileron_command = 0.0;
-	double rudder_command = 0.0;
-	double airbrake_pos = 0.0;
-	double flaps_pos = 0.0;
-	double gear_pos = 0.0;
-	double left_wing_integrity = 1.0;
-	double right_wing_integrity = 1.0;
-	double tail_integrity = 1.0;
+	double angle_of_attack_rad = 0.0;
+	double angle_of_attack_deg = 0.0;
+	double angle_of_slide_rad = 0.0;
+	double roll_rad = 0.0;
+	double pitch_rate_rad_s = 0.0;
+	double roll_rate_rad_s = 0.0;
+	double yaw_rate_rad_s = 0.0;
+	double symmetric_stabilator_position_rad = 0.0;
+	double differential_flaperon_position_rad = 0.0;
+	double rudder_position_rad = 0.0;
+	double airbrake_position_normalized = 0.0;
+	double flaps_position_normalized = 0.0;
+	double gear_position_normalized = 0.0;
+	double left_wing_integrity_0_1 = 1.0;
+	double right_wing_integrity_0_1 = 1.0;
+	double tail_integrity_0_1 = 1.0;
 	bool easy_flight = false;
 	bool on_ground = false;
-	double g_force = 0.0;
+	double normal_acceleration_g = 0.0;
 };
 
 struct AerodynamicConditionInput
 {
-	Common::Vec3 center_of_mass;
-	double atmosphere_density = 0.0;
-	double speed_scalar = 0.0;
+	Common::Vec3 center_of_mass_body_m;
+	double atmosphere_density_kg_m3 = 0.0;
+	double true_airspeed_mps = 0.0;
 	double mach = 0.0;
-	double alpha_deg = 0.0;
-	double beta_deg = 0.0;
-	double slats_pos = 0.0;
+	double angle_of_attack_deg = 0.0;
+	double angle_of_slide_deg = 0.0;
+	double slats_position_normalized = 0.0;
 };
 
 struct AerodynamicsContext
@@ -99,19 +101,24 @@ inline void initialize_aerodynamic_force_positions(
 	const Core::Simulation::AerodynamicsConfig& config,
 	const Common::Vec3& center_of_mass)
 {
-	state.left_wing_pos = Common::Vec3(
+	state.left_wing_position_body_m = Common::Vec3(
 		center_of_mass.x - 0.7,
 		center_of_mass.y + 0.5,
-		-config.wingspan / 2.0);
-	state.right_wing_pos = Common::Vec3(
+		-config.wingspan_m / 2.0);
+	state.right_wing_position_body_m = Common::Vec3(
 		center_of_mass.x - 0.7,
 		center_of_mass.y + 0.5,
-		config.wingspan / 2.0);
-	state.tail_pos = Common::Vec3(center_of_mass.x - 0.5, center_of_mass.y, 0.0);
-	state.elevator_pos = Common::Vec3(-config.length / 2.0, center_of_mass.y, 0.0);
-	state.left_aileron_pos = Common::Vec3(center_of_mass.x, center_of_mass.y, -config.wingspan * 0.5);
-	state.right_aileron_pos = Common::Vec3(center_of_mass.x, center_of_mass.y, config.wingspan * 0.5);
-	state.rudder_pos = Common::Vec3(-config.length / 2.0, config.height / 2.0, 0.0);
+		config.wingspan_m / 2.0);
+	state.tail_position_body_m =
+		Common::Vec3(center_of_mass.x - 0.5, center_of_mass.y, 0.0);
+	state.elevator_position_body_m =
+		Common::Vec3(-config.length_m / 2.0, center_of_mass.y, 0.0);
+	state.left_aileron_position_body_m = Common::Vec3(
+		center_of_mass.x, center_of_mass.y, -config.wingspan_m * 0.5);
+	state.right_aileron_position_body_m = Common::Vec3(
+		center_of_mass.x, center_of_mass.y, config.wingspan_m * 0.5);
+	state.rudder_position_body_m = Common::Vec3(
+		-config.length_m / 2.0, config.height_m / 2.0, 0.0);
 	state.force_positions_initialized = true;
 }
 
@@ -128,10 +135,8 @@ inline void interpolate_aerodynamic_conditions(
 	state.cy_max = Common::lerp(
 		{ config.mach_table.data(), config.cy_max_table.data(), table_size }, input.mach);
 	state.alpha_max_deg = Common::lerp(
-		{ config.mach_table.data(), config.alpha_max_table.data(), table_size }, input.mach);
-	state.roll_rate_max = Common::lerp(
-		{ config.mach_table.data(), config.roll_rate_max_table.data(), table_size }, input.mach);
-	state.cy_max += config.cy_flap * 0.4 * input.slats_pos;
+		{ config.mach_table.data(), config.alpha_max_table_deg.data(), table_size }, input.mach);
+	state.cy_max += config.cy_flap * 0.4 * input.slats_position_normalized;
 }
 
 inline void update_lift_coefficients(
@@ -139,7 +144,8 @@ inline void update_lift_coefficients(
 	const Core::Simulation::AerodynamicsConfig& config,
 	const AerodynamicConditionInput& input)
 {
-	state.wing_lift_coefficient = state.cy_alpha * input.alpha_deg;
+	state.wing_lift_coefficient =
+		state.cy_alpha * input.angle_of_attack_deg;
 	if (state.wing_lift_coefficient > state.cy_max)
 	{
 		state.wing_lift_coefficient = state.cy_max;
@@ -149,7 +155,8 @@ inline void update_lift_coefficients(
 		state.wing_lift_coefficient = -state.cy_max;
 	}
 	state.tail_lift_coefficient =
-		(0.5 * state.cy_alpha + config.cz_beta) * input.beta_deg;
+		(0.5 * state.cy_alpha + config.cz_beta) *
+		input.angle_of_slide_deg;
 	if (state.tail_lift_coefficient > state.cy_max)
 	{
 		state.tail_lift_coefficient = state.cy_max;
@@ -158,8 +165,8 @@ inline void update_lift_coefficients(
 	{
 		state.tail_lift_coefficient = -state.cy_max;
 	}
-	state.dynamic_pressure = 0.5 * input.atmosphere_density *
-		input.speed_scalar * input.speed_scalar;
+	state.dynamic_pressure_pa = 0.5 * input.atmosphere_density_kg_m3 *
+		input.true_airspeed_mps * input.true_airspeed_mps;
 }
 
 inline void update_aerodynamic_conditions(
@@ -169,7 +176,8 @@ inline void update_aerodynamic_conditions(
 {
 	if (!state.force_positions_initialized)
 	{
-		initialize_aerodynamic_force_positions(state, config, input.center_of_mass);
+		initialize_aerodynamic_force_positions(
+			state, config, input.center_of_mass_body_m);
 	}
 	interpolate_aerodynamic_conditions(state, config, input);
 	update_lift_coefficients(state, config, input);
@@ -184,21 +192,30 @@ inline void update_wing_force_positions(
 	// of usable alpha moves each wing load aft, while AoS adds a capped
 	// left/right offset. These empirical ratios define one tuned curve rather
 	// than independently configurable aircraft geometry.
-	if ((std::fabs(input.alpha_deg) / state.alpha_max_deg) >= 0.75)
+	if ((std::fabs(input.angle_of_attack_deg) / state.alpha_max_deg) >= 0.75)
 	{
 		const double alpha_shift = Common::limit(
-			std::pow(std::fabs(input.alpha_deg) / (state.alpha_max_deg * 1.1), 3.0) / 2000.0,
+			std::pow(
+				std::fabs(input.angle_of_attack_deg) /
+					(state.alpha_max_deg * 1.1),
+				3.0) / 2000.0,
 			0.0,
-			config.length / 3.0);
-		state.left_wing_pos.x = input.center_of_mass.x - 0.7 -
-			(alpha_shift + Common::limit(-input.aos * 10.0, 0.0, 1.0));
-		state.right_wing_pos.x = input.center_of_mass.x - 0.7 -
-			(alpha_shift + Common::limit(input.aos * 10.0, 0.0, 1.0));
+			config.length_m / 3.0);
+		state.left_wing_position_body_m.x =
+			input.center_of_mass_body_m.x - 0.7 -
+			(alpha_shift + Common::limit(
+				-input.angle_of_slide_rad * 10.0, 0.0, 1.0));
+		state.right_wing_position_body_m.x =
+			input.center_of_mass_body_m.x - 0.7 -
+			(alpha_shift + Common::limit(
+				input.angle_of_slide_rad * 10.0, 0.0, 1.0));
 	}
 	else
 	{
-		state.left_wing_pos.x = input.center_of_mass.x - 0.7;
-		state.right_wing_pos.x = input.center_of_mass.x - 0.7;
+		state.left_wing_position_body_m.x =
+			input.center_of_mass_body_m.x - 0.7;
+		state.right_wing_position_body_m.x =
+			input.center_of_mass_body_m.x - 0.7;
 	}
 }
 
@@ -210,17 +227,29 @@ inline void apply_wing_aerodynamics(
 {
 	const Core::Simulation::AerodynamicsConfig& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
-	state.left_wing_force = Common::Vec3(
-		-state.drag_coefficient * (std::sin(-input.aos / 2.0) + 1.0) * q * (config.wing_area / 2.0) * input.left_wing_integrity,
-		state.lift_coefficient * (std::sin(-input.aos / 2.0) / 2.0 + 1.0) * q * (config.wing_area / 2.0) * input.left_wing_integrity,
+	const double q = state.dynamic_pressure_pa;
+	state.left_wing_force_body_n = Common::Vec3(
+		-state.drag_coefficient *
+			(std::sin(-input.angle_of_slide_rad / 2.0) + 1.0) * q *
+			(config.wing_area_m2 / 2.0) * input.left_wing_integrity_0_1,
+		state.lift_coefficient *
+			(std::sin(-input.angle_of_slide_rad / 2.0) / 2.0 + 1.0) * q *
+			(config.wing_area_m2 / 2.0) * input.left_wing_integrity_0_1,
 		0.0);
-	add_force(state.left_wing_force, state.left_wing_pos);
-	state.right_wing_force = Common::Vec3(
-		-state.drag_coefficient * (std::sin(input.aos / 2.0) + 1.0) * q * (config.wing_area / 2.0) * input.right_wing_integrity,
-		state.lift_coefficient * (std::sin(input.aos / 2.0) / 2.0 + 1.0) * q * (config.wing_area / 2.0) * input.right_wing_integrity,
+	add_force(
+		state.left_wing_force_body_n,
+		state.left_wing_position_body_m);
+	state.right_wing_force_body_n = Common::Vec3(
+		-state.drag_coefficient *
+			(std::sin(input.angle_of_slide_rad / 2.0) + 1.0) * q *
+			(config.wing_area_m2 / 2.0) * input.right_wing_integrity_0_1,
+		state.lift_coefficient *
+			(std::sin(input.angle_of_slide_rad / 2.0) / 2.0 + 1.0) * q *
+			(config.wing_area_m2 / 2.0) * input.right_wing_integrity_0_1,
 		0.0);
-	add_force(state.right_wing_force, state.right_wing_pos);
+	add_force(
+		state.right_wing_force_body_n,
+		state.right_wing_position_body_m);
 }
 
 template <typename ForceSink>
@@ -231,12 +260,15 @@ inline void apply_tail_aerodynamics(
 {
 	const Core::Simulation::AerodynamicsConfig& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
-	state.tail_force = Common::Vec3(
-		std::pow(-state.tail_lift_coefficient, 3.0) * std::sin(input.aoa) * (config.wing_area / 2.0) * q * input.tail_integrity,
+	const double q = state.dynamic_pressure_pa;
+	state.tail_force_body_n = Common::Vec3(
+		std::pow(-state.tail_lift_coefficient, 3.0) *
+			std::sin(input.angle_of_attack_rad) *
+			(config.wing_area_m2 / 2.0) * q * input.tail_integrity_0_1,
 		0.0,
-		-state.tail_lift_coefficient * std::cos(input.aoa) * q * (config.wing_area / 2.0) * input.tail_integrity);
-	add_force(state.tail_force, state.tail_pos);
+		-state.tail_lift_coefficient * std::cos(input.angle_of_attack_rad) *
+			q * (config.wing_area_m2 / 2.0) * input.tail_integrity_0_1);
+	add_force(state.tail_force_body_n, state.tail_position_body_m);
 }
 
 template <typename ForceSink>
@@ -247,13 +279,16 @@ inline void apply_elevator_aerodynamics(
 {
 	const Core::Simulation::AerodynamicsConfig& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
+	const double q = state.dynamic_pressure_pa;
 	const double elevator_deflection =
-		(-(Common::rescale(input.elevator_command + 0.15, Common::rad(-25.0), Common::rad(35.0))) * 18.0) *
-		std::cos(input.aoa / 2.0);
-	const double pitch_stability = (input.aoa + std::sin(input.aoa / 2.0) / 2.0) +
-		(input.pitch_rate * 2.0);
-	state.elevator_force = Common::Vec3(
+		(-(input.symmetric_stabilator_position_rad + kStabilatorTrimRad) *
+			kStabilatorEffectiveness) *
+		std::cos(input.angle_of_attack_rad / 2.0);
+	const double pitch_stability =
+		(input.angle_of_attack_rad +
+			std::sin(input.angle_of_attack_rad / 2.0) / 2.0) +
+		(input.pitch_rate_rad_s * 2.0);
+	state.elevator_force_body_n = Common::Vec3(
 		0.0,
 		((elevator_deflection * Common::limit(
 			1.0 - std::sqrt((input.mach + config.mach_max * 0.4) / 3.0),
@@ -261,7 +296,7 @@ inline void apply_elevator_aerodynamics(
 			1.0)) +
 			(pitch_stability * (input.mach / 2.0 + 1.0))) * q,
 		0.0);
-	add_force(state.elevator_force, state.elevator_pos);
+	add_force(state.elevator_force_body_n, state.elevator_position_body_m);
 }
 
 template <typename ForceSink>
@@ -272,18 +307,25 @@ inline void apply_aileron_aerodynamics(
 {
 	const Core::Simulation::AerodynamicsConfig& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
-	const double aileron_deflection = Common::rescale(
-		input.aileron_command,
-		Common::rad(-30.0),
-		Common::rad(30.0)) * 4.0;
-	const double roll_stability = -input.roll_rate *
-		(((std::fabs(input.aoa + 0.5) * std::fabs(input.aos + 0.5)) + 1.0) * (5.0 / config.wingspan)) +
-		(std::sin(input.roll) / 2.0 * std::fabs(input.aoa / 2.0));
-	state.left_aileron_force = Common::Vec3(0.0, (aileron_deflection + roll_stability) * q, 0.0);
-	state.right_aileron_force = Common::Vec3(0.0, -(aileron_deflection + roll_stability) * q, 0.0);
-	add_force(state.left_aileron_force, state.left_aileron_pos);
-	add_force(state.right_aileron_force, state.right_aileron_pos);
+	const double q = state.dynamic_pressure_pa;
+	const double aileron_deflection =
+		input.differential_flaperon_position_rad * kFlaperonEffectiveness;
+	const double roll_stability = -input.roll_rate_rad_s *
+		(((std::fabs(input.angle_of_attack_rad + 0.5) *
+			std::fabs(input.angle_of_slide_rad + 0.5)) + 1.0) *
+			(5.0 / config.wingspan_m)) +
+		(std::sin(input.roll_rad) / 2.0 *
+			std::fabs(input.angle_of_attack_rad / 2.0));
+	state.left_aileron_force_body_n = Common::Vec3(
+		0.0, (aileron_deflection + roll_stability) * q, 0.0);
+	state.right_aileron_force_body_n = Common::Vec3(
+		0.0, -(aileron_deflection + roll_stability) * q, 0.0);
+	add_force(
+		state.left_aileron_force_body_n,
+		state.left_aileron_position_body_m);
+	add_force(
+		state.right_aileron_force_body_n,
+		state.right_aileron_position_body_m);
 }
 
 template <typename ForceSink>
@@ -293,14 +335,13 @@ inline void apply_rudder_aerodynamics(
 	ForceSink& add_force)
 {
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
-	const double rudder_deflection = Common::rescale(
-		input.rudder_command,
-		Common::rad(-30.0),
-		Common::rad(30.0)) * 1.5;
-	const double yaw_stability = -((input.aos * 2.0) + input.yaw_rate);
-	state.rudder_force = Common::Vec3(0.0, 0.0, (rudder_deflection + yaw_stability) * q);
-	add_force(state.rudder_force, state.rudder_pos);
+	const double q = state.dynamic_pressure_pa;
+	const double rudder_deflection = input.rudder_position_rad * 1.5;
+	const double yaw_stability =
+		-((input.angle_of_slide_rad * 2.0) + input.yaw_rate_rad_s);
+	state.rudder_force_body_n = Common::Vec3(
+		0.0, 0.0, (rudder_deflection + yaw_stability) * q);
+	add_force(state.rudder_force_body_n, state.rudder_position_body_m);
 }
 
 template <typename ForceSink>
@@ -312,15 +353,18 @@ inline void apply_primary_aerodynamics(
 	const Core::Simulation::AerodynamicsConfig& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
 	state.lift_coefficient = state.wing_lift_coefficient + config.cy_zero +
-		(config.cy_flap * input.flaps_pos);
+		(config.cy_flap * input.flaps_position_normalized);
 	state.induced_drag_coefficient =
 		(config.cx_lift_k * state.lift_coefficient * state.lift_coefficient) +
-		(config.cx_alpha_k * input.aoa * input.aoa) +
-		(config.cx_elevator_k * std::fabs(input.elevator_command));
+		(config.cx_alpha_k * input.angle_of_attack_rad *
+			input.angle_of_attack_rad) +
+		(config.cx_stabilator_per_rad *
+			std::fabs(input.symmetric_stabilator_position_rad));
 	state.drag_coefficient = state.cx_zero +
-		(config.cx_airbrake * input.airbrake_pos) +
-		(config.cx_flap * input.flaps_pos) +
-		(config.cx_gear * input.gear_pos) + state.induced_drag_coefficient;
+		(config.cx_airbrake * input.airbrake_position_normalized) +
+		(config.cx_flap * input.flaps_position_normalized) +
+		(config.cx_gear * input.gear_position_normalized) +
+		state.induced_drag_coefficient;
 	update_wing_force_positions(state, config, input);
 	apply_wing_aerodynamics(state, context, add_force);
 	apply_tail_aerodynamics(state, context, add_force);
@@ -344,60 +388,50 @@ inline AerodynamicSinks<ForceSink, MomentSink> make_aerodynamic_sinks(
 	return { force, moment };
 }
 
-template <typename MomentSink>
-inline void apply_rate_limiters(
-	AerodynamicsState& state,
-	const AerodynamicsContext& context,
-	MomentSink& add_moment)
-{
-	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
-	state.roll_yaw_moment = -(input.roll_rate / 2.0) * (q + 1e5 * 0.5);
-	add_moment(Common::Vec3(0.0, state.roll_yaw_moment, 0.0));
-	state.roll_rate_limiter_moment = -input.roll_rate * Common::limit(
-		std::pow(Common::limit(std::fabs(input.roll_rate) / (state.roll_rate_max + 0.1), 0.0001, 2.0), 6.0) *
-		(q + q + 1e5 * 0.3),
-		-1e7,
-		1e7);
-	add_moment(Common::Vec3(state.roll_rate_limiter_moment, 0.0, 0.0));
-	state.yaw_rate_limiter_moment = -(input.yaw_rate + input.aos) * (q + 1e5 * 0.5);
-	add_moment(Common::Vec3(0.0, state.yaw_rate_limiter_moment, 0.0));
-}
-
 template <typename ForceSink>
-inline void apply_speed_limiter(
+inline void apply_easy_flight_speed_assist(
 	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	ForceSink& add_force)
 {
 	const Core::Simulation::AerodynamicsConfig& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
-	state.speed_limiter_force = 0.0;
+	const double q = state.dynamic_pressure_pa;
+	state.speed_limiter_force_n = 0.0;
+	if (!input.easy_flight)
+	{
+		return;
+	}
 	if (input.mach > config.mach_max)
 	{
 		const double over_mach = (input.mach - config.mach_max) / config.mach_max;
-		state.speed_limiter_force = Common::limit(
+		state.speed_limiter_force_n = Common::limit(
 			std::pow(over_mach * 3.0, 2.0) * (q * 0.35 + 25000.0),
 			0.0,
 			6e5);
 	}
-	add_force(Common::Vec3(-state.speed_limiter_force, 0.0, 0.0), input.center_of_mass);
+	add_force(
+		Common::Vec3(-state.speed_limiter_force_n, 0.0, 0.0),
+		input.center_of_mass_body_m);
 }
 
 template <typename MomentSink>
-inline void apply_airbrake_compensation(
+inline void apply_airbrake_aerodynamics(
 	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	MomentSink& add_moment)
 {
 	const Core::Simulation::AerodynamicsConfig& config = context.config;
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
-	const double mean_aerodynamic_chord = config.wing_area / config.wingspan;
-	state.airbrake_pitch_comp_moment = config.airbrake_pitch_comp_k *
-		input.airbrake_pos * q * config.wing_area * mean_aerodynamic_chord;
-	add_moment(Common::Vec3(0.0, 0.0, state.airbrake_pitch_comp_moment));
+	const double q = state.dynamic_pressure_pa;
+	const double mean_aerodynamic_chord_m =
+		config.wing_area_m2 / config.wingspan_m;
+	state.airbrake_pitch_moment_nm =
+		config.airbrake_pitch_moment_coefficient *
+		input.airbrake_position_normalized * q * config.wing_area_m2 *
+		mean_aerodynamic_chord_m;
+	add_moment(Common::Vec3(
+		0.0, 0.0, state.airbrake_pitch_moment_nm));
 }
 
 template <typename ForceSink, typename MomentSink>
@@ -407,28 +441,52 @@ inline void apply_easy_flight_assist(
 	AerodynamicSinks<ForceSink, MomentSink>& sinks)
 {
 	const AerodynamicsFrameInput& input = context.input;
-	const double q = state.dynamic_pressure;
+	const Core::Simulation::AerodynamicsConfig& config = context.config;
+	const double q = state.dynamic_pressure_pa;
 	if (input.easy_flight)
 	{
+		const double roll_ratio = Common::limit(
+			std::fabs(input.differential_flaperon_position_rad) /
+				config.easy_flight_flaperon_limit_rad, 0.0, 1.0);
+		const double yaw_ratio = Common::limit(
+			std::fabs(input.rudder_position_rad) /
+				config.easy_flight_rudder_limit_rad, 0.0, 1.0);
+		const double pitch_ratio = Common::limit(
+			std::fabs(input.symmetric_stabilator_position_rad) /
+				config.easy_flight_stabilator_limit_rad, 0.0, 1.0);
 		sinks.moment(Common::Vec3(
-			-(input.roll_rate / 4.0) * (1.0 - std::sqrt(std::fabs(input.aileron_command))) * (1e5 + q * 0.5),
-			-(input.yaw_rate + (std::sin(input.aos) / 2.0)) * (1.0 - std::sqrt(std::fabs(input.rudder_command))) * (1e5 + q * 0.5),
-			-(input.pitch_rate + (std::sin(input.aoa) / 2.0)) * (1.0 - std::sqrt(std::fabs(input.elevator_command))) * (1e5 + q * 0.5)));
+			-(input.roll_rate_rad_s / 4.0) *
+				(1.0 - std::sqrt(roll_ratio)) *
+					(1e5 + q * 0.5),
+			-(input.yaw_rate_rad_s +
+				(std::sin(input.angle_of_slide_rad) / 2.0)) *
+				(1.0 - std::sqrt(yaw_ratio)) * (1e5 + q * 0.5),
+			-(input.pitch_rate_rad_s +
+				(std::sin(input.angle_of_attack_rad) / 2.0)) *
+				(1.0 - std::sqrt(pitch_ratio)) *
+				(1e5 + q * 0.5)));
 		sinks.force(
-			Common::Vec3(0.0, 0.0, -input.rudder_command * (1e5 + q * 0.1)),
-			Common::Vec3(input.center_of_mass.x - 0.2, input.center_of_mass.y, 0.0));
+			Common::Vec3(
+				0.0,
+				0.0,
+				-(input.rudder_position_rad /
+					config.easy_flight_rudder_limit_rad) *
+					(1e5 + q * 0.1)),
+			Common::Vec3(
+				input.center_of_mass_body_m.x - 0.2,
+				input.center_of_mass_body_m.y,
+				0.0));
 	}
 }
 
 template <typename ForceSink, typename MomentSink>
-inline void apply_aerodynamic_limiters(
+inline void apply_supplemental_aerodynamics(
 	AerodynamicsState& state,
 	const AerodynamicsContext& context,
 	AerodynamicSinks<ForceSink, MomentSink> sinks)
 {
-	apply_rate_limiters(state, context, sinks.moment);
-	apply_speed_limiter(state, context, sinks.force);
-	apply_airbrake_compensation(state, context, sinks.moment);
+	apply_easy_flight_speed_assist(state, context, sinks.force);
+	apply_airbrake_aerodynamics(state, context, sinks.moment);
 	apply_easy_flight_assist(state, context, sinks);
 }
 
@@ -437,33 +495,38 @@ inline double update_aerodynamic_shake(
 	const Core::Simulation::AerodynamicsConfig& config,
 	const AerodynamicsFrameInput& input)
 {
-	state.shake_amplitude = Common::limit(
-		(config.cx_airbrake + 1.0) * input.airbrake_pos * input.mach,
+	state.shake_amplitude_normalized = Common::limit(
+		(config.cx_airbrake + 1.0) * input.airbrake_position_normalized *
+		input.mach,
 		0.0,
 		2.0) / 6.0;
 
 	if (!input.on_ground)
 	{
-		if (std::fabs(input.alpha_deg) > 10.0)
+		if (std::fabs(input.angle_of_attack_deg) > 10.0)
 		{
-			state.shake_amplitude += (std::fabs(input.alpha_deg) - 10.0) / 100.0;
+			state.shake_amplitude_normalized +=
+				(std::fabs(input.angle_of_attack_deg) - 10.0) / 100.0;
 		}
-		const double beta_deg = Common::deg(input.aos);
+		const double beta_deg = Common::deg(input.angle_of_slide_rad);
 		if (std::fabs(beta_deg) > 10.0)
 		{
-			state.shake_amplitude += (std::fabs(beta_deg) - 10.0) / 100.0;
+			state.shake_amplitude_normalized +=
+				(std::fabs(beta_deg) - 10.0) / 100.0;
 		}
-		if (std::fabs(input.g_force) > 5.0)
+		if (std::fabs(input.normal_acceleration_g) > 5.0)
 		{
-			state.shake_amplitude += (std::fabs(input.g_force) - 5.0) / 100.0;
+			state.shake_amplitude_normalized +=
+				(std::fabs(input.normal_acceleration_g) - 5.0) / 100.0;
 		}
 		if (input.mach > config.mach_max * 0.8)
 		{
-			state.shake_amplitude += (input.mach - config.mach_max * 0.8) / 2.0;
+			state.shake_amplitude_normalized +=
+				(input.mach - config.mach_max * 0.8) / 2.0;
 		}
 	}
 
-	return state.shake_amplitude;
+	return state.shake_amplitude_normalized;
 }
 }
 }

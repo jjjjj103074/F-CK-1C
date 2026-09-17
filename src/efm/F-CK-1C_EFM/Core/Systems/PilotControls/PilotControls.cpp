@@ -73,19 +73,23 @@ void PilotControls::handle_pitch_roll_command(const Command& command)
 	switch (command.id)
 	{
 	case CommandId::SetPitchAxis:
-		::Systems::set_pitch_axis_input(primary_controls_, command.value); break;
+		::Systems::set_pitch_axis_input(
+			primary_controls_, command.value_normalized); break;
 	case CommandId::SetPitchDiscrete:
 		::Systems::set_pitch_discrete_input(
-			primary_controls_, static_cast<int>(command.value)); break;
+			primary_controls_, static_cast<int>(command.value_normalized)); break;
 	case CommandId::AdjustPitchTrim:
-		::Systems::adjust_pitch_trim(primary_controls_, command.value); break;
+		::Systems::adjust_pitch_trim(
+			primary_controls_, command.value_normalized); break;
 	case CommandId::SetRollAxis:
-		::Systems::set_roll_axis_input(primary_controls_, command.value); break;
+		::Systems::set_roll_axis_input(
+			primary_controls_, command.value_normalized); break;
 	case CommandId::SetRollDiscrete:
 		::Systems::set_roll_discrete_input(
-			primary_controls_, static_cast<int>(command.value)); break;
+			primary_controls_, static_cast<int>(command.value_normalized)); break;
 	case CommandId::AdjustRollTrim:
-		::Systems::adjust_roll_trim(primary_controls_, command.value); break;
+		::Systems::adjust_roll_trim(
+			primary_controls_, command.value_normalized); break;
 	default:
 		break;
 	}
@@ -96,12 +100,14 @@ void PilotControls::handle_yaw_command(const Command& command)
 	switch (command.id)
 	{
 	case CommandId::SetYawAxis:
-		::Systems::set_yaw_axis_input(primary_controls_, command.value); break;
+		::Systems::set_yaw_axis_input(
+			primary_controls_, command.value_normalized); break;
 	case CommandId::SetYawDiscrete:
 		::Systems::set_yaw_discrete_input(
-			primary_controls_, static_cast<int>(command.value)); break;
+			primary_controls_, static_cast<int>(command.value_normalized)); break;
 	case CommandId::AdjustYawTrim:
-		::Systems::adjust_yaw_trim(primary_controls_, command.value); break;
+		::Systems::adjust_yaw_trim(
+			primary_controls_, command.value_normalized); break;
 	case CommandId::ResetTrim:
 		::Systems::reset_primary_trims(primary_controls_); break;
 	default:
@@ -115,22 +121,22 @@ void PilotControls::handle_throttle_command(const Command& command)
 	{
 	case CommandId::SetCommonThrottleAxis:
 		::Systems::set_common_throttle_axis(
-			throttle_inputs_, command.value); break;
+			throttle_inputs_, command.value_normalized); break;
 	case CommandId::SetLeftThrottleAxis:
 		::Systems::set_left_throttle_axis(
-			throttle_inputs_, command.value); break;
+			throttle_inputs_, command.value_normalized); break;
 	case CommandId::SetRightThrottleAxis:
 		::Systems::set_right_throttle_axis(
-			throttle_inputs_, command.value); break;
+			throttle_inputs_, command.value_normalized); break;
 	case CommandId::StepCommonThrottle:
 		::Systems::step_common_keyboard_throttle(
-			throttle_inputs_, command.value); break;
+			throttle_inputs_, command.value_normalized); break;
 	case CommandId::StepLeftThrottle:
 		::Systems::step_left_keyboard_throttle(
-			throttle_inputs_, command.value); break;
+			throttle_inputs_, command.value_normalized); break;
 	case CommandId::StepRightThrottle:
 		::Systems::step_right_keyboard_throttle(
-			throttle_inputs_, command.value); break;
+			throttle_inputs_, command.value_normalized); break;
 	default:
 		break;
 	}

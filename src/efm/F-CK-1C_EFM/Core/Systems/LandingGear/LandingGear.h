@@ -12,11 +12,11 @@ namespace Systems
 {
 struct LandingGearFrameInput
 {
-	double speed_scalar = 0.0;
-	double ground_speed = 0.0;
-	double dt = 0.0;
-	double altitude_agl = 0.0;
-	double yaw_input = 0.0;
+	double true_airspeed_mps = 0.0;
+	double ground_speed_mps = 0.0;
+	double dt_s = 0.0;
+	double altitude_agl_m = 0.0;
+	double yaw_input_normalized = 0.0;
 };
 
 class LandingGear final : public System
@@ -47,7 +47,7 @@ private:
 
 	::Systems::LandingGearSystemState landing_gear_;
 	SuspensionFeedbackState suspension_;
-	std::array<double, kFrameSuspensionWheelCount> wheel_radius_;
+	std::array<double, kFrameSuspensionWheelCount> wheel_radius_m_;
 	std::array<double, kLandingGearDamageSegmentCount> integrity_;
 	LandingGearData data_;
 };

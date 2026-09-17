@@ -12,10 +12,10 @@ namespace Systems
 {
 struct EngineFrameInput
 {
-	double dt = 0.0;
+	double dt_s = 0.0;
 	EngineThrottleCommand throttle_command;
-	double internal_fuel = 0.0;
-	double altitude_asl = 0.0;
+	double internal_fuel_kg = 0.0;
+	double altitude_asl_m = 0.0;
 };
 
 class Engine final : public System

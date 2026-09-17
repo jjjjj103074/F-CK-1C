@@ -28,75 +28,88 @@ struct Quaternion
 
 struct AtmosphereInput
 {
-	double altitude_asl = 0.0;
-	double temperature = 0.0;
-	double speed_of_sound = 0.0;
-	double density = 0.0;
-	double pressure = 0.0;
-	Common::Vec3 wind;
+	double altitude_asl_m = 0.0;
+	double temperature_k = 0.0;
+	double speed_of_sound_mps = 0.0;
+	double density_kg_m3 = 0.0;
+	double pressure_pa = 0.0;
+	Common::Vec3 wind_world_mps;
 };
 
 struct SurfaceInput
 {
-	double surface_height = 0.0;
-	double surface_height_with_objects = 0.0;
+	double surface_height_m = 0.0;
+	double surface_height_with_objects_m = 0.0;
 	unsigned surface_type = 0;
-	Common::Vec3 normal;
+	Common::Vec3 normal_world_unit;
 };
 
 struct MassStateInput
 {
-	double mass = 0.0;
-	Common::Vec3 center_of_mass;
-	Common::Vec3 moment_of_inertia;
+	double mass_kg = 0.0;
+	Common::Vec3 center_of_mass_body_m;
+	Common::Vec3 moment_of_inertia_body_kg_m2;
 };
 
 struct WorldKinematicsInput
 {
-	Common::Vec3 acceleration;
-	Common::Vec3 velocity;
-	Common::Vec3 position;
-	Common::Vec3 angular_acceleration;
-	Common::Vec3 angular_velocity;
+	Common::Vec3 acceleration_world_mps2;
+	Common::Vec3 velocity_world_mps;
+	Common::Vec3 position_world_m;
+	Common::Vec3 angular_acceleration_world_rad_s2;
+	Common::Vec3 angular_velocity_world_rad_s;
 	Quaternion orientation;
+};
+
+// Core local-body convention, preserved from the DCS EFM callback:
+// +x/right roll, +z/nose-up pitch, +y/nose-left yaw. Angles are radians,
+// angular rates are rad/s, and angular accelerations are rad/s^2. Aviation
+// heading is a separate clockwise-positive magnetic observation.
+struct BodyAngularKinematicsInput
+{
+	double roll_acceleration_rad_s2 = 0.0;
+	double pitch_acceleration_rad_s2 = 0.0;
+	double yaw_acceleration_rad_s2 = 0.0;
+	double roll_rate_rad_s = 0.0;
+	double pitch_rate_rad_s = 0.0;
+	double yaw_rate_rad_s = 0.0;
 };
 
 struct BodyKinematicsInput
 {
-	Common::Vec3 acceleration;
-	Common::Vec3 velocity;
-	Common::Vec3 wind_velocity;
-	Common::Vec3 angular_acceleration;
-	Common::Vec3 angular_velocity;
-	double heading = 0.0;
-	double pitch = 0.0;
-	double roll = 0.0;
-	double angle_of_attack = 0.0;
-	double angle_of_slide = 0.0;
+	Common::Vec3 acceleration_body_mps2;
+	Common::Vec3 velocity_body_mps;
+	Common::Vec3 wind_velocity_body_mps;
+	BodyAngularKinematicsInput angular;
+	double world_yaw_rad = 0.0;
+	double pitch_rad = 0.0;
+	double roll_rad = 0.0;
+	double angle_of_attack_rad = 0.0;
+	double angle_of_slide_rad = 0.0;
 };
 
 struct SuspensionFeedbackInput
 {
 	int index = 0;
-	Common::Vec3 acting_force;
-	Common::Vec3 acting_force_point;
-	double integrity_factor = 0.0;
-	double compression = 0.0;
-	double wheel_speed_x = 0.0;
+	Common::Vec3 acting_force_body_n;
+	Common::Vec3 acting_force_point_body_m;
+	double integrity_factor_0_1 = 0.0;
+	double compression_m = 0.0;
+	double wheel_speed_x_mps = 0.0;
 };
 
 struct ExternalFuelInput
 {
 	int station = 0;
-	double fuel = 0.0;
-	Common::Vec3 position;
+	double fuel_kg = 0.0;
+	Common::Vec3 position_body_m;
 };
 
 struct MassDelta
 {
-	double mass = 0.0;
-	Common::Vec3 position;
-	Common::Vec3 moment_of_inertia;
+	double mass_kg = 0.0;
+	Common::Vec3 position_body_m;
+	Common::Vec3 moment_of_inertia_delta_kg_m2;
 };
 
 struct MassDeltaResult
@@ -138,13 +151,13 @@ struct FlightOutput
 	double altitude_agl_m = 0.0;
 	double position_world_z_m = 0.0;
 	double mach = 0.0;
-	double g_load = 0.0;
+	double normal_acceleration_g = 0.0;
 	double angle_of_attack_deg = 0.0;
 	double angle_of_slide_deg = 0.0;
 	double atmosphere_temperature_k = 0.0;
 	double indicated_airspeed_mps = 0.0;
 	double vertical_speed_mps = 0.0;
-	double heading_rad = 0.0;
+	double world_yaw_rad = 0.0;
 	double pitch_attitude_rad = 0.0;
 	double roll_attitude_rad = 0.0;
 	double roll_rate_rad_s = 0.0;
@@ -154,50 +167,51 @@ struct FlightOutput
 
 struct ForceMomentOutput
 {
-	Common::Vec3 force;
-	Common::Vec3 moment;
-	Common::Vec3 center_of_mass;
+	Common::Vec3 force_body_n;
+	Common::Vec3 moment_body_nm;
+	Common::Vec3 center_of_mass_body_m;
 };
 
 struct EngineOutput
 {
 	bool switch_on = false;
-	double throttle_input = 0.0;
-	double throttle_output = 0.0;
-	double power_readout = 0.0;
-	double thrust_force = 0.0;
-	double afterburner_ratio = 0.0;
+	double throttle_input_normalized = 0.0;
+	double throttle_output_normalized = 0.0;
+	double power_readout_normalized = 0.0;
+	double thrust_force_n = 0.0;
+	double afterburner_ratio_0_1 = 0.0;
 	bool afterburner_lit = false;
-	double nozzle_aperture = 0.0;
+	double nozzle_aperture_normalized = 0.0;
 };
 
 struct ControlOutput
 {
-	double pitch_input = 0.0;
-	double roll_input = 0.0;
-	double yaw_input = 0.0;
-	double elevator_command = 0.0;
-	double aileron_command = 0.0;
-	double rudder_command = 0.0;
-	double flaps_position = 0.0;
-	double slats_position = 0.0;
-	double airbrake_position = 0.0;
+	double pitch_input_normalized = 0.0;
+	double roll_input_normalized = 0.0;
+	double yaw_input_normalized = 0.0;
+	double symmetric_stabilator_position_rad = 0.0;
+	double differential_flaperon_position_rad = 0.0;
+	double rudder_position_rad = 0.0;
+	double flaps_position_normalized = 0.0;
+	double slats_position_normalized = 0.0;
+	double airbrake_position_normalized = 0.0;
 };
 
 struct LandingGearOutput
 {
-	double gear_position = 0.0;
-	double nose_wheel_steering = 0.0;
-	double brake_left = 0.0;
-	double brake_right = 0.0;
-	std::array<double, kFrameSuspensionWheelCount> wheel_spin = {};
+	double gear_position_normalized = 0.0;
+	double nose_wheel_steering_normalized = 0.0;
+	double brake_left_normalized = 0.0;
+	double brake_right_normalized = 0.0;
+	std::array<double, kFrameSuspensionWheelCount>
+		wheel_spin_phase_0_1 = {};
 };
 
 struct SuspensionWheelOutput
 {
-	Common::Vec3 acting_force;
-	double compression = 0.0;
-	double force_magnitude = 0.0;
+	Common::Vec3 acting_force_body_n;
+	double compression_m = 0.0;
+	double force_magnitude_n = 0.0;
 	bool weight_on_wheel = false;
 };
 
@@ -210,10 +224,10 @@ struct SuspensionOutput
 
 struct FuelOutput
 {
-	double internal_fuel = 0.0;
-	double external_fuel = 0.0;
-	double total_fuel = 0.0;
-	double total_fuel_flow = 0.0;
+	double internal_fuel_kg = 0.0;
+	double external_fuel_kg = 0.0;
+	double total_fuel_kg = 0.0;
+	double total_fuel_flow_kg_s = 0.0;
 };
 
 struct PropulsionDiagnosticsOutput
@@ -235,6 +249,6 @@ struct FrameOutput
 	PropulsionDiagnosticsOutput propulsion_diagnostics;
 	MassDeltaResult mass_effect;
 	CockpitSnapshot cockpit;
-	double shake_amplitude = 0.0;
+	double shake_amplitude_normalized = 0.0;
 };
 }

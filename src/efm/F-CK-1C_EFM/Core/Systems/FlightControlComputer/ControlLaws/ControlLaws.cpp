@@ -1,508 +1,210 @@
 #include "ControlLaws.h"
 
-#include "ControlLawMath.h"
-#include "ConfigurationAndMode.h"
-#include "InnerLoopControl.h"
-#include "Common/Actuator.h"
+#include "Internal/ControlLawMath.h"
+#include "Internal/InnerLoopControl.h"
+#include "Internal/LongitudinalControlLaw.h"
 #include "Common/Clamp.h"
-#include "Common/Units.h"
+
 #include <cmath>
 
 namespace
 {
-constexpr double kMinimumTimeConstantS = 1e-6;
+constexpr double kRateConstraintToleranceRadS = 1.0e-5;
 
-struct FBWOuterPitchGains
+struct AxisLawResult
 {
-	double kp_nz;
-	double ki_nz;
+	double effort_normalized = 0.0;
+	bool rate_limited = false;
+	bool anti_windup_active = false;
 };
 
-class FBWFrame
+struct LateralDirectionalReference
+{
+	double roll_rate_rad_s = 0.0;
+	double yaw_rate_rad_s = 0.0;
+};
+
+struct SurfaceControlEffort
+{
+	double longitudinal = 0.0;
+	double lateral = 0.0;
+	double directional = 0.0;
+};
+
+struct AxisGainsInput
+{
+	double proportional = 0.0;
+	double integral = 0.0;
+	const Systems::FlightControlLawsInput& laws;
+	const Systems::InnerRateControlConfig& config;
+};
+
+
+Systems::AxisRateLoopGains axis_gains(const AxisGainsInput& input)
+{
+	const double damping = input.laws.configuration.gains.damping_gain;
+	return { input.proportional * damping, input.integral * damping,
+		input.config.anti_windup_gain, input.config.integral_limit };
+}
+
+AxisLawResult update_rate_axis(
+	double& integral,
+	const Systems::AxisRateLoopStepInput& step,
+	double limit_rad_s)
+{
+	const double limited_reference = Common::limit(
+		step.reference_rad_s, -limit_rad_s, limit_rad_s);
+	Systems::AxisRateLoopStepInput limited = step;
+	limited.reference_rad_s = limited_reference;
+	const Systems::AxisRateLoopResult result =
+		Systems::update_axis_rate_loop(integral, limited);
+	integral = result.integral;
+	return { result.effort_normalized,
+		std::fabs(limited_reference - step.reference_rad_s) >
+			kRateConstraintToleranceRadS,
+		result.anti_windup_active };
+}
+
+class LateralDirectionalCoordination
 {
 public:
-	FBWFrame(
-		Systems::FBWControllerState& state,
-		const Systems::FBWControllerConfig& config,
-		const Systems::FlightControlLawStepInput& request)
-		: state_(state),
-		  config_(config),
-		  input_(request.flight),
-		  maneuver_(request.maneuver),
-		  request_configuration_(request.configuration),
-		  output_{ request.flight.elevator_position_normalized,
-			request.flight.aileron_position_normalized,
-			request.flight.rudder_position_normalized }
+	static LateralDirectionalReference update(
+		const Systems::FlightControlLawsInput& input)
 	{
+		const auto& reference = input.maneuver.lateral_directional;
+		const auto& schedule = input.configuration.stores.directional;
+		const double sideslip_error_rad =
+			input.flight.sideslip_rad - reference.sideslip_reference_rad;
+		const double damping_rad_s = -(
+			schedule.sideslip_damping_s_inv * sideslip_error_rad +
+			schedule.yaw_rate_damping * input.flight.yaw_rate_rad_s) *
+			input.configuration.gains.damping_gain;
+		return { reference.roll_rate_reference_rad_s,
+			reference.yaw_rate_feedforward_rad_s + damping_rad_s };
 	}
+};
 
-	Systems::FlightControlLawResult run()
+class LateralControlLaw
+{
+public:
+	LateralControlLaw(
+		Systems::LateralControlLawState& state,
+		const Systems::FlightControlLawsConfig& config)
+		: state_(state), config_(config) {}
+
+	AxisLawResult update(
+		const Systems::FlightControlLawsInput& input,
+		double reference_rad_s)
 	{
-		if (!state_.enabled)
-		{
-			return update_direct_mode();
-		}
-		apply_configuration();
-		capture_and_filter_signals();
-		shape_stick_commands();
-		update_hold_entry();
-		prepare_rate_commands();
-		update_hold_commands();
-		update_pitch_demands();
-		update_outer_pitch_loop();
-		update_pitch_reference();
-		update_hold_degrade();
-		select_rate_commands();
-		limit_rate_commands();
-		update_inner_rate_loop();
-		update_actuator_feedback();
-		return output_;
+		const auto& inner = config_.inner_rate;
+		const double limit = input.configuration.envelope.hard_protection
+			.roll_rate_limit_rad_s * input.configuration.gains.limiter_gain;
+		return update_rate_axis(state_.roll_integral,
+			{ input.flight.dt_s, reference_rad_s,
+				input.flight.roll_rate_rad_s,
+				axis_gains({ inner.roll_proportional, inner.roll_integral,
+					input, inner }) }, limit);
 	}
 
 private:
-	Systems::FlightControlLawResult update_direct_mode()
-	{
-		output_.surface_demand.elevator_command_normalized = Common::limit(
-			Common::actuator(
-				output_.surface_demand.elevator_command_normalized,
-				{ input_.pilot_pitch_raw_normalized,
-					-config_.direct_mode.elevator_command_step_normalized,
-					config_.direct_mode.elevator_command_step_normalized }),
-			-1.0, 1.0);
-		output_.surface_demand.aileron_command_normalized = Common::limit(
-			Common::actuator(
-				output_.surface_demand.aileron_command_normalized,
-				{ input_.pilot_roll_raw_normalized,
-					-config_.direct_mode.aileron_command_step_normalized,
-					config_.direct_mode.aileron_command_step_normalized }),
-			-1.0, 1.0);
-		output_.surface_demand.rudder_command_normalized = Common::limit(
-			Common::actuator(
-				output_.surface_demand.rudder_command_normalized,
-				{ input_.pilot_yaw_raw_normalized,
-					-config_.direct_mode.rudder_command_step_normalized,
-					config_.direct_mode.rudder_command_step_normalized }),
-			-1.0, 1.0);
-		return output_;
-	}
-
-	void apply_configuration()
-	{
-		state_.mode_blend = input_.cat_mode_blend;
-		cat_ = request_configuration_.cat;
-		gains_ = request_configuration_.gains;
-		envelope_ = request_configuration_.envelope;
-	}
-
-	void capture_and_filter_signals()
-	{
-		state_.phi_raw = input_.roll_attitude_rad;
-		state_.theta_raw = input_.pitch_attitude_rad;
-		state_.p_raw = input_.roll_rate_rad_s;
-		state_.q_raw = input_.pitch_rate_rad_s;
-		state_.r_raw = input_.yaw_rate_rad_s;
-		state_.alpha_raw = input_.angle_of_attack_deg;
-		state_.beta_raw = input_.sideslip_deg;
-		state_.qbar_raw = input_.dynamic_pressure_pa;
-
-		state_.phi_f = state_.phi_raw;
-		state_.theta_f = state_.theta_raw;
-		state_.p_f = state_.p_raw;
-		state_.q_f = state_.q_raw;
-		state_.r_f = state_.r_raw;
-		state_.alpha_f = state_.alpha_raw;
-		state_.beta_f = state_.beta_raw;
-		state_.qbar_f = state_.qbar_raw;
-	}
-
-	double first_order(double current, double target, double tau) const
-	{
-		if (tau <= kMinimumTimeConstantS)
-		{
-			return target;
-		}
-		const double gain = Common::limit(
-			input_.dt_s / (tau + input_.dt_s), 0.0, 1.0);
-		return current + (target - current) * gain;
-	}
-
-	void shape_stick_commands()
-	{
-		stick_in_deadband_ = input_.roll_pitch_in_deadband;
-	}
-
-	void reset_hold_for_rate_mode()
-	{
-		state_.control_state = Systems::FBW_STATE_RATE;
-		state_.hold_active = false;
-		state_.hold_timer = 0.0;
-		state_.hold_gain_scale = 1.0;
-		state_.hold_exit_reason = Systems::FBW_HOLD_EXIT_STICK;
-		state_.hold_enter_reason = 0;
-	}
-
-	void update_hold_entry()
-	{
-		if (input_.weight_on_wheels || !stick_in_deadband_)
-		{
-			reset_hold_for_rate_mode();
-			return;
-		}
-		state_.hold_timer += input_.dt_s;
-		if (state_.control_state != Systems::FBW_STATE_RATE ||
-			state_.hold_timer < cat_.hold_engage_time)
-		{
-			return;
-		}
-		state_.control_state = Systems::FBW_STATE_HOLD;
-		state_.hold_active = true;
-		state_.phi_ref = state_.phi_f;
-		state_.theta_ref = state_.theta_f;
-		state_.hold_gain_scale = 1.0;
-		state_.hold_exit_reason = Systems::FBW_HOLD_EXIT_NONE;
-		state_.hold_enter_reason = 1;
-	}
-
-	void prepare_rate_commands()
-	{
-		state_.nz_raw = input_.normal_acceleration_g;
-		state_.nz_f = state_.nz_raw;
-		state_.p_cmd_rate =
-			maneuver_.lateral_directional.roll_rate_reference_rad_s;
-		state_.r_cmd_rate =
-			maneuver_.lateral_directional.yaw_rate_feedforward_rad_s;
-
-	}
-
-	void update_hold_commands()
-	{
-		state_.phi_err = 0.0;
-		state_.theta_err = 0.0;
-		state_.p_cmd_hold = 0.0;
-		state_.q_cmd_hold = 0.0;
-		hold_cmd_overlimit_ = false;
-		const bool hold_state = state_.control_state == Systems::FBW_STATE_HOLD ||
-			state_.control_state == Systems::FBW_STATE_DEGRADE;
-		if (!hold_state || !stick_in_deadband_)
-		{
-			return;
-		}
-		state_.phi_err = Systems::fbw_wrap_pi(state_.phi_ref - state_.phi_f);
-		state_.theta_err = state_.theta_ref - state_.theta_f;
-		const double p_raw = state_.phi_err * cat_.hold_phi_kp * gains_.hold_gain;
-		const double q_raw = state_.theta_err * cat_.hold_theta_kp * gains_.hold_gain;
-		const double p_limit = cat_.hold_p_cmd_max * gains_.limiter_gain;
-		const double q_limit = cat_.hold_q_cmd_max * gains_.limiter_gain;
-		state_.p_cmd_hold = Common::limit(p_raw, -p_limit, p_limit);
-		state_.q_cmd_hold = Common::limit(q_raw, -q_limit, q_limit);
-		hold_cmd_overlimit_ =
-			std::fabs(p_raw) > p_limit * cat_.hold_cmd_ratio_limit ||
-			std::fabs(q_raw) > q_limit * cat_.hold_cmd_ratio_limit;
-	}
-
-	void update_pitch_demands()
-	{
-		alpha_abs_ = std::fabs(state_.alpha_f);
-		alpha_soft_ = Common::limit(
-			cat_.aoa_soft_deg,
-			config_.normal_acceleration.minimum_aoa_soft_limit_deg,
-			envelope_.hard_protection.angle_of_attack_limit_deg);
-		nz_positive_limit_ =
-			envelope_.hard_protection.maximum_normal_acceleration_g;
-		const double positive_buffer = Systems::fbw_max(
-			config_.normal_acceleration.positive_buffer_minimum_g,
-			config_.nz_limit_buffer_bias);
-		nz_positive_soft_ = Systems::fbw_min(cat_.g_soft, nz_positive_limit_ - positive_buffer);
-		const double negative_hard =
-			envelope_.hard_protection.minimum_normal_acceleration_g;
-		const double negative_soft = -Systems::fbw_max(
-			config_.normal_acceleration.negative_soft_minimum_g,
-			-1.0 * negative_hard *
-				config_.normal_acceleration.negative_soft_ratio);
-		state_.nz_cmd =
-			maneuver_.longitudinal.normal_acceleration_reference_g;
-		state_.nz_cmd_lim = state_.nz_cmd;
-		if (state_.nz_cmd_lim > nz_positive_soft_)
-		{
-			state_.nz_cmd_lim = Systems::fbw_soft_clip_positive(
-				state_.nz_cmd_lim, nz_positive_soft_, nz_positive_limit_);
-		}
-		if (state_.nz_cmd_lim < negative_soft)
-		{
-			state_.nz_cmd_lim = Systems::fbw_soft_clip_negative(
-				state_.nz_cmd_lim, negative_soft, negative_hard);
-		}
-	}
-
-	void update_outer_pitch_loop()
-	{
-		q_outer_limit_ = cat_.q_rate_limit * gains_.limiter_gain;
-		double nz_gain_scale = 1.0;
-		if (state_.nz_cmd > 1.0)
-		{
-			const double ratio = Common::limit(
-				(state_.nz_f - nz_positive_soft_) /
-				Systems::fbw_max(
-					nz_positive_limit_ - nz_positive_soft_,
-					config_.normal_acceleration.limit_range_minimum_g),
-				0.0, 1.0);
-			nz_gain_scale = Systems::fbw_blend_value(
-				1.0, config_.nz_limit_gain_floor, Systems::fbw_smoothstep01(ratio));
-		}
-		const double kp_nz = Systems::fbw_blend_value(
-			config_.normal_acceleration.outer_kp_cat1,
-			config_.normal_acceleration.outer_kp_cat3,
-			state_.mode_blend) * gains_.cmd_gain * nz_gain_scale;
-		const double ki_nz = Systems::fbw_blend_value(
-			config_.normal_acceleration.outer_ki_cat1,
-			config_.normal_acceleration.outer_ki_cat3,
-			state_.mode_blend) * gains_.hold_gain * nz_gain_scale;
-		integrate_outer_pitch_loop({ kp_nz, ki_nz });
-	}
-
-	void integrate_outer_pitch_loop(const FBWOuterPitchGains& gains)
-	{
-		const double nz_error = state_.nz_cmd_lim - state_.nz_f;
-		const double nz_raw = gains.kp_nz * nz_error + state_.nz_outer_int;
-		state_.q_ref_nz = Common::limit(nz_raw, -q_outer_limit_, q_outer_limit_);
-		state_.nz_outer_int += (gains.ki_nz * nz_error +
-			config_.outer_aw_gain * (state_.q_ref_nz - nz_raw)) * input_.dt_s;
-		state_.nz_outer_int = Common::limit(
-			state_.nz_outer_int, -config_.outer_int_limit, config_.outer_int_limit);
-	}
-
-	void update_pitch_reference()
-	{
-		state_.q_cmd_direct =
-			maneuver_.longitudinal.pitch_rate_feedforward_rad_s;
-		state_.q_ref_q = state_.q_cmd_direct;
-		state_.q_ref_blended = state_.q_ref_nz + state_.q_ref_q;
-		if (state_.alpha_f > alpha_soft_ && state_.q_ref_blended > 0.0)
-		{
-			state_.q_ref_blended =
-				-config_.normal_acceleration.alpha_protection_rate_gain_s_inv *
-				Common::rad(state_.alpha_f - alpha_soft_);
-		}
-		const double previous = state_.q_ref_filtered;
-		state_.q_ref_filtered = first_order(
-			state_.q_ref_filtered, state_.q_ref_blended, config_.pitch_ref_tau);
-		const double maximum_step =
-			Common::rad(config_.pitch_ref_rate_deg_s) * input_.dt_s;
-		state_.q_ref_filtered = Common::limit(
-			state_.q_ref_filtered, previous - maximum_step, previous + maximum_step);
-		state_.q_cmd_rate = Common::limit(state_.q_ref_filtered, -q_outer_limit_, q_outer_limit_);
-		state_.aoa_limit_active = state_.alpha_f > alpha_soft_;
-		state_.g_limit_active =
-			std::fabs(state_.nz_cmd - state_.nz_cmd_lim) >
-			config_.normal_acceleration.g_limit_activation_tolerance_g;
-	}
-
-	void update_hold_degrade()
-	{
-		const bool aoa = alpha_abs_ > cat_.alpha_hold_degrade_deg ||
-			alpha_abs_ > input_.alpha_limit_deg *
-				config_.hold_degrade.alpha_limit_ratio;
-		const bool qbar = state_.qbar_f < cat_.qbar_min_hold;
-		if (state_.control_state == Systems::FBW_STATE_HOLD && (aoa || qbar || hold_cmd_overlimit_))
-		{
-			state_.control_state = Systems::FBW_STATE_DEGRADE;
-			state_.hold_active = false;
-			state_.hold_exit_reason = hold_degrade_reason(aoa, qbar);
-		}
-		if (state_.control_state != Systems::FBW_STATE_DEGRADE)
-		{
-			state_.hold_gain_scale = 1.0;
-			return;
-		}
-		state_.hold_gain_scale = first_order(state_.hold_gain_scale, 0.0, cat_.hold_decay_tau);
-		if (state_.hold_gain_scale <
-			config_.hold_degrade.gain_zero_threshold)
-		{
-			state_.hold_gain_scale = 0.0;
-		}
-	}
-
-	static Systems::FBWHoldExitReason hold_degrade_reason(bool aoa, bool qbar)
-	{
-		if (aoa)
-		{
-			return Systems::FBW_HOLD_EXIT_AOA;
-		}
-		return qbar
-			? Systems::FBW_HOLD_EXIT_QBAR
-			: Systems::FBW_HOLD_EXIT_HOLD_CMD;
-	}
-
-	void select_rate_commands()
-	{
-		const bool hold_path = stick_in_deadband_ &&
-			(state_.control_state == Systems::FBW_STATE_HOLD ||
-			state_.control_state == Systems::FBW_STATE_DEGRADE);
-		const bool manual_lateral = maneuver_.lateral_authority !=
-			Core::Systems::AuthorityState::Automatic;
-		const bool manual_longitudinal = maneuver_.longitudinal_authority !=
-			Core::Systems::AuthorityState::Automatic;
-		state_.p_cmd = hold_path && manual_lateral ?
-			state_.p_cmd_hold * state_.hold_gain_scale : state_.p_cmd_rate;
-		state_.q_cmd = hold_path && manual_longitudinal ?
-			state_.q_cmd_hold * state_.hold_gain_scale : state_.q_cmd_rate;
-		const double beta_error_rad =
-			state_.beta_f / Common::kDegPerRad -
-			maneuver_.lateral_directional.sideslip_reference_rad;
-		state_.r_cmd_damper = -(
-			cat_.yaw_damper_beta * beta_error_rad +
-			cat_.yaw_damper_r * state_.r_f) *
-			gains_.damping_gain;
-		state_.r_cmd = state_.r_cmd_rate + state_.r_cmd_damper;
-	}
-
-	void limit_rate_commands()
-	{
-		const Systems::LimitedBodyRateReference limited =
-			Systems::limit_body_rate_reference(
-				{ state_.p_cmd, state_.q_cmd, state_.r_cmd },
-				{ envelope_.hard_protection.roll_rate_limit_rad_s *
-					gains_.limiter_gain,
-					envelope_.hard_protection.pitch_rate_limit_rad_s *
-					gains_.limiter_gain,
-					envelope_.hard_protection.yaw_rate_limit_rad_s *
-					gains_.limiter_gain });
-		state_.p_cmd = limited.value.roll_rate_rad_s;
-		state_.q_cmd = limited.value.pitch_rate_rad_s;
-		state_.r_cmd = limited.value.yaw_rate_rad_s;
-		state_.rate_limit_active = limited.constrained;
-	}
-
-	void update_inner_rate_loop()
-	{
-		const Systems::InnerRateLoopResult result =
-			Systems::update_inner_rate_loop(
-				{ state_.int_p, state_.int_q, state_.int_r },
-				{ input_.dt_s,
-					{ state_.p_cmd, state_.q_cmd, state_.r_cmd },
-					{ state_.p_f, state_.q_f, state_.r_f },
-					{ config_.kp_p * gains_.damping_gain,
-						config_.ki_p * gains_.damping_gain,
-						config_.kp_q * gains_.damping_gain,
-						config_.ki_q * gains_.damping_gain,
-						config_.kp_r * gains_.damping_gain,
-						config_.ki_r * gains_.damping_gain,
-						config_.aw_gain,
-						config_.int_limit } });
-		state_.int_p = result.state.roll_integral;
-		state_.int_q = result.state.pitch_integral;
-		state_.int_r = result.state.yaw_integral;
-		state_.anti_windup_active = result.anti_windup_active;
-		output_.surface_demand = result.surface_demand;
-	}
-
-	void update_actuator_feedback()
-	{
-		state_.actuator_sat = input_.actuator_saturated;
-		state_.actuator_sat_timer = state_.actuator_sat
-			? state_.actuator_sat_timer + input_.dt_s
-			: Common::limit(
-				state_.actuator_sat_timer - input_.dt_s,
-				0.0,
-				config_.hold_degrade.actuator_timer_maximum_s);
-		if (state_.control_state == Systems::FBW_STATE_HOLD &&
-			state_.actuator_sat_timer > cat_.sat_time)
-		{
-			state_.control_state = Systems::FBW_STATE_DEGRADE;
-			state_.hold_active = false;
-			state_.hold_exit_reason = Systems::FBW_HOLD_EXIT_ACTUATOR_SAT;
-		}
-	}
-
-	Systems::FBWControllerState& state_;
-	const Systems::FBWControllerConfig& config_;
-	const Systems::ConditionedFlightControlInput& input_;
-	const Core::Systems::CoordinatedManeuverReference& maneuver_;
-	const Systems::FlightControlConfiguration& request_configuration_;
-	Systems::FlightControlLawResult output_;
-	Systems::FBWCatParams cat_;
-	Systems::ManeuverEnvelope envelope_;
-	Systems::FBWGainScheduleValues gains_;
-	bool stick_in_deadband_ = false;
-	bool hold_cmd_overlimit_ = false;
-	double alpha_abs_ = 0.0;
-	double alpha_soft_ = 0.0;
-	double nz_positive_limit_ = 0.0;
-	double nz_positive_soft_ = 0.0;
-	double q_outer_limit_ = 0.0;
+	Systems::LateralControlLawState& state_;
+	const Systems::FlightControlLawsConfig& config_;
 };
+
+class DirectionalControlLaw
+{
+public:
+	DirectionalControlLaw(
+		Systems::DirectionalControlLawState& state,
+		const Systems::FlightControlLawsConfig& config)
+		: state_(state), config_(config) {}
+
+	AxisLawResult update(
+		const Systems::FlightControlLawsInput& input,
+		double reference_rad_s)
+	{
+		const auto& inner = config_.inner_rate;
+		const double limit = input.configuration.envelope.hard_protection
+			.yaw_rate_limit_rad_s * input.configuration.gains.limiter_gain;
+		return update_rate_axis(state_.yaw_integral,
+			{ input.flight.dt_s, reference_rad_s,
+				input.flight.yaw_rate_rad_s,
+				axis_gains({ inner.yaw_proportional, inner.yaw_integral,
+					input, inner }) }, limit);
+	}
+
+private:
+	Systems::DirectionalControlLawState& state_;
+	const Systems::FlightControlLawsConfig& config_;
+};
+
+Systems::ControlSurfaceDemandSet mix_surface_commands(
+	const SurfaceControlEffort& effort,
+	const Systems::SurfaceCommandMixerConfig& config)
+{
+	return {
+		effort.longitudinal * config.symmetric_stabilator_limit_rad,
+		effort.lateral * config.differential_flaperon_limit_rad,
+		effort.directional * config.rudder_limit_rad
+	};
+}
+
+Systems::ControlSurfaceDemandSet direct_surface_commands(
+	const Systems::FlightControlLawsInput& input,
+	const Systems::SurfaceCommandMixerConfig& config)
+{
+	return {
+		input.signals.pilot_pitch_raw_normalized *
+			config.symmetric_stabilator_limit_rad,
+		input.signals.pilot_roll_raw_normalized *
+			config.differential_flaperon_limit_rad,
+		input.signals.pilot_yaw_raw_normalized * config.rudder_limit_rad
+	};
+}
 }
 
 namespace Systems
 {
-void set_fbw_cat_mode(FBWControllerState& state, FBWCatMode mode)
+FlightControlLaws::FlightControlLaws(const FlightControlLawsConfig& config)
+	: config_(config)
 {
-	state.mode_target = mode;
 }
 
-void toggle_fbw_cat_mode(FBWControllerState& state, bool command_pressed)
+FlightControlLawsResult FlightControlLaws::update(
+	const FlightControlLawsInput& input)
 {
-	if (command_pressed)
-	{
-		state.mode_target = (state.mode_target == FBW_CAT1) ? FBW_CAT3 : FBW_CAT1;
-	}
+	const LongitudinalAxisResult pitch = update_longitudinal_control_law(
+		longitudinal_, config_, input);
+	const LateralDirectionalReference coordinated =
+		LateralDirectionalCoordination::update(input);
+	const AxisLawResult roll =
+		LateralControlLaw(lateral_, config_).update(
+			input, coordinated.roll_rate_rad_s);
+	const AxisLawResult yaw =
+		DirectionalControlLaw(directional_, config_).update(
+			input, coordinated.yaw_rate_rad_s);
+	FlightControlLawsStatus status = pitch.status;
+	status.body_rate_limit_active = status.body_rate_limit_active ||
+		roll.rate_limited || yaw.rate_limited;
+	status.anti_windup_active = status.anti_windup_active ||
+		roll.anti_windup_active || yaw.anti_windup_active;
+	status.electronic_command_saturated =
+		status.electronic_command_saturated ||
+		roll.anti_windup_active || yaw.anti_windup_active;
+	return {
+		mix_surface_commands({ pitch.effort_normalized,
+			roll.effort_normalized, yaw.effort_normalized },
+			config_.surface_mixer),
+		direct_surface_commands(input, config_.surface_mixer),
+		status,
+		pitch.diagnostics
+	};
 }
 
-void set_fbw_g_limiter_override(FBWControllerState& state, bool enabled)
+void FlightControlLaws::reset()
 {
-	state.g_limiter_override = enabled;
-}
-
-void toggle_fbw_g_limiter_override(FBWControllerState& state, bool command_pressed)
-{
-	if (command_pressed)
-	{
-		state.g_limiter_override = !state.g_limiter_override;
-	}
-}
-
-const char* fbw_mode_name(const FBWControllerState& state)
-{
-	return (state.mode_blend >= 0.5) ? "CAT3" : "CAT1";
-}
-
-const char* fbw_state_name(const FBWControllerState& state)
-{
-	switch (state.control_state)
-	{
-	case FBW_STATE_HOLD:
-		return "HOLD";
-	case FBW_STATE_DEGRADE:
-		return "DEGRADE";
-	default:
-		return "RATE";
-	}
-}
-
-const char* fbw_exit_reason_name(const FBWControllerState& state)
-{
-	switch (state.hold_exit_reason)
-	{
-	case FBW_HOLD_EXIT_STICK:
-		return "STICK";
-	case FBW_HOLD_EXIT_AOA:
-		return "AOA";
-	case FBW_HOLD_EXIT_QBAR:
-		return "QBAR";
-	case FBW_HOLD_EXIT_ACTUATOR_SAT:
-		return "SAT";
-	case FBW_HOLD_EXIT_HOLD_CMD:
-		return "HCMD";
-	default:
-		return "NONE";
-	}
-}
-
-FlightControlLawResult update_fbw_controller(
-	FBWControllerState& state,
-	const FBWControllerConfig& config,
-	const FlightControlLawStepInput& input)
-{
-	return FBWFrame(state, config, input).run();
+	longitudinal_ = {};
+	lateral_ = {};
+	directional_ = {};
 }
 }

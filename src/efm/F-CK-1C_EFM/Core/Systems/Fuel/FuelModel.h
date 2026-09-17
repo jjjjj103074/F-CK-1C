@@ -10,30 +10,33 @@ namespace Systems
 struct ExternalFuelState
 {
 	int station = 0;
-	double value = 0.0;
-	Common::Vec3 position;
+	double fuel_kg = 0.0;
+	Common::Vec3 position_body_m;
 };
 
 struct FuelSystem
 {
-	double internal_fuel = 0.0;
-	double external_fuel = 0.0;
-	double total_fuel_flow = 0.0;
-	double frame_consumed_mass = 0.0;
+	double internal_fuel_kg = 0.0;
+	double external_fuel_kg = 0.0;
+	double total_fuel_flow_kg_s = 0.0;
+	double frame_consumed_mass_kg = 0.0;
 	std::map<int, ExternalFuelState> external_fuel_by_station;
 };
 
-inline double consume_external_fuel(FuelSystem& fuel, double requested)
+inline double consume_external_fuel(
+	FuelSystem& fuel,
+	double requested_kg)
 {
-	double remaining = requested;
+	double remaining_kg = requested_kg;
 	for (auto station = fuel.external_fuel_by_station.begin();
-		station != fuel.external_fuel_by_station.end() && remaining > 0.0;)
+		station != fuel.external_fuel_by_station.end() && remaining_kg > 0.0;)
 	{
-		const double consumed = (std::min)(remaining, station->second.value);
-		station->second.value -= consumed;
-		fuel.external_fuel -= consumed;
-		remaining -= consumed;
-		if (station->second.value <= 0.0)
+		const double consumed_kg =
+			(std::min)(remaining_kg, station->second.fuel_kg);
+		station->second.fuel_kg -= consumed_kg;
+		fuel.external_fuel_kg -= consumed_kg;
+		remaining_kg -= consumed_kg;
+		if (station->second.fuel_kg <= 0.0)
 		{
 			station = fuel.external_fuel_by_station.erase(station);
 		}
@@ -42,60 +45,64 @@ inline double consume_external_fuel(FuelSystem& fuel, double requested)
 			++station;
 		}
 	}
-	return requested - remaining;
+	return requested_kg - remaining_kg;
 }
 
-inline double consume_internal_fuel(FuelSystem& fuel, double requested)
+inline double consume_internal_fuel(
+	FuelSystem& fuel,
+	double requested_kg)
 {
-	const double consumed = (std::min)(requested, fuel.internal_fuel);
-	fuel.internal_fuel -= consumed;
-	return consumed;
+	const double consumed_kg =
+		(std::min)(requested_kg, fuel.internal_fuel_kg);
+	fuel.internal_fuel_kg -= consumed_kg;
+	return consumed_kg;
 }
 
 inline void consume_fuel(
 	FuelSystem& fuel,
-	double flow_rate,
-	double dt)
+	double flow_rate_kg_s,
+	double dt_s)
 {
-	fuel.total_fuel_flow = flow_rate;
-	const double requested = flow_rate * dt;
-	const double external_consumed = consume_external_fuel(fuel, requested);
-	const double internal_consumed =
-		consume_internal_fuel(fuel, requested - external_consumed);
-	fuel.frame_consumed_mass +=
-		external_consumed + internal_consumed;
+	fuel.total_fuel_flow_kg_s = flow_rate_kg_s;
+	const double requested_kg = flow_rate_kg_s * dt_s;
+	const double external_consumed_kg =
+		consume_external_fuel(fuel, requested_kg);
+	const double internal_consumed_kg =
+		consume_internal_fuel(fuel, requested_kg - external_consumed_kg);
+	fuel.frame_consumed_mass_kg +=
+		external_consumed_kg + internal_consumed_kg;
 }
 
 inline void apply_fuel_demand(
 	FuelSystem& fuel,
-	double flow_rate,
-	double dt)
+	double flow_rate_kg_s,
+	double dt_s)
 {
-	consume_fuel(fuel, flow_rate, dt);
+	consume_fuel(fuel, flow_rate_kg_s, dt_s);
 }
 
 inline void record_fuel_demand_without_consumption(
 	FuelSystem& fuel,
-	double flow_rate)
+	double flow_rate_kg_s)
 {
-	fuel.total_fuel_flow = flow_rate;
+	fuel.total_fuel_flow_kg_s = flow_rate_kg_s;
 }
 
-inline void set_internal_fuel(FuelSystem& fuel, double value)
+inline void set_internal_fuel(FuelSystem& fuel, double fuel_kg)
 {
-	fuel.internal_fuel = value;
+	fuel.internal_fuel_kg = fuel_kg;
 }
 
-inline double get_internal_fuel(const FuelSystem& fuel)
+inline double get_internal_fuel_kg(const FuelSystem& fuel)
 {
-	return fuel.internal_fuel;
+	return fuel.internal_fuel_kg;
 }
 
 inline void set_external_fuel(
 	FuelSystem& fuel,
 	const ExternalFuelState& external)
 {
-	if (external.value > 0.0)
+	if (external.fuel_kg > 0.0)
 	{
 		fuel.external_fuel_by_station[external.station] = external;
 	}
@@ -103,16 +110,16 @@ inline void set_external_fuel(
 	{
 		fuel.external_fuel_by_station.erase(external.station);
 	}
-	fuel.external_fuel = 0.0;
+	fuel.external_fuel_kg = 0.0;
 	for (const auto& station : fuel.external_fuel_by_station)
 	{
-		fuel.external_fuel += station.second.value;
+		fuel.external_fuel_kg += station.second.fuel_kg;
 	}
 }
 
-inline double get_external_fuel(const FuelSystem& fuel)
+inline double get_external_fuel_kg(const FuelSystem& fuel)
 {
-	return fuel.external_fuel;
+	return fuel.external_fuel_kg;
 }
 
 }

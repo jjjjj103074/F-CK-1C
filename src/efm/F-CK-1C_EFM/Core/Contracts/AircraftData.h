@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../Common/Units.h"
 #include "FrameContracts.h"
 
 #include <array>
@@ -8,30 +9,36 @@
 
 namespace Core
 {
+// Retained SystemPipeline flight-state contract. Field suffixes are the unit
+// authority. Local-body signs match DCS: right roll and nose-up pitch are
+// positive; nose-left yaw is positive. Magnetic heading is independent and
+// increases clockwise toward the right.
 struct AircraftObservation
 {
-	double altitude_asl = 0.0;
-	double altitude_agl = 0.0;
-	double atmosphere_density = 0.0;
-	double speed_scalar = 0.0;
-	double ground_speed = 0.0;
+	double altitude_asl_m = 0.0;
+	double altitude_agl_m = 0.0;
+	double atmosphere_density_kg_m3 = 0.0;
+	double true_airspeed_mps = 0.0;
+	double ground_speed_mps = 0.0;
 	double indicated_airspeed_mps = 0.0;
 	double vertical_speed_mps = 0.0;
 	double mach = 0.0;
-	double dynamic_pressure = 0.0;
-	double g_load = 0.0;
+	double dynamic_pressure_pa = 0.0;
+	double normal_acceleration_g = 0.0;
 	double alpha_deg = 0.0;
 	double beta_deg = 0.0;
-	double heading_rad = 0.0;
-	double roll = 0.0;
-	double pitch = 0.0;
-	double roll_rate = 0.0;
-	double pitch_rate = 0.0;
-	double yaw_rate = 0.0;
+	double world_yaw_rad = 0.0;
+	double roll_rad = 0.0;
+	double pitch_rad = 0.0;
+	double roll_rate_rad_s = 0.0;
+	double pitch_rate_rad_s = 0.0;
+	double yaw_rate_rad_s = 0.0;
 };
 
 struct PilotControlSignal
 {
+	// Normalized Core control convention: pull/right-roll/left-yaw are positive.
+	// DCS raw axis signs are adapted before this contract is published.
 	double pitch_axis_normalized = 0.0;
 	double roll_axis_normalized = 0.0;
 	double yaw_axis_normalized = 0.0;
@@ -42,62 +49,78 @@ struct PilotControlSignal
 
 struct FlightControlObservation
 {
-	double altitude_asl_m = 0.0;
+	double pressure_altitude_ft = 0.0;
 	double indicated_airspeed_mps = 0.0;
-	double vertical_speed_mps = 0.0;
+	double vertical_speed_ft_s = 0.0;
 	double mach = 0.0;
 	double dynamic_pressure_pa = 0.0;
 	double normal_acceleration_g = 0.0;
-	double alpha_deg = 0.0;
-	double beta_deg = 0.0;
-	double heading_rad = 0.0;
+	double angle_of_attack_rad = 0.0;
+	double sideslip_rad = 0.0;
+	bool magnetic_heading_available = false;
+	double magnetic_heading_deg = 0.0;
 	double roll_rad = 0.0;
 	double pitch_rad = 0.0;
 	double roll_rate_rad_s = 0.0;
 	double pitch_rate_rad_s = 0.0;
 	double yaw_rate_rad_s = 0.0;
+	bool pressure_altitude_available = false;
 };
 
 inline FlightControlObservation make_flight_control_observation(
-	const AircraftObservation& source)
+	const AircraftObservation& source,
+	const PressureAltitudeObservation& pressure_altitude,
+	const MagneticHeadingObservation& heading)
 {
 	return {
-		source.altitude_asl,
+		pressure_altitude.pressure_altitude_ft,
 		source.indicated_airspeed_mps,
-		source.vertical_speed_mps,
+		Common::feet(source.vertical_speed_mps),
 		source.mach,
-		source.dynamic_pressure,
-		source.g_load,
-		source.alpha_deg,
-		source.beta_deg,
-		source.heading_rad,
-		source.roll,
-		source.pitch,
-		source.roll_rate,
-		source.pitch_rate,
-		source.yaw_rate
+		source.dynamic_pressure_pa,
+		source.normal_acceleration_g,
+		Common::rad(source.alpha_deg),
+		Common::rad(source.beta_deg),
+		heading.status.available,
+		heading.magnetic_heading_deg,
+		source.roll_rad,
+		source.pitch_rad,
+		source.roll_rate_rad_s,
+		source.pitch_rate_rad_s,
+		source.yaw_rate_rad_s,
+		pressure_altitude.status.available
 	};
 }
 
 struct FlightControlActuatorCommand
 {
-	double elevator_normalized = 0.0;
-	double aileron_normalized = 0.0;
-	double rudder_normalized = 0.0;
+	double symmetric_stabilator_demand_rad = 0.0;
+	double differential_flaperon_demand_rad = 0.0;
+	double rudder_demand_rad = 0.0;
+};
+
+enum class FlightControlPositionLimit
+{
+	None,
+	Negative,
+	Positive
 };
 
 struct FlightControlSurfaceState
 {
 	double position_rad = 0.0;
 	double rate_rad_s = 0.0;
-	double normalized_position = 0.0;
+	FlightControlPositionLimit position_limit =
+		FlightControlPositionLimit::None;
+	bool at_position_limit = false;
+	bool rate_limited = false;
 	bool saturated = false;
 };
 
 struct FlightControlActuatorState
 {
-	FlightControlSurfaceState elevator;
-	FlightControlSurfaceState aileron;
+	FlightControlSurfaceState symmetric_stabilator;
+	FlightControlSurfaceState differential_flaperon;
 	FlightControlSurfaceState rudder;
 	bool any_saturated = false;
 };
@@ -116,43 +139,47 @@ struct EngineThrottleCommand
 
 struct SecondaryControlPosition
 {
-	double flaps = 0.0;
-	double slats = 0.0;
-	double airbrake = 0.0;
+	double flaps_position_normalized = 0.0;
+	double slats_position_normalized = 0.0;
+	double airbrake_position_normalized = 0.0;
 };
 
 struct SuspensionWheelData
 {
-	Common::Vec3 acting_force;
-	double compression = 0.0;
-	double force_magnitude = 0.0;
+	Common::Vec3 acting_force_body_n;
+	double compression_m = 0.0;
+	double force_magnitude_n = 0.0;
 	bool weight_on_wheel = false;
 };
 
 struct LandingGearData
 {
-	double position = 0.0;
-	double nose_wheel_steering = 0.0;
-	double brake_left = 0.0;
-	double brake_right = 0.0;
-	std::array<double, kFrameSuspensionWheelCount> wheel_radius = {};
-	std::array<double, kFrameSuspensionWheelCount> wheel_spin = {};
+	double position_normalized = 0.0;
+	double nose_wheel_steering_normalized = 0.0;
+	double brake_left_normalized = 0.0;
+	double brake_right_normalized = 0.0;
+	std::array<double, kFrameSuspensionWheelCount> wheel_radius_m = {};
+	std::array<double, kFrameSuspensionWheelCount>
+		wheel_spin_phase_0_1 = {};
 	std::array<SuspensionWheelData, kFrameSuspensionWheelCount>
 		suspension = {};
 	bool any_weight_on_wheels = false;
 	bool on_ground = false;
+	// The longitudinal flight-control law is selected from the cockpit gear
+	// handle signal, not from delayed physical gear travel.
+	bool handle_down = false;
 };
 
 struct EngineChannelData
 {
 	bool switch_on = false;
-	double throttle_input = 0.0;
-	double throttle_output = 0.0;
-	double power_readout = 0.0;
-	double afterburner_ratio = 0.0;
+	double throttle_input_normalized = 0.0;
+	double throttle_output_normalized = 0.0;
+	double power_readout_normalized = 0.0;
+	double afterburner_ratio_0_1 = 0.0;
 	bool afterburner_lit = false;
-	double nozzle_aperture = 0.0;
-	double condition = 1.0;
+	double nozzle_aperture_normalized = 0.0;
+	double condition_0_1 = 1.0;
 };
 
 struct EngineData
@@ -169,17 +196,17 @@ struct FuelDemand
 
 struct FuelData
 {
-	double internal_fuel = 0.0;
-	double external_fuel = 0.0;
-	double total_fuel_flow = 0.0;
-	double consumed_mass = 0.0;
+	double internal_fuel_kg = 0.0;
+	double external_fuel_kg = 0.0;
+	double total_fuel_flow_kg_s = 0.0;
+	double consumed_mass_kg = 0.0;
 };
 
 struct AirframeIntegrity
 {
-	double left_wing = 1.0;
-	double right_wing = 1.0;
-	double tail = 1.0;
+	double left_wing_0_1 = 1.0;
+	double right_wing_0_1 = 1.0;
+	double tail_0_1 = 1.0;
 };
 
 struct PropulsionTestIntent

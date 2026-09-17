@@ -44,7 +44,6 @@ private:
 		ApTargetHeadingDeg,
 		ApTargetSpeedKts,
 		ApTargetPitchDeg,
-		ApTargetVerticalSpeedFpm,
 		ApEngageRejectionReason,
 		ApDisengageReason,
 		ApAutoThrottleEngageRejectionReason,

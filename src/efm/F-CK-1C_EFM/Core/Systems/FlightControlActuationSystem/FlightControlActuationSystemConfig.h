@@ -6,15 +6,15 @@ namespace Systems
 {
 struct FlightControlAxisConfig
 {
-	double travel_limit_rad = 0.0;
+	double maximum_deflection_rad = 0.0;
 	double rate_limit_rad_s = 0.0;
 	double lag_time_constant_s = 0.0;
 };
 
 struct FlightControlActuationSystemConfig
 {
-	FlightControlAxisConfig elevator;
-	FlightControlAxisConfig aileron;
+	FlightControlAxisConfig symmetric_stabilator;
+	FlightControlAxisConfig differential_flaperon;
 	FlightControlAxisConfig rudder;
 };
 

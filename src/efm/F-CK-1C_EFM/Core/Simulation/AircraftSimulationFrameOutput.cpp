@@ -5,38 +5,38 @@ namespace
 Core::FlightOutput project_flight(const Core::AircraftState& source)
 {
 	return {
-		source.altitude_asl,
-		source.altitude_agl,
-		source.position_world_z,
+		source.altitude_asl_m,
+		source.altitude_agl_m,
+		source.position_world_z_m,
 		source.mach,
-		source.g,
-		source.alpha,
-		source.beta,
-		source.atmosphere_temperature,
-		indicated_airspeed(source),
-		source.velocity_world.y,
-		source.heading,
-		source.pitch,
-		source.roll,
-		source.roll_rate,
-		source.pitch_rate,
-		source.yaw_rate
+		source.normal_acceleration_g,
+		source.angle_of_attack_deg,
+		source.angle_of_slide_deg,
+		source.atmosphere_temperature_k,
+		indicated_airspeed_mps(source),
+		source.velocity_world_mps.y,
+		source.world_yaw_rad,
+		source.pitch_rad,
+		source.roll_rad,
+		source.roll_rate_rad_s,
+		source.pitch_rate_rad_s,
+		source.yaw_rate_rad_s
 	};
 }
 
 Core::EngineOutput project_engine(
 	const Core::EngineChannelData& source,
-	double thrust_force)
+	double thrust_force_n)
 {
 	return {
 		source.switch_on,
-		source.throttle_input,
-		source.throttle_output,
-		source.power_readout,
-		thrust_force,
-		source.afterburner_ratio,
+		source.throttle_input_normalized,
+		source.throttle_output_normalized,
+		source.power_readout_normalized,
+		thrust_force_n,
+		source.afterburner_ratio_0_1,
 		source.afterburner_lit,
-		source.nozzle_aperture
+		source.nozzle_aperture_normalized
 	};
 }
 
@@ -49,12 +49,12 @@ Core::ControlOutput project_controls(
 		input.pitch_axis_normalized,
 		input.roll_axis_normalized,
 		input.yaw_axis_normalized,
-		primary.elevator.normalized_position,
-		primary.aileron.normalized_position,
-		primary.rudder.normalized_position,
-		secondary.flaps,
-		secondary.slats,
-		secondary.airbrake
+		primary.symmetric_stabilator.position_rad,
+		primary.differential_flaperon.position_rad,
+		primary.rudder.position_rad,
+		secondary.flaps_position_normalized,
+		secondary.slats_position_normalized,
+		secondary.airbrake_position_normalized
 	};
 }
 
@@ -62,13 +62,17 @@ Core::LandingGearOutput project_landing_gear(
 	const Core::LandingGearData& source)
 {
 	Core::LandingGearOutput output;
-	output.gear_position = source.position;
-	output.nose_wheel_steering = source.nose_wheel_steering;
-	output.brake_left = source.brake_left;
-	output.brake_right = source.brake_right;
-	for (std::size_t index = 0; index < output.wheel_spin.size(); ++index)
+	output.gear_position_normalized = source.position_normalized;
+	output.nose_wheel_steering_normalized =
+		source.nose_wheel_steering_normalized;
+	output.brake_left_normalized = source.brake_left_normalized;
+	output.brake_right_normalized = source.brake_right_normalized;
+	for (std::size_t index = 0;
+		index < output.wheel_spin_phase_0_1.size();
+		++index)
 	{
-		output.wheel_spin[index] = source.wheel_spin[index];
+		output.wheel_spin_phase_0_1[index] =
+			source.wheel_spin_phase_0_1[index];
 	}
 	return output;
 }
@@ -82,9 +86,9 @@ Core::SuspensionOutput project_suspension(
 		Core::SuspensionWheelOutput& wheel = output.wheels[index];
 		const Core::SuspensionWheelData& source_wheel =
 			source.suspension[index];
-		wheel.acting_force = source_wheel.acting_force;
-		wheel.compression = source_wheel.compression;
-		wheel.force_magnitude = source_wheel.force_magnitude;
+		wheel.acting_force_body_n = source_wheel.acting_force_body_n;
+		wheel.compression_m = source_wheel.compression_m;
+		wheel.force_magnitude_n = source_wheel.force_magnitude_n;
 		wheel.weight_on_wheel = source_wheel.weight_on_wheel;
 	}
 	output.any_weight_on_wheels = source.any_weight_on_wheels;
@@ -95,10 +99,10 @@ Core::SuspensionOutput project_suspension(
 Core::FuelOutput project_fuel(const Core::FuelData& source)
 {
 	return {
-		source.internal_fuel,
-		source.external_fuel,
-		source.internal_fuel + source.external_fuel,
-		source.total_fuel_flow
+		source.internal_fuel_kg,
+		source.external_fuel_kg,
+		source.internal_fuel_kg + source.external_fuel_kg,
+		source.total_fuel_flow_kg_s
 	};
 }
 }
@@ -122,8 +126,8 @@ FrameOutput AircraftSimulation::make_frame_output(
 	output.flight = project_flight(aircraft_state_);
 	output.force_moment = simulation.force_moment;
 	output.engines = {
-		project_engine(engines.left, simulation.thrust_force[0]),
-		project_engine(engines.right, simulation.thrust_force[1])
+		project_engine(engines.left, simulation.thrust_force_n[0]),
+		project_engine(engines.right, simulation.thrust_force_n[1])
 	};
 	output.controls = project_controls(
 		aircraft.read(AircraftDataKeys::kPilotControlSignal),
@@ -146,7 +150,7 @@ FrameOutput AircraftSimulation::make_frame_output(
 		aircraft.read(AircraftDataKeys::kAutomaticFlightControlSnapshot);
 	output.cockpit.propulsion_test_thrust_cut_requested =
 		diagnostics.thrust_cut_requested;
-	output.shake_amplitude = simulation.shake_amplitude;
+	output.shake_amplitude_normalized = simulation.shake_amplitude_normalized;
 	return output;
 }
 }

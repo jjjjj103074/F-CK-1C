@@ -84,8 +84,8 @@ void Engine::step(
 	step({
 		context.dt_s,
 		aircraft.read(AircraftDataKeys::kEngineThrottleCommand),
-		fuel.internal_fuel,
-		observation.altitude_asl
+		fuel.internal_fuel_kg,
+		observation.altitude_asl_m
 	});
 	result.publish(AircraftDataKeys::kEngineData, data_);
 	result.publish(AircraftDataKeys::kFuelDemand, fuel_demand_);
@@ -98,16 +98,16 @@ const EngineData& Engine::step(const EngineFrameInput& input)
 		input.throttle_command.left_normalized,
 		input.throttle_command.right_normalized);
 	::Systems::clamp_engine_throttle_inputs(engines_);
-	::Systems::update_dry_engine_channels(engines_, config_, input.dt);
-	::Systems::update_afterburners(engines_, config_, input.dt);
-	::Systems::update_nozzle_apertures(engines_, config_, input.dt);
+	::Systems::update_dry_engine_channels(engines_, config_, input.dt_s);
+	::Systems::update_afterburners(engines_, config_, input.dt_s);
+	::Systems::update_nozzle_apertures(engines_, config_, input.dt_s);
 	::Systems::apply_engine_readout_integrity(
 		engines_, left_integrity(), right_integrity());
 	thrust_inhibited_ = ::Systems::should_shutdown_engines(
-		input.internal_fuel, input.altitude_asl);
+		input.internal_fuel_kg, input.altitude_asl_m);
 	if (thrust_inhibited_)
 	{
-		::Systems::shutdown_engines(engines_, input.dt);
+		::Systems::shutdown_engines(engines_, input.dt_s);
 	}
 	refresh_outputs();
 	return data_;
@@ -117,29 +117,29 @@ void Engine::refresh_outputs()
 {
 	fuel_demand_.flow_rate_kg_s =
 		::Systems::command_fuel_flow({
-			engines_.left.throttle_output,
-			engines_.right.throttle_output,
-			engines_.left.afterburner_ratio,
-			engines_.right.afterburner_ratio
+			engines_.left.throttle_output_normalized,
+			engines_.right.throttle_output_normalized,
+			engines_.left.afterburner_ratio_0_1,
+			engines_.right.afterburner_ratio_0_1
 		}, config_).flow_rate_kg_s;
 	data_.left = {
 		engines_.left.switch_on,
-		engines_.left.throttle_input,
-		engines_.left.throttle_output,
-		engines_.left.power_readout,
-		engines_.left.afterburner_ratio,
+		engines_.left.throttle_input_normalized,
+		engines_.left.throttle_output_normalized,
+		engines_.left.power_readout_normalized,
+		engines_.left.afterburner_ratio_0_1,
 		engines_.left.afterburner_lit,
-		engines_.left.nozzle_aperture,
+		engines_.left.nozzle_aperture_normalized,
 		left_integrity()
 	};
 	data_.right = {
 		engines_.right.switch_on,
-		engines_.right.throttle_input,
-		engines_.right.throttle_output,
-		engines_.right.power_readout,
-		engines_.right.afterburner_ratio,
+		engines_.right.throttle_input_normalized,
+		engines_.right.throttle_output_normalized,
+		engines_.right.power_readout_normalized,
+		engines_.right.afterburner_ratio_0_1,
 		engines_.right.afterburner_lit,
-		engines_.right.nozzle_aperture,
+		engines_.right.nozzle_aperture_normalized,
 		right_integrity()
 	};
 	data_.thrust_inhibited = thrust_inhibited_;
@@ -147,7 +147,7 @@ void Engine::refresh_outputs()
 
 void Engine::handle_command(const Command& command)
 {
-	const bool enabled = command.value > kEnabledCommandThreshold;
+	const bool enabled = command.value_normalized > kEnabledCommandThreshold;
 	switch (command.id)
 	{
 	case CommandId::SetBothEngines:

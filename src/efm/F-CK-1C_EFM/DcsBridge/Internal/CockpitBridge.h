@@ -40,6 +40,10 @@ private:
 	enum class Parameter : std::size_t
 	{
 		Temperature,
+		PressureAltitudeAvailable,
+		PressureAltitudeM,
+		MagneticHeadingAvailable,
+		MagneticHeadingRad,
 		RadarMode,
 		RadarSttAzimuth,
 		RadarSttElevation,
@@ -69,6 +73,7 @@ private:
 	struct WeaponStationValues
 	{
 		bool readable = false;
+		bool invalid_numeric = false;
 		double available = 0.0;
 		double revision = 0.0;
 		double invalid_reason = 0.0;
@@ -84,6 +89,10 @@ private:
 
 	static ParameterSlots make_parameter_slots();
 	CockpitParameterReadResult read_parameter(Parameter parameter);
+	CockpitValueResult<Core::PressureAltitudeObservation>
+		read_pressure_altitude();
+	CockpitValueResult<Core::MagneticHeadingObservation>
+		read_magnetic_heading();
 	CockpitValueResult<Core::RadarObservation> read_radar();
 	CockpitValueResult<Core::IrSeekerObservation> read_ir_seeker();
 	CockpitValueResult<Core::WeaponStationObservation> read_weapon_stations();
@@ -96,6 +105,8 @@ private:
 	const cockpit_param_api api_;
 	ParameterSlots slots_;
 	std::uint64_t radar_revision_ = 0;
+	std::uint64_t pressure_altitude_revision_ = 0;
+	std::uint64_t magnetic_heading_revision_ = 0;
 	std::uint64_t ir_seeker_revision_ = 0;
 	std::mutex mutex_;
 };

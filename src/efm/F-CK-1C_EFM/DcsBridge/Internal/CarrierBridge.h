@@ -10,12 +10,12 @@ namespace Internal
 {
 struct CarrierBridgeConfig
 {
-	double reference_thrust_N = 0.0;
+	double reference_thrust_n = 0.0;
 };
 
 struct CarrierLaunchInput
 {
-	double left_throttle_output = 0.0;
+	double left_throttle_output_normalized = 0.0;
 };
 
 class CarrierBridge final
@@ -41,7 +41,7 @@ private:
 		Started
 	};
 
-	const double reference_thrust_N_;
+	const double reference_thrust_n_;
 	std::mutex mutex_;
 	LaunchPhase phase_ = LaunchPhase::Idle;
 };

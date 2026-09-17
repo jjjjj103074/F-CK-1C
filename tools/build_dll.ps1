@@ -125,8 +125,21 @@ catch {
 
 Write-Output "Copied: $dllSrc -> $dllDst"
 
-$sourceHash = (Get-FileHash $dllSrc -Algorithm SHA256).Hash
-$runtimeHash = (Get-FileHash $dllDst -Algorithm SHA256).Hash
+function Get-Sha256Hex([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hashBytes = $sha256.ComputeHash($stream)
+        return [System.BitConverter]::ToString($hashBytes).Replace('-', '')
+    }
+    finally {
+        $sha256.Dispose()
+        $stream.Dispose()
+    }
+}
+
+$sourceHash = Get-Sha256Hex $dllSrc
+$runtimeHash = Get-Sha256Hex $dllDst
 Write-Output "SRC HASH: $sourceHash"
 Write-Output "BIN HASH: $runtimeHash"
 

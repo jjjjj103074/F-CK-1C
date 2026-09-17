@@ -12,33 +12,33 @@ namespace Systems
 // the physical spool, afterburner, and nozzle dynamics remain in EngineModel.
 struct DigitalEngineControlDryCommand
 {
-	double throttle_output_target = 0.0;
+	double throttle_output_target_normalized = 0.0;
 	double spool_time_constant_s = 0.0;
-	double core_speed_target = 0.0;
-	double core_speed_rate_per_s = 0.0;
+	double core_speed_target_0_1 = 0.0;
+	double core_speed_rate_0_1_per_s = 0.0;
 };
 
 struct DigitalEngineControlAfterburnerCommand
 {
 	bool lit = false;
-	double ratio_target = 0.0;
+	double ratio_target_0_1 = 0.0;
 	double spool_time_constant_s = 0.0;
 };
 
 struct DigitalEngineControlObservation
 {
-	double throttle_input = 0.0;
-	double power_readout = 0.0;
-	double afterburner_ratio = 0.0;
+	double throttle_input_normalized = 0.0;
+	double power_readout_normalized = 0.0;
+	double afterburner_ratio_0_1 = 0.0;
 	bool engine_on = false;
 };
 
 struct DigitalEngineControlFuelInput
 {
-	double left_throttle_output = 0.0;
-	double right_throttle_output = 0.0;
-	double left_afterburner_ratio = 0.0;
-	double right_afterburner_ratio = 0.0;
+	double left_throttle_output_normalized = 0.0;
+	double right_throttle_output_normalized = 0.0;
+	double left_afterburner_ratio_0_1 = 0.0;
+	double right_afterburner_ratio_0_1 = 0.0;
 };
 
 struct DigitalEngineControlFuelCommand
@@ -55,32 +55,35 @@ struct DigitalEngineControlRangeMapping
 };
 
 inline DigitalEngineControlDryCommand command_dry_engine(
-	double throttle_input,
-	double throttle_output,
+	double throttle_input_normalized,
+	double throttle_output_normalized,
 	const Core::Systems::EngineConfig& config)
 {
 	const ::Systems::AfterburnerConfig& afterburner =
 		config.afterburner;
 	const double mil_command = Common::limit(
-		throttle_input / afterburner.detent, 0.0, 1.0);
+		throttle_input_normalized / afterburner.detent_normalized, 0.0, 1.0);
 	const double throttle_target = Common::limit(
 		Common::lerp({
-			config.throttle_input_table.data(),
-			config.power_table.data(),
-			static_cast<unsigned>(config.throttle_input_table.size())
+			config.throttle_input_table_normalized.data(),
+			config.power_table_normalized.data(),
+			static_cast<unsigned>(
+				config.throttle_input_table_normalized.size())
 		}, mil_command),
 		0.1,
 		1.0);
-	const double spool_time_constant = throttle_target > throttle_output
-		? config.spool_up_tau : config.spool_down_tau;
-	const double core_target = throttle_input <= afterburner.detent
+	const double spool_time_constant =
+		throttle_target > throttle_output_normalized
+		? config.spool_up_tau_s : config.spool_down_tau_s;
+	const double core_target =
+		throttle_input_normalized <= afterburner.detent_normalized
 		? Common::limit(0.5 + 0.5 * mil_command, 0.0, 1.0)
-		: afterburner.core_rpm;
+		: afterburner.core_rpm_0_1;
 	return {
 		throttle_target,
 		spool_time_constant,
 		core_target,
-		(1.0 - afterburner.core_rpm) / afterburner.core_drop_time
+		(1.0 - afterburner.core_rpm_0_1) / afterburner.core_drop_time_s
 	};
 }
 
@@ -90,16 +93,20 @@ inline DigitalEngineControlAfterburnerCommand command_afterburner(
 	const ::Systems::AfterburnerConfig& config)
 {
 	const double demand = Common::limit(
-		(input.throttle_input - config.detent) / (1.0 - config.detent),
+		(input.throttle_input_normalized - config.detent_normalized) /
+			(1.0 - config.detent_normalized),
 		0.0,
 		1.0);
 	bool lit = currently_lit;
-	if (input.engine_on && input.throttle_input > config.detent &&
-		input.power_readout >= config.light_throttle_output_min)
+	if (input.engine_on &&
+		input.throttle_input_normalized > config.detent_normalized &&
+		input.power_readout_normalized >=
+			config.light_throttle_output_min_normalized)
 	{
 		lit = true;
 	}
-	if (!input.engine_on || input.throttle_input <= config.detent)
+	if (!input.engine_on ||
+		input.throttle_input_normalized <= config.detent_normalized)
 	{
 		lit = false;
 	}
@@ -107,8 +114,8 @@ inline DigitalEngineControlAfterburnerCommand command_afterburner(
 	return {
 		lit,
 		target,
-		target > input.afterburner_ratio
-			? config.spool_in_tau : config.spool_out_tau
+		target > input.afterburner_ratio_0_1
+			? config.spool_in_tau_s : config.spool_out_tau_s
 	};
 }
 
@@ -155,7 +162,7 @@ inline double command_dry_nozzle_aperture(
 		return remap_deec_range(limited_power, kLowPowerMapping);
 	}
 	const double dry_ratio = Common::limit(
-		limited_throttle / config.detent, 0.0, 1.0);
+		limited_throttle / config.detent_normalized, 0.0, 1.0);
 	if (dry_ratio <= kIdleMapping.input_max)
 	{
 		return remap_deec_range(dry_ratio, kIdleMapping);
@@ -201,10 +208,12 @@ inline double command_nozzle_aperture(
 	{
 		return 0.80;
 	}
-	const double power = Common::limit(input.power_readout, 0.0, 1.0);
-	const double throttle = Common::limit(input.throttle_input, 0.0, 1.0);
+	const double power = Common::limit(
+		input.power_readout_normalized, 0.0, 1.0);
+	const double throttle = Common::limit(
+		input.throttle_input_normalized, 0.0, 1.0);
 	const double afterburner = Common::limit(
-		input.afterburner_ratio, 0.0, 1.0);
+		input.afterburner_ratio_0_1, 0.0, 1.0);
 	return afterburner <= 0.0
 		? command_dry_nozzle_aperture(power, throttle, config)
 		: command_afterburner_nozzle_aperture(afterburner);
@@ -217,12 +226,14 @@ inline DigitalEngineControlFuelCommand command_fuel_flow(
 	constexpr double kChannelBias = 1.0;
 	constexpr double kChannelDivisor = 3.0;
 	const double afterburner_average = 0.5 *
-		(input.left_afterburner_ratio + input.right_afterburner_ratio);
+		(input.left_afterburner_ratio_0_1 +
+			input.right_afterburner_ratio_0_1);
 	const double multiplier = 1.0 + afterburner_average *
 		(config.afterburner.fuel_factor - 1.0);
 	return {
-		config.fuel_consumption_rate *
-		((input.left_throttle_output + input.right_throttle_output +
+		config.fuel_consumption_rate_kg_s *
+		((input.left_throttle_output_normalized +
+			input.right_throttle_output_normalized +
 			kChannelBias) / kChannelDivisor) *
 		multiplier
 	};

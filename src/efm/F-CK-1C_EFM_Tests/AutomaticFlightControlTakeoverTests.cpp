@@ -8,9 +8,9 @@ namespace
 using namespace AutomaticFlightControlTestSupport;
 
 constexpr double kPaddlePitchChangeDeg = 3.0;
-constexpr double kPaddleVerticalSpeedChangeMps = 2.0;
-constexpr double kPaddleAltitudeChangeM = 100.0;
+constexpr double kPaddleAltitudeChangeFt = 100.0;
 constexpr double kPaddleHeadingChangeDeg = 5.0;
+constexpr double kPaddleRollChangeDeg = 4.0;
 constexpr double kTestStickInputNormalized = 0.5;
 constexpr double kReleasedCommandValue = 0.0;
 
@@ -27,20 +27,15 @@ void expect_vertical_target(
 {
 	switch (snapshot.vertical_mode)
 	{
-	case AutomaticFlightControlVerticalMode::PitchHold:
+	case AutomaticFlightControlVerticalMode::PitchAttitudeHold:
 		TEST_EXPECT_NEAR(
 			context, snapshot.target_pitch_rad,
 			observation.pitch_rad, kTolerance);
 		break;
-	case AutomaticFlightControlVerticalMode::VerticalSpeedHold:
-		TEST_EXPECT_NEAR(
-			context, snapshot.target_vertical_speed_mps,
-			observation.vertical_speed_mps, kTolerance);
-		break;
 	case AutomaticFlightControlVerticalMode::AltitudeHold:
 		TEST_EXPECT_NEAR(
-			context, snapshot.target_altitude_m,
-			observation.altitude_m, kTolerance);
+			context, snapshot.target_altitude_ft,
+			observation.pressure_altitude_ft, kTolerance);
 		break;
 	default:
 		TEST_EXPECT(context, false);
@@ -52,10 +47,8 @@ void test_paddle_release_recaptures_each_vertical_mode(
 	Tests::Context& context)
 {
 	const VerticalPaddleCase cases[] = {
-		{ CommandId::SelectAutopilotPitchHold,
-			AutomaticFlightControlVerticalMode::PitchHold },
-		{ CommandId::SelectAutopilotVerticalSpeedHold,
-			AutomaticFlightControlVerticalMode::VerticalSpeedHold },
+		{ CommandId::SelectAutopilotPitchAttitudeHold,
+			AutomaticFlightControlVerticalMode::PitchAttitudeHold },
 		{ CommandId::SelectAutopilotAltitudeHold,
 			AutomaticFlightControlVerticalMode::AltitudeHold }
 	};
@@ -69,8 +62,7 @@ void test_paddle_release_recaptures_each_vertical_mode(
 		send(control, CommandId::SetAutopilotBypass);
 		(void)step(control, observation);
 		observation.pitch_rad += Common::rad(kPaddlePitchChangeDeg);
-		observation.vertical_speed_mps += kPaddleVerticalSpeedChangeMps;
-		observation.altitude_m += kPaddleAltitudeChangeM;
+		observation.pressure_altitude_ft += kPaddleAltitudeChangeFt;
 		send(
 			control, CommandId::SetAutopilotBypass,
 			kReleasedCommandValue);
@@ -84,77 +76,87 @@ void test_paddle_release_recaptures_each_vertical_mode(
 void test_paddle_release_applies_each_lateral_mode_rule(
 	Tests::Context& context)
 {
-	AutomaticFlightControl heading_hold = make_control();
+	AutomaticFlightControl roll_attitude = make_control();
 	auto observation = nominal_observation();
-	prime_and_engage(heading_hold, observation);
-	send(heading_hold, CommandId::SetAutopilotBypass);
-	(void)step(heading_hold, observation);
-	observation.heading_rad += Common::rad(kPaddleHeadingChangeDeg);
+	prime_and_engage(roll_attitude, observation);
+	send(roll_attitude, CommandId::SetAutopilotBypass);
+	(void)step(roll_attitude, observation);
+	observation.roll_rad += Common::rad(kPaddleRollChangeDeg);
 	send(
-		heading_hold, CommandId::SetAutopilotBypass,
+		roll_attitude, CommandId::SetAutopilotBypass,
 		kReleasedCommandValue);
-	(void)step(heading_hold, observation);
-	TEST_EXPECT_NEAR(
-		context, heading_hold.snapshot().target_heading_rad,
-		observation.heading_rad, kTolerance);
+	const auto roll_reference = step(roll_attitude, observation);
+	TEST_EXPECT(
+		context,
+		roll_reference.lateral_authority ==
+			Core::Systems::AuthorityState::Automatic);
+	TEST_EXPECT(
+		context,
+		roll_reference.bank_angle_reference_rad < 0.0);
 
 	AutomaticFlightControl heading_select = make_control();
 	observation = nominal_observation();
-	prime_and_engage(heading_select, observation);
-	send(heading_select, CommandId::SelectAutopilotHeading);
-	send(heading_select, CommandId::IncreaseAutopilotLateralReference);
 	(void)step(heading_select, observation);
-	const double selected_heading =
-		heading_select.snapshot().target_heading_rad;
+	send(heading_select, CommandId::SelectAutopilotHeadingSelect);
+	prime_and_engage(heading_select, observation);
+	send(heading_select, CommandId::IncreaseAutopilotHeadingSelect);
+	(void)step(heading_select, observation);
+	const int selected_heading = heading_select.snapshot().target_heading_deg;
 	send(heading_select, CommandId::SetAutopilotBypass);
 	(void)step(heading_select, observation);
-	observation.heading_rad += Common::rad(kPaddleHeadingChangeDeg);
+	observation.magnetic_heading_deg += kPaddleHeadingChangeDeg;
 	send(
 		heading_select, CommandId::SetAutopilotBypass,
 		kReleasedCommandValue);
 	(void)step(heading_select, observation);
-	TEST_EXPECT_NEAR(
-		context, heading_select.snapshot().target_heading_rad,
-		selected_heading, kTolerance);
+	TEST_EXPECT(
+		context,
+		heading_select.snapshot().target_heading_deg == selected_heading);
 }
 
 void test_path_modes_ignore_attitude_stick_steering(
 	Tests::Context& context)
 {
-	const CommandId vertical_modes[] = {
-		CommandId::SelectAutopilotVerticalSpeedHold,
-		CommandId::SelectAutopilotAltitudeHold
-	};
-	for (CommandId mode : vertical_modes)
-	{
-		AutomaticFlightControl control = make_control();
-		auto observation = nominal_observation();
-		prime_and_engage(control, observation);
-		send(control, mode);
-		observation.conditioned_pitch_input_normalized =
-			kTestStickInputNormalized;
-		const auto reference = step(control, observation);
-		TEST_EXPECT(
-			context, reference.longitudinal_authority ==
-				Core::Systems::AuthorityState::Automatic);
-	}
-	const CommandId lateral_modes[] = {
-		CommandId::SelectAutopilotHeadingHold,
-		CommandId::SelectAutopilotHeading
-	};
-	for (CommandId mode : lateral_modes)
-	{
-		AutomaticFlightControl control = make_control();
-		auto observation = nominal_observation();
-		prime_and_engage(control, observation);
-		send(control, mode);
-		observation.conditioned_roll_input_normalized =
-			kTestStickInputNormalized;
-		const auto reference = step(control, observation);
-		TEST_EXPECT(
-			context, reference.lateral_authority ==
-				Core::Systems::AuthorityState::Automatic);
-	}
+	AutomaticFlightControl altitude = make_control();
+	auto observation = nominal_observation();
+	prime_and_engage(altitude, observation);
+	send(altitude, CommandId::SelectAutopilotAltitudeHold);
+	observation.conditioned_pitch_input_normalized =
+		kTestStickInputNormalized;
+	const auto altitude_reference = step(altitude, observation);
+	TEST_EXPECT(
+		context, altitude_reference.longitudinal_authority ==
+			Core::Systems::AuthorityState::Automatic);
+
+	AutomaticFlightControl heading = make_control();
+	observation = nominal_observation();
+	(void)step(heading, observation);
+	send(heading, CommandId::SelectAutopilotHeadingSelect);
+	prime_and_engage(heading, observation);
+	observation.conditioned_roll_input_normalized =
+		kTestStickInputNormalized;
+	const auto heading_reference = step(heading, observation);
+	TEST_EXPECT(
+		context, heading_reference.lateral_authority ==
+			Core::Systems::AuthorityState::Automatic);
+}
+
+void test_roll_attitude_hold_uses_stick_steering(Tests::Context& context)
+{
+	AutomaticFlightControl control = make_control();
+	auto observation = nominal_observation();
+	prime_and_engage(control, observation);
+	observation.conditioned_roll_input_normalized =
+		kTestStickInputNormalized;
+	const auto steering = step(control, observation);
+	TEST_EXPECT(
+		context, steering.lateral_authority ==
+			Core::Systems::AuthorityState::StickSteering);
+	observation.conditioned_roll_input_normalized = 0.0;
+	const auto recaptured = step(control, observation);
+	TEST_EXPECT(
+		context, recaptured.lateral_authority ==
+			Core::Systems::AuthorityState::Automatic);
 }
 }
 
@@ -163,4 +165,5 @@ void run_automatic_flight_control_takeover_tests(Tests::Context& context)
 	test_paddle_release_recaptures_each_vertical_mode(context);
 	test_paddle_release_applies_each_lateral_mode_rule(context);
 	test_path_modes_ignore_attitude_stick_steering(context);
+	test_roll_attitude_hold_uses_stick_steering(context);
 }

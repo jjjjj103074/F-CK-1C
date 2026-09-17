@@ -1,7 +1,7 @@
 #include "TestHarness.h"
 
 #include "Core/Systems/PilotControls/InputModel.h"
-#include "Core/Systems/FlightControlComputer/ThrottleCommandComposition.h"
+#include "Core/Systems/FlightControlComputer/Util/ThrottleCommandComposition.h"
 
 namespace
 {

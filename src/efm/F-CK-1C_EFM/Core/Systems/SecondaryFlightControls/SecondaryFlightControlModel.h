@@ -2,9 +2,15 @@
 
 #include "Common/Actuator.h"
 #include "Common/Clamp.h"
+#include "Common/Units.h"
 
 namespace Systems
 {
+inline constexpr double kFlapsFullyExtendedSpeedMps =
+	240.0 * Common::kMetersPerSecondPerKnot;
+inline constexpr double kFlapsFullyRetractedSpeedMps =
+	450.0 * Common::kMetersPerSecondPerKnot;
+
 enum FlapMode
 {
 	FLAP_MODE_UP = 0,
@@ -15,16 +21,16 @@ enum FlapMode
 struct AirframeDeviceState
 {
 	bool airbrake_switch = false;
-	double airbrake_pos = 0.0;
+	double airbrake_position_normalized = 0.0;
 	FlapMode flap_mode = FLAP_MODE_UP;
-	double flaps_pos = 0.0;
-	double slats_pos = 0.0;
+	double flaps_position_normalized = 0.0;
+	double slats_position_normalized = 0.0;
 };
 
 struct AirframeDeviceUpdateInput
 {
-	double speed_scalar = 0.0;
-	double gear_position = 0.0;
+	double true_airspeed_mps = 0.0;
+	double gear_position_normalized = 0.0;
 };
 
 inline void toggle_airbrake(AirframeDeviceState& devices)
@@ -52,8 +58,8 @@ inline void set_flap_mode(AirframeDeviceState& devices, FlapMode mode)
 inline void configure_hot_ground_start_devices(AirframeDeviceState& devices)
 {
 	devices.flap_mode = FLAP_MODE_DOWN;
-	devices.flaps_pos = 1.0;
-	devices.slats_pos = 1.0;
+	devices.flaps_position_normalized = 1.0;
+	devices.slats_position_normalized = 1.0;
 }
 
 inline double compute_flap_target(
@@ -67,16 +73,19 @@ inline double compute_flap_target(
 
 	if (devices.flap_mode == FLAP_MODE_AUTO)
 	{
-		const double ias_kts = input.speed_scalar * 1.943844;
-		if (input.gear_position > 0.5 || ias_kts <= 240.0)
+		if (input.gear_position_normalized > 0.5 ||
+			input.true_airspeed_mps <= kFlapsFullyExtendedSpeedMps)
 		{
 			return 1.0;
 		}
-		if (ias_kts >= 450.0)
+		if (input.true_airspeed_mps >= kFlapsFullyRetractedSpeedMps)
 		{
 			return 0.0;
 		}
-		return 1.0 - ((ias_kts - 240.0) / (450.0 - 240.0));
+		return 1.0 -
+			((input.true_airspeed_mps - kFlapsFullyExtendedSpeedMps) /
+				(kFlapsFullyRetractedSpeedMps -
+					kFlapsFullyExtendedSpeedMps));
 	}
 
 	return 0.0;
@@ -86,20 +95,24 @@ inline void update_airframe_device_positions(
 	AirframeDeviceState& devices,
 	const AirframeDeviceUpdateInput& input)
 {
-	devices.airbrake_pos = Common::limit(
+	devices.airbrake_position_normalized = Common::limit(
 		Common::actuator(
-			devices.airbrake_pos,
+			devices.airbrake_position_normalized,
 			{ devices.airbrake_switch ? 1.0 : 0.0, -0.003, 0.004 }),
 		0.0,
 		1.0);
 
 	const double flap_target = compute_flap_target(devices, input);
-	devices.flaps_pos = Common::limit(
-		Common::actuator(devices.flaps_pos, { flap_target, -0.002, 0.002 }),
+	devices.flaps_position_normalized = Common::limit(
+		Common::actuator(
+			devices.flaps_position_normalized,
+			{ flap_target, -0.002, 0.002 }),
 		0.0,
 		1.0);
-	devices.slats_pos = Common::limit(
-		Common::actuator(devices.slats_pos, { flap_target, -0.003, 0.003 }),
+	devices.slats_position_normalized = Common::limit(
+		Common::actuator(
+			devices.slats_position_normalized,
+			{ flap_target, -0.003, 0.003 }),
 		0.0,
 		1.0);
 }

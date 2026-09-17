@@ -35,16 +35,16 @@ std::vector<std::string> expected_header()
 {
 	return split(
 		"sequence,simulation_time_s,"
-		"flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,flight_mach,flight_g_load,flight_angle_of_attack_deg,flight_angle_of_slide_deg,flight_atmosphere_temperature_k,flight_indicated_airspeed_mps,flight_vertical_speed_mps,flight_heading_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
+		"flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,flight_mach,flight_normal_acceleration_g,flight_angle_of_attack_deg,flight_angle_of_slide_deg,flight_atmosphere_temperature_k,flight_indicated_airspeed_mps,flight_vertical_speed_mps,flight_world_yaw_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
 		"force_moment_force_x_N,force_moment_force_y_N,force_moment_force_z_N,force_moment_moment_x_N_m,force_moment_moment_y_N_m,force_moment_moment_z_N_m,force_moment_center_of_mass_x_m,force_moment_center_of_mass_y_m,force_moment_center_of_mass_z_m,"
-		"engine_0_switch_on,engine_0_throttle_input,engine_0_throttle_output,engine_0_power_readout,engine_0_thrust_force_N,engine_0_afterburner_ratio,engine_0_afterburner_lit,engine_0_nozzle_aperture,"
-		"engine_1_switch_on,engine_1_throttle_input,engine_1_throttle_output,engine_1_power_readout,engine_1_thrust_force_N,engine_1_afterburner_ratio,engine_1_afterburner_lit,engine_1_nozzle_aperture,"
-		"controls_pitch_input,controls_roll_input,controls_yaw_input,controls_elevator_command,controls_aileron_command,controls_rudder_command,controls_flaps_position,controls_slats_position,controls_airbrake_position,"
-		"landing_gear_gear_position,landing_gear_nose_wheel_steering,landing_gear_brake_left,landing_gear_brake_right,landing_gear_wheel_spin_0,landing_gear_wheel_spin_1,landing_gear_wheel_spin_2,"
+		"engine_0_switch_on,engine_0_throttle_input_normalized,engine_0_throttle_output_normalized,engine_0_power_readout_normalized,engine_0_thrust_force_N,engine_0_afterburner_ratio_0_1,engine_0_afterburner_lit,engine_0_nozzle_aperture_normalized,"
+		"engine_1_switch_on,engine_1_throttle_input_normalized,engine_1_throttle_output_normalized,engine_1_power_readout_normalized,engine_1_thrust_force_N,engine_1_afterburner_ratio_0_1,engine_1_afterburner_lit,engine_1_nozzle_aperture_normalized,"
+		"controls_pitch_input_normalized,controls_roll_input_normalized,controls_yaw_input_normalized,controls_symmetric_stabilator_position_rad,controls_differential_flaperon_position_rad,controls_rudder_position_rad,controls_flaps_position_normalized,controls_slats_position_normalized,controls_airbrake_position_normalized,"
+		"landing_gear_gear_position_normalized,landing_gear_nose_wheel_steering_normalized,landing_gear_brake_left_normalized,landing_gear_brake_right_normalized,landing_gear_wheel_spin_phase_0_1_0,landing_gear_wheel_spin_phase_0_1_1,landing_gear_wheel_spin_phase_0_1_2,"
 		"suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
 		"suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
 		"suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
-		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,shake_amplitude",
+		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,shake_amplitude_normalized",
 		',');
 }
 
@@ -54,9 +54,9 @@ void assign_flight_and_force(Core::FrameOutput& output)
 		1, 2, 3, 4, 5, 6, 7, 8,
 		91, 92, 93, 94, 95, 96, 97, 98
 	};
-	output.force_moment.force = { 9, 10, 11 };
-	output.force_moment.moment = { 12, 13, 14 };
-	output.force_moment.center_of_mass = { 15, 16, 17 };
+	output.force_moment.force_body_n = { 9, 10, 11 };
+	output.force_moment.moment_body_nm = { 12, 13, 14 };
+	output.force_moment.center_of_mass_body_m = { 15, 16, 17 };
 }
 
 void assign_engines_and_controls(Core::FrameOutput& output)
@@ -85,7 +85,7 @@ Core::FrameOutput numbered_output()
 	assign_flight_and_force(output);
 	assign_engines_and_controls(output);
 	assign_gear_suspension_and_fuel(output);
-	output.shake_amplitude = 90;
+	output.shake_amplitude_normalized = 90;
 	return output;
 }
 

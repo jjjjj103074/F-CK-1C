@@ -61,20 +61,15 @@ enum class CommandId
 	PressTmsRight,
 	SelectNavigationMode,
 	SelectMissileOverride,
-	ToggleAutopilotMaster,
 	EngageAutopilot,
 	DisengageAutopilot,
 	SetAutopilotBypass,
-	SelectAutopilotPitchHold,
-	SelectAutopilotVerticalSpeedHold,
+	SelectAutopilotPitchAttitudeHold,
 	SelectAutopilotAltitudeHold,
-	IncreaseAutopilotVerticalReference,
-	DecreaseAutopilotVerticalReference,
-	SelectAutopilotHeadingHold,
-	SelectAutopilotHeading,
-	SelectAutopilotNavigationTrack,
-	IncreaseAutopilotLateralReference,
-	DecreaseAutopilotLateralReference,
+	SelectAutopilotRollAttitudeHold,
+	SelectAutopilotHeadingSelect,
+	IncreaseAutopilotHeadingSelect,
+	DecreaseAutopilotHeadingSelect,
 	ToggleAutoThrottle,
 	EngageAutoThrottle,
 	DisengageAutoThrottle,
@@ -87,7 +82,10 @@ enum class CommandId
 
 struct Command
 {
+	// Command payloads are normalized DCS command authority. Primary controls
+	// use the Core convention: pull, right roll, and left yaw are positive. Raw
+	// DCS signs are adapted before this contract is published.
 	CommandId id = CommandId::NoOp;
-	double value = 0.0;
+	double value_normalized = 0.0;
 };
 }

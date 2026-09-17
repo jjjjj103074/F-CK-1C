@@ -100,9 +100,9 @@ FallbackContext make_fallback_context(
 		config,
 		input,
 		Common::limit(
-			-input.observation.velocity_world.y, 0.0, kMaximumSinkRate),
+			-input.observation.velocity_world_mps.y, 0.0, kMaximumSinkRate),
 		Common::limit(
-			(input.landing_gear.position - kGearSupportStart) /
+			(input.landing_gear.position_normalized - kGearSupportStart) /
 				kGearSupportRange,
 			0.0,
 			1.0)
@@ -113,10 +113,10 @@ double world_vertical_offset(
 	const Common::Vec3& point,
 	const Core::AircraftState& observation)
 {
-	const double cos_pitch = std::cos(observation.pitch);
-	const double sin_pitch = std::sin(observation.pitch);
-	const double cos_roll = std::cos(observation.roll);
-	const double sin_roll = std::sin(observation.roll);
+	const double cos_pitch = std::cos(observation.pitch_rad);
+	const double sin_pitch = std::sin(observation.pitch_rad);
+	const double cos_roll = std::cos(observation.roll_rad);
+	const double sin_roll = std::sin(observation.roll_rad);
 	const double y_after_pitch =
 		point.x * sin_pitch + point.y * cos_pitch;
 	return y_after_pitch * cos_roll - point.z * sin_roll;
@@ -127,11 +127,11 @@ double wheel_force(
 	std::size_t index,
 	double compression)
 {
-	double force = compression * context.config.spring[index] *
+	double force = compression * context.config.spring_rate_n_m[index] *
 		context.gear_support;
-	force += context.sink_rate * context.config.damping[index] *
+	force += context.sink_rate * context.config.damping_n_s_m[index] *
 		context.gear_support;
-	const double weight = context.input.observation.current_mass * kGravity;
+	const double weight = context.input.observation.mass_kg * kGravity;
 	const double load_limit = index == kNoseWheelIndex
 		? kNoseWheelLoadLimit
 		: kMainWheelLoadLimit;
@@ -175,13 +175,13 @@ FallbackGearLoads apply_wheel_contacts(
 			continue;
 		}
 		const double wheel_bottom_agl =
-			context.input.observation.altitude_agl +
+			context.input.observation.altitude_agl_m +
 			world_vertical_offset(
-				context.config.gear_points[index],
+				context.config.gear_points_body_m[index],
 				context.input.observation) -
-			context.input.landing_gear.wheel_radius[index];
+			context.input.landing_gear.wheel_radius_m[index];
 		const double compression =
-			context.config.contact_band[index] - wheel_bottom_agl;
+			context.config.contact_band_m[index] - wheel_bottom_agl;
 		if (compression <= 0.0)
 		{
 			continue;
@@ -189,10 +189,20 @@ FallbackGearLoads apply_wheel_contacts(
 		const double force = wheel_force(context, index, compression);
 		result.effects.push_back(Core::Simulation::make_local_force_effect(
 			{ 0.0, force, 0.0 },
-			context.config.gear_points[index]));
+			context.config.gear_points_body_m[index]));
 		record_wheel_load(index, force, loads);
 	}
 	return loads;
+}
+
+double brake_normal_force(
+	const GroundInteractionModelInput& input,
+	const FallbackGearLoads& loads)
+{
+	return loads.left_main_normal * Common::limit(
+		input.landing_gear.brake_left_normalized, 0.0, 1.0) +
+		loads.right_main_normal * Common::limit(
+			input.landing_gear.brake_right_normalized, 0.0, 1.0);
 }
 
 void apply_longitudinal_resistance(
@@ -206,24 +216,20 @@ void apply_longitudinal_resistance(
 		return;
 	}
 	const auto& input = context.input;
-	const double forward_speed = input.observation.velocity_body.x;
+	const double forward_speed = input.observation.velocity_body_mps.x;
 	const double speed_abs = std::fabs(forward_speed);
 	const double speed_sign = forward_speed >= 0.0 ? 1.0 : -1.0;
 	const double average_throttle = kThrottleAverageFactor *
-		(input.engines.left.throttle_input +
-			input.engines.right.throttle_input);
-	const double brake_normal =
-		loads.left_main_normal *
-			Common::limit(input.landing_gear.brake_left, 0.0, 1.0) +
-		loads.right_main_normal *
-			Common::limit(input.landing_gear.brake_right, 0.0, 1.0);
+		(input.engines.left.throttle_input_normalized +
+			input.engines.right.throttle_input_normalized);
+	const double brake_normal = brake_normal_force(input, loads);
 	double resistance = total_main_normal * kRollingResistanceFactor +
 		brake_normal * kBrakeResistanceFactor;
 	if (speed_abs < kLowSpeedThreshold &&
 		average_throttle < kIdleThrottleThreshold)
 	{
 		resistance += Common::limit(
-			input.total_thrust_force,
+			input.total_thrust_force_n,
 			0.0,
 			total_main_normal * kStaticThrustResistanceFactor);
 	}
@@ -255,9 +261,9 @@ void apply_belly_contact(
 		return;
 	}
 	const double belly_bottom_agl =
-		context.input.observation.altitude_agl +
+		context.input.observation.altitude_agl_m +
 		world_vertical_offset(
-			context.config.belly_point,
+			context.config.belly_point_body_m,
 			context.input.observation);
 	const double compression = kBellyContactBand - belly_bottom_agl;
 	if (compression <= 0.0)
@@ -269,11 +275,11 @@ void apply_belly_contact(
 	force = Common::limit(
 		force,
 		0.0,
-		context.input.observation.current_mass *
+		context.input.observation.mass_kg *
 			kGravity * kBellyLoadLimit);
 	result.effects.push_back(Core::Simulation::make_local_force_effect(
 		{ 0.0, force, 0.0 },
-		context.config.belly_point));
+		context.config.belly_point_body_m));
 }
 }
 

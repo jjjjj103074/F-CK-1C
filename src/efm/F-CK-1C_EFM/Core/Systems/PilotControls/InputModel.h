@@ -86,7 +86,7 @@ inline void set_roll_axis_input(PrimaryControlState& controls, double value)
 
 inline void set_yaw_axis_input(PrimaryControlState& controls, double value)
 {
-	set_primary_axis_input(controls.yaw, -value);
+	set_primary_axis_input(controls.yaw, value);
 }
 
 inline void set_pitch_discrete_input(PrimaryControlState& controls, int discrete)

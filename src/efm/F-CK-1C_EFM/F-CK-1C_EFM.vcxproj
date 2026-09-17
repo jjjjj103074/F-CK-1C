@@ -78,6 +78,7 @@
     <ClInclude Include="Common\Vec3.h" />
 	<ClInclude Include="DcsBridge\Internal\DcsCommandRouter.h" />
 	<ClInclude Include="DcsBridge\Internal\DcsDamageMapper.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsKinematicsAdapter.h" />
 	<ClInclude Include="DcsBridge\Internal\DcsSuspensionAdapter.h" />
 	<ClInclude Include="DcsBridge\Internal\DrawArgs.h" />
 	<ClInclude Include="DcsBridge\Internal\AbiBoundary.h" />

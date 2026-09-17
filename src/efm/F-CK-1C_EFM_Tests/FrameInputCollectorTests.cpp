@@ -30,6 +30,18 @@ constexpr double kConcurrentNewBase = 2000.0;
 Core::CockpitObservation make_cockpit_observation()
 {
 	Core::CockpitObservation observation;
+	observation.magnetic_heading.status = {
+		true,
+		11,
+		Core::ObservationInvalidReason::None
+	};
+	observation.magnetic_heading.magnetic_heading_deg = 1.25;
+	observation.pressure_altitude.status = {
+		true,
+		15,
+		Core::ObservationInvalidReason::None
+	};
+	observation.pressure_altitude.pressure_altitude_ft = 5200.0;
 	observation.radar.status = {
 		true,
 		12,
@@ -58,42 +70,42 @@ Common::Vec3 make_vec(double base)
 Core::AtmosphereInput make_atmosphere(double base)
 {
 	Core::AtmosphereInput sample;
-	sample.altitude_asl = base + 1.0;
-	sample.temperature = base + 2.0;
-	sample.speed_of_sound = base + 3.0;
-	sample.density = base + 4.0;
-	sample.pressure = base + 5.0;
-	sample.wind = make_vec(base + 10.0);
+	sample.altitude_asl_m = base + 1.0;
+	sample.temperature_k = base + 2.0;
+	sample.speed_of_sound_mps = base + 3.0;
+	sample.density_kg_m3 = base + 4.0;
+	sample.pressure_pa = base + 5.0;
+	sample.wind_world_mps = make_vec(base + 10.0);
 	return sample;
 }
 
 Core::SurfaceInput make_surface(double base)
 {
 	Core::SurfaceInput sample;
-	sample.surface_height = base + 1.0;
-	sample.surface_height_with_objects = base + 2.0;
+	sample.surface_height_m = base + 1.0;
+	sample.surface_height_with_objects_m = base + 2.0;
 	sample.surface_type = kTestSurfaceType;
-	sample.normal = make_vec(base + 10.0);
+	sample.normal_world_unit = make_vec(base + 10.0);
 	return sample;
 }
 
 Core::MassStateInput make_mass(double base)
 {
 	Core::MassStateInput sample;
-	sample.mass = base + 1.0;
-	sample.center_of_mass = make_vec(base + 10.0);
-	sample.moment_of_inertia = make_vec(base + 20.0);
+	sample.mass_kg = base + 1.0;
+	sample.center_of_mass_body_m = make_vec(base + 10.0);
+	sample.moment_of_inertia_body_kg_m2 = make_vec(base + 20.0);
 	return sample;
 }
 
 Core::WorldKinematicsInput make_world_kinematics(double base)
 {
 	Core::WorldKinematicsInput sample;
-	sample.acceleration = make_vec(base + 10.0);
-	sample.velocity = make_vec(base + 20.0);
-	sample.position = make_vec(base + 30.0);
-	sample.angular_acceleration = make_vec(base + 40.0);
-	sample.angular_velocity = make_vec(base + 50.0);
+	sample.acceleration_world_mps2 = make_vec(base + 10.0);
+	sample.velocity_world_mps = make_vec(base + 20.0);
+	sample.position_world_m = make_vec(base + 30.0);
+	sample.angular_acceleration_world_rad_s2 = make_vec(base + 40.0);
+	sample.angular_velocity_world_rad_s = make_vec(base + 50.0);
 	sample.orientation = { base + 61.0, base + 62.0, base + 63.0, base + 64.0 };
 	return sample;
 }
@@ -101,16 +113,18 @@ Core::WorldKinematicsInput make_world_kinematics(double base)
 Core::BodyKinematicsInput make_body_kinematics(double base)
 {
 	Core::BodyKinematicsInput sample;
-	sample.acceleration = make_vec(base + 10.0);
-	sample.velocity = make_vec(base + 20.0);
-	sample.wind_velocity = make_vec(base + 30.0);
-	sample.angular_acceleration = make_vec(base + 40.0);
-	sample.angular_velocity = make_vec(base + 50.0);
-	sample.heading = base + 61.0;
-	sample.pitch = base + 62.0;
-	sample.roll = base + 63.0;
-	sample.angle_of_attack = base + 64.0;
-	sample.angle_of_slide = base + 65.0;
+	sample.acceleration_body_mps2 = make_vec(base + 10.0);
+	sample.velocity_body_mps = make_vec(base + 20.0);
+	sample.wind_velocity_body_mps = make_vec(base + 30.0);
+	sample.angular = {
+		base + 41.0, base + 42.0, base + 43.0,
+		base + 51.0, base + 52.0, base + 53.0
+	};
+	sample.world_yaw_rad = base + 61.0;
+	sample.pitch_rad = base + 62.0;
+	sample.roll_rad = base + 63.0;
+	sample.angle_of_attack_rad = base + 64.0;
+	sample.angle_of_slide_rad = base + 65.0;
 	return sample;
 }
 
@@ -118,11 +132,11 @@ Core::SuspensionFeedbackInput make_suspension(int index, double base)
 {
 	Core::SuspensionFeedbackInput sample;
 	sample.index = index;
-	sample.acting_force = make_vec(base + 10.0);
-	sample.acting_force_point = make_vec(base + 20.0);
-	sample.integrity_factor = base + 31.0;
-	sample.compression = base + 32.0;
-	sample.wheel_speed_x = base + 33.0;
+	sample.acting_force_body_n = make_vec(base + 10.0);
+	sample.acting_force_point_body_m = make_vec(base + 20.0);
+	sample.integrity_factor_0_1 = base + 31.0;
+	sample.compression_m = base + 32.0;
+	sample.wheel_speed_x_mps = base + 33.0;
 	return sample;
 }
 
@@ -139,33 +153,33 @@ void expect_vec(
 void expect_atmosphere(Tests::Context& context, const Core::AtmosphereInput& actual)
 {
 	const Core::AtmosphereInput expected = make_atmosphere(kAtmosphereBase);
-	TEST_EXPECT_NEAR(context, actual.altitude_asl, expected.altitude_asl, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.temperature, expected.temperature, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.speed_of_sound, expected.speed_of_sound, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.density, expected.density, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.pressure, expected.pressure, kTolerance);
-	expect_vec(context, actual.wind, expected.wind);
+	TEST_EXPECT_NEAR(context, actual.altitude_asl_m, expected.altitude_asl_m, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.temperature_k, expected.temperature_k, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.speed_of_sound_mps, expected.speed_of_sound_mps, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.density_kg_m3, expected.density_kg_m3, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.pressure_pa, expected.pressure_pa, kTolerance);
+	expect_vec(context, actual.wind_world_mps, expected.wind_world_mps);
 }
 
 void expect_surface(Tests::Context& context, const Core::SurfaceInput& actual)
 {
 	const Core::SurfaceInput expected = make_surface(kSurfaceBase);
-	TEST_EXPECT_NEAR(context, actual.surface_height, expected.surface_height, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.surface_height_m, expected.surface_height_m, kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		actual.surface_height_with_objects,
-		expected.surface_height_with_objects,
+		actual.surface_height_with_objects_m,
+		expected.surface_height_with_objects_m,
 		kTolerance);
 	TEST_EXPECT(context, actual.surface_type == expected.surface_type);
-	expect_vec(context, actual.normal, expected.normal);
+	expect_vec(context, actual.normal_world_unit, expected.normal_world_unit);
 }
 
 void expect_mass(Tests::Context& context, const Core::MassStateInput& actual)
 {
 	const Core::MassStateInput expected = make_mass(kMassBase);
-	TEST_EXPECT_NEAR(context, actual.mass, expected.mass, kTolerance);
-	expect_vec(context, actual.center_of_mass, expected.center_of_mass);
-	expect_vec(context, actual.moment_of_inertia, expected.moment_of_inertia);
+	TEST_EXPECT_NEAR(context, actual.mass_kg, expected.mass_kg, kTolerance);
+	expect_vec(context, actual.center_of_mass_body_m, expected.center_of_mass_body_m);
+	expect_vec(context, actual.moment_of_inertia_body_kg_m2, expected.moment_of_inertia_body_kg_m2);
 }
 
 void expect_world_kinematics(
@@ -173,15 +187,34 @@ void expect_world_kinematics(
 	const Core::WorldKinematicsInput& actual)
 {
 	const Core::WorldKinematicsInput expected = make_world_kinematics(kWorldKinematicsBase);
-	expect_vec(context, actual.acceleration, expected.acceleration);
-	expect_vec(context, actual.velocity, expected.velocity);
-	expect_vec(context, actual.position, expected.position);
-	expect_vec(context, actual.angular_acceleration, expected.angular_acceleration);
-	expect_vec(context, actual.angular_velocity, expected.angular_velocity);
+	expect_vec(context, actual.acceleration_world_mps2, expected.acceleration_world_mps2);
+	expect_vec(context, actual.velocity_world_mps, expected.velocity_world_mps);
+	expect_vec(context, actual.position_world_m, expected.position_world_m);
+	expect_vec(context, actual.angular_acceleration_world_rad_s2, expected.angular_acceleration_world_rad_s2);
+	expect_vec(context, actual.angular_velocity_world_rad_s, expected.angular_velocity_world_rad_s);
 	TEST_EXPECT_NEAR(context, actual.orientation.x, expected.orientation.x, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.orientation.y, expected.orientation.y, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.orientation.z, expected.orientation.z, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.orientation.w, expected.orientation.w, kTolerance);
+}
+
+void expect_body_angular_kinematics(
+	Tests::Context& context,
+	const Core::BodyAngularKinematicsInput& actual,
+	const Core::BodyAngularKinematicsInput& expected)
+{
+	TEST_EXPECT_NEAR(context, actual.roll_acceleration_rad_s2,
+		expected.roll_acceleration_rad_s2, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.pitch_acceleration_rad_s2,
+		expected.pitch_acceleration_rad_s2, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.yaw_acceleration_rad_s2,
+		expected.yaw_acceleration_rad_s2, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.roll_rate_rad_s,
+		expected.roll_rate_rad_s, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.pitch_rate_rad_s,
+		expected.pitch_rate_rad_s, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.yaw_rate_rad_s,
+		expected.yaw_rate_rad_s, kTolerance);
 }
 
 void expect_body_kinematics(
@@ -189,16 +222,20 @@ void expect_body_kinematics(
 	const Core::BodyKinematicsInput& actual)
 {
 	const Core::BodyKinematicsInput expected = make_body_kinematics(kBodyKinematicsBase);
-	expect_vec(context, actual.acceleration, expected.acceleration);
-	expect_vec(context, actual.velocity, expected.velocity);
-	expect_vec(context, actual.wind_velocity, expected.wind_velocity);
-	expect_vec(context, actual.angular_acceleration, expected.angular_acceleration);
-	expect_vec(context, actual.angular_velocity, expected.angular_velocity);
-	TEST_EXPECT_NEAR(context, actual.heading, expected.heading, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.pitch, expected.pitch, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.roll, expected.roll, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.angle_of_attack, expected.angle_of_attack, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.angle_of_slide, expected.angle_of_slide, kTolerance);
+	expect_vec(context, actual.acceleration_body_mps2, expected.acceleration_body_mps2);
+	expect_vec(context, actual.velocity_body_mps, expected.velocity_body_mps);
+	expect_vec(context, actual.wind_velocity_body_mps, expected.wind_velocity_body_mps);
+	expect_body_angular_kinematics(context, actual.angular, expected.angular);
+	TEST_EXPECT_NEAR(
+		context, actual.world_yaw_rad, expected.world_yaw_rad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.pitch_rad, expected.pitch_rad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.roll_rad, expected.roll_rad, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, actual.angle_of_attack_rad,
+		expected.angle_of_attack_rad, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, actual.angle_of_slide_rad,
+		expected.angle_of_slide_rad, kTolerance);
 }
 
 void expect_suspension(
@@ -207,11 +244,11 @@ void expect_suspension(
 	const Core::SuspensionFeedbackInput& expected)
 {
 	TEST_EXPECT(context, actual.index == expected.index);
-	expect_vec(context, actual.acting_force, expected.acting_force);
-	expect_vec(context, actual.acting_force_point, expected.acting_force_point);
-	TEST_EXPECT_NEAR(context, actual.integrity_factor, expected.integrity_factor, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.compression, expected.compression, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.wheel_speed_x, expected.wheel_speed_x, kTolerance);
+	expect_vec(context, actual.acting_force_body_n, expected.acting_force_body_n);
+	expect_vec(context, actual.acting_force_point_body_m, expected.acting_force_point_body_m);
+	TEST_EXPECT_NEAR(context, actual.integrity_factor_0_1, expected.integrity_factor_0_1, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.compression_m, expected.compression_m, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.wheel_speed_x_mps, expected.wheel_speed_x_mps, kTolerance);
 }
 
 void publish_complete_input(DcsBridge::Internal::FrameInputCollector& collector)
@@ -260,12 +297,24 @@ void expect_complete_input(Tests::Context& context, const Core::FrameInput& inpu
 			input.suspension[index],
 			make_suspension(index, kSuspensionBase + index * kSuspensionBaseStep));
 	}
+	TEST_EXPECT(context, input.cockpit.magnetic_heading.status.available);
+	TEST_EXPECT(context, input.cockpit.magnetic_heading.status.revision == 11);
+	TEST_EXPECT_NEAR(
+		context,
+		input.cockpit.magnetic_heading.magnetic_heading_deg,
+		1.25,
+		kTolerance);
 	TEST_EXPECT(context, input.cockpit.radar.status.available);
 	TEST_EXPECT(context, input.cockpit.radar.status.revision == 12);
 	TEST_EXPECT_NEAR(context, input.cockpit.radar.stt_range_m, 4500.0, kTolerance);
 	TEST_EXPECT(context, input.cockpit.ir_seeker.status.revision == 13);
 	TEST_EXPECT(context, input.cockpit.weapon_stations.status.revision == 14);
 	TEST_EXPECT(context, input.cockpit.weapon_stations.aim9_count == 2);
+	TEST_EXPECT(context, input.cockpit.pressure_altitude.status.available);
+	TEST_EXPECT(context, input.cockpit.pressure_altitude.status.revision == 15);
+	TEST_EXPECT_NEAR(context,
+		input.cockpit.pressure_altitude.pressure_altitude_ft,
+		5200.0, kTolerance);
 }
 
 void expect_reset_input(Tests::Context& context, const Core::FrameInput& input)
@@ -280,10 +329,12 @@ void expect_reset_input(Tests::Context& context, const Core::FrameInput& input)
 	{
 		TEST_EXPECT(context, !input.availability.suspension[index]);
 		TEST_EXPECT(context, input.suspension[index].index == index);
-		expect_vec(context, input.suspension[index].acting_force, Common::Vec3());
-		TEST_EXPECT_NEAR(context, input.suspension[index].compression, 0.0, kTolerance);
+		expect_vec(context, input.suspension[index].acting_force_body_n, Common::Vec3());
+		TEST_EXPECT_NEAR(context, input.suspension[index].compression_m, 0.0, kTolerance);
 	}
+	TEST_EXPECT(context, !input.cockpit.magnetic_heading.status.available);
 	TEST_EXPECT(context, !input.cockpit.radar.status.available);
+	TEST_EXPECT(context, !input.cockpit.pressure_altitude.status.available);
 	TEST_EXPECT(context, input.cockpit.radar.status.revision == 0);
 }
 
@@ -352,12 +403,12 @@ bool same_atmosphere(
 	const Core::AtmosphereInput& left,
 	const Core::AtmosphereInput& right)
 {
-	return left.altitude_asl == right.altitude_asl &&
-		left.temperature == right.temperature &&
-		left.speed_of_sound == right.speed_of_sound &&
-		left.density == right.density &&
-		left.pressure == right.pressure &&
-		same_vec(left.wind, right.wind);
+	return left.altitude_asl_m == right.altitude_asl_m &&
+		left.temperature_k == right.temperature_k &&
+		left.speed_of_sound_mps == right.speed_of_sound_mps &&
+		left.density_kg_m3 == right.density_kg_m3 &&
+		left.pressure_pa == right.pressure_pa &&
+		same_vec(left.wind_world_mps, right.wind_world_mps);
 }
 
 void arrive_and_wait(std::atomic<int>& arrivals, int expected_arrivals)

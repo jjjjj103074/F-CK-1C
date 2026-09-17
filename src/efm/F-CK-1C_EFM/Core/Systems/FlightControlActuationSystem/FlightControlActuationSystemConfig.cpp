@@ -9,10 +9,10 @@ namespace
 {
 bool valid_axis(const Core::Systems::FlightControlAxisConfig& axis)
 {
-	return std::isfinite(axis.travel_limit_rad) &&
+	return std::isfinite(axis.maximum_deflection_rad) &&
 		std::isfinite(axis.rate_limit_rad_s) &&
 		std::isfinite(axis.lag_time_constant_s) &&
-		axis.travel_limit_rad > 0.0 &&
+		axis.maximum_deflection_rad > 0.0 &&
 		axis.rate_limit_rad_s > 0.0 &&
 		axis.lag_time_constant_s > 0.0;
 }
@@ -36,8 +36,8 @@ namespace Systems
 void validate_flight_control_actuation_system_config(
 	const FlightControlActuationSystemConfig& config)
 {
-	if (!valid_axis(config.elevator) ||
-		!valid_axis(config.aileron) ||
+	if (!valid_axis(config.symmetric_stabilator) ||
+		!valid_axis(config.differential_flaperon) ||
 		!valid_axis(config.rudder))
 	{
 		throw std::invalid_argument(

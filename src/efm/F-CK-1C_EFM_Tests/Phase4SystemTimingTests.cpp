@@ -26,6 +26,13 @@ constexpr double kNeutralSteering = 0.0;
 constexpr double kTolerance = 1e-12;
 constexpr std::uint32_t kSlowUpdateRateHz = 32;
 constexpr std::size_t kExpectedOneSecondTicks = 64;
+constexpr std::uint64_t kExpectedFinalFccTick = 63;
+constexpr std::uint64_t kExpectedPilotShapingUpdates = 32;
+constexpr std::uint64_t kExpectedPilotShapingLastTick = 62;
+constexpr std::uint64_t kExpectedPilotShapingAgeTicks = 1;
+constexpr std::uint64_t kExpectedGainScheduleUpdates = 4;
+constexpr std::uint64_t kExpectedGainScheduleLastTick = 48;
+constexpr std::uint64_t kExpectedGainScheduleAgeTicks = 15;
 constexpr std::size_t kThirtyFpsFrames = 30;
 constexpr std::size_t kSixtyFpsFrames = 60;
 constexpr std::size_t kOneHundredFortyFourFpsFrames = 144;
@@ -46,13 +53,13 @@ std::vector<double> engine_values(
 {
 	return {
 		static_cast<double>(engine.switch_on),
-		engine.throttle_input,
-		engine.throttle_output,
-		engine.power_readout,
-		engine.afterburner_ratio,
+		engine.throttle_input_normalized,
+		engine.throttle_output_normalized,
+		engine.power_readout_normalized,
+		engine.afterburner_ratio_0_1,
 		static_cast<double>(engine.afterburner_lit),
-		engine.nozzle_aperture,
-		engine.condition
+		engine.nozzle_aperture_normalized,
+		engine.condition_0_1
 	};
 }
 
@@ -60,58 +67,66 @@ std::vector<double> landing_gear_values(
 	const LandingGearData& gear)
 {
 	std::vector<double> values = {
-		gear.position,
-		gear.nose_wheel_steering,
-		gear.brake_left,
-		gear.brake_right,
+		gear.position_normalized,
+		gear.nose_wheel_steering_normalized,
+		gear.brake_left_normalized,
+		gear.brake_right_normalized,
 		static_cast<double>(gear.any_weight_on_wheels),
 		static_cast<double>(gear.on_ground)
 	};
-	for (std::size_t index = 0; index < gear.wheel_spin.size(); ++index)
+	for (std::size_t index = 0;
+		index < gear.wheel_spin_phase_0_1.size();
+		++index)
 	{
 		const SuspensionWheelData& wheel = gear.suspension[index];
 		values.insert(values.end(), {
-			gear.wheel_radius[index],
-			gear.wheel_spin[index],
-			wheel.acting_force.x,
-			wheel.acting_force.y,
-			wheel.acting_force.z,
-			wheel.compression,
-			wheel.force_magnitude,
+			gear.wheel_radius_m[index],
+			gear.wheel_spin_phase_0_1[index],
+			wheel.acting_force_body_n.x,
+			wheel.acting_force_body_n.y,
+			wheel.acting_force_body_n.z,
+			wheel.compression_m,
+			wheel.force_magnitude_n,
 			static_cast<double>(wheel.weight_on_wheel)
 		});
 	}
 	return values;
 }
 
+std::vector<double> control_values(const AircraftDataSnapshot& snapshot)
+{
+	const auto& pilot = snapshot.read(AircraftDataKeys::kPilotControlSignal);
+	const auto& command =
+		snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	const auto& primary =
+		snapshot.read(AircraftDataKeys::kFlightControlActuatorState);
+	const auto& levers = snapshot.read(AircraftDataKeys::kThrottleLeverSignal);
+	const auto& engines = snapshot.read(AircraftDataKeys::kEngineThrottleCommand);
+	const auto& secondary =
+		snapshot.read(AircraftDataKeys::kSecondaryControlPosition);
+	return {
+		pilot.pitch_axis_normalized, pilot.roll_axis_normalized,
+		pilot.yaw_axis_normalized, levers.left_normalized,
+		levers.right_normalized, command.symmetric_stabilator_demand_rad,
+		command.differential_flaperon_demand_rad, command.rudder_demand_rad,
+		primary.symmetric_stabilator.position_rad,
+		primary.differential_flaperon.position_rad, primary.rudder.position_rad,
+		engines.left_normalized, engines.right_normalized,
+		secondary.flaps_position_normalized,
+		secondary.slats_position_normalized,
+		secondary.airbrake_position_normalized
+	};
+}
+
 std::vector<double> published_values(
 	const AircraftDataSnapshot& snapshot)
 {
-	const PilotControlSignal& pilot =
-		snapshot.read(AircraftDataKeys::kPilotControlSignal);
-	const FlightControlActuatorCommand& control =
-		snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
-	const FlightControlActuatorState& primary =
-		snapshot.read(AircraftDataKeys::kFlightControlActuatorState);
-	const ThrottleLeverSignal& throttle_levers =
-		snapshot.read(AircraftDataKeys::kThrottleLeverSignal);
-	const EngineThrottleCommand& engine_control =
-		snapshot.read(AircraftDataKeys::kEngineThrottleCommand);
-	const SecondaryControlPosition& secondary =
-		snapshot.read(AircraftDataKeys::kSecondaryControlPosition);
 	const EngineData& engines =
 		snapshot.read(AircraftDataKeys::kEngineData);
 	const FuelData& fuel = snapshot.read(AircraftDataKeys::kFuelData);
 	const AirframeIntegrity& integrity =
 		snapshot.read(AircraftDataKeys::kAirframeIntegrity);
-	std::vector<double> values = {
-		pilot.pitch_axis_normalized, pilot.roll_axis_normalized, pilot.yaw_axis_normalized,
-		throttle_levers.left_normalized, throttle_levers.right_normalized,
-		control.elevator_normalized, control.aileron_normalized, control.rudder_normalized,
-		primary.elevator.normalized_position, primary.aileron.normalized_position, primary.rudder.normalized_position,
-		engine_control.left_normalized, engine_control.right_normalized,
-		secondary.flaps, secondary.slats, secondary.airbrake
-	};
+	std::vector<double> values = control_values(snapshot);
 	const std::vector<double> landing = landing_gear_values(
 		snapshot.read(AircraftDataKeys::kLandingGearData));
 	values.insert(values.end(), landing.begin(), landing.end());
@@ -122,8 +137,12 @@ std::vector<double> published_values(
 	values.insert(values.end(), {
 		static_cast<double>(engines.thrust_inhibited),
 		snapshot.read(AircraftDataKeys::kFuelDemand).flow_rate_kg_s,
-		fuel.internal_fuel, fuel.external_fuel, fuel.total_fuel_flow,
-		integrity.left_wing, integrity.right_wing, integrity.tail
+		fuel.internal_fuel_kg,
+		fuel.external_fuel_kg,
+		fuel.total_fuel_flow_kg_s,
+		integrity.left_wing_0_1,
+		integrity.right_wing_0_1,
+		integrity.tail_0_1
 	});
 	return values;
 }
@@ -184,14 +203,14 @@ void test_equipment_reads_current_aircraft_observation(
 	FrameInput input;
 	input.dt_s = kFrameDt;
 	AircraftObservation observation;
-	observation.speed_scalar = kHighSpeedObservation;
-	observation.ground_speed = kHighSpeedObservation;
+	observation.true_airspeed_mps = kHighSpeedObservation;
+	observation.ground_speed_mps = kHighSpeedObservation;
 	const LandingGearData& gear = SystemPipelineTest::step_pipeline(
 		pipeline, input, observation).read(
 		AircraftDataKeys::kLandingGearData);
 	TEST_EXPECT_NEAR(
 		context,
-		gear.nose_wheel_steering,
+		gear.nose_wheel_steering_normalized,
 		kNeutralSteering,
 		kTolerance);
 }
@@ -223,7 +242,7 @@ void test_first_tick_starts_after_one_full_period(
 		flight_setup(), { entry(timed_recorder(calls)) });
 	FrameInput frame;
 	AircraftObservation observation;
-	observation.speed_scalar = kHighSpeedObservation;
+	observation.true_airspeed_mps = kHighSpeedObservation;
 	(void)step_pipeline_to(
 		pipeline,
 		frame,
@@ -233,7 +252,7 @@ void test_first_tick_starts_after_one_full_period(
 	TEST_EXPECT_NEAR(
 		context,
 		pipeline.snapshot().read(
-			AircraftDataKeys::kAircraftObservation).speed_scalar,
+			AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
 		kHighSpeedObservation,
 		kTolerance);
 	(void)step_pipeline_to(
@@ -338,7 +357,7 @@ SystemDefinition fast_observer()
 			result.publish(
 				AircraftDataKeys::kFlightControlActuatorState,
 				actuator_state(aircraft.read(
-					AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized));
+					AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad));
 		}
 	};
 }
@@ -350,7 +369,7 @@ double observed_position_at(
 	const FrameInput frame;
 	const AircraftObservation observation;
 	return step_pipeline_to(pipeline, frame, observation, target)
-		.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position;
+		.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad;
 }
 
 void test_different_time_buckets_commit_between_ticks(
@@ -413,6 +432,76 @@ std::vector<SystemScheduledTime> run_partitioned_schedule(
 	return result;
 }
 
+struct FccSubrateSample
+{
+	std::uint64_t flight_control_tick = 0;
+	std::uint64_t pilot_update_count = 0;
+	std::uint64_t pilot_last_tick = 0;
+	std::uint64_t pilot_age_ticks = 0;
+	std::uint64_t gain_update_count = 0;
+	std::uint64_t gain_last_tick = 0;
+	std::uint64_t gain_age_ticks = 0;
+	double pitch_input = 0.0;
+	double roll_input = 0.0;
+	double yaw_input = 0.0;
+	double command_gain = 0.0;
+	double damping_gain = 0.0;
+	double limiter_gain = 0.0;
+};
+
+FccSubrateSample extract_fcc_subrate_sample(
+	const FlightControlComputerSnapshot& snapshot)
+{
+	return {
+		snapshot.flight_control_tick,
+		snapshot.pilot_shaping_update_count,
+		snapshot.pilot_shaping_last_update_tick,
+		snapshot.pilot_shaping_age_ticks,
+		snapshot.gain_schedule_update_count,
+		snapshot.gain_schedule_last_update_tick,
+		snapshot.gain_schedule_age_ticks,
+		snapshot.conditioned_pitch_input_normalized,
+		snapshot.conditioned_roll_input_normalized,
+		snapshot.conditioned_yaw_input_normalized,
+		snapshot.active_command_gain,
+		snapshot.active_damping_gain,
+		snapshot.active_limiter_gain
+	};
+}
+
+FccSubrateSample run_fcc_partition(std::size_t frame_count)
+{
+	SystemPipeline pipeline(flight_setup());
+	const FrameInput frame = Tests::Fck1c::make_frame_input();
+	const AircraftObservation observation;
+	AircraftDataSnapshot snapshot = pipeline.snapshot();
+	for (const SystemScheduledTime target : make_host_targets(frame_count))
+	{
+		snapshot = step_pipeline_to(pipeline, frame, observation, target);
+	}
+	return extract_fcc_subrate_sample(
+		snapshot.read(AircraftDataKeys::kFlightControlComputerSnapshot));
+}
+
+bool same_fcc_subrate_sample(
+	const FccSubrateSample& left,
+	const FccSubrateSample& right)
+{
+	return left.flight_control_tick == right.flight_control_tick &&
+		left.pilot_update_count == right.pilot_update_count &&
+		left.pilot_last_tick == right.pilot_last_tick &&
+		left.pilot_age_ticks == right.pilot_age_ticks &&
+		left.gain_update_count == right.gain_update_count &&
+		left.gain_last_tick == right.gain_last_tick &&
+		left.gain_age_ticks == right.gain_age_ticks &&
+		left.pitch_input == right.pitch_input &&
+		left.roll_input == right.roll_input &&
+		left.yaw_input == right.yaw_input &&
+		left.command_gain == right.command_gain &&
+		left.damping_gain == right.damping_gain &&
+		left.limiter_gain == right.limiter_gain;
+}
+
 void test_host_frame_partition_does_not_change_system_ticks(
 	Tests::Context& context)
 {
@@ -437,6 +526,33 @@ void test_host_frame_partition_does_not_change_system_ticks(
 	TEST_EXPECT(context, thirty_fps == one_forty_four_fps);
 	TEST_EXPECT(context, thirty_fps == irregular);
 	TEST_EXPECT(context, thirty_fps.size() == kExpectedOneSecondTicks);
+}
+
+void test_fcc_subrates_are_host_frame_invariant(Tests::Context& context)
+{
+	const FccSubrateSample thirty_fps =
+		run_fcc_partition(kThirtyFpsFrames);
+	const FccSubrateSample sixty_fps =
+		run_fcc_partition(kSixtyFpsFrames);
+	const FccSubrateSample one_forty_four_fps =
+		run_fcc_partition(kOneHundredFortyFourFpsFrames);
+	TEST_EXPECT(context, same_fcc_subrate_sample(thirty_fps, sixty_fps));
+	TEST_EXPECT(
+		context, same_fcc_subrate_sample(thirty_fps, one_forty_four_fps));
+	TEST_EXPECT(context,
+		thirty_fps.flight_control_tick == kExpectedFinalFccTick);
+	TEST_EXPECT(context,
+		thirty_fps.pilot_update_count == kExpectedPilotShapingUpdates);
+	TEST_EXPECT(context,
+		thirty_fps.pilot_last_tick == kExpectedPilotShapingLastTick);
+	TEST_EXPECT(context,
+		thirty_fps.pilot_age_ticks == kExpectedPilotShapingAgeTicks);
+	TEST_EXPECT(context,
+		thirty_fps.gain_update_count == kExpectedGainScheduleUpdates);
+	TEST_EXPECT(context,
+		thirty_fps.gain_last_tick == kExpectedGainScheduleLastTick);
+	TEST_EXPECT(context,
+		thirty_fps.gain_age_ticks == kExpectedGainScheduleAgeTicks);
 }
 
 void test_time_cannot_move_backward(Tests::Context& context)
@@ -470,18 +586,27 @@ void test_fcc_to_actuator_has_one_receiver_tick_delay(
 	const AircraftDataSnapshot first =
 		step_pipeline(pipeline, frame, observation);
 	const double first_demand =
-		first.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
+		first.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
 	TEST_EXPECT_NEAR(
 		context,
-		first.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
+		first.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
 		kNeutralAxis,
 		kTolerance);
 	const AircraftDataSnapshot second =
 		step_pipeline(pipeline, frame, observation);
+	const double second_demand =
+		second.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
 	const double second_position = second.read(
-		AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position;
-	TEST_EXPECT(context, second_position > kNeutralAxis);
-	TEST_EXPECT(context, second_position <= first_demand);
+		AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad;
+	TEST_EXPECT_NEAR(context, first_demand, kNeutralAxis, kTolerance);
+	TEST_EXPECT(context, second_demand > kNeutralAxis);
+	TEST_EXPECT_NEAR(context, second_position, kNeutralAxis, kTolerance);
+	const AircraftDataSnapshot third =
+		step_pipeline(pipeline, frame, observation);
+	const double third_position = third.read(
+		AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad;
+	TEST_EXPECT(context, third_position > kNeutralAxis);
+	TEST_EXPECT(context, third_position <= second_demand);
 }
 }
 
@@ -495,6 +620,7 @@ void run_phase_four_system_timing_tests(Tests::Context& context)
 	test_long_run_keeps_exact_tick_count(context);
 	test_different_time_buckets_commit_between_ticks(context);
 	test_host_frame_partition_does_not_change_system_ticks(context);
+	test_fcc_subrates_are_host_frame_invariant(context);
 	test_time_cannot_move_backward(context);
 	test_fcc_to_actuator_has_one_receiver_tick_delay(context);
 }

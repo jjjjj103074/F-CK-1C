@@ -35,11 +35,11 @@ bool validate_world_kinematics_input(
 bool validate_body_kinematics_input(
 	const Core::BodyKinematicsInput& input,
 	EfmEventReporter& reporter);
-bool validate_internal_fuel_input(double fuel, EfmEventReporter& reporter);
+bool validate_internal_fuel_input(double fuel_kg, EfmEventReporter& reporter);
 bool validate_external_fuel_input(
 	const Core::ExternalFuelInput& input,
 	EfmEventReporter& reporter);
-bool validate_refueling_fuel_input(double fuel, EfmEventReporter& reporter);
+bool validate_refueling_fuel_input(double fuel_kg, EfmEventReporter& reporter);
 bool validate_damage_input(double integrity, EfmEventReporter& reporter);
 bool validate_command_mapping(
 	const CommandCallbackSample& sample,

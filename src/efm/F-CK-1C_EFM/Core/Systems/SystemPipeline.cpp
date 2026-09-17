@@ -512,18 +512,15 @@ void SystemPipeline::Implementation::validate_fuel_management(
 		runtime.setup.system_id,
 		std::move(handlers));
 }
-
 AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot() const
 {
 	return AircraftDataSnapshot(committed);
 }
-
 AircraftDataSnapshot SystemPipeline::Implementation::make_snapshot(
 	const Storage& storage) const
 {
 	return AircraftDataSnapshot(storage);
 }
-
 AircraftDataSnapshot SystemPipeline::Implementation::step(
 	const SystemFrameInput& input)
 {
@@ -537,7 +534,10 @@ AircraftDataSnapshot SystemPipeline::Implementation::step(
 	next[slot(AircraftDataId::AircraftObservation)] =
 		input.observation;
 	next[slot(AircraftDataId::FlightControlObservation)] =
-		make_flight_control_observation(input.observation);
+		make_flight_control_observation(
+			input.observation,
+			input.frame.cockpit.pressure_altitude,
+			input.frame.cockpit.magnetic_heading);
 	SystemSchedule next_schedule = schedule;
 	while (next_schedule.has_due(input.target_time))
 	{
@@ -668,9 +668,9 @@ FlightFuelState SystemPipeline::fuel_state() const
 	return implementation_->require_fuel_management().read();
 }
 
-void SystemPipeline::set_internal_fuel(double fuel)
+void SystemPipeline::set_internal_fuel(double fuel_kg)
 {
-	implementation_->require_fuel_management().set_internal(fuel);
+	implementation_->require_fuel_management().set_internal(fuel_kg);
 	implementation_->commit_current_fuel_data();
 }
 

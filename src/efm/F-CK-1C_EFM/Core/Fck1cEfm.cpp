@@ -65,23 +65,23 @@ FrameOutput Fck1cEfm::step(const FrameInput& input)
 	return simulation_->step(input);
 }
 
-double Fck1cEfm::internal_fuel() const
+double Fck1cEfm::internal_fuel_kg() const
 {
 	return simulation_
-		? simulation_->internal_fuel()
-		: preparation_->fuel.internal_fuel;
+		? simulation_->internal_fuel_kg()
+		: preparation_->fuel.internal_fuel_kg;
 }
 
-double Fck1cEfm::external_fuel() const
+double Fck1cEfm::external_fuel_kg() const
 {
 	if (simulation_)
 	{
-		return simulation_->external_fuel();
+		return simulation_->external_fuel_kg();
 	}
 	double total = 0.0;
 	for (const auto& station : preparation_->fuel.external_fuel_by_station)
 	{
-		total += station.second.fuel;
+		total += station.second.fuel_kg;
 	}
 	return total;
 }
@@ -94,22 +94,22 @@ void Fck1cEfm::handle_command(const Command& command)
 	}
 }
 
-void Fck1cEfm::set_internal_fuel(double fuel)
+void Fck1cEfm::set_internal_fuel(double fuel_kg)
 {
-	preparation_->fuel.internal_fuel = fuel;
+	preparation_->fuel.internal_fuel_kg = fuel_kg;
 	if (simulation_)
 	{
-		simulation_->set_internal_fuel(fuel);
+		simulation_->set_internal_fuel(fuel_kg);
 	}
 }
 
 void Fck1cEfm::set_external_fuel(const ExternalFuelInput& input)
 {
 	const Simulation::ExternalFuelLoad load = {
-		input.fuel,
-		input.position
+		input.fuel_kg,
+		input.position_body_m
 	};
-	if (input.fuel > 0.0)
+	if (input.fuel_kg > 0.0)
 	{
 		preparation_->fuel.external_fuel_by_station[input.station] = load;
 	}
@@ -123,9 +123,9 @@ void Fck1cEfm::set_external_fuel(const ExternalFuelInput& input)
 	}
 }
 
-void Fck1cEfm::add_refueling_fuel(double fuel)
+void Fck1cEfm::add_refueling_fuel(double fuel_kg)
 {
-	(void)fuel;
+	(void)fuel_kg;
 }
 
 void Fck1cEfm::set_infinite_fuel(bool enabled)
@@ -184,8 +184,8 @@ void Fck1cEfm::repair(const RepairEvent& event)
 	}
 }
 
-double carrier_launch_reference_thrust()
+double carrier_launch_reference_thrust_n()
 {
-	return Simulation::carrier_launch_reference_thrust();
+	return Simulation::carrier_launch_reference_thrust_n();
 }
 }

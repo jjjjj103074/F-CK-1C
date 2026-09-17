@@ -16,6 +16,7 @@ constexpr double kThrottleStep = 0.0075;
 enum class ValueRule
 {
 	PassThrough,
+	Negate,
 	Constant,
 	PressOnly
 };
@@ -30,6 +31,8 @@ struct CommandBinding
 
 #define BIND_INPUT(id, action) \
 	{ DcsIds::Commands::id, Core::CommandId::action, ValueRule::PassThrough, 0.0 }
+#define BIND_NEGATED_INPUT(id, action) \
+	{ DcsIds::Commands::id, Core::CommandId::action, ValueRule::Negate, 0.0 }
 #define BIND_CONST(id, action, value) \
 	{ DcsIds::Commands::id, Core::CommandId::action, ValueRule::Constant, value }
 #define BIND_PRESS(id, action) \
@@ -50,7 +53,7 @@ constexpr CommandBinding kBindings[] = {
 	BIND_CONST(RollRightStop, SetRollDiscrete, 0.0),
 	BIND_CONST(TrimLeft, AdjustRollTrim, -kRollTrimStep),
 	BIND_CONST(TrimRight, AdjustRollTrim, kRollTrimStep),
-	BIND_INPUT(PedalYaw, SetYawAxis),
+	BIND_NEGATED_INPUT(PedalYaw, SetYawAxis),
 	BIND_CONST(RudderLeft, SetYawDiscrete, 1.0),
 	BIND_CONST(RudderLeftStop, SetYawDiscrete, 0.0),
 	BIND_CONST(RudderRight, SetYawDiscrete, -1.0),
@@ -129,20 +132,15 @@ constexpr CommandBinding kBindings[] = {
 	BIND_PRESS(TMSRight, PressTmsRight),
 	BIND_PRESS(NavMode, SelectNavigationMode),
 	BIND_PRESS(MissileOverride, SelectMissileOverride),
-	BIND_PRESS(APMasterToggle, ToggleAutopilotMaster),
 	BIND_PRESS(APMasterOn, EngageAutopilot),
 	BIND_PRESS(APMasterOff, DisengageAutopilot),
 	BIND_INPUT(APBypass, SetAutopilotBypass),
-	BIND_PRESS(APVertPitchHold, SelectAutopilotPitchHold),
-	BIND_PRESS(APVertVSHold, SelectAutopilotVerticalSpeedHold),
-	BIND_PRESS(APVertAltHold, SelectAutopilotAltitudeHold),
-	BIND_PRESS(APVertIncrease, IncreaseAutopilotVerticalReference),
-	BIND_PRESS(APVertDecrease, DecreaseAutopilotVerticalReference),
-	BIND_PRESS(APLatHeadingHold, SelectAutopilotHeadingHold),
-	BIND_PRESS(APLatHeadingSelect, SelectAutopilotHeading),
-	BIND_PRESS(APLatNavTrack, SelectAutopilotNavigationTrack),
-	BIND_PRESS(APLatIncrease, IncreaseAutopilotLateralReference),
-	BIND_PRESS(APLatDecrease, DecreaseAutopilotLateralReference),
+	BIND_PRESS(APPitchAttitudeHold, SelectAutopilotPitchAttitudeHold),
+	BIND_PRESS(APPitchAltitudeHold, SelectAutopilotAltitudeHold),
+	BIND_PRESS(APRollAttitudeHold, SelectAutopilotRollAttitudeHold),
+	BIND_PRESS(APRollHeadingSelect, SelectAutopilotHeadingSelect),
+	BIND_PRESS(APHeadingSetIncrease, IncreaseAutopilotHeadingSelect),
+	BIND_PRESS(APHeadingSetDecrease, DecreaseAutopilotHeadingSelect),
 	BIND_PRESS(APAutoThrottleToggle, ToggleAutoThrottle),
 	BIND_PRESS(APAutoThrottleOn, EngageAutoThrottle),
 	BIND_PRESS(APAutoThrottleOff, DisengageAutoThrottle),
@@ -154,6 +152,7 @@ constexpr CommandBinding kBindings[] = {
 };
 
 #undef BIND_INPUT
+#undef BIND_NEGATED_INPUT
 #undef BIND_CONST
 #undef BIND_PRESS
 
@@ -162,6 +161,7 @@ double mapped_value(const CommandBinding& binding, float input)
 	switch (binding.value_rule)
 	{
 	case ValueRule::PassThrough: return input;
+	case ValueRule::Negate: return -input;
 	case ValueRule::PressOnly: return 1.0;
 	case ValueRule::Constant: return binding.constant;
 	}
@@ -173,6 +173,7 @@ bool has_valid_rule(const CommandBinding& binding)
 	switch (binding.value_rule)
 	{
 	case ValueRule::PassThrough:
+	case ValueRule::Negate:
 	case ValueRule::PressOnly:
 		return true;
 	case ValueRule::Constant:

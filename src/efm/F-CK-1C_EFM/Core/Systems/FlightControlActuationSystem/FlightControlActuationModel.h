@@ -13,7 +13,7 @@ struct FlightControlAxisModelState
 
 struct FlightControlAxisStepInput
 {
-	double normalized_command = 0.0;
+	double target_position_rad = 0.0;
 	double dt_s = 0.0;
 };
 

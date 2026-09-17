@@ -27,8 +27,8 @@ public:
 
 private:
 	const FlightControlActuationSystemConfig config_;
-	::Systems::FlightControlAxisModelState elevator_;
-	::Systems::FlightControlAxisModelState aileron_;
+	::Systems::FlightControlAxisModelState symmetric_stabilator_;
+	::Systems::FlightControlAxisModelState differential_flaperon_;
 	::Systems::FlightControlAxisModelState rudder_;
 	FlightControlActuatorState state_;
 };

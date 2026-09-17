@@ -58,19 +58,19 @@ void SecondaryFlightControls::step(
 	const AircraftObservation& observation =
 		aircraft.read(AircraftDataKeys::kAircraftObservation);
 	const double gear =
-		aircraft.read(AircraftDataKeys::kLandingGearData).position;
+		aircraft.read(AircraftDataKeys::kLandingGearData).position_normalized;
 	result.publish(
 		AircraftDataKeys::kSecondaryControlPosition,
-		step(observation.speed_scalar, gear));
+		step(observation.true_airspeed_mps, gear));
 }
 
 const SecondaryControlPosition& SecondaryFlightControls::step(
-	double speed_scalar,
-	double gear_position)
+	double true_airspeed_mps,
+	double gear_position_normalized)
 {
 	::Systems::update_airframe_device_positions(
 		devices_,
-		{ speed_scalar, gear_position });
+		{ true_airspeed_mps, gear_position_normalized });
 	refresh_position();
 	return position_;
 }
@@ -83,7 +83,7 @@ void SecondaryFlightControls::handle_command(const Command& command)
 		::Systems::toggle_airbrake(devices_); break;
 	case CommandId::SetAirbrake:
 		::Systems::set_airbrake(
-			devices_, command.value > kEnabledCommandThreshold); break;
+			devices_, command.value_normalized > kEnabledCommandThreshold); break;
 	case CommandId::ToggleFlaps:
 		::Systems::toggle_flap_mode(devices_); break;
 	case CommandId::SetFlapsUp:
@@ -100,9 +100,9 @@ void SecondaryFlightControls::handle_command(const Command& command)
 void SecondaryFlightControls::refresh_position()
 {
 	position_ = {
-		devices_.flaps_pos,
-		devices_.slats_pos,
-		devices_.airbrake_pos
+		devices_.flaps_position_normalized,
+		devices_.slats_position_normalized,
+		devices_.airbrake_position_normalized
 	};
 }
 

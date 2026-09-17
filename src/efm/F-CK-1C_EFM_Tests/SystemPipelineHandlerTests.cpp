@@ -131,7 +131,7 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 				CommandId::SetPitchAxis,
 				[requested](const SystemActionContext&, const Command& command)
 				{
-					*requested = command.value;
+					*requested = command.value_normalized;
 				});
 		},
 		[requested](const AircraftDataView&, SystemResult& result)
@@ -151,13 +151,13 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		pipeline.snapshot().read(
-			AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+			AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kNeutralValue,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
 		step_pipeline(pipeline).read(
-			AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+			AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kCommandValue,
 		kTolerance);
 }
@@ -309,7 +309,7 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		pipeline.snapshot().read(
-			AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+			AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kNeutralValue,
 		kTolerance);
 }

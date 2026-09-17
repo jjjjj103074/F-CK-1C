@@ -25,11 +25,13 @@ void test_gear_actuator(Tests::Context& context)
 	Systems::LandingGearSystemState landing_gear;
 	Systems::set_gear(landing_gear, true);
 	Systems::update_gear_position(landing_gear);
-	TEST_EXPECT_NEAR(context, landing_gear.position, 0.001, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, landing_gear.position_normalized, 0.001, kTolerance);
 
 	Systems::set_gear(landing_gear, false);
 	Systems::update_gear_position(landing_gear);
-	TEST_EXPECT_NEAR(context, landing_gear.position, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, landing_gear.position_normalized, 0.0, kTolerance);
 }
 
 void test_start_configuration(Tests::Context& context)
@@ -37,12 +39,14 @@ void test_start_configuration(Tests::Context& context)
 	Systems::LandingGearSystemState landing_gear;
 	Systems::configure_ground_start_landing_gear(landing_gear);
 	TEST_EXPECT(context, landing_gear.switch_down);
-	TEST_EXPECT_NEAR(context, landing_gear.position, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, landing_gear.position_normalized, 1.0, kTolerance);
 	TEST_EXPECT(context, landing_gear.wheels.nose_turn_enabled);
 
 	Systems::configure_air_start_landing_gear(landing_gear);
 	TEST_EXPECT(context, !landing_gear.switch_down);
-	TEST_EXPECT_NEAR(context, landing_gear.position, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, landing_gear.position_normalized, 0.0, kTolerance);
 	TEST_EXPECT(context, !landing_gear.wheels.nose_turn_enabled);
 }
 
@@ -64,7 +68,7 @@ void test_damage_scales_owned_equipment_and_repair_restores_it(
 		0.0, 0.0, kFrameDt, 0.0, kYawInput
 	};
 	const Core::LandingGearData healthy = landing_gear.step(input);
-	TEST_EXPECT(context, healthy.nose_wheel_steering != 0.0);
+	TEST_EXPECT(context, healthy.nose_wheel_steering_normalized != 0.0);
 
 	landing_gear.apply_damage({
 		Core::DamageArea::LandingGear,
@@ -87,31 +91,33 @@ void test_damage_scales_owned_equipment_and_repair_restores_it(
 	const Core::LandingGearData damaged = landing_gear.data();
 	TEST_EXPECT_NEAR(
 		context,
-		damaged.nose_wheel_steering,
-		healthy.nose_wheel_steering * kNoseIntegrity,
+		damaged.nose_wheel_steering_normalized,
+		healthy.nose_wheel_steering_normalized * kNoseIntegrity,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		damaged.brake_left,
-		healthy.brake_left * kLeftMainIntegrity,
+		damaged.brake_left_normalized,
+		healthy.brake_left_normalized * kLeftMainIntegrity,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		damaged.brake_right,
-		healthy.brake_right * kRightMainIntegrity,
+		damaged.brake_right_normalized,
+		healthy.brake_right_normalized * kRightMainIntegrity,
 		kTolerance);
 
 	landing_gear.repair({});
 	const Core::LandingGearData repaired = landing_gear.data();
 	TEST_EXPECT_NEAR(
 		context,
-		repaired.nose_wheel_steering,
-		healthy.nose_wheel_steering,
+		repaired.nose_wheel_steering_normalized,
+		healthy.nose_wheel_steering_normalized,
 		kTolerance);
 	TEST_EXPECT_NEAR(
-		context, repaired.brake_left, healthy.brake_left, kTolerance);
+		context, repaired.brake_left_normalized,
+		healthy.brake_left_normalized, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, repaired.brake_right, healthy.brake_right, kTolerance);
+		context, repaired.brake_right_normalized,
+		healthy.brake_right_normalized, kTolerance);
 }
 }
 

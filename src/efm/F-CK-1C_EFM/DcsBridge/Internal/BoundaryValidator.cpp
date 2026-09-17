@@ -53,14 +53,14 @@ bool validate_atmosphere_input(
 	EfmEventReporter& reporter)
 {
 	return validate_numeric_sample({ "ed_fm_set_atmosphere", {
-		{ "altitude", input.altitude_asl },
-		{ "temperature", input.temperature },
-		{ "speed_of_sound", input.speed_of_sound },
-		{ "density", input.density },
-		{ "pressure", input.pressure },
-		{ "wind_x", input.wind.x },
-		{ "wind_y", input.wind.y },
-		{ "wind_z", input.wind.z }
+		{ "altitude_asl_m", input.altitude_asl_m },
+		{ "temperature_k", input.temperature_k },
+		{ "speed_of_sound_mps", input.speed_of_sound_mps },
+		{ "density_kg_m3", input.density_kg_m3 },
+		{ "pressure_pa", input.pressure_pa },
+		{ "wind_world_x_mps", input.wind_world_mps.x },
+		{ "wind_world_y_mps", input.wind_world_mps.y },
+		{ "wind_world_z_mps", input.wind_world_mps.z }
 	} }, reporter);
 }
 
@@ -69,11 +69,11 @@ bool validate_surface_input(
 	EfmEventReporter& reporter)
 {
 	return validate_numeric_sample({ "ed_fm_set_surface", {
-		{ "height", input.surface_height },
-		{ "object_height", input.surface_height_with_objects },
-		{ "normal_x", input.normal.x },
-		{ "normal_y", input.normal.y },
-		{ "normal_z", input.normal.z }
+		{ "surface_height_m", input.surface_height_m },
+		{ "surface_height_with_objects_m", input.surface_height_with_objects_m },
+		{ "normal_world_x", input.normal_world_unit.x },
+		{ "normal_world_y", input.normal_world_unit.y },
+		{ "normal_world_z", input.normal_world_unit.z }
 	} }, reporter);
 }
 
@@ -82,13 +82,13 @@ bool validate_mass_input(
 	EfmEventReporter& reporter)
 {
 	return validate_numeric_sample({ "ed_fm_set_current_mass_state", {
-		{ "mass", input.mass },
-		{ "center_of_mass_x", input.center_of_mass.x },
-		{ "center_of_mass_y", input.center_of_mass.y },
-		{ "center_of_mass_z", input.center_of_mass.z },
-		{ "moment_of_inertia_x", input.moment_of_inertia.x },
-		{ "moment_of_inertia_y", input.moment_of_inertia.y },
-		{ "moment_of_inertia_z", input.moment_of_inertia.z }
+		{ "mass_kg", input.mass_kg },
+		{ "center_of_mass_body_x_m", input.center_of_mass_body_m.x },
+		{ "center_of_mass_body_y_m", input.center_of_mass_body_m.y },
+		{ "center_of_mass_body_z_m", input.center_of_mass_body_m.z },
+		{ "moment_of_inertia_body_x_kg_m2", input.moment_of_inertia_body_kg_m2.x },
+		{ "moment_of_inertia_body_y_kg_m2", input.moment_of_inertia_body_kg_m2.y },
+		{ "moment_of_inertia_body_z_kg_m2", input.moment_of_inertia_body_kg_m2.z }
 	} }, reporter);
 }
 
@@ -97,21 +97,21 @@ bool validate_world_kinematics_input(
 	EfmEventReporter& reporter)
 {
 	return validate_numeric_sample({ "ed_fm_set_current_state", {
-		{ "acceleration_x", input.acceleration.x },
-		{ "acceleration_y", input.acceleration.y },
-		{ "acceleration_z", input.acceleration.z },
-		{ "velocity_x", input.velocity.x },
-		{ "velocity_y", input.velocity.y },
-		{ "velocity_z", input.velocity.z },
-		{ "position_x", input.position.x },
-		{ "position_y", input.position.y },
-		{ "position_z", input.position.z },
-		{ "angular_acceleration_x", input.angular_acceleration.x },
-		{ "angular_acceleration_y", input.angular_acceleration.y },
-		{ "angular_acceleration_z", input.angular_acceleration.z },
-		{ "angular_velocity_x", input.angular_velocity.x },
-		{ "angular_velocity_y", input.angular_velocity.y },
-		{ "angular_velocity_z", input.angular_velocity.z },
+		{ "acceleration_world_x_mps2", input.acceleration_world_mps2.x },
+		{ "acceleration_world_y_mps2", input.acceleration_world_mps2.y },
+		{ "acceleration_world_z_mps2", input.acceleration_world_mps2.z },
+		{ "velocity_world_x_mps", input.velocity_world_mps.x },
+		{ "velocity_world_y_mps", input.velocity_world_mps.y },
+		{ "velocity_world_z_mps", input.velocity_world_mps.z },
+		{ "position_world_x_m", input.position_world_m.x },
+		{ "position_world_y_m", input.position_world_m.y },
+		{ "position_world_z_m", input.position_world_m.z },
+		{ "angular_acceleration_world_x_rad_s2", input.angular_acceleration_world_rad_s2.x },
+		{ "angular_acceleration_world_y_rad_s2", input.angular_acceleration_world_rad_s2.y },
+		{ "angular_acceleration_world_z_rad_s2", input.angular_acceleration_world_rad_s2.z },
+		{ "angular_velocity_world_x_rad_s", input.angular_velocity_world_rad_s.x },
+		{ "angular_velocity_world_y_rad_s", input.angular_velocity_world_rad_s.y },
+		{ "angular_velocity_world_z_rad_s", input.angular_velocity_world_rad_s.z },
 		{ "quaternion_x", input.orientation.x },
 		{ "quaternion_y", input.orientation.y },
 		{ "quaternion_z", input.orientation.z },
@@ -124,33 +124,33 @@ bool validate_body_kinematics_input(
 	EfmEventReporter& reporter)
 {
 	return validate_numeric_sample({ "ed_fm_set_current_state_body_axis", {
-		{ "acceleration_x", input.acceleration.x },
-		{ "acceleration_y", input.acceleration.y },
-		{ "acceleration_z", input.acceleration.z },
-		{ "velocity_x", input.velocity.x },
-		{ "velocity_y", input.velocity.y },
-		{ "velocity_z", input.velocity.z },
-		{ "wind_x", input.wind_velocity.x },
-		{ "wind_y", input.wind_velocity.y },
-		{ "wind_z", input.wind_velocity.z },
-		{ "angular_acceleration_x", input.angular_acceleration.x },
-		{ "angular_acceleration_y", input.angular_acceleration.y },
-		{ "angular_acceleration_z", input.angular_acceleration.z },
-		{ "angular_velocity_x", input.angular_velocity.x },
-		{ "angular_velocity_y", input.angular_velocity.y },
-		{ "angular_velocity_z", input.angular_velocity.z },
-		{ "yaw", input.heading },
-		{ "pitch", input.pitch },
-		{ "roll", input.roll },
-		{ "angle_of_attack", input.angle_of_attack },
-		{ "angle_of_slide", input.angle_of_slide }
+		{ "acceleration_body_x_mps2", input.acceleration_body_mps2.x },
+		{ "acceleration_body_y_mps2", input.acceleration_body_mps2.y },
+		{ "acceleration_body_z_mps2", input.acceleration_body_mps2.z },
+		{ "velocity_body_x_mps", input.velocity_body_mps.x },
+		{ "velocity_body_y_mps", input.velocity_body_mps.y },
+		{ "velocity_body_z_mps", input.velocity_body_mps.z },
+		{ "wind_body_x_mps", input.wind_velocity_body_mps.x },
+		{ "wind_body_y_mps", input.wind_velocity_body_mps.y },
+		{ "wind_body_z_mps", input.wind_velocity_body_mps.z },
+		{ "roll_acceleration_rad_s2", input.angular.roll_acceleration_rad_s2 },
+		{ "pitch_acceleration_rad_s2", input.angular.pitch_acceleration_rad_s2 },
+		{ "yaw_acceleration_rad_s2", input.angular.yaw_acceleration_rad_s2 },
+		{ "roll_rate_rad_s", input.angular.roll_rate_rad_s },
+		{ "pitch_rate_rad_s", input.angular.pitch_rate_rad_s },
+		{ "yaw_rate_rad_s", input.angular.yaw_rate_rad_s },
+		{ "world_yaw_rad", input.world_yaw_rad },
+		{ "pitch_rad", input.pitch_rad },
+		{ "roll_rad", input.roll_rad },
+		{ "angle_of_attack_rad", input.angle_of_attack_rad },
+		{ "angle_of_slide_rad", input.angle_of_slide_rad }
 	} }, reporter);
 }
 
-bool validate_internal_fuel_input(double fuel, EfmEventReporter& reporter)
+bool validate_internal_fuel_input(double fuel_kg, EfmEventReporter& reporter)
 {
 	return validate_numeric_sample(
-		{ "ed_fm_set_internal_fuel", { { "fuel", fuel } } },
+		{ "ed_fm_set_internal_fuel", { { "fuel_kg", fuel_kg } } },
 		reporter);
 }
 
@@ -159,17 +159,17 @@ bool validate_external_fuel_input(
 	EfmEventReporter& reporter)
 {
 	return validate_numeric_sample({ "ed_fm_set_external_fuel", {
-		{ "fuel", input.fuel },
-		{ "position_x", input.position.x },
-		{ "position_y", input.position.y },
-		{ "position_z", input.position.z }
+		{ "fuel_kg", input.fuel_kg },
+		{ "position_body_x_m", input.position_body_m.x },
+		{ "position_body_y_m", input.position_body_m.y },
+		{ "position_body_z_m", input.position_body_m.z }
 	} }, reporter);
 }
 
-bool validate_refueling_fuel_input(double fuel, EfmEventReporter& reporter)
+bool validate_refueling_fuel_input(double fuel_kg, EfmEventReporter& reporter)
 {
 	return validate_numeric_sample(
-		{ "ed_fm_refueling_add_fuel", { { "fuel", fuel } } },
+		{ "ed_fm_refueling_add_fuel", { { "fuel_kg", fuel_kg } } },
 		reporter);
 }
 

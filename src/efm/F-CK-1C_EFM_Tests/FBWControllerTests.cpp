@@ -1,291 +1,367 @@
 #include "TestHarness.h"
 
+#include "Common/Clamp.h"
+#include "Common/Units.h"
 #include "Core/Systems/FlightControlComputer/ControlLaws/ControlLaws.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/ConfigurationAndMode.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/ControlLawMath.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/PilotCommandLaw.h"
-#include "Core/Systems/FlightControlComputer/InputSignalManagement.h"
 
 #include <cmath>
+#include <variant>
 
 namespace
 {
-constexpr double kSnapshotTolerance = 1e-9;
-constexpr int kInitialSnapshotFrameCount = 1;
-constexpr int kReferenceSnapshotFrameCount = 50;
-constexpr int kModeTransitionFrameCount = 50;
-constexpr int kHoldEngagementFrameCount = 30;
-constexpr int kAoaDegradeFrameCount = 20;
+constexpr double kTolerance = 1e-9;
+constexpr double kControlDtS = 1.0 / 64.0;
 
-Core::Systems::RawFlightControlInput make_reference_input()
+Systems::ActiveFlightControlConfiguration normal_configuration(
+	bool landing_mode = false)
 {
-	Core::Systems::RawFlightControlInput input;
-	input.dt_s = 0.01;
-	input.alpha_limit_deg = 20.0;
-	input.observation.dynamic_pressure_pa = 5000.0;
-	input.observation.roll_rad = 0.1;
-	input.observation.pitch_rad = 0.05;
-	input.observation.roll_rate_rad_s = 0.02;
-	input.observation.pitch_rate_rad_s = -0.03;
-	input.observation.yaw_rate_rad_s = 0.01;
-	input.observation.alpha_deg = 3.0;
-	input.observation.beta_deg = 1.0;
-	input.observation.indicated_airspeed_mps = 150.0;
-	input.observation.mach = 0.5;
-	input.observation.normal_acceleration_g = 1.0;
-	input.pilot.roll_axis_normalized = 0.2;
-	input.pilot.pitch_axis_normalized = -0.15;
-	input.pilot.yaw_axis_normalized = 0.1;
+	Systems::ModeAndGainScheduling scheduling({});
+	return scheduling.update({
+		kControlDtS, 5000.0, 0.0, true, false, 0.0, landing_mode });
+}
+
+Systems::FlightControlLawsInput normal_input()
+{
+	Systems::FlightControlLawsInput input;
+	input.flight.dt_s = kControlDtS;
+	input.flight.indicated_airspeed_mps = 150.0;
+	input.flight.dynamic_pressure_pa = 5000.0;
+	input.flight.normal_acceleration_g = 1.0;
+	input.maneuver.longitudinal.command =
+		Core::Systems::NormalAccelerationCommand{ 1.0 };
+	input.configuration = normal_configuration();
 	return input;
 }
 
-void carry_output(
-	Core::Systems::RawFlightControlInput& input,
-	const Systems::FlightControlLawResult& output)
+Systems::FlightControlLawsResult prime_and_step(
+	Systems::FlightControlLaws& laws,
+	Systems::FlightControlLawsInput& input)
 {
-	input.actuator.elevator.normalized_position =
-		output.surface_demand.elevator_command_normalized;
-	input.actuator.aileron.normalized_position =
-		output.surface_demand.aileron_command_normalized;
-	input.actuator.rudder.normalized_position =
-		output.surface_demand.rudder_command_normalized;
+	(void)laws.update(input);
+	return laws.update(input);
 }
 
-Systems::FlightControlLawStepInput make_manual_request(
-	const Systems::ConditionedFlightControlInput& flight,
-	const Systems::FBWControllerConfig& config,
-	const Systems::FBWControllerState& state)
+void set_normal_acceleration_command(
+	Systems::FlightControlLawsInput& input,
+	double target_g)
 {
-	const Systems::FlightControlConfiguration configuration =
-		Systems::make_flight_control_configuration(
-			config,
-			{ flight.cat_mode_blend, flight.dynamic_pressure_pa,
-				flight.alpha_limit_deg, state.g_limiter_override });
-	return {
-		flight,
-		Systems::make_pilot_maneuver_reference(
-			{ flight, config, configuration.cat, configuration.gains,
-				configuration.envelope }),
-		configuration
+	input.maneuver.longitudinal.command =
+		Core::Systems::NormalAccelerationCommand{ target_g };
+}
+
+void set_pitch_rate_command(
+	Systems::FlightControlLawsInput& input,
+	double target_rad_s)
+{
+	input.maneuver.longitudinal.command =
+		Core::Systems::PitchRateCommand{ target_rad_s };
+}
+
+void test_direct_law_is_explicit_and_physical(Tests::Context& context)
+{
+	const Systems::FlightControlLawsConfig config;
+	Systems::FlightControlLaws laws(config);
+	auto input = normal_input();
+	input.signals.pilot_pitch_raw_normalized = 0.5;
+	input.signals.pilot_roll_raw_normalized = -0.25;
+	input.signals.pilot_yaw_raw_normalized = 0.2;
+	const auto result = laws.update(input);
+	TEST_EXPECT_NEAR(context,
+		result.developer_direct_surface_demand.symmetric_stabilator_demand_rad,
+		0.5 * config.surface_mixer.symmetric_stabilator_limit_rad, kTolerance);
+	TEST_EXPECT_NEAR(context,
+		result.developer_direct_surface_demand.differential_flaperon_demand_rad,
+		-0.25 * config.surface_mixer.differential_flaperon_limit_rad, kTolerance);
+	TEST_EXPECT_NEAR(context,
+		result.developer_direct_surface_demand.rudder_demand_rad,
+		0.2 * config.surface_mixer.rudder_limit_rad, kTolerance);
+}
+
+void test_normal_law_maps_each_axis_to_named_surface(
+	Tests::Context& context)
+{
+	Systems::FlightControlLaws laws({});
+	auto input = normal_input();
+	input.maneuver.lateral_directional.roll_rate_reference_rad_s = 0.2;
+	input.maneuver.lateral_directional.yaw_rate_feedforward_rad_s = -0.1;
+	set_normal_acceleration_command(input, 2.0);
+	const auto result = prime_and_step(laws, input);
+	TEST_EXPECT(context,
+		result.normal_surface_demand.differential_flaperon_demand_rad > 0.0);
+	TEST_EXPECT(context, result.normal_surface_demand.rudder_demand_rad < 0.0);
+	TEST_EXPECT(context,
+		result.normal_surface_demand.symmetric_stabilator_demand_rad > 0.0);
+}
+
+void test_normal_mode_uses_washed_out_q_as_feedback(
+	Tests::Context& context)
+{
+	Systems::FlightControlLaws laws({});
+	auto input = normal_input();
+	(void)laws.update(input);
+	input.flight.pitch_rate_rad_s = 0.4;
+	const auto result = laws.update(input);
+	TEST_EXPECT(context,
+		result.diagnostics.longitudinal_command_mode ==
+			Core::Systems::LongitudinalCommandMode::NormalAcceleration);
+	TEST_EXPECT(context,
+		result.diagnostics.pitch_rate_washout_feedback_effort < 0.0);
+	TEST_EXPECT_NEAR(context,
+		result.diagnostics.requested_pitch_rate_command_rad_s,
+		0.0, kTolerance);
+}
+
+void test_alpha_command_limiter_reduces_positive_nz(
+	Tests::Context& context)
+{
+	Systems::FlightControlLaws laws({});
+	auto input = normal_input();
+	input.flight.angle_of_attack_rad = Common::rad(24.0);
+	set_normal_acceleration_command(input, 8.8);
+	const auto result = prime_and_step(laws, input);
+	TEST_EXPECT(context, result.status.angle_of_attack_limit_active);
+	TEST_EXPECT(context, result.diagnostics.angle_of_attack_blend_0_1 > 0.0);
+	TEST_EXPECT(context, result.diagnostics.angle_of_attack_blend_0_1 < 1.0);
+	TEST_EXPECT(context,
+		result.diagnostics.effective_normal_acceleration_reference_g < 8.8);
+}
+
+void test_alpha_limit_combines_nz_error_and_static_stability(
+	Tests::Context& context)
+{
+	Systems::FlightControlLaws laws({});
+	auto input = normal_input();
+	input.flight.angle_of_attack_rad = Common::rad(29.0);
+	input.flight.normal_acceleration_g = 2.4;
+	set_normal_acceleration_command(input, 8.8);
+	const auto result = prime_and_step(laws, input);
+	TEST_EXPECT_NEAR(context,
+		result.diagnostics.effective_normal_acceleration_reference_g,
+		1.0, kTolerance);
+	TEST_EXPECT(context,
+		result.diagnostics.angle_of_attack_stability_feedback_effort < 0.0);
+	TEST_EXPECT(context,
+		result.normal_surface_demand.symmetric_stabilator_demand_rad < 0.0);
+}
+
+void test_alpha_limit_preserves_nose_down_command(Tests::Context& context)
+{
+	Systems::FlightControlLaws laws({});
+	auto input = normal_input();
+	input.flight.angle_of_attack_rad = Common::rad(29.0);
+	set_normal_acceleration_command(input, -1.0);
+	const auto result = prime_and_step(laws, input);
+	TEST_EXPECT(context, !result.status.angle_of_attack_limit_active);
+	TEST_EXPECT_NEAR(context,
+		result.diagnostics.effective_normal_acceleration_reference_g,
+		-1.0, kTolerance);
+	TEST_EXPECT(context,
+		result.normal_surface_demand.symmetric_stabilator_demand_rad < 0.0);
+}
+
+void test_alpha_schedule_is_smooth_and_monotonic(Tests::Context& context)
+{
+	auto evaluate = [](double alpha_deg)
+	{
+		Systems::FlightControlLaws laws({});
+		auto input = normal_input();
+		input.flight.angle_of_attack_rad = Common::rad(alpha_deg);
+		set_normal_acceleration_command(input, 8.8);
+		return prime_and_step(laws, input).diagnostics;
 	};
-}
-
-struct FBWTestRig
-{
-	FBWTestRig() : input_signals(config)
-	{
-		reset();
-	}
-
-	void reset()
-	{
-		state = Systems::FBWControllerState();
-		Systems::reset_fbw_state(
-			state,
-			{ input.observation.roll_rad,
-				input.observation.pitch_rad,
-				input.observation.normal_acceleration_g });
-		output = Systems::FlightControlLawResult();
-	}
-
-	void advance(int frame_count)
-	{
-		for (int frame = 0; frame < frame_count; ++frame)
-		{
-			carry_output(input, output);
-			const auto conditioned = input_signals.condition(
-				input, state.mode_target);
-			output = Systems::update_fbw_controller(
-				state, config, make_manual_request(conditioned, config, state));
-		}
-	}
-
-	Systems::FBWControllerConfig config;
-	Core::Systems::InputSignalManagement input_signals;
-	Core::Systems::RawFlightControlInput input = make_reference_input();
-	Systems::FBWControllerState state;
-	Systems::FlightControlLawResult output;
-};
-
-void expect_output(
-	Tests::Context& context,
-	const Systems::FlightControlLawResult& output,
-	const Systems::FlightControlLawResult& expected)
-{
+	const auto start = evaluate(19.0);
+	const auto middle = evaluate(24.0);
+	const auto limit = evaluate(29.0);
 	TEST_EXPECT_NEAR(
-		context,
-		output.surface_demand.elevator_command_normalized,
-		expected.surface_demand.elevator_command_normalized,
-		kSnapshotTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		output.surface_demand.aileron_command_normalized,
-		expected.surface_demand.aileron_command_normalized,
-		kSnapshotTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		output.surface_demand.rudder_command_normalized,
-		expected.surface_demand.rudder_command_normalized,
-		kSnapshotTolerance);
+		context, start.angle_of_attack_blend_0_1, 0.0, kTolerance);
+	TEST_EXPECT(context,
+		middle.angle_of_attack_maximum_normal_acceleration_g <
+			start.angle_of_attack_maximum_normal_acceleration_g);
+	TEST_EXPECT(context,
+		middle.angle_of_attack_maximum_normal_acceleration_g >
+			limit.angle_of_attack_maximum_normal_acceleration_g);
+	TEST_EXPECT_NEAR(context,
+		limit.angle_of_attack_maximum_normal_acceleration_g, 1.0, kTolerance);
 }
 
-void test_reference_frame_snapshots(Tests::Context& context)
+void test_pitch_rate_mode_limits_only_positive_command(
+	Tests::Context& context)
 {
-	FBWTestRig rig;
-	rig.advance(kInitialSnapshotFrameCount);
-	TEST_EXPECT(
-		context,
-		std::abs(rig.output.surface_demand.aileron_command_normalized) > 0.0);
-	TEST_EXPECT(
-		context,
-		std::abs(rig.output.surface_demand.rudder_command_normalized) > 0.0);
-	TEST_EXPECT(context, !rig.state.actuator_sat);
-	rig.advance(kReferenceSnapshotFrameCount - kInitialSnapshotFrameCount);
-	TEST_EXPECT(context, std::isfinite(rig.state.p_cmd));
-	TEST_EXPECT(context, std::isfinite(rig.state.q_cmd));
-	TEST_EXPECT(context, std::isfinite(rig.state.r_cmd));
-	TEST_EXPECT(
-		context,
-		std::abs(rig.output.surface_demand.elevator_command_normalized) <= 1.0);
+	Systems::FlightControlLaws positive({});
+	auto input = normal_input();
+	input.configuration = normal_configuration(true);
+	input.flight.angle_of_attack_rad = Common::rad(16.0);
+	set_pitch_rate_command(input, 0.5);
+	const auto limited = prime_and_step(positive, input);
+	TEST_EXPECT_NEAR(context,
+		limited.diagnostics.effective_pitch_rate_command_rad_s,
+		0.0, kTolerance);
+	Systems::FlightControlLaws negative({});
+	set_pitch_rate_command(input, -0.5);
+	const auto preserved = prime_and_step(negative, input);
+	TEST_EXPECT_NEAR(context,
+		preserved.diagnostics.effective_pitch_rate_command_rad_s,
+		-0.5, kTolerance);
 }
 
-void test_hold_snapshot(Tests::Context& context)
+void test_longitudinal_mode_transfer_tracks_actual_surface(
+	Tests::Context& context)
 {
-	FBWTestRig rig;
-	rig.input.pilot.roll_axis_normalized = 0.0;
-	rig.input.pilot.pitch_axis_normalized = 0.0;
-	rig.input.pilot.yaw_axis_normalized = 0.0;
-	rig.reset();
-	rig.advance(kHoldEngagementFrameCount);
-	TEST_EXPECT(context, rig.state.control_state == Systems::FBW_STATE_HOLD);
-	TEST_EXPECT(context, rig.state.hold_active);
-	TEST_EXPECT(context, std::isfinite(rig.state.q_cmd));
+	const Systems::FlightControlLawsConfig config;
+	Systems::FlightControlLaws laws(config);
+	auto input = normal_input();
+	set_normal_acceleration_command(input, 2.0);
+	const auto normal = prime_and_step(laws, input);
+	const double previous =
+		normal.normal_surface_demand.symmetric_stabilator_demand_rad;
+	input.signals.symmetric_stabilator_position_rad = previous;
+	set_pitch_rate_command(input, 0.2);
+	const auto transfer = laws.update(input);
+	TEST_EXPECT(context, transfer.status.longitudinal_mode_transition_active);
+	TEST_EXPECT_NEAR(context,
+		transfer.normal_surface_demand.symmetric_stabilator_demand_rad,
+		previous, kTolerance);
 }
 
-void test_direct_mode_snapshot(Tests::Context& context)
+void test_protection_unwinds_sustained_pull_without_delayed_step(
+	Tests::Context& context)
 {
-	Systems::FBWControllerConfig config;
-	Systems::FBWControllerState state;
-	state.enabled = false;
-	Systems::ConditionedFlightControlInput input;
-	input.dt_s = 0.01;
-	input.pilot_roll_raw_normalized = -0.2;
-	input.pilot_pitch_raw_normalized = 0.5;
-	input.pilot_yaw_raw_normalized = -0.15;
-	input.elevator_position_normalized = 0.1;
-	input.aileron_position_normalized = -0.2;
-	input.rudder_position_normalized = 0.3;
-	const auto output = Systems::update_fbw_controller(
-		state, config, { input, {} });
-	expect_output(context, output, { 0.1125, -0.2, 0.288 });
+	Systems::FlightControlLaws laws({});
+	auto input = normal_input();
+	set_normal_acceleration_command(input, 8.8);
+	for (int tick = 0; tick < 256; ++tick)
+	{
+		input.signals.symmetric_stabilator_saturated = true;
+		input.signals.symmetric_stabilator_position_limit =
+			Core::FlightControlPositionLimit::Positive;
+		input.signals.symmetric_stabilator_at_position_limit = true;
+		input.signals.symmetric_stabilator_position_rad = Common::rad(25.0);
+		(void)laws.update(input);
+	}
+	double previous_effort = 1.0;
+	for (int tick = 0; tick <= 128; ++tick)
+	{
+		input.flight.angle_of_attack_rad = Common::rad(
+			10.0 + 19.0 * static_cast<double>(tick) / 128.0);
+		input.flight.normal_acceleration_g = 1.0 +
+			1.4 * static_cast<double>(tick) / 128.0;
+		input.signals.symmetric_stabilator_saturated = false;
+		input.signals.symmetric_stabilator_position_limit =
+			Core::FlightControlPositionLimit::None;
+		input.signals.symmetric_stabilator_at_position_limit = false;
+		const auto result = laws.update(input);
+		const double effort = result.diagnostics.limited_pitch_effort;
+		TEST_EXPECT(context, effort <= previous_effort + 0.03);
+		previous_effort = effort;
+	}
+	TEST_EXPECT(context, previous_effort < 0.0);
 }
 
-void test_fbw_commands(Tests::Context& context)
+void test_alpha_protection_does_not_track_normal_servo_lag(
+	Tests::Context& context)
 {
-	Systems::FBWControllerState state;
-	Systems::toggle_fbw_cat_mode(state, false);
-	TEST_EXPECT(context, state.mode_target == Systems::FBW_CAT1);
-	Systems::toggle_fbw_cat_mode(state, true);
-	TEST_EXPECT(context, state.mode_target == Systems::FBW_CAT3);
-	Systems::set_fbw_cat_mode(state, Systems::FBW_CAT1);
-	TEST_EXPECT(context, state.mode_target == Systems::FBW_CAT1);
-	Systems::set_fbw_g_limiter_override(state, true);
-	TEST_EXPECT(context, state.g_limiter_override);
-	Systems::toggle_fbw_g_limiter_override(state, true);
-	TEST_EXPECT(context, !state.g_limiter_override);
+	Systems::FlightControlLaws leading({});
+	Systems::FlightControlLaws lagging({});
+	auto leading_input = normal_input();
+	leading_input.flight.angle_of_attack_rad = Common::rad(24.0);
+	leading_input.flight.normal_acceleration_g = 2.4;
+	set_normal_acceleration_command(leading_input, 8.8);
+	auto lagging_input = leading_input;
+	leading_input.signals.symmetric_stabilator_position_rad = Common::rad(8.0);
+	lagging_input.signals.symmetric_stabilator_position_rad = Common::rad(-8.0);
+	const auto first = leading.update(leading_input);
+	const auto second = leading.update(leading_input);
+	(void)lagging.update(lagging_input);
+	const auto lagging_second = lagging.update(lagging_input);
+	TEST_EXPECT(context, first.status.angle_of_attack_limit_active);
+	TEST_EXPECT(context, second.status.anti_windup_active);
+	TEST_EXPECT(context, !first.status.electronic_command_saturated);
+	TEST_EXPECT_NEAR(context,
+		second.diagnostics.longitudinal_integral_effort,
+		lagging_second.diagnostics.longitudinal_integral_effort,
+		kTolerance);
 }
 
-void test_actuator_feedback_is_consumed(Tests::Context& context)
+void test_alpha_protection_back_calculates_electronic_objective(
+	Tests::Context& context)
 {
-	FBWTestRig rig;
-	rig.input.actuator.any_saturated = true;
-	rig.advance(kInitialSnapshotFrameCount);
-	TEST_EXPECT(context, rig.state.actuator_sat);
+	Systems::FlightControlLawsConfig tracking_config;
+	Systems::FlightControlLawsConfig no_tracking_config = tracking_config;
+	no_tracking_config.longitudinal.normal_acceleration_anti_windup_s_inv = 0.0;
+	Systems::FlightControlLaws tracking(tracking_config);
+	Systems::FlightControlLaws no_tracking(no_tracking_config);
+	auto input = normal_input();
+	input.flight.angle_of_attack_rad = Common::rad(24.0);
+	input.flight.normal_acceleration_g = 2.4;
+	set_normal_acceleration_command(input, 8.8);
+	(void)tracking.update(input);
+	const auto tracked = tracking.update(input);
+	(void)no_tracking.update(input);
+	const auto untracked = no_tracking.update(input);
+	TEST_EXPECT_NEAR(context,
+		tracked.diagnostics.longitudinal_integral_effort, 0.0,
+		std::fabs(untracked.diagnostics.longitudinal_integral_effort));
 }
 
-void test_fbw_reset(Tests::Context& context)
+void test_electronic_saturation_back_calculates_integral(
+	Tests::Context& context)
 {
-	Systems::FBWControllerState state;
-	state.control_state = Systems::FBW_STATE_DEGRADE;
-	state.int_p = 0.5;
-	state.actuator_sat = true;
-	state.throttle_cmd_left = 0.7;
-	Systems::reset_fbw_state(state, { 0.2, -0.1, 1.3 });
-	TEST_EXPECT(context, state.control_state == Systems::FBW_STATE_RATE);
-	TEST_EXPECT_NEAR(context, state.phi_ref, 0.2, kSnapshotTolerance);
-	TEST_EXPECT_NEAR(context, state.theta_ref, -0.1, kSnapshotTolerance);
-	TEST_EXPECT_NEAR(context, state.int_p, 0.0, kSnapshotTolerance);
-	TEST_EXPECT(context, !state.actuator_sat);
-	TEST_EXPECT_NEAR(context, state.throttle_cmd_left, 0.7, kSnapshotTolerance);
-	Systems::reset_fbw_throttle_interface(state);
-	TEST_EXPECT_NEAR(context, state.throttle_cmd_left, 0.0, kSnapshotTolerance);
+	Systems::FlightControlLawsConfig tracking_config;
+	Systems::FlightControlLawsConfig no_tracking_config = tracking_config;
+	no_tracking_config.longitudinal.normal_acceleration_anti_windup_s_inv = 0.0;
+	Systems::FlightControlLaws tracking(tracking_config);
+	Systems::FlightControlLaws no_tracking(no_tracking_config);
+	auto input = normal_input();
+	input.flight.normal_acceleration_g = -2.0;
+	set_normal_acceleration_command(input, 8.8);
+	const auto first = tracking.update(input);
+	const auto second = tracking.update(input);
+	(void)no_tracking.update(input);
+	const auto without_back_calculation = no_tracking.update(input);
+	TEST_EXPECT(context, first.status.electronic_command_saturated);
+	TEST_EXPECT(context, first.status.anti_windup_active);
+	TEST_EXPECT(context,
+		second.diagnostics.longitudinal_integral_effort <
+			without_back_calculation.diagnostics.longitudinal_integral_effort);
 }
 
-void test_limiters_and_actuator_bounds(Tests::Context& context)
+void test_surface_demands_are_finite_and_bounded(Tests::Context& context)
 {
-	Systems::FBWControllerConfig config;
-	config.cat1.command_shape_tau = 0.0;
-	config.cat1.command_shape_rate = 1000.0;
-	config.cat1.stick_expo = 0.0;
-	config.cat1.aoa_soft_deg = 1.0;
-	config.cat3.aoa_soft_deg = 1.0;
-	config.cat1.g_soft = 1.1;
-	config.cat1.g_hard = 3.0;
-	Core::Systems::RawFlightControlInput raw = make_reference_input();
-	raw.pilot.pitch_axis_normalized = 0.5;
-	raw.observation.alpha_deg = 30.0;
-	Core::Systems::InputSignalManagement input_signals(config);
-	const Systems::ConditionedFlightControlInput input =
-		input_signals.condition(raw, Systems::FBW_CAT1);
-	Systems::FBWControllerState state;
-	Systems::reset_fbw_state(
-		state,
-		{ input.roll_attitude_rad,
-			input.pitch_attitude_rad,
-			input.normal_acceleration_g });
-	const auto output = Systems::update_fbw_controller(
-		state, config, make_manual_request(input, config, state));
-	TEST_EXPECT(context, state.aoa_limit_active);
-	TEST_EXPECT(context, state.g_limit_active);
-	TEST_EXPECT(
-		context,
-		output.surface_demand.elevator_command_normalized >= -1.0 &&
-			output.surface_demand.elevator_command_normalized <= 1.0);
-	TEST_EXPECT(
-		context,
-		output.surface_demand.aileron_command_normalized >= -1.0 &&
-			output.surface_demand.aileron_command_normalized <= 1.0);
-	TEST_EXPECT(
-		context,
-		output.surface_demand.rudder_command_normalized >= -1.0 &&
-			output.surface_demand.rudder_command_normalized <= 1.0);
-}
-
-void test_cat_transition_and_hold_degrade(Tests::Context& context)
-{
-	FBWTestRig rig;
-	Systems::set_fbw_cat_mode(rig.state, Systems::FBW_CAT3);
-	rig.advance(kModeTransitionFrameCount);
-	TEST_EXPECT(context, rig.state.mode_blend > 0.5);
-	rig.input.pilot.roll_axis_normalized = 0.0;
-	rig.input.pilot.pitch_axis_normalized = 0.0;
-	rig.advance(kHoldEngagementFrameCount);
-	TEST_EXPECT(context, rig.state.control_state == Systems::FBW_STATE_HOLD);
-	rig.input.observation.alpha_deg = 30.0;
-	rig.advance(kAoaDegradeFrameCount);
-	TEST_EXPECT(context, rig.state.control_state == Systems::FBW_STATE_DEGRADE);
-	TEST_EXPECT(context, rig.state.hold_exit_reason == Systems::FBW_HOLD_EXIT_AOA);
+	const Systems::FlightControlLawsConfig config;
+	Systems::FlightControlLaws laws(config);
+	auto input = normal_input();
+	set_normal_acceleration_command(input, 100.0);
+	input.maneuver.lateral_directional.roll_rate_reference_rad_s = 100.0;
+	input.maneuver.lateral_directional.yaw_rate_feedforward_rad_s = -100.0;
+	const auto result = prime_and_step(laws, input);
+	TEST_EXPECT(context, std::isfinite(
+		result.normal_surface_demand.symmetric_stabilator_demand_rad));
+	TEST_EXPECT(context, std::fabs(
+		result.normal_surface_demand.symmetric_stabilator_demand_rad) <=
+		config.surface_mixer.symmetric_stabilator_limit_rad);
+	TEST_EXPECT(context, std::fabs(
+		result.normal_surface_demand.differential_flaperon_demand_rad) <=
+		config.surface_mixer.differential_flaperon_limit_rad);
+	TEST_EXPECT(context, std::fabs(
+		result.normal_surface_demand.rudder_demand_rad) <=
+		config.surface_mixer.rudder_limit_rad);
 }
 }
 
 void run_fbw_controller_tests(Tests::Context& context)
 {
-	test_reference_frame_snapshots(context);
-	test_hold_snapshot(context);
-	test_direct_mode_snapshot(context);
-	test_fbw_commands(context);
-	test_actuator_feedback_is_consumed(context);
-	test_fbw_reset(context);
-	test_limiters_and_actuator_bounds(context);
-	test_cat_transition_and_hold_degrade(context);
+	test_direct_law_is_explicit_and_physical(context);
+	test_normal_law_maps_each_axis_to_named_surface(context);
+	test_normal_mode_uses_washed_out_q_as_feedback(context);
+	test_alpha_command_limiter_reduces_positive_nz(context);
+	test_alpha_limit_combines_nz_error_and_static_stability(context);
+	test_alpha_limit_preserves_nose_down_command(context);
+	test_alpha_schedule_is_smooth_and_monotonic(context);
+	test_pitch_rate_mode_limits_only_positive_command(context);
+	test_longitudinal_mode_transfer_tracks_actual_surface(context);
+	test_protection_unwinds_sustained_pull_without_delayed_step(context);
+	test_alpha_protection_does_not_track_normal_servo_lag(context);
+	test_alpha_protection_back_calculates_electronic_objective(context);
+	test_electronic_saturation_back_calculates_integral(context);
+	test_surface_demands_are_finite_and_bounded(context);
 }

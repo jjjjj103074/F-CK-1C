@@ -7,6 +7,7 @@
 #include "../F-CK-1C_EFM/Core/Systems/SystemPipeline.h"
 
 #include <chrono>
+#include <cstdio>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -176,6 +177,17 @@ void expect_execution_error(
 	{
 		caught = true;
 		const Core::ExecutionErrorDetails& actual = error.details();
+		if (actual.owner_type != expected.owner_type ||
+			actual.owner != expected.owner ||
+			actual.operation != expected.operation ||
+			actual.reason != expected.reason)
+		{
+			std::printf(
+				"ExecutionError expected [%s/%s/%s], actual [%s/%s/%s]\n",
+				expected.owner.c_str(), expected.operation.c_str(),
+				expected.reason.c_str(), actual.owner.c_str(),
+				actual.operation.c_str(), actual.reason.c_str());
+		}
 		TEST_EXPECT(context, actual.owner_type == expected.owner_type);
 		TEST_EXPECT(context, actual.owner == expected.owner);
 		TEST_EXPECT(context, actual.operation == expected.operation);
@@ -184,15 +196,17 @@ void expect_execution_error(
 	TEST_EXPECT(context, caught);
 }
 
-inline Core::FlightControlActuatorCommand actuator_command(double elevator)
+inline Core::FlightControlActuatorCommand actuator_command(
+	double symmetric_stabilator_rad)
 {
-	return { elevator, kNeutralAxis, kNeutralAxis };
+	return { symmetric_stabilator_rad, kNeutralAxis, kNeutralAxis };
 }
 
-inline Core::FlightControlActuatorState actuator_state(double elevator)
+inline Core::FlightControlActuatorState actuator_state(
+	double symmetric_stabilator_rad)
 {
 	Core::FlightControlActuatorState state;
-	state.elevator.normalized_position = elevator;
+	state.symmetric_stabilator.position_rad = symmetric_stabilator_rad;
 	return state;
 }
 

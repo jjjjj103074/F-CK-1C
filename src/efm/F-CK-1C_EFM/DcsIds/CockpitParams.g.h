@@ -7,6 +7,10 @@ namespace DcsIds
 namespace CockpitParams
 {
 static const char* const TemperatureC = "FM_TEMPERATURE_C";
+static const char* const PressureAltitudeAvailable = "OBS_PRESSURE_ALTITUDE_AVAILABLE";
+static const char* const PressureAltitudeM = "OBS_PRESSURE_ALTITUDE_M";
+static const char* const MagneticHeadingAvailable = "OBS_MAGNETIC_HEADING_AVAILABLE";
+static const char* const MagneticHeadingRad = "OBS_MAGNETIC_HEADING_RAD";
 static const char* const MaxPowerSwitch = "FM_MAXPOWER_SWITCH";
 static const char* const ApMasterEngaged = "AP_MASTER_ENGAGED";
 static const char* const ApVerticalMode = "AP_VERT_MODE";
@@ -21,7 +25,6 @@ static const char* const ApTargetAltitudeFt = "AP_TARGET_ALT_FT";
 static const char* const ApTargetHeadingDeg = "AP_TARGET_HDG_DEG";
 static const char* const ApTargetSpeedKts = "AP_TARGET_SPD_KTS";
 static const char* const ApTargetPitchDeg = "AP_TARGET_PITCH_DEG";
-static const char* const ApTargetVerticalSpeedFpm = "AP_TARGET_VS_FPM";
 static const char* const ApEngageRejectionReason = "AP_ENGAGE_REJECTION_REASON";
 static const char* const ApDisengageReason = "AP_DISENGAGE_REASON";
 static const char* const ApAutoThrottleEngageRejectionReason = "AP_AT_ENGAGE_REJECTION_REASON";
@@ -97,6 +100,10 @@ struct Entry
 
 static constexpr Entry Catalog[] = {
     { TemperatureC, "cpp_to_lua", "kelvin", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
+    { PressureAltitudeAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { PressureAltitudeM, "lua_to_cpp", "meters", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { MagneticHeadingAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "MagneticHeadingObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { MagneticHeadingRad, "lua_to_cpp", "radians", "Cockpit/Scripts/Systems/hmcs_system.lua", "MagneticHeadingObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { MaxPowerSwitch, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "PropulsionDiagnostics", nullptr },
     { ApMasterEngaged, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApVerticalMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
@@ -111,7 +118,6 @@ static constexpr Entry Catalog[] = {
     { ApTargetHeadingDeg, "cpp_to_lua", "degrees", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApTargetSpeedKts, "cpp_to_lua", "knots", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApTargetPitchDeg, "cpp_to_lua", "degrees", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
-    { ApTargetVerticalSpeedFpm, "cpp_to_lua", "feet_per_minute", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApEngageRejectionReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApDisengageReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },
     { ApAutoThrottleEngageRejectionReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "FlightControlComputer", nullptr },

@@ -23,10 +23,10 @@ constexpr std::size_t kCharacterizationFrameCount = 4;
 constexpr std::uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
 constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
 constexpr std::array<std::uint64_t, 4> kSchedulerTrajectoryHashes = {
-	1256905148398990797ULL,
-	9786908295813509718ULL,
-	9092308663601901439ULL,
-	12810110985274937007ULL
+	12341418355830989210ULL,
+	16376143566750479751ULL,
+	7243827386340887530ULL,
+	11166130031442543139ULL
 };
 
 void write_availability(
@@ -51,7 +51,8 @@ void write_flight(std::ostringstream& output, const Core::FlightOutput& value)
 	output << "flight.altitude_agl_m=" << value.altitude_agl_m << '\n';
 	output << "flight.position_world_z_m=" << value.position_world_z_m << '\n';
 	output << "flight.mach=" << value.mach << '\n';
-	output << "flight.g_load=" << value.g_load << '\n';
+	output << "flight.normal_acceleration_g="
+		<< value.normal_acceleration_g << '\n';
 	output << "flight.angle_of_attack_deg=" << value.angle_of_attack_deg << '\n';
 	output << "flight.angle_of_slide_deg=" << value.angle_of_slide_deg << '\n';
 	output << "flight.atmosphere_temperature_k="
@@ -59,7 +60,7 @@ void write_flight(std::ostringstream& output, const Core::FlightOutput& value)
 	output << "flight.indicated_airspeed_mps="
 		<< value.indicated_airspeed_mps << '\n';
 	output << "flight.vertical_speed_mps=" << value.vertical_speed_mps << '\n';
-	output << "flight.heading_rad=" << value.heading_rad << '\n';
+	output << "flight.world_yaw_rad=" << value.world_yaw_rad << '\n';
 	output << "flight.pitch_attitude_rad=" << value.pitch_attitude_rad << '\n';
 	output << "flight.roll_attitude_rad=" << value.roll_attitude_rad << '\n';
 	output << "flight.roll_rate_rad_s=" << value.roll_rate_rad_s << '\n';
@@ -84,43 +85,62 @@ void write_engine(
 {
 	const std::string prefix = "engines[" + std::to_string(index) + "].";
 	output << prefix << "switch_on=" << value.switch_on << '\n';
-	output << prefix << "throttle_input=" << value.throttle_input << '\n';
-	output << prefix << "throttle_output=" << value.throttle_output << '\n';
-	output << prefix << "power_readout=" << value.power_readout << '\n';
-	output << prefix << "thrust_force=" << value.thrust_force << '\n';
-	output << prefix << "afterburner_ratio=" << value.afterburner_ratio << '\n';
+	output << prefix << "throttle_input_normalized="
+		<< value.throttle_input_normalized << '\n';
+	output << prefix << "throttle_output_normalized="
+		<< value.throttle_output_normalized << '\n';
+	output << prefix << "power_readout_normalized="
+		<< value.power_readout_normalized << '\n';
+	output << prefix << "thrust_force_n=" << value.thrust_force_n << '\n';
+	output << prefix << "afterburner_ratio_0_1="
+		<< value.afterburner_ratio_0_1 << '\n';
 	output << prefix << "afterburner_lit=" << value.afterburner_lit << '\n';
-	output << prefix << "nozzle_aperture=" << value.nozzle_aperture << '\n';
+	output << prefix << "nozzle_aperture_normalized="
+		<< value.nozzle_aperture_normalized << '\n';
 }
 
 void write_controls(
 	std::ostringstream& output,
 	const Core::ControlOutput& value)
 {
-	output << "controls.pitch_input=" << value.pitch_input << '\n';
-	output << "controls.roll_input=" << value.roll_input << '\n';
-	output << "controls.yaw_input=" << value.yaw_input << '\n';
-	output << "controls.elevator_command=" << value.elevator_command << '\n';
-	output << "controls.aileron_command=" << value.aileron_command << '\n';
-	output << "controls.rudder_command=" << value.rudder_command << '\n';
-	output << "controls.flaps_position=" << value.flaps_position << '\n';
-	output << "controls.slats_position=" << value.slats_position << '\n';
-	output << "controls.airbrake_position=" << value.airbrake_position << '\n';
+	output << "controls.pitch_input_normalized="
+		<< value.pitch_input_normalized << '\n';
+	output << "controls.roll_input_normalized="
+		<< value.roll_input_normalized << '\n';
+	output << "controls.yaw_input_normalized="
+		<< value.yaw_input_normalized << '\n';
+	output << "controls.symmetric_stabilator_position_rad="
+		<< value.symmetric_stabilator_position_rad << '\n';
+	output << "controls.differential_flaperon_position_rad="
+		<< value.differential_flaperon_position_rad << '\n';
+	output << "controls.rudder_position_rad="
+		<< value.rudder_position_rad << '\n';
+	output << "controls.flaps_position_normalized="
+		<< value.flaps_position_normalized << '\n';
+	output << "controls.slats_position_normalized="
+		<< value.slats_position_normalized << '\n';
+	output << "controls.airbrake_position_normalized="
+		<< value.airbrake_position_normalized << '\n';
 }
 
 void write_landing_gear(
 	std::ostringstream& output,
 	const Core::LandingGearOutput& value)
 {
-	output << "landing_gear.gear_position=" << value.gear_position << '\n';
-	output << "landing_gear.nose_wheel_steering="
-		<< value.nose_wheel_steering << '\n';
-	output << "landing_gear.brake_left=" << value.brake_left << '\n';
-	output << "landing_gear.brake_right=" << value.brake_right << '\n';
-	for (std::size_t index = 0; index < value.wheel_spin.size(); ++index)
+	output << "landing_gear.gear_position_normalized="
+		<< value.gear_position_normalized << '\n';
+	output << "landing_gear.nose_wheel_steering_normalized="
+		<< value.nose_wheel_steering_normalized << '\n';
+	output << "landing_gear.brake_left_normalized="
+		<< value.brake_left_normalized << '\n';
+	output << "landing_gear.brake_right_normalized="
+		<< value.brake_right_normalized << '\n';
+	for (std::size_t index = 0;
+		index < value.wheel_spin_phase_0_1.size();
+		++index)
 	{
-		output << "landing_gear.wheel_spin[" << index << "]="
-			<< value.wheel_spin[index] << '\n';
+		output << "landing_gear.wheel_spin_phase_0_1[" << index << "]="
+			<< value.wheel_spin_phase_0_1[index] << '\n';
 	}
 }
 
@@ -131,9 +151,10 @@ void write_suspension_wheel(
 {
 	const std::string prefix = "suspension.wheels[" +
 		std::to_string(index) + "].";
-	write_vec3(output, (prefix + "acting_force").c_str(), value.acting_force);
-	output << prefix << "compression=" << value.compression << '\n';
-	output << prefix << "force_magnitude=" << value.force_magnitude << '\n';
+	write_vec3(output, (prefix + "acting_force_body_n").c_str(),
+		value.acting_force_body_n);
+	output << prefix << "compression_m=" << value.compression_m << '\n';
+	output << prefix << "force_magnitude_n=" << value.force_magnitude_n << '\n';
 	output << prefix << "weight_on_wheel=" << value.weight_on_wheel << '\n';
 }
 
@@ -152,10 +173,11 @@ void write_suspension(
 
 void write_fuel(std::ostringstream& output, const Core::FuelOutput& value)
 {
-	output << "fuel.internal_fuel=" << value.internal_fuel << '\n';
-	output << "fuel.external_fuel=" << value.external_fuel << '\n';
-	output << "fuel.total_fuel=" << value.total_fuel << '\n';
-	output << "fuel.total_fuel_flow=" << value.total_fuel_flow << '\n';
+	output << "fuel.internal_fuel_kg=" << value.internal_fuel_kg << '\n';
+	output << "fuel.external_fuel_kg=" << value.external_fuel_kg << '\n';
+	output << "fuel.total_fuel_kg=" << value.total_fuel_kg << '\n';
+	output << "fuel.total_fuel_flow_kg_s="
+		<< value.total_fuel_flow_kg_s << '\n';
 }
 
 void write_mass_effect(
@@ -163,12 +185,15 @@ void write_mass_effect(
 	const Core::MassDeltaResult& value)
 {
 	output << "mass_effect.available=" << value.available << '\n';
-	output << "mass_effect.delta.mass=" << value.delta.mass << '\n';
-	write_vec3(output, "mass_effect.delta.position", value.delta.position);
+	output << "mass_effect.delta.mass_kg=" << value.delta.mass_kg << '\n';
 	write_vec3(
 		output,
-		"mass_effect.delta.moment_of_inertia",
-		value.delta.moment_of_inertia);
+		"mass_effect.delta.position_body_m",
+		value.delta.position_body_m);
+	write_vec3(
+		output,
+		"mass_effect.delta.moment_of_inertia_delta_kg_m2",
+		value.delta.moment_of_inertia_delta_kg_m2);
 }
 
 std::string frame_snapshot(const Core::FrameOutput& frame)
@@ -178,10 +203,13 @@ std::string frame_snapshot(const Core::FrameOutput& frame)
 	output << "simulation_time_s=" << frame.simulation_time_s << '\n';
 	write_availability(output, frame.availability);
 	write_flight(output, frame.flight);
-	write_vec3(output, "force_moment.force", frame.force_moment.force);
-	write_vec3(output, "force_moment.moment", frame.force_moment.moment);
+	write_vec3(output, "force_moment.force_body_n", frame.force_moment.force_body_n);
 	write_vec3(
-		output, "force_moment.center_of_mass", frame.force_moment.center_of_mass);
+		output, "force_moment.moment_body_nm", frame.force_moment.moment_body_nm);
+	write_vec3(
+		output,
+		"force_moment.center_of_mass_body_m",
+		frame.force_moment.center_of_mass_body_m);
 	for (std::size_t index = 0; index < frame.engines.size(); ++index)
 	{
 		write_engine(output, index, frame.engines[index]);
@@ -191,7 +219,8 @@ std::string frame_snapshot(const Core::FrameOutput& frame)
 	write_suspension(output, frame.suspension);
 	write_fuel(output, frame.fuel);
 	write_mass_effect(output, frame.mass_effect);
-	output << "shake_amplitude=" << frame.shake_amplitude << '\n';
+	output << "shake_amplitude_normalized="
+		<< frame.shake_amplitude_normalized << '\n';
 	return output.str();
 }
 
@@ -218,7 +247,7 @@ std::array<
 	kCharacterizationFrameCount> run_trajectory()
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
-	config.engine.fuel_consumption_rate = 3.0;
+	config.engine.fuel_consumption_rate_kg_s = 3.0;
 	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(500.0);
@@ -306,8 +335,8 @@ std::optional<GearCrossing> find_gear_midpoint_crossing(
 	for (std::size_t frame = 0; frame < kMaxGearTransitionFrames; ++frame)
 	{
 		const Core::FrameOutput current = efm.step(input);
-		if (previous.landing_gear.gear_position <= kGearMidpoint &&
-			current.landing_gear.gear_position > kGearMidpoint)
+		if (previous.landing_gear.gear_position_normalized <= kGearMidpoint &&
+			current.landing_gear.gear_position_normalized > kGearMidpoint)
 		{
 			return GearCrossing{ previous, current };
 		}
@@ -337,27 +366,27 @@ void test_secondary_controls_read_previous_committed_gear(
 	}
 	TEST_EXPECT_NEAR(
 		context,
-		crossing->at.controls.flaps_position -
-			crossing->before.controls.flaps_position,
+		crossing->at.controls.flaps_position_normalized -
+			crossing->before.controls.flaps_position_normalized,
 		0.0,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		crossing->at.controls.slats_position -
-			crossing->before.controls.slats_position,
+		crossing->at.controls.slats_position_normalized -
+			crossing->before.controls.slats_position_normalized,
 		0.0,
 		kTolerance);
 	const Core::FrameOutput next = efm.step(input);
 	TEST_EXPECT_NEAR(
 		context,
-		next.controls.flaps_position -
-			crossing->at.controls.flaps_position,
+		next.controls.flaps_position_normalized -
+			crossing->at.controls.flaps_position_normalized,
 		kExpectedFlapIncrementPerFrame,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		next.controls.slats_position -
-			crossing->at.controls.slats_position,
+		next.controls.slats_position_normalized -
+			crossing->at.controls.slats_position_normalized,
 		kExpectedSlatIncrementPerFrame,
 		kTolerance);
 }
@@ -367,12 +396,13 @@ double expected_fuel_flow(
 	const Core::FrameOutput& frame)
 {
 	const double afterburner_average = 0.5 *
-		(frame.engines[0].afterburner_ratio + frame.engines[1].afterburner_ratio);
+		(frame.engines[0].afterburner_ratio_0_1 +
+			frame.engines[1].afterburner_ratio_0_1);
 	const double afterburner_factor = 1.0 + afterburner_average *
 		(config.engine.afterburner.fuel_factor - 1.0);
-	return config.engine.fuel_consumption_rate *
-		((frame.engines[0].throttle_output +
-			frame.engines[1].throttle_output + 1.0) / 3.0) *
+	return config.engine.fuel_consumption_rate_kg_s *
+		((frame.engines[0].throttle_output_normalized +
+			frame.engines[1].throttle_output_normalized + 1.0) / 3.0) *
 		afterburner_factor;
 }
 
@@ -380,7 +410,7 @@ void test_fuel_reads_previous_committed_engine_demand(
 	Tests::Context& context)
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
-	config.engine.fuel_consumption_rate = 3.0;
+	config.engine.fuel_consumption_rate_kg_s = 3.0;
 	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	const Core::FrameOutput start = efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
@@ -390,16 +420,17 @@ void test_fuel_reads_previous_committed_engine_demand(
 	input.dt_s = kSystemPeriodS;
 	const Core::FrameOutput first = efm.step(input);
 	TEST_EXPECT(context,
-		first.engines[0].throttle_output != start.engines[0].throttle_output);
+		first.engines[0].throttle_output_normalized !=
+			start.engines[0].throttle_output_normalized);
 	TEST_EXPECT_NEAR(
 		context,
-		first.fuel.total_fuel_flow,
+		first.fuel.total_fuel_flow_kg_s,
 		expected_fuel_flow(config, start),
 		kTolerance);
 	const Core::FrameOutput second = efm.step(input);
 	TEST_EXPECT_NEAR(
 		context,
-		second.fuel.total_fuel_flow,
+		second.fuel.total_fuel_flow_kg_s,
 		expected_fuel_flow(config, first),
 		kTolerance);
 }
@@ -419,7 +450,7 @@ Core::FrameOutput run_engine_shutdown_frame(
 	});
 	Core::FrameInput input = Tests::Fck1c::make_frame_input();
 	input.dt_s = 0.1;
-	input.atmosphere.altitude_asl = altitude_asl;
+	input.atmosphere.altitude_asl_m = altitude_asl;
 	return efm.step(input);
 }
 
@@ -427,9 +458,11 @@ void expect_shutdown_thrust_is_inhibited(
 	Tests::Context& context,
 	const Core::FrameOutput& frame)
 {
-	TEST_EXPECT(context, frame.engines[0].throttle_output > 0.0);
-	TEST_EXPECT_NEAR(context, frame.engines[0].thrust_force, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, frame.engines[1].thrust_force, 0.0, kTolerance);
+	TEST_EXPECT(context, frame.engines[0].throttle_output_normalized > 0.0);
+	TEST_EXPECT_NEAR(
+		context, frame.engines[0].thrust_force_n, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, frame.engines[1].thrust_force_n, 0.0, kTolerance);
 }
 
 void test_empty_fuel_inhibits_thrust_after_engine_update(
@@ -465,7 +498,7 @@ Core::FrameInput make_ground_input(bool feedback_available)
 	input.atmosphere = { 2.25, 288.0, 340.0, 1.225, 101325.0, {} };
 	input.surface = { 0.0, 0.0, 0, { 0.0, 1.0, 0.0 } };
 	input.mass = { 10000.0, {}, {} };
-	input.body_kinematics.acceleration = { 0.0, 9.81, 0.0 };
+	input.body_kinematics.acceleration_body_mps2 = { 0.0, 9.81, 0.0 };
 	return input;
 }
 
@@ -510,17 +543,17 @@ void test_feedback_suppresses_fallback_force(Tests::Context& context)
 	const Core::FrameOutput without_fallback = run_ground_frame(disabled, true);
 	TEST_EXPECT_NEAR(
 		context,
-		with_feedback.force_moment.force.y,
-		without_fallback.force_moment.force.y,
+		with_feedback.force_moment.force_body_n.y,
+		without_fallback.force_moment.force_body_n.y,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		with_feedback.force_moment.moment.z,
-		without_fallback.force_moment.moment.z,
+		with_feedback.force_moment.moment_body_nm.z,
+		without_fallback.force_moment.moment_body_nm.z,
 		kTolerance);
 	TEST_EXPECT(context,
-		without_feedback.force_moment.force.y >
-			with_feedback.force_moment.force.y);
+		without_feedback.force_moment.force_body_n.y >
+			with_feedback.force_moment.force_body_n.y);
 }
 
 void test_repair_clears_damage_but_preserves_engine_history(
@@ -535,16 +568,17 @@ void test_repair_clears_damage_but_preserves_engine_history(
 	const Core::FrameOutput damaged_frame = pair.subject.step(input);
 	const Core::FrameOutput control_frame = pair.control.step(input);
 	TEST_EXPECT(context,
-		damaged_frame.engines[0].thrust_force <
-			control_frame.engines[0].thrust_force);
+		damaged_frame.engines[0].thrust_force_n <
+			control_frame.engines[0].thrust_force_n);
 	pair.subject.repair({});
 	const Core::FrameOutput repaired = pair.subject.step(input);
 	const Core::FrameOutput expected = pair.control.step(input);
 	TEST_EXPECT(context,
-		repaired.engines[0].thrust_force >
-			damaged_frame.engines[0].thrust_force);
+		repaired.engines[0].thrust_force_n >
+			damaged_frame.engines[0].thrust_force_n);
 	TEST_EXPECT(context,
-		repaired.engines[0].thrust_force != expected.engines[0].thrust_force);
+		repaired.engines[0].thrust_force_n !=
+			expected.engines[0].thrust_force_n);
 }
 
 void test_invincible_damage_is_discarded(Tests::Context& context)
@@ -561,15 +595,15 @@ void test_invincible_damage_is_discarded(Tests::Context& context)
 	const Core::FrameOutput undamaged = pair.control.step(input);
 	TEST_EXPECT_NEAR(
 		context,
-		ignored.engines[0].thrust_force,
-		undamaged.engines[0].thrust_force,
+		ignored.engines[0].thrust_force_n,
+		undamaged.engines[0].thrust_force_n,
 		kTolerance);
 }
 
 void test_each_frame_exposes_its_mass_effect(Tests::Context& context)
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
-	config.engine.fuel_consumption_rate = 3.0;
+	config.engine.fuel_consumption_rate_kg_s = 3.0;
 	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotGround);
 	efm.set_internal_fuel(100.0);
@@ -581,20 +615,20 @@ void test_each_frame_exposes_its_mass_effect(Tests::Context& context)
 	TEST_EXPECT(context, second.mass_effect.available);
 	TEST_EXPECT_NEAR(
 		context,
-		first.mass_effect.delta.mass,
-		first.fuel.total_fuel_flow * input.dt_s,
+		first.mass_effect.delta.mass_kg,
+		first.fuel.total_fuel_flow_kg_s * input.dt_s,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		second.mass_effect.delta.mass,
-		second.fuel.total_fuel_flow * input.dt_s,
+		second.mass_effect.delta.mass_kg,
+		second.fuel.total_fuel_flow_kg_s * input.dt_s,
 		kTolerance);
 }
 
 void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 {
 	Tests::Fck1c::TestAircraftConfig config = Tests::Fck1c::make_test_config();
-	config.engine.fuel_consumption_rate = 3.0;
+	config.engine.fuel_consumption_rate_kg_s = 3.0;
 	Core::Fck1cEfm subject(config, Tests::disabled_debug_telemetry());
 	Core::Fck1cEfm control(config, Tests::disabled_debug_telemetry());
 	(void)subject.start(Core::StartMode::HotGround);
@@ -605,7 +639,7 @@ void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 	input.dt_s = 0.1;
 	(void)subject.step(input);
 	(void)control.step(input);
-	const double fuel_before = subject.internal_fuel();
+	const double fuel_before_kg = subject.internal_fuel_kg();
 	subject.set_infinite_fuel(true);
 	subject.set_infinite_fuel(true);
 	const Core::FrameOutput unlimited = subject.step(input);
@@ -614,21 +648,21 @@ void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 	TEST_EXPECT(context, limited.mass_effect.available);
 	TEST_EXPECT_NEAR(
 		context,
-		unlimited.fuel.total_fuel_flow,
-		limited.fuel.total_fuel_flow,
+		unlimited.fuel.total_fuel_flow_kg_s,
+		limited.fuel.total_fuel_flow_kg_s,
 		kTolerance);
 	TEST_EXPECT_NEAR(
-		context, subject.internal_fuel(), fuel_before, kTolerance);
+		context, subject.internal_fuel_kg(), fuel_before_kg, kTolerance);
 	const Core::FrameOutput still_unlimited = subject.step(input);
 	const Core::FrameOutput still_limited = control.step(input);
 	TEST_EXPECT(context, !still_unlimited.mass_effect.available);
 	TEST_EXPECT_NEAR(
 		context,
-		still_unlimited.fuel.total_fuel_flow,
-		still_limited.fuel.total_fuel_flow,
+		still_unlimited.fuel.total_fuel_flow_kg_s,
+		still_limited.fuel.total_fuel_flow_kg_s,
 		kTolerance);
 	TEST_EXPECT_NEAR(
-		context, subject.internal_fuel(), fuel_before, kTolerance);
+		context, subject.internal_fuel_kg(), fuel_before_kg, kTolerance);
 	subject.set_infinite_fuel(false);
 	subject.set_infinite_fuel(false);
 	const Core::FrameOutput resumed = subject.step(input);
@@ -636,10 +670,10 @@ void test_infinite_fuel_suppresses_mass_effect(Tests::Context& context)
 	TEST_EXPECT(context, resumed.mass_effect.available);
 	TEST_EXPECT_NEAR(
 		context,
-		resumed.fuel.total_fuel_flow,
-		expected.fuel.total_fuel_flow,
+		resumed.fuel.total_fuel_flow_kg_s,
+		expected.fuel.total_fuel_flow_kg_s,
 		kTolerance);
-	TEST_EXPECT(context, subject.internal_fuel() < fuel_before);
+	TEST_EXPECT(context, subject.internal_fuel_kg() < fuel_before_kg);
 }
 }
 

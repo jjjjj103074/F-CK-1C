@@ -1,5 +1,6 @@
 #include "TestHarness.h"
 #include "DebugTelemetryTestSupport.h"
+#include "Fck1cEfmTestFixture.h"
 
 #include "Core/Fck1cEfm.h"
 #include "DcsBridge/Internal/DcsCommandRouter.h"
@@ -16,6 +17,8 @@ constexpr float kMappingProbeValue = 1.0F;
 constexpr int kUnknownCommandId = 2659;
 constexpr int kDcsRadarOnOffCommandId = 86;
 constexpr int kDcsEosOnOffCommandId = 87;
+constexpr int kTrimPressCount = 30;
+constexpr int kControlPropagationFrameCount = 32;
 
 struct DcsCommandInput
 {
@@ -126,20 +129,15 @@ constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 	EXPECT_COMMAND(TMSRight, PressTmsRight),
 	EXPECT_COMMAND(NavMode, SelectNavigationMode),
 	EXPECT_COMMAND(MissileOverride, SelectMissileOverride),
-	EXPECT_COMMAND(APMasterToggle, ToggleAutopilotMaster),
 	EXPECT_COMMAND(APMasterOn, EngageAutopilot),
 	EXPECT_COMMAND(APMasterOff, DisengageAutopilot),
 	EXPECT_COMMAND(APBypass, SetAutopilotBypass),
-	EXPECT_COMMAND(APVertPitchHold, SelectAutopilotPitchHold),
-	EXPECT_COMMAND(APVertVSHold, SelectAutopilotVerticalSpeedHold),
-	EXPECT_COMMAND(APVertAltHold, SelectAutopilotAltitudeHold),
-	EXPECT_COMMAND(APVertIncrease, IncreaseAutopilotVerticalReference),
-	EXPECT_COMMAND(APVertDecrease, DecreaseAutopilotVerticalReference),
-	EXPECT_COMMAND(APLatHeadingHold, SelectAutopilotHeadingHold),
-	EXPECT_COMMAND(APLatHeadingSelect, SelectAutopilotHeading),
-	EXPECT_COMMAND(APLatNavTrack, SelectAutopilotNavigationTrack),
-	EXPECT_COMMAND(APLatIncrease, IncreaseAutopilotLateralReference),
-	EXPECT_COMMAND(APLatDecrease, DecreaseAutopilotLateralReference),
+	EXPECT_COMMAND(APPitchAttitudeHold, SelectAutopilotPitchAttitudeHold),
+	EXPECT_COMMAND(APPitchAltitudeHold, SelectAutopilotAltitudeHold),
+	EXPECT_COMMAND(APRollAttitudeHold, SelectAutopilotRollAttitudeHold),
+	EXPECT_COMMAND(APRollHeadingSelect, SelectAutopilotHeadingSelect),
+	EXPECT_COMMAND(APHeadingSetIncrease, IncreaseAutopilotHeadingSelect),
+	EXPECT_COMMAND(APHeadingSetDecrease, DecreaseAutopilotHeadingSelect),
 	EXPECT_COMMAND(APAutoThrottleToggle, ToggleAutoThrottle),
 	EXPECT_COMMAND(APAutoThrottleOn, EngageAutoThrottle),
 	EXPECT_COMMAND(APAutoThrottleOff, DisengageAutoThrottle),
@@ -161,7 +159,11 @@ void expect_mapping(
 		DcsBridge::map_command(input.command, input.value);
 	TEST_EXPECT(context, mapping.should_dispatch());
 	TEST_EXPECT(context, mapping.command.id == expected.id);
-	TEST_EXPECT_NEAR(context, mapping.command.value, expected.value, kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		mapping.command.value_normalized,
+		expected.value_normalized,
+		kTolerance);
 }
 
 void route_command(
@@ -185,6 +187,13 @@ Core::FrameOutput step(Core::Fck1cEfm& efm)
 	return efm.step(input);
 }
 
+Core::FrameOutput step_airborne(Core::Fck1cEfm& efm)
+{
+	Core::FrameInput input = Tests::Fck1c::make_frame_input();
+	input.suspension = {};
+	return efm.step(input);
+}
+
 void test_primary_control_mappings(Tests::Context& context)
 {
 	expect_mapping(
@@ -198,11 +207,19 @@ void test_primary_control_mappings(Tests::Context& context)
 	expect_mapping(
 		context,
 		{ DcsIds::Commands::PedalYaw, 0.2F },
-		{ Core::CommandId::SetYawAxis, 0.2 });
+		{ Core::CommandId::SetYawAxis, -0.2 });
 	expect_mapping(
 		context,
 		{ DcsIds::Commands::TrimUp, 1.0F },
 		{ Core::CommandId::AdjustPitchTrim, 0.0015 });
+	expect_mapping(
+		context,
+		{ DcsIds::Commands::RudderLeft, 1.0F },
+		{ Core::CommandId::SetYawDiscrete, 1.0 });
+	expect_mapping(
+		context,
+		{ DcsIds::Commands::RudderRight, 1.0F },
+		{ Core::CommandId::SetYawDiscrete, -1.0 });
 }
 
 void test_system_command_mappings(Tests::Context& context)
@@ -236,9 +253,12 @@ void test_routed_primary_and_engine_outputs(Tests::Context& context)
 	route_command(context, efm, { DcsIds::Commands::EnginesOn, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::LeftEngineOff, 1.0F });
 	const Core::FrameOutput output = step(efm);
-	TEST_EXPECT_NEAR(context, output.controls.pitch_input, 0.4, kTolerance);
-	TEST_EXPECT_NEAR(context, output.controls.roll_input, -0.3, kTolerance);
-	TEST_EXPECT_NEAR(context, output.controls.yaw_input, -0.2, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, output.controls.pitch_input_normalized, 0.4, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, output.controls.roll_input_normalized, -0.3, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, output.controls.yaw_input_normalized, -0.2, kTolerance);
 	TEST_EXPECT(context, !output.engines[0].switch_on);
 	TEST_EXPECT(context, output.engines[1].switch_on);
 }
@@ -247,15 +267,31 @@ void test_routed_trim_changes_control_output(Tests::Context& context)
 {
 	Core::Fck1cEfm baseline(Tests::disabled_debug_telemetry());
 	Core::Fck1cEfm trimmed(Tests::disabled_debug_telemetry());
-	(void)baseline.start(Core::StartMode::HotGround);
-	(void)trimmed.start(Core::StartMode::HotGround);
-	route_command(context, trimmed, { DcsIds::Commands::TrimUp, 1.0F });
-	const Core::FrameOutput baseline_output = step(baseline);
-	const Core::FrameOutput trimmed_output = step(trimmed);
+	(void)baseline.start(Core::StartMode::HotAir);
+	(void)trimmed.start(Core::StartMode::HotAir);
+	for (int press = 0; press < kTrimPressCount; ++press)
+		route_command(context, trimmed, { DcsIds::Commands::TrimUp, 1.0F });
+	Core::FrameOutput baseline_output;
+	Core::FrameOutput trimmed_output;
+	for (int frame = 0; frame < kControlPropagationFrameCount; ++frame)
+	{
+		baseline_output = step_airborne(baseline);
+		trimmed_output = step_airborne(trimmed);
+	}
+	if (trimmed_output.controls.symmetric_stabilator_position_rad ==
+		baseline_output.controls.symmetric_stabilator_position_rad)
+	{
+		std::printf(
+			"Trim routing produced no surface difference: base=%.12f, "
+			"trimmed=%.12f, pitch_axis=%.6f\n",
+			baseline_output.controls.symmetric_stabilator_position_rad,
+			trimmed_output.controls.symmetric_stabilator_position_rad,
+			trimmed_output.controls.pitch_input_normalized);
+	}
 	TEST_EXPECT(
 		context,
-		trimmed_output.controls.elevator_command !=
-			baseline_output.controls.elevator_command);
+		trimmed_output.controls.symmetric_stabilator_position_rad !=
+			baseline_output.controls.symmetric_stabilator_position_rad);
 }
 
 void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
@@ -268,14 +304,17 @@ void test_routed_throttle_and_airframe_outputs(Tests::Context& context)
 	route_command(context, efm, { DcsIds::Commands::FlapsDown, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::GearDown, 1.0F });
 	const Core::FrameOutput first = step(efm);
-	TEST_EXPECT_NEAR(context, first.engines[0].throttle_input, 0.5, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, first.engines[0].throttle_input_normalized, 0.5, kTolerance);
 	(void)step(efm);
 	const Core::FrameOutput output = step(efm);
-	TEST_EXPECT_NEAR(context, output.engines[0].throttle_input, 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, output.engines[1].throttle_input, 1.0, kTolerance);
-	TEST_EXPECT(context, output.controls.airbrake_position > 0.0);
-	TEST_EXPECT(context, output.controls.flaps_position > 0.0);
-	TEST_EXPECT(context, output.landing_gear.gear_position > 0.0);
+	TEST_EXPECT_NEAR(
+		context, output.engines[0].throttle_input_normalized, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, output.engines[1].throttle_input_normalized, 1.0, kTolerance);
+	TEST_EXPECT(context, output.controls.airbrake_position_normalized > 0.0);
+	TEST_EXPECT(context, output.controls.flaps_position_normalized > 0.0);
+	TEST_EXPECT(context, output.landing_gear.gear_position_normalized > 0.0);
 }
 
 void test_routed_wheel_outputs(Tests::Context& context)
@@ -284,15 +323,19 @@ void test_routed_wheel_outputs(Tests::Context& context)
 	(void)efm.start(Core::StartMode::HotGround);
 	route_command(context, efm, { DcsIds::Commands::NoseTurnUp, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::PedalYaw, 0.5F });
-	TEST_EXPECT_NEAR(context, step(efm).landing_gear.nose_wheel_steering,
+	TEST_EXPECT_NEAR(
+		context, step(efm).landing_gear.nose_wheel_steering_normalized,
 		0.0, kTolerance);
 	route_command(context, efm, { DcsIds::Commands::NoseTurnDown, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::WheelBrakeLeftOn, 1.0F });
 	route_command(context, efm, { DcsIds::Commands::WheelBrakeRightOn, 1.0F });
 	const Core::FrameOutput output = step(efm);
-	TEST_EXPECT(context, output.landing_gear.nose_wheel_steering > 0.0);
-	TEST_EXPECT_NEAR(context, output.landing_gear.brake_left, 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, output.landing_gear.brake_right, 1.0, kTolerance);
+	TEST_EXPECT(
+		context, output.landing_gear.nose_wheel_steering_normalized > 0.0);
+	TEST_EXPECT_NEAR(
+		context, output.landing_gear.brake_left_normalized, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, output.landing_gear.brake_right_normalized, 1.0, kTolerance);
 }
 
 void test_mapping_rules_and_errors(Tests::Context& context)
@@ -303,7 +346,7 @@ void test_mapping_rules_and_errors(Tests::Context& context)
 	const DcsBridge::DcsCommandMapping press =
 		DcsBridge::map_command(DcsIds::Commands::FBWCatToggle, 0.1F);
 	TEST_EXPECT(context, press.should_dispatch());
-	TEST_EXPECT_NEAR(context, press.command.value, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, press.command.value_normalized, 1.0, kTolerance);
 	const DcsBridge::DcsCommandMapping release =
 		DcsBridge::map_command(DcsIds::Commands::FBWCatToggle, 0.0F);
 	TEST_EXPECT(
@@ -348,7 +391,8 @@ void test_inactive_cockpit_binding_value_rules(Tests::Context& context)
 	TEST_EXPECT(
 		context,
 		held_release.command.id == Core::CommandId::SetMissileUncage);
-	TEST_EXPECT_NEAR(context, held_release.command.value, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, held_release.command.value_normalized, 0.0, kTolerance);
 	const DcsBridge::DcsCommandMapping press_release =
 		DcsBridge::inspect_command_binding(
 			DcsIds::Commands::TMSDown,

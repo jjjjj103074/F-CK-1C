@@ -16,13 +16,13 @@ namespace Simulation
 const MassDeltaResult& MassPropertiesModel::step(const FuelData& fuel)
 {
 	result_ = {};
-	if (fuel.consumed_mass <= 0.0)
+	if (fuel.consumed_mass_kg <= 0.0)
 	{
 		return result_;
 	}
 	result_.available = true;
-	result_.delta.mass = fuel.consumed_mass;
-	result_.delta.position = {
+	result_.delta.mass_kg = fuel.consumed_mass_kg;
+	result_.delta.position_body_m = {
 		kFuelMassPositionX,
 		kFuelMassPositionY,
 		kFuelMassPositionZ

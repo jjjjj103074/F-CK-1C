@@ -10,16 +10,16 @@ namespace Core
 {
 namespace Systems
 {
-inline constexpr double kWeightOnWheelCompressionThreshold = 1e-4;
-inline constexpr double kWeightOnWheelForceThreshold = 50.0;
-inline constexpr double kDeployedGearThreshold = 0.5;
+inline constexpr double kWeightOnWheelCompressionThresholdM = 1e-4;
+inline constexpr double kWeightOnWheelForceThresholdN = 50.0;
+inline constexpr double kDeployedGearThresholdNormalized = 0.5;
 
 struct SuspensionFeedbackState
 {
 	bool on_ground = false;
-	std::array<double, kFrameSuspensionWheelCount> compression = {};
-	std::array<Common::Vec3, kFrameSuspensionWheelCount> force = {};
-	std::array<double, kFrameSuspensionWheelCount> force_magnitude = {};
+	std::array<double, kFrameSuspensionWheelCount> compression_m = {};
+	std::array<Common::Vec3, kFrameSuspensionWheelCount> force_body_n = {};
+	std::array<double, kFrameSuspensionWheelCount> force_magnitude_n = {};
 	std::array<bool, kFrameSuspensionWheelCount> weight_on_wheel = {};
 	std::array<bool, kFrameSuspensionWheelCount> feedback_valid = {};
 };
@@ -27,8 +27,8 @@ struct SuspensionFeedbackState
 struct SuspensionFeedbackSample
 {
 	int index = 0;
-	double compression = 0.0;
-	Common::Vec3 force;
+	double compression_m = 0.0;
+	Common::Vec3 force_body_n;
 };
 
 inline bool valid_suspension_index(int index)
@@ -59,24 +59,25 @@ inline bool update_suspension_feedback(
 	}
 	const std::size_t index = static_cast<std::size_t>(sample.index);
 	state.feedback_valid[index] = true;
-	state.compression[index] = sample.compression;
-	state.force[index] = sample.force;
-	state.force_magnitude[index] = std::sqrt(
-		sample.force.x * sample.force.x +
-		sample.force.y * sample.force.y +
-		sample.force.z * sample.force.z);
+	state.compression_m[index] = sample.compression_m;
+	state.force_body_n[index] = sample.force_body_n;
+	state.force_magnitude_n[index] = std::sqrt(
+		sample.force_body_n.x * sample.force_body_n.x +
+		sample.force_body_n.y * sample.force_body_n.y +
+		sample.force_body_n.z * sample.force_body_n.z);
 	state.weight_on_wheel[index] =
-		state.compression[index] >
-			kWeightOnWheelCompressionThreshold ||
-		state.force_magnitude[index] > kWeightOnWheelForceThreshold;
+		state.compression_m[index] >
+			kWeightOnWheelCompressionThresholdM ||
+		state.force_magnitude_n[index] > kWeightOnWheelForceThresholdN;
 	return true;
 }
 
 inline void update_on_ground(
 	SuspensionFeedbackState& state,
-	double gear_position)
+	double gear_position_normalized)
 {
-	state.on_ground = gear_position > kDeployedGearThreshold &&
+	state.on_ground =
+		gear_position_normalized > kDeployedGearThresholdNormalized &&
 		any_weight_on_wheels(state);
 }
 }

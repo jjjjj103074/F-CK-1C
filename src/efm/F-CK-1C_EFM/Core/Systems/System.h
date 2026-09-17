@@ -41,7 +41,7 @@ enum class SystemGroup
 
 struct FlightFuelState
 {
-	double internal_fuel = 0.0;
+	double internal_fuel_kg = 0.0;
 	std::vector<ExternalFuelInput> external_fuel;
 };
 

@@ -20,8 +20,8 @@ public:
 		SystemResult& result) override;
 
 	const SecondaryControlPosition& step(
-		double speed_scalar,
-		double gear_position);
+		double true_airspeed_mps,
+		double gear_position_normalized);
 	void handle_command(const Command& command);
 	const SecondaryControlPosition& position() const;
 

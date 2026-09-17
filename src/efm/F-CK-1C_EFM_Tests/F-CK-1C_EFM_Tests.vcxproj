@@ -54,6 +54,7 @@
   </ItemDefinitionGroup>
   <Import Project="..\EfmCore.props" />
   <ItemGroup>
+	<ClInclude Include="AutopilotClosedLoopRig.inl" />
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
     <ClInclude Include="FakeCockpitParameters.h" />
@@ -64,7 +65,8 @@
   <ItemGroup>
     <ClCompile Include="AerodynamicsPhysicsTests.cpp" />
     <ClCompile Include="AirframeDeviceSystemTests.cpp" />
-    <ClCompile Include="AutomaticFlightControlTests.cpp" />
+	<ClCompile Include="AutomaticFlightControlTests.cpp" />
+	<ClCompile Include="AutomaticFlightControlAutoThrottleTests.cpp" />
     <ClCompile Include="AutomaticFlightControlLifecycleTests.cpp" />
     <ClCompile Include="AutomaticFlightControlTakeoverTests.cpp" />
     <ClCompile Include="AutopilotClosedLoopTests.cpp" />
@@ -77,6 +79,7 @@
     <ClCompile Include="CockpitBridgeTests.cpp" />
     <ClCompile Include="CockpitSnapshotExporterTests.cpp" />
     <ClCompile Include="DcsCommandRouterTests.cpp" />
+	<ClCompile Include="DcsKinematicsAdapterTests.cpp" />
     <ClCompile Include="DcsDamageMapperTests.cpp" />
     <ClCompile Include="DebugCsvWriterTests.cpp" />
 	<ClCompile Include="DebugIndicatorExporterTests.cpp" />
@@ -92,6 +95,8 @@
     <ClCompile Include="Fck1cEfmTests.cpp" />
 		<ClCompile Include="FrameInputCollectorTests.cpp" />
 		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
+	<ClCompile Include="FlightControlObservationPipelineTests.cpp" />
+	<ClCompile Include="FlightControlOutputSystemTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
 	<ClCompile Include="ConfigurationAndModeTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />

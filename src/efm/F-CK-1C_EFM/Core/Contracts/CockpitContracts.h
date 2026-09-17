@@ -26,17 +26,15 @@ enum class RadarMode
 enum class AutomaticFlightControlVerticalMode
 {
 	Off = 0,
-	PitchHold = 1,
-	VerticalSpeedHold = 2,
-	AltitudeHold = 3
+	PitchAttitudeHold = 1,
+	AltitudeHold = 2
 };
 
 enum class AutomaticFlightControlLateralMode
 {
 	Off = 0,
-	HeadingHold = 1,
-	HeadingSelect = 2,
-	NavigationTrack = 3
+	RollAttitudeHold = 1,
+	HeadingSelect = 2
 };
 
 enum class AutomaticFlightControlReason
@@ -47,7 +45,9 @@ enum class AutomaticFlightControlReason
 	WeightOnWheels = 3,
 	RollLimit = 4,
 	PitchLimit = 5,
-	MachLimit = 6
+	MachLimit = 6,
+	MagneticHeadingUnavailable = 7,
+	PressureAltitudeUnavailable = 8
 };
 
 enum class FlightControlAuthorityState
@@ -71,6 +71,12 @@ enum class FlightControlVerticalReferenceType
 	VerticalSpeed
 };
 
+enum class FlightControlLongitudinalCommandMode
+{
+	NormalAcceleration,
+	PitchRate
+};
+
 enum class FlightControlConstraintReason
 {
 	None,
@@ -89,7 +95,9 @@ enum class FlightControlDegradationReason
 	None,
 	SustainedVerticalTrackingFailure,
 	SustainedLateralTrackingFailure,
-	SustainedActuatorSaturation
+	SustainedActuatorSaturation,
+	MagneticHeadingUnavailable,
+	PressureAltitudeUnavailable
 };
 
 enum class FlightControlDisconnectReason
@@ -158,6 +166,18 @@ struct ObservationStatus
 		ObservationInvalidReason::NotProvided;
 };
 
+struct MagneticHeadingObservation
+{
+	ObservationStatus status;
+	double magnetic_heading_deg = 0.0;
+};
+
+struct PressureAltitudeObservation
+{
+	ObservationStatus status;
+	double pressure_altitude_ft = 0.0;
+};
+
 struct RadarObservation
 {
 	ObservationStatus status;
@@ -195,9 +215,11 @@ struct WeaponStationObservation
 
 struct CockpitObservation
 {
+	MagneticHeadingObservation magnetic_heading;
 	RadarObservation radar;
 	IrSeekerObservation ir_seeker;
 	WeaponStationObservation weapon_stations;
+	PressureAltitudeObservation pressure_altitude;
 };
 
 struct SnapshotStatus
@@ -209,8 +231,53 @@ struct SnapshotStatus
 struct FlightControlComputerSnapshot
 {
 	SnapshotStatus status;
+	std::uint64_t flight_control_tick = 0;
+	std::uint64_t pilot_shaping_update_count = 0;
+	std::uint64_t pilot_shaping_last_update_tick = 0;
+	std::uint64_t pilot_shaping_age_ticks = 0;
+	std::uint64_t gain_schedule_update_count = 0;
+	std::uint64_t gain_schedule_last_update_tick = 0;
+	std::uint64_t gain_schedule_age_ticks = 0;
+	double conditioned_pitch_input_normalized = 0.0;
+	double conditioned_roll_input_normalized = 0.0;
+	double conditioned_yaw_input_normalized = 0.0;
+	double filtered_normal_acceleration_g = 1.0;
+	double active_command_gain = 0.0;
+	double active_damping_gain = 0.0;
+	double active_limiter_gain = 0.0;
+	bool cat3_selected = false;
+	double stores_transition_0_1 = 0.0;
+	bool developer_direct_control_law_active = false;
 	bool developer_g_limiter_override_available = false;
 	bool developer_g_limiter_override_active = false;
+	bool angle_of_attack_limit_active = false;
+	FlightControlLongitudinalCommandMode longitudinal_command_mode =
+		FlightControlLongitudinalCommandMode::NormalAcceleration;
+	bool longitudinal_mode_transition_active = false;
+	double requested_normal_acceleration_reference_g = 1.0;
+	double effective_normal_acceleration_reference_g = 1.0;
+	double normal_acceleration_command_decrement_g = 0.0;
+	double requested_pitch_rate_command_rad_s = 0.0;
+	double effective_pitch_rate_command_rad_s = 0.0;
+	double angle_of_attack_blend_0_1 = 0.0;
+	double angle_of_attack_maximum_normal_acceleration_g = 1.0;
+	double normal_acceleration_error_g = 0.0;
+	double pitch_rate_error_rad_s = 0.0;
+	double pitch_rate_washout_feedback_effort = 0.0;
+	double angle_of_attack_stability_feedback_effort = 0.0;
+	double longitudinal_integral_effort = 0.0;
+	double unsaturated_pitch_effort = 0.0;
+	double limited_pitch_effort = 0.0;
+	bool load_factor_limit_active = false;
+	bool body_rate_limit_active = false;
+	bool anti_windup_active = false;
+	bool output_selection_transition_active = false;
+	bool actuator_feedback_valid = false;
+	bool electronic_command_saturated = false;
+	bool actuator_saturated = false;
+	bool control_authority_limited = false;
+	bool actuator_tracking_consistent = false;
+	double maximum_actuator_tracking_error_rad = 0.0;
 	FlightControlReferenceSource selected_longitudinal_source =
 		FlightControlReferenceSource::Manual;
 	FlightControlReferenceSource selected_lateral_source =
@@ -220,21 +287,21 @@ struct FlightControlComputerSnapshot
 	FlightControlVerticalReferenceType selected_vertical_reference_type =
 		FlightControlVerticalReferenceType::None;
 	double selected_normal_acceleration_reference_g = 0.0;
-	double selected_pitch_rate_feedforward_rad_s = 0.0;
+	double selected_pitch_rate_command_rad_s = 0.0;
 	double selected_pitch_attitude_reference_rad = 0.0;
-	double selected_vertical_speed_reference_mps = 0.0;
+	double selected_vertical_speed_reference_ft_s = 0.0;
 	double selected_roll_rate_reference_rad_s = 0.0;
 	double selected_bank_angle_reference_rad = 0.0;
 	double selected_sideslip_reference_rad = 0.0;
 	double selected_yaw_rate_feedforward_rad_s = 0.0;
 	double normal_acceleration_reference_g = 1.0;
-	double pitch_rate_feedforward_rad_s = 0.0;
+	double pitch_rate_command_rad_s = 0.0;
 	double roll_rate_reference_rad_s = 0.0;
 	double sideslip_reference_rad = 0.0;
 	double yaw_rate_feedforward_rad_s = 0.0;
-	double elevator_command_normalized = 0.0;
-	double aileron_command_normalized = 0.0;
-	double rudder_command_normalized = 0.0;
+	double symmetric_stabilator_demand_rad = 0.0;
+	double differential_flaperon_demand_rad = 0.0;
+	double rudder_demand_rad = 0.0;
 	FlightControlConstraintReason constraint_reason =
 		FlightControlConstraintReason::None;
 	bool vertical_constrained = false;
@@ -246,20 +313,20 @@ struct AutomaticFlightControlSnapshot
 	SnapshotStatus status;
 	bool master_engaged = false;
 	bool bypass_active = false;
+	bool experimental_auto_throttle_available = false;
 	bool auto_throttle_engaged = false;
 	AutomaticFlightControlVerticalMode vertical_mode =
 		AutomaticFlightControlVerticalMode::Off;
 	AutomaticFlightControlLateralMode lateral_mode =
 		AutomaticFlightControlLateralMode::Off;
 	double pitch_attitude_reference_rad = 0.0;
-	double vertical_speed_reference_mps = 0.0;
+	double vertical_speed_reference_ft_s = 0.0;
 	double bank_angle_reference_rad = 0.0;
 	double throttle_command_normalized = 0.0;
-	double target_altitude_m = 0.0;
-	double target_heading_rad = 0.0;
+	double target_altitude_ft = 0.0;
+	int target_heading_deg = 0;
 	double target_speed_mps = 0.0;
 	double target_pitch_rad = 0.0;
-	double target_vertical_speed_mps = 0.0;
 	FlightControlAuthorityState longitudinal_authority =
 		FlightControlAuthorityState::Manual;
 	FlightControlAuthorityState lateral_authority =
@@ -353,7 +420,7 @@ struct HmcsDisplaySnapshot
 	HmcsDisplayMode display_mode = HmcsDisplayMode::Screen;
 	double indicated_airspeed_mps = 0.0;
 	double altitude_m = 0.0;
-	double heading_rad = 0.0;
+	double magnetic_heading_rad = 0.0;
 };
 
 struct CockpitSnapshot

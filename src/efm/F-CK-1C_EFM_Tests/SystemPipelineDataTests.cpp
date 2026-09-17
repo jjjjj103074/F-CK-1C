@@ -69,7 +69,7 @@ SystemDefinition demand_observer(SystemGroup group)
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
 			const double pitch =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
 			result.publish(
 				AircraftDataKeys::kFlightControlActuatorState, actuator_state(pitch));
 		}
@@ -316,12 +316,12 @@ void test_same_time_bucket_reads_fixed_snapshot(Tests::Context& context)
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kNextDemand,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
 		kInitialDemand,
 		kTolerance);
 }
@@ -337,7 +337,7 @@ void test_group_metadata_does_not_create_a_commit(
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
 		kInitialDemand,
 		kTolerance);
 }
@@ -360,7 +360,7 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 		[observed](const AircraftDataView& aircraft, SystemResult&)
 		{
 			*observed =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
 			throw std::runtime_error("expected equipment failure");
 		}
 	};
@@ -368,7 +368,7 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 		flight_setup(), { entry(publisher), entry(failing_equipment) });
 	FrameInput failed_input;
 	failed_input.availability.world_kinematics = true;
-	failed_input.world_kinematics.velocity.x = kNextDemand;
+	failed_input.world_kinematics.velocity_world_mps.x = kNextDemand;
 	TEST_EXPECT(
 		context,
 		action_throws([&pipeline, &failed_input]()
@@ -384,17 +384,18 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, *observed, kInitialDemand, kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		unchanged.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+		unchanged.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kInitialDemand,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		unchanged.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
+		unchanged.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
 		kNeutralValue,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		unchanged.read(AircraftDataKeys::kAircraftObservation).speed_scalar,
+		unchanged.read(
+			AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
 		kNeutralValue,
 		kTolerance);
 }
@@ -426,7 +427,7 @@ void test_missing_new_value_retains_last_commit(Tests::Context& context)
 	const AircraftDataSnapshot second = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		second.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+		second.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kNextDemand,
 		kTolerance);
 }
@@ -467,7 +468,7 @@ void test_pending_storage_does_not_leak(Tests::Context& context)
 	const AircraftDataSnapshot next = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		next.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+		next.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kNeutralValue,
 		kTolerance);
 }
@@ -491,7 +492,7 @@ SystemDefinition cross_reader(
 			[](const AircraftDataView& aircraft, SystemResult& result)
 			{
 				const double source = aircraft.read(
-					AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position;
+					AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad;
 				result.publish(
 					AircraftDataKeys::kFlightControlActuatorCommand,
 					actuator_command(source + kDemandOffset));
@@ -511,7 +512,7 @@ SystemDefinition cross_reader(
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
 			const double source =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
 			result.publish(
 				AircraftDataKeys::kFlightControlActuatorState,
 				actuator_state(source + kPositionOffset));
@@ -525,12 +526,12 @@ void expect_order_independent_result(
 {
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorCommand).elevator_normalized,
+		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
 		kInitialCrossPosition + kDemandOffset,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
 		kInitialDemand + kPositionOffset,
 		kTolerance);
 }
@@ -586,16 +587,16 @@ void test_phase_three_generated_catalog(Tests::Context& context)
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).elevator.normalized_position,
+		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
 		kNeutralValue,
 		kTolerance);
 	TEST_EXPECT(
 		context,
-		output.read(AircraftDataKeys::kFuelData).total_fuel_flow >=
+		output.read(AircraftDataKeys::kFuelData).total_fuel_flow_kg_s >=
 			kNeutralValue);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kAirframeIntegrity).left_wing,
+		output.read(AircraftDataKeys::kAirframeIntegrity).left_wing_0_1,
 		kFullIntegrity,
 		kTolerance);
 }

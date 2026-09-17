@@ -2,6 +2,7 @@
 
 #include "DcsBridge/Internal/DrawArgs.h"
 #include "DcsBridge/Internal/ParamExport.h"
+#include "Common/Units.h"
 
 #include <array>
 
@@ -20,12 +21,17 @@ Core::FrameOutput make_frame_output()
 	Core::FrameOutput output;
 	output.availability.suspension = { true, false, false };
 	output.availability.atmosphere = true;
-	output.landing_gear.gear_position = 0.8;
-	output.landing_gear.nose_wheel_steering = -0.25;
-	output.landing_gear.brake_left = 0.35;
-	output.landing_gear.brake_right = 0.45;
-	output.landing_gear.wheel_spin = { 1.0, 2.0, 3.0 };
-	output.controls = { 0.11, 0.12, 0.13, 0.2, -0.1, 0.3, 0.4, 0.5, 0.6 };
+	output.landing_gear.gear_position_normalized = 0.8;
+	output.landing_gear.nose_wheel_steering_normalized = -0.25;
+	output.landing_gear.brake_left_normalized = 0.35;
+	output.landing_gear.brake_right_normalized = 0.45;
+	output.landing_gear.wheel_spin_phase_0_1 = { 1.0, 2.0, 3.0 };
+	output.controls = {
+		0.11, 0.12, 0.13,
+		0.2 * DcsBridge::kStabilatorVisualTravelRad,
+		-0.1 * DcsBridge::kFlaperonVisualTravelRad,
+		0.3 * DcsBridge::kRudderVisualTravelRad,
+		0.4, 0.5, 0.6 };
 	output.engines[0] = { true, 0.7, 0.71, 0.72, 12000.0, 0.73, true, 0.74 };
 	output.engines[1] = { false, 0.8, 0.81, 0.82, 13000.0, 0.83, false, 0.84 };
 	output.flight.atmosphere_temperature_k = 288.0;
@@ -38,21 +44,24 @@ void test_draw_arg_projection(Tests::Context& context)
 {
 	const DcsBridge::DrawArgState state =
 		DcsBridge::make_draw_arg_state(make_frame_output());
-	TEST_EXPECT_NEAR(context, state.gear_pos, 0.8, kTolerance);
-	TEST_EXPECT_NEAR(context, state.nose_wheel_steering, -0.25, kTolerance);
-	TEST_EXPECT_NEAR(context, state.elevator_command, 0.2, kTolerance);
-	TEST_EXPECT_NEAR(context, state.flaps_pos, 0.4, kTolerance);
-	TEST_EXPECT_NEAR(context, state.aileron_command, -0.1, kTolerance);
-	TEST_EXPECT_NEAR(context, state.rudder_command, 0.3, kTolerance);
-	TEST_EXPECT_NEAR(context, state.airbrake_pos, 0.6, kTolerance);
-	TEST_EXPECT_NEAR(context, state.left_afterburner_ratio, 0.73, kTolerance);
-	TEST_EXPECT_NEAR(context, state.right_afterburner_ratio, 0.83, kTolerance);
-	TEST_EXPECT_NEAR(context, state.left_nozzle_aperture, 0.74, kTolerance);
-	TEST_EXPECT_NEAR(context, state.right_nozzle_aperture, 0.84, kTolerance);
-	TEST_EXPECT_NEAR(context, state.slats_pos, 0.5, kTolerance);
-	TEST_EXPECT_NEAR(context, state.wheel_spin[0], 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.wheel_spin[1], 2.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.wheel_spin[2], 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.gear_position_normalized, 0.8, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.nose_wheel_steering_normalized, -0.25, kTolerance);
+	TEST_EXPECT_NEAR(context, state.elevator_command_normalized, 0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, state.flaps_position_normalized, 0.4, kTolerance);
+	TEST_EXPECT_NEAR(context, state.aileron_command_normalized, -0.1, kTolerance);
+	TEST_EXPECT_NEAR(context, state.rudder_command_normalized, 0.3, kTolerance);
+	TEST_EXPECT_NEAR(context, state.airbrake_position_normalized, 0.6, kTolerance);
+	TEST_EXPECT_NEAR(context, state.left_afterburner_ratio_0_1, 0.73, kTolerance);
+	TEST_EXPECT_NEAR(context, state.right_afterburner_ratio_0_1, 0.83, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.left_nozzle_aperture_normalized, 0.74, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.right_nozzle_aperture_normalized, 0.84, kTolerance);
+	TEST_EXPECT_NEAR(context, state.slats_position_normalized, 0.5, kTolerance);
+	TEST_EXPECT_NEAR(context, state.wheel_spin_phase_0_1[0], 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.wheel_spin_phase_0_1[1], 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.wheel_spin_phase_0_1[2], 3.0, kTolerance);
 }
 
 DrawArgumentBuffer apply_draw_args(const DcsBridge::DrawArgState& state)
@@ -75,8 +84,8 @@ void expect_draw_arg(
 void test_landing_gear_draw_args(Tests::Context& context)
 {
 	DcsBridge::DrawArgState state = {};
-	state.gear_pos = 0.75;
-	state.nose_wheel_steering = -0.4;
+	state.gear_position_normalized = 0.75;
+	state.nose_wheel_steering_normalized = -0.4;
 	const DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(context, draw_args, DcsIds::DrawArgs::NoseGear, 0.75);
 	expect_draw_arg(context, draw_args, DcsIds::DrawArgs::RightGear, 0.75);
@@ -91,7 +100,7 @@ void expect_rudder_pair(
 	double expected)
 {
 	DcsBridge::DrawArgState state = {};
-	state.rudder_command = command;
+	state.rudder_command_normalized = command;
 	const DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::RudderPrimary, expected);
@@ -111,9 +120,9 @@ void test_rudder_draw_args(Tests::Context& context)
 void test_primary_control_surface_draw_args(Tests::Context& context)
 {
 	DcsBridge::DrawArgState state = {};
-	state.elevator_command = 0.6;
-	state.flaps_pos = 0.4;
-	state.aileron_command = -0.1;
+	state.elevator_command_normalized = 0.6;
+	state.flaps_position_normalized = 0.4;
+	state.aileron_command_normalized = -0.1;
 	const DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::LeftElevator, 0.6);
@@ -128,13 +137,13 @@ void test_primary_control_surface_draw_args(Tests::Context& context)
 void test_opposed_flaperon_directions(Tests::Context& context)
 {
 	DcsBridge::DrawArgState state = {};
-	state.aileron_command = 1.0;
+	state.aileron_command_normalized = 1.0;
 	DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::RightFlaperon, 1.0);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::LeftFlaperon, -1.0);
-	state.aileron_command = -1.0;
+	state.aileron_command_normalized = -1.0;
 	draw_args = apply_draw_args(state);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::RightFlaperon, -1.0);
@@ -145,8 +154,8 @@ void test_opposed_flaperon_directions(Tests::Context& context)
 void test_secondary_surface_draw_args(Tests::Context& context)
 {
 	DcsBridge::DrawArgState state = {};
-	state.airbrake_pos = 0.7;
-	state.slats_pos = 0.8;
+	state.airbrake_position_normalized = 0.7;
+	state.slats_position_normalized = 0.8;
 	const DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::AirbrakePrimary, 0.7);
@@ -161,10 +170,10 @@ void test_secondary_surface_draw_args(Tests::Context& context)
 void test_engine_draw_args(Tests::Context& context)
 {
 	DcsBridge::DrawArgState state = {};
-	state.left_afterburner_ratio = 0.25;
-	state.right_afterburner_ratio = 0.75;
-	state.left_nozzle_aperture = 0.2;
-	state.right_nozzle_aperture = 0.9;
+	state.left_afterburner_ratio_0_1 = 0.25;
+	state.right_afterburner_ratio_0_1 = 0.75;
+	state.left_nozzle_aperture_normalized = 0.2;
+	state.right_nozzle_aperture_normalized = 0.9;
 	const DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::LeftAfterburner, 0.25);
@@ -177,9 +186,9 @@ void test_engine_draw_args(Tests::Context& context)
 void test_wheel_spin_draw_args(Tests::Context& context)
 {
 	DcsBridge::DrawArgState state = {};
-	state.wheel_spin[0] = 0.1;
-	state.wheel_spin[1] = 0.2;
-	state.wheel_spin[2] = 0.3;
+	state.wheel_spin_phase_0_1[0] = 0.1;
+	state.wheel_spin_phase_0_1[1] = 0.2;
+	state.wheel_spin_phase_0_1[2] = 0.3;
 	const DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(
 		context, draw_args, DcsIds::DrawArgs::NoseWheelSpin, 0.1);
@@ -192,18 +201,18 @@ void test_wheel_spin_draw_args(Tests::Context& context)
 void test_draw_arg_clamping(Tests::Context& context)
 {
 	DcsBridge::DrawArgState state = {};
-	state.gear_pos = 2.0;
-	state.nose_wheel_steering = -2.0;
-	state.elevator_command = 2.0;
-	state.flaps_pos = 2.0;
-	state.aileron_command = 2.0;
-	state.rudder_command = 2.0;
-	state.airbrake_pos = 2.0;
-	state.left_afterburner_ratio = -2.0;
-	state.right_afterburner_ratio = 2.0;
-	state.left_nozzle_aperture = 2.0;
-	state.right_nozzle_aperture = -2.0;
-	state.slats_pos = 2.0;
+	state.gear_position_normalized = 2.0;
+	state.nose_wheel_steering_normalized = -2.0;
+	state.elevator_command_normalized = 2.0;
+	state.flaps_position_normalized = 2.0;
+	state.aileron_command_normalized = 2.0;
+	state.rudder_command_normalized = 2.0;
+	state.airbrake_position_normalized = 2.0;
+	state.left_afterburner_ratio_0_1 = -2.0;
+	state.right_afterburner_ratio_0_1 = 2.0;
+	state.left_nozzle_aperture_normalized = 2.0;
+	state.right_nozzle_aperture_normalized = -2.0;
+	state.slats_position_normalized = 2.0;
 	const DrawArgumentBuffer draw_args = apply_draw_args(state);
 	expect_draw_arg(context, draw_args, DcsIds::DrawArgs::NoseGear, 1.0);
 	expect_draw_arg(
@@ -234,28 +243,37 @@ void test_param_projection(Tests::Context& context)
 	TEST_EXPECT(context, state.suspension_feedback_available);
 	TEST_EXPECT(context, state.atmosphere_available);
 	TEST_EXPECT(context, state.any_weight_on_wheels);
-	TEST_EXPECT_NEAR(context, state.gear_pos, 0.8, kTolerance);
-	TEST_EXPECT_NEAR(context, state.nose_wheel_steering, -0.25, kTolerance);
-	TEST_EXPECT_NEAR(context, state.wheel_spin[2], 3.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.wheel_brake_left, 0.35, kTolerance);
-	TEST_EXPECT_NEAR(context, state.wheel_brake_right, 0.45, kTolerance);
-	TEST_EXPECT_NEAR(context, state.pitch_input, 0.11, kTolerance);
-	TEST_EXPECT_NEAR(context, state.roll_input, 0.12, kTolerance);
-	TEST_EXPECT_NEAR(context, state.yaw_input, 0.13, kTolerance);
+	TEST_EXPECT_NEAR(context, state.gear_position_normalized, 0.8, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.nose_wheel_steering_normalized, -0.25, kTolerance);
+	TEST_EXPECT_NEAR(context, state.wheel_spin_phase_0_1[2], 3.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.wheel_brake_left_normalized, 0.35, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.wheel_brake_right_normalized, 0.45, kTolerance);
+	TEST_EXPECT_NEAR(context, state.pitch_input_normalized, 0.11, kTolerance);
+	TEST_EXPECT_NEAR(context, state.roll_input_normalized, 0.12, kTolerance);
+	TEST_EXPECT_NEAR(context, state.yaw_input_normalized, 0.13, kTolerance);
 	TEST_EXPECT(context, state.left_engine_switch);
 	TEST_EXPECT(context, !state.right_engine_switch);
-	TEST_EXPECT_NEAR(context, state.left_throttle_input, 0.7, kTolerance);
-	TEST_EXPECT_NEAR(context, state.right_throttle_input, 0.8, kTolerance);
-	TEST_EXPECT_NEAR(context, state.left_throttle_output, 0.71, kTolerance);
-	TEST_EXPECT_NEAR(context, state.right_throttle_output, 0.81, kTolerance);
-	TEST_EXPECT_NEAR(context, state.left_engine_power_readout, 0.72, kTolerance);
-	TEST_EXPECT_NEAR(context, state.right_engine_power_readout, 0.82, kTolerance);
-	TEST_EXPECT_NEAR(context, state.left_thrust_force, 12000.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.right_thrust_force, 13000.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.atmosphere_temperature, 288.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.internal_fuel, 900.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.total_fuel, 1100.0, kTolerance);
-	TEST_EXPECT_NEAR(context, state.total_fuel_flow, 1.5, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.left_throttle_input_normalized, 0.7, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.right_throttle_input_normalized, 0.8, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.left_throttle_output_normalized, 0.71, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.right_throttle_output_normalized, 0.81, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.left_engine_power_readout_normalized, 0.72, kTolerance);
+	TEST_EXPECT_NEAR(
+		context, state.right_engine_power_readout_normalized, 0.82, kTolerance);
+	TEST_EXPECT_NEAR(context, state.left_thrust_force_n, 12000.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.right_thrust_force_n, 13000.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.atmosphere_temperature_k, 288.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.internal_fuel_kg, 900.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.total_fuel_kg, 1100.0, kTolerance);
+	TEST_EXPECT_NEAR(context, state.total_fuel_flow_kg_s, 1.5, kTolerance);
 }
 
 void test_unavailable_projection_metadata(Tests::Context& context)

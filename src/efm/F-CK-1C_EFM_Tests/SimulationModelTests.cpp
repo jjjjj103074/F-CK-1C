@@ -3,6 +3,7 @@
 #include "TestHarness.h"
 
 #include "Core/Diagnostics/ExecutionError.h"
+#include "Core/Simulation/AircraftState.h"
 #include "Core/Simulation/Models/ModelExecutionContext.h"
 #include "Core/Simulation/Models/Aerodynamics/AerodynamicsModel.h"
 #include "Core/Simulation/Models/GroundInteraction/GroundInteractionModel.h"
@@ -18,8 +19,8 @@ namespace
 {
 constexpr double kTolerance = 1e-9;
 constexpr std::size_t kPrimaryAerodynamicEffectCount = 7;
-constexpr std::size_t kNormalLimiterEffectCount = 5;
-constexpr std::size_t kEasyFlightLimiterEffectCount = 7;
+constexpr std::size_t kNormalSupplementalEffectCount = 1;
+constexpr std::size_t kEasyFlightSupplementalEffectCount = 4;
 constexpr double kFullThrottle = 1.0;
 constexpr double kDamagedCondition = 0.25;
 constexpr double kExpectedFullDryThrustPerEngine = 27000.0;
@@ -33,13 +34,23 @@ constexpr double kExpectedPartialFallbackVerticalForce = 72960.0;
 constexpr double kBellyContactAltitude = 0.5;
 constexpr double kSimulationStepSeconds = 0.01;
 
+void test_aircraft_state_default_density_uses_si(Tests::Context& context)
+{
+	const Core::AircraftState state;
+	TEST_EXPECT_NEAR(
+		context,
+		state.atmosphere_density_kg_m3,
+		Core::kSeaLevelAirDensityKgM3,
+		kTolerance);
+}
+
 double total_vertical_force(
 	const Core::Simulation::GroundInteractionResult& result)
 {
 	double total = 0.0;
 	for (const auto& effect : result.effects)
 	{
-		total += effect.value.y;
+		total += effect.force_body_n.y;
 	}
 	return total;
 }
@@ -59,7 +70,7 @@ bool has_effect_at_position(
 {
 	for (const auto& effect : result.effects)
 	{
-		if (same_position(effect.position, position))
+		if (same_position(effect.application_position_body_m, position))
 		{
 			return true;
 		}
@@ -80,12 +91,12 @@ struct GroundModelFixture
 		: config(make_enabled_ground_config()),
 		model(config)
 	{
-		gear.position = 1.0;
-		gear.wheel_radius =
-			Tests::Fck1c::make_test_config().landing_gear.wheel_radius;
-		observation.altitude_agl = 2.25;
-		observation.current_mass = 10000.0;
-		observation.velocity_body.x = 10.0;
+		gear.position_normalized = 1.0;
+		gear.wheel_radius_m =
+			Tests::Fck1c::make_test_config().landing_gear.wheel_radius_m;
+		observation.altitude_agl_m = 2.25;
+		observation.mass_kg = 10000.0;
+		observation.velocity_body_mps.x = 10.0;
 	}
 
 	const Core::Simulation::GroundInteractionResult& step(
@@ -96,7 +107,7 @@ struct GroundModelFixture
 			gear,
 			observation,
 			availability,
-			total_thrust_force
+			total_thrust_force_n
 		});
 	}
 
@@ -105,18 +116,18 @@ struct GroundModelFixture
 	Core::EngineData engines;
 	Core::LandingGearData gear;
 	Core::AircraftState observation;
-	double total_thrust_force = 0.0;
+	double total_thrust_force_n = 0.0;
 };
 
 Core::AircraftState make_aerodynamic_observation()
 {
 	Core::AircraftState observation;
-	observation.atmosphere_density = 1.225;
-	observation.speed_scalar = 100.0;
+	observation.atmosphere_density_kg_m3 = 1.225;
+	observation.true_airspeed_mps = 100.0;
 	observation.mach = 0.0;
-	observation.alpha = 5.0;
-	observation.roll_rate = 0.2;
-	observation.yaw_rate = 0.1;
+	observation.angle_of_attack_deg = 5.0;
+	observation.roll_rate_rad_s = 0.2;
+	observation.yaw_rate_rad_s = 0.1;
 	return observation;
 }
 
@@ -136,12 +147,14 @@ void test_aerodynamics_model_effect_groups(Tests::Context& context)
 		normal.primary_effects.size() == kPrimaryAerodynamicEffectCount);
 	TEST_EXPECT(
 		context,
-		normal.limiter_effects.size() == kNormalLimiterEffectCount);
+		normal.supplemental_effects.size() ==
+			kNormalSupplementalEffectCount);
 	const auto& easy = model.step({
 		primary, secondary, landing_gear, integrity, observation, true });
 	TEST_EXPECT(
 		context,
-		easy.limiter_effects.size() == kEasyFlightLimiterEffectCount);
+		easy.supplemental_effects.size() ==
+			kEasyFlightSupplementalEffectCount);
 }
 
 Core::Simulation::PropulsionResult run_propulsion(
@@ -151,7 +164,7 @@ Core::Simulation::PropulsionResult run_propulsion(
 {
 	Core::Simulation::PropulsionModel model(config);
 	Core::AircraftState observation;
-	observation.engine_alt_effect = 1.0;
+	observation.engine_altitude_factor = 1.0;
 	return model.step({ engines, observation, diagnostics });
 }
 
@@ -160,39 +173,39 @@ void test_propulsion_operating_points(Tests::Context& context)
 	const auto config = Tests::Fck1c::make_test_config();
 	Core::EngineData engines;
 	const auto idle = run_propulsion(config.propulsion, engines);
-	TEST_EXPECT_NEAR(context, idle.left_thrust_force, 0.0, kTolerance);
-	engines.left.throttle_output = kFullThrottle;
-	engines.right.throttle_output = kFullThrottle;
+	TEST_EXPECT_NEAR(context, idle.left_thrust_force_n, 0.0, kTolerance);
+	engines.left.throttle_output_normalized = kFullThrottle;
+	engines.right.throttle_output_normalized = kFullThrottle;
 	const auto dry = run_propulsion(config.propulsion, engines);
 	TEST_EXPECT_NEAR(
 		context,
-		dry.left_thrust_force,
+		dry.left_thrust_force_n,
 		kExpectedFullDryThrustPerEngine,
 		kTolerance);
-	engines.left.afterburner_ratio = 1.0;
-	engines.right.afterburner_ratio = 1.0;
+	engines.left.afterburner_ratio_0_1 = 1.0;
+	engines.right.afterburner_ratio_0_1 = 1.0;
 	const auto afterburner = run_propulsion(config.propulsion, engines);
 	TEST_EXPECT(
 		context,
-		afterburner.left_thrust_force > dry.left_thrust_force);
+		afterburner.left_thrust_force_n > dry.left_thrust_force_n);
 	const auto cut = run_propulsion(
 		config.propulsion, engines, { true });
-	TEST_EXPECT_NEAR(context, cut.left_thrust_force, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cut.left_thrust_force_n, 0.0, kTolerance);
 }
 
 void test_propulsion_applies_engine_condition(Tests::Context& context)
 {
 	const auto config = Tests::Fck1c::make_test_config();
 	Core::EngineData engines;
-	engines.left.throttle_output = kFullThrottle;
-	engines.right.throttle_output = kFullThrottle;
-	engines.left.condition = kDamagedCondition;
+	engines.left.throttle_output_normalized = kFullThrottle;
+	engines.right.throttle_output_normalized = kFullThrottle;
+	engines.left.condition_0_1 = kDamagedCondition;
 	const auto result = run_propulsion(config.propulsion, engines);
 	TEST_EXPECT_NEAR(
-		context, result.left_thrust_force, kExpectedDamagedThrust, kTolerance);
+		context, result.left_thrust_force_n, kExpectedDamagedThrust, kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		result.right_thrust_force,
+		result.right_thrust_force_n,
 		kExpectedFullDryThrustPerEngine,
 		kTolerance);
 }
@@ -207,7 +220,7 @@ SystemPipelineTest::SystemDefinition invalid_aerodynamics_state()
 		[](SystemSetup& setup)
 		{
 			FlightControlActuatorState primary;
-			primary.elevator.normalized_position =
+			primary.symmetric_stabilator.position_rad =
 				std::numeric_limits<double>::quiet_NaN();
 			setup.publish(
 				AircraftDataKeys::kFlightControlActuatorState,
@@ -220,6 +233,9 @@ SystemPipelineTest::SystemDefinition invalid_aerodynamics_state()
 				AircraftDataKeys::kAirframeIntegrity, AirframeIntegrity{});
 			setup.publish(AircraftDataKeys::kEngineData, EngineData{});
 			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
+			setup.publish(
+				AircraftDataKeys::kPropulsionTestIntent,
+				PropulsionTestIntent{});
 		},
 		SystemPipelineTest::no_step()
 	};
@@ -245,7 +261,7 @@ void test_model_error_identifies_runtime_owner(Tests::Context& context)
 			ExecutionOwnerType::SimulationModel,
 			"aerodynamics",
 			"step",
-			"Common::rescale input is not finite."
+			"Aerodynamics input requires finite primary surface positions."
 		});
 }
 
@@ -341,18 +357,18 @@ void test_ground_model_selects_one_force_source(Tests::Context& context)
 		context,
 		!has_effect_at_position(
 			partial,
-			fixture.config.gear_points[kLeftMainWheelIndex]));
+			fixture.config.gear_points_body_m[kLeftMainWheelIndex]));
 }
 
 void test_ground_model_ignores_stale_feedback(
 	Tests::Context& context)
 {
 	GroundModelFixture fixture;
-	fixture.gear.position = 0.0;
+	fixture.gear.position_normalized = 0.0;
 	fixture.gear.any_weight_on_wheels = true;
 	fixture.gear.suspension[kLeftMainWheelIndex].weight_on_wheel =
 		true;
-	fixture.observation.altitude_agl = kBellyContactAltitude;
+	fixture.observation.altitude_agl_m = kBellyContactAltitude;
 	Core::FrameDataAvailability current_feedback;
 	current_feedback.suspension.fill(true);
 	TEST_EXPECT(
@@ -368,7 +384,7 @@ void test_ground_model_ignores_stale_feedback(
 		context,
 		has_effect_at_position(
 			fallback,
-			fixture.config.belly_point));
+			fixture.config.belly_point_body_m));
 }
 
 void test_ground_model_uses_collector_frame_freshness(
@@ -399,6 +415,7 @@ void test_ground_model_uses_collector_frame_freshness(
 
 void run_simulation_model_tests(Tests::Context& context)
 {
+	test_aircraft_state_default_density_uses_si(context);
 	test_aerodynamics_model_effect_groups(context);
 	test_propulsion_operating_points(context);
 	test_propulsion_applies_engine_condition(context);

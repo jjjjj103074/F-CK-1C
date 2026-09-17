@@ -19,6 +19,7 @@ constexpr double kTolerance = 1.0e-9;
 constexpr double kFullCommand = 1.0;
 constexpr double kOvertravelCommand = 2.0;
 constexpr double kActuatorDt = 1.0 / 256.0;
+constexpr int kStopReachStepCount = 512;
 constexpr SystemScheduledTime kActuatorPeriod =
 	std::chrono::nanoseconds(3'906'250);
 
@@ -48,20 +49,20 @@ void test_production_config_uses_radians(Tests::Context& context)
 {
 	const auto& config = fck1c_flight_control_actuation_system_config();
 	TEST_EXPECT_NEAR(
-		context, config.elevator.travel_limit_rad,
+		context, config.symmetric_stabilator.maximum_deflection_rad,
 		Common::rad(25.0), kTolerance);
 	TEST_EXPECT_NEAR(
-		context, config.aileron.rate_limit_rad_s,
+		context, config.differential_flaperon.rate_limit_rad_s,
 		Common::rad(110.0), kTolerance);
 	TEST_EXPECT_NEAR(
-		context, config.rudder.travel_limit_rad,
+		context, config.rudder.maximum_deflection_rad,
 		Common::rad(30.0), kTolerance);
 }
 
 void test_invalid_config_is_rejected(Tests::Context& context)
 {
 	auto config = fck1c_flight_control_actuation_system_config();
-	config.elevator.rate_limit_rad_s = 0.0;
+	config.symmetric_stabilator.rate_limit_rad_s = 0.0;
 	TEST_EXPECT(context, rejects_invalid_config(config));
 	config = fck1c_flight_control_actuation_system_config();
 	config.rudder.lag_time_constant_s =
@@ -75,13 +76,24 @@ void test_actuator_owns_physical_dynamics(Tests::Context& context)
 		fck1c_flight_control_actuation_system_config());
 	const FlightControlActuatorState& first = system.update(
 		{ kFullCommand, 0.0, 0.0 }, kActuatorDt);
-	TEST_EXPECT(context, first.elevator.position_rad > 0.0);
-	TEST_EXPECT(context, first.elevator.normalized_position < kFullCommand);
-	TEST_EXPECT(context, first.elevator.rate_rad_s > 0.0);
-	TEST_EXPECT(context, first.elevator.saturated);
-	const FlightControlActuatorState& limited = system.update(
-		{ kOvertravelCommand, 0.0, 0.0 }, kActuatorDt);
-	TEST_EXPECT(context, limited.elevator.saturated);
+	TEST_EXPECT(context, first.symmetric_stabilator.position_rad > 0.0);
+	TEST_EXPECT(context, first.symmetric_stabilator.position_rad < kFullCommand);
+	TEST_EXPECT(context, first.symmetric_stabilator.rate_rad_s > 0.0);
+	TEST_EXPECT(context, first.symmetric_stabilator.saturated);
+	TEST_EXPECT(context, first.symmetric_stabilator.rate_limited);
+	TEST_EXPECT(context, first.symmetric_stabilator.position_limit ==
+		FlightControlPositionLimit::Positive);
+	TEST_EXPECT(context, !first.symmetric_stabilator.at_position_limit);
+	for (int step = 0; step < kStopReachStepCount; ++step)
+	{
+		(void)system.update({ kOvertravelCommand, 0.0, 0.0 }, kActuatorDt);
+	}
+	const FlightControlActuatorState& limited = system.state();
+	TEST_EXPECT(context, limited.symmetric_stabilator.saturated);
+	TEST_EXPECT(context, !limited.symmetric_stabilator.rate_limited);
+	TEST_EXPECT(context, limited.symmetric_stabilator.at_position_limit);
+	TEST_EXPECT(context, limited.symmetric_stabilator.position_limit ==
+		FlightControlPositionLimit::Positive);
 	TEST_EXPECT(context, limited.any_saturated);
 }
 
@@ -118,7 +130,7 @@ void test_pipeline_runs_actuator_at_256_hz(Tests::Context& context)
 	TEST_EXPECT_NEAR(
 		context,
 		before.read(AircraftDataKeys::kFlightControlActuatorState)
-			.elevator.position_rad,
+			.symmetric_stabilator.position_rad,
 		0.0,
 		kTolerance);
 	const auto after = step_pipeline_to(
@@ -126,7 +138,7 @@ void test_pipeline_runs_actuator_at_256_hz(Tests::Context& context)
 	TEST_EXPECT(
 		context,
 		after.read(AircraftDataKeys::kFlightControlActuatorState)
-			.elevator.position_rad > 0.0);
+			.symmetric_stabilator.position_rad > 0.0);
 }
 }
 

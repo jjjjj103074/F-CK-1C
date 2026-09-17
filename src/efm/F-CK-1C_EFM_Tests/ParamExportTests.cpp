@@ -9,6 +9,7 @@ namespace
 {
 constexpr double kTolerance = 1e-9;
 constexpr double kStandardAtmosphereMmHg = 760.0;
+constexpr double kExpectedLeftEngineTemperatureC = 77.35;
 constexpr unsigned kObservedLeftMainWheelYawParam = 2015;
 constexpr unsigned kObservedRightMainWheelYawParam = 2025;
 constexpr unsigned kObservedPitchForceCenterParam = 2123;
@@ -64,25 +65,25 @@ DcsBridge::ParamExportState make_state()
 	state.suspension_feedback_available = true;
 	state.atmosphere_available = true;
 	state.any_weight_on_wheels = true;
-	state.gear_pos = 1.0;
-	state.nose_wheel_steering = -0.25;
-	state.wheel_spin[0] = 1.0;
-	state.wheel_spin[1] = 2.0;
-	state.wheel_spin[2] = 3.0;
-	state.wheel_brake_left = 0.6;
-	state.wheel_brake_right = 0.7;
-	state.pitch_input = 0.2;
-	state.roll_input = -0.3;
-	state.yaw_input = 0.4;
+	state.gear_position_normalized = 1.0;
+	state.nose_wheel_steering_normalized = -0.25;
+	state.wheel_spin_phase_0_1[0] = 1.0;
+	state.wheel_spin_phase_0_1[1] = 2.0;
+	state.wheel_spin_phase_0_1[2] = 3.0;
+	state.wheel_brake_left_normalized = 0.6;
+	state.wheel_brake_right_normalized = 0.7;
+	state.pitch_input_normalized = 0.2;
+	state.roll_input_normalized = -0.3;
+	state.yaw_input_normalized = 0.4;
 	state.left_engine_switch = true;
-	state.left_throttle_input = 0.8;
-	state.left_throttle_output = 0.9;
-	state.left_engine_power_readout = 0.5;
-	state.left_thrust_force = 12000.0;
-	state.atmosphere_temperature = 288.0;
-	state.internal_fuel = 900.0;
-	state.total_fuel = 1100.0;
-	state.total_fuel_flow = 4.0;
+	state.left_throttle_input_normalized = 0.8;
+	state.left_throttle_output_normalized = 0.9;
+	state.left_engine_power_readout_normalized = 0.5;
+	state.left_thrust_force_n = 12000.0;
+	state.atmosphere_temperature_k = 288.0;
+	state.internal_fuel_kg = 900.0;
+	state.total_fuel_kg = 1100.0;
+	state.total_fuel_flow_kg_s = 4.0;
 	return state;
 }
 
@@ -120,6 +121,11 @@ void test_service_and_engine_params(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineRpm, state), 5545.125, kTolerance);
 	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineCombustion, state), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineThrust, state), 12000.0, kTolerance);
+	TEST_EXPECT_NEAR(
+		context,
+		require_param(context, LeftEngineTemperature, state),
+		kExpectedLeftEngineTemperatureC,
+		kTolerance);
 	TEST_EXPECT(context, !DcsBridge::get_param(999999, state).has_value());
 }
 
@@ -194,7 +200,7 @@ void test_param_export_values_and_unknown(Tests::Context& context)
 	output.simulation_time_s = 1.0;
 	output.availability.atmosphere = true;
 	output.availability.suspension[0] = true;
-	output.fuel.total_fuel_flow = 4.0;
+	output.fuel.total_fuel_flow_kg_s = 4.0;
 	const DcsBridge::ParamExportAvailabilityHistory history;
 	const DcsBridge::ParamExportResult implemented =
 		DcsBridge::resolve_param(LeftEngineFuelFlow, output, history);
@@ -321,13 +327,15 @@ void test_param_exporter_runtime_data_error(Tests::Context& context)
 	Core::FrameOutput available;
 	available.simulation_time_s = 6.0;
 	available.availability.atmosphere = true;
-	available.engines[0].power_readout = 0.5;
+	available.engines[0].power_readout_normalized = 0.5;
 	available.flight.atmosphere_temperature_k = 288.0;
 	fixture.output_store.publish(available);
 	fixture.exporter.observe(available);
-	TEST_EXPECT(
+	TEST_EXPECT_NEAR(
 		context,
-		fixture.exporter.read(LeftEngineTemperature, available) > 288.0);
+		fixture.exporter.read(LeftEngineTemperature, available),
+		kExpectedLeftEngineTemperatureC,
+		kTolerance);
 	Core::FrameOutput missing = available;
 	missing.simulation_time_s = 7.0;
 	missing.availability.atmosphere = false;

@@ -19,7 +19,7 @@ struct GroundInteractionModelInput
 	const LandingGearData& landing_gear;
 	const AircraftState& observation;
 	const FrameDataAvailability& availability;
-	double total_thrust_force = 0.0;
+	double total_thrust_force_n = 0.0;
 };
 
 struct GroundInteractionResult

@@ -25,8 +25,8 @@ struct AerodynamicsModelInput
 struct AerodynamicsResult
 {
 	std::vector<ModelEffect> primary_effects;
-	std::vector<ModelEffect> limiter_effects;
-	double shake_amplitude = 0.0;
+	std::vector<ModelEffect> supplemental_effects;
+	double shake_amplitude_normalized = 0.0;
 };
 
 class AerodynamicsModel final

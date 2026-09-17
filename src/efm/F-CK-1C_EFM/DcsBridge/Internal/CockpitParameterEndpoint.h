@@ -23,6 +23,7 @@ struct CockpitParameterReadResult
 	bool success = false;
 	double value = 0.0;
 	std::optional<CockpitParameterEvent> event;
+	bool invalid_numeric = false;
 };
 
 struct CockpitParameterWriteResult
@@ -73,7 +74,8 @@ public:
 			return {
 				false,
 				0.0,
-				record_failure({ "invalid_numeric", value, true })
+				record_failure({ "invalid_numeric", value, true }),
+				true
 			};
 		}
 		return { true, value, record_available() };

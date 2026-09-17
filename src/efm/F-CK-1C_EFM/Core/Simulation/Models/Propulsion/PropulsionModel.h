@@ -22,8 +22,8 @@ struct PropulsionModelInput
 struct PropulsionResult
 {
 	std::vector<ModelEffect> effects;
-	double left_thrust_force = 0.0;
-	double right_thrust_force = 0.0;
+	double left_thrust_force_n = 0.0;
+	double right_thrust_force_n = 0.0;
 };
 
 class PropulsionModel final

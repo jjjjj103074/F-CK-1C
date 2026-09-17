@@ -1,12 +1,25 @@
 #include "FakeCockpitParameters.h"
 #include "TestHarness.h"
 
+#include "Common/Units.h"
 #include "DcsBridge/Internal/CockpitBridge.h"
 #include "DcsIds/CockpitParams.g.h"
+
+#include <limits>
 
 namespace
 {
 constexpr double kTolerance = 1e-9;
+
+void expect_invalid_numeric(
+	Tests::Context& context,
+	const Core::ObservationStatus& status)
+{
+	TEST_EXPECT(context, !status.available);
+	TEST_EXPECT(context, status.revision == 0);
+	TEST_EXPECT(context, status.invalid_reason ==
+		Core::ObservationInvalidReason::InvalidNumeric);
+}
 
 void test_temperature_export(Tests::Context& context)
 {
@@ -15,6 +28,115 @@ void test_temperature_export(Tests::Context& context)
 	TEST_EXPECT(context, bridge.export_temperature(15.0).count == 0);
 	TEST_EXPECT_NEAR(context, cockpit.value(
 		DcsIds::CockpitParams::TemperatureC), 288.0, kTolerance);
+}
+
+void test_pressure_altitude_observation_is_typed_in_feet(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::PressureAltitudeAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::PressureAltitudeM, 1200.0);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto altitude = bridge.read_step_input().cockpit.pressure_altitude;
+	TEST_EXPECT(context, altitude.status.available);
+	TEST_EXPECT(context, altitude.status.revision == 1);
+	TEST_EXPECT_NEAR(
+		context, altitude.pressure_altitude_ft,
+		Common::feet(1200.0), kTolerance);
+}
+
+void test_pressure_altitude_unavailability_is_explicit(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto altitude = bridge.read_step_input().cockpit.pressure_altitude;
+	TEST_EXPECT(context, !altitude.status.available);
+	TEST_EXPECT(
+		context, altitude.status.invalid_reason ==
+			Core::ObservationInvalidReason::NotProvided);
+}
+
+void test_non_finite_pressure_altitude_is_rejected(Tests::Context& context)
+{
+	for (const double value : {
+		std::numeric_limits<double>::quiet_NaN(),
+		std::numeric_limits<double>::infinity() })
+	{
+		Tests::FakeCockpitParameters cockpit;
+		cockpit.set(DcsIds::CockpitParams::PressureAltitudeAvailable, 1.0);
+		cockpit.set(DcsIds::CockpitParams::PressureAltitudeM, value);
+		DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+		expect_invalid_numeric(context,
+			bridge.read_step_input().cockpit.pressure_altitude.status);
+	}
+}
+
+void test_magnetic_heading_observation_is_typed_and_normalized(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::MagneticHeadingAvailable, 1.0);
+	cockpit.set(
+		DcsIds::CockpitParams::MagneticHeadingRad,
+		Common::rad(370.0));
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto heading = bridge.read_step_input().cockpit.magnetic_heading;
+	TEST_EXPECT(context, heading.status.available);
+	TEST_EXPECT(context, heading.status.revision == 1);
+	TEST_EXPECT_NEAR(
+		context, heading.magnetic_heading_deg,
+		10.0, kTolerance);
+}
+
+void test_magnetic_heading_unavailability_is_explicit(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto heading = bridge.read_step_input().cockpit.magnetic_heading;
+	TEST_EXPECT(context, !heading.status.available);
+	TEST_EXPECT(context, heading.status.revision == 0);
+	TEST_EXPECT(
+		context,
+		heading.status.invalid_reason ==
+			Core::ObservationInvalidReason::NotProvided);
+}
+
+void test_missing_magnetic_heading_parameter_is_explicit(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::MagneticHeadingAvailable, 1.0);
+	cockpit.set_available(DcsIds::CockpitParams::MagneticHeadingRad, false);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto input = bridge.read_step_input();
+	TEST_EXPECT(context, !input.cockpit.magnetic_heading.status.available);
+	TEST_EXPECT(
+		context,
+		input.cockpit.magnetic_heading.status.invalid_reason ==
+			Core::ObservationInvalidReason::ParameterUnavailable);
+	TEST_EXPECT(context, input.events.count == 1);
+}
+
+void expect_invalid_magnetic_heading(
+	Tests::Context& context,
+	double value)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::MagneticHeadingAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::MagneticHeadingRad, value);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto heading = bridge.read_step_input().cockpit.magnetic_heading;
+	expect_invalid_numeric(context, heading.status);
+}
+
+void test_non_finite_magnetic_heading_is_rejected(Tests::Context& context)
+{
+	expect_invalid_magnetic_heading(
+		context, std::numeric_limits<double>::quiet_NaN());
+	expect_invalid_magnetic_heading(
+		context, std::numeric_limits<double>::infinity());
 }
 
 void test_zero_radar_and_ir_samples_are_available(Tests::Context& context)
@@ -80,6 +202,20 @@ void test_missing_radar_parameter_marks_only_radar_unavailable(
 			Core::ObservationInvalidReason::ParameterUnavailable);
 	TEST_EXPECT(context, input.cockpit.ir_seeker.status.available);
 	TEST_EXPECT(context, input.events.count == 1);
+}
+
+void test_non_finite_radar_and_ir_values_are_rejected(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::RawCockpitParams::RadarSttRange,
+		std::numeric_limits<double>::quiet_NaN());
+	cockpit.set(DcsIds::RawCockpitParams::WeaponTargetRange,
+		std::numeric_limits<double>::infinity());
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto observation = bridge.read_step_input().cockpit;
+	expect_invalid_numeric(context, observation.radar.status);
+	expect_invalid_numeric(context, observation.ir_seeker.status);
 }
 
 void test_unknown_radar_mode_is_invalid(Tests::Context& context)
@@ -155,16 +291,37 @@ void test_weapon_station_unavailable_reason_is_preserved(
 		observation.status.invalid_reason ==
 			Core::ObservationInvalidReason::StationApiError);
 }
+
+void test_non_finite_weapon_station_value_is_rejected(
+	Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision,
+		std::numeric_limits<double>::quiet_NaN());
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	expect_invalid_numeric(context,
+		bridge.read_step_input().cockpit.weapon_stations.status);
+}
 }
 
 void run_cockpit_bridge_tests(Tests::Context& context)
 {
 	test_temperature_export(context);
+	test_pressure_altitude_observation_is_typed_in_feet(context);
+	test_pressure_altitude_unavailability_is_explicit(context);
+	test_non_finite_pressure_altitude_is_rejected(context);
+	test_magnetic_heading_observation_is_typed_and_normalized(context);
+	test_magnetic_heading_unavailability_is_explicit(context);
+	test_missing_magnetic_heading_parameter_is_explicit(context);
+	test_non_finite_magnetic_heading_is_rejected(context);
 	test_zero_radar_and_ir_samples_are_available(context);
 	test_typed_radar_and_ir_units(context);
 	test_missing_radar_parameter_marks_only_radar_unavailable(context);
+	test_non_finite_radar_and_ir_values_are_rejected(context);
 	test_unknown_radar_mode_is_invalid(context);
 	test_weapon_station_observation_contract(context);
 	test_weapon_station_invalid_revision_is_explicit(context);
 	test_weapon_station_unavailable_reason_is_preserved(context);
+	test_non_finite_weapon_station_value_is_rejected(context);
 }

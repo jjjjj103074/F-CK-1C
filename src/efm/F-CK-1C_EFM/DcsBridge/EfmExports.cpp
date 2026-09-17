@@ -6,6 +6,7 @@
 #include "Internal/BridgeContext.h"
 #include "Internal/DcsCommandRouter.h"
 #include "Internal/DcsDamageMapper.h"
+#include "Internal/DcsKinematicsAdapter.h"
 #include "Internal/DcsSuspensionAdapter.h"
 #include "Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
 #include "Internal/DrawArgs.h"
@@ -95,12 +96,12 @@ void ed_fm_add_local_force(
 		return;
 	}
 	const Core::ForceMomentOutput& frame = output->force_moment;
-	x = frame.force.x;
-	y = frame.force.y;
-	z = frame.force.z;
-	pos_x = frame.center_of_mass.x;
-	pos_y = frame.center_of_mass.y;
-	pos_z = frame.center_of_mass.z;
+	x = frame.force_body_n.x;
+	y = frame.force_body_n.y;
+	z = frame.force_body_n.z;
+	pos_x = frame.center_of_mass_body_m.x;
+	pos_y = frame.center_of_mass_body_m.y;
+	pos_z = frame.center_of_mass_body_m.z;
 }
 EFM_ABI_CATCH_VOID("ed_fm_add_local_force", (void)0)
 
@@ -115,9 +116,9 @@ void ed_fm_add_local_moment(double& x, double& y, double& z) try
 		return;
 	}
 	const Core::ForceMomentOutput& frame = output->force_moment;
-	x = frame.moment.x;
-	y = frame.moment.y;
-	z = frame.moment.z;
+	x = frame.moment_body_nm.x;
+	y = frame.moment_body_nm.y;
+	z = frame.moment_body_nm.z;
 }
 EFM_ABI_CATCH_VOID("ed_fm_add_local_moment", (void)0)
 
@@ -304,8 +305,9 @@ void ed_fm_set_current_state_body_axis(
 		Common::Vec3(ax, ay, az),
 		Common::Vec3(vx, vy, vz),
 		Common::Vec3(wind_vx, wind_vy, wind_vz),
-		Common::Vec3(omegadotx, omegadoty, omegadotz),
-		Common::Vec3(omegax, omegay, omegaz),
+		DcsBridge::Internal::adapt_dcs_body_angular_kinematics(
+			Common::Vec3(omegadotx, omegadoty, omegadotz),
+			Common::Vec3(omegax, omegay, omegaz)),
 		yaw,
 		pitch,
 		roll,
@@ -358,24 +360,27 @@ bool ed_fm_change_mass(
 	{
 		return false;
 	}
-	delta_mass = result.delta.mass;
-	delta_mass_pos_x = result.delta.position.x;
-	delta_mass_pos_y = result.delta.position.y;
-	delta_mass_pos_z = result.delta.position.z;
-	delta_mass_moment_of_inertia_x = result.delta.moment_of_inertia.x;
-	delta_mass_moment_of_inertia_y = result.delta.moment_of_inertia.y;
-	delta_mass_moment_of_inertia_z = result.delta.moment_of_inertia.z;
+	delta_mass = result.delta.mass_kg;
+	delta_mass_pos_x = result.delta.position_body_m.x;
+	delta_mass_pos_y = result.delta.position_body_m.y;
+	delta_mass_pos_z = result.delta.position_body_m.z;
+	delta_mass_moment_of_inertia_x =
+		result.delta.moment_of_inertia_delta_kg_m2.x;
+	delta_mass_moment_of_inertia_y =
+		result.delta.moment_of_inertia_delta_kg_m2.y;
+	delta_mass_moment_of_inertia_z =
+		result.delta.moment_of_inertia_delta_kg_m2.z;
 	return true;
 }
 EFM_ABI_CATCH_RETURN("ed_fm_change_mass", false, (void)0)
 
-void ed_fm_set_internal_fuel(double fuel) try
+void ed_fm_set_internal_fuel(double fuel_kg) try
 {
 	ensure_module_initialized();
 	if (!DcsBridge::Internal::validate_internal_fuel_input(
-		fuel, bridge().event_reporter())) return;
+		fuel_kg, bridge().event_reporter())) return;
 	bridge().perform_core_preparation(
-		[fuel](Core::Fck1cEfm& core) { core.set_internal_fuel(fuel); });
+		[fuel_kg](Core::Fck1cEfm& core) { core.set_internal_fuel(fuel_kg); });
 }
 EFM_ABI_CATCH_VOID("ed_fm_set_internal_fuel", (void)0)
 
@@ -383,19 +388,20 @@ double ed_fm_get_internal_fuel() try
 {
 	ensure_module_initialized();
 	return bridge().query_core_preparation(
-		[](const Core::Fck1cEfm& core) { return core.internal_fuel(); });
+		[](const Core::Fck1cEfm& core) { return core.internal_fuel_kg(); });
 }
 EFM_ABI_CATCH_RETURN("ed_fm_get_internal_fuel", 0.0, (void)0)
 
 // NOLINTNEXTLINE(readability-function-size): Signature is fixed by the DCS EFM ABI.
 void ed_fm_set_external_fuel(
-	int station, double fuel, double x, double y, double z) try
+	int station, double fuel_kg, double position_body_x_m,
+	double position_body_y_m, double position_body_z_m) try
 {
 	ensure_module_initialized();
 	const Core::ExternalFuelInput command = {
 		station,
-		fuel,
-		Common::Vec3(x, y, z)
+		fuel_kg,
+		Common::Vec3(position_body_x_m, position_body_y_m, position_body_z_m)
 	};
 	if (!DcsBridge::Internal::validate_external_fuel_input(
 		command, bridge().event_reporter())) return;
@@ -408,7 +414,7 @@ double ed_fm_get_external_fuel() try
 {
 	ensure_module_initialized();
 	return bridge().query_core_preparation(
-		[](const Core::Fck1cEfm& core) { return core.external_fuel(); });
+		[](const Core::Fck1cEfm& core) { return core.external_fuel_kg(); });
 }
 EFM_ABI_CATCH_RETURN("ed_fm_get_external_fuel", 0.0, (void)0)
 
@@ -447,16 +453,16 @@ double ed_fm_get_param(unsigned index) try
 }
 EFM_ABI_CATCH_RETURN("ed_fm_get_param", 0.0, (void)0)
 
-void ed_fm_refueling_add_fuel(double fuel) try
+void ed_fm_refueling_add_fuel(double fuel_kg) try
 {
 	ensure_module_initialized();
 	(void)bridge().perform_core_action(
 		{ "ed_fm_refueling_add_fuel" },
-		[fuel](Core::Fck1cEfm& core)
+		[fuel_kg](Core::Fck1cEfm& core)
 		{
 			if (!DcsBridge::Internal::validate_refueling_fuel_input(
-				fuel, bridge().event_reporter())) return;
-			core.add_refueling_fuel(fuel);
+				fuel_kg, bridge().event_reporter())) return;
+			core.add_refueling_fuel(fuel_kg);
 		});
 }
 EFM_ABI_CATCH_VOID("ed_fm_refueling_add_fuel", (void)0)
@@ -551,7 +557,7 @@ bool ed_fm_pop_simulation_event(ed_fm_simulation_event& out) try
 				bridge().output_store().read();
 			if (!output) return;
 			popped = bridge().carrier_bridge().pop_event(
-				{ output->engines[0].throttle_output }, out);
+				{ output->engines[0].throttle_output_normalized }, out);
 		});
 	return popped;
 }
@@ -623,7 +629,7 @@ double ed_fm_get_shake_amplitude() try
 			{ "ed_fm_get_shake_amplitude" });
 		return 0.0;
 	}
-	return output->shake_amplitude;
+	return output->shake_amplitude_normalized;
 }
 EFM_ABI_CATCH_RETURN("ed_fm_get_shake_amplitude", 0.0, (void)0)
 

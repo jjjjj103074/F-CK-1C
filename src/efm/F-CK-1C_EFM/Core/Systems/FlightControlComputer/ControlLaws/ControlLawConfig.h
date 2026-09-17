@@ -2,201 +2,200 @@
 
 #include "Common/Units.h"
 
+#include <array>
+#include <vector>
+
 namespace Systems
 {
-enum FBWCatMode
+enum class StoresConfiguration
 {
-	FBW_CAT1 = 0,
-	FBW_CAT3 = 1
+	Cat1,
+	Cat3
 };
 
-struct FBWCatParams
+struct PilotInputShapingConfig
 {
-	double deadband = 0.0;
-	double hold_engage_time = 0.0;
-	double hold_phi_kp = 0.0;
-	double hold_theta_kp = 0.0;
-	double hold_p_cmd_max = 0.0;
-	double hold_q_cmd_max = 0.0;
-	double alpha_hold_degrade_deg = 0.0;
-	double qbar_min_hold = 0.0;
-	double sat_time = 0.0;
-	double hold_cmd_ratio_limit = 0.0;
-	double hold_decay_tau = 0.0;
-	double command_shape_tau = 0.0;
-	double command_shape_rate = 0.0;
-	double stick_expo = 0.0;
-	double p_cmd_max = 0.0;
-	double r_cmd_max = 0.0;
-	double aoa_soft_deg = 0.0;
-	double aoa_hard_deg = 0.0;
-	double g_soft = 0.0;
-	double g_hard = 0.0;
-	double p_rate_limit = 0.0;
-	double q_rate_limit = 0.0;
-	double r_rate_limit = 0.0;
-	double yaw_damper_beta = 0.0;
-	double yaw_damper_r = 0.0;
+	double deadband_normalized = 0.0;
+	double command_time_constant_s = 0.0;
+	double command_rate_normalized_s = 0.0;
+	double cubic_weight = 0.0;
 };
 
-struct FBWGainSchedulePoint
+struct ManeuverEnvelopeSchedule
 {
-	double qbar = 0.0;
-	double cmd_gain = 0.0;
-	double hold_gain = 0.0;
+	double maximum_roll_command_rad_s = 0.0;
+	double maximum_yaw_command_rad_s = 0.0;
+	double soft_positive_load_factor_g = 0.0;
+	double hard_positive_load_factor_g = 0.0;
+	double roll_rate_limit_rad_s = 0.0;
+	double pitch_rate_limit_rad_s = 0.0;
+	double yaw_rate_limit_rad_s = 0.0;
+};
+
+struct DirectionalControlSchedule
+{
+	double sideslip_damping_s_inv = 0.0;
+	double yaw_rate_damping = 0.0;
+};
+
+struct StoresControlLawSchedule
+{
+	PilotInputShapingConfig pilot_input;
+	ManeuverEnvelopeSchedule envelope;
+	DirectionalControlSchedule directional;
+};
+
+struct GainSchedulePoint
+{
+	double dynamic_pressure_pa = 0.0;
+	double command_gain = 0.0;
 	double damping_gain = 0.0;
 	double limiter_gain = 0.0;
 };
 
-struct FBWGainScheduleValues
+struct GainScheduleValues
 {
-	double cmd_gain = 0.0;
-	double hold_gain = 0.0;
-	double damping_gain = 0.0;
-	double limiter_gain = 0.0;
+	double command_gain = 1.0;
+	double damping_gain = 1.0;
+	double limiter_gain = 1.0;
 };
 
-struct FBWDirectModeConfig
+struct InputSignalManagementConfig
 {
-	// Project-defined per-FCC-tick fallback surface slew.
-	double elevator_command_step_normalized = 0.0125;
-	double aileron_command_step_normalized = 0.02;
-	double rudder_command_step_normalized = 0.012;
+	double signal_filter_time_constant_s = 0.06;
+	double dynamic_pressure_filter_time_constant_s = 0.18;
+	double normal_acceleration_filter_time_constant_s = 0.26;
 };
 
-struct FBWNormalAccelerationConfig
+inline StoresControlLawSchedule make_cat1_schedule()
 {
-	// Project-defined pending F-CK-1C-specific control-law evidence.
+	return {
+		{ 0.03, 0.05, 9.5, 0.10 },
+		{ Common::rad(190.0), Common::rad(80.0), 6.4, 8.8,
+			Common::rad(220.0),
+			Common::rad(170.0), Common::rad(95.0) },
+		{ 0.90, 0.60 }
+	};
+}
+
+inline StoresControlLawSchedule make_cat3_schedule()
+{
+	return {
+		// CAT changes maneuver authority and gains, not the physical controller
+		// center deadband. Keeping this equal to CAT I avoids a control step.
+		{ 0.03, 0.10, 5.5, 0.20 },
+		{ Common::rad(140.0), Common::rad(60.0), 5.8, 7.6,
+			Common::rad(170.0),
+			Common::rad(130.0), Common::rad(75.0) },
+		{ 1.10, 0.80 }
+	};
+}
+
+inline constexpr unsigned kGainScheduleSize = 4;
+
+struct ModeAndGainSchedulingConfig
+{
+	StoresControlLawSchedule cat1 = make_cat1_schedule();
+	StoresControlLawSchedule cat3 = make_cat3_schedule();
+	std::array<GainSchedulePoint, kGainScheduleSize> gain_schedule = {{
+		{ 1500.0, 1.15, 1.15, 0.82 },
+		{ 5000.0, 1.05, 1.00, 0.95 },
+		{ 15000.0, 0.90, 0.90, 1.00 },
+		{ 35000.0, 0.75, 0.80, 0.90 }
+	}};
+	double stores_transition_time_constant_s = 0.45;
+	double guidance_bank_limit_rad = Common::rad(30.0);
+	double guidance_roll_rate_limit_rad_s = Common::rad(20.0);
+	double guidance_minimum_load_factor_g = 0.5;
+	double guidance_maximum_load_factor_g = 2.0;
+	double hard_bank_limit_rad = Common::rad(60.0);
+	double hard_minimum_load_factor_g = -2.5;
+	// Reference-derived F-16XL endpoints. Mach interpolation remains
+	// project-defined; landing selection follows the cockpit gear handle.
+	std::vector<double> angle_of_attack_mach = { 0.0, 0.85, 0.95, 1.5 };
+	std::vector<double> angle_of_attack_limit_rad = {
+		Common::rad(29.0), Common::rad(29.0),
+		Common::rad(26.0), Common::rad(26.0)
+	};
+	double cruise_angle_of_attack_blend_start_rad = Common::rad(19.0);
+	double landing_angle_of_attack_blend_start_rad = Common::rad(10.0);
+	double landing_angle_of_attack_limit_rad = Common::rad(16.0);
+};
+
+struct LongitudinalControlConfig
+{
 	double positive_buffer_minimum_g = 0.25;
 	double negative_soft_minimum_g = 1.0;
 	double negative_soft_ratio = 0.65;
-	double outer_kp_cat1 = 0.34;
-	double outer_kp_cat3 = 0.24;
-	double outer_ki_cat1 = 0.11;
-	double outer_ki_cat3 = 0.06;
-	double limit_range_minimum_g = 0.1;
-	double minimum_aoa_soft_limit_deg = 0.1;
-	double alpha_protection_rate_gain_s_inv = 2.0;
-	double g_limit_activation_tolerance_g = 0.02;
+	// Reference-derived topology; gains are project-defined for this EFM plant.
+	double normal_acceleration_proportional_cat1 = 0.30;
+	double normal_acceleration_proportional_cat3 = 0.22;
+	double normal_acceleration_integral_cat1_s_inv = 0.16;
+	double normal_acceleration_integral_cat3_s_inv = 0.10;
+	double normal_acceleration_anti_windup_s_inv = 1.20;
+	double normal_acceleration_integral_limit_effort = 0.65;
+	double pitch_rate_washout_time_constant_s = 0.35;
+	double pitch_rate_feedback_gain_s = 0.85;
+	double angle_of_attack_stability_gain_rad_inv = 1.20;
+	double pitch_rate_command_proportional_s = 0.88;
+	double pitch_rate_command_integral_gain_rad_inv = 0.48;
+	double pitch_rate_command_anti_windup_s_inv = 1.20;
+	double pitch_rate_command_integral_limit_effort = 1.20;
+	double angle_of_attack_limited_normal_acceleration_g = 1.0;
+	double limit_buffer_bias_g = 0.15;
+	double landing_pitch_rate_limit_rad_s = Common::rad(50.0);
 };
 
-struct FBWHoldDegradeConfig
+struct InnerRateControlConfig
 {
-	// Project-defined state-transition thresholds.
-	double alpha_limit_ratio = 0.95;
-	double gain_zero_threshold = 1e-3;
-	double actuator_timer_maximum_s = 10.0;
+	double roll_proportional = 0.55;
+	double roll_integral = 0.35;
+	double yaw_proportional = 0.65;
+	double yaw_integral = 0.25;
+	double anti_windup_gain = 1.20;
+	double integral_limit = 1.20;
 };
 
-constexpr unsigned kFBWGainScheduleSize = 4;
-
-inline FBWCatParams make_fbw_cat1_params()
+struct SurfaceCommandMixerConfig
 {
-	FBWCatParams params;
-	params.deadband = 0.03;
-	params.hold_engage_time = 0.18;
-	params.hold_phi_kp = 2.8;
-	params.hold_theta_kp = 2.2;
-	params.hold_p_cmd_max = Common::rad(55.0);
-	params.hold_q_cmd_max = Common::rad(42.0);
-	params.alpha_hold_degrade_deg = 15.5;
-	params.qbar_min_hold = 2500.0;
-	params.sat_time = 0.35;
-	params.hold_cmd_ratio_limit = 0.85;
-	params.hold_decay_tau = 0.65;
-	params.command_shape_tau = 0.05;
-	params.command_shape_rate = 9.5;
-	params.stick_expo = 0.10;
-	params.p_cmd_max = Common::rad(190.0);
-	params.r_cmd_max = Common::rad(80.0);
-	params.aoa_soft_deg = 15.0;
-	params.aoa_hard_deg = 21.0;
-	params.g_soft = 6.4;
-	params.g_hard = 8.8;
-	params.p_rate_limit = Common::rad(220.0);
-	params.q_rate_limit = Common::rad(170.0);
-	params.r_rate_limit = Common::rad(95.0);
-	params.yaw_damper_beta = 0.90;
-	params.yaw_damper_r = 0.60;
-	return params;
-}
+	double symmetric_stabilator_limit_rad = Common::rad(25.0);
+	double differential_flaperon_limit_rad = Common::rad(22.0);
+	double rudder_limit_rad = Common::rad(30.0);
+};
 
-inline FBWCatParams make_fbw_cat3_params()
+struct FlightControlOutputConfig
 {
-	FBWCatParams params;
-	params.deadband = 0.05;
-	params.hold_engage_time = 0.26;
-	params.hold_phi_kp = 2.0;
-	params.hold_theta_kp = 1.6;
-	params.hold_p_cmd_max = Common::rad(40.0);
-	params.hold_q_cmd_max = Common::rad(30.0);
-	params.alpha_hold_degrade_deg = 13.5;
-	params.qbar_min_hold = 4000.0;
-	params.sat_time = 0.22;
-	params.hold_cmd_ratio_limit = 0.70;
-	params.hold_decay_tau = 0.40;
-	params.command_shape_tau = 0.10;
-	params.command_shape_rate = 5.5;
-	params.stick_expo = 0.20;
-	params.p_cmd_max = Common::rad(140.0);
-	params.r_cmd_max = Common::rad(60.0);
-	params.aoa_soft_deg = 12.5;
-	params.aoa_hard_deg = 17.5;
-	params.g_soft = 5.8;
-	params.g_hard = 7.6;
-	params.p_rate_limit = Common::rad(170.0);
-	params.q_rate_limit = Common::rad(130.0);
-	params.r_rate_limit = Common::rad(75.0);
-	params.yaw_damper_beta = 1.10;
-	params.yaw_damper_r = 0.80;
-	return params;
-}
+	double selection_transition_time_s = 0.15;
+	double tracking_tolerance_rad = Common::rad(2.0);
+};
 
-struct FBWControllerConfig
+struct FlightControlDiagnosticsConfig
 {
-	FBWDirectModeConfig direct_mode;
-	FBWNormalAccelerationConfig normal_acceleration;
-	FBWHoldDegradeConfig hold_degrade;
-	// F-16 reference-derived AP guidance envelope.
-	double guidance_bank_limit_rad = Common::rad(30.0);
-	double guidance_roll_rate_limit_rad_s = Common::rad(20.0);
-	double guidance_min_normal_acceleration_g = 0.5;
-	double guidance_max_normal_acceleration_g = 2.0;
-	// Project-defined outer bound; control-law CAT limits remain authoritative.
-	double hard_bank_limit_rad = Common::rad(60.0);
-	double hard_min_normal_acceleration_g = -2.5;
-	// Project-defined developer-only override; not an aircraft capability.
-	double developer_g_limiter_override_margin_g = 2.0;
-	double pitch_attitude_error_to_rate_gain = 2.5;
-	double vertical_speed_error_to_acceleration_gain = 0.25;
-	double bank_angle_error_to_roll_rate_gain = 2.0;
+	// Project-defined diagnostic qualification; this does not alter the law.
+	double control_authority_persistence_s = 0.5;
+	double minimum_alpha_recovery_rate_rad_s = Common::rad(0.5);
+};
+
+struct FlightControlLawsConfig
+{
+	LongitudinalControlConfig longitudinal;
+	InnerRateControlConfig inner_rate;
+	SurfaceCommandMixerConfig surface_mixer;
+};
+
+struct GuidanceCoordinationConfig
+{
+	double pitch_error_to_rate_gain_s_inv = 2.5;
+	double vertical_speed_error_to_acceleration_gain_s_inv = 0.25;
+	double bank_error_to_roll_rate_gain_s_inv = 2.0;
 	double coordinated_turn_minimum_speed_mps = 30.0;
-	FBWCatParams cat1 = make_fbw_cat1_params();
-	FBWCatParams cat3 = make_fbw_cat3_params();
-	FBWGainSchedulePoint gain_schedule[kFBWGainScheduleSize] = {
-		{ 1500.0, 1.15, 1.20, 1.15, 0.82 },
-		{ 5000.0, 1.05, 1.05, 1.00, 0.95 },
-		{ 15000.0, 0.90, 0.85, 0.90, 1.00 },
-		{ 35000.0, 0.75, 0.65, 0.80, 0.90 }
-	};
-	double mode_switch_tau = 0.45;
-	double signal_filter_tau = 0.06;
-	double qbar_filter_tau = 0.18;
-	double kp_p = 0.55;
-	double ki_p = 0.35;
-	double kp_q = 0.88;
-	double ki_q = 0.48;
-	double kp_r = 0.65;
-	double ki_r = 0.25;
-	double aw_gain = 1.20;
-	double int_limit = 1.20;
-	double outer_aw_gain = 1.10;
-	double outer_int_limit = Common::rad(75.0);
-	double nz_filter_tau = 0.26;
-	double pitch_ref_tau = 0.14;
-	double pitch_ref_rate_deg_s = 90.0;
-	double nz_limit_gain_floor = 0.58;
-	double nz_limit_buffer_bias = 0.15;
-	double q_cmd_land_max_deg = 50.0;
+};
+
+struct FlightControlDevelopmentConfig
+{
+	bool direct_control_law = false;
+	bool g_limiter_override_available = false;
+	bool experimental_auto_throttle_available = false;
+	double g_limiter_override_margin_g = 2.0;
 };
 }

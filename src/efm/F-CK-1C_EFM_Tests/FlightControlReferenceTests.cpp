@@ -1,207 +1,213 @@
 #include "TestHarness.h"
 
 #include "Common/Units.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/ConfigurationAndMode.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/ControlLawMath.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/ControlReferenceSelection.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/GuidanceCoordination.h"
-#include "Core/Systems/FlightControlComputer/ControlLaws/PilotCommandLaw.h"
+#include "Core/Systems/FlightControlComputer/CommandSystem/FlightControlCommandSystem.h"
+#include "Core/Systems/FlightControlComputer/Configuration/FlightControlComputerConfig.h"
 
 #include <cmath>
 #include <variant>
 
 namespace
 {
-constexpr double kTolerance = 1e-9;
+constexpr double kTolerance = 1.0e-9;
 constexpr double kTestAirspeedMps = 150.0;
+constexpr double kTestAltitudeFt = 10000.0;
+constexpr double kTestHeadingDeg = 90.0;
 
-Systems::ConditionedFlightControlInput nominal_flight()
+struct CommandSystemFixture
 {
-	Systems::ConditionedFlightControlInput flight;
-	flight.dt_s = 1.0 / 64.0;
-	flight.dynamic_pressure_pa = 5000.0;
-	flight.alpha_limit_deg = 20.0;
-	flight.indicated_airspeed_mps = kTestAirspeedMps;
-	flight.normal_acceleration_g = 1.0;
-	return flight;
-}
+	Core::Systems::FlightControlComputerConfig config =
+		Core::Systems::fck1c_flight_control_computer_config();
+	::Systems::ModeAndGainScheduling scheduling{ config.mode_and_gain };
+	Core::Systems::FlightControlCommandSystem system{ config, false };
+	Core::Systems::FlightControlCommandSystemInput input;
 
-Systems::ManeuverEnvelope envelope(
-	const Systems::FBWControllerConfig& config)
-{
-	return Systems::make_maneuver_envelope(
-		config, { config.cat1, 20.0, false });
-}
+	CommandSystemFixture()
+	{
+		input.flight.dt_s = 1.0 / 64.0;
+		input.flight.dynamic_pressure_pa = 5000.0;
+		input.flight.indicated_airspeed_mps = kTestAirspeedMps;
+		input.flight.flight_path_angle_available = true;
+		input.flight.normal_acceleration_g = 1.0;
+		input.flight.pressure_altitude_ft = kTestAltitudeFt;
+		input.flight.pressure_altitude_available = true;
+		input.flight.magnetic_heading_deg = kTestHeadingDeg;
+		input.flight.magnetic_heading_available = true;
+		input.flight.mach = 0.5;
+		input.configuration = scheduling.update(
+			{ input.flight.dt_s, input.flight.dynamic_pressure_pa,
+				input.flight.mach, true, false, 0.0, false });
+	}
 
-Core::Systems::GuidanceCoordinationInput automatic_input()
-{
-	Systems::FBWControllerConfig config;
-	Core::Systems::AutomaticFlightGuidanceReference automatic;
-	automatic.longitudinal_authority =
-		Core::Systems::AuthorityState::Automatic;
-	automatic.lateral_authority =
-		Core::Systems::AuthorityState::Automatic;
-	automatic.vertical_type =
-		Core::Systems::VerticalGuidanceReferenceType::VerticalSpeed;
-	automatic.bank_angle_reference_rad = Common::rad(30.0);
-	const Core::Systems::CoordinatedManeuverReference manual;
-	return {
-		nominal_flight(),
-		Core::Systems::select_flight_reference(manual, automatic),
-		envelope(config),
-		config
-	};
-}
+	void send(Core::CommandId id)
+	{
+		system.handle_command({ id, 1.0 });
+	}
 
-Core::Systems::AutomaticLongitudinalFlightReference&
-automatic_longitudinal(
-	Core::Systems::GuidanceCoordinationInput& input)
+	const Core::Systems::FlightControlCommandSystemResult& step()
+	{
+		return system.update(input);
+	}
+};
+
+void engage_modes(
+	CommandSystemFixture& fixture,
+	Core::CommandId vertical,
+	Core::CommandId lateral)
 {
-	return std::get<Core::Systems::AutomaticLongitudinalFlightReference>(
-		input.selected.longitudinal);
+	(void)fixture.step();
+	fixture.send(vertical);
+	fixture.send(lateral);
+	fixture.send(Core::CommandId::EngageAutopilot);
+	(void)fixture.step();
 }
 
 void test_pilot_mapping_uses_physical_references(Tests::Context& context)
 {
-	Systems::FBWControllerConfig config;
-	Systems::ConditionedFlightControlInput flight = nominal_flight();
-	flight.pilot_pitch_normalized = 0.5;
-	flight.pilot_roll_normalized = -0.4;
-	flight.pilot_yaw_normalized = 0.3;
-	const Systems::FBWGainScheduleValues gains =
-		Systems::fbw_eval_gain_schedule(config, flight.dynamic_pressure_pa);
-	const auto result = Systems::make_pilot_maneuver_reference(
-		{ flight, config, config.cat1, gains, envelope(config) });
-	TEST_EXPECT(context, result.longitudinal.normal_acceleration_reference_g > 1.0);
-	TEST_EXPECT(context, result.longitudinal.pitch_rate_feedforward_rad_s > 0.0);
-	TEST_EXPECT(context, result.lateral_directional.roll_rate_reference_rad_s < 0.0);
-	TEST_EXPECT(context, result.lateral_directional.yaw_rate_feedforward_rad_s > 0.0);
+	CommandSystemFixture fixture;
+	fixture.input.signals.pilot_pitch_normalized = 0.5;
+	fixture.input.signals.pilot_roll_normalized = -0.4;
+	fixture.input.signals.pilot_yaw_normalized = 0.3;
+	const auto& reference = fixture.step().coordinated.reference;
+	const auto* normal = std::get_if<Core::Systems::NormalAccelerationCommand>(
+		&reference.longitudinal.command);
+	TEST_EXPECT(context, normal != nullptr);
+	TEST_EXPECT(context, normal != nullptr && normal->target_g > 1.0);
+	TEST_EXPECT(
+		context, reference.lateral_directional.roll_rate_reference_rad_s < 0.0);
+	TEST_EXPECT(
+		context, reference.lateral_directional.yaw_rate_feedforward_rad_s > 0.0);
 }
 
-void test_reference_selection_preserves_axis_authority(
+void test_gear_handle_selects_single_pitch_rate_command(
 	Tests::Context& context)
 {
-	Core::Systems::CoordinatedManeuverReference manual;
-	manual.longitudinal.normal_acceleration_reference_g = 1.5;
-	manual.lateral_directional.roll_rate_reference_rad_s = 0.25;
-	Core::Systems::AutomaticFlightGuidanceReference automatic;
-	automatic.longitudinal_authority =
-		Core::Systems::AuthorityState::Automatic;
-	automatic.lateral_authority = Core::Systems::AuthorityState::Bypassed;
-	const auto selected =
-		Core::Systems::select_flight_reference(manual, automatic);
+	CommandSystemFixture fixture;
+	fixture.input.signals.landing_gear_handle_down = true;
+	fixture.input.signals.pilot_pitch_normalized = 0.5;
+	const auto& command = fixture.step().coordinated.reference
+		.longitudinal.command;
+	const auto* pitch_rate =
+		std::get_if<Core::Systems::PitchRateCommand>(&command);
+	TEST_EXPECT(context, pitch_rate != nullptr);
 	TEST_EXPECT(
-		context,
-		selected.longitudinal_authority ==
-			Core::Systems::AuthorityState::Automatic);
-	TEST_EXPECT(
-		context,
-		selected.lateral_authority == Core::Systems::AuthorityState::Bypassed);
-	TEST_EXPECT(
-		context,
-		std::holds_alternative<
-			Core::Systems::AutomaticLongitudinalFlightReference>(
-				selected.longitudinal));
-	TEST_EXPECT(
-		context,
-		std::holds_alternative<Core::Systems::ManualLateralFlightReference>(
-			selected.lateral));
-	TEST_EXPECT_NEAR(
-		context,
-		std::get<Core::Systems::ManualLateralFlightReference>(
-			selected.lateral).roll_rate_reference_rad_s,
-		0.25, kTolerance);
+		context, pitch_rate != nullptr && pitch_rate->target_rad_s > 0.0);
+}
+
+void test_public_boundary_selects_axis_authority(Tests::Context& context)
+{
+	CommandSystemFixture fixture;
+	engage_modes(fixture,
+		Core::CommandId::SelectAutopilotAltitudeHold,
+		Core::CommandId::SelectAutopilotHeadingSelect);
+	const auto& selected = fixture.step().selected;
+	TEST_EXPECT(context, selected.longitudinal_authority ==
+		Core::Systems::AuthorityState::Automatic);
+	TEST_EXPECT(context, selected.lateral_authority ==
+		Core::Systems::AuthorityState::Automatic);
+	TEST_EXPECT(context, std::holds_alternative<
+		Core::Systems::AutomaticLongitudinalFlightReference>(
+			selected.longitudinal));
+	TEST_EXPECT(context, std::holds_alternative<
+		Core::Systems::AutomaticLateralFlightReference>(selected.lateral));
 }
 
 void test_level_turn_compensation_is_applied_once(Tests::Context& context)
 {
-	const auto result = Core::Systems::coordinate_guidance(automatic_input());
+	CommandSystemFixture fixture;
+	fixture.input.flight.roll_attitude_rad = Common::rad(30.0);
+	engage_modes(fixture,
+		Core::CommandId::SelectAutopilotAltitudeHold,
+		Core::CommandId::SelectAutopilotRollAttitudeHold);
+	const auto& result = fixture.step();
 	const double expected_nz_g = 1.0 / std::cos(Common::rad(30.0));
-	TEST_EXPECT_NEAR(
-		context,
-		result.reference.longitudinal.normal_acceleration_reference_g,
-		expected_nz_g,
-		kTolerance);
-	TEST_EXPECT(
-		context,
-		result.constraint.reason == Core::Systems::ConstraintReason::None);
+	const auto& command = result.coordinated.reference.longitudinal.command;
+	TEST_EXPECT_NEAR(context,
+		std::get<Core::Systems::NormalAccelerationCommand>(command).target_g,
+		expected_nz_g, kTolerance);
+	TEST_EXPECT(context, result.coordinated.constraint.reason ==
+		Core::Systems::ConstraintReason::None);
 }
 
-void test_joint_feasibility_reports_limiting_axis(Tests::Context& context)
-{
-	constexpr double kHighClimbReferenceMps = 30.0;
-	auto input = automatic_input();
-	automatic_longitudinal(input).vertical_speed_reference_mps =
-		kHighClimbReferenceMps;
-	const auto result = Core::Systems::coordinate_guidance(input);
-	TEST_EXPECT(
-		context,
-		result.constraint.reason ==
-			Core::Systems::ConstraintReason::LateralConstrainedByVerticalAuthority);
-	TEST_EXPECT(context, result.constraint.lateral_constrained);
-	TEST_EXPECT(
-		context,
-		result.reference.longitudinal.normal_acceleration_reference_g <=
-			input.envelope.guidance.maximum_normal_acceleration_g);
-}
-
-void test_vertical_overload_keeps_vertical_reason(Tests::Context& context)
-{
-	constexpr double kUnmaintainableClimbReferenceMps = 45.0;
-	auto input = automatic_input();
-	automatic_longitudinal(input).vertical_speed_reference_mps =
-		kUnmaintainableClimbReferenceMps;
-	const auto result = Core::Systems::coordinate_guidance(input);
-	TEST_EXPECT(
-		context,
-		result.constraint.reason ==
-			Core::Systems::ConstraintReason::VerticalReferenceUnmaintainable);
-	TEST_EXPECT(context, result.constraint.vertical_constrained);
-}
-
-void test_combined_constraint_recovers_when_request_becomes_feasible(
+void test_combined_reference_reports_vertical_constraint(
 	Tests::Context& context)
 {
-	constexpr double kConstrainedClimbReferenceMps = 30.0;
-	auto input = automatic_input();
-	automatic_longitudinal(input).vertical_speed_reference_mps =
-		kConstrainedClimbReferenceMps;
-	const auto constrained = Core::Systems::coordinate_guidance(input);
-	TEST_EXPECT(context, constrained.constraint.lateral_constrained);
-	automatic_longitudinal(input).vertical_speed_reference_mps = 0.0;
-	const auto recovered = Core::Systems::coordinate_guidance(input);
-	TEST_EXPECT(
-		context,
-		recovered.constraint.reason == Core::Systems::ConstraintReason::None);
-	TEST_EXPECT(context, !recovered.constraint.vertical_constrained);
-	TEST_EXPECT(context, !recovered.constraint.lateral_constrained);
+	CommandSystemFixture fixture;
+	fixture.config.guidance_coordination
+		.vertical_speed_error_to_acceleration_gain_s_inv = 1.0;
+	Core::Systems::FlightControlCommandSystem constrained(
+		fixture.config, false);
+	(void)constrained.update(fixture.input);
+	constrained.handle_command(
+		{ Core::CommandId::SelectAutopilotAltitudeHold, 1.0 });
+	constrained.handle_command(
+		{ Core::CommandId::SelectAutopilotRollAttitudeHold, 1.0 });
+	constrained.handle_command({ Core::CommandId::EngageAutopilot, 1.0 });
+	(void)constrained.update(fixture.input);
+	fixture.input.flight.pressure_altitude_ft -= 1000.0;
+	fixture.input.flight.vertical_speed_ft_s = -100.0;
+	const auto& result = constrained.update(fixture.input);
+	TEST_EXPECT(context, result.coordinated.constraint.reason ==
+		Core::Systems::ConstraintReason::VerticalReferenceUnmaintainable);
+	TEST_EXPECT(context, result.coordinated.constraint.vertical_constrained);
 }
 
-void test_coordinated_turn_preserves_manual_yaw(Tests::Context& context)
+void test_right_bank_requests_right_yaw(Tests::Context& context)
 {
-	auto input = automatic_input();
-	const double manual_yaw_rate_rad_s = 0.2;
-	input.selected.directional.yaw_rate_feedforward_rad_s =
-		manual_yaw_rate_rad_s;
-	const auto result = Core::Systems::coordinate_guidance(input);
-	TEST_EXPECT(
-		context,
-		result.reference.lateral_directional.yaw_rate_feedforward_rad_s >
-			manual_yaw_rate_rad_s);
-	TEST_EXPECT(
-		context,
-		result.reference.directional_authority ==
-			Core::Systems::AuthorityState::Manual);
+	CommandSystemFixture fixture;
+	fixture.input.flight.roll_attitude_rad = Common::rad(30.0);
+	engage_modes(fixture,
+		Core::CommandId::SelectAutopilotAltitudeHold,
+		Core::CommandId::SelectAutopilotRollAttitudeHold);
+	const auto& reference = fixture.step().coordinated.reference;
+	// Core local-body +y is nose-left, so right coordinated yaw is negative.
+	TEST_EXPECT(context,
+		reference.lateral_directional.yaw_rate_feedforward_rad_s < 0.0);
+}
+
+struct VerticalCommandExpectation
+{
+	Core::CommandId vertical_mode =
+		Core::CommandId::SelectAutopilotPitchAttitudeHold;
+	bool gear_handle_down = false;
+	bool expect_pitch_rate = false;
+};
+
+void expect_vertical_command_mode(
+	Tests::Context& context,
+	const VerticalCommandExpectation& expected)
+{
+	CommandSystemFixture fixture;
+	fixture.input.signals.landing_gear_handle_down = expected.gear_handle_down;
+	engage_modes(fixture, expected.vertical_mode,
+		Core::CommandId::SelectAutopilotRollAttitudeHold);
+	const auto& command =
+		fixture.step().coordinated.reference.longitudinal.command;
+	TEST_EXPECT(context,
+		std::holds_alternative<Core::Systems::PitchRateCommand>(command) ==
+			expected.expect_pitch_rate);
+}
+
+void test_gear_mode_selects_ap_longitudinal_command(Tests::Context& context)
+{
+	const Core::CommandId pitch_attitude =
+		Core::CommandId::SelectAutopilotPitchAttitudeHold;
+	const Core::CommandId altitude =
+		Core::CommandId::SelectAutopilotAltitudeHold;
+	expect_vertical_command_mode(context, { pitch_attitude, false, false });
+	expect_vertical_command_mode(context, { altitude, false, false });
+	expect_vertical_command_mode(context, { pitch_attitude, true, true });
+	expect_vertical_command_mode(context, { altitude, true, true });
 }
 }
 
 void run_flight_control_reference_tests(Tests::Context& context)
 {
 	test_pilot_mapping_uses_physical_references(context);
-	test_reference_selection_preserves_axis_authority(context);
+	test_gear_handle_selects_single_pitch_rate_command(context);
+	test_public_boundary_selects_axis_authority(context);
 	test_level_turn_compensation_is_applied_once(context);
-	test_joint_feasibility_reports_limiting_axis(context);
-	test_vertical_overload_keeps_vertical_reason(context);
-	test_combined_constraint_recovers_when_request_becomes_feasible(context);
-	test_coordinated_turn_preserves_manual_yaw(context);
+	test_combined_reference_reports_vertical_constraint(context);
+	test_right_bank_requests_right_yaw(context);
+	test_gear_mode_selects_ap_longitudinal_command(context);
 }

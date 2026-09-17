@@ -1,5 +1,7 @@
 #include "CockpitBridge.h"
 
+#include "../../Common/Angles.h"
+#include "../../Common/Units.h"
 #include "../../DcsIds/CockpitParams.g.h"
 
 #include <cmath>
@@ -97,6 +99,35 @@ bool all_success(
 	}
 	return true;
 }
+
+bool any_invalid_numeric(
+	std::initializer_list<
+		DcsBridge::Internal::CockpitParameterReadResult> reads)
+{
+	for (const auto& read : reads)
+	{
+		if (read.invalid_numeric)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+std::optional<Core::ObservationInvalidReason> read_failure_reason(
+	std::initializer_list<
+		DcsBridge::Internal::CockpitParameterReadResult> reads)
+{
+	if (any_invalid_numeric(reads))
+	{
+		return Core::ObservationInvalidReason::InvalidNumeric;
+	}
+	if (!all_success(reads))
+	{
+		return Core::ObservationInvalidReason::ParameterUnavailable;
+	}
+	return std::nullopt;
+}
 }
 
 namespace DcsBridge
@@ -108,6 +139,10 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 	using namespace DcsIds;
 	return { {
 		cockpit_parameter_writer(CockpitParams::TemperatureC),
+		cockpit_parameter_reader(CockpitParams::PressureAltitudeAvailable),
+		cockpit_parameter_reader(CockpitParams::PressureAltitudeM),
+		cockpit_parameter_reader(CockpitParams::MagneticHeadingAvailable),
+		cockpit_parameter_reader(CockpitParams::MagneticHeadingRad),
 		cockpit_parameter_reader(RawCockpitParams::RadarMode),
 		cockpit_parameter_reader(RawCockpitParams::RadarSttAzimuth),
 		cockpit_parameter_reader(RawCockpitParams::RadarSttElevation),
@@ -152,16 +187,54 @@ CockpitBridge::CockpitBridge(cockpit_param_api api)
 CockpitStepInput CockpitBridge::read_step_input()
 {
 	std::lock_guard<std::mutex> lock(mutex_);
+	const CockpitValueResult<Core::PressureAltitudeObservation> altitude =
+		read_pressure_altitude();
+	const CockpitValueResult<Core::MagneticHeadingObservation> heading =
+		read_magnetic_heading();
 	const CockpitValueResult<Core::RadarObservation> radar = read_radar();
 	const CockpitValueResult<Core::IrSeekerObservation> ir = read_ir_seeker();
 	const CockpitValueResult<Core::WeaponStationObservation> weapon =
 		read_weapon_stations();
 	CockpitStepInput result;
-	result.cockpit = { radar.value, ir.value, weapon.value };
-	result.events = radar.events
+	result.cockpit = {
+		heading.value,
+		radar.value,
+		ir.value,
+		weapon.value,
+		altitude.value
+	};
+	result.events = altitude.events
+		.merged(heading.events)
+		.merged(radar.events)
 		.merged(ir.events)
 		.merged(weapon.events);
 	return result;
+}
+
+CockpitValueResult<Core::PressureAltitudeObservation>
+CockpitBridge::read_pressure_altitude()
+{
+	const auto available =
+		read_parameter(Parameter::PressureAltitudeAvailable);
+	const auto altitude = read_parameter(Parameter::PressureAltitudeM);
+	const auto reads = { available, altitude };
+	Core::PressureAltitudeObservation result;
+	result.status.revision = pressure_altitude_revision_;
+	if (const auto failure = read_failure_reason(reads))
+	{
+		result.status.invalid_reason = *failure;
+		return { result, events_from(reads) };
+	}
+	if (!is_enabled(available.value))
+	{
+		result.status.invalid_reason =
+			Core::ObservationInvalidReason::NotProvided;
+		return { result, events_from(reads) };
+	}
+	result.pressure_altitude_ft = Common::feet(altitude.value);
+	result.status = { true, ++pressure_altitude_revision_,
+		Core::ObservationInvalidReason::None };
+	return { result, events_from(reads) };
 }
 
 CockpitParameterEvents CockpitBridge::export_temperature(double dcs_temperature)
@@ -179,6 +252,33 @@ CockpitParameterReadResult CockpitBridge::read_parameter(Parameter parameter)
 {
 	CockpitParameterEndpoint& slot = slots_[static_cast<std::size_t>(parameter)];
 	return slot.read_number(api_);
+}
+
+CockpitValueResult<Core::MagneticHeadingObservation>
+CockpitBridge::read_magnetic_heading()
+{
+	const auto available =
+		read_parameter(Parameter::MagneticHeadingAvailable);
+	const auto heading = read_parameter(Parameter::MagneticHeadingRad);
+	const auto reads = { available, heading };
+	Core::MagneticHeadingObservation result;
+	result.status.revision = magnetic_heading_revision_;
+	if (const auto failure = read_failure_reason(reads))
+	{
+		result.status.invalid_reason = *failure;
+		return { result, events_from(reads) };
+	}
+	if (!is_enabled(available.value))
+	{
+		result.status.invalid_reason =
+			Core::ObservationInvalidReason::NotProvided;
+		return { result, events_from(reads) };
+	}
+	result.magnetic_heading_deg =
+		Common::wrap_heading_deg(Common::deg(heading.value));
+	result.status = { true, ++magnetic_heading_revision_,
+		Core::ObservationInvalidReason::None };
+	return { result, events_from(reads) };
 }
 
 CockpitValueResult<Core::RadarObservation> CockpitBridge::read_radar()
@@ -202,10 +302,9 @@ CockpitValueResult<Core::RadarObservation> CockpitBridge::read_radar()
 	const CockpitParameterEvents events = events_from(reads);
 	Core::RadarObservation result;
 	result.status.revision = radar_revision_;
-	if (!all_success(reads))
+	if (const auto failure = read_failure_reason(reads))
 	{
-		result.status.invalid_reason =
-			Core::ObservationInvalidReason::ParameterUnavailable;
+		result.status.invalid_reason = *failure;
 		return { result, events };
 	}
 	const std::optional<Core::RadarMode> parsed_mode =
@@ -246,10 +345,9 @@ CockpitValueResult<Core::IrSeekerObservation> CockpitBridge::read_ir_seeker()
 	const CockpitParameterEvents events = events_from(reads);
 	Core::IrSeekerObservation result;
 	result.status.revision = ir_seeker_revision_;
-	if (!all_success(reads))
+	if (const auto failure = read_failure_reason(reads))
 	{
-		result.status.invalid_reason =
-			Core::ObservationInvalidReason::ParameterUnavailable;
+		result.status.invalid_reason = *failure;
 		return { result, events };
 	}
 	result.locked = is_enabled(lock.value);
@@ -278,6 +376,12 @@ Core::ObservationStatus CockpitBridge::validate_weapon_station_status(
 	const WeaponStationValues& values)
 {
 	Core::ObservationStatus status;
+	if (values.invalid_numeric)
+	{
+		status.invalid_reason =
+			Core::ObservationInvalidReason::InvalidNumeric;
+		return status;
+	}
 	if (!values.readable)
 	{
 		status.invalid_reason =
@@ -363,6 +467,7 @@ CockpitBridge::read_weapon_station_values()
 	};
 	const WeaponStationValues values = {
 		all_success(reads),
+		any_invalid_numeric(reads),
 		available.value,
 		revision.value,
 		reason.value,

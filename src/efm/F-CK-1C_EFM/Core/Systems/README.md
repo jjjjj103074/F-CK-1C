@@ -11,7 +11,7 @@ snapshot and does not call or own concrete Systems.
 | System | Rate | Timing evidence | Responsibility |
 |---|---:|---|---|
 | `PilotControls` | 64 Hz | Project-defined fallback | DCS command integration and normalized pilot-control signals |
-| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | FBW/AFCS laws and normalized actuator commands |
+| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | FLCC input processing, FBW/AFCS laws, and physical-radian actuator demands |
 | `FlightControlActuationSystem` | 256 Hz | Project-defined numerical integration rate | Elevator, aileron, and rudder actuator dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Project-defined fallback | Flaps, slats, and airbrake |
 | `LandingGear` | 64 Hz | Project-defined fallback | Gear, brakes, NWS, wheels, and suspension state |
@@ -27,6 +27,52 @@ No reliable device-specific F-16 or F-CK-1C rate was identified for the other
 current Systems. Their 64 Hz values are explicitly project-defined fallbacks,
 not aircraft facts. The 256 Hz actuation rate is a project-defined numerical
 integration choice, not a claimed real-aircraft sampling or servo rate.
+
+## Flight-data units through the pipeline
+
+The project-wide normative contract is
+[`docs/EFM_UNIT_CONVENTIONS.md`](../../../../../docs/EFM_UNIT_CONVENTIONS.md).
+This section summarizes how Systems apply it; it does not define AP-only rules.
+
+Units are part of each typed contract rather than an assumption local to a
+controller. The required chain is:
+
+| Stage | Contract | Unit rule |
+|---|---|---|
+| DCS atmosphere input | `AtmosphereInput` | altitude m, temperature K, speed/wind m/s, density kg/m^3, pressure Pa; field suffixes are authoritative |
+| DCS surface input | `SurfaceInput` | heights m, world normal dimensionless unit vector |
+| DCS mass input | `MassStateInput` | mass kg, body position m, body moment of inertia kg*m^2 |
+| DCS world state | `WorldKinematicsInput` | world position m, velocity m/s, acceleration m/s^2, angular rate rad/s, angular acceleration rad/s^2 |
+| DCS body adapter | `BodyKinematicsInput` | body velocity m/s, acceleration m/s^2, attitude/aerodynamic angles rad, rates rad/s; DCS handedness retained |
+| retained System input | `AircraftObservation` | explicit `_m`, `_mps`, `_pa`, `_g`, `_deg`, `_rad`, and `_rad_s` field suffixes |
+| pilot input | `PilotControlSignal` | normalized [-1, 1]; pull, right roll, and left yaw positive |
+| FCC observation | `FlightControlObservation` | pressure-altitude ft, vertical speed ft/s, speed m/s, pressure Pa, load factor g, aerodynamic/attitude angles rad, rates rad/s, magnetic heading deg |
+| AFCS selected target | `AutopilotModeLogicState` | pitch/roll rad, altitude ft, Heading Set exact integer degrees 0..359 |
+| AFCS guidance | `AutomaticFlightGuidanceReference` | attitude/bank rad, vertical speed ft/s; experimental throttle remains normalized |
+| shared control reference | `CoordinatedManeuverReference` | normal acceleration g, pitch/roll/yaw rates rad/s, sideslip rad |
+| FCC output | `FlightControlActuatorCommand` | named primary-surface demands in physical rad |
+| actuator state | `FlightControlActuatorState` | physical surface position rad and rate rad/s |
+| aerodynamic model input | private `AerodynamicsFrameInput` | body position m, aerodynamic/attitude angles rad, rates rad/s, primary surfaces rad; secondary devices remain normalized; legacy coefficient schedules receive deg explicitly |
+| EFM force output | `ForceMomentOutput` | DCS body force N, body moment N*m, center-of-mass position m |
+| diagnostic output | `FlightOutput` / `ControlOutput` | physical suffixes preserved; every control field is explicitly `_normalized` |
+
+The sign convention also applies outside AFCS. `PilotControlSignal`, manual
+FBW references, coordinated-turn feed-forward, measured body rates, actuator
+commands, the aerodynamic model, frame output, Debug Watch, and CSV all use
+the same Core local-body convention. Right yaw is therefore negative in those
+contracts. The only raw control conversion is at the DCS input adapter: a DCS
+pedal-axis value is converted before `PilotControlSignal` is published.
+
+Core force and moment vectors retain the DCS local body axes because they are
+returned directly to the EFM ABI: x forward, y up, z right; force is N, moment
+is N*m, and application position is m. No System may reinterpret a component
+as magnetic heading or silently invert it.
+
+Degrees are deliberately retained in the magnetic-heading loop, pilot-selected
+whole-degree Heading Set, and legacy aerodynamic schedules defined in degrees.
+Attitude, AOA, sideslip, body-rate, and primary-surface control loops use
+radians. Conversion occurs at the owning boundary, never incrementally on each
+Heading Set press.
 
 ## System contract
 
@@ -154,20 +200,22 @@ boundary and DCSBridge records it once.
 
 ## Flight-control ownership
 
-`FlightControlComputer` is one physical-box System. Its `Autopilot/` and
+`FlightControlComputer` is one physical-box System. Its Command System and
 `ControlLaws/` directories are software Modules inside that box, not additional
 Systems and not independently scheduled devices. One 64 Hz FCC tick uses one
-conditioned observation snapshot and follows this chain:
+conditioned observation snapshot and follows this chain. The Executive gates
+32 Hz pilot shaping and 4 Hz slow gain scheduling by exact integer divisors of
+the 64 Hz device clock:
 
 ```text
 FlightControlObservation + PilotControlSignal + actuator feedback
 -> InputSignalManagement
--> ConfigurationAndMode (CAT schedule + this-tick maneuver envelope)
--> AP ModeLogic and vertical/lateral guidance
--> PilotCommandLaw
--> per-axis ControlReferenceSelection
--> joint GuidanceCoordination
--> common FBW inner loops and protection
+-> FlightStateComputation
+-> ModeAndGainScheduling (CAT schedule + this-tick maneuver envelope)
+-> FlightControlCommandSystem (pilot + AFCS + authority + coordination)
+-> FlightControlLaws (axis laws + protection + surface mixer)
+-> FlightControlOutputSystem
+-> FlightControlDiagnostics (read-only projection)
 -> FlightControlActuatorCommand
 -> FlightControlActuationSystem
 -> FlightControlActuatorState feedback
@@ -177,8 +225,27 @@ The AP owns selected targets, capture shaping, mode state, bypass,
 stick-steering, and tracking/degradation monitoring. It publishes physical
 pitch-attitude, vertical-speed, and bank-angle references; it never overwrites
 pilot axes or publishes stick-equivalent pitch/roll commands. Manual and AP
-references meet at `ControlReferenceSelection`, then use the same coordination,
-CAT schedule, protection, inner-rate loop, and actuator-feedback path.
+references meet inside `FlightControlCommandSystem`, then use the same
+coordination, CAT schedule, protection, axis laws, and actuator-feedback path.
+
+The current pilot-facing mode model follows the F-16A/B Blocks 10/15
+reference. A separate `AUTOPILOT` switch enables or disables the AP; PITCH
+selects `ATT HOLD` or `ALT HOLD`; ROLL independently selects `ATT HOLD` or
+`HDG SEL`. Heading Set is a persistent whole-degree value and is converted to
+radians only inside lateral guidance. `STRG SEL` is deliberately absent because
+it is not part of this F-16A/B reference. These are Reference-derived project
+decisions, not confirmed F-CK-1C controls. Reference:
+[T.O. 1F-16A-1 F-16A/B Flight Manual](https://www.aahs-online.org/resources/e-library/fm/USAF-F16A_B-Flight-Manual.pdf).
+
+DCS body-kinematics yaw remains `world_yaw_rad`: it is simulator orientation
+used by the physics/state boundary and is never renamed or converted into the
+aviation term Heading. The cockpit adapter samples DCS
+`getMagneticHeading()` at a Project-defined 64 Hz because no confirmed
+F-CK-1C sampling rate is public. It publishes a typed availability plus
+`magnetic_heading_deg` observation. HMCS Heading and AP `HDG SEL` consume that
+same observation; they do not fall back to world yaw. Heading Set remains a
+persistent whole-degree pilot value and is converted to radians only inside
+lateral guidance.
 
 `GuidanceCoordination` consumes all selected axes together. It owns the single
 bank-to-lift compensation and coordinated-turn calculation, returns an explicit

@@ -1,68 +1,57 @@
 #include "TestHarness.h"
 
-#include "Core/Systems/FlightControlComputer/ControlLaws/InnerLoopControl.h"
+#include "Core/Systems/FlightControlComputer/ControlLaws/ControlLaws.h"
+#include "Core/Systems/FlightControlComputer/Configuration/FlightControlComputerConfig.h"
 
 namespace
 {
-constexpr double kTolerance = 1e-9;
-
-void test_rate_reference_is_limited_per_axis(Tests::Context& context)
+::Systems::FlightControlLawsInput nominal_input()
 {
-	const Systems::LimitedBodyRateReference result =
-		Systems::limit_body_rate_reference(
-			{ 2.0, -3.0, 0.5 },
-			{ 1.0, 2.0, 1.0 });
-	TEST_EXPECT_NEAR(context, result.value.roll_rate_rad_s, 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, result.value.pitch_rate_rad_s, -2.0, kTolerance);
-	TEST_EXPECT_NEAR(context, result.value.yaw_rate_rad_s, 0.5, kTolerance);
-	TEST_EXPECT(context, result.constrained);
+	const auto config =
+		Core::Systems::fck1c_flight_control_computer_config();
+	::Systems::ModeAndGainScheduling scheduling(config.mode_and_gain);
+	::Systems::FlightControlLawsInput input;
+	input.flight.dt_s = 1.0 / 64.0;
+	input.flight.dynamic_pressure_pa = 5000.0;
+	input.flight.mach = 0.5;
+	input.flight.normal_acceleration_g = 1.0;
+	input.maneuver.longitudinal.command =
+		Core::Systems::NormalAccelerationCommand{ 1.0 };
+	input.configuration = scheduling.update({
+		input.flight.dt_s, input.flight.dynamic_pressure_pa,
+		input.flight.mach, true, false, 0.0, false });
+	return input;
 }
 
-void test_inner_loop_axis_mapping(Tests::Context& context)
+void test_public_laws_damp_measured_roll_rate(Tests::Context& context)
 {
-	Systems::InnerRateLoopStepInput input;
-	input.dt_s = 0.01;
-	input.reference = { 0.2, -0.3, 0.4 };
-	input.gains = { 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 2.0 };
-	const Systems::InnerRateLoopResult result =
-		Systems::update_inner_rate_loop({}, input);
-	TEST_EXPECT_NEAR(
-		context,
-		result.surface_demand.aileron_command_normalized,
-		0.2,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		result.surface_demand.elevator_command_normalized,
-		-0.3,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		result.surface_demand.rudder_command_normalized,
-		0.4,
-		kTolerance);
+	const auto config =
+		Core::Systems::fck1c_flight_control_computer_config();
+	::Systems::FlightControlLaws laws(config.flight_control_laws);
+	auto input = nominal_input();
+	input.flight.roll_rate_rad_s = 0.3;
+	const auto result = laws.update(input);
+	TEST_EXPECT(context,
+		result.normal_surface_demand.differential_flaperon_demand_rad < 0.0);
+	TEST_EXPECT(context, !result.status.anti_windup_active);
 }
 
-void test_inner_loop_reports_saturation(Tests::Context& context)
+void test_public_laws_report_inner_loop_saturation(Tests::Context& context)
 {
-	Systems::InnerRateLoopStepInput input;
-	input.dt_s = 0.01;
-	input.reference.roll_rate_rad_s = 2.0;
-	input.gains = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0 };
-	const Systems::InnerRateLoopResult result =
-		Systems::update_inner_rate_loop({}, input);
-	TEST_EXPECT(context, result.anti_windup_active);
-	TEST_EXPECT_NEAR(
-		context,
-		result.surface_demand.aileron_command_normalized,
-		1.0,
-		kTolerance);
+	const auto config =
+		Core::Systems::fck1c_flight_control_computer_config();
+	::Systems::FlightControlLaws laws(config.flight_control_laws);
+	auto input = nominal_input();
+	input.flight.roll_rate_rad_s = 100.0;
+	const auto result = laws.update(input);
+	TEST_EXPECT(context, result.status.anti_windup_active);
+	TEST_EXPECT(context,
+		result.normal_surface_demand.differential_flaperon_demand_rad < 0.0);
 }
 }
 
 void run_inner_loop_control_tests(Tests::Context& context)
 {
-	test_rate_reference_is_limited_per_axis(context);
-	test_inner_loop_axis_mapping(context);
-	test_inner_loop_reports_saturation(context);
+	test_public_laws_damp_measured_roll_rate(context);
+	test_public_laws_report_inner_loop_saturation(context);
 }

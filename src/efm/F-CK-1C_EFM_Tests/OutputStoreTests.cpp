@@ -29,18 +29,18 @@ Core::FrameOutput make_output(double marker)
 	Core::FrameOutput output;
 	output.simulation_time_s = marker;
 	output.availability.atmosphere = marker == kFirstMarker;
-	output.force_moment.force = {
+	output.force_moment.force_body_n = {
 		marker + kForceXOffset,
 		marker + kForceYOffset,
 		marker + kForceZOffset
 	};
 	output.engines[0].switch_on = marker == kFirstMarker;
-	output.engines[1].thrust_force = marker + kThrustOffset;
-	output.controls.rudder_command = marker + kRudderOffset;
-	output.landing_gear.wheel_spin[2] = marker + kWheelSpinOffset;
-	output.suspension.wheels[1].compression = marker + kCompressionOffset;
-	output.fuel.total_fuel = marker + kFuelOffset;
-	output.shake_amplitude = marker + kShakeOffset;
+	output.engines[1].thrust_force_n = marker + kThrustOffset;
+	output.controls.rudder_position_rad = marker + kRudderOffset;
+	output.landing_gear.wheel_spin_phase_0_1[2] = marker + kWheelSpinOffset;
+	output.suspension.wheels[1].compression_m = marker + kCompressionOffset;
+	output.fuel.total_fuel_kg = marker + kFuelOffset;
+	output.shake_amplitude_normalized = marker + kShakeOffset;
 	return output;
 }
 
@@ -59,19 +59,21 @@ Core::FrameOutput make_mass_output(double mass)
 bool has_complete_primary_output(const Core::FrameOutput& output, double marker, bool first)
 {
 	return output.availability.atmosphere == first &&
-		output.force_moment.force.x == marker + kForceXOffset &&
-		output.force_moment.force.z == marker + kForceZOffset &&
+		output.force_moment.force_body_n.x == marker + kForceXOffset &&
+		output.force_moment.force_body_n.z == marker + kForceZOffset &&
 		output.engines[0].switch_on == first &&
-		output.engines[1].thrust_force == marker + kThrustOffset &&
-		output.controls.rudder_command == marker + kRudderOffset;
+		output.engines[1].thrust_force_n == marker + kThrustOffset &&
+		output.controls.rudder_position_rad == marker + kRudderOffset;
 }
 
 bool has_complete_secondary_output(const Core::FrameOutput& output, double marker)
 {
-	return output.landing_gear.wheel_spin[2] == marker + kWheelSpinOffset &&
-		output.suspension.wheels[1].compression == marker + kCompressionOffset &&
-		output.fuel.total_fuel == marker + kFuelOffset &&
-		output.shake_amplitude == marker + kShakeOffset;
+	return output.landing_gear.wheel_spin_phase_0_1[2] ==
+			marker + kWheelSpinOffset &&
+		output.suspension.wheels[1].compression_m ==
+			marker + kCompressionOffset &&
+		output.fuel.total_fuel_kg == marker + kFuelOffset &&
+		output.shake_amplitude_normalized == marker + kShakeOffset;
 }
 
 bool is_complete_output(const Core::FrameOutput& output)
@@ -91,7 +93,7 @@ void test_lifecycle_and_immutable_copy(Tests::Context& context)
 	TEST_EXPECT(context, !store.is_released());
 	Core::FrameOutput start = make_output(kFirstMarker);
 	store.publish(start);
-	start.fuel.total_fuel = -1.0;
+	start.fuel.total_fuel_kg = -1.0;
 	TEST_EXPECT(context, is_complete_output(*store.read()));
 	const Core::FrameOutput next = make_output(kSecondMarker);
 	TEST_EXPECT(context, store.read()->simulation_time_s == kFirstMarker);
@@ -142,16 +144,16 @@ void test_mass_delta_queue_preserves_order(Tests::Context& context)
 	const Core::MassDeltaResult second = store.take_mass_delta();
 	TEST_EXPECT(context, first.available);
 	TEST_EXPECT(context, second.available);
-	TEST_EXPECT_NEAR(context, first.delta.mass, kFirstMassDelta, 0.0);
-	TEST_EXPECT_NEAR(context, second.delta.mass, kSecondMassDelta, 0.0);
+	TEST_EXPECT_NEAR(context, first.delta.mass_kg, kFirstMassDelta, 0.0);
+	TEST_EXPECT_NEAR(context, second.delta.mass_kg, kSecondMassDelta, 0.0);
 	TEST_EXPECT_NEAR(
 		context,
-		first.delta.position.x,
+		first.delta.position_body_m.x,
 		kFirstMassDelta + kForceXOffset,
 		0.0);
 	TEST_EXPECT_NEAR(
 		context,
-		second.delta.moment_of_inertia.z,
+		second.delta.moment_of_inertia_delta_kg_m2.z,
 		kSecondMassDelta + kCompressionOffset,
 		0.0);
 	TEST_EXPECT(context, !store.take_mass_delta().available);
@@ -188,7 +190,7 @@ void test_concurrent_mass_publish_and_take(Tests::Context& context)
 				std::this_thread::yield();
 				continue;
 			}
-			if (result.delta.mass != static_cast<double>(expected))
+			if (result.delta.mass_kg != static_cast<double>(expected))
 			{
 				ordered.store(false, std::memory_order_relaxed);
 			}

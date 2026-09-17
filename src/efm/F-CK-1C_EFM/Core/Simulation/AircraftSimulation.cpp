@@ -32,14 +32,14 @@ Core::Systems::FlightFuelState make_system_fuel_state(
 	const Core::Simulation::FlightFuelLoad& load)
 {
 	Core::Systems::FlightFuelState result;
-	result.internal_fuel = load.internal_fuel;
+	result.internal_fuel_kg = load.internal_fuel_kg;
 	result.external_fuel.reserve(load.external_fuel_by_station.size());
 	for (const auto& station : load.external_fuel_by_station)
 	{
 		result.external_fuel.push_back({
 			station.first,
-			station.second.fuel,
-			station.second.position
+			station.second.fuel_kg,
+			station.second.position_body_m
 		});
 	}
 	return result;
@@ -127,36 +127,36 @@ void AircraftSimulation::handle_command(const Command& command)
 	(void)system_pipeline_.send(command);
 }
 
-double AircraftSimulation::internal_fuel() const
+double AircraftSimulation::internal_fuel_kg() const
 {
 	return system_pipeline_.snapshot()
-		.read(AircraftDataKeys::kFuelData).internal_fuel;
+		.read(AircraftDataKeys::kFuelData).internal_fuel_kg;
 }
 
-double AircraftSimulation::external_fuel() const
+double AircraftSimulation::external_fuel_kg() const
 {
 	return system_pipeline_.snapshot()
-		.read(AircraftDataKeys::kFuelData).external_fuel;
+		.read(AircraftDataKeys::kFuelData).external_fuel_kg;
 }
 
 FlightFuelLoad AircraftSimulation::fuel_load() const
 {
 	const Systems::FlightFuelState state = system_pipeline_.fuel_state();
 	FlightFuelLoad load;
-	load.internal_fuel = state.internal_fuel;
+	load.internal_fuel_kg = state.internal_fuel_kg;
 	for (const ExternalFuelInput& external : state.external_fuel)
 	{
 		load.external_fuel_by_station[external.station] = {
-			external.fuel,
-			external.position
+			external.fuel_kg,
+			external.position_body_m
 		};
 	}
 	return load;
 }
 
-void AircraftSimulation::set_internal_fuel(double fuel)
+void AircraftSimulation::set_internal_fuel(double fuel_kg)
 {
-	system_pipeline_.set_internal_fuel(fuel);
+	system_pipeline_.set_internal_fuel(fuel_kg);
 }
 
 void AircraftSimulation::set_external_fuel(
@@ -165,8 +165,8 @@ void AircraftSimulation::set_external_fuel(
 {
 	system_pipeline_.set_external_fuel({
 		station,
-		fuel.fuel,
-		fuel.position
+		fuel.fuel_kg,
+		fuel.position_body_m
 	});
 }
 
@@ -223,14 +223,14 @@ FrameOutput AircraftSimulation::step(const FrameInput& input)
 		input.availability);
 }
 
-void AircraftSimulation::begin_frame(double dt)
+void AircraftSimulation::begin_frame(double dt_s)
 {
-	if (!std::isfinite(dt) || dt < 0.0)
+	if (!std::isfinite(dt_s) || dt_s < 0.0)
 	{
 		throw std::invalid_argument(
-			"AircraftSimulation dt must be finite and non-negative.");
+			"AircraftSimulation dt_s must be finite and non-negative.");
 	}
-	simulation_time_s_ += dt;
+	simulation_time_s_ += dt_s;
 	++cockpit_snapshot_revision_;
 }
 
@@ -270,9 +270,9 @@ AircraftSimulationFactory make_fck1c_aircraft_simulation_factory()
 	};
 }
 
-double carrier_launch_reference_thrust()
+double carrier_launch_reference_thrust_n()
 {
-	return fck1c_carrier_launch_reference_thrust();
+	return fck1c_carrier_launch_reference_thrust_n();
 }
 }
 }

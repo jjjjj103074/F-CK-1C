@@ -13,28 +13,28 @@ struct ParamExportState
 	bool suspension_feedback_available;
 	bool atmosphere_available;
 	bool any_weight_on_wheels;
-	double gear_pos;
-	double nose_wheel_steering;
-	double wheel_spin[3];
-	double wheel_brake_left;
-	double wheel_brake_right;
-	double pitch_input;
-	double roll_input;
-	double yaw_input;
+	double gear_position_normalized;
+	double nose_wheel_steering_normalized;
+	double wheel_spin_phase_0_1[3];
+	double wheel_brake_left_normalized;
+	double wheel_brake_right_normalized;
+	double pitch_input_normalized;
+	double roll_input_normalized;
+	double yaw_input_normalized;
 	bool left_engine_switch;
 	bool right_engine_switch;
-	double left_throttle_input;
-	double right_throttle_input;
-	double left_throttle_output;
-	double right_throttle_output;
-	double left_engine_power_readout;
-	double right_engine_power_readout;
-	double left_thrust_force;
-	double right_thrust_force;
-	double atmosphere_temperature;
-	double internal_fuel;
-	double total_fuel;
-	double total_fuel_flow;
+	double left_throttle_input_normalized;
+	double right_throttle_input_normalized;
+	double left_throttle_output_normalized;
+	double right_throttle_output_normalized;
+	double left_engine_power_readout_normalized;
+	double right_engine_power_readout_normalized;
+	double left_thrust_force_n;
+	double right_thrust_force_n;
+	double atmosphere_temperature_k;
+	double internal_fuel_kg;
+	double total_fuel_kg;
+	double total_fuel_flow_kg_s;
 };
 
 inline ParamExportState make_param_export_state(const Core::FrameOutput& output)
@@ -47,32 +47,32 @@ inline ParamExportState make_param_export_state(const Core::FrameOutput& output)
 		suspension_available,
 		output.availability.atmosphere,
 		output.suspension.any_weight_on_wheels,
-		output.landing_gear.gear_position,
-		output.landing_gear.nose_wheel_steering,
+		output.landing_gear.gear_position_normalized,
+		output.landing_gear.nose_wheel_steering_normalized,
 		{
-			output.landing_gear.wheel_spin[0],
-			output.landing_gear.wheel_spin[1],
-			output.landing_gear.wheel_spin[2]
+			output.landing_gear.wheel_spin_phase_0_1[0],
+			output.landing_gear.wheel_spin_phase_0_1[1],
+			output.landing_gear.wheel_spin_phase_0_1[2]
 		},
-		output.landing_gear.brake_left,
-		output.landing_gear.brake_right,
-		output.controls.pitch_input,
-		output.controls.roll_input,
-		output.controls.yaw_input,
+		output.landing_gear.brake_left_normalized,
+		output.landing_gear.brake_right_normalized,
+		output.controls.pitch_input_normalized,
+		output.controls.roll_input_normalized,
+		output.controls.yaw_input_normalized,
 		output.engines[0].switch_on,
 		output.engines[1].switch_on,
-		output.engines[0].throttle_input,
-		output.engines[1].throttle_input,
-		output.engines[0].throttle_output,
-		output.engines[1].throttle_output,
-		output.engines[0].power_readout,
-		output.engines[1].power_readout,
-		output.engines[0].thrust_force,
-		output.engines[1].thrust_force,
+		output.engines[0].throttle_input_normalized,
+		output.engines[1].throttle_input_normalized,
+		output.engines[0].throttle_output_normalized,
+		output.engines[1].throttle_output_normalized,
+		output.engines[0].power_readout_normalized,
+		output.engines[1].power_readout_normalized,
+		output.engines[0].thrust_force_n,
+		output.engines[1].thrust_force_n,
 		output.flight.atmosphere_temperature_k,
-		output.fuel.internal_fuel,
-		output.fuel.total_fuel,
-		output.fuel.total_fuel_flow
+		output.fuel.internal_fuel_kg,
+		output.fuel.total_fuel_kg,
+		output.fuel.total_fuel_flow_kg_s
 	};
 }
 
@@ -119,22 +119,23 @@ inline std::optional<ParamDataCategory> missing_param_data(
 
 struct EngineDisplayState
 {
-	double left_core_related_rpm = 0.0;
-	double right_core_related_rpm = 0.0;
-	double left_fan_related_rpm = 0.0;
-	double right_fan_related_rpm = 0.0;
+	double left_core_related_rpm_0_1 = 0.0;
+	double right_core_related_rpm_0_1 = 0.0;
+	double left_fan_related_rpm_0_1 = 0.0;
+	double right_fan_related_rpm_0_1 = 0.0;
 	double left_core_rpm = 0.0;
 	double right_core_rpm = 0.0;
 	double left_fan_rpm = 0.0;
 	double right_fan_rpm = 0.0;
 };
 
-constexpr double kIdleRelatedRpm = 0.675;
+constexpr double kIdleRelatedRpm0To1 = 0.675;
 constexpr double kNominalCoreRpm = 14710.0;
 constexpr double kNominalFanRpm = 8215.0;
 constexpr double kEngineCombustionScale = 2.0;
-constexpr double kEngineTemperatureScale = 500.0;
+constexpr double kEngineTemperatureRiseC = 500.0;
 constexpr double kEngineTemperatureExponent = 3.0;
+constexpr double kKelvinToCelsiusOffset = 273.15;
 constexpr double kPerEngineFuelFlowShare = 0.5;
 constexpr double kUnsupportedAltimeterPressureCompatibilityMmHg = 760.0;
 
@@ -143,26 +144,31 @@ inline double engine_display_related_rpm(double core_readout)
 	const double clamped = Common::limit(core_readout, 0.0, 1.0);
 	if (clamped <= 0.5)
 	{
-		return (clamped / 0.5) * kIdleRelatedRpm;
+		return (clamped / 0.5) * kIdleRelatedRpm0To1;
 	}
-	return kIdleRelatedRpm + ((clamped - 0.5) / 0.5) * (1.0 - kIdleRelatedRpm);
+	return kIdleRelatedRpm0To1 +
+		((clamped - 0.5) / 0.5) * (1.0 - kIdleRelatedRpm0To1);
 }
 
 inline EngineDisplayState make_engine_display_state(const ParamExportState& state)
 {
 	EngineDisplayState display;
-	display.left_core_related_rpm = engine_display_related_rpm(
-		state.left_engine_power_readout);
-	display.right_core_related_rpm = engine_display_related_rpm(
-		state.right_engine_power_readout);
-	display.left_fan_related_rpm = state.left_engine_switch
-		? display.left_core_related_rpm : 0.0;
-	display.right_fan_related_rpm = state.right_engine_switch
-		? display.right_core_related_rpm : 0.0;
-	display.left_core_rpm = display.left_core_related_rpm * kNominalCoreRpm;
-	display.right_core_rpm = display.right_core_related_rpm * kNominalCoreRpm;
-	display.left_fan_rpm = display.left_fan_related_rpm * kNominalFanRpm;
-	display.right_fan_rpm = display.right_fan_related_rpm * kNominalFanRpm;
+	display.left_core_related_rpm_0_1 = engine_display_related_rpm(
+		state.left_engine_power_readout_normalized);
+	display.right_core_related_rpm_0_1 = engine_display_related_rpm(
+		state.right_engine_power_readout_normalized);
+	display.left_fan_related_rpm_0_1 = state.left_engine_switch
+		? display.left_core_related_rpm_0_1 : 0.0;
+	display.right_fan_related_rpm_0_1 = state.right_engine_switch
+		? display.right_core_related_rpm_0_1 : 0.0;
+	display.left_core_rpm =
+		display.left_core_related_rpm_0_1 * kNominalCoreRpm;
+	display.right_core_rpm =
+		display.right_core_related_rpm_0_1 * kNominalCoreRpm;
+	display.left_fan_rpm =
+		display.left_fan_related_rpm_0_1 * kNominalFanRpm;
+	display.right_fan_rpm =
+		display.right_fan_related_rpm_0_1 * kNominalFanRpm;
 	return display;
 }
 
@@ -176,14 +182,15 @@ inline std::optional<double> lookup_wheel_motion(
 	case NoseWheelYaw:
 	{
 		const bool wow = state.suspension_feedback_available && state.any_weight_on_wheels;
-		return wow && state.gear_pos > 0.5 ? state.nose_wheel_steering : 0.0;
+		return wow && state.gear_position_normalized > 0.5
+			? state.nose_wheel_steering_normalized : 0.0;
 	}
-	case NoseWheelSpin: return state.wheel_spin[0];
-	case LeftWheelSpin: return state.wheel_spin[1];
-	case RightWheelSpin: return state.wheel_spin[2];
+	case NoseWheelSpin: return state.wheel_spin_phase_0_1[0];
+	case LeftWheelSpin: return state.wheel_spin_phase_0_1[1];
+	case RightWheelSpin: return state.wheel_spin_phase_0_1[2];
 	case NoseGearPostState:
 	case LeftGearPostState:
-	case RightGearPostState: return state.gear_pos;
+	case RightGearPostState: return state.gear_position_normalized;
 	default: return std::nullopt;
 	}
 }
@@ -199,11 +206,11 @@ inline std::optional<double> lookup_wheel_brakes(
 	case LeftBrakeMoment:
 	case WheelBrakeLeft:
 	case WheelBrakeCommandLeft:
-		return Common::limit(state.wheel_brake_left, 0.0, 1.0);
+		return Common::limit(state.wheel_brake_left_normalized, 0.0, 1.0);
 	case RightBrakeMoment:
 	case WheelBrakeRight:
 	case WheelBrakeCommandRight:
-		return Common::limit(state.wheel_brake_right, 0.0, 1.0);
+		return Common::limit(state.wheel_brake_right_normalized, 0.0, 1.0);
 	case AntiSkidEnable: return 1.0;
 	default: return std::nullopt;
 	}
@@ -216,17 +223,20 @@ inline std::optional<double> lookup_flight_controls(
 	using namespace DcsIds::Params;
 	switch (index)
 	{
-	case StickPitch: return Common::limit(state.pitch_input, -1.0, 1.0);
-	case StickRoll: return Common::limit(state.roll_input, -1.0, 1.0);
-	case RudderPedals: return Common::limit(-state.yaw_input, -1.0, 1.0);
+	case StickPitch:
+		return Common::limit(state.pitch_input_normalized, -1.0, 1.0);
+	case StickRoll:
+		return Common::limit(state.roll_input_normalized, -1.0, 1.0);
+	case RudderPedals:
+		return Common::limit(-state.yaw_input_normalized, -1.0, 1.0);
 	case ThrottleLeft:
 		return state.left_engine_switch
-			? Common::limit(state.left_throttle_input, 0.1, 1.0)
-			: Common::limit(state.left_throttle_input, 0.0, 0.1);
+			? Common::limit(state.left_throttle_input_normalized, 0.1, 1.0)
+			: Common::limit(state.left_throttle_input_normalized, 0.0, 0.1);
 	case ThrottleRight:
 		return state.right_engine_switch
-			? Common::limit(state.right_throttle_input, 0.1, 1.0)
-			: Common::limit(state.right_throttle_input, 0.0, 0.1);
+			? Common::limit(state.right_throttle_input_normalized, 0.1, 1.0)
+			: Common::limit(state.right_throttle_input_normalized, 0.0, 0.1);
 	default: return std::nullopt;
 	}
 }
@@ -238,8 +248,8 @@ inline std::optional<double> lookup_aircraft_services(
 	using namespace DcsIds::Params;
 	switch (index)
 	{
-	case InternalFuel: return state.internal_fuel;
-	case TotalFuel: return state.total_fuel;
+	case InternalFuel: return state.internal_fuel_kg;
+	case TotalFuel: return state.total_fuel_kg;
 	case OxygenSupply: return 101000.0;
 	case FlowVelocity: return 10.0;
 	case ApuRpm:
@@ -263,7 +273,7 @@ inline std::optional<double> lookup_engine_compatibility(
 	case LeftEngineFuelFlow:
 	case RightEngineFuelFlow:
 		// Temporary even split until per-engine fuel flow is implemented.
-		return state.total_fuel_flow * kPerEngineFuelFlowShare;
+		return state.total_fuel_flow_kg_s * kPerEngineFuelFlowShare;
 	case LeftPropellerPitch:
 	case RightPropellerPitch:
 		// The F-CK-1C uses turbofans, not propellers.
@@ -350,10 +360,16 @@ inline std::optional<double> lookup_system_compatibility(unsigned index)
 	return lookup_misc_system_compatibility(index);
 }
 
-inline double engine_temperature(double power_readout, double atmosphere_temperature)
+inline double engine_temperature_c(
+	double power_readout_normalized,
+	double atmosphere_temperature_k)
 {
-	return std::pow(power_readout, kEngineTemperatureExponent) *
-		kEngineTemperatureScale + atmosphere_temperature;
+	const double atmosphere_temperature_c =
+		atmosphere_temperature_k - kKelvinToCelsiusOffset;
+	return std::pow(
+		power_readout_normalized,
+		kEngineTemperatureExponent) * kEngineTemperatureRiseC +
+		atmosphere_temperature_c;
 }
 
 inline std::optional<double> lookup_left_engine_speed(
@@ -365,8 +381,8 @@ inline std::optional<double> lookup_left_engine_speed(
 	{
 	case LeftEngineCoreRpm: return display.left_core_rpm;
 	case LeftEngineRpm: return display.left_fan_rpm;
-	case LeftEngineRelatedRpm: return display.left_fan_related_rpm;
-	case LeftEngineCoreRelatedRpm: return display.left_core_related_rpm;
+	case LeftEngineRelatedRpm: return display.left_fan_related_rpm_0_1;
+	case LeftEngineCoreRelatedRpm: return display.left_core_related_rpm_0_1;
 	default: return std::nullopt;
 	}
 }
@@ -380,15 +396,21 @@ inline std::optional<double> lookup_left_engine_output(
 	{
 	case LeftEngineCombustion:
 		return state.left_engine_switch
-			? Common::limit(state.left_engine_power_readout * kEngineCombustionScale, 0.0, 1.0)
+			? Common::limit(
+				state.left_engine_power_readout_normalized *
+					kEngineCombustionScale,
+				0.0,
+				1.0)
 			: 0.0;
 	case LeftEngineRelatedThrust:
-	case LeftEngineCoreRelatedThrust: return state.left_throttle_output;
+	case LeftEngineCoreRelatedThrust:
+		return state.left_throttle_output_normalized;
 	case LeftEngineCoreThrust:
-	case LeftEngineThrust: return state.left_thrust_force;
+	case LeftEngineThrust: return state.left_thrust_force_n;
 	case LeftEngineTemperature:
-		return engine_temperature(
-			state.left_engine_power_readout, state.atmosphere_temperature);
+		return engine_temperature_c(
+			state.left_engine_power_readout_normalized,
+			state.atmosphere_temperature_k);
 	default: return std::nullopt;
 	}
 }
@@ -402,8 +424,8 @@ inline std::optional<double> lookup_right_engine_speed(
 	{
 	case RightEngineCoreRpm: return display.right_core_rpm;
 	case RightEngineRpm: return display.right_fan_rpm;
-	case RightEngineRelatedRpm: return display.right_fan_related_rpm;
-	case RightEngineCoreRelatedRpm: return display.right_core_related_rpm;
+	case RightEngineRelatedRpm: return display.right_fan_related_rpm_0_1;
+	case RightEngineCoreRelatedRpm: return display.right_core_related_rpm_0_1;
 	default: return std::nullopt;
 	}
 }
@@ -417,15 +439,21 @@ inline std::optional<double> lookup_right_engine_output(
 	{
 	case RightEngineCombustion:
 		return state.right_engine_switch
-			? Common::limit(state.right_engine_power_readout * kEngineCombustionScale, 0.0, 1.0)
+			? Common::limit(
+				state.right_engine_power_readout_normalized *
+					kEngineCombustionScale,
+				0.0,
+				1.0)
 			: 0.0;
 	case RightEngineRelatedThrust:
-	case RightEngineCoreRelatedThrust: return state.right_throttle_output;
+	case RightEngineCoreRelatedThrust:
+		return state.right_throttle_output_normalized;
 	case RightEngineCoreThrust:
-	case RightEngineThrust: return state.right_thrust_force;
+	case RightEngineThrust: return state.right_thrust_force_n;
 	case RightEngineTemperature:
-		return engine_temperature(
-			state.right_engine_power_readout, state.atmosphere_temperature);
+		return engine_temperature_c(
+			state.right_engine_power_readout_normalized,
+			state.atmosphere_temperature_k);
 	default: return std::nullopt;
 	}
 }

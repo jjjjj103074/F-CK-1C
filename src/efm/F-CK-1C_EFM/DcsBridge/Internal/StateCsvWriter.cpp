@@ -22,27 +22,34 @@ constexpr int kRoundTripDoubleDigits = std::numeric_limits<double>::max_digits10
 constexpr const char* kStateCsvHeader =
 	"sequence,simulation_time_s,"
 	"flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,"
-	"flight_mach,flight_g_load,flight_angle_of_attack_deg,"
+	"flight_mach,flight_normal_acceleration_g,flight_angle_of_attack_deg,"
 	"flight_angle_of_slide_deg,flight_atmosphere_temperature_k,"
 	"flight_indicated_airspeed_mps,flight_vertical_speed_mps,"
-	"flight_heading_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,"
+	"flight_world_yaw_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,"
 	"flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
 	"force_moment_force_x_N,force_moment_force_y_N,force_moment_force_z_N,"
 	"force_moment_moment_x_N_m,force_moment_moment_y_N_m,force_moment_moment_z_N_m,"
 	"force_moment_center_of_mass_x_m,force_moment_center_of_mass_y_m,"
 	"force_moment_center_of_mass_z_m,"
-	"engine_0_switch_on,engine_0_throttle_input,engine_0_throttle_output,"
-	"engine_0_power_readout,engine_0_thrust_force_N,engine_0_afterburner_ratio,"
-	"engine_0_afterburner_lit,engine_0_nozzle_aperture,"
-	"engine_1_switch_on,engine_1_throttle_input,engine_1_throttle_output,"
-	"engine_1_power_readout,engine_1_thrust_force_N,engine_1_afterburner_ratio,"
-	"engine_1_afterburner_lit,engine_1_nozzle_aperture,"
-	"controls_pitch_input,controls_roll_input,controls_yaw_input,"
-	"controls_elevator_command,controls_aileron_command,controls_rudder_command,"
-	"controls_flaps_position,controls_slats_position,controls_airbrake_position,"
-	"landing_gear_gear_position,landing_gear_nose_wheel_steering,"
-	"landing_gear_brake_left,landing_gear_brake_right,"
-	"landing_gear_wheel_spin_0,landing_gear_wheel_spin_1,landing_gear_wheel_spin_2,"
+	"engine_0_switch_on,engine_0_throttle_input_normalized,"
+	"engine_0_throttle_output_normalized,engine_0_power_readout_normalized,"
+	"engine_0_thrust_force_N,engine_0_afterburner_ratio_0_1,"
+	"engine_0_afterburner_lit,engine_0_nozzle_aperture_normalized,"
+	"engine_1_switch_on,engine_1_throttle_input_normalized,"
+	"engine_1_throttle_output_normalized,engine_1_power_readout_normalized,"
+	"engine_1_thrust_force_N,engine_1_afterburner_ratio_0_1,"
+	"engine_1_afterburner_lit,engine_1_nozzle_aperture_normalized,"
+	"controls_pitch_input_normalized,controls_roll_input_normalized,"
+	"controls_yaw_input_normalized,controls_symmetric_stabilator_position_rad,"
+	"controls_differential_flaperon_position_rad,controls_rudder_position_rad,"
+	"controls_flaps_position_normalized,controls_slats_position_normalized,"
+	"controls_airbrake_position_normalized,"
+	"landing_gear_gear_position_normalized,"
+	"landing_gear_nose_wheel_steering_normalized,"
+	"landing_gear_brake_left_normalized,landing_gear_brake_right_normalized,"
+	"landing_gear_wheel_spin_phase_0_1_0,"
+	"landing_gear_wheel_spin_phase_0_1_1,"
+	"landing_gear_wheel_spin_phase_0_1_2,"
 	"suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,"
 	"suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,"
 	"suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
@@ -55,7 +62,7 @@ constexpr const char* kStateCsvHeader =
 	"suspension_any_weight_on_wheels,suspension_on_ground,"
 	"fuel_internal_kg,fuel_external_kg,fuel_total_kg,"
 	"fuel_total_flow_kg_per_s,"
-	"shake_amplitude\n";
+	"shake_amplitude_normalized\n";
 
 class CsvRowBuilder final
 {
@@ -149,7 +156,8 @@ bool append_flight(CsvRowBuilder& row, const Core::FrameOutput& output)
 		row.append_double(
 			flight.mach,
 			available.atmosphere && available.world_kinematics) &&
-		row.append_double(flight.g_load, available.body_kinematics) &&
+		row.append_double(
+			flight.normal_acceleration_g, available.body_kinematics) &&
 		row.append_double(flight.angle_of_attack_deg, available.body_kinematics) &&
 		row.append_double(flight.angle_of_slide_deg, available.body_kinematics) &&
 		row.append_double(flight.atmosphere_temperature_k, available.atmosphere) &&
@@ -157,7 +165,7 @@ bool append_flight(CsvRowBuilder& row, const Core::FrameOutput& output)
 			flight.indicated_airspeed_mps,
 			available.atmosphere && available.world_kinematics) &&
 		row.append_double(flight.vertical_speed_mps, available.world_kinematics) &&
-		row.append_double(flight.heading_rad, available.body_kinematics) &&
+		row.append_double(flight.world_yaw_rad, available.body_kinematics) &&
 		row.append_double(flight.pitch_attitude_rad, available.body_kinematics) &&
 		row.append_double(flight.roll_attitude_rad, available.body_kinematics) &&
 		row.append_double(flight.roll_rate_rad_s, available.body_kinematics) &&
@@ -174,48 +182,48 @@ bool append_vector(CsvRowBuilder& row, const Common::Vec3& value, bool available
 
 bool append_force_moment(CsvRowBuilder& row, const Core::FrameOutput& output)
 {
-	return append_vector(row, output.force_moment.force) &&
-		append_vector(row, output.force_moment.moment) &&
+	return append_vector(row, output.force_moment.force_body_n) &&
+		append_vector(row, output.force_moment.moment_body_nm) &&
 		append_vector(
 			row,
-			output.force_moment.center_of_mass,
+			output.force_moment.center_of_mass_body_m,
 			output.availability.mass);
 }
 
 bool append_engine(CsvRowBuilder& row, const Core::EngineOutput& engine)
 {
 	return row.append_bool(engine.switch_on) &&
-		row.append_double(engine.throttle_input) &&
-		row.append_double(engine.throttle_output) &&
-		row.append_double(engine.power_readout) &&
-		row.append_double(engine.thrust_force) &&
-		row.append_double(engine.afterburner_ratio) &&
+		row.append_double(engine.throttle_input_normalized) &&
+		row.append_double(engine.throttle_output_normalized) &&
+		row.append_double(engine.power_readout_normalized) &&
+		row.append_double(engine.thrust_force_n) &&
+		row.append_double(engine.afterburner_ratio_0_1) &&
 		row.append_bool(engine.afterburner_lit) &&
-		row.append_double(engine.nozzle_aperture);
+		row.append_double(engine.nozzle_aperture_normalized);
 }
 
 bool append_controls(CsvRowBuilder& row, const Core::ControlOutput& controls)
 {
-	return row.append_double(controls.pitch_input) &&
-		row.append_double(controls.roll_input) &&
-		row.append_double(controls.yaw_input) &&
-		row.append_double(controls.elevator_command) &&
-		row.append_double(controls.aileron_command) &&
-		row.append_double(controls.rudder_command) &&
-		row.append_double(controls.flaps_position) &&
-		row.append_double(controls.slats_position) &&
-		row.append_double(controls.airbrake_position);
+	return row.append_double(controls.pitch_input_normalized) &&
+		row.append_double(controls.roll_input_normalized) &&
+		row.append_double(controls.yaw_input_normalized) &&
+		row.append_double(controls.symmetric_stabilator_position_rad) &&
+		row.append_double(controls.differential_flaperon_position_rad) &&
+		row.append_double(controls.rudder_position_rad) &&
+		row.append_double(controls.flaps_position_normalized) &&
+		row.append_double(controls.slats_position_normalized) &&
+		row.append_double(controls.airbrake_position_normalized);
 }
 
 bool append_landing_gear(CsvRowBuilder& row, const Core::LandingGearOutput& gear)
 {
-	return row.append_double(gear.gear_position) &&
-		row.append_double(gear.nose_wheel_steering) &&
-		row.append_double(gear.brake_left) &&
-		row.append_double(gear.brake_right) &&
-		row.append_double(gear.wheel_spin[0]) &&
-		row.append_double(gear.wheel_spin[1]) &&
-		row.append_double(gear.wheel_spin[2]);
+	return row.append_double(gear.gear_position_normalized) &&
+		row.append_double(gear.nose_wheel_steering_normalized) &&
+		row.append_double(gear.brake_left_normalized) &&
+		row.append_double(gear.brake_right_normalized) &&
+		row.append_double(gear.wheel_spin_phase_0_1[0]) &&
+		row.append_double(gear.wheel_spin_phase_0_1[1]) &&
+		row.append_double(gear.wheel_spin_phase_0_1[2]);
 }
 
 bool append_suspension_wheel(
@@ -223,9 +231,9 @@ bool append_suspension_wheel(
 	const Core::SuspensionWheelOutput& wheel,
 	bool available)
 {
-	return append_vector(row, wheel.acting_force, available) &&
-		row.append_double(wheel.compression, available) &&
-		row.append_double(wheel.force_magnitude, available) &&
+	return append_vector(row, wheel.acting_force_body_n, available) &&
+		row.append_double(wheel.compression_m, available) &&
+		row.append_double(wheel.force_magnitude_n, available) &&
 		row.append_bool(wheel.weight_on_wheel, available);
 }
 
@@ -243,10 +251,10 @@ bool append_suspension(CsvRowBuilder& row, const Core::FrameOutput& output)
 
 bool append_fuel(CsvRowBuilder& row, const Core::FuelOutput& fuel)
 {
-	return row.append_double(fuel.internal_fuel) &&
-		row.append_double(fuel.external_fuel) &&
-		row.append_double(fuel.total_fuel) &&
-		row.append_double(fuel.total_fuel_flow);
+	return row.append_double(fuel.internal_fuel_kg) &&
+		row.append_double(fuel.external_fuel_kg) &&
+		row.append_double(fuel.total_fuel_kg) &&
+		row.append_double(fuel.total_fuel_flow_kg_s);
 }
 
 int io_error_code()
@@ -331,7 +339,7 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 		append_landing_gear(row, output.landing_gear) &&
 		append_suspension(row, output) &&
 		append_fuel(row, output.fuel) &&
-		row.append_double(output.shake_amplitude);
+		row.append_double(output.shake_amplitude_normalized);
 	if (appended)
 	{
 		(void)row.finish();

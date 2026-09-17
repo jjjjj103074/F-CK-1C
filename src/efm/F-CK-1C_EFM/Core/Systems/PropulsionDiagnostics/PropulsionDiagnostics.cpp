@@ -56,7 +56,7 @@ void PropulsionDiagnostics::step(
 
 void PropulsionDiagnostics::handle_command(const Command& command)
 {
-	if (command.value <= kEnabledCommandThreshold)
+	if (command.value_normalized <= kEnabledCommandThreshold)
 	{
 		return;
 	}

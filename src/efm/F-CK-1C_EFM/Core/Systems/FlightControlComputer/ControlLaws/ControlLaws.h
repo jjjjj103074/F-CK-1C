@@ -3,21 +3,20 @@
 #include "ControlLawConfig.h"
 #include "ControlLawSignals.h"
 #include "ControlLawState.h"
-#include "ControlLawLifecycle.h"
 
 namespace Systems
 {
-void set_fbw_cat_mode(FBWControllerState& state, FBWCatMode mode);
-void toggle_fbw_cat_mode(FBWControllerState& state, bool command_pressed);
-void set_fbw_g_limiter_override(FBWControllerState& state, bool enabled);
-void toggle_fbw_g_limiter_override(FBWControllerState& state, bool command_pressed);
+class FlightControlLaws
+{
+public:
+	explicit FlightControlLaws(const FlightControlLawsConfig& config);
+	FlightControlLawsResult update(const FlightControlLawsInput& input);
+	void reset();
 
-const char* fbw_mode_name(const FBWControllerState& state);
-const char* fbw_state_name(const FBWControllerState& state);
-const char* fbw_exit_reason_name(const FBWControllerState& state);
-
-FlightControlLawResult update_fbw_controller(
-	FBWControllerState& state,
-	const FBWControllerConfig& config,
-	const FlightControlLawStepInput& input);
+private:
+	const FlightControlLawsConfig config_;
+	LongitudinalControlLawState longitudinal_;
+	LateralControlLawState lateral_;
+	DirectionalControlLawState directional_;
+};
 }

@@ -50,11 +50,11 @@ struct LandingGearDamageCase
 AtmosphereInput valid_atmosphere(double altitude_asl)
 {
 	AtmosphereInput input;
-	input.altitude_asl = altitude_asl;
-	input.temperature = kAtmosphereTemperature;
-	input.speed_of_sound = kSpeedOfSound;
-	input.density = kDensity;
-	input.pressure = kAtmospherePressure;
+	input.altitude_asl_m = altitude_asl;
+	input.temperature_k = kAtmosphereTemperature;
+	input.speed_of_sound_mps = kSpeedOfSound;
+	input.density_kg_m3 = kDensity;
+	input.pressure_pa = kAtmospherePressure;
 	return input;
 }
 
@@ -125,13 +125,13 @@ void test_control_data_crosses_owner_boundary(Tests::Context& context)
 	const FlightControlActuatorState& position =
 		output.read(AircraftDataKeys::kFlightControlActuatorState);
 	TEST_EXPECT_NEAR(context, pilot.pitch_axis_normalized, kPitchInput, kTolerance);
-	TEST_EXPECT_NEAR(context, pilot.yaw_axis_normalized, -kYawInput, kTolerance);
+	TEST_EXPECT_NEAR(context, pilot.yaw_axis_normalized, kYawInput, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.elevator.normalized_position, kNeutralAxis, kTolerance);
+		context, position.symmetric_stabilator.position_rad, kNeutralAxis, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.aileron.normalized_position, kNeutralAxis, kTolerance);
+		context, position.differential_flaperon.position_rad, kNeutralAxis, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, position.rudder.normalized_position, kNeutralAxis, kTolerance);
+		context, position.rudder.position_rad, kNeutralAxis, kTolerance);
 }
 
 FrameInput nonzero_observation_frame()
@@ -143,11 +143,11 @@ FrameInput nonzero_observation_frame()
 	input.availability.world_kinematics = true;
 	input.availability.body_kinematics = true;
 	input.atmosphere = valid_atmosphere(kAltitudeAsl);
-	input.surface.surface_height = kSurfaceHeight;
-	input.world_kinematics.velocity.x = kForwardSpeed;
-	input.body_kinematics.acceleration.y = kBodyAccelerationY;
-	input.body_kinematics.angle_of_attack = kAngleOfAttack;
-	input.body_kinematics.angle_of_slide = kAngleOfSlide;
+	input.surface.surface_height_m = kSurfaceHeight;
+	input.world_kinematics.velocity_world_mps.x = kForwardSpeed;
+	input.body_kinematics.acceleration_body_mps2.y = kBodyAccelerationY;
+	input.body_kinematics.angle_of_attack_rad = kAngleOfAttack;
+	input.body_kinematics.angle_of_slide_rad = kAngleOfSlide;
 	return input;
 }
 
@@ -160,12 +160,13 @@ FlightControlActuatorCommand expected_nonzero_demand()
 	RawFlightControlInput input;
 	input.dt_s = kSystemDt;
 	input.observation.dynamic_pressure_pa = kDynamicPressure;
-	input.observation.alpha_deg = Common::deg(kAngleOfAttack);
-	input.observation.beta_deg = Common::deg(kAngleOfSlide);
+	input.observation.angle_of_attack_rad = kAngleOfAttack;
+	input.observation.sideslip_rad = kAngleOfSlide;
 	input.observation.indicated_airspeed_mps = kForwardSpeed;
 	input.observation.mach = kMach;
 	input.observation.normal_acceleration_g = kExpectedGLoad;
-	input.landing_gear.position = kFullIntegrity;
+	input.landing_gear.position_normalized = kFullIntegrity;
+	input.landing_gear.handle_down = true;
 	return reference.step({ input, {} });
 }
 
@@ -176,16 +177,16 @@ void expect_normalized_observation(
 	const AircraftObservation& observation =
 		output.read(AircraftDataKeys::kAircraftObservation);
 	TEST_EXPECT_NEAR(
-		context, observation.altitude_agl, kAltitudeAgl, kTolerance);
+		context, observation.altitude_agl_m, kAltitudeAgl, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, observation.speed_scalar, kForwardSpeed, kTolerance);
+		context, observation.true_airspeed_mps, kForwardSpeed, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, observation.ground_speed, kForwardSpeed, kTolerance);
+		context, observation.ground_speed_mps, kForwardSpeed, kTolerance);
 	TEST_EXPECT_NEAR(context, observation.mach, kMach, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, observation.dynamic_pressure, kDynamicPressure, kTolerance);
+		context, observation.dynamic_pressure_pa, kDynamicPressure, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, observation.g_load, kExpectedGLoad, kTolerance);
+		context, observation.normal_acceleration_g, kExpectedGLoad, kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
 		observation.alpha_deg,
@@ -196,6 +197,21 @@ void expect_normalized_observation(
 		observation.beta_deg,
 		Common::deg(kAngleOfSlide),
 		kTolerance);
+}
+
+void expect_nonzero_actuator_demand(
+	Tests::Context& context,
+	const AircraftDataSnapshot& snapshot)
+{
+	const FlightControlActuatorCommand expected = expected_nonzero_demand();
+	const auto& actual = snapshot.read(
+		AircraftDataKeys::kFlightControlActuatorCommand);
+	TEST_EXPECT_NEAR(context, actual.symmetric_stabilator_demand_rad,
+		expected.symmetric_stabilator_demand_rad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.differential_flaperon_demand_rad,
+		expected.differential_flaperon_demand_rad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.rudder_demand_rad,
+		expected.rudder_demand_rad, kTolerance);
 }
 
 void test_observations_are_normalized_and_retained(Tests::Context& context)
@@ -211,14 +227,10 @@ void test_observations_are_normalized_and_retained(Tests::Context& context)
 			first_frame,
 			make_aircraft_observation(observation_state));
 	expect_normalized_observation(context, first);
-	const FlightControlActuatorCommand expected = expected_nonzero_demand();
-	const FlightControlActuatorCommand& actual =
-		first.read(AircraftDataKeys::kFlightControlActuatorCommand);
-	TEST_EXPECT_NEAR(context, actual.elevator_normalized, expected.elevator_normalized, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.aileron_normalized, expected.aileron_normalized, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.rudder_normalized, expected.rudder_normalized, kTolerance);
+	expect_nonzero_actuator_demand(context, first);
 	for (double spin :
-		first.read(AircraftDataKeys::kLandingGearData).wheel_spin)
+		first.read(AircraftDataKeys::kLandingGearData)
+			.wheel_spin_phase_0_1)
 	{
 		TEST_EXPECT_NEAR(context, spin, kNeutralAxis, kTolerance);
 	}
@@ -243,9 +255,9 @@ void test_observations_are_normalized_and_retained(Tests::Context& context)
 			make_aircraft_observation(observation_state))
 			.read(AircraftDataKeys::kAircraftObservation);
 	TEST_EXPECT_NEAR(
-		context, updated.altitude_asl, kUpdatedAltitudeAsl, kTolerance);
+		context, updated.altitude_asl_m, kUpdatedAltitudeAsl, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, updated.altitude_agl, kAltitudeAgl, kTolerance);
+		context, updated.altitude_agl_m, kAltitudeAgl, kTolerance);
 }
 
 void test_damage_and_repair_reach_semantic_owners(Tests::Context& context)
@@ -264,12 +276,12 @@ void test_damage_and_repair_reach_semantic_owners(Tests::Context& context)
 	const AircraftDataSnapshot damaged = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		damaged.read(AircraftDataKeys::kEngineData).left.condition,
+		damaged.read(AircraftDataKeys::kEngineData).left.condition_0_1,
 		kDamagedEngineIntegrity,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		damaged.read(AircraftDataKeys::kAirframeIntegrity).left_wing,
+		damaged.read(AircraftDataKeys::kAirframeIntegrity).left_wing_0_1,
 		kDamagedWingIntegrity,
 		kTolerance);
 
@@ -279,12 +291,12 @@ void test_damage_and_repair_reach_semantic_owners(Tests::Context& context)
 	const AircraftDataSnapshot repaired = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		repaired.read(AircraftDataKeys::kEngineData).left.condition,
+		repaired.read(AircraftDataKeys::kEngineData).left.condition_0_1,
 		kFullIntegrity,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		repaired.read(AircraftDataKeys::kAirframeIntegrity).left_wing,
+		repaired.read(AircraftDataKeys::kAirframeIntegrity).left_wing_0_1,
 		kFullIntegrity,
 		kTolerance);
 }
@@ -312,15 +324,15 @@ void expect_other_damage_owners_healthy(
 	const AirframeIntegrity& airframe =
 		snapshot.read(AircraftDataKeys::kAirframeIntegrity);
 	TEST_EXPECT_NEAR(
-		context, engine.left.condition, kFullIntegrity, kTolerance);
+		context, engine.left.condition_0_1, kFullIntegrity, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, engine.right.condition, kFullIntegrity, kTolerance);
+		context, engine.right.condition_0_1, kFullIntegrity, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, airframe.left_wing, kFullIntegrity, kTolerance);
+		context, airframe.left_wing_0_1, kFullIntegrity, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, airframe.right_wing, kFullIntegrity, kTolerance);
+		context, airframe.right_wing_0_1, kFullIntegrity, kTolerance);
 	TEST_EXPECT_NEAR(
-		context, airframe.tail, kFullIntegrity, kTolerance);
+		context, airframe.tail_0_1, kFullIntegrity, kTolerance);
 }
 
 void expect_landing_gear_damage_case(
@@ -333,20 +345,20 @@ void expect_landing_gear_damage_case(
 	if (expected.nose_failed)
 	{
 		TEST_EXPECT_NEAR(
-			context, gear.nose_wheel_steering, 0.0, kTolerance);
+			context, gear.nose_wheel_steering_normalized, 0.0, kTolerance);
 	}
 	else
 	{
-		TEST_EXPECT(context, gear.nose_wheel_steering != 0.0);
+		TEST_EXPECT(context, gear.nose_wheel_steering_normalized != 0.0);
 	}
 	TEST_EXPECT_NEAR(
 		context,
-		gear.brake_left,
+		gear.brake_left_normalized,
 		expected.left_main_failed ? 0.0 : kFullBrakeInput,
 		kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		gear.brake_right,
+		gear.brake_right_normalized,
 		expected.right_main_failed ? 0.0 : kFullBrakeInput,
 		kTolerance);
 	expect_other_damage_owners_healthy(context, snapshot);
