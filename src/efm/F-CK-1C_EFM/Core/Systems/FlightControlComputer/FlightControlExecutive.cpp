@@ -89,7 +89,8 @@ void FlightControlExecutive::handle_command(const Command& command)
 const FlightControlComputerResult& FlightControlExecutive::update(
 	const FlightControlComputerStepInput& input)
 {
-	// 以 64 Hz 主週期決定較慢模組是否更新；其餘週期沿用保留值。
+	// 以 64 Hz 主週期決定較慢模組是否更新；計數從零開始，首週期兩者都執行。
+	// 非更新週期沿用相應慢頻計算的保留值；模組的其餘工作仍逐週期執行。
 	const bool shaping_tick = tick_ % kPilotShapingDivisor == 0;
 	const bool gain_tick = tick_ % kGainScheduleDivisor == 0;
 	const auto& signals = input_signals_.update({
@@ -117,7 +118,7 @@ const FlightControlComputerResult& FlightControlExecutive::update(
 	const bool output_saturated =
 		output.status.electronic_command_saturated ||
 		output.status.actuator_saturated;
-	// AP 監測本次已完成的控制結果；不回頭重算同一週期的控制律。
+	// AP 監測本次已完成的控制結果；狀態變化留待下個週期影響控制命令。
 	command_system_.observe_control_result(make_monitor_observation(
 		{ flight, command, laws, output_saturated }));
 	update_engine_throttle(input.throttle_levers, command.automatic);
@@ -148,6 +149,7 @@ void FlightControlExecutive::update_engine_throttle(
 	const ThrottleLeverSignal& levers,
 	const AutomaticFlightGuidanceReference& automatic)
 {
+	// 開發用 A/T 是獨立油門支線；關閉時兩具引擎各自遵從飛行員油門桿。
 	const double blend = automatic.experimental_auto_throttle_engaged
 		? 1.0 : 0.0;
 	result_.engine_throttle_command = {

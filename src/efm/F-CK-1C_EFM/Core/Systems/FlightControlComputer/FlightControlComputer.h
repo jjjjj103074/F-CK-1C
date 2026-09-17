@@ -23,6 +23,7 @@ public:
 		const SystemStepContext& context,
 		const AircraftDataView& aircraft,
 		SystemResult& result) override;
+	// 供不經 SystemPipeline 的直接呼叫者使用；不執行資料鍵的發布與診斷輸出。
 	const FlightControlActuatorCommand& step(
 		const FlightControlComputerStepInput& input);
 	void handle_command(const Command& command);

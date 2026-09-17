@@ -25,6 +25,7 @@ void FlightControlComputer::setup(SystemSetup& setup)
 	setup.read(AircraftDataKeys::kThrottleLeverSignal);
 	setup.read(AircraftDataKeys::kLandingGearData);
 	setup.read(AircraftDataKeys::kFlightControlActuatorState);
+	// 首次排程前先提供有效初值，讓其他 System 不必等待 FLCC 的第一個週期。
 	const FlightControlComputerResult& initial = executive_.result();
 	setup.publish(
 		AircraftDataKeys::kFlightControlActuatorCommand,
@@ -83,6 +84,7 @@ RawFlightControlInput FlightControlComputer::make_pipeline_input(
 	const SystemStepContext& context,
 	const AircraftDataView& aircraft) const
 {
+	// 只擷取 Core 已定義的訊號；DCS 座標與單位轉換不屬於此層。
 	return {
 		context.dt_s,
 		aircraft.read(AircraftDataKeys::kFlightControlObservation),

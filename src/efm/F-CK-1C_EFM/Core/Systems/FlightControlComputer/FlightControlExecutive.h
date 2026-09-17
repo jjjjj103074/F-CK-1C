@@ -54,6 +54,7 @@ public:
 		const FlightControlComputerConfig& config,
 		StartMode start_mode,
 		const ThrottleLeverSignal& initial_throttle_levers);
+	// 唯一需要 SystemSetup 的內部介面：將指令處理器接到外部排程器。
 	void register_commands(SystemSetup& setup);
 	void handle_command(const Command& command);
 	const FlightControlComputerResult& update(
@@ -78,6 +79,7 @@ private:
 	::Systems::FlightControlLaws flight_control_laws_;
 	FlightControlOutputSystem output_system_;
 	FlightControlDiagnostics diagnostics_;
+	// 慢頻增益排程的最近一次結果，供下一次輸入塑形更新使用。
 	::Systems::PilotInputShapingConfig held_pilot_shaping_;
 	FlightControlComputerResult result_;
 	bool developer_g_limiter_override_active_ = false;
