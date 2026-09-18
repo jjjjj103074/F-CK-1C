@@ -12,6 +12,7 @@ Desktop.ini
 !.vscode/extensions.json
 .codex/
 .claude/
+/.codex-remote-attachments/
 
 # Visual Studio（IDE 暫存）
 .vs/
@@ -49,6 +50,10 @@ src/efm/bin/
 *.original.*
 *.pretrim*
 temp/
+# 根目錄的本機測試與研究輸出；需長期引用的來源檔移至 docs/
+/.tmp/
+/tmp/
+/output/
 cache/
 backup/
 Sounds/_backup_normalized_*/

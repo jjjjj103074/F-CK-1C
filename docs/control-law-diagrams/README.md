@@ -6,7 +6,7 @@ This directory has one control-law target only:
 Figure 3.1, `DFCS Longitudinal Control Block Diagram`.
 
 No simplified substitute or invented pass condition is included. The source
-authority is `output/pdf/ADA189675/ADA189675.pdf`.
+authority is [ADA189675.pdf](../references/ADA189675.pdf).
 
 The source gain schedules use `q_c`, the standard air-data symbol for impact
 pressure (`p_t - p_s`). It is intentionally named `impactPressurePsf` in the
