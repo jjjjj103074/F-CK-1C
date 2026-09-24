@@ -17,7 +17,7 @@ class ClosedLoopRig final
 {
 public:
 	explicit ClosedLoopRig(double airspeed_mps = kTestAirspeedMps)
-		: computer_(
+		: executive_(
 			Core::Systems::fck1c_flight_control_computer_config(),
 			Core::StartMode::HotAir,
 			{ kNeutralControlNormalized, kNeutralControlNormalized }),
@@ -29,14 +29,16 @@ public:
 
 	void command(Core::CommandId id, double value = kPressedCommandValue)
 	{
-		computer_.handle_command({ id, value });
+		Tests::Fck1c::deliver_flight_control_command(
+			executive_.command_bindings(), { id, value });
 	}
 
 	void tick()
 	{
-		const auto& demand = computer_.step(
+		const auto& demand = executive_.update(
 			{ make_input(),
-				{ kNeutralControlNormalized, kNeutralControlNormalized } });
+				{ kNeutralControlNormalized, kNeutralControlNormalized } })
+			.actuator_command;
 		for (int index = 0; index < kActuatorStepsPerFccTick; ++index)
 		{
 			(void)actuation_.update(demand, kActuatorDtS);
@@ -47,11 +49,11 @@ public:
 	const SmallSignalAircraft& aircraft() const { return aircraft_; }
 	const Core::AutomaticFlightControlSnapshot& autopilot() const
 	{
-		return computer_.automatic_flight_control_snapshot();
+		return executive_.result().automatic_flight_control;
 	}
 	const Core::FlightControlComputerSnapshot& diagnostics() const
 	{
-		return computer_.diagnostics();
+		return executive_.result().diagnostics;
 	}
 	bool actuator_saturated() const
 	{
@@ -159,7 +161,7 @@ private:
 		aircraft_.altitude_m += aircraft_.vertical_speed_mps * kFccDtS;
 	}
 
-	Core::Systems::FlightControlComputer computer_;
+	Core::Systems::FlightControlExecutive executive_;
 	Core::Systems::FlightControlActuationSystem actuation_;
 	SmallSignalAircraft aircraft_;
 	const double airspeed_mps_;

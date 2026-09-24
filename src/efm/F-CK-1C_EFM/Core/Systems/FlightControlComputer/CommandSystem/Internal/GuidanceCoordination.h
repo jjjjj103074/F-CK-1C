@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../GuidanceCoordinationConfig.h"
 #include "../../ModeAndGainScheduling/ModeAndGainScheduling.h"
 #include "../../ControlLaws/ControlLawSignals.h"
 #include "../../Contracts/FlightControlReferences.h"

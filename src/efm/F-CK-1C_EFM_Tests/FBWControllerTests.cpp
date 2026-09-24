@@ -15,9 +15,10 @@ constexpr double kControlDtS = 1.0 / 64.0;
 Systems::ActiveFlightControlConfiguration normal_configuration(
 	bool landing_mode = false)
 {
-	Systems::ModeAndGainScheduling scheduling({});
+	Systems::ModeAndGainScheduling scheduling(
+		Systems::make_fck1c_mode_and_gain_scheduling_config());
 	return scheduling.update({
-		kControlDtS, 5000.0, 0.0, true, false, 0.0, landing_mode });
+		kControlDtS, 5000.0, 0.0, true, landing_mode });
 }
 
 Systems::FlightControlLawsInput normal_input()

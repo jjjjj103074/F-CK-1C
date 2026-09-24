@@ -29,7 +29,6 @@ constexpr SystemScheduledTime kNegativeUpdatePeriod =
 struct DemandPublisherOptions
 {
 	std::string id;
-	SystemGroup group;
 	double initial;
 	double next;
 };
@@ -38,7 +37,6 @@ SystemDefinition demand_publisher(const DemandPublisherOptions& options)
 {
 	return {
 		options.id,
-		options.group,
 		[options](SystemSetup& setup)
 		{
 			setup.publish(
@@ -54,11 +52,10 @@ SystemDefinition demand_publisher(const DemandPublisherOptions& options)
 	};
 }
 
-SystemDefinition demand_observer(SystemGroup group)
+SystemDefinition demand_observer()
 {
 	return {
 		"observer",
-		group,
 		[](SystemSetup& setup)
 		{
 			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -80,7 +77,6 @@ void test_missing_provider_fails(Tests::Context& context)
 {
 	const SystemDefinition reader = {
 		"reader",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -98,7 +94,6 @@ void test_type_mismatch_fails(Tests::Context& context)
 	};
 	const SystemDefinition publisher = {
 		"wrong_type",
-		SystemGroup::Control,
 		[wrong_key](SystemSetup& setup)
 		{
 			setup.publish(wrong_key, actuator_state(kNeutralValue));
@@ -112,7 +107,6 @@ void test_required_initial_value_fails(Tests::Context& context)
 {
 	const SystemDefinition publisher = {
 		"publisher",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -121,7 +115,6 @@ void test_required_initial_value_fails(Tests::Context& context)
 	};
 	const SystemDefinition reader = {
 		"reader",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -138,7 +131,6 @@ void test_optional_initial_value_is_explicit(Tests::Context& context)
 {
 	const SystemDefinition publisher = {
 		"publisher",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -147,7 +139,6 @@ void test_optional_initial_value_is_explicit(Tests::Context& context)
 	};
 	const SystemDefinition reader = {
 		"reader",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.read(
@@ -167,7 +158,6 @@ void test_undeclared_read_fails(Tests::Context& context)
 {
 	const SystemDefinition reader = {
 		"reader",
-		SystemGroup::Equipment,
 		[](SystemSetup&) {},
 		[](const AircraftDataView& aircraft, SystemResult&)
 		{
@@ -190,7 +180,6 @@ void test_undeclared_has_fails(Tests::Context& context)
 {
 	const SystemDefinition reader = {
 		"reader",
-		SystemGroup::Equipment,
 		[](SystemSetup&) {},
 		[](const AircraftDataView& aircraft, SystemResult&)
 		{
@@ -214,7 +203,6 @@ void test_declared_optional_has_reports_missing(Tests::Context& context)
 	auto observed = std::make_shared<bool>(true);
 	const SystemDefinition publisher = {
 		"publisher",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -223,7 +211,6 @@ void test_declared_optional_has_reports_missing(Tests::Context& context)
 	};
 	const SystemDefinition reader = {
 		"reader",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.read(
@@ -246,11 +233,10 @@ void test_duplicate_writer_fails(Tests::Context& context)
 {
 	const SystemDefinition first =
 		demand_publisher({
-			"first", SystemGroup::Control, kNeutralValue, kInitialDemand });
+			"first", kNeutralValue, kInitialDemand });
 	const SystemDefinition second =
 		demand_publisher({
 			"second",
-			SystemGroup::Equipment,
 			kNeutralValue,
 			kInitialCrossPosition
 		});
@@ -262,7 +248,6 @@ void test_missing_update_rate_fails(Tests::Context& context)
 {
 	SystemDefinition system = {
 		"missing_rate",
-		SystemGroup::Equipment,
 		[](SystemSetup&) {},
 		no_step()
 	};
@@ -274,7 +259,6 @@ void test_duplicate_update_rate_fails(Tests::Context& context)
 {
 	const SystemDefinition system = {
 		"duplicate_rate",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.update_rate_hz(kTestUpdateRateHz);
@@ -287,7 +271,7 @@ void test_duplicate_update_rate_fails(Tests::Context& context)
 void test_invalid_update_timing_fails(Tests::Context& context)
 {
 	SystemDefinition zero_rate = {
-		"zero_rate", SystemGroup::Equipment, [](SystemSetup&) {}, no_step()
+		"zero_rate", [](SystemSetup&) {}, no_step()
 	};
 	zero_rate.update_rate_hz = kInvalidUpdateRateHz;
 	TEST_EXPECT(context, construction_throws({ entry(zero_rate) }));
@@ -297,7 +281,6 @@ void test_invalid_update_timing_fails(Tests::Context& context)
 	{
 		SystemDefinition invalid_period = {
 			"invalid_period",
-			SystemGroup::Equipment,
 			[period](SystemSetup& setup) { setup.update_period(period); },
 			no_step()
 		};
@@ -309,10 +292,10 @@ void test_invalid_update_timing_fails(Tests::Context& context)
 void test_same_time_bucket_reads_fixed_snapshot(Tests::Context& context)
 {
 	const SystemDefinition publisher = demand_publisher({
-		"publisher", SystemGroup::Control, kInitialDemand, kNextDemand });
+		"publisher", kInitialDemand, kNextDemand });
 	SystemPipeline pipeline(
 		flight_setup(),
-		{ entry(publisher), entry(demand_observer(SystemGroup::Control)) });
+		{ entry(publisher), entry(demand_observer()) });
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
@@ -326,14 +309,14 @@ void test_same_time_bucket_reads_fixed_snapshot(Tests::Context& context)
 		kTolerance);
 }
 
-void test_group_metadata_does_not_create_a_commit(
+void test_catalog_order_does_not_create_a_commit(
 	Tests::Context& context)
 {
 	const SystemDefinition publisher = demand_publisher({
-		"publisher", SystemGroup::Control, kInitialDemand, kNextDemand });
+		"publisher", kInitialDemand, kNextDemand });
 	SystemPipeline pipeline(
 		flight_setup(),
-		{ entry(demand_observer(SystemGroup::Equipment)), entry(publisher) });
+		{ entry(demand_observer()), entry(publisher) });
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
@@ -342,14 +325,13 @@ void test_group_metadata_does_not_create_a_commit(
 		kTolerance);
 }
 
-void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
+void test_failed_system_keeps_previous_frame(Tests::Context& context)
 {
 	auto observed = std::make_shared<double>(kNeutralValue);
 	const SystemDefinition publisher = demand_publisher({
-		"publisher", SystemGroup::Control, kInitialDemand, kNextDemand });
-	const SystemDefinition failing_equipment = {
-		"failing_equipment",
-		SystemGroup::Equipment,
+		"publisher", kInitialDemand, kNextDemand });
+	const SystemDefinition failing_system = {
+		"failing_system",
 		[](SystemSetup& setup)
 		{
 			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -361,11 +343,11 @@ void test_failed_equipment_keeps_previous_frame(Tests::Context& context)
 		{
 			*observed =
 				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
-			throw std::runtime_error("expected equipment failure");
+			throw std::runtime_error("expected system failure");
 		}
 	};
 	SystemPipeline pipeline(
-		flight_setup(), { entry(publisher), entry(failing_equipment) });
+		flight_setup(), { entry(publisher), entry(failing_system) });
 	FrameInput failed_input;
 	failed_input.availability.world_kinematics = true;
 	failed_input.world_kinematics.velocity_world_mps.x = kNextDemand;
@@ -405,7 +387,6 @@ void test_missing_new_value_retains_last_commit(Tests::Context& context)
 	auto calls = std::make_shared<int>(kFirstCall);
 	const SystemDefinition publisher = {
 		"publisher",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(
@@ -437,7 +418,6 @@ void test_pending_storage_does_not_leak(Tests::Context& context)
 	auto calls = std::make_shared<int>(kFirstCall);
 	const SystemDefinition publisher = {
 		"publisher",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(
@@ -481,7 +461,6 @@ SystemDefinition cross_reader(
 	{
 		return {
 			id,
-			SystemGroup::Control,
 			[](SystemSetup& setup)
 			{
 				setup.read(AircraftDataKeys::kFlightControlActuatorState);
@@ -501,7 +480,6 @@ SystemDefinition cross_reader(
 	}
 	return {
 		id,
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
@@ -552,7 +530,6 @@ void test_systems_share_one_flight_result_buffer(Tests::Context& context)
 	auto second_result = std::make_shared<const SystemResult*>(nullptr);
 	const SystemDefinition first = {
 		"first",
-		SystemGroup::Equipment,
 		[](SystemSetup&) {},
 		[first_result](const AircraftDataView&, SystemResult& result)
 		{
@@ -561,7 +538,6 @@ void test_systems_share_one_flight_result_buffer(Tests::Context& context)
 	};
 	const SystemDefinition second = {
 		"second",
-		SystemGroup::Equipment,
 		[](SystemSetup&) {},
 		[second_result](const AircraftDataView&, SystemResult& result)
 		{
@@ -606,13 +582,11 @@ void test_factory_receives_start_mode(Tests::Context& context)
 	auto received_mode = std::make_shared<StartMode>(StartMode::ColdGround);
 	SystemEntry system = {
 		"context_reader",
-		SystemGroup::Control,
 		[received_mode](const FlightSetupContext& setup)
 		{
 			*received_mode = setup.start_mode;
 			return std::make_unique<CallbackSystem>(SystemDefinition{
 				"context_reader",
-				SystemGroup::Control,
 				[](SystemSetup&) {},
 				no_step()
 			});
@@ -626,7 +600,6 @@ void test_factory_error_identifies_system_create(Tests::Context& context)
 {
 	SystemEntry system = {
 		"throwing_factory",
-		SystemGroup::Control,
 		[](const FlightSetupContext&) -> std::unique_ptr<System>
 		{
 			throw std::runtime_error("expected factory failure");
@@ -650,7 +623,6 @@ void test_setup_error_identifies_system_setup(Tests::Context& context)
 {
 	const SystemDefinition system = {
 		"throwing_setup",
-		SystemGroup::Control,
 		[](SystemSetup&)
 		{
 			throw std::runtime_error("expected setup failure");
@@ -686,8 +658,8 @@ void run_system_pipeline_data_tests(Tests::Context& context)
 	test_duplicate_update_rate_fails(context);
 	test_invalid_update_timing_fails(context);
 	test_same_time_bucket_reads_fixed_snapshot(context);
-	test_group_metadata_does_not_create_a_commit(context);
-	test_failed_equipment_keeps_previous_frame(context);
+	test_catalog_order_does_not_create_a_commit(context);
+	test_failed_system_keeps_previous_frame(context);
 	test_missing_new_value_retains_last_commit(context);
 	test_pending_storage_does_not_leak(context);
 	test_catalog_order_does_not_change_batch_result(context);

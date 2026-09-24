@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../ControlLaws/ControlLawConfig.h"
+#include "InputSignalManagementConfig.h"
+#include "../ModeAndGainScheduling/ModeAndGainSchedulingConfig.h"
 #include "../ControlLaws/ControlLawSignals.h"
 #include "../../../Contracts/AircraftData.h"
 
@@ -8,12 +9,19 @@ namespace Core
 {
 namespace Systems
 {
+// 「Raw」表示尚未經 FLCC 濾波與塑形；所有欄位已是 Core 約定的單位，
+// 不是 DCS 原始軸值或座標。這也是 Executive 每週期的飛控部分輸入。
 struct RawFlightControlInput
 {
+	// 本次 FLCC 更新相隔的秒數。
 	double dt_s = 0.0;
+	// 已換算的飛行感測值：高度 ft、速度 m/s 或 ft/s、角度 rad 等。
 	FlightControlObservation observation;
+	// 已校準的飛行員三軸與配平要求，範圍採 Core 正規化約定。
 	PilotControlSignal pilot;
+	// 起落架資料；FLCC 目前使用 handle_down 與 any_weight_on_wheels。
 	LandingGearData landing_gear;
+	// 致動器實際位置、速率與限制狀態；不是 FLCC 的輸出命令。
 	FlightControlActuatorState actuator;
 };
 

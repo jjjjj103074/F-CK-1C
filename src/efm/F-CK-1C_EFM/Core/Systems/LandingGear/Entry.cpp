@@ -10,7 +10,6 @@ SystemEntry make_landing_gear_system_entry(
 	validate_landing_gear_config(config);
 	return {
 		"landing_gear",
-		SystemGroup::Equipment,
 		[owned_config = config](const FlightSetupContext& setup)
 		{
 			return std::make_unique<LandingGear>(

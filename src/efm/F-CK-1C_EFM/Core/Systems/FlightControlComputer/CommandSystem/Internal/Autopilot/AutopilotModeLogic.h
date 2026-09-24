@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../AutomaticFlightControlTypes.h"
+#include "../../FlightControlCommandBinding.h"
 #include "AutomaticFlightControlObservation.h"
 #include "AutopilotModeMonitor.h"
 #include "../../../ModeAndGainScheduling/ModeAndGainScheduling.h"
@@ -52,8 +53,14 @@ struct AutopilotModeLogicState
 class AutopilotModeLogic final
 {
 public:
-	explicit AutopilotModeLogic(const AutomaticFlightControlConfig& config);
-	static bool handles(CommandId id);
+	AutopilotModeLogic(
+		const AutomaticFlightControlConfig& config,
+		double bank_limit_rad);
+	/**
+	 * @brief 提供本模組擁有的自動駕駛指令與遞送函式。
+	 * @return 指令識別碼及其遞送函式的清單；遞送後先存入待處理佇列。
+	 */
+	std::vector<FlightControlCommandBinding> command_bindings();
 	void handle_command(const Command& command);
 	void update(
 		const AutomaticFlightControlObservation& observation,
@@ -96,6 +103,7 @@ private:
 	void release_lateral();
 
 	const AutomaticFlightControlConfig config_;
+	const double bank_limit_rad_;
 	AutomaticFlightControlObservation observation_;
 	::Systems::ManeuverEnvelope envelope_;
 	AutopilotModeLogicState state_;

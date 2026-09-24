@@ -9,7 +9,7 @@ namespace
 {
 	const auto config =
 		Core::Systems::fck1c_flight_control_computer_config();
-	::Systems::ModeAndGainScheduling scheduling(config.mode_and_gain);
+	::Systems::ModeAndGainScheduling scheduling(config.values.mode_and_gain);
 	::Systems::FlightControlLawsInput input;
 	input.flight.dt_s = 1.0 / 64.0;
 	input.flight.dynamic_pressure_pa = 5000.0;
@@ -19,7 +19,7 @@ namespace
 		Core::Systems::NormalAccelerationCommand{ 1.0 };
 	input.configuration = scheduling.update({
 		input.flight.dt_s, input.flight.dynamic_pressure_pa,
-		input.flight.mach, true, false, 0.0, false });
+		input.flight.mach, true, false });
 	return input;
 }
 
@@ -27,7 +27,7 @@ void test_public_laws_damp_measured_roll_rate(Tests::Context& context)
 {
 	const auto config =
 		Core::Systems::fck1c_flight_control_computer_config();
-	::Systems::FlightControlLaws laws(config.flight_control_laws);
+	::Systems::FlightControlLaws laws(config.values.flight_control_laws);
 	auto input = nominal_input();
 	input.flight.roll_rate_rad_s = 0.3;
 	const auto result = laws.update(input);
@@ -40,7 +40,7 @@ void test_public_laws_report_inner_loop_saturation(Tests::Context& context)
 {
 	const auto config =
 		Core::Systems::fck1c_flight_control_computer_config();
-	::Systems::FlightControlLaws laws(config.flight_control_laws);
+	::Systems::FlightControlLaws laws(config.values.flight_control_laws);
 	auto input = nominal_input();
 	input.flight.roll_rate_rad_s = 100.0;
 	const auto result = laws.update(input);

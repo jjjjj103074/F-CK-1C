@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FlightControlDiagnosticsConfig.h"
 #include "../CommandSystem/FlightControlCommandSystem.h"
 #include "../Output/FlightControlOutputSystem.h"
 #include "../ControlLaws/ControlLaws.h"
@@ -30,8 +31,9 @@ struct FlightControlDiagnosticsInput
 class FlightControlDiagnostics
 {
 public:
-	explicit FlightControlDiagnostics(
-		const ::Systems::FlightControlDevelopmentConfig& development,
+	FlightControlDiagnostics(
+		bool g_limiter_override_available,
+		bool developer_direct_control_law,
 		const ::Systems::FlightControlDiagnosticsConfig& config = {});
 	const FlightControlComputerSnapshot& update(
 		const FlightControlDiagnosticsInput& input);

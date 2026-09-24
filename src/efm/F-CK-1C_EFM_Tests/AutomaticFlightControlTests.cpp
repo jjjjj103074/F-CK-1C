@@ -373,11 +373,10 @@ void test_lateral_constraint_freezes_integral(Tests::Context& context)
 	auto config = Core::Systems::fck1c_automatic_flight_control_config();
 	config.heading_kp = 0.0;
 	config.heading_ki = 1.0;
-	config.bank_limit_rad = 1.0;
-	config.roll_reference_rate_rad_s = 1.0;
 	config.heading_select_step_deg = kIntegralTestHeadingErrorDeg;
-	AutomaticFlightControl constrained(config, false);
-	AutomaticFlightControl fresh(config, false);
+	const Core::Systems::AutomaticFlightGuidanceLimits limits{ 1.0, 1.0 };
+	AutomaticFlightControl constrained(config, false, limits);
+	AutomaticFlightControl fresh(config, false, limits);
 	auto observation = nominal_observation();
 	observation.dt_s = kIntegralTestDtS;
 	observation.magnetic_heading_deg = 0.0;

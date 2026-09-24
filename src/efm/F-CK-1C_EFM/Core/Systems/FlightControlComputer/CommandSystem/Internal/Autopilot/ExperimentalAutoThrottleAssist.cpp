@@ -3,17 +3,12 @@
 // Private developer-only AFCS branch; use FlightControlCommandSystem.
 
 #include "Common/Clamp.h"
+#include "Common/CommandValue.h"
 
 namespace
 {
-constexpr double kEnabledCommandThreshold = 0.5;
 constexpr double kMinimumThrottleCommand = 0.0;
 constexpr double kMaximumNormalizedCommand = 1.0;
-
-bool pressed(const Core::Command& command)
-{
-	return command.value_normalized > kEnabledCommandThreshold;
-}
 }
 
 namespace Core
@@ -30,7 +25,7 @@ bool ExperimentalAutoThrottleAssist::handle_command(
 	const Command& command,
 	const AutomaticFlightControlObservation& observation)
 {
-	if (!pressed(command)) return false;
+	if (!Common::command_value_is_pressed(command.value_normalized)) return false;
 	switch (command.id)
 	{
 	case CommandId::ToggleAutoThrottle:

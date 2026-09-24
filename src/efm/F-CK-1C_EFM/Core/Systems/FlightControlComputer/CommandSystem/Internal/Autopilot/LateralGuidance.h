@@ -26,7 +26,9 @@ struct LateralGuidanceStepInput
 class LateralGuidance
 {
 public:
-	explicit LateralGuidance(const AutomaticFlightControlConfig& config);
+	LateralGuidance(
+		const AutomaticFlightControlConfig& config,
+		const AutomaticFlightGuidanceLimits& limits);
 	LateralGuidanceReference update(const LateralGuidanceStepInput& input);
 	void track_observation(const AutomaticFlightControlObservation& observation);
 	void reset();
@@ -37,6 +39,7 @@ private:
 		double desired_bank_rad,
 		const AutomaticFlightControlObservation& observation);
 	const AutomaticFlightControlConfig config_;
+	const AutomaticFlightGuidanceLimits limits_;
 	double heading_error_integral_deg_s_ = 0.0;
 	double bank_reference_rad_ = 0.0;
 	bool active_last_tick_ = false;

@@ -155,7 +155,7 @@ void test_physical_saturation_reaches_diagnostics_snapshot(
 	Core::FlightControlActuatorCommand actuator;
 	output.actuator_saturated = true;
 	signals.observation.normal_acceleration_g = 2.25;
-	Core::Systems::FlightControlDiagnostics diagnostics({});
+	Core::Systems::FlightControlDiagnostics diagnostics(false, false);
 	const auto& snapshot = diagnostics.update({
 		0, 0, 0, 0, 0, false, false, command, laws, configuration,
 		signals, output, actuator });
@@ -182,7 +182,7 @@ void test_non_recovering_alpha_qualifies_control_authority(
 	laws.status.angle_of_attack_limit_active = true;
 	laws.diagnostics.limited_pitch_effort = -1.0;
 	output.protection_authority_exhausted = true;
-	Core::Systems::FlightControlDiagnostics diagnostics({}, config);
+	Core::Systems::FlightControlDiagnostics diagnostics(false, false, config);
 	Core::Systems::FlightControlDiagnosticsInput input = {
 		0, 0, 0, 0, 0, false, false, command, laws, configuration,
 		signals, output, actuator };

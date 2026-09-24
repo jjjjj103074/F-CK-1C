@@ -1,11 +1,11 @@
 #include "LandingGear.h"
 
+#include "Common/CommandValue.h"
 #include "../SystemPipeline.h"
 #include "../SystemUpdateRates.h"
 
 namespace
 {
-constexpr double kEnabledCommandThreshold = 0.5;
 constexpr double kFullIntegrity = 1.0;
 }
 
@@ -146,13 +146,16 @@ void LandingGear::handle_command(const Command& command)
 		::Systems::toggle_gear(landing_gear_); break;
 	case CommandId::SetGear:
 		::Systems::set_gear(
-			landing_gear_, command.value_normalized > kEnabledCommandThreshold); break;
+			landing_gear_, Common::command_value_is_pressed(
+				command.value_normalized)); break;
 	case CommandId::ToggleNoseWheelSteering:
 		::Systems::toggle_nose_turn_enabled(
-			wheels, command.value_normalized > kEnabledCommandThreshold); break;
+			wheels, Common::command_value_is_pressed(
+				command.value_normalized)); break;
 	case CommandId::SetNoseWheelSteering:
 		::Systems::set_nose_turn_enabled(
-			wheels, command.value_normalized > kEnabledCommandThreshold); break;
+			wheels, Common::command_value_is_pressed(
+				command.value_normalized)); break;
 	case CommandId::SetBrake:
 		::Systems::set_brake_axis(
 			wheels, ::Systems::normalize_brake_axis(command.value_normalized)); break;

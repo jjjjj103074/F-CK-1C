@@ -1,9 +1,10 @@
 #include "TestHarness.h"
+#include "FlightControlCommandBindingTestHelper.h"
 
 #include "Common/Clamp.h"
 #include "Common/Units.h"
 #include "Core/Systems/FlightControlActuationSystem/FlightControlActuationSystem.h"
-#include "Core/Systems/FlightControlComputer/FlightControlComputer.h"
+#include "Core/Systems/FlightControlComputer/FlightControlExecutive.h"
 
 #include <algorithm>
 #include <cmath>
@@ -210,7 +211,7 @@ void record_response(ResponseMetrics& metrics, const ClosedLoopRig& rig, int tic
 	const auto& aircraft = rig.aircraft();
 	const auto& diagnostics = rig.diagnostics();
 	const auto& mixer = Core::Systems::fck1c_flight_control_computer_config()
-		.flight_control_laws.surface_mixer;
+		.values.flight_control_laws.surface_mixer;
 	const double elevator = diagnostics.symmetric_stabilator_demand_rad /
 		mixer.symmetric_stabilator_limit_rad;
 	const double aileron = diagnostics.differential_flaperon_demand_rad /
@@ -341,7 +342,7 @@ double maximum_bank_reference_step_rad()
 {
 	const auto& config =
 		Core::Systems::fck1c_flight_control_computer_config();
-	return config.automatic_flight_control.roll_reference_rate_rad_s *
+	return config.values.mode_and_gain.guidance_roll_rate_limit_rad_s *
 		kFccDtS + kReferenceContinuityToleranceRad;
 }
 
@@ -393,14 +394,14 @@ void expect_bounded_surface_step(
 		std::abs(after.symmetric_stabilator_demand_rad -
 			before.symmetric_stabilator_demand_rad) /
 			Core::Systems::fck1c_flight_control_computer_config()
-				.flight_control_laws.surface_mixer.symmetric_stabilator_limit_rad <=
+				.values.flight_control_laws.surface_mixer.symmetric_stabilator_limit_rad <=
 			kMaximumAuthorityTransitionCommandStep);
 	TEST_EXPECT(
 		context,
 		std::abs(after.differential_flaperon_demand_rad -
 			before.differential_flaperon_demand_rad) /
 			Core::Systems::fck1c_flight_control_computer_config()
-				.flight_control_laws.surface_mixer.differential_flaperon_limit_rad <=
+				.values.flight_control_laws.surface_mixer.differential_flaperon_limit_rad <=
 			kMaximumAuthorityTransitionCommandStep);
 }
 

@@ -4,6 +4,7 @@
 #include "AutomaticFlightControlObservation.h"
 #include "AutopilotModeLogic.h"
 #include "AutopilotModeMonitor.h"
+#include "../../FlightControlCommandBinding.h"
 #include "ExperimentalAutoThrottleAssist.h"
 #include "LateralGuidance.h"
 #include "VerticalGuidance.h"
@@ -20,23 +21,19 @@ namespace Systems
 struct ModeAndGainSchedulingConfig;
 }
 
-namespace Core
+namespace Core::Systems
 {
-namespace Systems
-{
-class SystemSetup;
-
 class AutomaticFlightControl final
 {
 public:
 	AutomaticFlightControl(
 		const AutomaticFlightControlConfig& config,
-		bool initial_weight_on_wheels,
-		bool experimental_auto_throttle_available = false);
+		const AutomaticFlightGuidanceLimits& limits,
+		bool initial_weight_on_wheels);
 
-	static bool handles(CommandId id);
-	void register_commands(SystemSetup& setup);
-	void handle_command(const Command& command);
+	/// @brief 提供 AP 指令與設定允許時的實驗性自動油門指令綁定。
+	/// @return 每筆指令的 ID 與交付函式；交付時仍寫入原本的待處理佇列。
+	std::vector<FlightControlCommandBinding> command_bindings();
 	const AutomaticFlightGuidanceReference& step(
 		const AutomaticFlightControlObservation& observation,
 		const ::Systems::ManeuverEnvelope& envelope);
@@ -72,5 +69,4 @@ private:
 	const bool experimental_auto_throttle_available_;
 };
 
-}
 }

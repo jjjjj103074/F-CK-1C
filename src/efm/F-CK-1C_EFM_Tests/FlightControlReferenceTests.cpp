@@ -1,4 +1,5 @@
 #include "TestHarness.h"
+#include "FlightControlCommandBindingTestHelper.h"
 
 #include "Common/Units.h"
 #include "Core/Systems/FlightControlComputer/CommandSystem/FlightControlCommandSystem.h"
@@ -16,10 +17,16 @@ constexpr double kTestHeadingDeg = 90.0;
 
 struct CommandSystemFixture
 {
-	Core::Systems::FlightControlComputerConfig config =
+	const Core::Systems::FlightControlComputerConfig& config =
 		Core::Systems::fck1c_flight_control_computer_config();
-	::Systems::ModeAndGainScheduling scheduling{ config.mode_and_gain };
-	Core::Systems::FlightControlCommandSystem system{ config, false };
+	::Systems::ModeAndGainScheduling scheduling{ config.values.mode_and_gain };
+	Core::Systems::FlightControlCommandSystem system{{
+		config.values.flight_control_laws.longitudinal,
+		config.values.guidance_coordination,
+		config.values.automatic_flight_control,
+		{config.values.mode_and_gain.guidance_bank_limit_rad,
+		 config.values.mode_and_gain.guidance_roll_rate_limit_rad_s},
+		false }};
 	Core::Systems::FlightControlCommandSystemInput input;
 
 	CommandSystemFixture()
@@ -36,12 +43,13 @@ struct CommandSystemFixture
 		input.flight.mach = 0.5;
 		input.configuration = scheduling.update(
 			{ input.flight.dt_s, input.flight.dynamic_pressure_pa,
-				input.flight.mach, true, false, 0.0, false });
+				input.flight.mach, true, false });
 	}
 
 	void send(Core::CommandId id)
 	{
-		system.handle_command({ id, 1.0 });
+		Tests::Fck1c::deliver_flight_control_command(
+			system.command_bindings(), { id, 1.0 });
 	}
 
 	const Core::Systems::FlightControlCommandSystemResult& step()
@@ -133,16 +141,23 @@ void test_combined_reference_reports_vertical_constraint(
 	Tests::Context& context)
 {
 	CommandSystemFixture fixture;
-	fixture.config.guidance_coordination
-		.vertical_speed_error_to_acceleration_gain_s_inv = 1.0;
-	Core::Systems::FlightControlCommandSystem constrained(
-		fixture.config, false);
+	auto coordination = fixture.config.values.guidance_coordination;
+	coordination.vertical_speed_error_to_acceleration_gain_s_inv = 1.0;
+	Core::Systems::FlightControlCommandSystem constrained({
+		fixture.config.values.flight_control_laws.longitudinal,
+		coordination,
+		fixture.config.values.automatic_flight_control,
+		{fixture.config.values.mode_and_gain.guidance_bank_limit_rad,
+		 fixture.config.values.mode_and_gain.guidance_roll_rate_limit_rad_s},
+		false });
 	(void)constrained.update(fixture.input);
-	constrained.handle_command(
-		{ Core::CommandId::SelectAutopilotAltitudeHold, 1.0 });
-	constrained.handle_command(
-		{ Core::CommandId::SelectAutopilotRollAttitudeHold, 1.0 });
-	constrained.handle_command({ Core::CommandId::EngageAutopilot, 1.0 });
+	const auto bindings = constrained.command_bindings();
+	Tests::Fck1c::deliver_flight_control_command(
+		bindings, { Core::CommandId::SelectAutopilotAltitudeHold, 1.0 });
+	Tests::Fck1c::deliver_flight_control_command(
+		bindings, { Core::CommandId::SelectAutopilotRollAttitudeHold, 1.0 });
+	Tests::Fck1c::deliver_flight_control_command(
+		bindings, { Core::CommandId::EngageAutopilot, 1.0 });
 	(void)constrained.update(fixture.input);
 	fixture.input.flight.pressure_altitude_ft -= 1000.0;
 	fixture.input.flight.vertical_speed_ft_s = -100.0;

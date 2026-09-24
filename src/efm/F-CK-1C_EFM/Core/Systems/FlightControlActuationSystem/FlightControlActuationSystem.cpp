@@ -68,7 +68,6 @@ SystemEntry make_flight_control_actuation_system_entry(
 	validate_flight_control_actuation_system_config(config);
 	return {
 		"flight_control_actuation_system",
-		SystemGroup::Equipment,
 		[owned_config = config](const FlightSetupContext&)
 		{
 			return std::make_unique<FlightControlActuationSystem>(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Systems/FlightControlComputer/CommandSystem/FlightControlCommandSystem.h"
+#include "FlightControlCommandBindingTestHelper.h"
 #include "Core/Systems/FlightControlComputer/Configuration/FlightControlComputerConfig.h"
 #include "Common/Clamp.h"
 #include "Common/Units.h"
@@ -70,16 +71,34 @@ public:
 		const Core::Systems::AutomaticFlightControlConfig& automatic_config,
 		bool initial_weight_on_wheels,
 		bool experimental_auto_throttle_available = false)
-		: config_(make_config(
+		: automatic_config_(make_automatic_config(
 			automatic_config, experimental_auto_throttle_available)),
-		  scheduling_(config_.mode_and_gain),
-		  command_system_(config_, initial_weight_on_wheels)
+		  scheduling_(production_config().values.mode_and_gain),
+		  command_system_({production_config().values.flight_control_laws.longitudinal,
+			  production_config().values.guidance_coordination,
+			  automatic_config_,
+			  {production_config().values.mode_and_gain.guidance_bank_limit_rad,
+			   production_config().values.mode_and_gain.guidance_roll_rate_limit_rad_s},
+			  initial_weight_on_wheels})
+	{
+	}
+
+	AutomaticFlightControl(
+		const Core::Systems::AutomaticFlightControlConfig& automatic_config,
+		bool initial_weight_on_wheels,
+		const Core::Systems::AutomaticFlightGuidanceLimits& limits)
+		: automatic_config_(automatic_config),
+		  scheduling_(production_config().values.mode_and_gain),
+		  command_system_({production_config().values.flight_control_laws.longitudinal,
+			  production_config().values.guidance_coordination,
+			  automatic_config_, limits, initial_weight_on_wheels})
 	{
 	}
 
 	void handle_command(const Core::Command& command)
 	{
-		command_system_.handle_command(command);
+		Tests::Fck1c::deliver_flight_control_command(
+			command_system_.command_bindings(), command);
 	}
 
 	const Core::Systems::AutomaticFlightGuidanceReference& step(
@@ -90,7 +109,7 @@ public:
 		input.signals = make_signals(observation);
 		input.configuration = scheduling_.update({
 			observation.dt_s, kNominalDynamicPressurePa,
-			observation.mach, true, false, 0.0 });
+			observation.mach, true, false });
 		return command_system_.update(input).automatic;
 	}
 
@@ -106,13 +125,17 @@ public:
 	}
 
 private:
-	static Core::Systems::FlightControlComputerConfig make_config(
+	static const Core::Systems::FlightControlComputerConfig& production_config()
+	{
+		return Core::Systems::fck1c_flight_control_computer_config();
+	}
+
+	static Core::Systems::AutomaticFlightControlConfig make_automatic_config(
 		const Core::Systems::AutomaticFlightControlConfig& automatic_config,
 		bool experimental_auto_throttle_available)
 	{
-		auto result = Core::Systems::fck1c_flight_control_computer_config();
-		result.automatic_flight_control = automatic_config;
-		result.development.experimental_auto_throttle_available =
+		auto result = automatic_config;
+		result.experimental_auto_throttle_available =
 			experimental_auto_throttle_available;
 		return result;
 	}
@@ -159,7 +182,7 @@ private:
 		return result;
 	}
 
-	const Core::Systems::FlightControlComputerConfig config_;
+	const Core::Systems::AutomaticFlightControlConfig automatic_config_;
 	::Systems::ModeAndGainScheduling scheduling_;
 	Core::Systems::FlightControlCommandSystem command_system_;
 };

@@ -127,7 +127,8 @@ void test_roll_stick_steering_respects_guidance_bank_limit(
 	TEST_EXPECT(
 		context,
 		std::abs(control.snapshot().bank_angle_reference_rad) <=
-			config.bank_limit_rad + kTolerance);
+			Core::Systems::fck1c_flight_control_computer_config().
+				values.mode_and_gain.guidance_bank_limit_rad + kTolerance);
 }
 }
 

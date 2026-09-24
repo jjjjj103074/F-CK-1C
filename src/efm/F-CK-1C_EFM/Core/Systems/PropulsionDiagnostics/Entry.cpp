@@ -14,7 +14,6 @@ SystemEntry create_entry()
 {
 	return {
 		"propulsion_diagnostics",
-		SystemGroup::Equipment,
 		[](const FlightSetupContext&)
 		{
 			return std::make_unique<

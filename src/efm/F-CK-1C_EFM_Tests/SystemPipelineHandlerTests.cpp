@@ -21,7 +21,7 @@ SystemDefinition handler_system(
 	const std::string& id,
 	const SetupAction& setup)
 {
-	return { id, SystemGroup::Control, setup, no_step() };
+	return { id, setup, no_step() };
 }
 
 FuelManagementHandlers complete_fuel_management()
@@ -39,7 +39,6 @@ void test_incomplete_fuel_management_fails(Tests::Context& context)
 {
 	const SystemDefinition system = {
 		"fuel",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
@@ -61,7 +60,6 @@ void test_fuel_management_requires_fuel_data_owner(
 		});
 	const SystemDefinition publisher = {
 		"publisher",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
@@ -78,7 +76,6 @@ void test_duplicate_fuel_management_registration_fails(
 {
 	const SystemDefinition system = {
 		"fuel",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.publish(AircraftDataKeys::kFuelData, FuelData{});
@@ -121,7 +118,6 @@ void test_command_only_changes_next_step_request(Tests::Context& context)
 	auto requested = std::make_shared<double>(kNeutralValue);
 	const SystemDefinition system = {
 		"controlled",
-		SystemGroup::Control,
 		[requested](SystemSetup& setup)
 		{
 			setup.publish(
@@ -275,7 +271,6 @@ void test_handler_error_does_not_publish_frame(Tests::Context& context)
 {
 	const SystemDefinition system = {
 		"throwing",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(

@@ -4,27 +4,13 @@
 
 #include "Common/Angles.h"
 #include "Common/Clamp.h"
+#include "Common/CommandValue.h"
 #include "Common/Units.h"
 
 #include <cmath>
 
 namespace
 {
-constexpr double kEnabledCommandThreshold = 0.5;
-constexpr int kLastAutopilotModeCommandOffset = 8;
-
-// Commands.h intentionally keeps the AP mode command block contiguous.
-static_assert(
-	static_cast<int>(Core::CommandId::EngageAutopilot) +
-		kLastAutopilotModeCommandOffset ==
-	static_cast<int>(Core::CommandId::DecreaseAutopilotHeadingSelect),
-	"AutopilotModeLogic::handles requires a contiguous command block.");
-
-bool pressed(const Core::Command& command)
-{
-	return command.value_normalized > kEnabledCommandThreshold;
-}
-
 bool is_pitch_command(Core::CommandId id)
 {
 	switch (id)
@@ -78,15 +64,29 @@ namespace Core
 namespace Systems
 {
 AutopilotModeLogic::AutopilotModeLogic(
-	const AutomaticFlightControlConfig& config)
-	: config_(config)
+	const AutomaticFlightControlConfig& config,
+	double bank_limit_rad)
+	: config_(config),
+	  bank_limit_rad_(bank_limit_rad)
 {
 }
 
-bool AutopilotModeLogic::handles(CommandId id)
+std::vector<FlightControlCommandBinding> AutopilotModeLogic::command_bindings()
 {
-	return id >= CommandId::EngageAutopilot &&
-		id <= CommandId::DecreaseAutopilotHeadingSelect;
+	// 指令先進模式佇列，維持在下一次 update 時套用的既有時序。
+	const auto deliver = [this](const Command& command)
+	{ handle_command(command); };
+	return {
+		{ CommandId::EngageAutopilot, deliver },
+		{ CommandId::DisengageAutopilot, deliver },
+		{ CommandId::SetAutopilotBypass, deliver },
+		{ CommandId::SelectAutopilotPitchAttitudeHold, deliver },
+		{ CommandId::SelectAutopilotAltitudeHold, deliver },
+		{ CommandId::SelectAutopilotRollAttitudeHold, deliver },
+		{ CommandId::SelectAutopilotHeadingSelect, deliver },
+		{ CommandId::IncreaseAutopilotHeadingSelect, deliver },
+		{ CommandId::DecreaseAutopilotHeadingSelect, deliver }
+	};
 }
 
 void AutopilotModeLogic::handle_command(const Command& command)
@@ -126,7 +126,8 @@ void AutopilotModeLogic::apply_command(const Command& command)
 
 bool AutopilotModeLogic::handle_master_command(const Command& command)
 {
-	if (!is_master_command(command.id) || !pressed(command)) return false;
+	if (!is_master_command(command.id) ||
+		!Common::command_value_is_pressed(command.value_normalized)) return false;
 	switch (command.id)
 	{
 	case CommandId::EngageAutopilot:
@@ -148,14 +149,14 @@ bool AutopilotModeLogic::handle_pitch_command(const Command& command)
 	switch (command.id)
 	{
 	case CommandId::SetAutopilotBypass:
-		set_bypass(pressed(command));
+		set_bypass(Common::command_value_is_pressed(command.value_normalized));
 		return true;
 	case CommandId::SelectAutopilotPitchAttitudeHold:
-		if (pressed(command)) select_pitch_mode(
+		if (Common::command_value_is_pressed(command.value_normalized)) select_pitch_mode(
 			AutomaticFlightControlVerticalMode::PitchAttitudeHold);
 		return true;
 	case CommandId::SelectAutopilotAltitudeHold:
-		if (pressed(command)) select_pitch_mode(
+		if (Common::command_value_is_pressed(command.value_normalized)) select_pitch_mode(
 			AutomaticFlightControlVerticalMode::AltitudeHold);
 		return true;
 	default:
@@ -166,7 +167,7 @@ bool AutopilotModeLogic::handle_pitch_command(const Command& command)
 bool AutopilotModeLogic::handle_lateral_command(const Command& command)
 {
 	if (!is_lateral_command(command.id)) return false;
-	if (!pressed(command)) return true;
+	if (!Common::command_value_is_pressed(command.value_normalized)) return true;
 	switch (command.id)
 	{
 	case CommandId::SelectAutopilotRollAttitudeHold:
@@ -345,7 +346,7 @@ void AutopilotModeLogic::engage_heading_select()
 void AutopilotModeLogic::capture_roll_reference()
 {
 	state_.target_roll_rad = Common::limit(
-		observation_.roll_rad, -config_.bank_limit_rad, config_.bank_limit_rad);
+		observation_.roll_rad, -bank_limit_rad_, bank_limit_rad_);
 }
 
 void AutopilotModeLogic::clear_vertical_degradation()

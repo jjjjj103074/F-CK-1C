@@ -2,9 +2,6 @@
 
 #include "Common/Units.h"
 #include "../../../Diagnostics/FlightControlSnapshotProjection.h"
-#include "../../../../SystemPipeline.h"
-
-#include <stdexcept>
 
 namespace
 {
@@ -42,38 +39,22 @@ bool lateral_guidance_available(
 		mode == Core::Systems::AutomaticFlightControlLateralMode::HeadingSelect;
 }
 
-bool auto_throttle_command(Core::CommandId id)
-{
-	switch (id)
-	{
-	case Core::CommandId::ToggleAutoThrottle:
-	case Core::CommandId::EngageAutoThrottle:
-	case Core::CommandId::DisengageAutoThrottle:
-	case Core::CommandId::IncreaseAutopilotSpeed:
-	case Core::CommandId::DecreaseAutopilotSpeed:
-		return true;
-	default:
-		return false;
-	}
-}
 }
 
-namespace Core
-{
-namespace Systems
+namespace Core::Systems
 {
 AutomaticFlightControl::AutomaticFlightControl(
 	const AutomaticFlightControlConfig& config,
-	bool initial_weight_on_wheels,
-	bool experimental_auto_throttle_available)
+	const AutomaticFlightGuidanceLimits& limits,
+	bool initial_weight_on_wheels)
 	: config_(config),
-	mode_logic_(config),
+	mode_logic_(config, limits.bank_limit_rad),
 	vertical_guidance_(config),
-	lateral_guidance_(config),
+	lateral_guidance_(config, limits),
 	auto_throttle_(config.experimental_auto_throttle),
 	mode_monitor_(monitor_config(config)),
 	experimental_auto_throttle_available_(
-		experimental_auto_throttle_available)
+		config.experimental_auto_throttle_available)
 {
 	validate_automatic_flight_control_config(config_);
 	observation_.weight_on_wheels = initial_weight_on_wheels;
@@ -82,71 +63,23 @@ AutomaticFlightControl::AutomaticFlightControl(
 	refresh_snapshot();
 }
 
-bool AutomaticFlightControl::handles(CommandId id)
+std::vector<FlightControlCommandBinding> AutomaticFlightControl::command_bindings()
 {
-	if (AutopilotModeLogic::handles(id)) return true;
-	switch (id)
-	{
-	case CommandId::ToggleAutoThrottle:
-	case CommandId::EngageAutoThrottle:
-	case CommandId::DisengageAutoThrottle:
-	case CommandId::IncreaseAutopilotSpeed:
-	case CommandId::DecreaseAutopilotSpeed:
-		return true;
-	default:
-		return false;
-	}
-}
-
-void AutomaticFlightControl::register_commands(SystemSetup& setup)
-{
-	const CommandId commands[] = {
-		CommandId::EngageAutopilot, CommandId::DisengageAutopilot,
-		CommandId::SetAutopilotBypass,
-		CommandId::SelectAutopilotPitchAttitudeHold,
-		CommandId::SelectAutopilotAltitudeHold,
-		CommandId::SelectAutopilotRollAttitudeHold,
-		CommandId::SelectAutopilotHeadingSelect,
-		CommandId::IncreaseAutopilotHeadingSelect,
-		CommandId::DecreaseAutopilotHeadingSelect
-	};
-	for (CommandId id : commands)
-	{
-		setup.register_command_handler(
-			id,
-			[this](const SystemActionContext&, const Command& command)
-			{ handle_command(command); });
-	}
-	if (!experimental_auto_throttle_available_) return;
-	const CommandId auto_throttle_commands[] = {
-		CommandId::ToggleAutoThrottle, CommandId::EngageAutoThrottle,
-		CommandId::DisengageAutoThrottle,
-		CommandId::IncreaseAutopilotSpeed,
-		CommandId::DecreaseAutopilotSpeed
-	};
-	for (CommandId id : auto_throttle_commands)
-	{
-		setup.register_command_handler(
-			id,
-			[this](const SystemActionContext&, const Command& command)
-			{ handle_command(command); });
-	}
-}
-
-void AutomaticFlightControl::handle_command(const Command& command)
-{
-	if (AutopilotModeLogic::handles(command.id))
-	{
-		mode_logic_.handle_command(command);
-		return;
-	}
-	if (auto_throttle_command(command.id) &&
-		!experimental_auto_throttle_available_)
-	{
-		throw std::logic_error(
-			"Experimental auto-throttle is disabled by configuration.");
-	}
-	pending_auto_throttle_commands_.push_back(command);
+	// 模式邏輯自行宣告 AP 指令；此處只彙整並補上本層的油門指令。
+	std::vector<FlightControlCommandBinding> commands =
+		mode_logic_.command_bindings();
+	if (!experimental_auto_throttle_available_) return commands;
+	// 實驗性自動油門開放時才提供綁定，並保留原本的待處理佇列。
+	const auto deliver_auto_throttle = [this](const Command& command)
+	{ pending_auto_throttle_commands_.push_back(command); };
+	commands.insert(commands.end(), {
+		{ CommandId::ToggleAutoThrottle, deliver_auto_throttle },
+		{ CommandId::EngageAutoThrottle, deliver_auto_throttle },
+		{ CommandId::DisengageAutoThrottle, deliver_auto_throttle },
+		{ CommandId::IncreaseAutopilotSpeed, deliver_auto_throttle },
+		{ CommandId::DecreaseAutopilotSpeed, deliver_auto_throttle }
+	});
+	return commands;
 }
 
 const AutomaticFlightGuidanceReference& AutomaticFlightControl::step(
@@ -325,6 +258,5 @@ void AutomaticFlightControl::refresh_snapshot()
 const AutomaticFlightControlSnapshot& AutomaticFlightControl::snapshot() const
 {
 	return snapshot_;
-}
 }
 }

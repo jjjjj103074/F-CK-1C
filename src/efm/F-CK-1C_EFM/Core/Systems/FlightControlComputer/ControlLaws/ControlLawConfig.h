@@ -2,200 +2,63 @@
 
 #include "Common/Units.h"
 
-#include <array>
-#include <vector>
-
 namespace Systems
 {
-enum class StoresConfiguration
-{
-	Cat1,
-	Cat3
-};
-
-struct PilotInputShapingConfig
-{
-	double deadband_normalized = 0.0;
-	double command_time_constant_s = 0.0;
-	double command_rate_normalized_s = 0.0;
-	double cubic_weight = 0.0;
-};
-
-struct ManeuverEnvelopeSchedule
-{
-	double maximum_roll_command_rad_s = 0.0;
-	double maximum_yaw_command_rad_s = 0.0;
-	double soft_positive_load_factor_g = 0.0;
-	double hard_positive_load_factor_g = 0.0;
-	double roll_rate_limit_rad_s = 0.0;
-	double pitch_rate_limit_rad_s = 0.0;
-	double yaw_rate_limit_rad_s = 0.0;
-};
-
-struct DirectionalControlSchedule
-{
-	double sideslip_damping_s_inv = 0.0;
-	double yaw_rate_damping = 0.0;
-};
-
-struct StoresControlLawSchedule
-{
-	PilotInputShapingConfig pilot_input;
-	ManeuverEnvelopeSchedule envelope;
-	DirectionalControlSchedule directional;
-};
-
-struct GainSchedulePoint
-{
-	double dynamic_pressure_pa = 0.0;
-	double command_gain = 0.0;
-	double damping_gain = 0.0;
-	double limiter_gain = 0.0;
-};
-
-struct GainScheduleValues
-{
-	double command_gain = 1.0;
-	double damping_gain = 1.0;
-	double limiter_gain = 1.0;
-};
-
-struct InputSignalManagementConfig
-{
-	double signal_filter_time_constant_s = 0.06;
-	double dynamic_pressure_filter_time_constant_s = 0.18;
-	double normal_acceleration_filter_time_constant_s = 0.26;
-};
-
-inline StoresControlLawSchedule make_cat1_schedule()
-{
-	return {
-		{ 0.03, 0.05, 9.5, 0.10 },
-		{ Common::rad(190.0), Common::rad(80.0), 6.4, 8.8,
-			Common::rad(220.0),
-			Common::rad(170.0), Common::rad(95.0) },
-		{ 0.90, 0.60 }
-	};
-}
-
-inline StoresControlLawSchedule make_cat3_schedule()
-{
-	return {
-		// CAT changes maneuver authority and gains, not the physical controller
-		// center deadband. Keeping this equal to CAT I avoids a control step.
-		{ 0.03, 0.10, 5.5, 0.20 },
-		{ Common::rad(140.0), Common::rad(60.0), 5.8, 7.6,
-			Common::rad(170.0),
-			Common::rad(130.0), Common::rad(75.0) },
-		{ 1.10, 0.80 }
-	};
-}
-
-inline constexpr unsigned kGainScheduleSize = 4;
-
-struct ModeAndGainSchedulingConfig
-{
-	StoresControlLawSchedule cat1 = make_cat1_schedule();
-	StoresControlLawSchedule cat3 = make_cat3_schedule();
-	std::array<GainSchedulePoint, kGainScheduleSize> gain_schedule = {{
-		{ 1500.0, 1.15, 1.15, 0.82 },
-		{ 5000.0, 1.05, 1.00, 0.95 },
-		{ 15000.0, 0.90, 0.90, 1.00 },
-		{ 35000.0, 0.75, 0.80, 0.90 }
-	}};
-	double stores_transition_time_constant_s = 0.45;
-	double guidance_bank_limit_rad = Common::rad(30.0);
-	double guidance_roll_rate_limit_rad_s = Common::rad(20.0);
-	double guidance_minimum_load_factor_g = 0.5;
-	double guidance_maximum_load_factor_g = 2.0;
-	double hard_bank_limit_rad = Common::rad(60.0);
-	double hard_minimum_load_factor_g = -2.5;
-	// Reference-derived F-16XL endpoints. Mach interpolation remains
-	// project-defined; landing selection follows the cockpit gear handle.
-	std::vector<double> angle_of_attack_mach = { 0.0, 0.85, 0.95, 1.5 };
-	std::vector<double> angle_of_attack_limit_rad = {
-		Common::rad(29.0), Common::rad(29.0),
-		Common::rad(26.0), Common::rad(26.0)
-	};
-	double cruise_angle_of_attack_blend_start_rad = Common::rad(19.0);
-	double landing_angle_of_attack_blend_start_rad = Common::rad(10.0);
-	double landing_angle_of_attack_limit_rad = Common::rad(16.0);
-};
-
+/// @brief 縱向控制律的固定增益、限制與回授參數。
 struct LongitudinalControlConfig
 {
-	double positive_buffer_minimum_g = 0.25;
-	double negative_soft_minimum_g = 1.0;
-	double negative_soft_ratio = 0.65;
-	// Reference-derived topology; gains are project-defined for this EFM plant.
-	double normal_acceleration_proportional_cat1 = 0.30;
-	double normal_acceleration_proportional_cat3 = 0.22;
-	double normal_acceleration_integral_cat1_s_inv = 0.16;
-	double normal_acceleration_integral_cat3_s_inv = 0.10;
-	double normal_acceleration_anti_windup_s_inv = 1.20;
-	double normal_acceleration_integral_limit_effort = 0.65;
-	double pitch_rate_washout_time_constant_s = 0.35;
-	double pitch_rate_feedback_gain_s = 0.85;
-	double angle_of_attack_stability_gain_rad_inv = 1.20;
-	double pitch_rate_command_proportional_s = 0.88;
-	double pitch_rate_command_integral_gain_rad_inv = 0.48;
-	double pitch_rate_command_anti_windup_s_inv = 1.20;
-	double pitch_rate_command_integral_limit_effort = 1.20;
-	double angle_of_attack_limited_normal_acceleration_g = 1.0;
-	double limit_buffer_bias_g = 0.15;
-	double landing_pitch_rate_limit_rad_s = Common::rad(50.0);
+	double positive_buffer_minimum_g = 0.25;  // 正向過載限制前保留的最小緩衝。
+	double negative_soft_minimum_g = 1.0;  // 負向過載柔化區的最小寬度。
+	double negative_soft_ratio = 0.65;  // 進入負向柔化區後保留的指令比例。
+	// 控制拓撲源自參考資料；數值依目前 EFM plant 調校。
+	double normal_acceleration_proportional_cat1 = 0.30;  // CAT I 法向加速度比例增益。
+	double normal_acceleration_proportional_cat3 = 0.22;  // CAT III 法向加速度比例增益。
+	double normal_acceleration_integral_cat1_s_inv = 0.16;  // CAT I 法向加速度積分增益。
+	double normal_acceleration_integral_cat3_s_inv = 0.10;  // CAT III 法向加速度積分增益。
+	double normal_acceleration_anti_windup_s_inv = 1.20;  // 法向加速度積分器的反飽和增益。
+	double normal_acceleration_integral_limit_effort = 0.65;  // 法向加速度積分修正量上限。
+	double pitch_rate_washout_time_constant_s = 0.35;  // 俯仰角速度洗出濾波時間常數。
+	double pitch_rate_feedback_gain_s = 0.85;  // 俯仰角速度回授增益。
+	double angle_of_attack_stability_gain_rad_inv = 1.20;  // 迎角穩定回授增益。
+	double pitch_rate_command_proportional_s = 0.88;  // 俯仰角速度指令比例增益。
+	double pitch_rate_command_integral_gain_rad_inv = 0.48;  // 俯仰角速度誤差積分增益。
+	double pitch_rate_command_anti_windup_s_inv = 1.20;  // 俯仰角速度積分器的反飽和增益。
+	double pitch_rate_command_integral_limit_effort = 1.20;  // 俯仰角速度積分修正量上限。
+	double angle_of_attack_limited_normal_acceleration_g = 1.0;  // 迎角硬限制時採用的法向過載目標。
+	double limit_buffer_bias_g = 0.15;  // 包線限制器額外保留的過載緩衝。
+	double landing_pitch_rate_limit_rad_s = Common::rad(50.0);  // 起落架放下時的俯仰角速度上限。
 };
 
+/// @brief 橫向與方向內迴路的固定增益及積分限制。
 struct InnerRateControlConfig
 {
-	double roll_proportional = 0.55;
-	double roll_integral = 0.35;
-	double yaw_proportional = 0.65;
-	double yaw_integral = 0.25;
-	double anti_windup_gain = 1.20;
-	double integral_limit = 1.20;
+	double roll_proportional = 0.55;  // 滾轉角速度比例增益。
+	double roll_integral = 0.35;  // 滾轉角速度積分增益。
+	double yaw_proportional = 0.65;  // 偏航角速度比例增益。
+	double yaw_integral = 0.25;  // 偏航角速度積分增益。
+	double anti_windup_gain = 1.20;  // 橫向與方向積分器的反飽和增益。
+	double integral_limit = 1.20;  // 橫向與方向積分修正量上限。
 };
 
+/// @brief 三軸控制努力轉為電子控制面需求時的最大偏轉。
 struct SurfaceCommandMixerConfig
 {
-	double symmetric_stabilator_limit_rad = Common::rad(25.0);
-	double differential_flaperon_limit_rad = Common::rad(22.0);
-	double rudder_limit_rad = Common::rad(30.0);
+	double symmetric_stabilator_limit_rad = Common::rad(25.0);  // 對稱水平尾翼電子需求上限。
+	double differential_flaperon_limit_rad = Common::rad(22.0);  // 差動襟副翼電子需求上限。
+	double rudder_limit_rad = Common::rad(30.0);  // 方向舵電子需求上限。
 };
 
-struct FlightControlOutputConfig
-{
-	double selection_transition_time_s = 0.15;
-	double tracking_tolerance_rad = Common::rad(2.0);
-};
-
-struct FlightControlDiagnosticsConfig
-{
-	// Project-defined diagnostic qualification; this does not alter the law.
-	double control_authority_persistence_s = 0.5;
-	double minimum_alpha_recovery_rate_rad_s = Common::rad(0.5);
-};
-
+/// @brief FLCC 三軸控制律及控制面混合設定。
 struct FlightControlLawsConfig
 {
-	LongitudinalControlConfig longitudinal;
-	InnerRateControlConfig inner_rate;
-	SurfaceCommandMixerConfig surface_mixer;
+	LongitudinalControlConfig longitudinal;  // 縱向控制律設定。
+	InnerRateControlConfig inner_rate;  // 橫向與方向內迴路設定。
+	SurfaceCommandMixerConfig surface_mixer;  // 控制努力至控制面需求的混合設定。
 };
 
-struct GuidanceCoordinationConfig
-{
-	double pitch_error_to_rate_gain_s_inv = 2.5;
-	double vertical_speed_error_to_acceleration_gain_s_inv = 0.25;
-	double bank_error_to_roll_rate_gain_s_inv = 2.0;
-	double coordinated_turn_minimum_speed_mps = 30.0;
-};
-
-struct FlightControlDevelopmentConfig
-{
-	bool direct_control_law = false;
-	bool g_limiter_override_available = false;
-	bool experimental_auto_throttle_available = false;
-	double g_limiter_override_margin_g = 2.0;
-};
+/// @brief 驗證控制律模組自己的增益、積分器與控制面限制。
+/// @param config 要檢查的三軸控制律設定。
+/// @throws std::invalid_argument 任一控制律設定無效時擲出。
+void validate_flight_control_laws_config(
+	const FlightControlLawsConfig& config);
 }

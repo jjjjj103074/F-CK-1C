@@ -16,14 +16,20 @@
 #include "Common/Units.h"
 
 #include <algorithm>
+#include <functional>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace Tests
 {
 namespace Fck1c
 {
 inline constexpr double kTestAfterburnerThrustFactor = 1.73;
+inline constexpr double kTestCruiseAlphaBlendStartDeg = 16.0;
+
+using FlightControlComputerConfigOverride = std::function<void(
+	Core::Systems::FlightControlComputerConfigDraft&)>;
 
 struct TestAircraftConfig;
 
@@ -34,7 +40,7 @@ struct TestAircraftConfig
 {
 	Core::Simulation::AerodynamicsConfig aerodynamics;
 	Core::Systems::EngineConfig engine;
-	Core::Systems::FlightControlComputerConfig flight_control_computer;
+	std::vector<FlightControlComputerConfigOverride> flight_control_computer_overrides;
 	Core::Systems::LandingGearConfig landing_gear;
 	Core::Simulation::PropulsionConfig propulsion;
 	Core::Simulation::GroundInteractionConfig ground_interaction;
@@ -45,11 +51,30 @@ struct TestAircraftConfig
 	}
 };
 
+/// @brief 為測試空氣動力表建立 FLCC 的最小迎角設定差異。
+/// @param aerodynamics 測試使用的馬赫數與最大迎角資料表。
+/// @return 只修改相關 FLCC 欄位的函式；其餘欄位保留正式預設值。
+inline FlightControlComputerConfigOverride make_test_alpha_override(
+	const Core::Simulation::AerodynamicsConfig& aerodynamics)
+{
+	return [mach = aerodynamics.mach_table,
+		alpha_limit_deg = aerodynamics.alpha_max_table_deg](
+			Core::Systems::FlightControlComputerConfigDraft& flight_control)
+	{
+		flight_control.mode_and_gain.angle_of_attack_mach = mach;
+		flight_control.mode_and_gain.angle_of_attack_limit_rad = {
+			Common::rad(alpha_limit_deg[0]),
+			Common::rad(alpha_limit_deg[1])
+		};
+		flight_control.mode_and_gain.
+			cruise_angle_of_attack_blend_start_rad =
+			Common::rad(kTestCruiseAlphaBlendStartDeg);
+	};
+}
+
 inline TestAircraftConfig make_test_config()
 {
 	TestAircraftConfig config;
-	config.flight_control_computer =
-		Core::Systems::fck1c_flight_control_computer_config();
 	config.aerodynamics.wing_area_m2 = 24.26;
 	config.aerodynamics.wingspan_m = 8.53;
 	config.aerodynamics.length_m = 14.48;
@@ -63,17 +88,9 @@ inline TestAircraftConfig make_test_config()
 	config.aerodynamics.easy_flight_stabilator_limit_rad = Common::rad(25.0);
 	config.aerodynamics.easy_flight_flaperon_limit_rad = Common::rad(22.0);
 	config.aerodynamics.easy_flight_rudder_limit_rad = Common::rad(30.0);
-	config.flight_control_computer.mode_and_gain.angle_of_attack_mach =
-		config.aerodynamics.mach_table;
-	config.flight_control_computer.mode_and_gain.angle_of_attack_limit_rad = {
-		Common::rad(config.aerodynamics.alpha_max_table_deg[0]),
-		Common::rad(config.aerodynamics.alpha_max_table_deg[1])
-	};
-	config.flight_control_computer.mode_and_gain.
-		cruise_angle_of_attack_blend_start_rad = Common::rad(16.0);
-	config.flight_control_computer.automatic_flight_control =
-		Core::Systems::fck1c_automatic_flight_control_config(
-			config.flight_control_computer.mode_and_gain);
+	// 測試用空氣動力表與 FLCC 的迎角限制必須一致；其餘設定維持預設值。
+	config.flight_control_computer_overrides.emplace_back(
+		make_test_alpha_override(config.aerodynamics));
 	config.engine.start_time_s = 5.0;
 	config.engine.spool_up_tau_s = 1.0;
 	config.engine.spool_down_tau_s = 1.0;
@@ -113,6 +130,34 @@ inline void replace_system_entry(
 	*entry = std::move(replacement);
 }
 
+/// @brief 將測試指定的 FLCC 欄位覆蓋到完整預設設定，建立延後執行的工廠。
+/// @param overrides 依序套用的欄位修改；未指定的欄位保留模組預設值。
+/// @return 供測試目錄替換的 FLCC 項目；設定會由工廠以值持有。
+inline Core::Systems::SystemEntry make_test_flight_control_computer_entry(
+	const std::vector<FlightControlComputerConfigOverride>& overrides)
+{
+	Core::Systems::FlightControlComputerConfigDraft draft =
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
+	for (const auto& override_config : overrides)
+	{
+		override_config(draft);
+	}
+	auto config = Core::Systems::finalize_flight_control_computer_config(
+		std::move(draft));
+
+	Core::Systems::SystemEntry entry;
+	entry.id = "flight_control_computer";  // 替換正式目錄中同一個 FLCC 系統。
+	entry.factory = [owned_config = std::move(config)](
+		const Core::Systems::FlightSetupContext& setup)
+	{
+		return std::make_unique<Core::Systems::FlightControlComputer>(
+			owned_config,  // 已合併並驗證的完整測試設定。
+			setup.start_mode,  // 本架飛機的啟動方式。
+			setup.initial_throttle_levers);  // 首次更新前的左右油門桿位置。
+	};
+	return entry;
+}
+
 inline Core::Simulation::SimulationModels make_test_models(
 	const TestAircraftConfig& config)
 {
@@ -140,10 +185,14 @@ inline Core::Simulation::AircraftSimulationDependencies
 	replace_system_entry(
 		dependencies.system_catalog,
 		Core::Systems::make_engine_system_entry(config.engine));
-	replace_system_entry(
-		dependencies.system_catalog,
-		Core::Systems::make_flight_control_computer_system_entry(
-			config.flight_control_computer));
+	if (!config.flight_control_computer_overrides.empty())
+	{
+		// 測試指定了欄位差異時，才合併設定並替換正式 FLCC 工廠。
+		replace_system_entry(
+			dependencies.system_catalog,
+			make_test_flight_control_computer_entry(
+				config.flight_control_computer_overrides));
+	}
 	replace_system_entry(
 		dependencies.system_catalog,
 		Core::Systems::make_landing_gear_system_entry(

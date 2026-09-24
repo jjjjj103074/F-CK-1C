@@ -97,8 +97,8 @@ bucket sees the preceding bucket's committed output. The next tick is derived
 from the common epoch and invocation count, so host lateness does not shift the
 device clock; a large host interval executes every due tick.
 
-The first dynamic tick occurs after one complete period. `SystemGroup` remains
-catalog metadata only and never controls production execution order.
+The first dynamic tick occurs after one complete period. Catalog entries carry
+only the system ID and the factory; scheduling follows setup declarations.
 
 ## Adding an Entry
 
@@ -122,14 +122,13 @@ namespace MySystem
 {
 SystemEntry create_entry()
 {
-	return {
-		"my_system",
-		SystemGroup::Equipment,
-		[](const FlightSetupContext& setup)
-		{
-			return std::make_unique<MySystem>(setup);
-		}
+	SystemEntry entry;
+	entry.id = "my_system";  // 供 Pipeline 識別系統及回報錯誤。
+	entry.factory = [](const FlightSetupContext& setup)
+	{
+		return std::make_unique<MySystem>(setup);
 	};
+	return entry;
 }
 }
 }
@@ -152,8 +151,9 @@ DCS-neutral debug-telemetry sink needed to construct one flight. A System may
 declare typed channels through `SystemSetup::declare_debug_channel()` and push
 them with its scheduled simulation time. Debug publication is observational;
 it neither reads nor writes AircraftData and does not wait for bucket commit.
-A System-specific Entry captures that System's immutable production
-configuration and passes it to the concrete factory. Simulation
+Each System owns its production configuration at the appropriate construction
+boundary. A test may provide an explicitly merged configuration to a test
+factory without changing its production Entry. Simulation
 policies, including infinite fuel, invincibility, and easy flight, do not
 belong in a System.
 

@@ -70,6 +70,7 @@
   <ItemGroup>
     <ClInclude Include="Common\Actuator.h" />
     <ClInclude Include="Common\Clamp.h" />
+    <ClInclude Include="Common\CommandValue.h" />
     <ClInclude Include="Common\ConfigValidation.h" />
     <ClInclude Include="Common\Interpolation.h" />
     <ClInclude Include="Common\PathUtils.h" />

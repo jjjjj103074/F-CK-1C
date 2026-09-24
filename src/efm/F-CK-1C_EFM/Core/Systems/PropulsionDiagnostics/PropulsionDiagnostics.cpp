@@ -1,12 +1,8 @@
 #include "PropulsionDiagnostics.h"
 
+#include "Common/CommandValue.h"
 #include "../SystemPipeline.h"
 #include "../SystemUpdateRates.h"
-
-namespace
-{
-constexpr double kEnabledCommandThreshold = 0.5;
-}
 
 namespace Core
 {
@@ -56,7 +52,7 @@ void PropulsionDiagnostics::step(
 
 void PropulsionDiagnostics::handle_command(const Command& command)
 {
-	if (command.value_normalized <= kEnabledCommandThreshold)
+	if (!Common::command_value_is_pressed(command.value_normalized))
 	{
 		return;
 	}

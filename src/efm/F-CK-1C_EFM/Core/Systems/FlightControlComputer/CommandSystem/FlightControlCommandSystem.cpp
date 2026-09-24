@@ -4,39 +4,25 @@
 #include "Internal/ControlReferenceSelection.h"
 #include "Internal/GuidanceCoordination.h"
 #include "Internal/PilotCommandLaw.h"
-#include "../Configuration/FlightControlComputerConfig.h"
 
-namespace Core
-{
-namespace Systems
+namespace Core::Systems
 {
 class FlightControlCommandSystem::Implementation final
 {
 public:
 	Implementation(
-		const FlightControlComputerConfig& config,
-		bool initial_weight_on_wheels)
-		: longitudinal_config_(config.flight_control_laws.longitudinal),
-		  coordination_config_(config.guidance_coordination),
-		  automatic_(config.automatic_flight_control,
-			  initial_weight_on_wheels,
-			  config.development.experimental_auto_throttle_available)
+		const FlightControlCommandSystemConstruction& construction)
+		: longitudinal_config_(construction.longitudinal),
+		  coordination_config_(construction.coordination),
+		  automatic_(construction.automatic_flight,
+			  construction.automatic_limits,
+			  construction.initial_weight_on_wheels)
 	{
 	}
 
-	void register_commands(SystemSetup& setup)
+	std::vector<FlightControlCommandBinding> command_bindings()
 	{
-		automatic_.register_commands(setup);
-	}
-
-	bool handles(CommandId id) const
-	{
-		return AutomaticFlightControl::handles(id);
-	}
-
-	void handle_command(const Command& command)
-	{
-		automatic_.handle_command(command);
+		return automatic_.command_bindings();
 	}
 
 	const FlightControlCommandSystemResult& update(
@@ -95,28 +81,18 @@ private:
 };
 
 FlightControlCommandSystem::FlightControlCommandSystem(
-	const FlightControlComputerConfig& config,
-	bool initial_weight_on_wheels)
+	const FlightControlCommandSystemConstruction& construction)
 	: implementation_(
-		new Implementation(config, initial_weight_on_wheels))
+		new Implementation(construction))
 {
 }
 
 FlightControlCommandSystem::~FlightControlCommandSystem() = default;
 
-void FlightControlCommandSystem::register_commands(SystemSetup& setup)
+std::vector<FlightControlCommandBinding>
+FlightControlCommandSystem::command_bindings()
 {
-	implementation_->register_commands(setup);
-}
-
-bool FlightControlCommandSystem::handles(CommandId id) const
-{
-	return implementation_->handles(id);
-}
-
-void FlightControlCommandSystem::handle_command(const Command& command)
-{
-	implementation_->handle_command(command);
+	return implementation_->command_bindings();
 }
 
 const FlightControlCommandSystemResult& FlightControlCommandSystem::update(
@@ -135,6 +111,5 @@ const AutomaticFlightControlSnapshot&
 FlightControlCommandSystem::automatic_snapshot() const
 {
 	return implementation_->automatic_snapshot();
-}
 }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../ControlLaws/ControlLawConfig.h"
+#include "../ModeAndGainSchedulingConfig.h"
 #include "Common/Clamp.h"
 
 namespace Systems

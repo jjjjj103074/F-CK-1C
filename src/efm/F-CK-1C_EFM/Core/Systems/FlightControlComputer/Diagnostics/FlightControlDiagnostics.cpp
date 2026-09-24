@@ -41,15 +41,16 @@ namespace Core
 namespace Systems
 {
 FlightControlDiagnostics::FlightControlDiagnostics(
-	const ::Systems::FlightControlDevelopmentConfig& development,
+	bool g_limiter_override_available,
+	bool developer_direct_control_law,
 	const ::Systems::FlightControlDiagnosticsConfig& config)
 	: config_(config)
 {
 	snapshot_.status.available = true;
 	snapshot_.developer_g_limiter_override_available =
-		development.g_limiter_override_available;
+		g_limiter_override_available;
 	snapshot_.developer_direct_control_law_active =
-		development.direct_control_law;
+		developer_direct_control_law;
 }
 
 const FlightControlComputerSnapshot& FlightControlDiagnostics::update(

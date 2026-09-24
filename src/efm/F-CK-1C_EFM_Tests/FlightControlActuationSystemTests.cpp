@@ -101,7 +101,6 @@ SystemEntry command_source()
 {
 	const SystemDefinition source = {
 		"actuator_command_source",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(

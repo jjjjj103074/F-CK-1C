@@ -1,17 +1,28 @@
 #pragma once
 
+#include "AutomaticFlightControlTypes.h"
+#include "GuidanceCoordinationConfig.h"
+#include "../ControlLaws/ControlLawConfig.h"
 #include "../ControlLaws/ControlLawSignals.h"
+#include "FlightControlCommandBinding.h"
 #include "../../../Contracts/CockpitContracts.h"
 #include "../../../Contracts/Commands.h"
 
 #include <memory>
+#include <vector>
 
-namespace Core
+namespace Core::Systems
 {
-namespace Systems
+/// @brief 建立命令計算模組所需的設定切片與初始狀態。
+/// 只在建構期間使用，不形成另一份完整 FLCC 設定。
+struct FlightControlCommandSystemConstruction
 {
-class SystemSetup;
-struct FlightControlComputerConfig;
+	const ::Systems::LongitudinalControlConfig& longitudinal;  // 飛行員縱向目標換算設定。
+	const ::Systems::GuidanceCoordinationConfig& coordination;  // 三軸指引協調設定。
+	const AutomaticFlightControlConfig& automatic_flight;  // 自動飛行設定。
+	AutomaticFlightGuidanceLimits automatic_limits;  // 從共用飛行包線投影的橫向限制。
+	bool initial_weight_on_wheels = false;  // 建立時是否位於地面。
+};
 
 struct FlightControlCommandSystemInput
 {
@@ -47,17 +58,16 @@ struct FlightControlCommandMonitorInput
 class FlightControlCommandSystem final
 {
 public:
-	FlightControlCommandSystem(
-		const FlightControlComputerConfig& config,
-		bool initial_weight_on_wheels);
+	explicit FlightControlCommandSystem(
+		const FlightControlCommandSystemConstruction& construction);
 	~FlightControlCommandSystem();
 	FlightControlCommandSystem(const FlightControlCommandSystem&) = delete;
 	FlightControlCommandSystem& operator=(
 		const FlightControlCommandSystem&) = delete;
 
-	void register_commands(SystemSetup& setup);
-	bool handles(CommandId id) const;
-	void handle_command(const Command& command);
+	/// @brief 從自動飛行模組取得本實例的指令 ID 與交付函式。
+	/// @return 只包含本實例已開放指令的綁定，不操作 Pipeline。
+	std::vector<FlightControlCommandBinding> command_bindings();
 	const FlightControlCommandSystemResult& update(
 		const FlightControlCommandSystemInput& input);
 	void observe_control_result(
@@ -68,5 +78,4 @@ private:
 	class Implementation;
 	std::unique_ptr<Implementation> implementation_;
 };
-}
 }

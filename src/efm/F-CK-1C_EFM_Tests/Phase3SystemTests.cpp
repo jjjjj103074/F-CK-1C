@@ -1,7 +1,7 @@
 #include "SystemPipelineTestFixture.h"
 
 #include "Common/Units.h"
-#include "Core/Systems/FlightControlComputer/FlightControlComputer.h"
+#include "Core/Systems/FlightControlComputer/FlightControlExecutive.h"
 
 #include <array>
 
@@ -153,7 +153,7 @@ FrameInput nonzero_observation_frame()
 
 FlightControlActuatorCommand expected_nonzero_demand()
 {
-	FlightControlComputer reference(
+	FlightControlExecutive reference(
 		fck1c_flight_control_computer_config(),
 		StartMode::HotGround,
 		{});
@@ -167,7 +167,7 @@ FlightControlActuatorCommand expected_nonzero_demand()
 	input.observation.normal_acceleration_g = kExpectedGLoad;
 	input.landing_gear.position_normalized = kFullIntegrity;
 	input.landing_gear.handle_down = true;
-	return reference.step({ input, {} });
+	return reference.update({ input, {} }).actuator_command;
 }
 
 void expect_normalized_observation(

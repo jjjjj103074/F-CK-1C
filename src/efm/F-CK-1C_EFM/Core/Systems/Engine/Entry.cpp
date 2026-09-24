@@ -11,7 +11,6 @@ SystemEntry make_engine_system_entry(const EngineConfig& config)
 	validate_engine_config(config);
 	return {
 		"engine",
-		SystemGroup::Equipment,
 		[owned_config = config](const FlightSetupContext& setup)
 		{
 			return std::make_unique<Engine>(

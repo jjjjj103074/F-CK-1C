@@ -18,7 +18,8 @@ Systems::ManeuverEnvelope make_cat1_envelope(
 
 void test_reference_guidance_envelope(Tests::Context& context)
 {
-	const Systems::ModeAndGainSchedulingConfig config;
+	const auto config =
+		Systems::make_fck1c_mode_and_gain_scheduling_config();
 	const auto envelope = make_cat1_envelope(config);
 	TEST_EXPECT_NEAR(
 		context, envelope.guidance.bank_limit_rad, Common::rad(30.0), kTolerance);
@@ -33,7 +34,7 @@ void test_reference_guidance_envelope(Tests::Context& context)
 
 void test_guidance_must_fit_inside_hard_protection(Tests::Context& context)
 {
-	Systems::ModeAndGainSchedulingConfig config;
+	auto config = Systems::make_fck1c_mode_and_gain_scheduling_config();
 	config.guidance_roll_rate_limit_rad_s =
 		config.cat3.envelope.roll_rate_limit_rad_s + 0.1;
 	bool rejected = false;
@@ -51,7 +52,8 @@ void test_guidance_must_fit_inside_hard_protection(Tests::Context& context)
 
 void test_developer_override_is_explicit(Tests::Context& context)
 {
-	const Systems::ModeAndGainSchedulingConfig config;
+	const auto config =
+		Systems::make_fck1c_mode_and_gain_scheduling_config();
 	const auto normal = make_cat1_envelope(config);
 	const auto overridden = make_cat1_envelope(config, true);
 	TEST_EXPECT_NEAR(
@@ -64,10 +66,11 @@ void test_developer_override_is_explicit(Tests::Context& context)
 
 void test_stores_transition_is_continuous(Tests::Context& context)
 {
-	Systems::ModeAndGainScheduling scheduling({});
+	Systems::ModeAndGainScheduling scheduling(
+		Systems::make_fck1c_mode_and_gain_scheduling_config());
 	scheduling.set_stores_configuration(Systems::StoresConfiguration::Cat3);
 	const auto first = scheduling.update({
-		1.0 / 64.0, 5000.0, 0.7, true, false, 0.0, false });
+		1.0 / 64.0, 5000.0, 0.7, true, false });
 	TEST_EXPECT(context, first.stores_transition_0_1 > 0.0);
 	TEST_EXPECT(context, first.stores_transition_0_1 < 1.0);
 	TEST_EXPECT(
@@ -78,9 +81,10 @@ void test_stores_transition_is_continuous(Tests::Context& context)
 void test_mode_scheduler_owns_f16xl_cruise_aoa_schedule(
 	Tests::Context& context)
 {
-	Systems::ModeAndGainScheduling scheduling({});
+	Systems::ModeAndGainScheduling scheduling(
+		Systems::make_fck1c_mode_and_gain_scheduling_config());
 	const auto low_speed = scheduling.update({
-		1.0 / 64.0, 5000.0, 0.0, true, false, 0.0, false });
+		1.0 / 64.0, 5000.0, 0.0, true, false });
 	TEST_EXPECT_NEAR(context,
 		low_speed.envelope.hard_protection.angle_of_attack_blend_start_rad,
 		Common::rad(19.0), kTolerance);
@@ -88,7 +92,7 @@ void test_mode_scheduler_owns_f16xl_cruise_aoa_schedule(
 		low_speed.envelope.hard_protection.angle_of_attack_limit_rad,
 		Common::rad(29.0), kTolerance);
 	const auto high_speed = scheduling.update({
-		1.0 / 64.0, 5000.0, 1.0, true, false, 0.0, false });
+		1.0 / 64.0, 5000.0, 1.0, true, false });
 	TEST_EXPECT_NEAR(context,
 		high_speed.envelope.hard_protection.angle_of_attack_limit_rad,
 		Common::rad(26.0), kTolerance);
@@ -97,9 +101,10 @@ void test_mode_scheduler_owns_f16xl_cruise_aoa_schedule(
 void test_mode_scheduler_owns_f16xl_gear_down_aoa_schedule(
 	Tests::Context& context)
 {
-	Systems::ModeAndGainScheduling scheduling({});
+	Systems::ModeAndGainScheduling scheduling(
+		Systems::make_fck1c_mode_and_gain_scheduling_config());
 	const auto landing = scheduling.update({
-		1.0 / 64.0, 5000.0, 0.0, true, false, 0.0, true });
+		1.0 / 64.0, 5000.0, 0.0, true, true });
 	TEST_EXPECT_NEAR(context,
 		landing.envelope.hard_protection.angle_of_attack_blend_start_rad,
 		Common::rad(10.0), kTolerance);
@@ -111,7 +116,8 @@ void test_mode_scheduler_owns_f16xl_gear_down_aoa_schedule(
 void test_cat_transition_does_not_change_controller_deadband(
 	Tests::Context& context)
 {
-	const Systems::ModeAndGainSchedulingConfig config;
+	const auto config =
+		Systems::make_fck1c_mode_and_gain_scheduling_config();
 	TEST_EXPECT_NEAR(context,
 		config.cat1.pilot_input.deadband_normalized,
 		config.cat3.pilot_input.deadband_normalized,

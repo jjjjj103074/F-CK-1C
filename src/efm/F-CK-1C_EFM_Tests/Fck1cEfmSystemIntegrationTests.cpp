@@ -2,6 +2,9 @@
 #include "Fck1cEfmTestFixture.h"
 
 #include "Core/Fck1cEfm.h"
+#include "Core/Systems/SystemPipeline.h"
+
+#include <utility>
 
 namespace
 {
@@ -10,6 +13,68 @@ constexpr double kSchedulerAdvanceS = 0.02;
 
 using Tests::Fck1c::make_frame_input;
 using Tests::Fck1c::make_test_config;
+
+void test_fcc_override_preserves_defaults_and_factory_owns_config(
+	Tests::Context& context)
+{
+	Core::Systems::SystemEntry entry;
+	{
+		// 覆蓋來源離開作用範圍後，延後建立的工廠仍須保有完整設定。
+		std::vector<Tests::Fck1c::FlightControlComputerConfigOverride>
+			overrides;
+		overrides.emplace_back(
+			[](Core::Systems::FlightControlComputerConfigDraft& config)
+			{
+				config.mode_and_gain.g_limiter_override.available = true;
+			});
+		entry = Tests::Fck1c::make_test_flight_control_computer_entry(
+			overrides);
+	}
+	const Core::Systems::FlightSetupContext setup = {
+		Core::StartMode::HotGround, {}, {}, Tests::disabled_debug_telemetry()
+	};
+	auto catalog = Core::Systems::load_generated_system_catalog();
+	Tests::Fck1c::replace_system_entry(catalog, std::move(entry));
+	Core::Systems::SystemPipeline pipeline(setup, std::move(catalog));
+	const auto initial = pipeline.snapshot();
+	const auto& diagnostics = initial.read(
+		Core::AircraftDataKeys::kFlightControlComputerSnapshot);
+	TEST_EXPECT(context,
+		diagnostics.developer_g_limiter_override_available);
+	TEST_EXPECT(context,
+		diagnostics.developer_direct_control_law_active ==
+		Core::Systems::fck1c_flight_control_computer_config().
+			values.flight_control_output.developer_direct_control_law);
+}
+
+void test_fcc_command_registration_follows_instance_config(
+	Tests::Context& context)
+{
+	using Core::Systems::DispatchResult;
+	const Core::Systems::FlightSetupContext setup = {
+		Core::StartMode::HotGround, {}, {}, Tests::disabled_debug_telemetry()
+	};
+	Core::Systems::SystemPipeline standard(
+		setup, Core::Systems::load_generated_system_catalog());
+	TEST_EXPECT(context, standard.send({ Core::CommandId::ToggleFbwCat, 1.0 }) ==
+		DispatchResult::Handled);
+	TEST_EXPECT(context, standard.send({ Core::CommandId::EngageAutopilot, 1.0 }) ==
+		DispatchResult::Handled);
+	TEST_EXPECT(context, standard.send({ Core::CommandId::EngageAutoThrottle, 1.0 }) ==
+		DispatchResult::Unhandled);
+
+	std::vector<Tests::Fck1c::FlightControlComputerConfigOverride> overrides;
+	overrides.emplace_back([](Core::Systems::FlightControlComputerConfigDraft& config)
+	{
+		config.automatic_flight_control.experimental_auto_throttle_available = true;
+	});
+	auto catalog = Core::Systems::load_generated_system_catalog();
+	Tests::Fck1c::replace_system_entry(catalog,
+		Tests::Fck1c::make_test_flight_control_computer_entry(overrides));
+	Core::Systems::SystemPipeline experimental(setup, std::move(catalog));
+	TEST_EXPECT(context, experimental.send({ Core::CommandId::EngageAutoThrottle, 1.0 }) ==
+		DispatchResult::Handled);
+}
 
 Core::FrameInput make_airborne_frame_input()
 {
@@ -22,8 +87,13 @@ void test_automatic_flight_commands_drive_outputs(
 	Tests::Context& context)
 {
 	auto config = make_test_config();
-	config.flight_control_computer.development.
-		experimental_auto_throttle_available = true;
+	config.flight_control_computer_overrides.emplace_back(
+		[](Core::Systems::FlightControlComputerConfigDraft& flight_control)
+		{
+			flight_control.automatic_flight_control.
+				experimental_auto_throttle_available =
+				true;
+		});
 	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotAir);
 	efm.set_internal_fuel(100.0);
@@ -79,8 +149,11 @@ void test_available_developer_g_override_is_visible(
 	Tests::Context& context)
 {
 	auto config = make_test_config();
-	config.flight_control_computer.development.
-		g_limiter_override_available = true;
+	config.flight_control_computer_overrides.emplace_back(
+		[](Core::Systems::FlightControlComputerConfigDraft& flight_control)
+		{
+			flight_control.mode_and_gain.g_limiter_override.available = true;
+		});
 	Core::Fck1cEfm efm(config, Tests::disabled_debug_telemetry());
 	(void)efm.start(Core::StartMode::HotAir);
 	efm.handle_command({ Core::CommandId::SetGLimiterOverride, 1.0 });
@@ -147,6 +220,8 @@ void test_damage_returns_immediate_result(Tests::Context& context)
 
 void run_fck1c_efm_system_integration_tests(Tests::Context& context)
 {
+	test_fcc_override_preserves_defaults_and_factory_owns_config(context);
+	test_fcc_command_registration_follows_instance_config(context);
 	test_automatic_flight_commands_drive_outputs(context);
 	test_unavailable_developer_g_override_cannot_affect_flight(context);
 	test_available_developer_g_override_is_visible(context);

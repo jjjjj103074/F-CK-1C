@@ -2,6 +2,7 @@
 
 #include "Internal/ModeAndGainMath.h"
 #include "Common/Clamp.h"
+#include "Common/CommandValue.h"
 #include "Common/Table.h"
 
 #include <cmath>
@@ -91,6 +92,46 @@ ModeAndGainScheduling::ModeAndGainScheduling(
 	active_.gains = evaluate_gain_schedule(config_, 0.0);
 }
 
+std::vector<Core::Systems::FlightControlCommandBinding>
+ModeAndGainScheduling::command_bindings()
+{
+	return {
+		{ Core::CommandId::ToggleFbwCat,
+			[this](const Core::Command& command)
+			{
+				toggle_stores_configuration(
+					Common::command_value_is_pressed(command.value_normalized));
+			} },
+		{ Core::CommandId::SetFbwCat1,
+			[this](const Core::Command& command)
+			{
+				if (Common::command_value_is_pressed(command.value_normalized))
+					set_stores_configuration(StoresConfiguration::Cat1);
+			} },
+		{ Core::CommandId::SetFbwCat3,
+			[this](const Core::Command& command)
+			{
+				if (Common::command_value_is_pressed(command.value_normalized))
+					set_stores_configuration(StoresConfiguration::Cat3);
+			} },
+		{ Core::CommandId::SetGLimiterOverride,
+			[this](const Core::Command& command)
+			{
+				g_limiter_override_active_ = config_.g_limiter_override.available &&
+					Common::command_value_is_pressed(command.value_normalized);
+			} },
+		{ Core::CommandId::ToggleGLimiterOverride,
+			[this](const Core::Command& command)
+			{
+				if (config_.g_limiter_override.available &&
+					Common::command_value_is_pressed(command.value_normalized))
+				{
+					g_limiter_override_active_ = !g_limiter_override_active_;
+				}
+			} }
+	};
+}
+
 const ActiveFlightControlConfiguration& ModeAndGainScheduling::update(
 	const ModeAndGainSchedulingStepInput& input)
 {
@@ -111,8 +152,7 @@ const ActiveFlightControlConfiguration& ModeAndGainScheduling::update(
 	}
 	active_.envelope = make_maneuver_envelope({
 		config_, active_.stores, input.mach,
-		input.developer_g_limiter_override_active,
-		input.developer_g_limiter_override_margin_g,
+		g_limiter_override_active_, config_.g_limiter_override.margin_g,
 		input.landing_gear_handle_down });
 	return active_;
 }
@@ -139,6 +179,11 @@ StoresConfiguration ModeAndGainScheduling::target_stores_configuration() const
 double ModeAndGainScheduling::transition_0_1() const
 {
 	return active_.stores_transition_0_1;
+}
+
+bool ModeAndGainScheduling::g_limiter_override_active() const
+{
+	return g_limiter_override_active_;
 }
 
 ManeuverEnvelope make_maneuver_envelope(

@@ -2,6 +2,7 @@
 
 #include "Common/Actuator.h"
 #include "Common/Clamp.h"
+#include "Common/CommandValue.h"
 #include "Common/Interpolation.h"
 #include "Common/PathUtils.h"
 #include "Common/Table.h"
@@ -15,6 +16,8 @@ namespace
 constexpr double kTolerance = 1e-9;
 constexpr double kNegativeScale = -2.0;
 constexpr double kPositiveScale = 3.0;
+constexpr double kDefaultPressedValue = 0.75;
+constexpr double kCustomPressThreshold = 0.8;
 
 bool rescale_throws(double input, double minimum, double maximum)
 {
@@ -47,6 +50,20 @@ void test_units(Tests::Context& context)
 {
 	TEST_EXPECT_NEAR(context, Common::deg(Common::kPi), 180.0, kTolerance);
 	TEST_EXPECT_NEAR(context, Common::rad(180.0), Common::kPi, kTolerance);
+}
+
+void test_command_value_press_threshold(Tests::Context& context)
+{
+	TEST_EXPECT(
+		context, Common::command_value_is_pressed(kDefaultPressedValue));
+	TEST_EXPECT(
+		context,
+		!Common::command_value_is_pressed(
+			kDefaultPressedValue, kCustomPressThreshold));
+	TEST_EXPECT(
+		context,
+		!Common::command_value_is_pressed(
+			kCustomPressThreshold, kCustomPressThreshold));
 }
 
 void test_rescale_rejects_non_finite_values(Tests::Context& context)
@@ -100,6 +117,7 @@ void run_common_tests(Tests::Context& context)
 	test_clamp(context);
 	test_actuator(context);
 	test_units(context);
+	test_command_value_press_threshold(context);
 	test_rescale_rejects_non_finite_values(context);
 	test_table_interpolation(context);
 	test_path_join(context);

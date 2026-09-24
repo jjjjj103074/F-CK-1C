@@ -1,12 +1,8 @@
 #include "SecondaryFlightControls.h"
 
+#include "Common/CommandValue.h"
 #include "../SystemPipeline.h"
 #include "../SystemUpdateRates.h"
-
-namespace
-{
-constexpr double kEnabledCommandThreshold = 0.5;
-}
 
 namespace Core
 {
@@ -83,7 +79,8 @@ void SecondaryFlightControls::handle_command(const Command& command)
 		::Systems::toggle_airbrake(devices_); break;
 	case CommandId::SetAirbrake:
 		::Systems::set_airbrake(
-			devices_, command.value_normalized > kEnabledCommandThreshold); break;
+			devices_, Common::command_value_is_pressed(
+				command.value_normalized)); break;
 	case CommandId::ToggleFlaps:
 		::Systems::toggle_flap_mode(devices_); break;
 	case CommandId::SetFlapsUp:

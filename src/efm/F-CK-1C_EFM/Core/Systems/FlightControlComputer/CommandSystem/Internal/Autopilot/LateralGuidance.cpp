@@ -12,8 +12,10 @@ namespace Core
 namespace Systems
 {
 LateralGuidance::LateralGuidance(
-	const AutomaticFlightControlConfig& config)
-	: config_(config)
+	const AutomaticFlightControlConfig& config,
+	const AutomaticFlightGuidanceLimits& limits)
+	: config_(config),
+	  limits_(limits)
 {
 }
 
@@ -29,8 +31,8 @@ LateralGuidanceReference LateralGuidance::update(
 	{
 		bank_reference_rad_ = Common::limit(
 			input.observation.roll_rad,
-			-config_.bank_limit_rad,
-			config_.bank_limit_rad);
+			-limits_.bank_limit_rad,
+			limits_.bank_limit_rad);
 		active_last_tick_ = true;
 	}
 	if (input.mode != previous_mode_)
@@ -61,8 +63,8 @@ double LateralGuidance::heading_select_bank(
 	return Common::limit(
 		config_.heading_kp * heading_error_deg +
 			config_.heading_ki * heading_error_integral_deg_s_,
-		-config_.bank_limit_rad,
-		config_.bank_limit_rad);
+		-limits_.bank_limit_rad,
+		limits_.bank_limit_rad);
 }
 
 double LateralGuidance::rate_limit_bank(
@@ -70,9 +72,9 @@ double LateralGuidance::rate_limit_bank(
 	const AutomaticFlightControlObservation& observation)
 {
 	desired_bank_rad = Common::limit(
-		desired_bank_rad, -config_.bank_limit_rad, config_.bank_limit_rad);
+		desired_bank_rad, -limits_.bank_limit_rad, limits_.bank_limit_rad);
 	const double maximum_step =
-		config_.roll_reference_rate_rad_s * observation.dt_s;
+		limits_.roll_reference_rate_rad_s * observation.dt_s;
 	bank_reference_rad_ = Common::limit(
 		desired_bank_rad,
 		bank_reference_rad_ - maximum_step,
@@ -84,7 +86,7 @@ void LateralGuidance::track_observation(
 	const AutomaticFlightControlObservation& observation)
 {
 	bank_reference_rad_ = Common::limit(
-		observation.roll_rad, -config_.bank_limit_rad, config_.bank_limit_rad);
+		observation.roll_rad, -limits_.bank_limit_rad, limits_.bank_limit_rad);
 	heading_error_integral_deg_s_ = 0.0;
 	active_last_tick_ = true;
 }

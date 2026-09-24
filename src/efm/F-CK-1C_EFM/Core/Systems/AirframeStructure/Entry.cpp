@@ -12,7 +12,6 @@ SystemEntry create_entry()
 {
 	return {
 		"airframe_structure",
-		SystemGroup::Equipment,
 		[](const FlightSetupContext&)
 		{
 			return std::make_unique<Core::Systems::AirframeStructure>();

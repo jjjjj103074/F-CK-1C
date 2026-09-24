@@ -1,5 +1,4 @@
 #include "AutomaticFlightControlTypes.h"
-#include "../ControlLaws/ControlLawConfig.h"
 
 #include "Common/Units.h"
 
@@ -61,8 +60,6 @@ void validate_guidance_tuning(
 	require_positive(config.minimum_ias_mps, "minimum IAS");
 	require_positive(config.engage_roll_limit_rad, "roll engage limit");
 	require_positive(config.engage_pitch_limit_rad, "pitch engage limit");
-	require_positive(config.bank_limit_rad, "bank limit");
-	require_positive(config.roll_reference_rate_rad_s, "roll reference rate");
 	require_positive(config.pitch_reference_rate_rad_s, "pitch reference rate");
 	require_positive(
 		config.vertical_reference_acceleration_ft_s2,
@@ -231,27 +228,14 @@ project_defined_auto_throttle_config()
 }
 }
 
-namespace Core
+namespace Core::Systems
 {
-namespace Systems
-{
-AutomaticFlightControlConfig fck1c_automatic_flight_control_config(
-	const ::Systems::ModeAndGainSchedulingConfig& mode_and_gain)
+AutomaticFlightControlConfig fck1c_automatic_flight_control_config()
 {
 	AutomaticFlightControlConfig config = project_defined_afcs_config();
-	// F-16 Reference-derived envelope; the FCC validates source coherence.
-	config.bank_limit_rad = mode_and_gain.guidance_bank_limit_rad;
-	config.roll_reference_rate_rad_s =
-		mode_and_gain.guidance_roll_rate_limit_rad_s;
 	config.experimental_auto_throttle =
 		project_defined_auto_throttle_config();
 	return config;
-}
-
-AutomaticFlightControlConfig fck1c_automatic_flight_control_config()
-{
-	return fck1c_automatic_flight_control_config(
-		::Systems::ModeAndGainSchedulingConfig());
 }
 
 void validate_automatic_flight_control_config(
@@ -261,6 +245,5 @@ void validate_automatic_flight_control_config(
 	validate_reference_controls(config);
 	validate_monitor_and_auto_throttle(config);
 	validate_threshold_ordering(config);
-}
 }
 }

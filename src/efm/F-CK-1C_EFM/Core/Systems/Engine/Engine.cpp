@@ -1,12 +1,8 @@
 #include "Engine.h"
 
+#include "Common/CommandValue.h"
 #include "../SystemPipeline.h"
 #include "../SystemUpdateRates.h"
-
-namespace
-{
-constexpr double kEnabledCommandThreshold = 0.5;
-}
 
 namespace Core
 {
@@ -147,7 +143,8 @@ void Engine::refresh_outputs()
 
 void Engine::handle_command(const Command& command)
 {
-	const bool enabled = command.value_normalized > kEnabledCommandThreshold;
+	const bool enabled = Common::command_value_is_pressed(
+		command.value_normalized);
 	switch (command.id)
 	{
 	case CommandId::SetBothEngines:

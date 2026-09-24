@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FlightControlOutputConfig.h"
+#include "../ControlLaws/ControlLawConfig.h"
 #include "../ControlLaws/ControlLawSignals.h"
 
 namespace Core

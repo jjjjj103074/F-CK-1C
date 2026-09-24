@@ -33,12 +33,6 @@ struct SystemActionContext
 	SystemScheduledTime simulation_time = {};
 };
 
-enum class SystemGroup
-{
-	Control,
-	Equipment
-};
-
 struct FlightFuelState
 {
 	double internal_fuel_kg = 0.0;
@@ -70,9 +64,8 @@ using SystemFactory =
 
 struct SystemEntry
 {
-	std::string id;
-	SystemGroup group = SystemGroup::Equipment;
-	SystemFactory factory;
+	std::string id;  // Pipeline 識別系統、檢查重複及標示錯誤時使用。
+	SystemFactory factory;  // 建立每架飛機實例時才呼叫的工廠。
 };
 }
 }

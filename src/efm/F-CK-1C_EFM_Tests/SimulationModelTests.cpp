@@ -216,7 +216,6 @@ SystemPipelineTest::SystemDefinition invalid_aerodynamics_state()
 	using namespace Core::Systems;
 	return {
 		"test_state",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			FlightControlActuatorState primary;

@@ -97,6 +97,10 @@ static_assert(
 		const Core::Systems::FlightControlComputerConfig&>::value,
 	"Flight-control production config must be read-only.");
 static_assert(
+	!std::is_copy_assignable<
+		Core::Systems::FlightControlComputerConfig>::value,
+	"Finalized flight-control config must not be mutable by assignment.");
+static_assert(
 	std::is_same<
 		decltype(Core::Systems::fck1c_landing_gear_config()),
 		const Core::Systems::LandingGearConfig&>::value,
@@ -156,11 +160,12 @@ bool rejects_invalid_config(Action action)
 }
 
 bool rejects_fcc_config(
-	const Core::Systems::FlightControlComputerConfig& config)
+	const Core::Systems::FlightControlComputerConfigDraft& config)
 {
-	return rejects_invalid_config([&config]()
+	return rejects_invalid_config([config]() mutable
 	{
-		Core::Systems::validate_flight_control_computer_config(config);
+		(void)Core::Systems::finalize_flight_control_computer_config(
+			std::move(config));
 	});
 }
 
@@ -276,9 +281,9 @@ void test_fcc_and_landing_gear_production_config(Tests::Context& context)
 		Core::Systems::fck1c_flight_control_computer_config();
 	const auto& landing = Core::Systems::fck1c_landing_gear_config();
 	expect_table(
-		context, fcc.mode_and_gain.angle_of_attack_mach, kF16xlAlphaMach);
+		context, fcc.values.mode_and_gain.angle_of_attack_mach, kF16xlAlphaMach);
 	expect_table(context,
-		fcc.mode_and_gain.angle_of_attack_limit_rad, kF16xlAlphaLimitRad);
+		fcc.values.mode_and_gain.angle_of_attack_limit_rad, kF16xlAlphaLimitRad);
 	expect_array(context, landing.wheel_radius_m, kWheelRadius);
 }
 
@@ -299,95 +304,75 @@ void test_engine_owner_rejects_invalid_config(Tests::Context& context)
 		}));
 }
 
-void test_fcc_owner_rejects_invalid_signal_and_development_config(
+void test_fcc_owner_rejects_invalid_signal_and_override_config(
 	Tests::Context& context)
 {
 	auto invalid_time_constant =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_time_constant.input_signal_management.signal_filter_time_constant_s =
 		0.0;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_time_constant]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_time_constant);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_time_constant));
 	auto invalid_developer_override =
-		Core::Systems::fck1c_flight_control_computer_config();
-	invalid_developer_override.development.g_limiter_override_margin_g = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_developer_override]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_developer_override);
-		}));
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
+	invalid_developer_override.mode_and_gain.g_limiter_override.margin_g = 0.0;
+	TEST_EXPECT(context, rejects_fcc_config(invalid_developer_override));
 }
 
 void test_fcc_owner_rejects_invalid_control_law_config(
 	Tests::Context& context)
 {
 	auto invalid_direct_mode =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_direct_mode.flight_control_laws.surface_mixer.
 		symmetric_stabilator_limit_rad = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_direct_mode]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_direct_mode);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_direct_mode));
 	auto invalid_normal_acceleration =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_normal_acceleration.flight_control_laws.longitudinal.
 		normal_acceleration_proportional_cat1 =
 		0.0;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_normal_acceleration]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_normal_acceleration);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_normal_acceleration));
 	auto invalid_gain_schedule =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_gain_schedule.mode_and_gain.gain_schedule[1].dynamic_pressure_pa =
 		invalid_gain_schedule.mode_and_gain.gain_schedule[0].dynamic_pressure_pa;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_gain_schedule]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_gain_schedule);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_gain_schedule));
 }
 
 void test_fcc_owner_validates_all_consumed_law_fields(
 	Tests::Context& context)
 {
-	auto alpha = Core::Systems::fck1c_flight_control_computer_config();
+	auto alpha = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	alpha.flight_control_laws.longitudinal.
 		angle_of_attack_stability_gain_rad_inv =
 		std::numeric_limits<double>::quiet_NaN();
 	TEST_EXPECT(context, rejects_fcc_config(alpha));
-	auto soft_ratio = Core::Systems::fck1c_flight_control_computer_config();
+	auto soft_ratio = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	soft_ratio.flight_control_laws.longitudinal.negative_soft_ratio =
 		kInvalidNegativeValue;
 	TEST_EXPECT(context, rejects_fcc_config(soft_ratio));
-	auto washout = Core::Systems::fck1c_flight_control_computer_config();
+	auto washout = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	washout.flight_control_laws.longitudinal.
 		pitch_rate_washout_time_constant_s = 0.0;
 	TEST_EXPECT(context, rejects_fcc_config(washout));
 	auto alpha_terminal_g =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	alpha_terminal_g.flight_control_laws.longitudinal.
 		angle_of_attack_limited_normal_acceleration_g =
 		alpha_terminal_g.mode_and_gain.cat1.envelope.
 			hard_positive_load_factor_g;
 	TEST_EXPECT(context, rejects_fcc_config(alpha_terminal_g));
 	auto normal_integral =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	normal_integral.flight_control_laws.longitudinal.
 		normal_acceleration_integral_cat1_s_inv =
 		kInvalidNegativeValue;
 	TEST_EXPECT(context, rejects_fcc_config(normal_integral));
-	auto inner_integral = Core::Systems::fck1c_flight_control_computer_config();
+	auto inner_integral = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	inner_integral.flight_control_laws.inner_rate.roll_integral =
 		kInvalidNegativeValue;
 	TEST_EXPECT(context, rejects_fcc_config(inner_integral));
-	auto anti_windup = Core::Systems::fck1c_flight_control_computer_config();
+	auto anti_windup = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	anti_windup.flight_control_laws.inner_rate.anti_windup_gain =
 		kInvalidNegativeValue;
 	TEST_EXPECT(context, rejects_fcc_config(anti_windup));
@@ -396,93 +381,65 @@ void test_fcc_owner_validates_all_consumed_law_fields(
 void test_fcc_owner_rejects_invalid_ap_config(Tests::Context& context)
 {
 	auto invalid_heading_integral =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_heading_integral.automatic_flight_control.
 		heading_error_integral_limit_deg_s = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_heading_integral]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_heading_integral);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_heading_integral));
 	auto invalid_speed_integral =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_speed_integral.automatic_flight_control.experimental_auto_throttle.
 		speed_error_integral_limit_m = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_speed_integral]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_speed_integral);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_speed_integral));
 	auto invalid_capture =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_capture.automatic_flight_control.vertical_speed_capture_taper_ft_s =
 		invalid_capture.automatic_flight_control.vertical_speed_limit_ft_s;
-	TEST_EXPECT(context, rejects_invalid_config([invalid_capture]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_capture);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_capture));
 }
 
 void test_fcc_heading_controller_gain_validation(Tests::Context& context)
 {
 	auto integral_only =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	integral_only.automatic_flight_control.heading_kp = 0.0;
-	TEST_EXPECT(context, !rejects_invalid_config([integral_only]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				integral_only);
-		}));
-	auto disabled = Core::Systems::fck1c_flight_control_computer_config();
+	TEST_EXPECT(context, !rejects_fcc_config(integral_only));
+	auto disabled = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	disabled.automatic_flight_control.heading_kp = 0.0;
 	disabled.automatic_flight_control.heading_ki = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([disabled]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				disabled);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(disabled));
 }
 
 void test_fcc_owner_rejects_invalid_stores_envelope(
 	Tests::Context& context)
 {
-	auto alpha_start = Core::Systems::fck1c_flight_control_computer_config();
+	auto alpha_start = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	alpha_start.mode_and_gain.cruise_angle_of_attack_blend_start_rad = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([alpha_start]()
-		{ (void)Core::Systems::make_flight_control_computer_system_entry(
-			alpha_start); }));
-	auto soft_load = Core::Systems::fck1c_flight_control_computer_config();
+	TEST_EXPECT(context, rejects_fcc_config(alpha_start));
+	auto soft_load = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	soft_load.mode_and_gain.cat1.envelope.soft_positive_load_factor_g = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([soft_load]()
-		{ (void)Core::Systems::make_flight_control_computer_system_entry(
-			soft_load); }));
-	auto rate = Core::Systems::fck1c_flight_control_computer_config();
+	TEST_EXPECT(context, rejects_fcc_config(soft_load));
+	auto rate = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	rate.mode_and_gain.cat1.envelope.roll_rate_limit_rad_s = 0.0;
 	rate.mode_and_gain.cat1.envelope.pitch_rate_limit_rad_s = 0.0;
 	rate.mode_and_gain.cat1.envelope.yaw_rate_limit_rad_s = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([rate]()
-		{ (void)Core::Systems::make_flight_control_computer_system_entry(
-			rate); }));
+	TEST_EXPECT(context, rejects_fcc_config(rate));
 }
 
 void test_fcc_owner_rejects_invalid_maneuver_envelope(
 	Tests::Context& context)
 {
-	auto reversed = Core::Systems::fck1c_flight_control_computer_config();
+	auto reversed = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	reversed.mode_and_gain.guidance_minimum_load_factor_g = kReversedMinimumG;
 	reversed.mode_and_gain.guidance_maximum_load_factor_g = kReversedMaximumG;
 	TEST_EXPECT(context, rejects_fcc_config(reversed));
-	auto negative_bank = Core::Systems::fck1c_flight_control_computer_config();
+	auto negative_bank = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	negative_bank.mode_and_gain.guidance_bank_limit_rad = kInvalidNegativeValue;
-	negative_bank.automatic_flight_control.bank_limit_rad =
-		kInvalidNegativeValue;
 	TEST_EXPECT(context, rejects_fcc_config(negative_bank));
-	auto cat3_reversed = Core::Systems::fck1c_flight_control_computer_config();
+	auto cat3_reversed = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	cat3_reversed.mode_and_gain.hard_minimum_load_factor_g =
 		cat3_reversed.mode_and_gain.cat3.envelope.hard_positive_load_factor_g;
 	TEST_EXPECT(context, rejects_fcc_config(cat3_reversed));
-	auto alpha_reversed = Core::Systems::fck1c_flight_control_computer_config();
+	auto alpha_reversed = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	alpha_reversed.mode_and_gain.landing_angle_of_attack_blend_start_rad =
 		alpha_reversed.mode_and_gain.landing_angle_of_attack_limit_rad;
 	TEST_EXPECT(context, rejects_fcc_config(alpha_reversed));
@@ -492,49 +449,27 @@ void test_fcc_owner_rejects_invalid_directional_and_output_config(
 	Tests::Context& context)
 {
 	auto directional =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	directional.mode_and_gain.cat1.directional.sideslip_damping_s_inv = -0.1;
-	TEST_EXPECT(context, rejects_invalid_config([directional]()
-		{ (void)Core::Systems::make_flight_control_computer_system_entry(
-			directional); }));
-	auto yaw = Core::Systems::fck1c_flight_control_computer_config();
+	TEST_EXPECT(context, rejects_fcc_config(directional));
+	auto yaw = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	yaw.mode_and_gain.cat1.directional.yaw_rate_damping = -0.1;
-	TEST_EXPECT(context, rejects_invalid_config([yaw]()
-		{ (void)Core::Systems::make_flight_control_computer_system_entry(
-			yaw); }));
-	auto output = Core::Systems::fck1c_flight_control_computer_config();
+	TEST_EXPECT(context, rejects_fcc_config(yaw));
+	auto output = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	output.flight_control_output.selection_transition_time_s = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([output]()
-		{ (void)Core::Systems::make_flight_control_computer_system_entry(
-			output); }));
-	auto diagnostics = Core::Systems::fck1c_flight_control_computer_config();
+	TEST_EXPECT(context, rejects_fcc_config(output));
+	auto diagnostics = Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	diagnostics.diagnostics.control_authority_persistence_s = 0.0;
-	TEST_EXPECT(context, rejects_invalid_config([diagnostics]()
-		{ (void)Core::Systems::make_flight_control_computer_system_entry(
-			diagnostics); }));
+	TEST_EXPECT(context, rejects_fcc_config(diagnostics));
 }
 
-void test_fcc_owner_rejects_incoherent_config(Tests::Context& context)
+void test_fcc_owner_rejects_invalid_schedule_config(Tests::Context& context)
 {
-	constexpr double kInconsistentLimitScale = 0.5;
-	auto inconsistent_guidance =
-		Core::Systems::fck1c_flight_control_computer_config();
-	inconsistent_guidance.automatic_flight_control.bank_limit_rad *=
-		kInconsistentLimitScale;
-	TEST_EXPECT(context, rejects_invalid_config([inconsistent_guidance]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				inconsistent_guidance);
-		}));
 	auto invalid_schedule =
-		Core::Systems::fck1c_flight_control_computer_config();
+		Core::Systems::make_fck1c_flight_control_computer_config_draft();
 	invalid_schedule.mode_and_gain.angle_of_attack_mach[1] =
 		invalid_schedule.mode_and_gain.angle_of_attack_mach[0];
-	TEST_EXPECT(context, rejects_invalid_config([invalid_schedule]()
-		{
-			(void)Core::Systems::make_flight_control_computer_system_entry(
-				invalid_schedule);
-		}));
+	TEST_EXPECT(context, rejects_fcc_config(invalid_schedule));
 }
 
 void test_landing_owner_rejects_invalid_config(Tests::Context& context)
@@ -591,7 +526,7 @@ void run_configuration_ownership_tests(Tests::Context& context)
 	test_ground_interaction_production_config(context);
 	test_fcc_and_landing_gear_production_config(context);
 	test_engine_owner_rejects_invalid_config(context);
-	test_fcc_owner_rejects_invalid_signal_and_development_config(context);
+	test_fcc_owner_rejects_invalid_signal_and_override_config(context);
 	test_fcc_owner_rejects_invalid_control_law_config(context);
 	test_fcc_owner_validates_all_consumed_law_fields(context);
 	test_fcc_owner_rejects_invalid_ap_config(context);
@@ -599,7 +534,7 @@ void run_configuration_ownership_tests(Tests::Context& context)
 	test_fcc_owner_rejects_invalid_stores_envelope(context);
 	test_fcc_owner_rejects_invalid_maneuver_envelope(context);
 	test_fcc_owner_rejects_invalid_directional_and_output_config(context);
-	test_fcc_owner_rejects_incoherent_config(context);
+	test_fcc_owner_rejects_invalid_schedule_config(context);
 	test_landing_owner_rejects_invalid_config(context);
 	test_model_owners_reject_invalid_config(context);
 }

@@ -220,7 +220,6 @@ SystemDefinition timed_recorder(
 {
 	SystemDefinition definition = {
 		"timed",
-		SystemGroup::Equipment,
 		[](SystemSetup&) {},
 		no_step()
 	};
@@ -321,7 +320,6 @@ SystemDefinition slow_publisher()
 	auto calls = std::make_shared<int>(0);
 	SystemDefinition definition = {
 		"slow_publisher",
-		SystemGroup::Control,
 		[](SystemSetup& setup)
 		{
 			setup.publish(
@@ -344,7 +342,6 @@ SystemDefinition fast_observer()
 {
 	return {
 		"fast_observer",
-		SystemGroup::Equipment,
 		[](SystemSetup& setup)
 		{
 			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
