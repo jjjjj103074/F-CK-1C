@@ -9,8 +9,6 @@
 namespace
 {
 constexpr double kTolerance = 1e-9;
-constexpr double kMetersPerFoot = 0.3048;
-constexpr double kMetersPerSecondPerKnot = 0.5144444444444445;
 
 void test_snapshot_envelope_is_exported(Tests::Context& context)
 {
@@ -43,51 +41,6 @@ void test_snapshot_envelope_is_exported(Tests::Context& context)
 		cockpit.value(DcsIds::CockpitParams::MaxPowerSwitch),
 		0.0,
 		kTolerance);
-}
-
-void test_automatic_flight_control_snapshot_is_exported(
-	Tests::Context& context)
-{
-	Tests::FakeCockpitParameters cockpit;
-	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
-	Core::CockpitSnapshot snapshot;
-	auto& afcs = snapshot.automatic_flight_control;
-	afcs.master_engaged = true;
-	afcs.bypass_active = true;
-	afcs.auto_throttle_engaged = true;
-	afcs.vertical_mode =
-		Core::AutomaticFlightControlVerticalMode::AltitudeHold;
-	afcs.lateral_mode =
-		Core::AutomaticFlightControlLateralMode::HeadingSelect;
-	afcs.pitch_attitude_reference_rad = 0.2;
-	afcs.vertical_speed_reference_ft_s = 3.0 / kMetersPerFoot;
-	afcs.bank_angle_reference_rad = -0.1;
-	afcs.target_altitude_ft = 1000.0;
-	afcs.target_heading_deg = 270;
-	afcs.target_speed_mps = 300.0 * kMetersPerSecondPerKnot;
-	afcs.autopilot_disengage_reason =
-		Core::AutomaticFlightControlReason::WeightOnWheels;
-	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 0);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApMasterEngaged), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApVerticalMode), 2.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApLateralMode), 2.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApPitchAttitudeReference), 0.2, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApVerticalSpeedReference), 3.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApBankAngleReference), -0.1, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApTargetAltitudeFt), 1000.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApTargetHeadingDeg), 270.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApTargetSpeedKts), 300.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(
-		DcsIds::CockpitParams::ApDisengageReason), 3.0, kTolerance);
 }
 
 void test_missing_parameter_reports_once_then_recovers(
@@ -139,7 +92,6 @@ void test_reset_restarts_error_reporting(Tests::Context& context)
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
 	test_snapshot_envelope_is_exported(context);
-	test_automatic_flight_control_snapshot_is_exported(context);
 	test_missing_parameter_reports_once_then_recovers(context);
 	test_reset_restarts_error_reporting(context);
 }

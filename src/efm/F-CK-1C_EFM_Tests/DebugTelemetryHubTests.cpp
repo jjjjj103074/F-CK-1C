@@ -1,8 +1,6 @@
 #include "TestHarness.h"
 #include "DebugTelemetryTestSupport.h"
-#include "Fck1cEfmTestFixture.h"
 
-#include "Common/Units.h"
 #include "DcsBridge/Internal/DebugTelemetry/DebugTelemetryHub.h"
 
 #include <atomic>
@@ -166,22 +164,6 @@ void test_strict_publication_policy_rethrows(Tests::Context& context)
 	TEST_EXPECT(context, hub.status().publication_failed);
 }
 
-void test_publication_failure_does_not_interrupt_core(
-	Tests::Context& context)
-{
-	DebugTelemetryHub hub(kIsolatedPublishErrors);
-	hub.begin_flight();
-	auto future = hub.declare_channel<double>(channel("future"));
-	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config(), hub);
-	(void)efm.start(Core::StartMode::HotAir);
-	future.publish(10s, 1.0);
-	hub.seal_schema();
-	const Core::FrameOutput output =
-		efm.step(Tests::Fck1c::make_frame_input());
-	TEST_EXPECT(context, output.simulation_time_s > 0.0);
-	TEST_EXPECT(context, hub.status().publication_failed);
-}
-
 void test_flight_reset_restarts_sampling_sequence(Tests::Context& context)
 {
 	DebugTelemetryHub hub(kIsolatedPublishErrors);
@@ -232,93 +214,6 @@ void test_concurrent_latest_snapshot_is_complete(Tests::Context& context)
 	TEST_EXPECT(context, snapshot.values[0].has_value());
 }
 
-std::size_t channel_index(
-	const Core::DebugTelemetrySnapshot& snapshot,
-	const char* name)
-{
-	for (std::size_t index = 0; index < snapshot.channels.size(); ++index)
-	{
-		if (snapshot.channels[index].name == name) return index;
-	}
-	throw std::logic_error("Expected debug telemetry channel was not declared.");
-}
-
-void verify_flight_control_debug_values(
-	Tests::Context& context,
-	const Core::DebugTelemetrySnapshot& snapshot)
-{
-	const auto heading_available = channel_index(
-		snapshot, "flight_actual_magnetic_heading_available");
-	const auto heading = channel_index(
-		snapshot, "flight_actual_magnetic_heading_deg");
-	const auto electronic_saturation = channel_index(
-		snapshot, "flight_control_electronic_command_saturated");
-	const auto physical_saturation = channel_index(
-		snapshot, "flight_control_actuator_saturated");
-	const auto control_authority = channel_index(
-		snapshot, "flight_control_control_authority_limited");
-	const auto auto_throttle_available = channel_index(
-		snapshot, "afcs_experimental_auto_throttle_available");
-	TEST_EXPECT(context,
-		std::get<bool>(*snapshot.values[heading_available]));
-	TEST_EXPECT_NEAR(context, std::get<double>(*snapshot.values[heading]),
-		Common::deg(0.3), 1e-9);
-	TEST_EXPECT(context,
-		!std::get<bool>(*snapshot.values[electronic_saturation]));
-	TEST_EXPECT(context,
-		!std::get<bool>(*snapshot.values[physical_saturation]));
-	TEST_EXPECT(context,
-		!std::get<bool>(*snapshot.values[control_authority]));
-	TEST_EXPECT(context,
-		!std::get<bool>(*snapshot.values[auto_throttle_available]));
-}
-
-void test_real_core_registers_and_pushes_diagnostics(Tests::Context& context)
-{
-	DebugTelemetryHub hub(kIsolatedPublishErrors);
-	hub.begin_flight();
-	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config(), hub);
-	(void)efm.start(Core::StartMode::HotAir);
-	hub.seal_schema();
-	const auto initial = hub.latest_snapshot();
-	const auto master = channel_index(initial, "afcs_master_engaged");
-	const auto thrust_cut = channel_index(
-		initial, "propulsion_test_thrust_cut_requested");
-	TEST_EXPECT(context, !std::get<bool>(*initial.values[master]));
-	TEST_EXPECT(context, !std::get<bool>(*initial.values[thrust_cut]));
-	(void)efm.step(Tests::Fck1c::make_frame_input());
-	const auto stepped = hub.latest_snapshot();
-	verify_flight_control_debug_values(context, stepped);
-	efm.handle_command({ Core::CommandId::EnableThrustCutTest, 1.0 });
-	const auto commanded = hub.latest_snapshot();
-	TEST_EXPECT(context, std::get<bool>(*commanded.values[thrust_cut]));
-}
-
-void test_real_core_publishes_subrate_diagnostics(Tests::Context& context)
-{
-	DebugTelemetryHub hub(kIsolatedPublishErrors);
-	hub.begin_flight();
-	Core::Fck1cEfm efm(Tests::Fck1c::make_test_config(), hub);
-	(void)efm.start(Core::StartMode::HotAir);
-	hub.seal_schema();
-	(void)efm.step(Tests::Fck1c::make_frame_input());
-	const auto snapshot = hub.latest_snapshot();
-	const auto pilot_last = channel_index(
-		snapshot, "flight_control_pilot_shaping_last_update_tick");
-	const auto gain_last = channel_index(
-		snapshot, "flight_control_gain_schedule_last_update_tick");
-	const auto pitch = channel_index(
-		snapshot, "flight_control_conditioned_pitch_input_normalized");
-	const auto command_gain = channel_index(
-		snapshot, "flight_control_active_command_gain");
-	TEST_EXPECT(context,
-		std::get<std::int64_t>(*snapshot.values[pilot_last]) == 0);
-	TEST_EXPECT(context,
-		std::get<std::int64_t>(*snapshot.values[gain_last]) == 0);
-	TEST_EXPECT(context, std::isfinite(std::get<double>(*snapshot.values[pitch])));
-	TEST_EXPECT(context,
-		std::get<double>(*snapshot.values[command_gain]) > 0.0);
-}
 }
 
 void run_debug_telemetry_hub_tests(Tests::Context& context)
@@ -328,10 +223,7 @@ void run_debug_telemetry_hub_tests(Tests::Context& context)
 	test_latest_values_and_64_hz_resampling(context);
 	test_schema_is_stable_between_flights(context);
 	test_descriptor_and_time_errors_are_explicit(context);
-	test_publication_failure_does_not_interrupt_core(context);
 	test_strict_publication_policy_rethrows(context);
 	test_flight_reset_restarts_sampling_sequence(context);
 	test_concurrent_latest_snapshot_is_complete(context);
-	test_real_core_registers_and_pushes_diagnostics(context);
-	test_real_core_publishes_subrate_diagnostics(context);
 }

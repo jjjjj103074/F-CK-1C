@@ -1,7 +1,6 @@
 #include "TestHarness.h"
 
 #include "Core/Systems/PilotControls/InputModel.h"
-#include "Core/Systems/FlightControlComputer/Util/ThrottleCommandComposition.h"
 
 namespace
 {
@@ -65,15 +64,6 @@ void test_throttle_arbitration(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, throttles.left.pilot_cmd, 0.6, kTolerance);
 }
 
-void test_fbw_throttle_composition(Tests::Context& context)
-{
-	TEST_EXPECT_NEAR(context,
-		Systems::compose_engine_throttle_command({ 0.2, 0.8, 0.0, true }),
-		0.8, kTolerance);
-	TEST_EXPECT_NEAR(context,
-		Systems::compose_engine_throttle_command({ 0.2, 0.8, 0.5, false }),
-		0.5, kTolerance);
-}
 }
 
 void run_input_system_tests(Tests::Context& context)
@@ -82,5 +72,4 @@ void run_input_system_tests(Tests::Context& context)
 	test_axis_normalization(context);
 	test_virtual_axes_use_elapsed_time(context);
 	test_throttle_arbitration(context);
-	test_fbw_throttle_composition(context);
 }

@@ -7,30 +7,15 @@
 
 namespace Core::Systems
 {
-    // 三個根目錄 .cpp 之一：把 SystemPipeline 的 typed 資料轉成 Executive 輸入，
-    // 再將完整結果發布回 Pipeline；不在這裡實作控制律或保存演算法狀態。
     FlightControlComputer::FlightControlComputer(
-        StartMode start_mode,
         const ThrottleLeverSignal &initial_throttle_levers)
-        : FlightControlComputer(
-              fck1c_flight_control_computer_config(),
-              start_mode,
-              initial_throttle_levers)
-    {
-    }
-
-    FlightControlComputer::FlightControlComputer(
-        const FlightControlComputerConfig &config,
-        StartMode start_mode,
-        const ThrottleLeverSignal &initial_throttle_levers)
-        : executive_(config, start_mode, initial_throttle_levers)
+        : initial_throttle_levers_(initial_throttle_levers)
     {
     }
 
     void FlightControlComputer::setup(SystemSetup &setup)
     {
-        // 登記遙測、更新率及五種已完成 DCS 座標與單位轉換的輸入。
-        debug_telemetry_.declare_channels(setup);
+        // 宣告固定排程頻率與本系統在每個週期需要讀取的資料。
         setup.update_rate_hz(kF16XlDflcsReferenceUpdateRateHz);
         setup.read(AircraftDataKeys::kFlightControlObservation);
         setup.read(AircraftDataKeys::kPilotControlSignal);
@@ -38,35 +23,32 @@ namespace Core::Systems
         setup.read(AircraftDataKeys::kLandingGearData);
         setup.read(AircraftDataKeys::kFlightControlActuatorState);
 
-        // 發布建構時的完整初值，供其他 System 在第一個 64 Hz 週期前讀取。
-        const FlightControlComputerResult &initial = executive_.result(); // Executive 持有的初始結果。
-        setup.publish(
-            AircraftDataKeys::kFlightControlActuatorCommand,
-            initial.actuator_command);
-        setup.publish(
-            AircraftDataKeys::kEngineThrottleCommand,
-            initial.engine_throttle_command);
-        setup.publish(
-            AircraftDataKeys::kAutomaticFlightControlSnapshot,
-            initial.automatic_flight_control);
-        setup.publish(
-            AircraftDataKeys::kFlightControlComputerSnapshot,
-            initial.diagnostics);
+        // Pipeline 建立時要求每個輸出先有一個值。兩個快照保持 unavailable，
+        // 代表 FLCC 尚未完成任何運算；第一個 step 仍會明確拋出未實作錯誤。
+        setup.publish(AircraftDataKeys::kFlightControlActuatorCommand,
+                      FlightControlActuatorCommand{});
+        setup.publish(AircraftDataKeys::kEngineThrottleCommand,
+                      EngineThrottleCommand{initial_throttle_levers_.left_normalized,
+                                            initial_throttle_levers_.right_normalized});
+        setup.publish(AircraftDataKeys::kAutomaticFlightControlSnapshot,
+                      AutomaticFlightControlSnapshot{});
+        setup.publish(AircraftDataKeys::kFlightControlComputerSnapshot,
+                      FlightControlComputerSnapshot{});
 
-        // 子模組已提供 ID 與交付函式；此處只轉接 Pipeline 的處理器格式。
+        // Executive 負責彙整未來子模組的指令；Computer 只轉接到 Pipeline。
         for (const FlightControlCommandBinding &binding : executive_.command_bindings())
         {
             if (!binding.deliver)
+            {
                 throw std::logic_error("FLCC command binding has no handler.");
+            }
             setup.register_command_handler(
                 binding.id,
                 [deliver = binding.deliver](const SystemActionContext &, const Command &command)
-                { deliver(command); });
+                {
+                    deliver(command);
+                });
         }
-
-        // 將 Executive 建構時的狀態記為時間零的除錯遙測。
-        debug_telemetry_.publish_initial(
-            initial.diagnostics, initial.automatic_flight_control);
     }
 
     void FlightControlComputer::step(
@@ -74,41 +56,23 @@ namespace Core::Systems
         const AircraftDataView &aircraft,
         SystemResult &result)
     {
-        // 將 Pipeline 的資料鍵轉成一次 Executive 運算所需的輸入。
-        const RawFlightControlInput flight = make_pipeline_input(context, aircraft); // 本週期飛控輸入值。
-        const FlightControlComputerResult &output = executive_.update({
-            flight,
-            aircraft.read(AircraftDataKeys::kThrottleLeverSignal) // 油門為臨時職責 之後應分出
-        });                                                       // Executive 持有的本週期完整結果。
-
-        // 遙測觀察已完成的結果，不修改控制命令。
-        debug_telemetry_.publish_step({context.scheduled_time,
-                                       flight.observation, output.diagnostics,
-                                       output.automatic_flight_control});
-
-        // 發布兩種控制命令與兩種狀態快照；致動器需求的單位為弧度。
-        result.publish(AircraftDataKeys::kFlightControlActuatorCommand,
-                       output.actuator_command);
-        result.publish(AircraftDataKeys::kEngineThrottleCommand,
-                       output.engine_throttle_command);
-        result.publish(AircraftDataKeys::kAutomaticFlightControlSnapshot,
-                       output.automatic_flight_control);
-        result.publish(AircraftDataKeys::kFlightControlComputerSnapshot,
-                       output.diagnostics);
+        // 目前 Executive 會明確拋出未實作錯誤，因此不會發布本週期輸出。
+        // 保留 result 參數是 System 介面要求，未來運算完成後由此發布結果。
+        (void)result;
+        executive_.update(make_step_input(context, aircraft));
     }
 
-    RawFlightControlInput FlightControlComputer::make_pipeline_input(
+    FlightControlComputerStepInput FlightControlComputer::make_step_input(
         const SystemStepContext &context,
         const AircraftDataView &aircraft) const
     {
-        // 只擷取 Core 已定義的訊號；context.dt_s 為秒，其他欄位由 key 的
-        // typed struct 指定格式。DCS 座標與單位轉換在進入 Core 前完成。
         return {
-            context.dt_s,
-            aircraft.read(AircraftDataKeys::kFlightControlObservation),
-            aircraft.read(AircraftDataKeys::kPilotControlSignal),
-            aircraft.read(AircraftDataKeys::kLandingGearData),
-            aircraft.read(AircraftDataKeys::kFlightControlActuatorState)};
+            context.dt_s,                                                // 本週期時間間隔，單位為秒。
+            aircraft.read(AircraftDataKeys::kFlightControlObservation),  // 飛行狀態。
+            aircraft.read(AircraftDataKeys::kPilotControlSignal),        // 駕駛控制輸入。
+            aircraft.read(AircraftDataKeys::kThrottleLeverSignal),       // 左右油門桿。
+            aircraft.read(AircraftDataKeys::kLandingGearData),           // 起落架與接地狀態。
+            aircraft.read(AircraftDataKeys::kFlightControlActuatorState) // 致動器回授。
+        };
     }
-
 }

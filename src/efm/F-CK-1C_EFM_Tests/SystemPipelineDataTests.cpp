@@ -555,7 +555,7 @@ void test_phase_three_generated_catalog(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup());
 	TEST_EXPECT(context, pipeline.system_count() == kCurrentCatalogSize);
-	const AircraftDataSnapshot output = step_pipeline(pipeline);
+	const AircraftDataSnapshot output = pipeline.snapshot();
 	TEST_EXPECT_NEAR(
 		context,
 		output.read(AircraftDataKeys::kPilotControlSignal).pitch_axis_normalized,

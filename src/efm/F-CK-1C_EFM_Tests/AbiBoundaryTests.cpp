@@ -131,7 +131,7 @@ void test_exception_details_are_logged(Tests::Context& context)
 		"ed_fm_set_command",
 		{
 			Core::ExecutionOwnerType::System,
-			"flight_control_computer",
+			"landing_gear",
 			"handle_command",
 			"handler failed"
 		});
@@ -166,7 +166,7 @@ void test_exception_details_are_logged(Tests::Context& context)
 		"operation=setup reason=declaration failed") != std::string::npos);
 	TEST_EXPECT(context, content.find(
 		"callback=ed_fm_set_command source=system "
-		"owner=flight_control_computer operation=handle_command "
+		"owner=landing_gear operation=handle_command "
 		"reason=handler failed") != std::string::npos);
 	TEST_EXPECT(context, content.find(
 		"callback=ed_fm_hot_start source=simulation_model "

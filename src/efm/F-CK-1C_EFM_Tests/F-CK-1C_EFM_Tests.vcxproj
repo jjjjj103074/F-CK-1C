@@ -54,7 +54,6 @@
   </ItemDefinitionGroup>
   <Import Project="..\EfmCore.props" />
   <ItemGroup>
-	<ClInclude Include="AutopilotClosedLoopRig.inl" />
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
     <ClInclude Include="FakeCockpitParameters.h" />
@@ -65,12 +64,6 @@
   <ItemGroup>
     <ClCompile Include="AerodynamicsPhysicsTests.cpp" />
     <ClCompile Include="AirframeDeviceSystemTests.cpp" />
-	<ClCompile Include="AutomaticFlightControlTests.cpp" />
-	<ClCompile Include="AutomaticFlightControlAutoThrottleTests.cpp" />
-    <ClCompile Include="AutomaticFlightControlLifecycleTests.cpp" />
-    <ClCompile Include="AutomaticFlightControlTakeoverTests.cpp" />
-    <ClCompile Include="AutopilotClosedLoopTests.cpp" />
-    <ClCompile Include="AutopilotModeMonitorTests.cpp" />
     <ClCompile Include="AbiBoundaryTests.cpp" />
     <ClCompile Include="BridgeContextTests.cpp" />
 	<ClCompile Include="BoundaryValidatorTests.cpp" />
@@ -88,26 +81,15 @@
     <ClCompile Include="EngineSystemTests.cpp" />
 	<ClCompile Include="EventLogTests.cpp" />
 	<ClCompile Include="StateCsvWriterTests.cpp" />
-    <ClCompile Include="FBWControllerTests.cpp" />
-    <ClCompile Include="FlightControlReferenceTests.cpp" />
-    <ClCompile Include="Fck1cEfmCharacterizationTests.cpp" />
-    <ClCompile Include="Fck1cEfmSystemIntegrationTests.cpp" />
-    <ClCompile Include="Fck1cEfmTests.cpp" />
 		<ClCompile Include="FrameInputCollectorTests.cpp" />
 		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
-	<ClCompile Include="FlightControlObservationPipelineTests.cpp" />
-	<ClCompile Include="FlightControlOutputSystemTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
-	<ClCompile Include="ConfigurationAndModeTests.cpp" />
     <ClCompile Include="InputSystemTests.cpp" />
-	<ClCompile Include="InputSignalManagementTests.cpp" />
-	<ClCompile Include="InnerLoopControlTests.cpp" />
     <ClCompile Include="LandingGearSystemTests.cpp" />
     <ClCompile Include="MassDeltaTests.cpp" />
     <ClCompile Include="OutputStoreTests.cpp" />
     <ClCompile Include="ParamExportTests.cpp" />
     <ClCompile Include="PropulsionDiagnosticsTests.cpp" />
-    <ClCompile Include="Phase3SystemTests.cpp" />
     <ClCompile Include="Phase4SystemTimingTests.cpp" />
     <ClCompile Include="SimulationModelTests.cpp" />
     <ClCompile Include="SuspensionFeedbackTests.cpp" />

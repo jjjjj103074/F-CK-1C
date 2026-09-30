@@ -11,12 +11,11 @@ namespace Core::Systems::Catalog::FlightControlComputer
         entry.id = "flight_control_computer"; // Pipeline 識別系統及回報錯誤時使用的 ID。
 
         // Pipeline 建立一架飛機時才呼叫工廠，並傳入該次飛行的初始資料。
-        entry.factory = [](const FlightSetupContext &setup)
-        {
-            return std::make_unique<Core::Systems::FlightControlComputer>(
-                setup.start_mode,               // 這次啟動模式。
-                setup.initial_throttle_levers); // 首次更新前的油門桿位置。
-        };
+		entry.factory = [](const FlightSetupContext &setup)
+		{
+			return std::make_unique<Core::Systems::FlightControlComputer>(
+				setup.initial_throttle_levers); // 首次更新前的油門桿位置。
+		};
         return entry;
     }
 }
