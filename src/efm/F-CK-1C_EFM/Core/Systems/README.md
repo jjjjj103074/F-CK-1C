@@ -200,22 +200,21 @@ boundary and DCSBridge records it once.
 
 ## Flight-control ownership
 
-`FlightControlComputer` remains one physical-box System. The current TDD
-baseline contains only the catalog Entry, the Pipeline adapter, and the
-Executive orchestration seam:
+`FlightControlComputer` remains one physical-box System. It directly owns seven
+internal components under `Components/` and five independent typed databases
+under `Database/`. The internal `Executive` centrally defines the task table
+with exact rational Hz and fixed row order. Each `ExecutiveTables` row stores
+an immutable task definition beside its current runtime state. These components
+are not separate Pipeline Systems. FLCC owns assembly and the Pipeline boundary,
+while Executive owns internal timing and invocation order.
 
-```text
-System catalog Entry
--> FlightControlComputer Pipeline adapter
--> FlightControlExecutive internal-computation seam
-```
-
-Setup declares five typed inputs and four typed outputs. It publishes neutral
-initial actuator demand, the initial throttle lever values, and unavailable
-status snapshots so the Pipeline can finish construction. No FLCC commands are
-registered. The first scheduled step fails explicitly with
-`FLCC internal computation is not implemented.` until tested behavior is added.
-The exact boundary is documented in the FLCC directory README.
+Setup declares five typed inputs and four typed outputs. Each step copies the
+inputs into its database, advances Executive to the scheduled simulation time,
+and publishes the database outputs. Component algorithms remain unimplemented:
+actuator demand stays neutral, throttle demand retains its initial value, and
+both status snapshots remain unavailable. No FLCC commands are registered.
+The exact boundary and scheduling contract are documented in the
+[FLCC guide](FlightControlComputer/README.md).
 
 Fuel registers only the preparation handlers used by the
 simulation façade. The Pipeline validates that the handler set is complete and
