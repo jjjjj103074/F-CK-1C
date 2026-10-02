@@ -2,6 +2,8 @@
 
 #include "../../Database/ExecutiveTables.h"
 
+#include <chrono>
+
 namespace Core::Systems::Flcc
 {
 class StartupAndRestart;
@@ -50,12 +52,12 @@ public:
     /// @throws std::invalid_argument 時間為負或向後移動。
     /// @throws std::overflow_error 任務時鐘超出可表示範圍。
     /// 任務例外直接向上傳遞；尚未實作故障恢復或資料交易回復。
-    void step(TaskScheduledTime target_time);
+    void step(std::chrono::nanoseconds target_time);
 
 private:
     /// @brief 找出最早到期且不晚於目標時間的任務；同時到期保留列順序。
     /// @return 可更新狀態的任務列；沒有到期任務時回傳 nullptr。
-    ExecutiveTask *find_next_due(TaskScheduledTime target_time);
+    ExecutiveTask *find_next_due(std::chrono::nanoseconds target_time);
 
     ExecutiveTables &tables_; ///< FLCC 持有的任務設定及執行進度。
 };

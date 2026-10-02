@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Executive/TaskScheduledTime.h"
+#include <chrono>
 
 namespace Core::Systems::Flcc
 {
@@ -21,7 +21,7 @@ public:
 	/// @param scheduled_time 此任務本次預定的絕對模擬時間。
 	/// @param dt_s 此任務自身的固定週期，單位為秒。
 	/// 尚未實作：AMUX 接收、傳送與資料處理。
-	void step(TaskScheduledTime scheduled_time, double dt_s);
+	void step(std::chrono::nanoseconds scheduled_time, double dt_s);
 
 private:
 	AmuxData& amux_; ///< 固定綁定的 AMUX 資料分區。

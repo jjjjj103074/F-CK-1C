@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Executive/TaskScheduledTime.h"
+#include <chrono>
 
 namespace Core::Systems::Flcc
 {
@@ -27,7 +27,7 @@ public:
 	/// @param scheduled_time 此任務本次預定的絕對模擬時間。
 	/// @param dt_s 此任務自身的固定週期，單位為秒。
 	/// 尚未實作：控制律、模式、濾波、積分與控制需求計算。
-	void step(TaskScheduledTime scheduled_time, double dt_s);
+	void step(std::chrono::nanoseconds scheduled_time, double dt_s);
 
 private:
 	InputOutputData& input_output_; ///< 供讀取輸入與寫入控制需求的分區。

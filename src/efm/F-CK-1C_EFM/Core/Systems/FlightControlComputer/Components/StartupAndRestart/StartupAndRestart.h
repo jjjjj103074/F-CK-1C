@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Executive/TaskScheduledTime.h"
+#include <chrono>
 
 namespace Core::Systems::Flcc
 {
@@ -24,7 +24,7 @@ public:
 	/// @param scheduled_time 此任務本次預定的絕對模擬時間。
 	/// @param dt_s 此任務自身的固定週期，單位為秒。
 	/// 尚未實作：啟動檢查、資料初始化與重新啟動程序。
-	void step(TaskScheduledTime scheduled_time, double dt_s);
+	void step(std::chrono::nanoseconds scheduled_time, double dt_s);
 
 private:
 	ControlLawData& control_law_; ///< 供啟動程序初始化的控制律資料分區。

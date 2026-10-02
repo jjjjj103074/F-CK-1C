@@ -13,7 +13,7 @@ SelectorMonitor::SelectorMonitor(
 {
 }
 
-void SelectorMonitor::step(TaskScheduledTime scheduled_time, double dt_s)
+void SelectorMonitor::step(std::chrono::nanoseconds scheduled_time, double dt_s)
 {
 	// 尚未實作：輸入選擇、選擇有效性判斷與狀態更新。
 	(void)scheduled_time;

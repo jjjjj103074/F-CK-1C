@@ -2,6 +2,7 @@
 
 #include "../Components/Executive/TaskFrequency.h"
 
+#include <chrono>
 #include <functional>
 #include <initializer_list>
 #include <stdexcept>
@@ -28,9 +29,9 @@ struct TaskDefinition
     /// @throws std::invalid_argument 名稱為空或成員函式指標為空。
     template <typename Component>
     TaskDefinition(std::string id, TaskFrequency frequency, Component &component,
-                   void (Component::*method)(TaskScheduledTime, double))
+                   void (Component::*method)(std::chrono::nanoseconds, double))
         : id(std::move(id)), frequency(frequency),
-          step_([target = &component, method](TaskScheduledTime scheduled_time, double dt_s)
+          step_([target = &component, method](std::chrono::nanoseconds scheduled_time, double dt_s)
           {
               (target->*method)(scheduled_time, dt_s);
           })
@@ -42,7 +43,7 @@ struct TaskDefinition
     }
 
 private:
-    std::function<void(TaskScheduledTime, double)> step_; ///< 已綁定的任務入口。
+    std::function<void(std::chrono::nanoseconds, double)> step_; ///< 已綁定的任務入口。
     friend class ExecutiveTables;
     friend class Executive;
 };
@@ -51,7 +52,7 @@ private:
 struct TaskRuntimeState
 {
     std::uint64_t completed_ticks = 0; ///< 已成功返回的呼叫次數，為排程進度的依據。
-    TaskScheduledTime next_due = {}; ///< 由 completed_ticks + 1 推導的下次到期時間快取。
+    std::chrono::nanoseconds next_due = {}; ///< 由 completed_ticks + 1 推導的下次到期時間快取。
 };
 
 /// @brief 同一個任務的固定設定與目前狀態；表格列順序即同時到期的執行順序。
@@ -66,13 +67,13 @@ struct ExecutiveTask
     /// @brief 查詢距離下次預定執行的模擬時間；負值表示已到期但尚未處理。
     /// @param reference_time 查詢所依據的非負模擬時間，非實際 CPU 時間。
     /// @throws std::invalid_argument 查詢時間為負。
-    TaskScheduledTime time_until_next(TaskScheduledTime reference_time) const;
+    std::chrono::nanoseconds time_until_next(std::chrono::nanoseconds reference_time) const;
 };
 
 /// @brief 整份排程表的執行狀態。
 struct ExecutiveSchedulerState
 {
-    TaskScheduledTime advanced_through = {}; ///< 最近一次成功完成的外層目標模擬時間。
+    std::chrono::nanoseconds advanced_through = {}; ///< 最近一次成功完成的外層目標模擬時間。
 };
 
 /// @brief 一台 FLCC 的排程資料分區；每列同時保存任務設定與執行狀態。

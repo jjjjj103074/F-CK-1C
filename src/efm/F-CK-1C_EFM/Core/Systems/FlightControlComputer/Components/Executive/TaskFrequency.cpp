@@ -39,13 +39,13 @@ double TaskFrequency::period_s() const noexcept
     return static_cast<double>(denominator_) / numerator_;
 }
 
-TaskScheduledTime TaskFrequency::tick_time(std::uint64_t tick) const
+std::chrono::nanoseconds TaskFrequency::tick_time(std::uint64_t tick) const
 {
     const std::uint64_t period_numerator = kNanosecondsPerSecond * denominator_;
     const std::uint64_t whole_period = period_numerator / numerator_;
     const std::uint64_t remainder = period_numerator % numerator_;
     const auto maximum = static_cast<std::uint64_t>(
-        (std::numeric_limits<TaskScheduledTime::rep>::max)());
+        (std::numeric_limits<std::chrono::nanoseconds::rep>::max)());
     if (tick > maximum / whole_period)
     {
         throw std::overflow_error("FLCC task schedule exceeded its time range.");
@@ -60,6 +60,6 @@ TaskScheduledTime TaskFrequency::tick_time(std::uint64_t tick) const
     {
         throw std::overflow_error("FLCC task schedule exceeded its time range.");
     }
-    return TaskScheduledTime(static_cast<TaskScheduledTime::rep>(whole + fraction));
+    return std::chrono::nanoseconds(static_cast<std::chrono::nanoseconds::rep>(whole + fraction));
 }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Executive/TaskScheduledTime.h"
+#include <chrono>
 
 namespace Core::Systems::Flcc
 {
@@ -21,7 +21,7 @@ public:
 	/// @param scheduled_time 此任務本次預定的絕對模擬時間。
 	/// @param dt_s 此任務自身的固定週期，單位為秒。
 	/// 尚未實作：故障判定、故障處理與降級策略；本階段不處理備援。
-	void step(TaskScheduledTime scheduled_time, double dt_s);
+	void step(std::chrono::nanoseconds scheduled_time, double dt_s);
 
 private:
 	SystemStatusTables& system_status_; ///< 供故障狀態讀寫的狀態分區。

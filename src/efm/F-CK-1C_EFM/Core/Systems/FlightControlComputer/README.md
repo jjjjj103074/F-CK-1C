@@ -18,7 +18,6 @@ FlightControlComputer/
 ├─ Components/
 │  ├─ Executive/
 │  │  ├─ Executive.h / Executive.cpp
-│  │  ├─ TaskScheduledTime.h
 │  │  └─ TaskFrequency.h / TaskFrequency.cpp
 │  ├─ SystemMonitor/
 │  ├─ SelectorMonitor/
@@ -52,11 +51,11 @@ Executive 不將自己登記為任務。
 六個元件的入口統一為：
 
 ```cpp
-void step(TaskScheduledTime scheduled_time, double dt_s);
+void step(std::chrono::nanoseconds scheduled_time, double dt_s);
 ```
 
 兩個參數分別是本次預定模擬時間與此任務的固定週期，直接按值傳入。
-TaskScheduledTime 是整數奈秒型別的別名，不包裝其他呼叫參數。
+`std::chrono::nanoseconds` 保存整數奈秒，表示從本架飛機建立時的零時刻起算的預定模擬時間。
 
 每列填入名稱、精確 Hz、元件實例與成員函式指標，例如：
 

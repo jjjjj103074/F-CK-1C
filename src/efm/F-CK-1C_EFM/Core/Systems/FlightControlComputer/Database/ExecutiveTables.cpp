@@ -9,10 +9,10 @@ namespace Core::Systems::Flcc
     {
     }
 
-    TaskScheduledTime ExecutiveTask::time_until_next(TaskScheduledTime reference_time) const
+    std::chrono::nanoseconds ExecutiveTask::time_until_next(std::chrono::nanoseconds reference_time) const
     {
         // 檢查參考時間不為負值
-        if (reference_time < TaskScheduledTime::zero())
+        if (reference_time < std::chrono::nanoseconds::zero())
         {
             throw std::invalid_argument("FLCC task query time must not be negative.");
         }

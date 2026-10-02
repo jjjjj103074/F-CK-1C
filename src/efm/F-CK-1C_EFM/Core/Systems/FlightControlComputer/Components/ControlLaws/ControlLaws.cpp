@@ -16,7 +16,7 @@ ControlLaws::ControlLaws(
 {
 }
 
-void ControlLaws::step(TaskScheduledTime scheduled_time, double dt_s)
+void ControlLaws::step(std::chrono::nanoseconds scheduled_time, double dt_s)
 {
 	// 尚未實作：控制律、模式、濾波、積分與控制需求計算。
 	(void)scheduled_time;

@@ -34,7 +34,7 @@ static_assert(std::is_same<decltype(std::declval<const ExecutiveTables &>().task
 struct Call
 {
     std::string task;
-    TaskScheduledTime scheduled_time;
+    std::chrono::nanoseconds scheduled_time;
     double dt_s;
 };
 
@@ -45,13 +45,13 @@ struct Recorder
     std::vector<Call> &calls;
 
     /// @brief 記錄主要入口的呼叫。
-    void step(TaskScheduledTime scheduled_time, double dt_s)
+    void step(std::chrono::nanoseconds scheduled_time, double dt_s)
     {
         calls.push_back({id, scheduled_time, dt_s});
     }
 
     /// @brief 記錄相同實例的第二個入口，驗證成員函式綁定。
-    void secondary_step(TaskScheduledTime scheduled_time, double dt_s)
+    void secondary_step(std::chrono::nanoseconds scheduled_time, double dt_s)
     {
         calls.push_back({id + ".secondary", scheduled_time, dt_s});
     }
@@ -278,7 +278,7 @@ void test_definition_validation_and_initialization(Tests::Context &context)
         { TaskDefinition invalid("", TaskFrequency(4), recorder, &Recorder::step); }));
     TEST_EXPECT(context, throws<std::invalid_argument>([&]
     {
-        void (Recorder::*missing)(TaskScheduledTime, double) = nullptr;
+        void (Recorder::*missing)(std::chrono::nanoseconds, double) = nullptr;
         TaskDefinition invalid("missing", TaskFrequency(4), recorder, missing);
     }));
 

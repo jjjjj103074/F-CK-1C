@@ -13,7 +13,7 @@ SystemMonitor::SystemMonitor(
 {
 }
 
-void SystemMonitor::step(TaskScheduledTime scheduled_time, double dt_s)
+void SystemMonitor::step(std::chrono::nanoseconds scheduled_time, double dt_s)
 {
 	// 尚未實作：輸入合理性檢查、系統監控與狀態更新。
 	(void)scheduled_time;

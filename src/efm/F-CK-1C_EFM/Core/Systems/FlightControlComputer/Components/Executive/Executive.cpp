@@ -43,7 +43,7 @@ namespace Core::Systems::Flcc
         tables_.initialize(definitions);
     }
 
-    ExecutiveTask *Executive::find_next_due(TaskScheduledTime target_time)
+    ExecutiveTask *Executive::find_next_due(std::chrono::nanoseconds target_time)
     {
         ExecutiveTask *due = nullptr;
         for (ExecutiveTask &task : tables_.tasks_)
@@ -57,7 +57,7 @@ namespace Core::Systems::Flcc
         return due;
     }
 
-    void Executive::step(TaskScheduledTime target_time)
+    void Executive::step(std::chrono::nanoseconds target_time)
     {
         // 避免時間倒退
         if (target_time < tables_.scheduler_state_.advanced_through)
@@ -77,7 +77,7 @@ namespace Core::Systems::Flcc
                 throw std::overflow_error("FLCC task invocation count exceeded its range.");
             }
 
-            const TaskScheduledTime following_due_time =
+            const std::chrono::nanoseconds following_due_time =
                 definition.frequency.tick_time(state.completed_ticks + 2);       // 計算下一次執行時間
             definition.step_(state.next_due, definition.frequency.period_s()); // 執行任務入口
             ++state.completed_ticks;                                             // 更新已完成呼叫次數

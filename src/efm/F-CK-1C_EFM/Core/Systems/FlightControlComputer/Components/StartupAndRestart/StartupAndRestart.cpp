@@ -13,7 +13,7 @@ StartupAndRestart::StartupAndRestart(
 {
 }
 
-void StartupAndRestart::step(TaskScheduledTime scheduled_time, double dt_s)
+void StartupAndRestart::step(std::chrono::nanoseconds scheduled_time, double dt_s)
 {
 	// 尚未實作：啟動檢查、資料初始化與重新啟動程序。
 	(void)scheduled_time;

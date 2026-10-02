@@ -1,7 +1,6 @@
 #pragma once
 
-#include "TaskScheduledTime.h"
-
+#include <chrono>
 #include <cstdint>
 
 namespace Core::Systems::Flcc
@@ -28,8 +27,8 @@ namespace Core::Systems::Flcc
         /// @brief 由整數週期次數計算絕對到期時間，不累加捨入後的週期。
         /// @param tick 從零時刻起的週期次數；第一次呼叫使用 1。
         /// @return 向下取整至奈秒的預定模擬時間。
-        /// @throws std::overflow_error 到期時間超出 TaskScheduledTime 的範圍。
-        TaskScheduledTime tick_time(std::uint64_t tick) const;
+        /// @throws std::overflow_error 到期時間超出 std::chrono::nanoseconds 的範圍。
+        std::chrono::nanoseconds tick_time(std::uint64_t tick) const;
 
     private:
         std::uint32_t numerator_;   ///< 約分後的正整數分子。
