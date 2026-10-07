@@ -208,7 +208,8 @@ function Test-FileSizes {
 
     foreach ($source in $Sources) {
         $relativePath = Get-RelativeSourcePath $Root $source.FullName
-        if ($relativePath -like 'include\*') {
+        if ($relativePath -like 'include\*' -or
+            $relativePath -eq 'ThirdParty\nlohmann\json.hpp') {
             continue
         }
         $lineCount = @(Get-Content -LiteralPath $source.FullName).Count

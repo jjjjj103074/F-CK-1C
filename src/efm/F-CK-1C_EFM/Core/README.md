@@ -25,6 +25,27 @@ validation under `Systems/<Owner>/`. There is no global aircraft configuration
 bag. Geometry belongs in `Simulation/Definition/` only when more than one model
 actually shares it; no such definition exists yet.
 
+Databases may load their own typed settings through the shared
+`Configuration::load<T>()` entry in `Common/Configuration/`.
+Configuration.h exposes a thin `load<T>()` template that supplies the typed
+conversion callback. Configuration.cpp implements the load workflow and directly
+calls the path, file-reading and JSONC parsing tools.
+DcsBridge supplies the shared FM root and
+diagnostic callback through `initialize()`, then clears them through `shutdown()`
+when its environment is destroyed. Each load parses one JSONC file into a
+temporary JsonDocument, releases the source text, and executes the owner's field
+rules. The JSON parser validates UTF-8 in data strings and object keys;
+comments receive no separate encoding validation. It returns one
+`LoadResult<T>` containing either the complete validated structure or a failure
+diagnostic. Missing required fields are errors; duplicate names follow the JSON
+parser's behavior and retain one value without an additional diagnostic;
+extra object fields are errors and stop the load. Load failures are reported
+through the diagnostic callback and returned to the caller. Tools provide the
+stage, field and reason; the load workflow attaches the source file before
+reporting the error. JsonDocument owns only the JSON tree. The database owns
+the resulting settings and runtime state, determines when to load them, and
+decides whether initialization may continue after a failure.
+
 ## Dependency boundaries
 
 Allowed dependencies point inward through contracts and pipelines:

@@ -40,6 +40,7 @@ class BridgeContext final
 {
 public:
 	explicit BridgeContext(const BridgeContextConfig& config);
+	~BridgeContext();
 
 	BridgeContext(const BridgeContext&) = delete;
 	BridgeContext& operator=(const BridgeContext&) = delete;

@@ -1,6 +1,8 @@
 #include "TestFileUtils.h"
 #include "TestHarness.h"
 
+#include "../F-CK-1C_EFM/Common/Configuration/Configuration.h"
+
 #include "../F-CK-1C_EFM/DcsBridge/Internal/BridgeContext.h"
 #include "../F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
 #include "../F-CK-1C_EFM/DcsIds/CustomCommands.g.h"
@@ -32,6 +34,17 @@ constexpr auto kInputConcurrencyTimeout = std::chrono::seconds(1);
 constexpr const char* kRepeatedStartWarning =
 	"lifecycle_warning=repeated_start_without_release";
 std::atomic<int> g_cockpit_api_requests = 0;
+
+struct BridgeTestConfiguration
+{
+	double value = 0.0;
+};
+
+void read_configuration(const Configuration::Value& root, BridgeTestConfiguration& result)
+{
+	root.object({"value"});
+	result.value = root.member("value").number();
+}
 
 void* get_parameter_handle(const char* name)
 {
@@ -443,6 +456,32 @@ void test_release_clears_previous_frame_input(Tests::Context& tests)
 		!context.input_collector().snapshot(kPreparedStepS).availability.atmosphere);
 }
 
+void test_configuration_loader_reports_to_event_log(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcl");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	(void)owner.get(config_path.c_str());
+	const auto configuration_path = root.path() / "FM" / "LoaderBridgeTests.jsonc";
+	TestFiles::write_text(configuration_path, "{\"value\": 2}\n");
+	const auto loaded = Configuration::load<BridgeTestConfiguration>("LoaderBridgeTests.jsonc");
+	TEST_EXPECT(tests, loaded.succeeded());
+	if (loaded.succeeded())
+		TEST_EXPECT(tests, loaded.value().value == 2.0);
+
+	TestFiles::write_text(configuration_path, "{\"extra\": 1}\n");
+	const auto rejected = Configuration::load<BridgeTestConfiguration>("LoaderBridgeTests.jsonc");
+	TEST_EXPECT(tests, !rejected.succeeded());
+	if (!rejected.succeeded())
+	{
+		TEST_EXPECT(tests, rejected.error().file.filename() == "LoaderBridgeTests.jsonc");
+		TEST_EXPECT(tests, rejected.error().field == "/extra");
+		const auto log = TestFiles::read_text_while_open(root.path() / "log" / "fck1c_efm.log");
+		TEST_EXPECT(tests, log.find(rejected.error().message()) != std::string::npos);
+	}
+}
+
 }
 
 void run_bridge_context_tests(Tests::Context& context)
@@ -459,4 +498,5 @@ void run_bridge_context_tests(Tests::Context& context)
 	test_input_collection_does_not_wait_for_core(context);
 	test_core_action_rejects_released_flight(context);
 	test_release_clears_previous_frame_input(context);
+	test_configuration_loader_reports_to_event_log(context);
 }

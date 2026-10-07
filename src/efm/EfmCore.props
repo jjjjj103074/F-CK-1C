@@ -16,6 +16,9 @@
     <None Include="$(EfmCoreRoot)README.md" />
     <None Include="$(EfmSystemRoot)\README.md" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\AircraftData.h" />
+    <ClInclude Include="$(EfmModuleRoot)Common\Configuration\Configuration.h" />
+    <ClInclude Include="$(EfmModuleRoot)Common\Configuration\LoadResult.h" />
+    <ClInclude Include="$(EfmModuleRoot)Common\Configuration\ConfigurationTools.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\CockpitContracts.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetry.h" />
@@ -39,6 +42,12 @@
       Exclude="$(EfmSystemRoot)\*.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(EfmModuleRoot)Common\Configuration\Configuration.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmModuleRoot)Common\Configuration\ConfigurationTools.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="$(EfmCoreRoot)Fck1cEfm.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

@@ -23,6 +23,7 @@ void run_frame_input_collector_tests(Tests::Context& context);
 void run_flight_control_actuation_system_tests(Tests::Context& context);
 void run_flight_control_executive_tests(Tests::Context& context);
 void run_configuration_ownership_tests(Tests::Context& context);
+void run_configuration_loader_tests(Tests::Context& context);
 void run_input_system_tests(Tests::Context& context);
 void run_landing_gear_system_tests(Tests::Context& context);
 void run_mass_delta_tests(Tests::Context& context);
@@ -39,6 +40,7 @@ void run_system_pipeline_handler_tests(Tests::Context& context);
 int main()
 {
 	Tests::Context context;
+	run_configuration_loader_tests(context);
 	run_common_tests(context);
 	run_abi_boundary_tests(context);
 	run_boundary_validator_tests(context);

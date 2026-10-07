@@ -1,6 +1,9 @@
 #include "BridgeContext.h"
+#include "../../Common/Configuration/Configuration.h"
 
+#include <filesystem>
 #include <stdexcept>
+#include <string>
 
 namespace
 {
@@ -71,6 +74,20 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
 	carrier_bridge_(make_carrier_config()),
 	core_(make_core(config.core_factory, debug_telemetry_hub_))
 {
+    Configuration::initialize(
+        module_paths_.mod_root_path[0] == '\0' ? std::filesystem::path{} :
+            std::filesystem::path(module_paths_.mod_root_path) / "FM",
+        [this](const Configuration::Diagnostic& diagnostic)
+        {
+            const std::string message = diagnostic.message();
+            (void)event_log_.write({ EventLevel::Error, std::nullopt, message.c_str() });
+        });
+}
+
+BridgeContext::~BridgeContext()
+{
+    // 清除參照 EventLog 的共用回呼，接著銷毀環境成員。
+    Configuration::shutdown();
 }
 
 const ModulePaths& BridgeContext::module_paths() const
