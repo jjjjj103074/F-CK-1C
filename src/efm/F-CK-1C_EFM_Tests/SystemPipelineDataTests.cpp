@@ -66,7 +66,7 @@ SystemDefinition demand_observer()
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
 			const double pitch =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
 			result.publish(
 				AircraftDataKeys::kFlightControlActuatorState, actuator_state(pitch));
 		}
@@ -299,7 +299,7 @@ void test_same_time_bucket_reads_fixed_snapshot(Tests::Context& context)
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
+		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 		kNextDemand,
 		kTolerance);
 	TEST_EXPECT_NEAR(
@@ -342,7 +342,7 @@ void test_failed_system_keeps_previous_frame(Tests::Context& context)
 		[observed](const AircraftDataView& aircraft, SystemResult&)
 		{
 			*observed =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
 			throw std::runtime_error("expected system failure");
 		}
 	};
@@ -366,7 +366,7 @@ void test_failed_system_keeps_previous_frame(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, *observed, kInitialDemand, kTolerance);
 	TEST_EXPECT_NEAR(
 		context,
-		unchanged.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
+		unchanged.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 		kInitialDemand,
 		kTolerance);
 	TEST_EXPECT_NEAR(
@@ -408,7 +408,7 @@ void test_missing_new_value_retains_last_commit(Tests::Context& context)
 	const AircraftDataSnapshot second = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		second.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
+		second.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 		kNextDemand,
 		kTolerance);
 }
@@ -448,7 +448,7 @@ void test_pending_storage_does_not_leak(Tests::Context& context)
 	const AircraftDataSnapshot next = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
 		context,
-		next.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
+		next.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 		kNeutralValue,
 		kTolerance);
 }
@@ -490,7 +490,7 @@ SystemDefinition cross_reader(
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
 			const double source =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad;
+				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
 			result.publish(
 				AircraftDataKeys::kFlightControlActuatorState,
 				actuator_state(source + kPositionOffset));
@@ -504,7 +504,7 @@ void expect_order_independent_result(
 {
 	TEST_EXPECT_NEAR(
 		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
+		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 		kInitialCrossPosition + kDemandOffset,
 		kTolerance);
 	TEST_EXPECT_NEAR(

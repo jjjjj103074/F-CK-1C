@@ -172,6 +172,9 @@ Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
 	{
 		event_reporter_.log_repeated_start(mode);
 	}
+    // 初始化前釋放目前飛行狀態，將輸出儲存區設為 released。
+    core_->release();
+    output_store_.mark_released();
 	param_exporter_.reset();
 	cockpit_snapshot_exporter_.reset();
 	carrier_bridge_.reset();

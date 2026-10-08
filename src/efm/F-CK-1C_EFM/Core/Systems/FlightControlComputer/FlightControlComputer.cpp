@@ -22,7 +22,7 @@ namespace Core::Systems
 
     void FlightControlComputer::setup(SystemSetup &setup)
     {
-        // 外層仍以專案既有頻率呼叫 FLCC；內部各任務的 Hz 由 Executive 集中設定。
+        // Pipeline 依 FLCC 的外層頻率呼叫 step；內部任務的 Hz 由 Executive 集中設定。
         setup.update_rate_hz(kF16XlDflcsReferenceUpdateRateHz);
         setup.read(AircraftDataKeys::kFlightControlObservation);
         setup.read(AircraftDataKeys::kPilotControlSignal);
@@ -60,7 +60,7 @@ namespace Core::Systems
 
     void FlightControlComputer::publish_outputs(SystemResult &result) const
     {
-        // 尚未實作控制需求與狀態計算；發布資料庫初值，快照的 available 保持 false。
+        // 舵面需求由 ControlLaws 更新；油門控制與完整狀態計算尚未實作。
         result.publish(AircraftDataKeys::kFlightControlActuatorCommand,
                        input_output_data_.output.actuator_command);
         result.publish(AircraftDataKeys::kEngineThrottleCommand,

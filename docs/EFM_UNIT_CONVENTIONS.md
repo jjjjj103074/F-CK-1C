@@ -58,7 +58,8 @@ The FLCC receives already translated engineering quantities:
 | angle of attack and sideslip | radians, `_rad` |
 | body rates | radians/second, `_rad_s` |
 | normal acceleration | g, `_g` |
-| primary surface command/state | radians and radians/second |
+| primary surface position demand | dimensionless `[-1,1]`, `_normalized` |
+| actual primary surface state | radians and radians/second |
 | pilot control authority | dimensionless `[-1,1]`, `_normalized` |
 
 The AFCS altitude loop keeps selected altitude, measured pressure altitude,
@@ -107,15 +108,21 @@ clockwise toward the right and comes from the cockpit/navigation observation.
 | simulation vertical speed -> FLCC observation | flight-control observation adapter | metres/second -> feet/second once |
 | cockpit heading parameter -> magnetic heading observation | `CockpitBridge` | radians from DCS parameter -> degrees once |
 | heading loop -> bank reference | `LateralGuidance` | degrees -> radians only at the completed guidance seam |
-| FLCC surface demand -> actuator/aerodynamics | no conversion | radians remain radians |
+| FLCC position demand -> actuator target | `FlightControlActuationSystem` | normalized demand times configured nominal travel -> radians |
+| actual actuator state -> aerodynamics | no conversion | physical radians remain radians |
 | physical surface angle -> DCS draw argument | `DcsBridge::DrawArgs` | normalize with visual travel calibration |
 | Core values -> CSV/debug | projection owner | preserve source unit and include unit in channel/header |
 
 ## Deliberate normalized values
 
-Normalized values remain valid for pilot axes, throttle, gear, brakes,
-secondary-control positions, damage ratios, and DCS visual draw arguments.
-Primary flight-control surface demand and state are never normalized in Core.
+Normalized values remain valid for pilot axes, primary-surface position demands,
+throttle, gear, brakes, secondary-control positions, damage ratios, and DCS
+visual draw arguments. A primary-surface position demand uses zero for neutral,
+positive one for positive full nominal travel, and negative one for negative
+full nominal travel. It is neither a valve drive nor an aircraft-rate command.
+FlightControlActuationSystem owns the nominal travel conversion and physical
+limits. Actual primary-surface position and rate remain radians and
+radians/second throughout Core and the aerodynamic model.
 
 Private numerical helpers may use generic scalar names only when every operand
 in one call has the same unit and the helper value never crosses a Module seam.

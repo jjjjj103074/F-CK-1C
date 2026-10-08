@@ -20,6 +20,10 @@ public:
 		const SystemStepContext& context,
 		const AircraftDataView& aircraft,
 		SystemResult& result) override;
+	/// @brief 將 [-1, 1] 位置需求依固定行程轉成弧度，推進致動器模型。
+	/// @param command 三軸正規化舵面位置需求。
+	/// @param dt_s 本次致動器積分的時間間隔，單位為秒。
+	/// @return 含實際角度、角速度與限制資訊的目前狀態。
 	const FlightControlActuatorState& update(
 		const FlightControlActuatorCommand& command,
 		double dt_s);

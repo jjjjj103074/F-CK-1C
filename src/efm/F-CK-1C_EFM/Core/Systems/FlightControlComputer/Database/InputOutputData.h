@@ -15,18 +15,18 @@ struct FlightControlInputs
 };
 
 /// @brief FLCC 對 Pipeline 發布的控制需求。
-/// 尚未實作：控制需求的計算；骨架保留中立控制面與建構時的油門初值。
+/// 舵面需求由 ControlLaws 計算；尚未實作油門需求計算，保留建構時的油門初值。
 struct FlightControlOutputs
 {
-	FlightControlActuatorCommand actuator_command; ///< 三軸控制面需求，單位為弧度。
+	FlightControlActuatorCommand actuator_command; ///< 三軸舵面位置需求，範圍為 [-1, 1]。
 	EngineThrottleCommand engine_throttle_command; ///< 左右引擎需求，使用正規化數值。
 };
 
-/// @brief 輸入、輸出與未來選擇後資料的分區；由 FLCC 管理 Pipeline 邊界。
+/// @brief Pipeline 輸入與控制需求輸出的分區；由 FLCC 管理 Pipeline 邊界。
 /// 尚未實作：感測輸入選擇及有效性判斷。
 struct InputOutputData
 {
 	FlightControlInputs input; ///< 外層最近一次 step 取得的輸入快照。
-	FlightControlOutputs output; ///< 本階段僅含初始化的輸出值。
+	FlightControlOutputs output; ///< 最近一次控制律運算的舵面需求與油門初值。
 };
 }

@@ -77,12 +77,13 @@ void test_actuator_owns_physical_dynamics(Tests::Context& context)
 	const FlightControlActuatorState& first = system.update(
 		{ kFullCommand, 0.0, 0.0 }, kActuatorDt);
 	TEST_EXPECT(context, first.symmetric_stabilator.position_rad > 0.0);
-	TEST_EXPECT(context, first.symmetric_stabilator.position_rad < kFullCommand);
+	TEST_EXPECT(context, first.symmetric_stabilator.position_rad <
+		fck1c_flight_control_actuation_system_config().symmetric_stabilator.maximum_deflection_rad);
 	TEST_EXPECT(context, first.symmetric_stabilator.rate_rad_s > 0.0);
 	TEST_EXPECT(context, first.symmetric_stabilator.saturated);
 	TEST_EXPECT(context, first.symmetric_stabilator.rate_limited);
 	TEST_EXPECT(context, first.symmetric_stabilator.position_limit ==
-		FlightControlPositionLimit::Positive);
+		FlightControlPositionLimit::None);
 	TEST_EXPECT(context, !first.symmetric_stabilator.at_position_limit);
 	for (int step = 0; step < kStopReachStepCount; ++step)
 	{
@@ -95,6 +96,30 @@ void test_actuator_owns_physical_dynamics(Tests::Context& context)
 	TEST_EXPECT(context, limited.symmetric_stabilator.position_limit ==
 		FlightControlPositionLimit::Positive);
 	TEST_EXPECT(context, limited.any_saturated);
+}
+
+/// @brief 驗證三軸的正負需求依各自名義行程換算，不混用行程或反轉方向。
+void test_normalized_demand_to_physical_travel(Tests::Context& context)
+{
+	const FlightControlActuationSystemConfig config = {
+		{ 0.2, 10.0, 0.01 },
+		{ 0.3, 10.0, 0.01 },
+		{ 0.4, 10.0, 0.01 }
+	};
+	for (double demand : {-1.0, -0.5, 0.0, 0.5, 1.0})
+	{
+		FlightControlActuationSystem system(config);
+		// 固定需求推進至穩定位置，將名義行程換算與暫態動態分開驗證。
+		for (int step = 0; step < 8; ++step)
+			(void)system.update({ demand, -demand, demand }, 1.0);
+		const auto& state = system.state();
+		TEST_EXPECT_NEAR(context, state.symmetric_stabilator.position_rad,
+			demand * config.symmetric_stabilator.maximum_deflection_rad, kTolerance);
+		TEST_EXPECT_NEAR(context, state.differential_flaperon.position_rad,
+			-demand * config.differential_flaperon.maximum_deflection_rad, kTolerance);
+		TEST_EXPECT_NEAR(context, state.rudder.position_rad,
+			demand * config.rudder.maximum_deflection_rad, kTolerance);
+	}
 }
 
 SystemEntry command_source()
@@ -146,5 +171,6 @@ void run_flight_control_actuation_system_tests(Tests::Context& context)
 	test_production_config_uses_radians(context);
 	test_invalid_config_is_rejected(context);
 	test_actuator_owns_physical_dynamics(context);
+	test_normalized_demand_to_physical_travel(context);
 	test_pipeline_runs_actuator_at_256_hz(context);
 }

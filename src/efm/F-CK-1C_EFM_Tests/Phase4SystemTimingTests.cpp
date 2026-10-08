@@ -168,7 +168,7 @@ SystemDefinition fast_observer()
 			result.publish(
 				AircraftDataKeys::kFlightControlActuatorState,
 				actuator_state(aircraft.read(
-					AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad));
+					AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized));
 		}
 	};
 }

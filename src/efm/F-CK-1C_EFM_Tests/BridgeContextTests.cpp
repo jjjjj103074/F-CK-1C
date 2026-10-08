@@ -2,7 +2,7 @@
 #include "TestHarness.h"
 
 #include "../F-CK-1C_EFM/Common/Configuration/Configuration.h"
-
+#include "../F-CK-1C_EFM/Core/Systems/FlightControlComputer/Database/ControlLawData/Configuration.h"
 #include "../F-CK-1C_EFM/DcsBridge/Internal/BridgeContext.h"
 #include "../F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
 #include "../F-CK-1C_EFM/DcsIds/CustomCommands.g.h"
@@ -11,6 +11,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <filesystem>
 #include <future>
 #include <string>
@@ -92,6 +93,11 @@ std::string create_config_path(const std::filesystem::path& module_root)
 {
 	const std::filesystem::path fm_directory = module_root / "FM";
 	std::filesystem::create_directories(fm_directory);
+    // 在暫存模組的 FM 目錄放入控制律設定，供飛行初始化使用。
+    std::filesystem::create_directories(fm_directory / "FLCC");
+    std::filesystem::copy_file("FM/FLCC/ControlLaws.jsonc",
+        fm_directory / "FLCC" / "ControlLaws.jsonc",
+        std::filesystem::copy_options::overwrite_existing);
 	const std::filesystem::path config_path = fm_directory / "config.lua";
 	TestFiles::write_text(config_path, "-- bridge context test\n");
 	return config_path.string();
@@ -482,6 +488,54 @@ void test_configuration_loader_reports_to_event_log(Tests::Context& tests)
 	}
 }
 
+void test_configuration_error_survives_failed_restart(Tests::Context& tests)
+{
+	TestFiles::TemporaryDirectory root("bcf");
+	TEST_EXPECT(tests, root.valid());
+	const std::string config_path = create_config_path(root.path());
+	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
+	auto& context = owner.get(config_path.c_str());
+	start_flight(context, Core::StartMode::HotGround);
+	TEST_EXPECT(tests, context.output_store().read().has_value());
+	auto loaded = Configuration::load<Core::Systems::Flcc::ControlLawConfiguration>(
+		"FLCC/ControlLaws.jsonc");
+	TEST_EXPECT(tests, loaded.succeeded());
+	if (loaded.succeeded())
+		TEST_EXPECT(tests, loaded.value().direct_mapping.pitch.gain == 1.0);
+
+	// 多餘欄位中止本次載入，完整錯誤寫入紀錄。
+	TestFiles::write_text(root.path() / "FM" / "FLCC" / "ControlLaws.jsonc",
+		"{\"extra\": 1}\n");
+	auto rejected = Configuration::load<Core::Systems::Flcc::ControlLawConfiguration>(
+		"FLCC/ControlLaws.jsonc");
+	TEST_EXPECT(tests, !rejected.succeeded());
+	if (!rejected.succeeded())
+	{
+		TEST_EXPECT(tests, rejected.error().file.filename() == "ControlLaws.jsonc");
+		TEST_EXPECT(tests, rejected.error().field == "/extra");
+		TEST_EXPECT(tests, rejected.error().reason == "多餘的欄位");
+	}
+	// 單次載入失敗僅回傳診斷，不會停止既有飛行。
+	TEST_EXPECT(tests, context.output_store().read().has_value());
+	bool failed = false;
+	try
+	{
+		start_flight(context, Core::StartMode::HotAir);
+	}
+	catch (const std::exception&)
+	{
+		failed = true;
+	}
+	TEST_EXPECT(tests, failed);
+	TEST_EXPECT(tests, !context.output_store().read().has_value());
+	TEST_EXPECT(tests, context.output_store().is_released());
+	const std::string log = TestFiles::read_text_while_open(
+		root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(tests, log.find("欄位=/extra") != std::string::npos);
+	TEST_EXPECT(tests, log.find("多餘的欄位") != std::string::npos);
+	TEST_EXPECT(tests, log.find("[Error]") != std::string::npos);
+}
+
 }
 
 void run_bridge_context_tests(Tests::Context& context)
@@ -499,4 +553,5 @@ void run_bridge_context_tests(Tests::Context& context)
 	test_core_action_rejects_released_flight(context);
 	test_release_clears_previous_frame_input(context);
 	test_configuration_loader_reports_to_event_log(context);
+	test_configuration_error_survives_failed_restart(context);
 }

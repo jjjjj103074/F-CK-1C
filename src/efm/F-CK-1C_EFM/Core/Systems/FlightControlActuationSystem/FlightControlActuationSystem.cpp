@@ -39,12 +39,16 @@ const FlightControlActuatorState& FlightControlActuationSystem::update(
 {
 	const auto stabilator = ::Systems::update_flight_control_axis(
 		symmetric_stabilator_, config_.symmetric_stabilator,
-		{ command.symmetric_stabilator_demand_rad, dt_s });
+		// 將正規化位置需求依名義行程換算為弧度，並套用此系統的運動限制。
+		{ command.symmetric_stabilator_demand_normalized *
+			config_.symmetric_stabilator.maximum_deflection_rad, dt_s });
 	const auto flaperon = ::Systems::update_flight_control_axis(
 		differential_flaperon_, config_.differential_flaperon,
-		{ command.differential_flaperon_demand_rad, dt_s });
+		{ command.differential_flaperon_demand_normalized *
+			config_.differential_flaperon.maximum_deflection_rad, dt_s });
 	const auto rudder = ::Systems::update_flight_control_axis(
-		rudder_, config_.rudder, { command.rudder_demand_rad, dt_s });
+		rudder_, config_.rudder,
+		{ command.rudder_demand_normalized * config_.rudder.maximum_deflection_rad, dt_s });
 	symmetric_stabilator_ = stabilator.model_state;
 	differential_flaperon_ = flaperon.model_state;
 	rudder_ = rudder.model_state;

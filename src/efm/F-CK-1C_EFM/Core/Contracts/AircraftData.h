@@ -92,11 +92,14 @@ inline FlightControlObservation make_flight_control_observation(
 	};
 }
 
+/// @brief 三軸舵面位置需求；無因次，範圍為 [-1, 1]。
+/// 0 為中立，正負 1 為該方向完整名義行程；實際角度由致動器設定換算。
+/// 正方向為抬頭、右滾與左偏航。
 struct FlightControlActuatorCommand
 {
-	double symmetric_stabilator_demand_rad = 0.0;
-	double differential_flaperon_demand_rad = 0.0;
-	double rudder_demand_rad = 0.0;
+	double symmetric_stabilator_demand_normalized = 0.0; ///< 對稱平尾的正規化位置需求。
+	double differential_flaperon_demand_normalized = 0.0; ///< 差動襟副翼的正規化位置需求。
+	double rudder_demand_normalized = 0.0; ///< 方向舵的正規化位置需求。
 };
 
 enum class FlightControlPositionLimit

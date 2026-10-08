@@ -11,7 +11,7 @@ snapshot and does not call or own concrete Systems.
 | System | Rate | Timing evidence | Responsibility |
 |---|---:|---|---|
 | `PilotControls` | 64 Hz | Project-defined fallback | DCS command integration and normalized pilot-control signals |
-| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | TDD boundary skeleton; internal computation is currently unavailable |
+| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | Configurable three-axis direct mapping; feedback, trim, modes and monitoring remain unimplemented |
 | `FlightControlActuationSystem` | 256 Hz | Project-defined numerical integration rate | Elevator, aileron, and rudder actuator dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Project-defined fallback | Flaps, slats, and airbrake |
 | `LandingGear` | 64 Hz | Project-defined fallback | Gear, brakes, NWS, wheels, and suspension state |
@@ -50,7 +50,7 @@ controller. The required chain is:
 | AFCS selected target | `AutopilotModeLogicState` | pitch/roll rad, altitude ft, Heading Set exact integer degrees 0..359 |
 | AFCS guidance | `AutomaticFlightGuidanceReference` | attitude/bank rad, vertical speed ft/s; experimental throttle remains normalized |
 | shared control reference | `CoordinatedManeuverReference` | normal acceleration g, pitch/roll/yaw rates rad/s, sideslip rad |
-| FCC output | `FlightControlActuatorCommand` | named primary-surface demands in physical rad |
+| FCC output | `FlightControlActuatorCommand` | named primary-surface position demands normalized to [-1, 1]; actuation owns conversion to physical rad |
 | actuator state | `FlightControlActuatorState` | physical surface position rad and rate rad/s |
 | aerodynamic model input | private `AerodynamicsFrameInput` | body position m, aerodynamic/attitude angles rad, rates rad/s, primary surfaces rad; secondary devices remain normalized; legacy coefficient schedules receive deg explicitly |
 | EFM force output | `ForceMomentOutput` | DCS body force N, body moment N*m, center-of-mass position m |
@@ -70,8 +70,9 @@ as magnetic heading or silently invert it.
 
 Degrees are deliberately retained in the magnetic-heading loop, pilot-selected
 whole-degree Heading Set, and legacy aerodynamic schedules defined in degrees.
-Attitude, AOA, sideslip, body-rate, and primary-surface control loops use
-radians. Conversion occurs at the owning boundary, never incrementally on each
+Attitude, AOA, sideslip, body-rate, and actual primary-surface positions use
+radians. Primary-surface position demands are normalized and converted once
+by FlightControlActuationSystem. Conversion occurs at the owning boundary, never incrementally on each
 Heading Set press.
 
 ## System contract
@@ -146,13 +147,23 @@ directory, implementation, tests, and `Entry.cpp`; the shared MSBuild rules
 discover the Entry for both production and native tests.
 
 `FlightSetupContext` contains `StartMode`, the initial fuel load, the
-composition-root-derived initial throttle-lever signal, and the injected
+composition-root-derived initial throttle-lever signal, the injected
 DCS-neutral debug-telemetry sink needed to construct one flight. A System may
 declare typed channels through `SystemSetup::declare_debug_channel()` and push
 them with its scheduled simulation time. Debug publication is observational;
 it neither reads nor writes AircraftData and does not wait for bucket commit.
 Each System owns its production configuration at the appropriate construction
-boundary. A test may provide an explicitly merged configuration to a test
+boundary. Databases may request a typed configuration through
+Common/Configuration's `load<T>()` function. DcsBridge initializes the shared
+FM root and diagnostic callback. The database determines its file path and load
+timing, while its owner defines required fields and validation. The loader reads
+UTF-8 JSONC, executes those rules, and returns a `LoadResult<T>` containing either
+the complete validated structure or a failure diagnostic.
+Missing required fields and extra object fields are errors. Duplicate names
+follow the JSON parser's behavior without an additional diagnostic. Load errors are logged and returned;
+the database decides whether initialization can continue. ControlLawData requires
+valid settings and aborts its own initialization if loading fails.
+A test may provide an explicitly merged configuration to a test
 factory without changing its production Entry. Simulation
 policies, including infinite fuel, invincibility, and easy flight, do not
 belong in a System.
@@ -210,9 +221,10 @@ while Executive owns internal timing and invocation order.
 
 Setup declares five typed inputs and four typed outputs. Each step copies the
 inputs into its database, advances Executive to the scheduled simulation time,
-and publishes the database outputs. Component algorithms remain unimplemented:
-actuator demand stays neutral, throttle demand retains its initial value, and
-both status snapshots remain unavailable. No FLCC commands are registered.
+and publishes the database outputs. ControlLaws maps the three pilot axes through
+configured piecewise linear curves and gains into normalized surface position
+demands. Other component algorithms remain unimplemented; throttle demand retains
+its initial value and both status snapshots remain unavailable. No FLCC commands are registered.
 The exact boundary and scheduling contract are documented in the
 [FLCC guide](FlightControlComputer/README.md).
 

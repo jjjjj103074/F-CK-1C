@@ -304,7 +304,7 @@ void test_definition_validation_and_initialization(Tests::Context &context)
     TEST_EXPECT(context, empty.scheduler_state().advanced_through == seconds(1));
 }
 
-/// @brief 驗證 FLCC 骨架可完成 Pipeline 排程，但不宣稱控制功能可用。
+/// @brief 驗證 FLCC 的 Pipeline 排程輸出與狀態快照可用性。
 void test_pipeline_skeleton(Tests::Context &context)
 {
     using namespace SystemPipelineTest;
@@ -330,7 +330,7 @@ void test_pipeline_skeleton(Tests::Context &context)
     TEST_EXPECT(context, !after.read(AircraftDataKeys::kFlightControlComputerSnapshot).status.available);
     TEST_EXPECT(context, !after.read(AircraftDataKeys::kAutomaticFlightControlSnapshot).status.available);
     TEST_EXPECT_NEAR(context,
-        after.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_rad,
+        after.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
         0.0, kTolerance);
     TEST_EXPECT_NEAR(context,
         after.read(AircraftDataKeys::kEngineThrottleCommand).left_normalized, 0.2, kTolerance);

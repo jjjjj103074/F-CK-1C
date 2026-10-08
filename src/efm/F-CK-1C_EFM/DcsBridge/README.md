@@ -142,8 +142,10 @@ The production bridge has two separate lifetimes:
   before the first simulation step.
 - If another start arrives while a flight is active, DCSBridge writes
   `lifecycle_warning=repeated_start_without_release` at Warning level. Core
-  preserves the current fuel preparation and directly replaces the active
-  simulation; DCSBridge does not synthesize an `ed_fm_release`.
+  preserves the current fuel preparation when DCSBridge releases the old
+  simulation and clears completed output before starting the new flight.
+  If initialization fails, no active simulation or previous completed output
+  remains. DCSBridge does not synthesize an `ed_fm_release` callback.
 - `ed_fm_release` releases only the active flight. It clears collected input,
   completed output, and queued mass effects, then emits counted-warning
   summaries. A later start reuses the process tools for a new flight.
@@ -364,14 +366,15 @@ Flight-control telemetry uses explicit layers rather than a generic `command`:
   after per-axis reference selection and before guidance coordination.
 - `flight_control_*_reference_*` records the coordinated maneuver reference
   consumed by the shared FBW control path.
-- `flight_control_*_demand_rad` records physical FCC primary-surface demand.
+- `flight_control_*_demand_normalized` records FCC primary-surface position demand.
 - `flight_control_constraint_*` and `afcs_*reason` record typed constraint,
   degradation, disconnect, and engage/disengage results.
 
 Attitude and aerodynamic angles use radians, angular rates use radians per
 second, AFCS altitude uses feet, AFCS vertical speed uses feet per second,
 magnetic heading uses degrees, normal acceleration uses g, and primary-surface
-demands use radians. The FCC and AFCS snapshot revisions make
+position demands use dimensionless [-1, 1] values. Actual primary-surface positions
+use radians. The FCC and AFCS snapshot revisions make
 the row a read-only observation; CSV values must never be read back into Core
 control state.
 
