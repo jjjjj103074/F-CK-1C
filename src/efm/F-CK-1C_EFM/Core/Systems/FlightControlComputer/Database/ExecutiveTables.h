@@ -73,6 +73,7 @@ struct ExecutiveTask
 /// @brief 整份排程表的執行狀態。
 struct ExecutiveSchedulerState
 {
+    bool started = false; ///< 排程是否已由啟動入口啟用；不代表完整飛控功能可用。
     std::chrono::nanoseconds advanced_through = {}; ///< 最近一次成功完成的外層目標模擬時間。
 };
 

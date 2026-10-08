@@ -1,33 +1,24 @@
 #pragma once
 
-#include <chrono>
-
 namespace Core::Systems::Flcc
 {
-struct ControlLawData;
-struct SystemStatusTables;
+class Executive;
 
 /// @brief 管理 FLCC 啟動與重新啟動程序的元件。
-/// 尚未實作：啟動檢查、資料初始化與重新啟動程序。
-/// 資料庫於建構時以參照綁定，不擁有資料庫，也不向 Executive 註冊自身。
+/// 啟動入口啟用 Executive；本元件不參與週期排程，也不直接存取資料庫。
+/// 尚未實作：冷啟動檢查、各元件的初始化程序、斷電恢復與故障重啟。
 class StartupAndRestart final
 {
 public:
-	/// @brief 綁定此元件固定使用的資料庫；資料庫必須比元件更晚銷毀。
-	/// @param control_law 供啟動程序初始化的控制律資料分區。
-	/// @param system_status 供啟動狀態讀寫的狀態分區。
-	StartupAndRestart(
-		ControlLawData& control_law,
-		SystemStatusTables& system_status);
+	/// @brief 綁定啟動程序完成後接手週期運算的排程器。
+	/// @param executive 已完成建構且生命週期涵蓋本元件的排程器。
+	explicit StartupAndRestart(Executive& executive);
 
-	/// @brief 接收 Executive 的一次排程呼叫；目前不執行運算或修改資料。
-	/// @param scheduled_time 此任務本次預定的絕對模擬時間。
-	/// @param dt_s 此任務自身的固定週期，單位為秒。
-	/// 尚未實作：啟動檢查、資料初始化與重新啟動程序。
-	void step(std::chrono::nanoseconds scheduled_time, double dt_s);
+	/// @brief 啟用 Executive 後返回；週期運算由外部模擬時間推進。
+	/// @throws std::logic_error Executive 已啟動。
+	void start();
 
 private:
-	ControlLawData& control_law_; ///< 供啟動程序初始化的控制律資料分區。
-	SystemStatusTables& system_status_; ///< 供啟動狀態讀寫的狀態分區。
+	Executive& executive_; ///< 啟動程序完成後接手的排程器；不轉移所有權。
 };
 }

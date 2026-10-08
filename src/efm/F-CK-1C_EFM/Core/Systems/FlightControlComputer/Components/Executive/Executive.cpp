@@ -4,7 +4,6 @@
 #include "../ControlLaws/ControlLaws.h"
 #include "../FailureManager/FailureManager.h"
 #include "../SelectorMonitor/SelectorMonitor.h"
-#include "../StartupAndRestart/StartupAndRestart.h"
 #include "../SystemMonitor/SystemMonitor.h"
 
 #include <limits>
@@ -13,7 +12,6 @@
 namespace Core::Systems::Flcc
 {
     Executive::Executive(ExecutiveTables &tables,
-                         StartupAndRestart &startup_and_restart,
                          AmuxProcessor &amux_processor,
                          SystemMonitor &system_monitor,
                          SelectorMonitor &selector_monitor,
@@ -21,8 +19,6 @@ namespace Core::Systems::Flcc
                          ControlLaws &control_laws)
         // 任務排程設定
         : Executive(tables, {// 尚未定義實機任務頻率與完整資料依賴；目前各列皆為 64 Hz 骨架入口。
-                             {"startup_and_restart.step", TaskFrequency(64),
-                              startup_and_restart, &StartupAndRestart::step},
                              {"amux_processor.step", TaskFrequency(64),
                               amux_processor, &AmuxProcessor::step},
                              {"system_monitor.step", TaskFrequency(64),
@@ -43,6 +39,15 @@ namespace Core::Systems::Flcc
         tables_.initialize(definitions);
     }
 
+    void Executive::start()
+    {
+        if (tables_.scheduler_state_.started)
+        {
+            throw std::logic_error("FLCC executive is already started.");
+        }
+        tables_.scheduler_state_.started = true;
+    }
+
     ExecutiveTask *Executive::find_next_due(std::chrono::nanoseconds target_time)
     {
         ExecutiveTask *due = nullptr;
@@ -59,6 +64,11 @@ namespace Core::Systems::Flcc
 
     void Executive::step(std::chrono::nanoseconds target_time)
     {
+        if (!tables_.scheduler_state_.started)
+        {
+            throw std::logic_error("FLCC executive has not been started.");
+        }
+
         // 避免時間倒退
         if (target_time < tables_.scheduler_state_.advanced_through)
         {

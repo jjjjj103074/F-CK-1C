@@ -6,18 +6,29 @@
 namespace Core::Systems
 {
     FlightControlComputer::FlightControlComputer(const ThrottleLeverSignal &initial_throttle_levers)
-        : startup_and_restart_(control_law_data_, system_status_tables_),
-          amux_processor_(amux_data_),
+        : amux_processor_(amux_data_),
           system_monitor_(input_output_data_, system_status_tables_),
           selector_monitor_(input_output_data_, system_status_tables_),
           failure_manager_(system_status_tables_),
           control_laws_(input_output_data_, control_law_data_, system_status_tables_),
-          executive_(executive_tables_, startup_and_restart_, amux_processor_,
-                     system_monitor_, selector_monitor_, failure_manager_, control_laws_)
+          executive_(executive_tables_, amux_processor_,
+                     system_monitor_, selector_monitor_, failure_manager_, control_laws_),
+          startup_and_restart_(executive_)
     {
         input_output_data_.output.engine_throttle_command = {
             initial_throttle_levers.left_normalized,
             initial_throttle_levers.right_normalized};
+        startup_and_restart_.start();
+    }
+
+    void FlightControlComputer::set_powered(bool powered) noexcept
+    {
+        powered_ = powered;
+    }
+
+    bool FlightControlComputer::powered() const noexcept
+    {
+        return powered_;
     }
 
     void FlightControlComputer::setup(SystemSetup &setup)
@@ -43,6 +54,12 @@ namespace Core::Systems
     void FlightControlComputer::step(const SystemStepContext &context,
                                      const AircraftDataView &aircraft, SystemResult &result)
     {
+        if (!powered_)
+        {
+            // 未發布新資料時 Pipeline 保留上次輸出；斷電訊號有效性尚未實作。
+            return;
+        }
+
         read_inputs(aircraft);
         executive_.step(context.scheduled_time);
         publish_outputs(result);

@@ -1,22 +1,17 @@
 #include "StartupAndRestart.h"
 
-#include "../../Database/ControlLawData.h"
-#include "../../Database/SystemStatusTables.h"
+#include "../Executive/Executive.h"
 
 namespace Core::Systems::Flcc
 {
-StartupAndRestart::StartupAndRestart(
-	ControlLawData& control_law,
-	SystemStatusTables& system_status)
-	: control_law_(control_law),
-	system_status_(system_status)
+StartupAndRestart::StartupAndRestart(Executive& executive)
+	: executive_(executive)
 {
 }
 
-void StartupAndRestart::step(std::chrono::nanoseconds scheduled_time, double dt_s)
+void StartupAndRestart::start()
 {
-	// 尚未實作：啟動檢查、資料初始化與重新啟動程序。
-	(void)scheduled_time;
-	(void)dt_s;
+	// 尚未實作：冷啟動檢查、各元件的初始化程序、斷電恢復與故障重啟。
+	executive_.start();
 }
 }

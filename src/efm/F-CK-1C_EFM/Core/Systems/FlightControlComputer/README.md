@@ -2,9 +2,13 @@
 
 `FlightControlComputer` 代表一台飛控電腦，直接持有七個元件與五個獨立資料庫。
 FLCC 負責組裝及 Pipeline 輸入輸出邊界；`Executive` 集中維護排程表並呼叫任務。
+FLCC 建構時由 `StartupAndRestart::start()` 啟用 Executive，週期運算由外部模擬時間推進。
+供電狀態由 FLCC 持有，預設有電；`set_powered(bool)` 設定狀態，`powered()` 查詢狀態。
+`step()` 在沒電時直接返回，不讀取輸入、不呼叫 Executive，也不發布輸出。
 
 目前提供可設定增益與曲線的三軸直接映射。
-**尚未實作回授控制、配平、模式、監控、故障、啟動與 AMUX 運算。**
+**尚未實作回授控制、配平、模式、監控、故障與 AMUX 運算。**
+**尚未實作冷啟動檢查、各元件的初始化程序、斷電恢復與故障重啟。**
 兩種對外狀態快照仍維持 `status.available == false`。
 本階段不處理備援。
 
@@ -42,17 +46,18 @@ FlightControlComputer/
 
 ## 組裝與固定任務表
 
-1. FLCC 先建立五個資料庫，再建立七個元件。
-2. 六個受排程元件透過建構子綁定固定的資料庫參照。
-3. FLCC 將 ExecutiveTables 與六個元件的參照交給 Executive。
-4. Executive 在建構時一次建立完整任務表，驗證名稱與入口，保持填表列順序。
-5. 外層呼叫 `FLCC::step`，由 FLCC 直接呼叫 `Executive::step`。
+1. FLCC 先建立五個資料庫，再建立五個週期元件並綁定固定資料庫參照。
+2. FLCC 將 ExecutiveTables 與五個元件的參照交給 Executive。
+3. Executive 在建構時一次建立完整任務表，驗證名稱與入口，保持填表列順序。
+4. StartupAndRestart 在 Executive 之後建立，綁定 Executive，不直接存取資料庫。
+5. FLCC 建構子完成初始輸出後，呼叫 `StartupAndRestart::start()`，由它呼叫 `Executive::start()`。
+6. `start()` 只啟用排程；外層後續呼叫 `FLCC::step`，由 FLCC 直接呼叫 `Executive::step`。
 
 頻率、順序及入口統一維護於 [Executive.cpp](Components/Executive/Executive.cpp)
-的建構子。元件只提供 `step`，不宣告排程設定；FLCC 不收集或註冊任務。
-Executive 不將自己登記為任務。
+的建構子。五個週期元件只提供 `step`，不宣告排程設定；FLCC 不收集或註冊任務。
+Executive 不將自己或 StartupAndRestart 登記為任務，也不依賴 StartupAndRestart。
 
-六個元件的入口統一為：
+五個週期元件的入口統一為：
 
 ```cpp
 void step(std::chrono::nanoseconds scheduled_time, double dt_s);
@@ -71,21 +76,41 @@ void step(std::chrono::nanoseconds scheduled_time, double dt_s);
 綁定至指定實例，以 `std::function` 保存不同型別元件的入口；填表處不需撰寫 lambda。
 同一元件可以出現在多列，分別綁定不同入口及 Hz，不需共同的虛擬元件基底類別。
 
-目前六列都是 **64 Hz 骨架任務**，並非已確認的實機元件頻率或完整資料依賴：
+目前五列都是 **64 Hz 骨架任務**，並非已確認的實機元件頻率或完整資料依賴：
 
 | 列順序 | 元件 | 尚未實作 |
 |---:|---|---|
-| 1 | StartupAndRestart | 啟動與重新啟動程序 |
-| 2 | AmuxProcessor | AMUX 傳輸及資料處理 |
-| 3 | SystemMonitor | 系統與輸入監控 |
-| 4 | SelectorMonitor | 資料選擇與有效性判斷 |
-| 5 | FailureManager | 故障處理及降級策略 |
-| 6 | ControlLaws | 回授、配平、模式、濾波與積分；目前只提供三軸直接映射 |
+| 1 | AmuxProcessor | AMUX 傳輸及資料處理 |
+| 2 | SystemMonitor | 系統與輸入監控 |
+| 3 | SelectorMonitor | 資料選擇與有效性判斷 |
+| 4 | FailureManager | 故障處理及降級策略 |
+| 5 | ControlLaws | 回授、配平、模式、濾波與積分；目前只提供三軸直接映射 |
 
-啟動元件目前也只有週期性空白入口；尚未定義真正的啟動狀態機或一次性啟動工作。
+StartupAndRestart 的 `start()` 在 FLCC 建構時執行一次，只啟用 Executive 後返回。
+冷啟動、各元件的初始化與重啟恢復程序尚未實作。
+
+```mermaid
+flowchart TD
+    BUILD["FLCC 建構<br/>建立資料庫、五個週期元件及 Executive"]
+    START["StartupAndRestart.start()"]
+    ENABLE["Executive.start()<br/>啟用排程，不執行任務"]
+    TIME["外部模擬時間推進"]
+    STEP["FLCC.step()"]
+    POWER{"FLCC 有電？"}
+    INPUT["讀取輸入"]
+    OFF["返回<br/>Pipeline 保留上次輸出"]
+    EXEC["Executive.step()<br/>按到期時間與列順序執行五個元件"]
+    OUTPUT["FLCC 發布輸出"]
+    BUILD --> START --> ENABLE
+    TIME --> STEP --> POWER
+    POWER -- 有電 --> INPUT --> EXEC --> OUTPUT
+    POWER -- 沒電 --> OFF
+    ENABLE -. 排程已啟用 .-> EXEC
+```
 
 C++ 成員依宣告順序建立、反向銷毀，因此資料庫宣告在元件之前，
-Executive 宣告在受排程元件之後。FLCC、ExecutiveTables 與 Executive 的複製及搬移
+Executive 宣告在受排程元件之後，StartupAndRestart 宣告在 Executive 之後。
+FLCC、ExecutiveTables 與 Executive 的複製及搬移
 操作已刪除，使資料庫參照與任務綁定使用固定地址。所有元件及資料庫由 FLCC 直接持有。
 
 ## 同一列的設定與狀態
@@ -105,12 +130,14 @@ ExecutiveTables
 │        ├─ completed_ticks
 │        └─ next_due
 └─ ExecutiveSchedulerState
+   ├─ started
    └─ advanced_through
 ```
 
 - `definition` 是真正的 const 值物件，在任務列建構時完成設定，之後不可修改。
 - `completed_ticks` 是成功返回的任務呼叫次數，為進度依據。
 - `next_due` 是由 `completed_ticks + 1` 與頻率推導的快取，不以週期累加。
+- `started` 是 Executive 排程的啟用狀態，不代表完整飛控功能已可用。
 - `advanced_through` 是最近一次成功完成的外層目標模擬時間。
 - `time_until_next(reference_time)` 查詢剩餘模擬時間；負值表示相對於該查詢時間已到期。
 
@@ -132,7 +159,9 @@ Executive 本身不另外保存進度，函式內只保留搜尋與呼叫需要�
 計算使用整數商與餘數分解，避免中間乘法溢位，不依賴 double 或 long double。
 在可表示範圍內，每次向下取整的量化誤差小於一奈秒，不逐次累積。
 
-- 第一次呼叫在一個完整週期後，零時刻不呼叫任務。
+- FLCC 建構時啟用排程，以本架飛機建立時的零時刻為基準。
+- `start()` 不執行任務；第一次任務呼叫在一個完整週期後，零時刻不呼叫任務。
+- 未啟動就呼叫 `step()`，或重複呼叫 `start()`，會拋出 `std::logic_error`，不修改排程進度。
 - 不同到期時間按時間先後執行；同時到期按表格列順序執行。
 - 外層較慢或不規則呼叫時，按時間順序執行所有已到期任務。
 - 每個任務收到自身的預定時間及浮點 `dt_s = q / p`；dt 不參與到期判斷。
@@ -156,7 +185,7 @@ Executive 的 [find_next_due](Components/Executive/Executive.cpp) 找到最早�
 | 元件 | 固定依賴 |
 |---|---|
 | Executive | ExecutiveTables：建立固定設定、讀寫執行狀態 |
-| StartupAndRestart | ControlLawData、SystemStatusTables：讀寫 |
+| StartupAndRestart | Executive：啟用排程；不直接存取資料庫 |
 | AmuxProcessor | AmuxData：讀寫 |
 | SystemMonitor | InputOutputData：唯讀；SystemStatusTables：讀寫 |
 | SelectorMonitor | InputOutputData：唯讀；SystemStatusTables：讀寫 |
@@ -178,6 +207,12 @@ ControlLaws 將三軸操縱輸入依曲線與增益映射為 [-1, 1] 的舵面�
 FlightControlActuationSystem 負責將正規化需求轉成實際舵面角度，油門需求維持建構時初值。
 其餘元件尚未實作內部運算，也尚未登記 FLCC 指令處理器。
 兩種狀態快照保持不可用，不以空白任務的成功呼叫表示飛控功能已完成。
+
+供電檢查位於 FLCC 入口；Executive 的 `started` 僅表示排程已啟用。
+目前供電是可設定的布林狀態，尚未連接實際電源系統。
+斷電時 Pipeline 保留上次發布的命令，尚未實作輸出失效訊號與致動器斷電反應。
+`set_powered()` 不重設任務進度；復電後仍按 Executive 的既有規則補跑到期任務。
+冷啟動與復電時的重啟、排程重設尚未實作。
 
 ## 控制律設定載入
 
@@ -268,7 +303,8 @@ flowchart TD
 
 [FlightControlExecutiveTests.cpp](../../../../F-CK-1C_EFM_Tests/FlightControlExecutiveTests.cpp)
 涵蓋多入口綁定、同列設定與狀態、64/32/3/2.5 Hz、不規則外層呼叫、
-固定列順序、一小時非整奈秒週期、大次數整數精度、溢位、初始化及 Pipeline 骨架輸出。
+啟動交接與重複啟動拒絕、固定列順序、一小時非整奈秒週期、
+大次數整數精度、溢位、初始化、供電入口檢查及 Pipeline 骨架輸出。
 執行方式見 [DLL 建置與測試指南](../../../../../../docs/BUILD_DLL.md)。
 
 ## 設計參考

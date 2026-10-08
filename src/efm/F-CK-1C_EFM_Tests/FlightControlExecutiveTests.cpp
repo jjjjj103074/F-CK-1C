@@ -1,6 +1,7 @@
 #include "SystemPipelineTestFixture.h"
 
 #include "Core/Systems/FlightControlComputer/Components/Executive/Executive.h"
+#include "Core/Systems/FlightControlComputer/Components/StartupAndRestart/StartupAndRestart.h"
 #include "Core/Systems/FlightControlComputer/FlightControlComputer.h"
 
 #include <array>
@@ -81,6 +82,7 @@ void test_multiple_member_functions(Tests::Context &context)
     Executive executive(tables, {
         {"primary", TaskFrequency(4), recorder, &Recorder::step},
         {"secondary", TaskFrequency(2), recorder, &Recorder::secondary_step}});
+    executive.start();
     executive.step(seconds(1));
     TEST_EXPECT(context, calls.size() == 6);
     if (calls.size() != 6) return;
@@ -89,6 +91,39 @@ void test_multiple_member_functions(Tests::Context &context)
     TEST_EXPECT(context, calls[2].task == "bound_object.secondary");
     TEST_EXPECT(context, calls[2].scheduled_time == milliseconds(500));
     TEST_EXPECT_NEAR(context, calls[2].dt_s, 0.5, kTolerance);
+}
+
+/// @brief 驗證啟動交接不執行任務，且錯誤呼叫不會重設排程進度。
+void test_startup_handoff(Tests::Context &context)
+{
+    std::vector<Call> calls;
+    Recorder recorder{"startup", calls};
+    ExecutiveTables tables;
+    Executive executive(tables, {
+        {"startup_test.step", TaskFrequency(64), recorder, &Recorder::step}});
+    StartupAndRestart startup(executive);
+
+    TEST_EXPECT(context, !tables.scheduler_state().started);
+    TEST_EXPECT(context, throws<std::logic_error>([&]
+        { executive.step(seconds(1)); }));
+    TEST_EXPECT(context, calls.empty());
+    TEST_EXPECT(context, tables.scheduler_state().advanced_through == nanoseconds(0));
+    TEST_EXPECT(context, tables.tasks().front().state.completed_ticks == 0);
+
+    startup.start();
+    TEST_EXPECT(context, tables.scheduler_state().started);
+    TEST_EXPECT(context, calls.empty());
+    TEST_EXPECT(context, tables.tasks().front().state.next_due == nanoseconds(15'625'000));
+    executive.step(nanoseconds(15'625'000));
+    TEST_EXPECT(context, calls.size() == 1);
+
+    TEST_EXPECT(context, throws<std::logic_error>([&] { startup.start(); }));
+    TEST_EXPECT(context, tables.scheduler_state().started);
+    TEST_EXPECT(context, tables.scheduler_state().advanced_through == nanoseconds(15'625'000));
+    TEST_EXPECT(context, tables.tasks().front().state.completed_ticks == 1);
+    TEST_EXPECT(context, tables.tasks().front().state.next_due == nanoseconds(31'250'000));
+    executive.step(nanoseconds(31'250'000));
+    TEST_EXPECT(context, calls.size() == 2);
 }
 
 /// @brief 驗證同一列可觀察設定、次數、下次時間與衍生剩餘時間。
@@ -105,6 +140,7 @@ void test_task_row_and_first_tick(Tests::Context &context)
     TEST_EXPECT(context, task.state.completed_ticks == 0);
     TEST_EXPECT(context, task.state.next_due == nanoseconds(15'625'000));
 
+    executive.start();
     executive.step(nanoseconds(0));
     executive.step(nanoseconds(15'624'999));
     TEST_EXPECT(context, calls.empty());
@@ -144,6 +180,7 @@ std::vector<Call> run_schedule(const std::vector<nanoseconds> &targets)
         {"fast.step", TaskFrequency(64), fast, &Recorder::step},
         {"fractional.step", TaskFrequency(5, 2), fractional, &Recorder::step},
         {"medium.step", TaskFrequency(32), medium, &Recorder::step}});
+    executive.start();
     for (const auto target : targets) executive.step(target);
     return calls;
 }
@@ -216,6 +253,7 @@ void test_same_time_uses_row_order(Tests::Context &context)
         {"z_control", TaskFrequency(4), control, &Recorder::step},
         {"a_input", TaskFrequency(4), input, &Recorder::step},
         {"m_monitor", TaskFrequency(4), monitor, &Recorder::step}});
+    executive.start();
     executive.step(milliseconds(250));
     const std::array<const char *, 3> expected{"control", "input", "monitor"};
     TEST_EXPECT(context, calls.size() == expected.size());
@@ -231,6 +269,7 @@ void test_no_accumulated_rounding(Tests::Context &context)
     ExecutiveTables tables;
     Executive executive(tables, {
         {"thirds", TaskFrequency(3), recorder, &Recorder::step}});
+    executive.start();
     executive.step(hours(1) - nanoseconds(1));
     TEST_EXPECT(context, calls.size() == 10'799);
     executive.step(hours(1));
@@ -293,15 +332,80 @@ void test_definition_validation_and_initialization(Tests::Context &context)
     Executive executive(tables, {
         {"valid", TaskFrequency(4), recorder, &Recorder::step}});
     TEST_EXPECT(context, throws<std::logic_error>([&] { Executive duplicate(tables, {}); }));
+    executive.start();
     executive.step(seconds(1));
     TEST_EXPECT(context, calls.size() == 4);
     TEST_EXPECT(context, tables.tasks().front().state.completed_ticks == 4);
 
     ExecutiveTables empty;
     Executive empty_executive(empty, {});
+    empty_executive.start();
     empty_executive.step(seconds(1));
     TEST_EXPECT(context, empty.tasks().empty());
     TEST_EXPECT(context, empty.scheduler_state().advanced_through == seconds(1));
+}
+
+/// @brief 驗證供電入口檢查使斷電期間保留輸出，並允許有電時繼續運算。
+void test_flcc_power_gate(Tests::Context &context)
+{
+    using namespace SystemPipelineTest;
+    PilotControlSignal pilot{0.5, -0.25, 0.75};
+    const SystemDefinition inputs{
+        "flcc_power_test_inputs",
+        [&pilot](SystemSetup &setup)
+        {
+            setup.publish(AircraftDataKeys::kPilotControlSignal, pilot);
+            setup.publish(AircraftDataKeys::kThrottleLeverSignal, ThrottleLeverSignal{});
+            setup.publish(AircraftDataKeys::kLandingGearData, LandingGearData{});
+            setup.publish(AircraftDataKeys::kFlightControlActuatorState, FlightControlActuatorState{});
+        },
+        [&pilot](const AircraftDataView &, SystemResult &result)
+        {
+            result.publish(AircraftDataKeys::kPilotControlSignal, pilot);
+        }};
+    FlightControlComputer *flcc = nullptr;
+    SystemPipeline pipeline(flight_setup(), {entry(inputs), {
+        "flight_control_computer",
+        [&flcc](const FlightSetupContext &)
+        {
+            auto computer = std::make_unique<FlightControlComputer>(ThrottleLeverSignal{});
+            flcc = computer.get();
+            return computer;
+        }}});
+
+    TEST_EXPECT(context, flcc->powered());
+    flcc->set_powered(false);
+    TEST_EXPECT(context, !flcc->powered());
+    const auto initial_off = step_pipeline(pipeline);
+    TEST_EXPECT_NEAR(context, initial_off.read(AircraftDataKeys::kFlightControlActuatorCommand).
+        symmetric_stabilator_demand_normalized, 0.0, kTolerance);
+
+    flcc->set_powered(true);
+    const auto powered_snapshot = step_pipeline(pipeline);
+    const auto held_command = powered_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+    TEST_EXPECT_NEAR(context, held_command.symmetric_stabilator_demand_normalized, 0.5, kTolerance);
+    TEST_EXPECT_NEAR(context, held_command.differential_flaperon_demand_normalized, -0.25, kTolerance);
+    TEST_EXPECT_NEAR(context, held_command.rudder_demand_normalized, 0.75, kTolerance);
+
+    flcc->set_powered(false);
+    pilot = {-0.5, 0.25, -0.75};
+    step_pipeline(pipeline);
+    const auto off_snapshot = step_pipeline(pipeline);
+    const auto &off_command = off_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+    TEST_EXPECT_NEAR(context, off_command.symmetric_stabilator_demand_normalized,
+        held_command.symmetric_stabilator_demand_normalized, kTolerance);
+    TEST_EXPECT_NEAR(context, off_command.differential_flaperon_demand_normalized,
+        held_command.differential_flaperon_demand_normalized, kTolerance);
+    TEST_EXPECT_NEAR(context, off_command.rudder_demand_normalized,
+        held_command.rudder_demand_normalized, kTolerance);
+
+    flcc->set_powered(true);
+    const auto restored_snapshot = step_pipeline(pipeline);
+    const auto &restored_command = restored_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+    TEST_EXPECT(context, flcc->powered());
+    TEST_EXPECT_NEAR(context, restored_command.symmetric_stabilator_demand_normalized, -0.5, kTolerance);
+    TEST_EXPECT_NEAR(context, restored_command.differential_flaperon_demand_normalized, 0.25, kTolerance);
+    TEST_EXPECT_NEAR(context, restored_command.rudder_demand_normalized, -0.75, kTolerance);
 }
 
 /// @brief 驗證 FLCC 的 Pipeline 排程輸出與狀態快照可用性。
@@ -343,11 +447,13 @@ void test_pipeline_skeleton(Tests::Context &context)
 void run_flight_control_executive_tests(Tests::Context &context)
 {
     test_multiple_member_functions(context);
+    test_startup_handoff(context);
     test_task_row_and_first_tick(context);
     test_hz_and_catch_up(context);
     test_same_time_uses_row_order(context);
     test_no_accumulated_rounding(context);
     test_exact_frequency_arithmetic(context);
     test_definition_validation_and_initialization(context);
+    test_flcc_power_gate(context);
     test_pipeline_skeleton(context);
 }
