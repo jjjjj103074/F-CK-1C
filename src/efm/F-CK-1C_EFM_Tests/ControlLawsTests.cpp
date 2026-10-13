@@ -2,10 +2,10 @@
 #include "TestHarness.h"
 
 #include "Common/Configuration/Configuration.h"
-#include "Core/Systems/FlightControlComputer/Components/ControlLaws/ControlLaws.h"
-#include "Core/Systems/FlightControlComputer/Database/ControlLawData.h"
-#include "Core/Systems/FlightControlComputer/Database/InputOutputData.h"
-#include "Core/Systems/FlightControlComputer/Database/SystemStatusTables.h"
+#include "Core/Systems/DigitalFlightControlComputer/Components/ControlLaws/ControlLaws.h"
+#include "Core/Systems/DigitalFlightControlComputer/Database/ControlLawData.h"
+#include "Core/Systems/DigitalFlightControlComputer/Database/InputOutputData.h"
+#include "Core/Systems/DigitalFlightControlComputer/Database/SystemStatusTables.h"
 
 #include <array>
 #include <chrono>
@@ -17,7 +17,7 @@
 namespace
 {
 using namespace Core;
-using namespace Core::Systems::Flcc;
+using namespace Core::Systems::Dflcc;
 
 constexpr double kTolerance = 1.0e-12;
 constexpr char kIdentityAxis[] =
@@ -33,7 +33,7 @@ struct ControlLawFixture
     {
         if (!root.valid())
             return;
-        std::filesystem::create_directories(root.path() / "FM" / "FLCC");
+        std::filesystem::create_directories(root.path() / "FM" / "DFLCC");
         Configuration::initialize(root.path() / "FM",
             [this](const Configuration::Diagnostic& diagnostic)
             {
@@ -49,7 +49,7 @@ struct ControlLawFixture
         const std::string source =
             std::string("{\"direct_mapping\":{\"pitch\":") + pitch +
             ",\"roll\":" + roll + ",\"yaw\":" + yaw + "}}";
-        TestFiles::write_text(root.path() / "FM" / "FLCC" / "ControlLaws.jsonc",
+        TestFiles::write_text(root.path() / "FM" / "DFLCC" / "ControlLaws.jsonc",
                               source.c_str());
     }
 };
@@ -192,7 +192,7 @@ void test_invalid_axis_configuration_reports_field(Tests::Context& tests)
     {
         fixture.write(invalid.source);
         fixture.diagnostics.clear();
-        const auto result = Configuration::load<ControlLawConfiguration>("FLCC/ControlLaws.jsonc");
+        const auto result = Configuration::load<ControlLawConfiguration>("DFLCC/ControlLaws.jsonc");
         TEST_EXPECT(tests, !result.succeeded());
         TEST_EXPECT(tests, fixture.diagnostics.size() == 1);
         if (!result.succeeded())

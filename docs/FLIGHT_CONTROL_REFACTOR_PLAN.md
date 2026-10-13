@@ -3,7 +3,7 @@
 > 歷史施工文件：其中以 `normal_acceleration_reference_g` 與
 > `pitch_rate_feedforward_rad_s` 並行的縱向設計已撤銷。現行縱向規範以
 > [`LONGITUDINAL_FLIGHT_CONTROL_REDESIGN.md`](LONGITUDINAL_FLIGHT_CONTROL_REDESIGN.md)
-> 為準；正式 FLCC 邊界以
+> 為準；正式 DFLCC 邊界以
 > [`FLIGHT_CONTROL_ARCHITECTURE_REFACTOR_PLAN.md`](FLIGHT_CONTROL_ARCHITECTURE_REFACTOR_PLAN.md)
 > 為準。
 
@@ -11,11 +11,11 @@
 
 - 狀態：架構決策與施工順序已完成，尚未授權開始實作。
 - 更新日期：2026-08-01。
-- 本文件是本次 `FlightControlComputer`／FBW／AP 重構的單一權威計畫。
+- 本文件是本次 `DigitalFlightControlComputer`／FBW／AP 重構的單一權威計畫。
 - Phase 0 行為證據記錄於 [`FLIGHT_CONTROL_BASELINE.md`](FLIGHT_CONTROL_BASELINE.md)。
 - 已完成的 `SystemPipeline` 排程與 `FlightControlActuationSystem` 裝置 seam 是固定前提，
   不在本次重新設計。
-- 現階段只建立一部 `FlightControlComputer`。多 FLCC、投票、通道同步與故障降級是
+- 現階段只建立一部 `DigitalFlightControlComputer`。多 DFLCC、投票、通道同步與故障降級是
   極長期工作，本計畫不為它們新增 Interface、ID、port、factory 或空殼 Module。
 
 本文件把內容分成四種證據身分：
@@ -31,7 +31,7 @@
 
 本次工作的目標不是重新命名舊類別，也不是只替現有 AP 調 PID。完成後應達到：
 
-- 一個 C++ `System` 對應一個實際飛機裝置；`FlightControlComputer` 代表飛控電腦，
+- 一個 C++ `System` 對應一個實際飛機裝置；`DigitalFlightControlComputer` 代表飛控電腦，
   FBW、AP 與限制器是機箱內的軟體 Module。
 - 玩家控制、飛行狀態、AP reference、控制律 command 與 actuator demand 各有清楚語意，
   不再以同一組 `[-1, 1]` 值假裝它們是同一種訊號。
@@ -50,7 +50,7 @@
 
 ### 2.1 包含
 
-- `FlightControlComputer` 的外部 System 邊界與內部軟體架構。
+- `DigitalFlightControlComputer` 的外部 System 邊界與內部軟體架構。
 - 玩家操縱訊號進入飛控電腦後的 conditioning 與 mode-dependent command mapping。
 - 現有 FBW normal-law、gain schedule、CAT provisional model、limiter 與 actuator feedback。
 - 現有 AP master、vertical、lateral、reference capture／adjust、bypass、disconnect，以及
@@ -62,7 +62,7 @@
 
 ### 2.2 不包含
 
-- 多部 FLCC instance、triplex／quadruplex channel、voting、cross-channel data link。
+- 多部 DFLCC instance、triplex／quadruplex channel、voting、cross-channel data link。
 - AIU、完整 BIT、power monitor、startup／restart、故障投票或 reversion law。
 - 重新設計 `SystemPipeline`、固定更新率、time bucket 或 commit 規則。
 - 重新設計 `PilotControls`、`FlightControlActuationSystem`、airframe physics 或 engine plant。
@@ -75,9 +75,9 @@
 
 ### 2.3 唯一的長期相容約束
 
-目前不設計多 FLCC，但新程式碼不得使用 process-global mutable state、singleton、靜態
+目前不設計多 DFLCC，但新程式碼不得使用 process-global mutable state、singleton、靜態
 積分器或用 System ID 判斷控制邏輯。所有執行狀態都由單一
-`FlightControlComputer` 物件擁有。這只是正常物件封裝，不新增多機箱抽象。
+`DigitalFlightControlComputer` 物件擁有。這只是正常物件封裝，不新增多機箱抽象。
 
 ## 3. 資料依據與使用限制
 
@@ -98,12 +98,12 @@ command law、gain、limiter、更新率或冗餘細節。
 
 ### 3.2 F-16／F/A-18 Reference
 
-NASA AFTI/F-16 TP-2857 公開的 FLCC 軟體包含 Executive、Control Laws、System
+NASA AFTI/F-16 TP-2857 公開的 DFLCC 軟體包含 Executive、Control Laws、System
 Monitor、Selector Monitor、AMUX Processor、Startup and Restart、Failure Manager
 及 data/status tables。相同報告也把 pilot controllers、mode selection、inertial／air-data
 reference 與 actuator signals 當成不同輸入，而不是一個通用 normalized intent。
 
-F-16C/D flight manual 的公開鏡像把 AP 描述為 FLCC 的功能，並提供本計畫可直接使用的
+F-16C/D flight manual 的公開鏡像把 AP 描述為 DFLCC 的功能，並提供本計畫可直接使用的
 Reference：ALT HOLD 使用 air-data altitude，vertical command 限制在 +0.5 g 到 +2.0 g；
 Heading／Steering Select 的 bank command 最大 30°、roll rate 最大 20°/s。相同資料也清楚
 區分 AP disconnect、paddle 暫時中斷全部 AP，以及只適用 attitude-hold mode 的 stick
@@ -124,7 +124,7 @@ Nz objective 加 q feed-forward，而不是通用 command bag。
 - 不同飛行模式可以把同一個控制器輸入解讀成不同 command law。
 
 F-16XL 公開報告記載其重寫的 DFLCS control laws 以 64 cycles/s 執行；專案目前以
-64 Hz 更新 `FlightControlComputer`，這是 **F-16XL Reference**，不是 F-CK-1C 真機數值。
+64 Hz 更新 `DigitalFlightControlComputer`，這是 **F-16XL Reference**，不是 F-CK-1C 真機數值。
 
 F/A-18 文件顯示其飛控系統提供 stability、control 與 autopilot functions；PSFCC 架構
 則提供 input signal management、control laws、output selection 與 actuator signal
@@ -223,7 +223,7 @@ Project-defined 標籤：
 
 - 現有 AP mode 名稱、engage 條件、reference step 與 controller gain。
 - CAT I／CAT III 名稱及其控制律差異。
-- 64 Hz FLCC rate 與 256 Hz actuation numerical integration rate。
+- 64 Hz DFLCC rate 與 256 Hz actuation numerical integration rate。
 - Reference 沒有給出的 capture gain、filter、failure-persistence、stick-steering threshold 與
   closed-loop tuning 數值。
 - 現有 blended alpha／Nz／pitch-rate longitudinal law 的確切 blending schedule。
@@ -241,7 +241,7 @@ DCS Commands
     v
 PilotControls -- PilotControlSignal -------------------------+
                                                                |
-AircraftSimulation -- FlightControlObservation ---------------+--> FlightControlComputer
+AircraftSimulation -- FlightControlObservation ---------------+--> DigitalFlightControlComputer
                                                                |
 FlightControlActuationSystem -- FlightControlActuatorState ----+
                                                                     |
@@ -261,9 +261,9 @@ release 與虛擬軸。`PilotControlSignal` 是該 System 發布在「線上」�
 `PilotControls` 不把搖桿換算成 Nz、pitch rate、roll rate 或控制面角度；這是飛控電腦
 依 mode 與 flight condition 做的工作。
 
-### 4.2 `FlightControlComputer`
+### 4.2 `DigitalFlightControlComputer`
 
-`FlightControlComputer` 是本次唯一的飛控機箱 System，負責：
+`DigitalFlightControlComputer` 是本次唯一的飛控機箱 System，負責：
 
 - 接收、整理與驗證飛控所需輸入。
 - 保存 AP／FBW mode、reference、filter、integrator 與 transition state。
@@ -318,17 +318,17 @@ AutomaticFlightControl -> normalized pitch/roll/throttle
    capture、vertical controller、lateral controller、A/T、integrator 與 snapshot，變更理由太多。
 4. `ControlLawTypes.h` 混合 configuration、production default、input、output、全部可變 state
    與診斷資料，讓任何修改都需要理解整個控制器。
-5. `FlightControlComputer` 同時處理 System adapter、AP orchestration、pilot mapping、FBW
+5. `DigitalFlightControlComputer` 同時處理 System adapter、AP orchestration、pilot mapping、FBW
    execution、油門 composition 與 diagnostics。
 6. 現有檔案雖尚未全部超過 700 行，但 `ControlLaws.cpp` 與
    `AutomaticFlightControl.cpp` 已集中多個不同責任，繼續擴充會破壞可讀性與測試隔離。
 7. 現有 AP controller 的穩定性不佳；ALT Hold、vertical／heading reference 操作的問題不能
    只靠調一組 gain 解決，必須先確認 cascade、authority、anti-windup 與 plant response。
 
-## 6. 目標 FlightControlComputer 內部架構
+## 6. 目標 DigitalFlightControlComputer 內部架構
 
 ```text
-FlightControlComputer (System / physical box boundary)
+DigitalFlightControlComputer (System / physical box boundary)
 |
 +-- System adapter
 |   +-- setup declarations and command registration
@@ -546,9 +546,9 @@ mode，也不直接輸出 actuator demand；constraint persistence 由 `Autopilo
 NASA 報告中的 Executive 有真實責任：排程 control-law tasks、管理 cyclic completion，並與
 startup／restart、monitoring 等軟體互動。現在整部 FCC 只有一個 64 Hz System tick，外部
 排程已由 `SystemPipeline` 負責。如果此時新增 `FlightControlExecutive`，它只會把
-`FlightControlComputer::step()` 搬到另一個檔案，沒有形成更深的 Module。
+`DigitalFlightControlComputer::step()` 搬到另一個檔案，沒有形成更深的 Module。
 
-因此本次由 `FlightControlComputer::step()` 依固定順序協調內部 Module。只有未來真的出現
+因此本次由 `DigitalFlightControlComputer::step()` 依固定順序協調內部 Module。只有未來真的出現
 以下任一需求才抽出 Executive：FCC 內部多更新率、startup／restart state machine、task
 deadline／health monitoring，或可重排的 operational program schedule。
 
@@ -583,7 +583,7 @@ hard protection 當 tick 生效，mode degradation 最多延後一個 FCC tick�
 - **ISP**：FCC 只看 `Autopilot` 的 atomic guidance result 與 `FlightControlLaws` 的 actuator result；
   private integrator、filter、monitor timer 與 implementation helper 不進 public header。
 - **DIP**：控制演算法依賴 typed immutable input／config，不直接讀 DCS、Lua 或其他 concrete
-  System。`FlightControlComputer` 可用 value member 擁有同一機箱內 Module，但不得在業務計算中
+  System。`DigitalFlightControlComputer` 可用 value member 擁有同一機箱內 Module，但不得在業務計算中
   自行尋找全域 service 或建立外部 System；測試以 config、input snapshot 與 actuator feedback
   注入依賴。
 
@@ -805,12 +805,12 @@ Auto-throttle 不參與本次 AP／飛控數學重建。因為現有程式碼與
 ## 11. 目標檔案結構
 
 ```text
-Core/Systems/FlightControlComputer/
+Core/Systems/DigitalFlightControlComputer/
 |-- Entry.cpp
-|-- FlightControlComputer.h
-|-- FlightControlComputer.cpp
-|-- FlightControlComputerConfig.h
-|-- FlightControlComputerConfig.cpp
+|-- DigitalFlightControlComputer.h
+|-- DigitalFlightControlComputer.cpp
+|-- DigitalFlightControlComputerConfig.h
+|-- DigitalFlightControlComputerConfig.cpp
 |-- FlightControlExecutive.h/.cpp
 |-- FlightControlCommandSystem.h/.cpp
 |-- FlightControlOutputSystem.h/.cpp
@@ -852,7 +852,7 @@ FCC adapter、其他 Module 或測試直接依賴，也不得變成所有內部 
 header。`FlightControlCommandSystem` 使用 PImpl 持有其 command／AFCS implementation，目的
 是從編譯期強制隱藏 `CommandSystem/Internal/Autopilot`，讓 production caller 與測試都只使用
 public facade。這個 PImpl 是邊界機制，不是為每個小型 Module 統一引入 heap allocation。
-`FlightControlComputer.h` 的 public method、parameter 與 return type 仍不得暴露任何內部
+`DigitalFlightControlComputer.h` 的 public method、parameter 與 return type 仍不得暴露任何內部
 controller state。
 
 ### 11.1 Build 前置修改
@@ -866,7 +866,7 @@ Module 後必須：
 - `ObjectFileName` 必須包含足夠的相對路徑資訊，避免不同子目錄同名 `.cpp` 產生 `.obj`
   collision。
 - native tests 與 production DLL 使用相同 source discovery 規則。
-- architecture check 仍以 `FlightControlComputer` 第一層目錄作為 owner，內部 Module 不得
+- architecture check 仍以 `DigitalFlightControlComputer` 第一層目錄作為 owner，內部 Module 不得
   越過 System boundary include 其他 concrete System。
 
 ## 12. 實作順序與 commit 邊界
@@ -924,7 +924,7 @@ fallback 隱藏未完成遷移。Phase 7 是唯一必須原子完成的 seam 變
   實際接入 production path 時建立，不預先留下未使用型別。
 - 建立 typed `AuthorityState`、`ConstraintReason`、`DegradationReason` 與 `DisconnectReason`；
   不使用一個 boolean 同時表示 reject、constrained、degraded 與 disconnected。
-- `FlightControlComputerStepInput` 只保留真正在 System seam 需要的資料，不暴露 FBW
+- `DigitalFlightControlComputerStepInput` 只保留真正在 System seam 需要的資料，不暴露 FBW
   controller state。
 - 確保 snapshot 不能成為控制輸入。
 
@@ -937,7 +937,7 @@ fallback 隱藏未完成遷移。Phase 7 是唯一必須原子完成的 seam 變
 
 工作：
 
-- 從 `FlightControlComputer::make_pipeline_input()` 與 control-law 大型 state 移出 raw mapping、
+- 從 `DigitalFlightControlComputer::make_pipeline_input()` 與 control-law 大型 state 移出 raw mapping、
   availability、sign/unit conversion、angle wrapping 與共用 filtering。
 - 明確區分 raw、conditioned、filtered signal。
 - 定義 Nz、AoA、body rate、bank、vertical speed、heading 與 actuator feedback 的唯一軸向／符號；
@@ -1111,7 +1111,7 @@ reference；active source、guidance、selected、maneuver、constraint 與 effe
 - Mode monitor：transient constraint 不改 mode、sustained failure 下一 tick 解除正確 channel、
   hard disconnect 全部解除；沒有 same-tick feedback loop。
 - State ownership：snapshot 不可回寫、兩個獨立 C++ 物件不共享 state。後者是一般物件
-  隔離測試，不是多 FLCC 功能。
+  隔離測試，不是多 DFLCC 功能。
 
 ### 13.2 System／closed-loop tests
 
@@ -1179,7 +1179,7 @@ rise time、overshoot 或 settling time 數值；若某項感受仍不好，再�
 
 架構完成：
 
-- `FlightControlComputer` 仍是唯一 concrete System，內部 Module 不出現在 System catalog。
+- `DigitalFlightControlComputer` 仍是唯一 concrete System，內部 Module 不出現在 System catalog。
 - AP 不再輸出或覆寫 normalized stick-equivalent pitch／roll。
 - selected target、guidance reference、selected reference、coordinated maneuver reference 與
   actuator demand 型別不同且單位明確。
@@ -1193,7 +1193,7 @@ rise time、overshoot 或 settling time 數值；若某項感受仍不好，再�
   disconnect 都有 typed reason，沒有 silent fallback。
 - state/config/input/output/diagnostics 分離；沒有 process-global mutable controller state。
 - A/T、CAT 與 G-limiter override 的證據身分和 availability 清楚。
-- 沒有空殼 multi-FLCC、voter、Executive 或 ControlAllocation abstraction。
+- 沒有空殼 multi-DFLCC、voter、Executive 或 ControlAllocation abstraction。
 
 品質完成：
 
@@ -1285,7 +1285,7 @@ Interface 另立計畫，不阻擋本次 AP／FBW 架構工作。
 
 ### 15.7 明確延後的長期項目
 
-- 多 FLCC instance 與 redundancy architecture。
+- 多 DFLCC instance 與 redundancy architecture。
 - selector/voter、failure manager、BIT、startup/restart 與 power channels。
 - 由實際故障需求驅動的 `FlightControlExecutive`。
 - 新控制面或 thrust-vectoring 出現後才需要的 control allocation。
@@ -1354,7 +1354,7 @@ Phase 0–8 已依序完成並各自形成可建置、可測試的 commit：
 
 ### 16.2 Phase 9 deterministic closed-loop baseline
 
-測試使用真正的 `FlightControlComputer`、256 Hz
+測試使用真正的 `DigitalFlightControlComputer`、256 Hz
 `FlightControlActuationSystem` 與明確的小訊號 airframe plant。名目案例在 150 m/s、CAT I、
 初始 2000 m 高度同時要求 +100 ft 高度與 +10° 航向，執行 30 秒。rise time 定義為兩軸誤差
 都進入初始誤差的 10%；settling band 是高度 ±2 m 且航向 ±1°。以下數值只供專案回歸與調參，

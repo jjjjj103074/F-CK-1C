@@ -11,7 +11,7 @@ snapshot and does not call or own concrete Systems.
 | System | Rate | Timing evidence | Responsibility |
 |---|---:|---|---|
 | `PilotControls` | 64 Hz | Project-defined fallback | DCS command integration and normalized pilot-control signals |
-| `FlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | Configurable three-axis direct mapping; feedback, trim, modes and monitoring remain unimplemented |
+| `DigitalFlightControlComputer` | 64 Hz | F-16XL DFLCS reference; not confirmed F-CK-1C data | Configurable three-axis direct mapping; feedback, trim, modes and monitoring remain unimplemented |
 | `FlightControlActuationSystem` | 256 Hz | Project-defined numerical integration rate | Elevator, aileron, and rudder actuator dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Project-defined fallback | Flaps, slats, and airbrake |
 | `LandingGear` | 64 Hz | Project-defined fallback | Gear, brakes, NWS, wheels, and suspension state |
@@ -211,12 +211,12 @@ boundary and DCSBridge records it once.
 
 ## Flight-control ownership
 
-`FlightControlComputer` remains one physical-box System. It directly owns seven
+`DigitalFlightControlComputer` remains one physical-box System. It directly owns seven
 internal components under `Components/` and five independent typed databases
 under `Database/`. The internal `Executive` centrally defines the task table
 with exact rational Hz and fixed row order. Each `ExecutiveTables` row stores
 an immutable task definition beside its current runtime state. These components
-are not separate Pipeline Systems. FLCC owns assembly and the Pipeline boundary,
+are not separate Pipeline Systems. DFLCC owns assembly and the Pipeline boundary,
 while Executive owns internal timing and invocation order.
 
 Setup declares five typed inputs and four typed outputs. Each step copies the
@@ -224,9 +224,9 @@ inputs into its database, advances Executive to the scheduled simulation time,
 and publishes the database outputs. ControlLaws maps the three pilot axes through
 configured piecewise linear curves and gains into normalized surface position
 demands. Other component algorithms remain unimplemented; throttle demand retains
-its initial value and both status snapshots remain unavailable. No FLCC commands are registered.
+its initial value and both status snapshots remain unavailable. No DFLCC commands are registered.
 The exact boundary and scheduling contract are documented in the
-[FLCC guide](FlightControlComputer/README.md).
+[DFLCC guide](DigitalFlightControlComputer/README.md).
 
 Fuel registers only the preparation handlers used by the
 simulation façade. The Pipeline validates that the handler set is complete and

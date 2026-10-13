@@ -144,7 +144,7 @@ Phase 3 首次 DCS 驗收證明 ALT 的來源 `kp=0.08` 在現有 FBW 增益與�
 
 ### Phase 3 遷移結果
 
-- `FlightControlComputer::AutomaticFlightControl` 是 AP／A/T 狀態、模式、
+- `DigitalFlightControlComputer::AutomaticFlightControl` 是 AP／A/T 狀態、模式、
   reference、integrator、bypass 與解除原因的唯一權威。
 - AP／A/T 自訂 command 全部 route 到 EFM；Input profile 不再指定
   `devices.AUTOPILOT`。

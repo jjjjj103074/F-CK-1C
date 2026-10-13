@@ -83,7 +83,7 @@
 	<ClCompile Include="StateCsvWriterTests.cpp" />
 		<ClCompile Include="FrameInputCollectorTests.cpp" />
 		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
-    <ClCompile Include="FlightControlExecutiveTests.cpp" />
+    <ClCompile Include="DigitalFlightControlExecutiveTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
     <ClCompile Include="ConfigurationLoaderTests.cpp" />
     <ClCompile Include="ControlLawsTests.cpp" />

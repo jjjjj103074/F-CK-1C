@@ -144,8 +144,8 @@ FrameOutput AircraftSimulation::make_frame_output(
 	output.mass_effect = simulation.mass_effect;
 	output.cockpit.status = { true, cockpit_snapshot_revision_ };
 	output.cockpit.simulation_time_s = simulation_time_s_;
-	output.cockpit.flight_control_computer =
-		aircraft.read(AircraftDataKeys::kFlightControlComputerSnapshot);
+	output.cockpit.digital_flight_control_computer =
+		aircraft.read(AircraftDataKeys::kDigitalFlightControlComputerSnapshot);
 	output.cockpit.automatic_flight_control =
 		aircraft.read(AircraftDataKeys::kAutomaticFlightControlSnapshot);
 	output.cockpit.propulsion_test_thrust_cut_requested =

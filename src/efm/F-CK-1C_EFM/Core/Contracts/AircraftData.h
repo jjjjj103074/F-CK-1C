@@ -233,7 +233,7 @@ enum class AircraftDataId
 	FuelDemand,
 	FuelData,
 	AirframeIntegrity,
-	FlightControlComputerSnapshot,
+	DigitalFlightControlComputerSnapshot,
 	AutomaticFlightControlSnapshot,
 	PropulsionTestIntent,
 	Count
@@ -323,10 +323,10 @@ inline constexpr AircraftDataKey<AirframeIntegrity> kAirframeIntegrity = {
 	"airframe_integrity"
 };
 
-inline constexpr AircraftDataKey<FlightControlComputerSnapshot>
-	kFlightControlComputerSnapshot = {
-		AircraftDataId::FlightControlComputerSnapshot,
-		"flight_control_computer_snapshot"
+inline constexpr AircraftDataKey<DigitalFlightControlComputerSnapshot>
+	kDigitalFlightControlComputerSnapshot = {
+		AircraftDataId::DigitalFlightControlComputerSnapshot,
+		"digital_flight_control_computer_snapshot"
 };
 
 inline constexpr AircraftDataKey<AutomaticFlightControlSnapshot>
@@ -356,7 +356,7 @@ using AircraftDataValue = std::variant<
 	FuelDemand,
 	FuelData,
 	AirframeIntegrity,
-	FlightControlComputerSnapshot,
+	DigitalFlightControlComputerSnapshot,
 	AutomaticFlightControlSnapshot,
 	PropulsionTestIntent>;
 

@@ -51,7 +51,7 @@ in Figure 3.1 and has been removed.
 
 The nine distinct Mode states are inputs to this Figure 3.1 module. That only
 means the switching decision is made outside the Figure 3.1 module; its producer
-may still be another module inside the same FLCC. MODE 4 and MODE 7 each feed two locations,
+may still be another module inside the same DFLCC. MODE 4 and MODE 7 each feed two locations,
 so their duplicate labels share one state. The diagram also feeds MODE 7 into
 an arithmetic summing path, therefore Mode states use explicit numeric 0/1
 semantics rather than an incompatible Boolean connector.

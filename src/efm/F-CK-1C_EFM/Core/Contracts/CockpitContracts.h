@@ -228,7 +228,7 @@ struct SnapshotStatus
 	std::uint64_t revision = 0;
 };
 
-struct FlightControlComputerSnapshot
+struct DigitalFlightControlComputerSnapshot
 {
 	SnapshotStatus status;
 	std::uint64_t flight_control_tick = 0;
@@ -427,7 +427,7 @@ struct CockpitSnapshot
 {
 	SnapshotStatus status;
 	double simulation_time_s = 0.0;
-	FlightControlComputerSnapshot flight_control_computer;
+	DigitalFlightControlComputerSnapshot digital_flight_control_computer;
 	AutomaticFlightControlSnapshot automatic_flight_control;
 	bool propulsion_test_thrust_cut_requested = false;
 	CombatAvionicsSnapshot combat_avionics;

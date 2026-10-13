@@ -119,7 +119,7 @@ flowchart LR
     CockpitBridge --> Observation["Typed Cockpit Observation"]
     Observation --> Pipeline
 
-    Pipeline --> FCC["FlightControlComputer\n含 AutomaticFlightControl module"]
+    Pipeline --> FCC["DigitalFlightControlComputer\n含 AutomaticFlightControl module"]
     Pipeline --> Combat["CombatAvionics System"]
     Combat --> Snapshot["Cockpit Snapshot"]
     FCC --> Snapshot
@@ -132,7 +132,7 @@ flowchart LR
     Exporter --> AudioAdapter["Lua Audio Adapter"]
 ```
 ### 4.1 C++ System 配置
-#### `FlightControlComputer`
+#### `DigitalFlightControlComputer`
 
 保留現有 concrete System，加入私有的 `AutomaticFlightControl` module。
 
@@ -141,7 +141,7 @@ flowchart LR
 - Autopilot 必須在同一個 Control frame 內影響 FBW demand。
 - 另建同群組 concrete System 會受到目前 Pipeline
   「同群組看不到本幀未提交結果」的限制。
-- `FlightControlComputer` 已經負責把 autopilot demand 混入 pilot input。
+- `DigitalFlightControlComputer` 已經負責把 autopilot demand 混入 pilot input。
 
 `AutomaticFlightControl` 只透過小型 interface 工作：
 ```cpp
@@ -453,7 +453,7 @@ C++ 已經輸出 primary／secondary rudder draw args。
 通過後移除 creator 與兩個檔案，device ID 2 保留為 reserved。
 ### `autopilot_system.lua` — 完整遷移後刪除
 
-移入 `FlightControlComputer/AutomaticFlightControl`：
+移入 `DigitalFlightControlComputer/AutomaticFlightControl`：
 
 - engage gates。
 - Pitch Hold、VS Hold、ALT Hold。

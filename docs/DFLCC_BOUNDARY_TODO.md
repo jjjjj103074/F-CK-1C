@@ -1,0 +1,20 @@
+# DFLCC 重建基準與代辦
+
+## 已完成
+
+- [x] 保留 `Entry.cpp`、`DigitalFlightControlComputer.cpp`、`FlightControlExecutive.cpp` 三層架構。
+- [x] 移除 DFLCC 內部控制、設定、模式、濾波、輸出與診斷實作。
+- [x] 固定五種輸入與四種輸出的具型別資料邊界。
+- [x] 讓 `setup()` 可完成並發布明確的未運作初值。
+- [x] 讓第一個 `step()` 明確拋出未實作錯誤，避免假裝運作。
+- [x] 刪除所有直接驗證 DFLCC、FBW、AFCS、自動駕駛與舊整合行為的測試。
+- [x] 移除混合測試檔案中依賴舊 DFLCC 運算結果的測試區塊。
+
+## 後續重建原則
+
+- [ ] 每次只加入一個可說明的飛控行為，先寫失敗測試，再加入最小實作。
+- [ ] 子模組只接收自己需要的設定與輸入，不接收整份 DFLCC 設定。
+- [ ] 子模組自行提供指令綁定，Executive 只負責彙整與排定運算順序。
+- [ ] `DigitalFlightControlComputer` 只負責 Pipeline 生命週期與輸入輸出轉接。
+- [ ] 禁止加入舊新邏輯切換、靜默 fallback 或假成功輸出。
+- [ ] 從確認輸入、輸出與責任邊界開始，重新建立 DFLCC 測試。

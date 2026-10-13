@@ -2,10 +2,10 @@
 
 ## 文件狀態
 
-- 狀態：外部 FLCC／actuator 架構與新版縱向控制律均已實作並通過自動驗證；等待 DCS 高迎角、放輪 q-command 與 AFCS 共路徑驗證。
+- 狀態：外部 DFLCC／actuator 架構與新版縱向控制律均已實作並通過自動驗證；等待 DCS 高迎角、放輪 q-command 與 AFCS 共路徑驗證。
 - 修訂日期：2026-08-05。
 - 主要參考：AFTI/F-16 DFCS、F-16 Block 40/F-16XL DFLCS、F/A-18 701E/RFCS 公開資料。
-- 設計方法：一部實體 FLCC 對應一個 C++ `System`；內部採物件組合、深 Module、小 Interface、單一狀態 owner。
+- 設計方法：一部實體 DFLCC 對應一個 C++ `System`；內部採物件組合、深 Module、小 Interface、單一狀態 owner。
 - 外部 System 排程與 64/256 Hz seam 已確認，不在本計畫重新設計。
 - 舊施工文件：[`FLIGHT_CONTROL_REFACTOR_PLAN.md`](FLIGHT_CONTROL_REFACTOR_PLAN.md)。
 - 歷史行為基線：[`FLIGHT_CONTROL_BASELINE.md`](FLIGHT_CONTROL_BASELINE.md)；施工前已重建並由 characterization tests 固定結果。
@@ -20,7 +20,7 @@
 - 舊設計同時產生 Nz 與 q feed-forward，再以 Nz-to-q 串級與 q PI 控制控制面；這不符合本計畫要求的 F-16 參考拓樸，已由新版 tagged command 與單一縱向 law 取代。
 - 不再混用 YF-16 limiter slopes、F-16XL endpoints 與專案自訂 q scaling 組成一條無法證明的混合控制律。
 - 新的正式縱向邏輯、證據分級、狀態 owner、測試 seam、完成狀態與 DCS 驗收方式見 [`LONGITUDINAL_FLIGHT_CONTROL_REDESIGN.md`](LONGITUDINAL_FLIGHT_CONTROL_REDESIGN.md)。
-- 本文件其餘外部 System 邊界、64/32/4 Hz 排程、64/256 Hz FLCC／actuator seam、單位責任與橫向／方向軸架構仍有效。
+- 本文件其餘外部 System 邊界、64/32/4 Hz 排程、64/256 Hz DFLCC／actuator seam、單位責任與橫向／方向軸架構仍有效。
 
 本文件取代上一版「依現有檔案重新整理」的內部架構。新的起點是完整數位飛控電腦應具有的功能，再把現有程式依責任合併、拆分、內縮或刪除；不要求一個舊檔案對應一個新 Module。
 
@@ -46,7 +46,7 @@ Control Laws 內有五種 longitudinal control structures、三種 lateral-direc
 
 ### 1.2 F-16 Block 40／F-16XL
 
-F-16XL 換裝四餘度量產 F-16 Block 40 DFLCC，控制律以 64 cycles/s 執行。報告明確指出 leading-edge-flap scheduling、air-data functions 與 angle-of-attack functions 曾從 ECA 移入 DFLCC。這支持「數位 FLCC 可能同時擁有 primary laws、部分 flight-state computation 與 secondary-surface scheduling」，但公開報告沒有提供 Block 40 完整軟體 Module 圖。
+F-16XL 換裝四餘度量產 F-16 Block 40 DFLCC，控制律以 64 cycles/s 執行。報告明確指出 leading-edge-flap scheduling、air-data functions 與 angle-of-attack functions 曾從 ECA 移入 DFLCC。這支持「數位 DFLCC 可能同時擁有 primary laws、部分 flight-state computation 與 secondary-surface scheduling」，但公開報告沒有提供 Block 40 完整軟體 Module 圖。
 
 參考：[NASA TP-2004-212046 — F-16XL DFLCS](https://ntrs.nasa.gov/api/citations/20040040334/downloads/20040040334.pdf?attachment=true)。
 
@@ -67,7 +67,7 @@ Input Signal Management
 
 ### 1.4 採用原則
 
-- 頂層 FLCC 功能分工以 AFTI/F-16 與 F/A-18 701E 的共同部分為主。
+- 頂層 DFLCC 功能分工以 AFTI/F-16 與 F/A-18 701E 的共同部分為主。
 - Control-law axis 分工同時保留 AFTI 的 lateral-directional 整體責任與 F/A-18 的 lateral/directional 內部分工。
 - F-16XL 只用來確認部分數位化功能歸屬與 64 Hz，不直接借用 gain。
 - 公開資料沒有證明 F-CK-1C/D 完全採同一設計；所有移植行為依證據標成 `Confirmed F-CK-1`、`Reference-derived`、`Project-defined` 或 `Developer-only`。
@@ -76,9 +76,9 @@ Input Signal Management
 
 ### 2.1 實體與軟體的對應
 
-- `FlightControlComputer` 是唯一對應實體 FLCC 機箱的 C++ `System`。
-- FLCC 內部的 Executive、signal management、control laws 等都是普通 Module，不註冊為獨立 `System`。
-- 多部 FLCC 的長期目標以建立多個 `FlightControlComputer` instance 實現，不在內部預埋 singleton 或跨 instance global state。
+- `DigitalFlightControlComputer` 是唯一對應實體 DFLCC 機箱的 C++ `System`。
+- DFLCC 內部的 Executive、signal management、control laws 等都是普通 Module，不註冊為獨立 `System`。
+- 多部 DFLCC 的長期目標以建立多個 `DigitalFlightControlComputer` instance 實現，不在內部預埋 singleton 或跨 instance global state。
 
 ### 2.2 何時建立 class
 
@@ -111,7 +111,7 @@ PilotControls
     -> PilotControlSignal
 
 FlightControlObservation + PilotControlSignal + actuator feedback
-    -> FlightControlComputer @ 64 Hz
+    -> DigitalFlightControlComputer @ 64 Hz
     -> FlightControlActuatorCommand
 
 FlightControlActuationSystem @ 256 Hz
@@ -124,14 +124,14 @@ FlightControlActuatorState
 
 固定規則：
 
-- `FlightControlComputer` 是 actuator command 的唯一 publisher。
+- `DigitalFlightControlComputer` 是 actuator command 的唯一 publisher。
 - `FlightControlActuationSystem` 是 actuator physical state 的唯一 publisher。
 - 同一 scheduled-time bucket 讀相同 immutable snapshot，完成後 batch commit。
-- FLCC 只使用 `SystemStepContext::dt_s`，不使用 DCS host-frame dt 積分。
+- DFLCC 只使用 `SystemStepContext::dt_s`，不使用 DCS host-frame dt 積分。
 - DCSBridge 只負責 DCS 資料/命令 adapter；Lua 不擁有飛控狀態。
 - Snapshot、Debug Watch、CSV 是唯讀 projection，不得回饋控制計算。
 
-## 4. 正式 FLCC 功能架構
+## 4. 正式 DFLCC 功能架構
 
 ### 4.1 主控制資料流
 
@@ -164,15 +164,15 @@ Immutable tick record
   -> Diagnostics / Debug Watch / snapshots
 ```
 
-Input Signal Management 在本 tick 先完成 input validity/selection；Output Signal Management 也必須在本 tick 阻止無效 command 離開 FLCC。控制律完成後才得到的 tracking、disagreement 或 output failure 不可讓同一 tick 重跑控制律，而是形成下一 tick 的 reconfiguration。Primary hard protection仍在本 tick 完成。這區分「同 tick 訊號安全」與「next-tick 模式重構」，並保留 deterministic execution。
+Input Signal Management 在本 tick 先完成 input validity/selection；Output Signal Management 也必須在本 tick 阻止無效 command 離開 DFLCC。控制律完成後才得到的 tracking、disagreement 或 output failure 不可讓同一 tick 重跑控制律，而是形成下一 tick 的 reconfiguration。Primary hard protection仍在本 tick 完成。這區分「同 tick 訊號安全」與「next-tick 模式重構」，並保留 deterministic execution。
 
-## 5. `FlightControlComputer` — 實體 System adapter
+## 5. `DigitalFlightControlComputer` — 實體 System adapter
 
-**參考來源：** AFTI/F-16 FLCC hardware/software seam、F/A-18 FCC、現有 System 架構。
+**參考來源：** AFTI/F-16 DFLCC hardware/software seam、F/A-18 FCC、現有 System 架構。
 
 **責任：**
 
-- 將 `AircraftDataView` 與 handler commands 轉成 typed `FlightControlComputerInput`。
+- 將 `AircraftDataView` 與 handler commands 轉成 typed `DigitalFlightControlComputerInput`。
 - 呼叫內部 `FlightControlExecutive` 一次。
 - 將結果寫入 `SystemResult`。
 - 持有所有內部 Module instances 與 config root。
@@ -188,7 +188,7 @@ Input Signal Management 在本 tick 先完成 input validity/selection；Output 
 
 **責任：**
 
-- 固定一個 FLCC tick 的執行相位與 subrate eligibility。
+- 固定一個 DFLCC tick 的執行相位與 subrate eligibility。
 - 套用上一 tick 已排隊 commands。
 - 讀取 lifecycle/integrity 提供的 operational availability。
 - 呼叫各 Module，建立 immutable tick record 與 final result。
@@ -199,11 +199,11 @@ Input Signal Management 在本 tick 先完成 input validity/selection；Output 
 **Interface 草案：**
 
 ```cpp
-FlightControlComputerResult update(
-    const FlightControlComputerInput& input);
+DigitalFlightControlComputerResult update(
+    const DigitalFlightControlComputerInput& input);
 ```
 
-Executive 不是另一個 `System`，也不自行排入全域 queue。若最後只剩無狀態的固定函式串接，應合併回 `FlightControlComputer::step()`；只有 subrate/lifecycle orchestration 足以形成深度時才保留 class。
+Executive 不是另一個 `System`，也不自行排入全域 queue。若最後只剩無狀態的固定函式串接，應合併回 `DigitalFlightControlComputer::step()`；只有 subrate/lifecycle orchestration 足以形成深度時才保留 class。
 
 ## 7. `InputSignalManagement` — 訊號完整性與 conditioning
 
@@ -221,13 +221,13 @@ Executive 不是另一個 `System`，也不自行排入全域 queue。若最後�
 
 目前 DCS 只有一份 observation 時，不模擬三餘度投票；selection Interface 只處理真實存在的資料來源與失效狀態。
 
-## 8. `FlightStateComputation` — FLCC 使用的飛行狀態
+## 8. `FlightStateComputation` — DFLCC 使用的飛行狀態
 
 **參考來源：** F-16XL DFLCC 的 air-data/AOA functions、太空梭 measurement incorporation；實際數值仍依本專案 DCS seam。
 
 **責任：**
 
-- 由 managed measurements 建立 FLCC 使用的 Mach、qbar、alpha、beta、Nz、body rates、attitude/heading 等一致狀態。
+- 由 managed measurements 建立 DFLCC 使用的 Mach、qbar、alpha、beta、Nz、body rates、attitude/heading 等一致狀態。
 - 區分 measured、derived 與 filtered quantities。
 - angle wrapping、磁航向/世界座標分離、SI/radian 計算單位。
 - 回報 computation validity，不選擇 flight-control mode。
@@ -282,7 +282,7 @@ ResolvedFlightControlCommand generate(
 
 **不得擁有：** p/q/r inner-loop integrator、surface demand、primary G/AOA protection、actuator saturation physics 或 throttle/A/T。
 
-`AutomaticFlightControl` 是同一 FLCC 內的 stateful internal Module；ModeLogic/Monitor 屬其 private implementation，Vertical/Lateral Guidance 可保留 internal seams。Experimental A/T 仍是獨立 side branch。
+`AutomaticFlightControl` 是同一 DFLCC 內的 stateful internal Module；ModeLogic/Monitor 屬其 private implementation，Vertical/Lateral Guidance 可保留 internal seams。Experimental A/T 仍是獨立 side branch。
 
 ## 11. `FlightControlLaws` — 穩定、操縱與控制面命令
 
@@ -339,7 +339,7 @@ FlightControlLaws
 - Axis controllers 先產生 dimensionless control effort；這只是 `FlightControlLaws` 內部演算法量，不得跨 Module seam。
 - Mixer 以 aircraft-specific limits 將 effort 轉成 `symmetric_stabilator_demand_rad`、`differential_flaperon_demand_rad` 與 `rudder_demand_rad`。
 - 現有氣動與致動模型只支援三個等效 primary channels，因此不虛構左右獨立 stabilator/flaperon actuator。
-- 已有 secondary-surface 可觀察行為先由既有 `SecondaryFlightControls` 保存；未取得 F-CK-1 LEF/TEF scheduling 證據前，不搬入 FLCC 或新增行為。
+- 已有 secondary-surface 可觀察行為先由既有 `SecondaryFlightControls` 保存；未取得 F-CK-1 LEF/TEF scheduling 證據前，不搬入 DFLCC 或新增行為。
 
 **不採用通用最佳化 `ControlAllocation`。** 現階段使用 aircraft-specific effector synthesis；只有未來出現多個可互換 effectors、故障重配置或 thrust vectoring 時，才把 allocation 提升為獨立深 Module。
 
@@ -368,10 +368,10 @@ F/A-18 701E 將 Output Select/Fading 與 Actuator Signal Management 分開。為
 
 未來加入冗餘致動器或多電子通道時，擴充方向固定如下：
 
-- `OutputSignalManagement` 選擇/淡入淡出 FLCC law command set，不處理液壓或 servo physics。
+- `OutputSignalManagement` 選擇/淡入淡出 DFLCC law command set，不處理液壓或 servo physics。
 - `ActuatorSignalManagement` 才展開成 public Module，建立 surface-to-actuator-channel command、回授選擇、channel disagreement 與 channel availability。
 - `SystemIntegrity` 接收 channel status，產生下一 tick reconfiguration；不得由 actuator adapter 自行切換 control law。
-- `FlightControlActuationSystem` 繼續代表實體 actuator/servo/hydraulic dynamics；若未來一個實體裝置對應一個 `System` instance，透過 typed channel contracts 組合，不把物理狀態搬回 FLCC。
+- `FlightControlActuationSystem` 繼續代表實體 actuator/servo/hydraulic dynamics；若未來一個實體裝置對應一個 `System` instance，透過 typed channel contracts 組合，不把物理狀態搬回 DFLCC。
 - Output 與 Actuator Signal Management 必須先出現各自 persistent state 或第二個真實 adapter 才拆 public Interface，避免預先建立空殼。
 
 ## 14. `SystemIntegrity` — monitor、failure 與 reconfiguration
@@ -392,7 +392,7 @@ IntegrityAssessment evaluate(
 - `FailureManager`：記錄 confirmed failures、reset policy 與 annunciation state。
 - `ReconfigurationLogic`：產生下一 tick law/effector availability。
 
-目前沒有多餘度 sensor/FLCC/actuator channel 時，不製作假投票或永遠成功的 BIT。第一階段只實作真實可檢查的 freshness、finite、range、execution deadline、actuator tracking/saturation persistence；多通道功能保留架構位置但不建立空 class。
+目前沒有多餘度 sensor/DFLCC/actuator channel 時，不製作假投票或永遠成功的 BIT。第一階段只實作真實可檢查的 freshness、finite、range、execution deadline、actuator tracking/saturation persistence；多通道功能保留架構位置但不建立空 class。
 
 即時 input source selection 屬 `InputSignalManagement`；即時 output rejection 屬 `FlightControlOutputSystem`。`SystemIntegrity` 負責需要 persistence、failure record 或 law reconfiguration 的較高層判斷，避免同一項 validity policy 在三處重複。
 
@@ -404,18 +404,18 @@ Primary G/AOA protection 不屬 SystemIntegrity；它屬正常 Flight Control La
 
 **責任：**
 
-- FLCC operational states：Uninitialized、Initializing、Operational、Degraded、Unavailable。
+- DFLCC operational states：Uninitialized、Initializing、Operational、Degraded、Unavailable。
 - 初始化各 stateful Module，協調 reset/restore 與 restart transient policy。
 - 執行目前真實可驗證的 power-on/continuous checks。
 - 將 lifecycle availability 交給 Executive/SystemIntegrity，不直接產生 control command。
 
-在尚無電源、冷啟動與故障模型時，不讓 Lifecycle 擋住現有 hot-start；但必須以明確的 `HotStartDevelopmentConfiguration` 啟動 Operational，不使用隱藏 fallback。本輪不建立空 class，先在 FlightControlComputer README 完整記錄未來 Interface、狀態機、觸發條件與 ownership。
+在尚無電源、冷啟動與故障模型時，不讓 Lifecycle 擋住現有 hot-start；但必須以明確的 `HotStartDevelopmentConfiguration` 啟動 Operational，不使用隱藏 fallback。本輪不建立空 class，先在 DigitalFlightControlComputer README 完整記錄未來 Interface、狀態機、觸發條件與 ownership。
 
 ## 16. Data Interface、Diagnostics 與 Experimental branch
 
 ### 16.1 AMUX/Data Management 對應
 
-AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridge、`FlightControlComputer` System adapter、typed contracts 與 SystemPipeline snapshot 共同承擔。DCSBridge 是「遊戲 ABI/座標/可用資料」與「擬真 Core measurement contracts」之間的翻譯橋梁；它不得計算 flight-control law，也不得把 DCS world orientation 假裝成航空 heading。現階段只有一個真實 adapter，不另建 `DataBus` 抽象 class。未來模擬 1553、sensor electronics、quantization 或實體資料匯流排時，這些 aircraft-system behaviors 必須進 Core 的 sensor/data-bus Module，而不是塞進 DCSBridge。
+AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridge、`DigitalFlightControlComputer` System adapter、typed contracts 與 SystemPipeline snapshot 共同承擔。DCSBridge 是「遊戲 ABI/座標/可用資料」與「擬真 Core measurement contracts」之間的翻譯橋梁；它不得計算 flight-control law，也不得把 DCS world orientation 假裝成航空 heading。現階段只有一個真實 adapter，不另建 `DataBus` 抽象 class。未來模擬 1553、sensor electronics、quantization 或實體資料匯流排時，這些 aircraft-system behaviors 必須進 Core 的 sensor/data-bus Module，而不是塞進 DCSBridge。
 
 ### 16.2 `FlightControlDiagnostics`
 
@@ -435,7 +435,7 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 | Contract | Owner/用途 |
 |---|---|
-| `FlightControlComputerInput` | System seam；dt、raw observations、pilot/gear/actuator/throttle signals |
+| `DigitalFlightControlComputerInput` | System seam；dt、raw observations、pilot/gear/actuator/throttle signals |
 | `ManagedFlightControlSignals` | Input Signal Management；normalized measurements + validity |
 | `ComputedFlightState` | Flight-State Computation；derived/filtered physical state |
 | `ActiveFlightControlConfiguration` | Mode/Gain；stores、gain、law availability、axis schedules |
@@ -447,7 +447,7 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 ### 17.2 單位與 reference-frame 分層
 
-不能用「DCS 單位」、「美國英制」或「航空顯示單位」統一整套 Core。真實飛機也有不同層次：transducer voltage/count、bus word/scaling、control-law engineering quantity、pilot display。FlightControlComputer 採 domain-native aviation engineering units，並依下表固定 ownership：
+不能用「DCS 單位」、「美國英制」或「航空顯示單位」統一整套 Core。真實飛機也有不同層次：transducer voltage/count、bus word/scaling、control-law engineering quantity、pilot display。DigitalFlightControlComputer 採 domain-native aviation engineering units，並依下表固定 ownership：
 
 | 層級 | 單位政策 | Owner |
 |---|---|---|
@@ -490,10 +490,10 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 ### 17.4 subrate policy
 
-- Executive 每 64 Hz FLCC tick 執行一次，不建立第二個全域 queue。
+- Executive 每 64 Hz DFLCC tick 執行一次，不建立第二個全域 queue。
 - Primary laws、fast feedback、output 與必要 monitoring 每 tick 執行。
 - AFTI 的 32 Hz input shaping、4 Hz slow gain scheduling 作為 `Reference-derived` 候選；不是 `Confirmed F-CK-1`。
-- 同一 FLCC 內以 base-tick counter 執行整數分頻：32 Hz 每 2 個 64 Hz ticks 更新，4 Hz 每 16 ticks 更新。這是 OFP Executive 的 cyclic schedule，不是另一個 `SystemPipeline` queue。
+- 同一 DFLCC 內以 base-tick counter 執行整數分頻：32 Hz 每 2 個 64 Hz ticks 更新，4 Hz 每 16 ticks 更新。這是 OFP Executive 的 cyclic schedule，不是另一個 `SystemPipeline` queue。
 - slow Module 執行時收到實際 scheduled interval（例如 1/32 s 或 1/4 s）；未執行 tick 使用上一份 immutable output（zero-order hold）。
 - subrate eligibility 只由 scheduled tick index 決定，不依 DCS host FPS 或 wall clock。
 - 可以指定固定 phase offset 平衡工作量，但 AFTI 公開報告未提供其確切 phase 表；未取得依據前不得宣稱模擬原機 offset。
@@ -506,7 +506,7 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 - `FlightControlOutputSystem` 保持一個 public deep Module；Output Select/Fading 與 Actuator Signal Management 先作 internal seams。冗餘致動器的未來拆法依第 13 節。
 - DCSBridge 是遊戲現實到擬真 Core measurement contracts 的唯一 adapter；Core 不依賴 DCS unit/axes/ABI。
-- `SystemIntegrity` 與 `FlightControlLifecycle` 暫不建立空 class。正式責任、Interface、state machine 與未來觸發條件必須寫入 FlightControlComputer README；實作真實功能時再 materialize Module。
+- `SystemIntegrity` 與 `FlightControlLifecycle` 暫不建立空 class。正式責任、Interface、state machine 與未來觸發條件必須寫入 DigitalFlightControlComputer README；實作真實功能時再 materialize Module。
 - Secondary-surface behavior 先保持現有功能，但移到正確 owner、清除重複/錯誤邏輯，並保留 typed effector seam 與 per-surface config 擴充點。
 - Direct/Backup law 保留為 `Developer-only` feature，與 Experimental A/T、Developer G-limiter override 一樣由獨立 development configuration 啟用；預設擬真玩法不可啟用，也不得暗示真機具備。
 - Executive 直接實作 deterministic subrate；對應 Module cutover 時即啟用 AFTI reference-derived 的 32/4 Hz behavior，不等待全部 64 Hz 架構完成。
@@ -523,14 +523,14 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 - `FlightControlExecutive` 建立 64 Hz deterministic base tick 與整數分頻能力。
 - `InputSignalManagement` cutover 時啟用 32 Hz roll-stick/pedal shaping；`ModeAndGainScheduling` cutover 時啟用 4 Hz slow air-data gain scheduling。
 - 每個 subrate 變更各自成為可回溯的原子提交，不與其他軸控制律調校混在同一提交。
-- Debug Watch/debug.csv 必須記錄 FLCC tick、各 subrate 累積 update counter、last-update tick、output age 與 held value；不能只記單 tick flag，避免較慢或非同步的 CSV logger 漏掉更新。`fck1c_state.csv` 繼續只保存飛機可觀察狀態。
+- Debug Watch/debug.csv 必須記錄 DFLCC tick、各 subrate 累積 update counter、last-update tick、output age 與 held value；不能只記單 tick flag，避免較慢或非同步的 CSV logger 漏掉更新。`fck1c_state.csv` 繼續只保存飛機可觀察狀態。
 - 測試必須覆蓋 scheduled dt、zero-order hold、固定 phase、不同 host FPS 的相同結果，以及長時間不累積 tick drift。
 
 ## 19. 現有程式到正式架構的重整
 
 | 現有項目 | 決策 | 新 owner |
 |---|---|---|
-| `FlightControlComputer` | 保留為 System adapter、移出 orchestration 細節 | `FlightControlComputer` |
+| `DigitalFlightControlComputer` | 保留為 System adapter、移出 orchestration 細節 | `DigitalFlightControlComputer` |
 | FCC step/orchestration | 抽出；若最後太淺再內聯 | `FlightControlExecutive` |
 | `InputSignalManagement` | 拆出 state computation 與 CAT policy 後深化 | `InputSignalManagement` |
 | FCC observation/angle helpers | 合併 | `FlightStateComputation` |
@@ -564,9 +564,9 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 ### Phase 1 — Contracts、units 與 System adapter
 
 - 建立第 17.1 節 grouped contracts 與 unit-safe types。
-- 讓 `FlightControlComputer` 只做 System adaptation；建立 Executive Interface，但不先製作空 pass-through Modules。
+- 讓 `DigitalFlightControlComputer` 只做 System adaptation；建立 Executive Interface，但不先製作空 pass-through Modules。
 - 更新 [`EFM_UNIT_CONVENTIONS.md`](EFM_UNIT_CONVENTIONS.md)，明訂 DCS ABI、Core measurement、control-law math 與 pilot-selected/display 四層單位及 reference-frame ownership。
-- 建立 `Core/Systems/FlightControlComputer/README.md`，記錄暫不實作的 Integrity/Lifecycle、未來 redundant actuator channel 路徑、建立 Module 的觸發條件與 Developer-only feature 規則。
+- 建立 `Core/Systems/DigitalFlightControlComputer/README.md`，記錄暫不實作的 Integrity/Lifecycle、未來 redundant actuator channel 路徑、建立 Module 的觸發條件與 Developer-only feature 規則。
 - 在 Output/Actuation seam 留一則精簡 source comment，指向上述 README；詳細未來設計只保存一份，不在多個 header 重複。
 - 建立 include/dependency architecture checks。
 
@@ -580,7 +580,7 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 ### Phase 3 — Mode、Configuration 與 Gain Scheduling cutover
 
 - 拆除 `FBWCatParams`/giant config，建立 Stores/Gain/Law 正交狀態與 axis schedules。
-- command 於下一 FLCC tick 生效；transition 具明確 lifecycle。
+- command 於下一 DFLCC tick 生效；transition 具明確 lifecycle。
 - 依第 17.4、18.3 節直接啟用 4 Hz slow air-data gain scheduling，不與 host FPS 綁定。
 
 ### Phase 4 — Command System cutover
@@ -613,8 +613,8 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 ### Phase 8 — Aerodynamics/secondary-surface ownership audit
 
-- 將 `apply_aerodynamic_limiters()` 各行為分類成真實氣動、gameplay assist、FLCC control policy 或歷史補償。
-- 真實氣動留在 Aerodynamics；assist 由 explicit option 控制；FLCC policy 搬移後刪除原路徑。
+- 將 `apply_aerodynamic_limiters()` 各行為分類成真實氣動、gameplay assist、DFLCC control policy 或歷史補償。
+- 真實氣動留在 Aerodynamics；assist 由 explicit option 控制；DFLCC policy 搬移後刪除原路徑。
 - 記錄尚無證據的 F-CK-1 LEF/TEF/slat/flap ownership，不以猜測填滿。
 
 ### Phase 9 — Verification 與收尾
@@ -626,15 +626,15 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 ### 20.1 實際 cutover 紀錄
 
-- `FlightControlComputer` 已縮成 64 Hz 實體 System adapter；固定執行鍊由 `FlightControlExecutive` 擁有。
+- `DigitalFlightControlComputer` 已縮成 64 Hz 實體 System adapter；固定執行鍊由 `FlightControlExecutive` 擁有。
 - `InputSignalManagement`、`FlightStateComputation`、`ModeAndGainScheduling`、`FlightControlCommandSystem`、`FlightControlLaws`、`FlightControlOutputSystem` 與 `FlightControlDiagnostics` 已形成單一 production path。
 - Pilot shaping 以 64 Hz base tick 的整數二分頻在 32 Hz 更新；slow gain scheduling 以整數十六分頻在 4 Hz 更新；held output、counter、last tick 與 age 均可由 diagnostics 觀察。
 - AFCS 與 manual reference 已在 Command System 內依軸選擇並共同協調，再進入相同的 protection、axis laws、surface mixer 與 output path。
 - Heading target/measured/error 保持 magnetic degrees；altitude target/measured/error 與 vertical speed 使用 feet/ft/s；attitude、AOA、beta、body rate 與 primary surface 使用 rad/rad/s。
 - `FlightControlLawsResult`、`FlightControlActuatorCommand`、Actuation state 與 Aerodynamics primary-surface input 已全程使用具名 physical radians；DCS draw argument 才負責視覺 normalized conversion。
-- 原 Aerodynamics 人工 roll/yaw rate-control moments 已刪除，避免和 FLCC protection/laws 重複；超速阻力只保留在明示 `easy_flight` assist；airbrake pitching moment 留在 Aerodynamics 並以真實氣動責任命名。
+- 原 Aerodynamics 人工 roll/yaw rate-control moments 已刪除，避免和 DFLCC protection/laws 重複；超速阻力只保留在明示 `easy_flight` assist；airbrake pitching moment 留在 Aerodynamics 並以真實氣動責任命名。
 - Direct law、G-limiter override 與 experimental A/T 已由獨立 development configuration 隔離，production defaults 不可啟用。
-- Integrity、Lifecycle、redundant electronic actuator channels 沒有以空殼實作；唯一 future design 與 materialization triggers 記錄於 `Core/Systems/FlightControlComputer/README.md`。
+- Integrity、Lifecycle、redundant electronic actuator channels 沒有以空殼實作；唯一 future design 與 materialization triggers 記錄於 `Core/Systems/DigitalFlightControlComputer/README.md`。
 - Characterization hashes 與 golden force/moment 已在移除重複氣動控制 policy 後更新；這是核准架構造成的刻意行為變更，不是無理由接受測試漂移。
 
 ## 21. 驗證矩陣
@@ -664,16 +664,16 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 ## 22. 完成定義
 
-- 一部 FLCC 仍是一個 64 Hz `FlightControlComputer` System；內部 Modules 沒有被註冊為 Systems。
+- 一部 DFLCC 仍是一個 64 Hz `DigitalFlightControlComputer` System；內部 Modules 沒有被註冊為 Systems。
 - 正式架構涵蓋 Executive、Input、Flight State、Mode/Gain、Command、Flight Control Laws、Output/Actuator Signal 與 Diagnostics；Integrity/Lifecycle 的責任、Interface 方向與 materialization 條件完整記錄，但在沒有真實 failure/lifecycle source 前不建立空 class。
-- `FlightControlComputer` 只有 adapter 責任；Executive 只有 execution/lifecycle orchestration。
+- `DigitalFlightControlComputer` 只有 adapter 責任；Executive 只有 execution/lifecycle orchestration。
 - 不存在 `FBWControllerState`、`FBWCatParams` 或等價 giant state/config/context bag。
 - 每份 persistent state 只有一個 owner，所有跨 Module contracts immutable 且具單位。
 - manual 與 AFCS 在 Command System 會合，共用 Flight Control Laws 與 Output path。
 - longitudinal 在每個 mode 只接受一種 tagged objective；正常 Nz law 依公開 F-16 拓樸整合 Nz forward loop、q washout、alpha stability feedback 與 command protection，lateral/directional 分工明確並由 coordination 擁有 coupling。
 - surface synthesis 位於 `FlightControlLaws` private mixer，output signal management 不再藏在 final clamp 或 Aerodynamics。
 - electronic actuator-signal responsibility 與 physical actuation dynamics 分離。
-- FlightControlComputer README 已記錄 deferred Integrity/Lifecycle、redundant actuator channels、Developer-only features 與其 materialization conditions；source seam 只留連結式精簡註解。
+- DigitalFlightControlComputer README 已記錄 deferred Integrity/Lifecycle、redundant actuator channels、Developer-only features 與其 materialization conditions；source seam 只留連結式精簡註解。
 - generic HOLD/DEGRADE、silent fallback、fake BIT/redundancy 與 old compatibility path 已移除。
 - Automated verification 與 standards/spec review 必須完成；縱向 DCS 驗證未通過前不得標成完成，所有未通過項目必須明確暴露。
 

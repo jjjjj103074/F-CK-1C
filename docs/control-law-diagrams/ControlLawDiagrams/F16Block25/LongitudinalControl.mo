@@ -9,7 +9,7 @@ model LongitudinalControl "Source-faithful topology transcription of ADA189675 F
   parameter Real aoaCommandUpperG = 25.0 "Executable transcription value for the source-visible U-034 limiter";
   parameter Real prePiLower = -25.0;
   parameter Real prePiUpper = 25.0 "Executable transcription bounds for the source-visible U-033 limiter";
-  // Figure 3.1 boundary signals; their producers/consumers may still be inside the FLCC.
+  // Figure 3.1 boundary signals; their producers/consumers may still be inside the DFLCC.
   T.SignalInput pitchTrim annotation(Placement(visible = false, transformation(extent = {{165, -160}, {185, -140}})));
   T.SignalInput forwardStickForce annotation(Placement(visible = false, transformation(extent = {{165, -254}, {185, -234}})));
   T.SignalInput aftStickForce annotation(Placement(visible = false, transformation(extent = {{165, -374}, {185, -354}})));

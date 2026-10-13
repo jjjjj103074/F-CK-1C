@@ -16,7 +16,7 @@ DCS 首次實機驗收目前是 `FAIL`：ALT Hold 出現持續上下擺盪。根
 
 ### C++ 擁有
 
-- `FlightControlComputer::AutomaticFlightControl`
+- `DigitalFlightControlComputer::AutomaticFlightControl`
   - AP／A/T engage 與 disconnect gate。
   - Pitch、VS、ALT、Heading Hold、Heading Select 與 NAV placeholder。
   - 所有 target reference、integrator、bypass 與 recapture。
@@ -50,7 +50,7 @@ DCS 首次實機驗收目前是 `FAIL`：ALT Hold 出現持續上下擺盪。根
   → DCS ed_fm_set_command
   → DcsCommandRouter
   → SystemPipeline command handler
-  → FlightControlComputer / PropulsionDiagnostics
+  → DigitalFlightControlComputer / PropulsionDiagnostics
   → C++ authoritative state
   → FlightControlDemand / EngineControlDemand / PropulsionTestIntent
   → simulation models

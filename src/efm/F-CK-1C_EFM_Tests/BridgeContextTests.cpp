@@ -2,7 +2,7 @@
 #include "TestHarness.h"
 
 #include "../F-CK-1C_EFM/Common/Configuration/Configuration.h"
-#include "../F-CK-1C_EFM/Core/Systems/FlightControlComputer/Database/ControlLawData/Configuration.h"
+#include "../F-CK-1C_EFM/Core/Systems/DigitalFlightControlComputer/Database/ControlLawData/Configuration.h"
 #include "../F-CK-1C_EFM/DcsBridge/Internal/BridgeContext.h"
 #include "../F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
 #include "../F-CK-1C_EFM/DcsIds/CustomCommands.g.h"
@@ -94,9 +94,9 @@ std::string create_config_path(const std::filesystem::path& module_root)
 	const std::filesystem::path fm_directory = module_root / "FM";
 	std::filesystem::create_directories(fm_directory);
     // 在暫存模組的 FM 目錄放入控制律設定，供飛行初始化使用。
-    std::filesystem::create_directories(fm_directory / "FLCC");
-    std::filesystem::copy_file("FM/FLCC/ControlLaws.jsonc",
-        fm_directory / "FLCC" / "ControlLaws.jsonc",
+    std::filesystem::create_directories(fm_directory / "DFLCC");
+    std::filesystem::copy_file("FM/DFLCC/ControlLaws.jsonc",
+        fm_directory / "DFLCC" / "ControlLaws.jsonc",
         std::filesystem::copy_options::overwrite_existing);
 	const std::filesystem::path config_path = fm_directory / "config.lua";
 	TestFiles::write_text(config_path, "-- bridge context test\n");
@@ -497,17 +497,17 @@ void test_configuration_error_survives_failed_restart(Tests::Context& tests)
 	auto& context = owner.get(config_path.c_str());
 	start_flight(context, Core::StartMode::HotGround);
 	TEST_EXPECT(tests, context.output_store().read().has_value());
-	auto loaded = Configuration::load<Core::Systems::Flcc::ControlLawConfiguration>(
-		"FLCC/ControlLaws.jsonc");
+	auto loaded = Configuration::load<Core::Systems::Dflcc::ControlLawConfiguration>(
+		"DFLCC/ControlLaws.jsonc");
 	TEST_EXPECT(tests, loaded.succeeded());
 	if (loaded.succeeded())
 		TEST_EXPECT(tests, loaded.value().direct_mapping.pitch.gain == 1.0);
 
 	// 多餘欄位中止本次載入，完整錯誤寫入紀錄。
-	TestFiles::write_text(root.path() / "FM" / "FLCC" / "ControlLaws.jsonc",
+	TestFiles::write_text(root.path() / "FM" / "DFLCC" / "ControlLaws.jsonc",
 		"{\"extra\": 1}\n");
-	auto rejected = Configuration::load<Core::Systems::Flcc::ControlLawConfiguration>(
-		"FLCC/ControlLaws.jsonc");
+	auto rejected = Configuration::load<Core::Systems::Dflcc::ControlLawConfiguration>(
+		"DFLCC/ControlLaws.jsonc");
 	TEST_EXPECT(tests, !rejected.succeeded());
 	if (!rejected.succeeded())
 	{

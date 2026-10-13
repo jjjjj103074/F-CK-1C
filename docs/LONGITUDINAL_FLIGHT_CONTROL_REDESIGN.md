@@ -4,8 +4,8 @@
 
 - 狀態：**已實作並通過自動驗證，等待 DCS 針對性驗證**。
 - 修訂日期：2026-08-05。
-- 適用範圍：`FlightControlComputer` 內的縱向命令、控制律、迎角／過載保護、狀態管理、診斷與驗證。
-- 不重做：外部 System 排程、64 Hz FLCC、256 Hz `FlightControlActuationSystem`、DCSBridge 單位翻譯、橫向／方向軸控制律。
+- 適用範圍：`DigitalFlightControlComputer` 內的縱向命令、控制律、迎角／過載保護、狀態管理、診斷與驗證。
+- 不重做：外部 System 排程、64 Hz DFLCC、256 Hz `FlightControlActuationSystem`、DCSBridge 單位翻譯、橫向／方向軸控制律。
 - 本文件取代 `FLIGHT_CONTROL_ARCHITECTURE_REFACTOR_PLAN.md` 中舊有的「Nz 轉 q 串級控制」與「同時產生 Nz、q feed-forward」設計。
 
 ## 2. 先說結論
@@ -70,7 +70,7 @@ q 在這條鏈中是阻尼回授，不是與 Nz 並行的駕駛命令。放輪�
    - 放輪模式以 pitch-rate command 為主，並在較高迎角加入 alpha blending。
    - 報告提供參考門檻與正常迎角限制，但不足以直接還原 F-CK-1C 增益。
 3. [NASA F-16XL Block 40 Digital Flight Control System（2004）](https://ntrs.nasa.gov/api/citations/20040040334/downloads/20040040334.pdf)
-   - 支持數位 FLCC 與 64 Hz 執行背景。
+   - 支持數位 DFLCC 與 64 Hz 執行背景。
    - 支持數位飛控內部同時具有 normal-acceleration、pitch-rate 等控制律功能，但未公開足以複製的完整方程與增益。
 
 ### 4.2 證據標籤
@@ -92,7 +92,7 @@ q 在這條鏈中是阻尼回授，不是與 Nz 並行的駕駛命令。放輪�
 
 ```mermaid
 flowchart LR
-    P["PilotControls"] --> C["FlightControlComputer · 64 Hz"]
+    P["PilotControls"] --> C["DigitalFlightControlComputer · 64 Hz"]
     C --> A["FlightControlActuationSystem · 256 Hz"]
     A --> M["Aerodynamics / aircraft motion"]
     M --> B["DCSBridge measurements"]
@@ -100,11 +100,11 @@ flowchart LR
 ```
 
 - `PilotControls`：整合不同 DCS commands，輸出物理化的駕駛輸入。
-- `FlightControlComputer`：選擇命令來源、執行飛控／AFCS 邏輯、輸出電子控制面需求。
+- `DigitalFlightControlComputer`：選擇命令來源、執行飛控／AFCS 邏輯、輸出電子控制面需求。
 - `FlightControlActuationSystem`：模擬致動器位置、速率、延遲與飽和。
 - `DCSBridge`：只翻譯 DCS 世界與 Core 物理／航空單位，不擁有控制 policy。
 
-錯誤集中在 `FlightControlComputer` 內部的縱向 Interface 與 Implementation。
+錯誤集中在 `DigitalFlightControlComputer` 內部的縱向 Interface 與 Implementation。
 
 ## 6. 新的命令契約：每次只能有一個縱向目標
 
@@ -157,7 +157,7 @@ AFCS 負責模式、capture target 與 guidance；它不保存控制面積分器
 
 ### 7.1 Public Interface
 
-對 FLCC 其他區域只公開既有的高層 seam：
+對 DFLCC 其他區域只公開既有的高層 seam：
 
 ```text
 FlightControlLaws::update(ControlLawInput) -> FlightControlLawsResult
@@ -276,7 +276,7 @@ YF-16 報告中的「alpha 超過約 30°後給完整低頭命令」是針對當
 
 ## 11. 單位規範
 
-| 訊號 | Core／FLCC 單位 |
+| 訊號 | Core／DFLCC 單位 |
 |---|---|
 | AOA、姿態、控制面位置 | radians |
 | p、q、r | radians/second |
@@ -328,11 +328,11 @@ YF-16 報告中的「alpha 超過約 30°後給完整低頭命令」是針對當
 這次錯誤依賴完整時間歷史，正式 regression 必須至少包含：
 
 ```text
-FlightControlComputer
+DigitalFlightControlComputer
   -> FlightControlActuationSystem
   -> deterministic longitudinal aircraft plant
   -> measured Nz/q/alpha feedback
-  -> FlightControlComputer
+  -> DigitalFlightControlComputer
 ```
 
 只測 `AngleOfAttackControl::update()` 或冷啟 `ControlLaws::update()` 不足以宣稱問題已修復。
@@ -397,6 +397,6 @@ FlightControlComputer
 
 1. F-CK-1C 的 alpha onset、limit、Nz decrement slopes 與 gain schedules 沒有可確認的一手公開值；須以 `Project-defined` 數值調校，不能冒充 F-16 原值。
 2. 是否未來實作類似 YF-16 的 >30° emergency nose-down backup，必須等 F-CK-1C 感測器、MPO 或 departure-recovery 證據；目前設計明確不包含。
-3. 閉迴路 harness 已採既有 `FlightControlComputer -> FlightControlActuationSystem -> deterministic aircraft response` 測試 seam，並保留控制器、致動器與 aircraft response 三段時間歷史；未來只有在這個 plant 無法重現 DCS 問題時才提高物理複雜度。
+3. 閉迴路 harness 已採既有 `DigitalFlightControlComputer -> FlightControlActuationSystem -> deterministic aircraft response` 測試 seam，並保留控制器、致動器與 aircraft response 三段時間歷史；未來只有在這個 plant 無法重現 DCS 問題時才提高物理複雜度。
 
 以上三點不影響現在決定命令契約、正常 Nz 拓樸、狀態 owner 與保護邊界。

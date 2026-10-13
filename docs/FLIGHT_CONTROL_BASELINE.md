@@ -23,7 +23,7 @@ an assertion that the existing controller math or response is correct.
 | Auto-throttle compatibility | `AutomaticFlightControl` | engage-gate, Mach-guard, target-limit, controller tests | Move unchanged to experimental assist ownership |
 | CAT and developer G-limit override | FCC/FBW control laws | FBW command and limiter tests | Preserve availability and diagnostics; keep out of AP ownership |
 | Manual alpha/Nz/q and p/q/r control laws | FCC/FBW control laws | reference-frame, hold, limiter and actuator-feedback tests | Preserve baseline before physical-reference migration |
-| Actuator command publication | `FlightControlComputer` | FCC/System and actuator-system tests | Preserve one publisher and one production path |
+| Actuator command publication | `DigitalFlightControlComputer` | FCC/System and actuator-system tests | Preserve one publisher and one production path |
 
 ## Current command set
 
@@ -31,7 +31,7 @@ an assertion that the existing controller math or response is correct.
 Hold, Altitude Hold, Heading Hold, Heading Select, Navigation Track, vertical
 and lateral reference adjustment, plus the temporary A/T commands.
 
-`FlightControlComputer` owns CAT I/III selection and the developer-only
+`DigitalFlightControlComputer` owns CAT I/III selection and the developer-only
 G-limiter override commands. All observation-dependent effects occur on the
 next scheduled 64 Hz FCC tick.
 

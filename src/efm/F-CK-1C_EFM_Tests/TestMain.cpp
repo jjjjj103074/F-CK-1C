@@ -23,7 +23,7 @@ void run_engine_system_tests(Tests::Context& context);
 void run_event_log_tests(Tests::Context& context);
 void run_frame_input_collector_tests(Tests::Context& context);
 void run_flight_control_actuation_system_tests(Tests::Context& context);
-void run_flight_control_executive_tests(Tests::Context& context);
+void run_digital_flight_control_executive_tests(Tests::Context& context);
 void run_configuration_ownership_tests(Tests::Context& context);
 void run_configuration_loader_tests(Tests::Context& context);
 void run_control_laws_tests(Tests::Context& context);
@@ -92,7 +92,7 @@ int main()
 	run_event_log_tests(context);
 	run_frame_input_collector_tests(context);
 	run_flight_control_actuation_system_tests(context);
-	run_flight_control_executive_tests(context);
+	run_digital_flight_control_executive_tests(context);
 	run_configuration_ownership_tests(context);
 	run_system_pipeline_data_tests(context);
 	run_system_pipeline_handler_tests(context);

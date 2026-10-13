@@ -56,7 +56,7 @@ DebugTelemetryHub（DcsBridge 擁有）
 
 目前診斷責任混在三個位置：
 
-1. `fck1c_state.csv` 同時保存飛機可觀察狀態與大量 FLCC／AFCS 內部狀態。
+1. `fck1c_state.csv` 同時保存飛機可觀察狀態與大量 DFLCC／AFCS 內部狀態。
 2. 現行 DCS runtime 會呼叫 `ed_fm_enable_debug_info()`，但不會呼叫 `ed_fm_debug_watch()`，因此不能依賴原生 Watch 顯示診斷文字。
 3. 若每次調查都直接新增 FrameOutput 與 StateCsvWriter 欄位，會讓穩定的跨層契約和飛機狀態 CSV 持續膨脹。
 
@@ -87,7 +87,7 @@ DebugTelemetryHub（DcsBridge 擁有）
 - 不讓專用 Debug Indicator 成為飛機 System、座艙裝置或模擬資料來源。
 - 第一版不做分頁、顯示層級、捲動、滑鼠操作或獨立設定畫面。
 - 不在本次實作 debug geometry 或受力向量顯示。
-- 不在這次修改 FLCC、AP、鍵盤輸入速率或搖桿釋放體感。
+- 不在這次修改 DFLCC、AP、鍵盤輸入速率或搖桿釋放體感。
 - 不為尚未出現的網路串流、外部 GUI 或遠端診斷預先建立框架。
 
 ## 4. Module 與 Seam
@@ -228,7 +228,7 @@ channel.publish(simulation_time, value);
 - 這是 **Project-defined** 工具頻率。
 - 它不是已證實的 F-CK-1C 診斷頻率。
 - 它也不是 Indicator 畫面更新率。
-- 選擇 64 Hz 是為了與目前 FLCC reference rate 對齊，並讓診斷結果不受遊戲畫面更新率影響。
+- 選擇 64 Hz 是為了與目前 DFLCC reference rate 對齊，並讓診斷結果不受遊戲畫面更新率影響。
 
 ### 6.2 重採樣規則
 
@@ -290,7 +290,7 @@ AP LATERAL MODE: HEADING HOLD
 AP TARGET HEADING: 1.5708 RAD
 ```
 
-`DebugIndicatorExporter` 不硬編碼 FLCC、AP 或其他系統欄位，內容只依 descriptor、宣告順序與最新值生成。每 10 個 channel 形成一個獨立字串，依序填滿六個區塊；目前 59 個 channel 可完整放入。Indicator 顯示時，每個 `ed_fm_simulate` frame 讀取一次 Hub 最新快照；只有內容改變的文字參數才重新寫入 DCS。隱藏時不進行文字排版，也不增加獨立顯示時鐘。
+`DebugIndicatorExporter` 不硬編碼 DFLCC、AP 或其他系統欄位，內容只依 descriptor、宣告順序與最新值生成。每 10 個 channel 形成一個獨立字串，依序填滿六個區塊；目前 59 個 channel 可完整放入。Indicator 顯示時，每個 `ed_fm_simulate` frame 讀取一次 Hub 最新快照；只有內容改變的文字參數才重新寫入 DCS。隱藏時不進行文字排版，也不增加獨立顯示時鐘。
 
 不做分頁與顯示層級。畫面容量固定為 60 個 channel；超出時狀態列明確顯示 `+N CHANNELS NOT SHOWN - SEE DEBUG.CSV`，完整資料仍保存在 `debug.csv`。這個容量是已驗證的 DCS 字串呈現邊界，不是靜默截斷。
 
@@ -396,7 +396,7 @@ Wide format 讓 Indicator 與 CSV 都使用「一組具名通道的最新快照�
 
 ## 10. 初始使用範圍
 
-工具完成後，先註冊目前 FLCC／AFCS 調試所需的通道，至少涵蓋：
+工具完成後，先註冊目前 DFLCC／AFCS 調試所需的通道，至少涵蓋：
 
 - AP master 與 vertical／lateral active mode。
 - engage、disconnect、constraint 與 degradation reason。
@@ -482,7 +482,7 @@ Wide format 讓 Indicator 與 CSV 都使用「一組具名通道的最新快照�
 - Indicator 使用 6 位有效數字，CSV 保持完整 round-trip 精度；未改變的區塊不重複寫入 DCS。
 - 移除原生 Watch formatter、顯示層級與 callback probe；保留最小 ABI export。
 
-### Step 6：遷移現有 FLCC／AFCS 診斷資料
+### Step 6：遷移現有 DFLCC／AFCS 診斷資料
 
 - 在資料擁有者附近宣告並發布對等通道。
 - 比對新舊輸出，確認沒有失去目前可觀察資訊。
@@ -563,7 +563,7 @@ Wide format 讓 Indicator 與 CSV 都使用「一組具名通道的最新快照�
 - Core 不 include DCSBridge。
 - DcsBridge 不 include 具體 Core System／Simulation implementation。
 - Debug adapter 只能經 Core Contracts Interface 注入。
-- 加入反例 fixture，確保直接從 DcsBridge 讀 FLCC internals 會被拒絕。
+- 加入反例 fixture，確保直接從 DcsBridge 讀 DFLCC internals 會被拒絕。
 - 專用 Indicator Lua 只能讀取 `DEBUG_INDICATOR_VISIBLE`、六個 `DEBUG_INDICATOR_TEXT_n` 與 `DEBUG_INDICATOR_STATUS`，不得成為 Lua→C++ 模擬資料通道。
 - Lua 必須用同一個文字元素 factory 與迴圈產生六區塊，並以畫面 aspect 計算兩欄三區塊版面，不逐項寫死 channel。
 
@@ -590,14 +590,14 @@ Wide format 讓 Indicator 與 CSV 都使用「一組具名通道的最新快照�
 4. 顯示或隱藏 Indicator，確認飛機操控、AP 狀態與正式 Controls Indicator 都不受影響。
 5. 造成一段 frame rate 變化，確認 CSV sample time 仍維持 64 Hz，而不是依畫面 FPS。
 6. 結束並重新開始 flight，確認 Indicator 預設隱藏，latest values、sequence 與 per-flight 時間正確重置。
-7. 確認 `fck1c_state.csv` 仍有物理飛行狀態，且 AP／FLCC 詳細診斷位於 `debug.csv`。
+7. 確認 `fck1c_state.csv` 仍有物理飛行狀態，且 AP／DFLCC 詳細診斷位於 `debug.csv`。
 
 ## 15. 完成條件
 
 - Core 可在任意需要的位置與頻率主動推送四種資料型別。
 - 推送位置決定資料時點語意，工具不強迫 commit-only。
 - Core 不知道 Debug Indicator、CSV 或檔案路徑。
-- DCSBridge 不需要知道 FLCC／AP 的內部 class。
+- DCSBridge 不需要知道 DFLCC／AP 的內部 class。
 - 專用 Indicator 以兩欄三區塊顯示最多 60 個最新值，超出容量時明確指向 `debug.csv`；`debug.csv` 保存完整 schema 的 64 Hz 歷史快照。
 - Indicator double 使用 6 位有效數字，`debug.csv` double 保持完整 round-trip 精度。
 - 文字值在 Indicator 與 CSV 都正確。

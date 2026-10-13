@@ -44,7 +44,7 @@ dimensionless. Their field names still expose semantics and range.
 
 ## Flight-control aircraft-system contract
 
-The FLCC receives already translated engineering quantities:
+The DFLCC receives already translated engineering quantities:
 
 | Quantity | Unit/reference |
 |---|---|
@@ -105,10 +105,10 @@ clockwise toward the right and comes from the cockpit/navigation observation.
 | DCS raw command -> pilot command | `DcsCommandRouter` | adapt sign/range once |
 | DCS body/world state -> simulation state | focused `DcsBridge` adapters | map axes and preserve SI/radians |
 | cockpit barometric-altitude parameter -> pressure-altitude observation | `CockpitBridge` | validate availability and convert metres -> feet once; never fall back to geometric ASL |
-| simulation vertical speed -> FLCC observation | flight-control observation adapter | metres/second -> feet/second once |
+| simulation vertical speed -> DFLCC observation | flight-control observation adapter | metres/second -> feet/second once |
 | cockpit heading parameter -> magnetic heading observation | `CockpitBridge` | radians from DCS parameter -> degrees once |
 | heading loop -> bank reference | `LateralGuidance` | degrees -> radians only at the completed guidance seam |
-| FLCC position demand -> actuator target | `FlightControlActuationSystem` | normalized demand times configured nominal travel -> radians |
+| DFLCC position demand -> actuator target | `FlightControlActuationSystem` | normalized demand times configured nominal travel -> radians |
 | actual actuator state -> aerodynamics | no conversion | physical radians remain radians |
 | physical surface angle -> DCS draw argument | `DcsBridge::DrawArgs` | normalize with visual travel calibration |
 | Core values -> CSV/debug | projection owner | preserve source unit and include unit in channel/header |
