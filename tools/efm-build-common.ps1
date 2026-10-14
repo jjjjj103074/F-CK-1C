@@ -50,11 +50,11 @@ function Get-EfmSourceFingerprint {
             Get-ChildItem -LiteralPath (Join-Path $RepoRoot $directory) -File -Recurse
         }
         Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'src\efm') -File
-        foreach ($directory in @('Cockpit', 'Input')) {
+        foreach ($directory in @('Cockpit', 'Input', 'FM')) {
             $path = Join-Path $RepoRoot $directory
-            if (Test-Path -LiteralPath $path) { Get-ChildItem -LiteralPath $path -File -Recurse -Filter '*.lua' }
+            if (Test-Path -LiteralPath $path) { Get-ChildItem -LiteralPath $path -File -Recurse | Where-Object { $_.Extension -in @('.lua', '.jsonc') } }
         }
-    ) | Where-Object { $_.Extension -in @('.cpp', '.c', '.cc', '.cxx', '.h', '.hh', '.hpp', '.hxx', '.inc', '.inl', '.ipp', '.tpp', '.ps1', '.mjs', '.props', '.targets', '.vcxproj', '.json', '.txt', '.lua') } | Sort-Object FullName
+    ) | Where-Object { $_.Extension -in @('.cpp', '.c', '.cc', '.cxx', '.h', '.hh', '.hpp', '.hxx', '.inc', '.inl', '.ipp', '.tpp', '.ps1', '.mjs', '.props', '.targets', '.vcxproj', '.json', '.jsonc', '.txt', '.lua') } | Sort-Object FullName
     $lines = foreach ($file in $files) {
         $relative = $file.FullName.Substring($RepoRoot.TrimEnd('\').Length + 1).Replace('\', '/')
         $relative + '=' + (Get-EfmSha256 $file.FullName)

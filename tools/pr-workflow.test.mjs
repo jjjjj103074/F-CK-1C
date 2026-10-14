@@ -14,15 +14,19 @@ function git(root, args, input) {
     return result.stdout;
 }
 
-test('the real submission sparse checkout supports DCS generator fixtures', { timeout: 90000 }, context => {
+test('the real sparse checkouts retain native-test configuration and DCS generator fixtures', { timeout: 90000 }, context => {
     const workflowPath = '.github/workflows/pr-native.yml';
     const workflow = fs.existsSync(path.join(repository, workflowPath))
         ? fs.readFileSync(path.join(repository, workflowPath), 'utf8')
         : git(repository, ['show', `HEAD:${workflowPath}`]);
-    const submission = workflow.split('\n  merge-compatibility:')[0];
-    const block = submission.match(/sparse-checkout: \|\r?\n((?: {12}\/[^\r\n]+\r?\n)+)/);
-    assert.ok(block, 'Submission sparse checkout patterns were not found.');
-    const patterns = block[1].split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const sections = workflow.split('\n  merge-compatibility:');
+    const checkoutPatterns = section => {
+        const block = section.match(/sparse-checkout: \|\r?\n((?: {12}\/[^\r\n]+\r?\n)+)/);
+        assert.ok(block, 'Sparse checkout patterns were not found.');
+        return block[1].split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    };
+    const patterns = checkoutPatterns(sections[0]);
+    const mergePatterns = checkoutPatterns(sections[1]);
     const prefix = path.join(os.tmpdir(), 'fck1c-pr-checkout-');
     const root = fs.mkdtempSync(prefix);
     context.after(() => {
@@ -35,7 +39,7 @@ test('the real submission sparse checkout supports DCS generator fixtures', { ti
     git(root, ['init', '--quiet']);
     git(root, ['config', 'core.hooksPath', '.no-hooks']);
     const inputs = git(repository, ['ls-files', '-z', '--', '.gitattributes',
-        'Cockpit', 'Input', 'src/efm/F-CK-1C_EFM/DcsIds',
+        'Cockpit', 'Input', 'FM', 'src/efm/F-CK-1C_EFM/DcsIds',
         'tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1']).split('\0').filter(Boolean);
     for (const relative of inputs) {
         const source = path.join(repository, relative);
@@ -54,6 +58,14 @@ test('the real submission sparse checkout supports DCS generator fixtures', { ti
         assert.ok(fs.existsSync(path.join(root, file)), `Missing generator output: ${file}`);
     }
     assert.ok(fs.existsSync(path.join(root, 'Input')), 'Input command-reference coverage must be present.');
+    const configurationFiles = inputs.filter(file => file.startsWith('FM/') && file.endsWith('.jsonc'));
+    assert.ok(configurationFiles.length, 'Native-test configuration inputs were not found.');
+    const assertConfiguration = () => {
+        for (const file of configurationFiles) {
+            assert.ok(fs.existsSync(path.join(root, file)), `Missing native-test configuration: ${file}`);
+        }
+    };
+    assertConfiguration();
     if (process.platform === 'win32') {
         const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
             '-File', path.join(root, 'tools/test_dcs_id_generator.ps1'), '-RepoRoot', root],
@@ -61,4 +73,6 @@ test('the real submission sparse checkout supports DCS generator fixtures', { ti
         assert.equal(result.status, 0, result.stderr || result.error?.message);
         assert.match(result.stdout, /DCS ID generator fixtures passed/);
     }
+    git(root, ['sparse-checkout', 'set', '--no-cone', '--stdin'], mergePatterns.join('\n') + '\n');
+    assertConfiguration();
 });

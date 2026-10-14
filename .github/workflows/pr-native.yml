@@ -32,6 +32,7 @@ jobs:
             /tools/
             /Cockpit/
             /Input/
+            /FM/
             /bin/F-CK-1C_EFM.dll
             /package.json
             /package-lock.json

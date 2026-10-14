@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {librarySections} from './ci-test-library-sections.mjs';
 const p86=process.env['ProgramFiles(x86)'];
 const instances=JSON.parse(execFileSync(path.join(p86,'Microsoft Visual Studio/Installer/vswhere.exe'),['-all','-products','*','-requires','Microsoft.Component.MSBuild','-format','json'],{encoding:'utf8'}));
 const instance=instances.find(v=>fs.existsSync(path.join(v.installationPath,'VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe')));
@@ -10,5 +11,5 @@ const inputs=[['msvc',tools,'include/yvals_core.h'],['msvc',tools,'lib/x64/libcm
 const headerNames=fs.readdirSync(path.join(tools,'include'),{withFileTypes:true}).filter(e=>e.isFile()).map(e=>e.name).sort();
 const sdkHeaders=['um/Windows.h','shared/sdkddkver.h','ucrt/corecrt_math.h','ucrt/stdio.h','ucrt/stdlib.h','ucrt/corecrt_malloc.h'];
 inputs.push(...headerNames.map(name=>['msvc',tools,'include/'+name]),...sdkHeaders.map(name=>['sdk',sdk,'Include/10.0.26100.0/'+name]));
-const data={publicRunner:true,visualStudioVersion:instance.installationVersion,inputs:inputs.map(([kind,root,file])=>{const bytes=fs.readFileSync(path.join(root,file));return{kind,file,size:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex').toUpperCase()};})};
+const data={publicRunner:true,visualStudioVersion:instance.installationVersion,crtVersion:fs.readFileSync(path.join(tools,'include/crtversion.h'),'utf8'),inputs:inputs.map(([kind,root,file])=>{const bytes=fs.readFileSync(path.join(root,file));return{kind,file,size:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex').toUpperCase(),...(file.endsWith('.lib')?{sections:librarySections(bytes)}:{})};})};
 console.log(JSON.stringify(data));
