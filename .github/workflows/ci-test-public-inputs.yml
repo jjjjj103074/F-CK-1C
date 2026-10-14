@@ -1,0 +1,26 @@
+name: CI TEST ONLY - Public Runner Inputs - DO NOT MERGE
+on:
+  pull_request:
+    branches: ['codex/ci-test-base-20261014']
+    types: [opened, synchronize, reopened, edited]
+permissions:
+  contents: read
+concurrency:
+  group: ci-test-public-inputs-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  public-inputs:
+    name: 測試用 - 公開 runner 輸入診斷
+    runs-on: windows-2022
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          sparse-checkout: tools
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Fingerprint six fixed files on the public runner only
+        run: node tools/ci-test-known-inputs.mjs
