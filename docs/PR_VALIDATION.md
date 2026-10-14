@@ -24,7 +24,7 @@ npm run validate:efm
 |---|---|---|
 | 1 | 建置與驗證規則變更提醒 | 在 PR 維持一則更新的提醒，列出規則分類、檔案、變更行數、舊／新片段與完整差異連結；不新增人工核准門檻 |
 | 2 | PR 排版與工具測試 | 使用鎖定的 clang-format；失敗就停止提交驗證 |
-| 3 | PR 來源與工具鏈 | 取得指定提交的乾淨來源；確認 MSVC、連結器、編譯器前後端雜湊與 SDK 版本 |
+| 3 | PR 來源與工具鏈 | 取得指定提交的乾淨來源；確認 MSVC、連結器、編譯器前後端、靜態執行期函式庫雜湊與 SDK 版本 |
 | 4 | PR DLL 重建與 SHA-256 | 完整重建，與保留的上傳副本比對整份 SHA-256；不同就失敗，顯示兩份雜湊 |
 | 5 | 上傳 DLL 接口與載入 | 對同一份驗證通過的上傳副本比對完整匯出名稱清單，再於獨立 x64 Windows 程序正常載入、查詢必要接口、卸載；不呼叫 EFM 回呼 |
 | 6 | PR 原生測試與檢查器 fixtures | 執行既有原生測試，以及架構／System catalog／DCS ID 產生器的測試 |
@@ -34,6 +34,7 @@ npm run validate:efm
 如果目標分支改變了 DLL 的有效輸入，合併階段會要求同步 PR、重建並提交 DLL，
 不會偷偷換用合併後產出的 DLL，也不會將差異直接認定為惡意程式碼。
 建置與測試不得改變來源、建置設定或上傳 DLL。
+提交與合併 checkout 都保留原生測試需要的 `FM/` 配置；`.jsonc` 也納入驗證期間的來源不變檢查。
 
 新原生驗證只在 PR 建立、更新、重新開啟、修改目標等事件執行；Draft PR 一樣檢查。
 沒有 PR 的一般分支 push 不觸發它。既有 `main` / `dev` push 排版檢查保留。
@@ -62,10 +63,13 @@ PR 的可信目標提交。首次 PR 需人工檢視；只合併到 `dev` 尚未
 ### 固定建置配方
 
 `src/efm/EfmBuild.props` 是共用來源：MSVC v142 / 14.29.30133、cl 19.29.30159.0、
-link 14.29.30159.0、Windows SDK 10.0.26100.0，以及四個編譯／連結工具檔案的 SHA-256。
+link 14.29.30159.0、Windows SDK 10.0.26100.0，以及四個編譯／連結工具檔案與
+`libcmt.lib`、`libcpmt.lib`、`libvcruntime.lib`、SDK `libucrt.lib` 的 SHA-256。
 `PreferredToolArchitecture` 明確固定為 x64，讓實際執行的工具與被核對的 Hostx64 檔案一致；
 這與 DLL 的 x64 目標架構是兩項不同設定。
 VS IDE 可更新；固定工具組件仍須安裝。工具不符時明確報環境錯誤，不自動換版本。
+已驗證 VS／Build Tools 2026 的組件；雲端使用官方 `windows-2025-vs2026`。
+舊版 VS 可在相同工具／SDK 版號目錄內帶有不同 CRT／UCRT 內容；只看版號不足以確認一致。
 
 參數包含 `/Brepro`、`/experimental:deterministic`、來源 `/pathmap` 與 `/PDBALTPATH`。
 真實 checkout 路徑映射成邏輯 `D:\efm-repro`，不需要實際建立該資料夾或磁碟。
@@ -91,7 +95,7 @@ CLI 自動找到安裝位置並設定對應開發工具環境；無須手動開 
 - Require branches to be up to date before merging，避免目標更新後沿用舊結果。
 - 規則變更提醒是審查資訊，不是新的人工核准限制。
 
-原生工作使用 `windows-2022`。只在失敗時保留小型 JSON、摘要與文字 log，保存三天，
+原生工作使用 `windows-2025-vs2026`。只在失敗時保留小型 JSON、摘要與文字 log，保存三天，
 不額外上傳 DLL 或專案來源。紀錄工具版本、兩份雜湊、步驟結果及耗時。
 
 自動檢查通過不等於 DCS 遊戲內驗證成功。DCS 留給人工實測，安排於發佈前，或影響
@@ -105,6 +109,9 @@ CLI 自動找到安裝位置並設定對應開發工具環境；無須手動開 
 Windows/MSVC remains the compiler; Linux is for editing. The shared profile in
 `src/efm/EfmBuild.props` pins the v142 toolchain, Windows SDK and compiler/linker
 fingerprints and enables deterministic time/path handling.
+Four static CRT/UCRT libraries are also fingerprinted; identical compiler and SDK
+version labels can still contain different serviced runtime libraries. The verified
+installation family is VS/Build Tools 2026, and PR jobs use `windows-2025-vs2026`.
 The profile also pins PreferredToolArchitecture to x64 so actual host tools match
 the fingerprinted Hostx64 binaries, independently of the output target architecture.
 Install the v142 x64/x86 tools and Windows SDK 10.0.26100.0 through Visual Studio Installer.
@@ -119,6 +126,8 @@ preserves the submitted DLL before merging, rejects changed DLL results with an
 instruction to update the branch/rebuild, and runs native tests. The final job
 rejects failed/skipped jobs and checks both commit identities against current PR
 metadata. Existing push formatting is retained; native validation runs only for PRs.
+Both sparse checkouts retain the tracked FM configuration needed by native tests;
+JSONC configuration is included in the source-unchanged check.
 
 The independent target-branch notice job never executes PR code. It maintains
 one PR comment listing exact changed rule files, line ranges, categories, old/new

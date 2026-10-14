@@ -15,7 +15,7 @@ concurrency:
 jobs:
   pr-submission:
     name: PR 提交驗證
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     timeout-minutes: 20
     env:
       PR_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -73,7 +73,7 @@ jobs:
   merge-compatibility:
     name: 合併相容驗證
     needs: pr-submission
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     timeout-minutes: 20
     env:
       PR_HEAD: ${{ github.event.pull_request.head.sha }}

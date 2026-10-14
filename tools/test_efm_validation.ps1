@@ -32,6 +32,14 @@ try {
     foreach ($name in @('cl.exe', 'link.exe')) { Copy-Item -LiteralPath (Join-Path $realTools "bin\Hostx64\x64\$name") -Destination (Join-Path $fakeTools $name) }
     [IO.File]::WriteAllText((Join-Path $fakeTools 'c1xx.dll'), 'wrong compiler frontend')
     Expect-Failure 'Modified compiler frontend' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot (Join-Path $fixtureRoot 'tools') } 'Toolchain mismatch: c1xx.dll'
+    $profile = Get-EfmBuildProfile $repoRoot
+    $fakeSdk = Join-Path $fixtureRoot 'sdk'
+    [IO.Directory]::CreateDirectory((Join-Path $fakeSdk "Include\$($profile.EfmWindowsSdkVersion)")) | Out-Null
+    $sdkLibrary = "Lib\$($profile.EfmWindowsSdkVersion)\ucrt\x64\libucrt.lib"
+    $fakeLibrary = Join-Path $fakeSdk $sdkLibrary
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $fakeLibrary)) | Out-Null
+    [IO.File]::WriteAllText($fakeLibrary, 'different SDK runtime with the same version directory')
+    Expect-Failure 'Different runtime with matching SDK version' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot $realTools -SdkRoot $fakeSdk } 'Toolchain mismatch: Lib\\.*\\libucrt\.lib'
     $gitRepo = Join-Path $fixtureRoot 'merge-repo'
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'tools')) | Out-Null

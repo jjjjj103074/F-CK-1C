@@ -28,4 +28,16 @@ foreach ($directory in @('Include', 'Lib')) {
     $sdkPath = Join-Path $SdkRoot "$directory\$($profile.EfmWindowsSdkVersion)"
     if (-not (Test-Path -LiteralPath $sdkPath -PathType Container)) { throw "Windows SDK $($profile.EfmWindowsSdkVersion) is missing: $sdkPath" }
 }
-Write-Output "EFM toolchain matched: MSVC $($profile.EfmCompilerVersion), linker $($profile.EfmLinkerVersion), SDK $($profile.EfmWindowsSdkVersion)."
+$libraries = @(
+    @{ Root = $ToolchainRoot; File = 'lib\x64\libcmt.lib'; Hash = $profile.EfmLibcmtSha256 },
+    @{ Root = $ToolchainRoot; File = 'lib\x64\libcpmt.lib'; Hash = $profile.EfmLibcpmtSha256 },
+    @{ Root = $ToolchainRoot; File = 'lib\x64\libvcruntime.lib'; Hash = $profile.EfmLibvcruntimeSha256 },
+    @{ Root = $SdkRoot; File = "Lib\$($profile.EfmWindowsSdkVersion)\ucrt\x64\libucrt.lib"; Hash = $profile.EfmLibucrtSha256 }
+)
+foreach ($library in $libraries) {
+    $file = Join-Path $library.Root $library.File
+    if (-not (Test-Path -LiteralPath $file)) { throw "Pinned runtime library is missing: $file" }
+    $hash = Get-EfmSha256 $file
+    if ($hash -ne $library.Hash) { throw "Toolchain mismatch: $($library.File) SHA256 expected $($library.Hash), found $hash. Matching version labels alone are insufficient; see docs/BUILD_DLL.md." }
+}
+Write-Output "EFM toolchain matched: MSVC $($profile.EfmCompilerVersion), linker $($profile.EfmLinkerVersion), SDK $($profile.EfmWindowsSdkVersion), pinned static runtime libraries."

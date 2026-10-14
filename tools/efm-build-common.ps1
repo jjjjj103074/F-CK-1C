@@ -25,7 +25,8 @@ function Get-EfmBuildProfile {
     $values = @{}
     foreach ($name in @('EfmPlatformToolset', 'EfmHostArchitecture', 'EfmVCToolsVersion', 'EfmWindowsSdkVersion',
             'EfmCompilerVersion', 'EfmLinkerVersion', 'EfmCompilerSha256', 'EfmLinkerSha256',
-            'EfmFrontendSha256', 'EfmBackendSha256', 'EfmCanonicalSourceRoot')) {
+            'EfmFrontendSha256', 'EfmBackendSha256', 'EfmLibcmtSha256', 'EfmLibcpmtSha256',
+            'EfmLibvcruntimeSha256', 'EfmLibucrtSha256', 'EfmCanonicalSourceRoot')) {
         $nodes = $document.GetElementsByTagName($name)
         if ($nodes.Count -ne 1 -or [string]::IsNullOrWhiteSpace($nodes[0].InnerText)) {
             throw "Invalid build profile property: $name"
@@ -35,7 +36,8 @@ function Get-EfmBuildProfile {
     foreach ($name in @('EfmVCToolsVersion', 'EfmWindowsSdkVersion', 'EfmCompilerVersion', 'EfmLinkerVersion')) {
         if ($values[$name] -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw "Invalid version: $name" }
     }
-    foreach ($name in @('EfmCompilerSha256', 'EfmLinkerSha256', 'EfmFrontendSha256', 'EfmBackendSha256')) {
+    foreach ($name in @('EfmCompilerSha256', 'EfmLinkerSha256', 'EfmFrontendSha256', 'EfmBackendSha256',
+            'EfmLibcmtSha256', 'EfmLibcpmtSha256', 'EfmLibvcruntimeSha256', 'EfmLibucrtSha256')) {
         if ($values[$name] -notmatch '^[A-Fa-f0-9]{64}$') { throw "Invalid tool hash: $name" }
     }
     if ($values.EfmHostArchitecture -ne 'x64') { throw 'The pinned build profile requires x64 host tools.' }
