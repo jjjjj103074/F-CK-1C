@@ -53,8 +53,10 @@ PR 的建置／測試配方可以改動，會明確提醒人工審查。此設�
 沒有設定強制 CODEOWNERS 核准；CI 綠燈不能證明新配方沒有繞過驗證。
 特別檢視來源選擇、重建動作、DLL 複製、雜湊比較，以及測試是否被跳過。
 
-第一次加入這套流程時，目標分支尚未有可信提醒程式，因此需人工檢視首次 PR。
-合併部署後，後續 PR 才會由目標分支版本自動提醒。
+提醒工作流程須先部署到預設分支 `main`，被驗證的目標分支也須包含可信提醒程式。
+GitHub 從預設分支載入 `pull_request_target` 工作流程，再由此流程明確 checkout
+PR 的可信目標提交。首次 PR 需人工檢視；只合併到 `dev` 尚未完成提醒流程的部署。
+未合併前的隔離測試可使用測試分支專用入口執行相同提醒程式，但不代表正式觸發已啟用。
 本機可預覽具體規則差異：`npm run preview:pr-rules -- HEAD`。
 
 ### 固定建置配方
@@ -77,6 +79,11 @@ CLI 自動找到安裝位置並設定對應開發工具環境；無須手動開 
 ### GitHub 啟用與人工 DCS 驗證
 
 工作流程檔案本身不會變更 GitHub 分支保護。部署並實際跑過後，於 `dev` / `main` 設定：
+
+也須確認 Actions event policy 允許 `pull_request_target`。GitHub 對部分公開 repository
+的預設封鎖政策目前採評估模式，並規劃於 2026-11-02 強制套用；正式啟用前依
+[官方事件安全指引](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
+確認當下政策。本機或測試分支不會自動變更此政策。
 
 - Require status checks：`PR 提交驗證`、`合併相容驗證`、`PR 驗證總結`。
 - Require branches to be up to date before merging，避免目標更新後沿用舊結果。
@@ -115,8 +122,14 @@ diff excerpts and links. Renames/deletions and incomplete API responses are cove
 Build/validation rules in the PR may change; this is an advisory policy requiring
 human scrutiny, not an immutable builder or enforced approval policy. Green checks
 are not proof that a modified recipe has not bypassed validation. The initial
-deployment requires manual review because the trusted notice is not yet on the
-target branch. Preview locally with `npm run preview:pr-rules -- HEAD`.
+deployment requires manual review. GitHub loads the `pull_request_target`
+workflow from the default branch (`main`); it then explicitly checks out the
+trusted target commit. Deploy the workflow to main and the notice script to
+each supported target branch. A dev-only merge does not activate this trigger.
+An isolated test-branch entry can exercise the same notice code before deployment,
+but does not prove the production trigger is active. Check the applicable Actions
+event policy against GitHub's current official guidance before activation.
+Preview locally with `npm run preview:pr-rules -- HEAD`.
 
 Do not make the three validation checks required until a real cloud run produces
 the same whole DLL hash. Then require `PR 提交驗證`, `合併相容驗證` and
