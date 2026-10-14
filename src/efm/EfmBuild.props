@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- CI TEST ONLY: harmless build-rule comment; do not merge this fixture. -->
   <!-- One profile for Visual Studio, command-line builds, and PR validation. -->
   <PropertyGroup>
     <EfmPlatformToolset>v142</EfmPlatformToolset>

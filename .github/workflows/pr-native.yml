@@ -2,7 +2,7 @@ name: PR Native Validation
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, 'codex/ci-test-base-20261014']
     types: [opened, synchronize, reopened, edited]
 
 permissions:
