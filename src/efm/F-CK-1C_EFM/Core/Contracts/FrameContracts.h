@@ -137,11 +137,9 @@ struct FrameInput
 	MassStateInput mass;
 	WorldKinematicsInput world_kinematics;
 	BodyKinematicsInput body_kinematics;
-	std::array<SuspensionFeedbackInput, kFrameSuspensionWheelCount> suspension = {
-		SuspensionFeedbackInput{ 0 },
-		SuspensionFeedbackInput{ 1 },
-		SuspensionFeedbackInput{ 2 }
-	};
+	std::array<SuspensionFeedbackInput, kFrameSuspensionWheelCount> suspension = { SuspensionFeedbackInput{ 0 },
+		                                                                           SuspensionFeedbackInput{ 1 },
+		                                                                           SuspensionFeedbackInput{ 2 } };
 	CockpitObservation cockpit;
 };
 
@@ -203,8 +201,7 @@ struct LandingGearOutput
 	double nose_wheel_steering_normalized = 0.0;
 	double brake_left_normalized = 0.0;
 	double brake_right_normalized = 0.0;
-	std::array<double, kFrameSuspensionWheelCount>
-		wheel_spin_phase_0_1 = {};
+	std::array<double, kFrameSuspensionWheelCount> wheel_spin_phase_0_1 = {};
 };
 
 struct SuspensionWheelOutput

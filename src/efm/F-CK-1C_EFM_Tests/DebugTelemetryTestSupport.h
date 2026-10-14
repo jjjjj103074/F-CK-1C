@@ -12,27 +12,21 @@ class DisabledDebugTelemetry final : public Core::DebugTelemetrySink
 {
 public:
 	DisabledDebugTelemetry()
-		: DebugTelemetrySink(
-			Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport)
+	    : DebugTelemetrySink(Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport)
 	{
 	}
 
 protected:
-	Core::DebugTelemetryChannelId declare_channel_impl(
-		Core::DebugTelemetryChannelDescriptor) override
+	Core::DebugTelemetryChannelId declare_channel_impl(Core::DebugTelemetryChannelDescriptor) override
 	{
 		return kDiscardedChannelId;
 	}
 
-	void publish_impl(
-		Core::DebugTelemetryChannelId,
-		Core::DebugSimulationTime,
-		Core::DebugTelemetryValue) override
+	void publish_impl(Core::DebugTelemetryChannelId, Core::DebugSimulationTime, Core::DebugTelemetryValue) override
 	{
 	}
 
-	void report_publish_failure_impl(
-		const Core::DebugTelemetryPublishFailure&) noexcept override
+	void report_publish_failure_impl(const Core::DebugTelemetryPublishFailure&) noexcept override
 	{
 	}
 
@@ -51,8 +45,7 @@ class RecordingDebugTelemetry final : public Core::DebugTelemetrySink
 {
 public:
 	RecordingDebugTelemetry()
-		: DebugTelemetrySink(
-			Core::DebugTelemetryPublishErrorPolicy::ReportAndRethrow)
+	    : DebugTelemetrySink(Core::DebugTelemetryPublishErrorPolicy::ReportAndRethrow)
 	{
 	}
 
@@ -67,25 +60,21 @@ public:
 	}
 
 protected:
-	Core::DebugTelemetryChannelId declare_channel_impl(
-		Core::DebugTelemetryChannelDescriptor descriptor) override
+	Core::DebugTelemetryChannelId declare_channel_impl(Core::DebugTelemetryChannelDescriptor descriptor) override
 	{
-		const auto id = static_cast<Core::DebugTelemetryChannelId>(
-			channels_.size());
+		const auto id = static_cast<Core::DebugTelemetryChannelId>(channels_.size());
 		channels_.push_back(std::move(descriptor));
 		return id;
 	}
 
-	void publish_impl(
-		Core::DebugTelemetryChannelId id,
-		Core::DebugSimulationTime time,
-		Core::DebugTelemetryValue value) override
+	void publish_impl(Core::DebugTelemetryChannelId id,
+	                  Core::DebugSimulationTime time,
+	                  Core::DebugTelemetryValue value) override
 	{
 		updates_.push_back({ id, time, std::move(value) });
 	}
 
-	void report_publish_failure_impl(
-		const Core::DebugTelemetryPublishFailure&) noexcept override
+	void report_publish_failure_impl(const Core::DebugTelemetryPublishFailure&) noexcept override
 	{
 		publication_failed_ = true;
 	}

@@ -4,9 +4,8 @@
 
 namespace Core::Systems::Dflcc
 {
-AmuxProcessor::AmuxProcessor(
-	AmuxData& amux)
-	: amux_(amux)
+AmuxProcessor::AmuxProcessor(AmuxData& amux)
+    : amux_(amux)
 {
 }
 

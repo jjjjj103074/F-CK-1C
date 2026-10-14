@@ -37,8 +37,7 @@ public:
 	GroundInteractionModel(const GroundInteractionModel&) = delete;
 	GroundInteractionModel& operator=(const GroundInteractionModel&) = delete;
 
-	const GroundInteractionResult& step(
-		const GroundInteractionModelInput& input);
+	const GroundInteractionResult& step(const GroundInteractionModelInput& input);
 
 private:
 	struct Implementation;

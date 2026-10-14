@@ -24,10 +24,7 @@ public:
 	Engine(const EngineConfig& config, StartMode start_mode);
 
 	void setup(SystemSetup& setup) override;
-	void step(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft,
-		SystemResult& result) override;
+	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
 	const EngineData& step(const EngineFrameInput& input);
 	void handle_command(const Command& command);

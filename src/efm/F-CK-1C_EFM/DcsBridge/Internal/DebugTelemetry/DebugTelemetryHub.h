@@ -18,9 +18,8 @@ inline constexpr std::uint32_t kDebugCsvSampleRateHz = 64;
 class DebugTelemetryHub final : public Core::DebugTelemetrySink
 {
 public:
-	explicit DebugTelemetryHub(
-		Core::DebugTelemetryPublishErrorPolicy error_policy)
-		: DebugTelemetrySink(error_policy)
+	explicit DebugTelemetryHub(Core::DebugTelemetryPublishErrorPolicy error_policy)
+	    : DebugTelemetrySink(error_policy)
 	{
 	}
 
@@ -31,18 +30,14 @@ public:
 	std::vector<Core::DebugTelemetryChannelDescriptor> schema() const;
 	Core::DebugTelemetrySnapshot latest_snapshot() const;
 	DebugTelemetryHubStatus status() const;
-	std::vector<Core::DebugTelemetrySample> sample_through(
-		Core::DebugSimulationTime target_time);
+	std::vector<Core::DebugTelemetrySample> sample_through(Core::DebugSimulationTime target_time);
 
 protected:
-	Core::DebugTelemetryChannelId declare_channel_impl(
-		Core::DebugTelemetryChannelDescriptor descriptor) override;
-	void publish_impl(
-		Core::DebugTelemetryChannelId id,
-		Core::DebugSimulationTime time,
-		Core::DebugTelemetryValue value) override;
-	void report_publish_failure_impl(
-		const Core::DebugTelemetryPublishFailure& failure) noexcept override;
+	Core::DebugTelemetryChannelId declare_channel_impl(Core::DebugTelemetryChannelDescriptor descriptor) override;
+	void publish_impl(Core::DebugTelemetryChannelId id,
+	                  Core::DebugSimulationTime time,
+	                  Core::DebugTelemetryValue value) override;
+	void report_publish_failure_impl(const Core::DebugTelemetryPublishFailure& failure) noexcept override;
 
 private:
 	struct TimedUpdate
@@ -52,15 +47,12 @@ private:
 		Core::DebugTelemetryValue value;
 	};
 
-	Core::DebugTelemetryChannelId declare_new_channel(
-		Core::DebugTelemetryChannelDescriptor descriptor);
-	Core::DebugTelemetryChannelId redeclare_channel(
-		std::size_t index,
-		const Core::DebugTelemetryChannelDescriptor& descriptor);
-	void validate_publish(
-		Core::DebugTelemetryChannelId id,
-		Core::DebugSimulationTime time,
-		const Core::DebugTelemetryValue& value) const;
+	Core::DebugTelemetryChannelId declare_new_channel(Core::DebugTelemetryChannelDescriptor descriptor);
+	Core::DebugTelemetryChannelId redeclare_channel(std::size_t index,
+	                                                const Core::DebugTelemetryChannelDescriptor& descriptor);
+	void validate_publish(Core::DebugTelemetryChannelId id,
+	                      Core::DebugSimulationTime time,
+	                      const Core::DebugTelemetryValue& value) const;
 	void apply_updates_through(Core::DebugSimulationTime sample_time);
 	static Core::DebugSimulationTime sample_time(std::uint64_t sequence);
 

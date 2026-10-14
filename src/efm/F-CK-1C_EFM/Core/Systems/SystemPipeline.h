@@ -29,12 +29,9 @@ enum class DispatchResult
 	Unhandled
 };
 
-using CommandHandler =
-	std::function<void(const SystemActionContext&, const Command&)>;
-using DamageHandler =
-	std::function<void(const SystemActionContext&, const DamageEvent&)>;
-using RepairHandler =
-	std::function<void(const SystemActionContext&, const RepairEvent&)>;
+using CommandHandler = std::function<void(const SystemActionContext&, const Command&)>;
+using DamageHandler = std::function<void(const SystemActionContext&, const DamageEvent&)>;
+using RepairHandler = std::function<void(const SystemActionContext&, const RepairEvent&)>;
 
 struct FuelManagementHandlers
 {
@@ -64,11 +61,9 @@ struct AircraftDataDescriptor
 class AircraftDataSnapshot final
 {
 public:
-	template <typename T>
-	const T& read(const AircraftDataKey<T>& key) const
+	template <typename T> const T& read(const AircraftDataKey<T>& key) const
 	{
-		const AircraftDataValue& value =
-			read_value({ key.id, typeid(T), key.name });
+		const AircraftDataValue& value = read_value({ key.id, typeid(T), key.name });
 		const T* typed = std::get_if<T>(&value);
 		if (typed == nullptr)
 		{
@@ -77,21 +72,17 @@ public:
 		return *typed;
 	}
 
-	template <typename T>
-	bool has(const AircraftDataKey<T>& key) const
+	template <typename T> bool has(const AircraftDataKey<T>& key) const
 	{
 		return has_value({ key.id, typeid(T), key.name });
 	}
 
 private:
-	using Storage = std::array<
-		std::optional<AircraftDataValue>,
-		kAircraftDataSlotCount>;
+	using Storage = std::array<std::optional<AircraftDataValue>, kAircraftDataSlotCount>;
 
 	explicit AircraftDataSnapshot(const Storage& storage);
 
-	const AircraftDataValue& read_value(
-		const AircraftDataDescriptor& descriptor) const;
+	const AircraftDataValue& read_value(const AircraftDataDescriptor& descriptor) const;
 	bool has_value(const AircraftDataDescriptor& descriptor) const;
 	[[noreturn]] static void throw_type_error(const char* name);
 
@@ -103,15 +94,13 @@ private:
 class AircraftDataView final
 {
 public:
-	template <typename T>
-	const T& read(const AircraftDataKey<T>& key) const
+	template <typename T> const T& read(const AircraftDataKey<T>& key) const
 	{
 		require_declared({ key.id, typeid(T), key.name });
 		return snapshot_->read(key);
 	}
 
-	template <typename T>
-	bool has(const AircraftDataKey<T>& key) const
+	template <typename T> bool has(const AircraftDataKey<T>& key) const
 	{
 		require_declared({ key.id, typeid(T), key.name });
 		return snapshot_->has(key);
@@ -120,9 +109,7 @@ public:
 private:
 	using ReadableMask = std::array<bool, kAircraftDataSlotCount>;
 
-	AircraftDataView(
-		const AircraftDataSnapshot& snapshot,
-		const ReadableMask& readable);
+	AircraftDataView(const AircraftDataSnapshot& snapshot, const ReadableMask& readable);
 	void require_declared(const AircraftDataDescriptor& descriptor) const;
 
 	const AircraftDataSnapshot* snapshot_;
@@ -134,25 +121,17 @@ private:
 class SystemResult final
 {
 public:
-	template <typename T>
-	void publish(const AircraftDataKey<T>& key, const T& value)
+	template <typename T> void publish(const AircraftDataKey<T>& key, const T& value)
 	{
-		publish_value(
-			{ key.id, typeid(T), key.name },
-			AircraftDataValue(value));
+		publish_value({ key.id, typeid(T), key.name }, AircraftDataValue(value));
 	}
 
 private:
-	using PendingStorage = std::array<
-		std::optional<AircraftDataValue>,
-		kAircraftDataSlotCount>;
+	using PendingStorage = std::array<std::optional<AircraftDataValue>, kAircraftDataSlotCount>;
 
-	void activate_publications(
-		const std::array<bool, kAircraftDataSlotCount>& writable);
+	void activate_publications(const std::array<bool, kAircraftDataSlotCount>& writable);
 	void clear();
-	void publish_value(
-		const AircraftDataDescriptor& descriptor,
-		const AircraftDataValue& value);
+	void publish_value(const AircraftDataDescriptor& descriptor, const AircraftDataValue& value);
 
 	std::array<bool, kAircraftDataSlotCount> writable_ = {};
 	PendingStorage pending_;
@@ -163,37 +142,26 @@ private:
 class SystemSetup final
 {
 public:
-	template <typename T>
-	DebugTelemetryChannel<T> declare_debug_channel(
-		DebugTelemetryChannelDescriptor descriptor)
+	template <typename T> DebugTelemetryChannel<T> declare_debug_channel(DebugTelemetryChannelDescriptor descriptor)
 	{
 		return debug_telemetry().declare_channel<T>(std::move(descriptor));
 	}
 
 	template <typename T>
-	void read(
-		const AircraftDataKey<T>& key,
-		InitialValueRequirement initial =
-			InitialValueRequirement::Required)
+	void read(const AircraftDataKey<T>& key, InitialValueRequirement initial = InitialValueRequirement::Required)
 	{
 		declare_read({ key.id, typeid(T), key.name }, initial);
 	}
 
-	template <typename T>
-	void publish(const AircraftDataKey<T>& key)
+	template <typename T> void publish(const AircraftDataKey<T>& key)
 	{
-		declare_publication(
-			{ key.id, typeid(T), key.name },
-			nullptr);
+		declare_publication({ key.id, typeid(T), key.name }, nullptr);
 	}
 
-	template <typename T>
-	void publish(const AircraftDataKey<T>& key, const T& initial)
+	template <typename T> void publish(const AircraftDataKey<T>& key, const T& initial)
 	{
 		const AircraftDataValue value(initial);
-		declare_publication(
-			{ key.id, typeid(T), key.name },
-			&value);
+		declare_publication({ key.id, typeid(T), key.name }, &value);
 	}
 
 	void register_command_handler(CommandId id, CommandHandler handler);
@@ -207,12 +175,8 @@ private:
 	struct State;
 
 	explicit SystemSetup(State& state);
-	void declare_read(
-		const AircraftDataDescriptor& descriptor,
-		InitialValueRequirement initial);
-	void declare_publication(
-		const AircraftDataDescriptor& descriptor,
-		const AircraftDataValue* initial);
+	void declare_read(const AircraftDataDescriptor& descriptor, InitialValueRequirement initial);
+	void declare_publication(const AircraftDataDescriptor& descriptor, const AircraftDataValue* initial);
 	DebugTelemetrySink& debug_telemetry();
 
 	State* state_;
@@ -225,9 +189,7 @@ class SystemPipeline final
 {
 public:
 	explicit SystemPipeline(const FlightSetupContext& setup);
-	SystemPipeline(
-		const FlightSetupContext& setup,
-		std::vector<SystemEntry> catalog);
+	SystemPipeline(const FlightSetupContext& setup, std::vector<SystemEntry> catalog);
 	~SystemPipeline();
 
 	SystemPipeline(const SystemPipeline&) = delete;

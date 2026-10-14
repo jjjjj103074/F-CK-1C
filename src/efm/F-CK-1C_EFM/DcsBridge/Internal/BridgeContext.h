@@ -25,9 +25,7 @@ namespace DcsBridge
 namespace Internal
 {
 using CockpitApiProvider = cockpit_param_api (*)();
-using CoreFactory =
-	std::function<std::unique_ptr<Core::Fck1cEfm>(
-		Core::DebugTelemetrySink&)>;
+using CoreFactory = std::function<std::unique_ptr<Core::Fck1cEfm>(Core::DebugTelemetrySink&)>;
 
 struct BridgeContextConfig
 {
@@ -62,10 +60,7 @@ public:
 	Core::Fck1cEfm& core();
 	Core::FrameOutput start_flight(Core::StartMode mode);
 
-	template <typename Action>
-	bool perform_flight_action(
-		const CallbackContext& context,
-		const Action& action)
+	template <typename Action> bool perform_flight_action(const CallbackContext& context, const Action& action)
 	{
 		bool released = false;
 		{
@@ -83,25 +78,22 @@ public:
 		return !released;
 	}
 
-	template <typename Action>
-	bool perform_core_action(
-		const CallbackContext& context,
-		const Action& action)
+	template <typename Action> bool perform_core_action(const CallbackContext& context, const Action& action)
 	{
-		return perform_flight_action(
-			context,
-			[this, &action]() { action(*core_); });
+		return perform_flight_action(context,
+		                             [this, &action]()
+		                             {
+			                             action(*core_);
+		                             });
 	}
 
-	template <typename Action>
-	void perform_core_preparation(const Action& action)
+	template <typename Action> void perform_core_preparation(const Action& action)
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex_);
 		action(*core_);
 	}
 
-	template <typename Query>
-	auto query_core_preparation(const Query& query)
+	template <typename Query> auto query_core_preparation(const Query& query)
 	{
 		const std::lock_guard<std::mutex> lock(execution_mutex_);
 		return query(*core_);

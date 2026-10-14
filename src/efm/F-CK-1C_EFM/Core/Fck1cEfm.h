@@ -19,9 +19,7 @@ class Fck1cEfm
 {
 public:
 	explicit Fck1cEfm(DebugTelemetrySink& debug_telemetry);
-	explicit Fck1cEfm(
-		Simulation::AircraftSimulationFactory simulation_factory,
-		DebugTelemetrySink& debug_telemetry);
+	explicit Fck1cEfm(Simulation::AircraftSimulationFactory simulation_factory, DebugTelemetrySink& debug_telemetry);
 	~Fck1cEfm();
 
 	Fck1cEfm(const Fck1cEfm&) = delete;

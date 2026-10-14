@@ -27,9 +27,7 @@ public:
 	CarrierBridge& operator=(const CarrierBridge&) = delete;
 
 	void reset();
-	bool pop_event(
-		const CarrierLaunchInput& input,
-		ed_fm_simulation_event& output);
+	bool pop_event(const CarrierLaunchInput& input, ed_fm_simulation_event& output);
 	bool push_event(const ed_fm_simulation_event& input);
 
 private:

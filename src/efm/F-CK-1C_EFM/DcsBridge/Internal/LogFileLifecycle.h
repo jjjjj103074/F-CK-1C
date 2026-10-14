@@ -27,8 +27,6 @@ struct LogFilePreparation
 	LogFileOperation failed_operation = LogFileOperation::None;
 };
 
-LogFilePreparation prepare_rotating_log_file(
-	const char* module_root,
-	const char* active_file_name);
+LogFilePreparation prepare_rotating_log_file(const char* module_root, const char* active_file_name);
 }
 }

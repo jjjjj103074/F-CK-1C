@@ -9,15 +9,11 @@ namespace Systems
 SystemEntry make_engine_system_entry(const EngineConfig& config)
 {
 	validate_engine_config(config);
-	return {
-		"engine",
-		[owned_config = config](const FlightSetupContext& setup)
-		{
-			return std::make_unique<Engine>(
-				owned_config,
-				setup.start_mode);
-		}
-	};
+	return { "engine",
+		     [owned_config = config](const FlightSetupContext& setup)
+		     {
+		         return std::make_unique<Engine>(owned_config, setup.start_mode);
+		     } };
 }
 
 namespace Catalog

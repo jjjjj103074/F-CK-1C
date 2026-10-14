@@ -19,8 +19,7 @@ struct GroundInteractionConfig
 	bool enable_fallback_ground_forces = false;
 };
 
-void validate_ground_interaction_config(
-	const GroundInteractionConfig& config);
+void validate_ground_interaction_config(const GroundInteractionConfig& config);
 const GroundInteractionConfig& fck1c_ground_interaction_config();
 }
 }

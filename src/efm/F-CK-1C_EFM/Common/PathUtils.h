@@ -135,15 +135,8 @@ inline void build_path(const PathTarget& target, const PathParts& parts)
 	else
 	{
 		const size_t base_len = strlen(parts.base);
-		const bool needs_sep =
-			base_len > 0 && !is_path_separator(parts.base[base_len - 1]);
-		snprintf(
-			target.data,
-			target.capacity,
-			"%s%s%s",
-			parts.base,
-			needs_sep ? "\\" : "",
-			relative);
+		const bool needs_sep = base_len > 0 && !is_path_separator(parts.base[base_len - 1]);
+		snprintf(target.data, target.capacity, "%s%s%s", parts.base, needs_sep ? "\\" : "", relative);
 	}
 	normalize_path_separators(target.data);
 }
@@ -159,16 +152,14 @@ inline bool resolve_saved_games_logs_dir(char* out, size_t out_size)
 		{
 			char home[1024];
 			snprintf(home, sizeof(home), "%s%s", home_drive, home_path);
-			build_path(
-				{ out, out_size }, { home, "Saved Games\\DCS\\Logs" });
+			build_path({ out, out_size }, { home, "Saved Games\\DCS\\Logs" });
 			return true;
 		}
 
 		return false;
 	}
 
-	build_path(
-		{ out, out_size }, { userprofile, "Saved Games\\DCS\\Logs" });
+	build_path({ out, out_size }, { userprofile, "Saved Games\\DCS\\Logs" });
 	return true;
 }
 }

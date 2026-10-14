@@ -11,8 +11,7 @@ namespace Core
 {
 namespace Diagnostics
 {
-inline constexpr const char* kUnknownExceptionReason =
-	"unknown C++ exception";
+inline constexpr const char* kUnknownExceptionReason = "unknown C++ exception";
 
 struct ExecutionScope
 {
@@ -21,10 +20,7 @@ struct ExecutionScope
 	std::string_view operation;
 };
 
-template <typename Action>
-decltype(auto) invoke_with_execution_context(
-	const ExecutionScope& scope,
-	Action&& action)
+template <typename Action> decltype(auto) invoke_with_execution_context(const ExecutionScope& scope, Action&& action)
 {
 	try
 	{
@@ -36,21 +32,13 @@ decltype(auto) invoke_with_execution_context(
 	}
 	catch (const std::exception& error)
 	{
-		throw ExecutionError({
-			scope.owner_type,
-			std::string(scope.owner),
-			std::string(scope.operation),
-			error.what()
-		});
+		throw ExecutionError(
+		    { scope.owner_type, std::string(scope.owner), std::string(scope.operation), error.what() });
 	}
 	catch (...)
 	{
-		throw ExecutionError({
-			scope.owner_type,
-			std::string(scope.owner),
-			std::string(scope.operation),
-			kUnknownExceptionReason
-		});
+		throw ExecutionError(
+		    { scope.owner_type, std::string(scope.owner), std::string(scope.operation), kUnknownExceptionReason });
 	}
 }
 }

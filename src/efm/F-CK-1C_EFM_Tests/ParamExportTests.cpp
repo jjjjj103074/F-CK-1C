@@ -15,17 +15,10 @@ constexpr unsigned kObservedRightMainWheelYawParam = 2025;
 constexpr unsigned kObservedPitchForceCenterParam = 2123;
 constexpr unsigned kObservedAltimeterPressureParam = 2132;
 
-static_assert(
-	DcsIds::Params::LeftMainWheelYawCompatibility ==
-		kObservedLeftMainWheelYawParam);
-static_assert(
-	DcsIds::Params::RightMainWheelYawCompatibility ==
-		kObservedRightMainWheelYawParam);
-static_assert(
-	DcsIds::Params::PitchForceCenter == kObservedPitchForceCenterParam);
-static_assert(
-	DcsIds::Params::CockpitAltimeterPressureSetting ==
-		kObservedAltimeterPressureParam);
+static_assert(DcsIds::Params::LeftMainWheelYawCompatibility == kObservedLeftMainWheelYawParam);
+static_assert(DcsIds::Params::RightMainWheelYawCompatibility == kObservedRightMainWheelYawParam);
+static_assert(DcsIds::Params::PitchForceCenter == kObservedPitchForceCenterParam);
+static_assert(DcsIds::Params::CockpitAltimeterPressureSetting == kObservedAltimeterPressureParam);
 
 struct ParamExpectation
 {
@@ -33,21 +26,20 @@ struct ParamExpectation
 	double value;
 };
 
-constexpr ParamExpectation kObservedCompatibilityParams[] = {
-	{ kObservedLeftMainWheelYawParam, 0.0 },
-	{ kObservedRightMainWheelYawParam, 0.0 },
-	{ kObservedPitchForceCenterParam, 0.0 },
-	{ kObservedAltimeterPressureParam, kStandardAtmosphereMmHg }
-};
+constexpr ParamExpectation kObservedCompatibilityParams[] = { { kObservedLeftMainWheelYawParam, 0.0 },
+	                                                          { kObservedRightMainWheelYawParam, 0.0 },
+	                                                          { kObservedPitchForceCenterParam, 0.0 },
+	                                                          { kObservedAltimeterPressureParam,
+	                                                            kStandardAtmosphereMmHg } };
 
 struct ParamExporterFixture
 {
 	ParamExporterFixture()
-		: root("pex"),
-		root_path(root.path().string()),
-		event_log(root_path.c_str()),
-		event_reporter(event_log, output_store),
-		exporter(event_reporter)
+	    : root("pex"),
+	      root_path(root.path().string()),
+	      event_log(root_path.c_str()),
+	      event_reporter(event_log, output_store),
+	      exporter(event_reporter)
 	{
 	}
 
@@ -87,10 +79,7 @@ DcsBridge::ParamExportState make_state()
 	return state;
 }
 
-double require_param(
-	Tests::Context& context,
-	unsigned index,
-	const DcsBridge::ParamExportState& state)
+double require_param(Tests::Context& context, unsigned index, const DcsBridge::ParamExportState& state)
 {
 	const std::optional<double> value = DcsBridge::get_param(index, state);
 	TEST_EXPECT(context, value.has_value());
@@ -121,11 +110,10 @@ void test_service_and_engine_params(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineRpm, state), 5545.125, kTolerance);
 	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineCombustion, state), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, require_param(context, LeftEngineThrust, state), 12000.0, kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		require_param(context, LeftEngineTemperature, state),
-		kExpectedLeftEngineTemperatureC,
-		kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 require_param(context, LeftEngineTemperature, state),
+	                 kExpectedLeftEngineTemperatureC,
+	                 kTolerance);
 	TEST_EXPECT(context, !DcsBridge::get_param(999999, state).has_value());
 }
 
@@ -133,33 +121,37 @@ void test_declared_compatibility_params(Tests::Context& context)
 {
 	using namespace DcsIds::Params;
 	const DcsBridge::ParamExportState state = make_state();
-	const ParamExpectation expected[] = {
-		{ ApuCoreRelatedRpm, 1.0 },
-		{ LeftPropellerPitch, 0.0 }, { RightPropellerPitch, 0.0 },
-		{ LeftEngineFuelFlow, 2.0 }, { RightEngineFuelFlow, 2.0 },
-		{ LeftEngineFanPhase, 0.0 }, { RightEngineFanPhase, 0.0 },
-		{ LeftEngineFlowSpeedCompatibility, 0.0 },
-		{ RightEngineFlowSpeedCompatibility, 0.0 },
-		{ LeftMainWheelYawCompatibility, 0.0 },
-		{ RightMainWheelYawCompatibility, 0.0 },
-		{ LeftWheelSpin, 0.0 }, { RightWheelSpin, 0.0 },
-		{ PitchForceCenter, 0.0 }, { PitchForceFactor, 0.0 },
-		{ PitchForceShakeAmplitude, 0.0 },
-		{ PitchForceShakeFrequency, 0.0 }, { RollForceCenter, 0.0 },
-		{ RollForceFactor, 0.0 }, { RollForceShakeAmplitude, 0.0 },
-		{ RollForceShakeFrequency, 0.0 }, { CockpitPressurization, 0.0 },
-		{ CockpitAltimeterPressureSetting, kStandardAtmosphereMmHg },
-		{ InterruptRefuel, 0.0 },
-		{ UnknownCompatibility2134, 0.0 }, { UnknownCompatibility2135, 0.0 },
-		{ UnknownCompatibility2136, 0.0 }, { UnknownCompatibility2137, 0.0 }
-	};
+	const ParamExpectation expected[] = { { ApuCoreRelatedRpm, 1.0 },
+		                                  { LeftPropellerPitch, 0.0 },
+		                                  { RightPropellerPitch, 0.0 },
+		                                  { LeftEngineFuelFlow, 2.0 },
+		                                  { RightEngineFuelFlow, 2.0 },
+		                                  { LeftEngineFanPhase, 0.0 },
+		                                  { RightEngineFanPhase, 0.0 },
+		                                  { LeftEngineFlowSpeedCompatibility, 0.0 },
+		                                  { RightEngineFlowSpeedCompatibility, 0.0 },
+		                                  { LeftMainWheelYawCompatibility, 0.0 },
+		                                  { RightMainWheelYawCompatibility, 0.0 },
+		                                  { LeftWheelSpin, 0.0 },
+		                                  { RightWheelSpin, 0.0 },
+		                                  { PitchForceCenter, 0.0 },
+		                                  { PitchForceFactor, 0.0 },
+		                                  { PitchForceShakeAmplitude, 0.0 },
+		                                  { PitchForceShakeFrequency, 0.0 },
+		                                  { RollForceCenter, 0.0 },
+		                                  { RollForceFactor, 0.0 },
+		                                  { RollForceShakeAmplitude, 0.0 },
+		                                  { RollForceShakeFrequency, 0.0 },
+		                                  { CockpitPressurization, 0.0 },
+		                                  { CockpitAltimeterPressureSetting, kStandardAtmosphereMmHg },
+		                                  { InterruptRefuel, 0.0 },
+		                                  { UnknownCompatibility2134, 0.0 },
+		                                  { UnknownCompatibility2135, 0.0 },
+		                                  { UnknownCompatibility2136, 0.0 },
+		                                  { UnknownCompatibility2137, 0.0 } };
 	for (const ParamExpectation& item : expected)
 	{
-		TEST_EXPECT_NEAR(
-			context,
-			require_param(context, item.index, state),
-			item.value,
-			kTolerance);
+		TEST_EXPECT_NEAR(context, require_param(context, item.index, state), item.value, kTolerance);
 	}
 }
 
@@ -168,11 +160,7 @@ void test_observed_raw_compatibility_param_ids(Tests::Context& context)
 	const DcsBridge::ParamExportState state = make_state();
 	for (const ParamExpectation& item : kObservedCompatibilityParams)
 	{
-		TEST_EXPECT_NEAR(
-			context,
-			require_param(context, item.index, state),
-			item.value,
-			kTolerance);
+		TEST_EXPECT_NEAR(context, require_param(context, item.index, state), item.value, kTolerance);
 	}
 }
 
@@ -181,14 +169,13 @@ void test_missing_required_data_is_identified(Tests::Context& context)
 	using namespace DcsIds::Params;
 	DcsBridge::ParamExportState state = make_state();
 	state.suspension_feedback_available = false;
-	const std::optional<DcsBridge::ParamDataCategory> suspension =
-		DcsBridge::missing_param_data(NoseWheelYaw, state);
+	const std::optional<DcsBridge::ParamDataCategory> suspension = DcsBridge::missing_param_data(NoseWheelYaw, state);
 	TEST_EXPECT(context, suspension == DcsBridge::ParamDataCategory::Suspension);
 	TEST_EXPECT(context, !DcsBridge::missing_param_data(NoseWheelSpin, state));
 	state.suspension_feedback_available = true;
 	state.atmosphere_available = false;
 	const std::optional<DcsBridge::ParamDataCategory> atmosphere =
-		DcsBridge::missing_param_data(LeftEngineTemperature, state);
+	    DcsBridge::missing_param_data(LeftEngineTemperature, state);
 	TEST_EXPECT(context, atmosphere == DcsBridge::ParamDataCategory::Atmosphere);
 	TEST_EXPECT(context, !DcsBridge::missing_param_data(InternalFuel, state));
 }
@@ -202,12 +189,10 @@ void test_param_export_values_and_unknown(Tests::Context& context)
 	output.availability.suspension[0] = true;
 	output.fuel.total_fuel_flow_kg_s = 4.0;
 	const DcsBridge::ParamExportAvailabilityHistory history;
-	const DcsBridge::ParamExportResult implemented =
-		DcsBridge::resolve_param(LeftEngineFuelFlow, output, history);
+	const DcsBridge::ParamExportResult implemented = DcsBridge::resolve_param(LeftEngineFuelFlow, output, history);
 	TEST_EXPECT(context, implemented.status == DcsBridge::ParamExportStatus::Value);
 	TEST_EXPECT_NEAR(context, implemented.value, 2.0, kTolerance);
-	const DcsBridge::ParamExportResult unknown =
-		DcsBridge::resolve_param(999999, output, history);
+	const DcsBridge::ParamExportResult unknown = DcsBridge::resolve_param(999999, output, history);
 	TEST_EXPECT(context, unknown.status == DcsBridge::ParamExportStatus::Unknown);
 	TEST_EXPECT_NEAR(context, unknown.value, 0.0, kTolerance);
 }
@@ -221,60 +206,36 @@ void test_param_data_availability_classification(Tests::Context& context)
 	output.availability.suspension[0] = false;
 	const DcsBridge::ParamExportAvailabilityHistory initial_history;
 	const DcsBridge::ParamExportResult initial =
-		DcsBridge::resolve_param(
-			LeftEngineTemperature, output, initial_history);
-	TEST_EXPECT(
-		context,
-		initial.status == DcsBridge::ParamExportStatus::StartCompatibility);
+	    DcsBridge::resolve_param(LeftEngineTemperature, output, initial_history);
+	TEST_EXPECT(context, initial.status == DcsBridge::ParamExportStatus::StartCompatibility);
 	TEST_EXPECT_NEAR(context, initial.value, 0.0, kTolerance);
 	const DcsBridge::ParamExportResult initial_suspension =
-		DcsBridge::resolve_param(NoseWheelYaw, output, initial_history);
-	TEST_EXPECT(
-		context,
-		initial_suspension.status ==
-			DcsBridge::ParamExportStatus::StartCompatibility);
+	    DcsBridge::resolve_param(NoseWheelYaw, output, initial_history);
+	TEST_EXPECT(context, initial_suspension.status == DcsBridge::ParamExportStatus::StartCompatibility);
 	DcsBridge::ParamExportAvailabilityHistory available_history;
 	available_history.atmosphere_available = true;
 	available_history.nose_suspension_available = true;
 	const DcsBridge::ParamExportResult missing =
-		DcsBridge::resolve_param(
-			LeftEngineTemperature, output, available_history);
-	TEST_EXPECT(
-		context,
-		missing.status == DcsBridge::ParamExportStatus::MissingRuntimeData);
-	TEST_EXPECT(
-		context,
-		missing.missing_data == DcsBridge::ParamDataCategory::Atmosphere);
+	    DcsBridge::resolve_param(LeftEngineTemperature, output, available_history);
+	TEST_EXPECT(context, missing.status == DcsBridge::ParamExportStatus::MissingRuntimeData);
+	TEST_EXPECT(context, missing.missing_data == DcsBridge::ParamDataCategory::Atmosphere);
 	const DcsBridge::ParamExportResult missing_suspension =
-		DcsBridge::resolve_param(NoseWheelYaw, output, available_history);
-	TEST_EXPECT(
-		context,
-		missing_suspension.status ==
-			DcsBridge::ParamExportStatus::MissingRuntimeData);
-	TEST_EXPECT(
-		context,
-		missing_suspension.missing_data ==
-			DcsBridge::ParamDataCategory::Suspension);
+	    DcsBridge::resolve_param(NoseWheelYaw, output, available_history);
+	TEST_EXPECT(context, missing_suspension.status == DcsBridge::ParamExportStatus::MissingRuntimeData);
+	TEST_EXPECT(context, missing_suspension.missing_data == DcsBridge::ParamDataCategory::Suspension);
 }
 
-void expect_observed_raw_param_exports(
-	Tests::Context& context,
-	DcsBridge::Internal::ParamExporter& exporter,
-	const Core::FrameOutput& output)
+void expect_observed_raw_param_exports(Tests::Context& context,
+                                       DcsBridge::Internal::ParamExporter& exporter,
+                                       const Core::FrameOutput& output)
 {
 	for (const ParamExpectation& item : kObservedCompatibilityParams)
 	{
-		TEST_EXPECT_NEAR(
-			context,
-			exporter.read(item.index, output),
-			item.value,
-			kTolerance);
+		TEST_EXPECT_NEAR(context, exporter.read(item.index, output), item.value, kTolerance);
 	}
 }
 
-void expect_known_param_log_is_clean(
-	Tests::Context& context,
-	const std::string& content)
+void expect_known_param_log_is_clean(Tests::Context& context, const std::string& content)
 {
 	TEST_EXPECT(context, content.find("index=112 missing") == std::string::npos);
 	TEST_EXPECT(context, content.find("index=3 missing") == std::string::npos);
@@ -293,30 +254,20 @@ void test_param_exporter_known_and_unknown_logging(Tests::Context& context)
 	output.simulation_time_s = 5.0;
 	fixture.output_store.publish(output);
 	fixture.exporter.observe(output);
-	TEST_EXPECT_NEAR(
-		context,
-		fixture.exporter.read(LeftEngineTemperature, output),
-		0.0,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context, fixture.exporter.read(ApuCoreRelatedRpm, output), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, fixture.exporter.read(LeftEngineTemperature, output), 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, fixture.exporter.read(ApuCoreRelatedRpm, output), 1.0, kTolerance);
 	expect_observed_raw_param_exports(context, fixture.exporter, output);
 	TEST_EXPECT_NEAR(context, fixture.exporter.read(999999, output), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, fixture.exporter.read(999999, output), 0.0, kTolerance);
 	fixture.event_reporter.log_release(output.simulation_time_s);
-	const std::string content = TestFiles::read_text_while_open(
-		fixture.root.path() / "log" / "fck1c_efm.log");
-	const std::string unknown =
-		"callback=ed_fm_get_param index=999999 missing mapping";
+	const std::string content = TestFiles::read_text_while_open(fixture.root.path() / "log" / "fck1c_efm.log");
+	const std::string unknown = "callback=ed_fm_get_param index=999999 missing mapping";
 	const std::size_t first_unknown = content.find(unknown);
 	expect_known_param_log_is_clean(context, content);
 	TEST_EXPECT(context, first_unknown != std::string::npos);
-	TEST_EXPECT(
-		context,
-		content.find(unknown, first_unknown + 1) == std::string::npos);
-	TEST_EXPECT(context, content.find(
-		"kind=unknown_param id=999999 total=2 flight_release_summary") !=
-		std::string::npos);
+	TEST_EXPECT(context, content.find(unknown, first_unknown + 1) == std::string::npos);
+	TEST_EXPECT(context,
+	            content.find("kind=unknown_param id=999999 total=2 flight_release_summary") != std::string::npos);
 }
 
 void test_param_exporter_runtime_data_error(Tests::Context& context)
@@ -331,26 +282,20 @@ void test_param_exporter_runtime_data_error(Tests::Context& context)
 	available.flight.atmosphere_temperature_k = 288.0;
 	fixture.output_store.publish(available);
 	fixture.exporter.observe(available);
-	TEST_EXPECT_NEAR(
-		context,
-		fixture.exporter.read(LeftEngineTemperature, available),
-		kExpectedLeftEngineTemperatureC,
-		kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 fixture.exporter.read(LeftEngineTemperature, available),
+	                 kExpectedLeftEngineTemperatureC,
+	                 kTolerance);
 	Core::FrameOutput missing = available;
 	missing.simulation_time_s = 7.0;
 	missing.availability.atmosphere = false;
 	fixture.output_store.publish(missing);
 	fixture.exporter.observe(missing);
-	TEST_EXPECT_NEAR(
-		context,
-		fixture.exporter.read(LeftEngineTemperature, missing),
-		0.0,
-		kTolerance);
-	const std::string content = TestFiles::read_text_while_open(
-		fixture.root.path() / "log" / "fck1c_efm.log");
-	TEST_EXPECT(context, content.find(
-		"][ERROR] callback=ed_fm_get_param index=112 missing data=atmosphere") !=
-		std::string::npos);
+	TEST_EXPECT_NEAR(context, fixture.exporter.read(LeftEngineTemperature, missing), 0.0, kTolerance);
+	const std::string content = TestFiles::read_text_while_open(fixture.root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(context,
+	            content.find("][ERROR] callback=ed_fm_get_param index=112 missing data=atmosphere") !=
+	                std::string::npos);
 }
 }
 

@@ -33,8 +33,7 @@ struct SuspensionFeedbackSample
 
 inline bool valid_suspension_index(int index)
 {
-	return index >= 0 &&
-		index < static_cast<int>(kFrameSuspensionWheelCount);
+	return index >= 0 && index < static_cast<int>(kFrameSuspensionWheelCount);
 }
 
 inline bool any_weight_on_wheels(const SuspensionFeedbackState& state)
@@ -49,9 +48,7 @@ inline bool any_weight_on_wheels(const SuspensionFeedbackState& state)
 	return false;
 }
 
-inline bool update_suspension_feedback(
-	SuspensionFeedbackState& state,
-	const SuspensionFeedbackSample& sample)
+inline bool update_suspension_feedback(SuspensionFeedbackState& state, const SuspensionFeedbackSample& sample)
 {
 	if (!valid_suspension_index(sample.index))
 	{
@@ -61,24 +58,17 @@ inline bool update_suspension_feedback(
 	state.feedback_valid[index] = true;
 	state.compression_m[index] = sample.compression_m;
 	state.force_body_n[index] = sample.force_body_n;
-	state.force_magnitude_n[index] = std::sqrt(
-		sample.force_body_n.x * sample.force_body_n.x +
-		sample.force_body_n.y * sample.force_body_n.y +
-		sample.force_body_n.z * sample.force_body_n.z);
-	state.weight_on_wheel[index] =
-		state.compression_m[index] >
-			kWeightOnWheelCompressionThresholdM ||
-		state.force_magnitude_n[index] > kWeightOnWheelForceThresholdN;
+	state.force_magnitude_n[index] =
+	    std::sqrt(sample.force_body_n.x * sample.force_body_n.x + sample.force_body_n.y * sample.force_body_n.y +
+	              sample.force_body_n.z * sample.force_body_n.z);
+	state.weight_on_wheel[index] = state.compression_m[index] > kWeightOnWheelCompressionThresholdM ||
+	                               state.force_magnitude_n[index] > kWeightOnWheelForceThresholdN;
 	return true;
 }
 
-inline void update_on_ground(
-	SuspensionFeedbackState& state,
-	double gear_position_normalized)
+inline void update_on_ground(SuspensionFeedbackState& state, double gear_position_normalized)
 {
-	state.on_ground =
-		gear_position_normalized > kDeployedGearThresholdNormalized &&
-		any_weight_on_wheels(state);
+	state.on_ground = gear_position_normalized > kDeployedGearThresholdNormalized && any_weight_on_wheels(state);
 }
 }
 }

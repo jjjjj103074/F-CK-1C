@@ -29,11 +29,7 @@ struct DebugTelemetryChannelDescriptor
 	std::string description;
 };
 
-using DebugTelemetryValue = std::variant<
-	double,
-	std::int64_t,
-	bool,
-	std::string>;
+using DebugTelemetryValue = std::variant<double, std::int64_t, bool, std::string>;
 
 struct DebugTelemetrySnapshot
 {

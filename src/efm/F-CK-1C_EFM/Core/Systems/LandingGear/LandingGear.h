@@ -25,10 +25,7 @@ public:
 	LandingGear(StartMode start_mode, const LandingGearConfig& config);
 
 	void setup(SystemSetup& setup) override;
-	void step(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft,
-		SystemResult& result) override;
+	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
 	const LandingGearData& step(const LandingGearFrameInput& input);
 	void apply_suspension_feedback(const FrameInput& input);
@@ -52,7 +49,6 @@ private:
 	LandingGearData data_;
 };
 
-SystemEntry make_landing_gear_system_entry(
-	const LandingGearConfig& config);
+SystemEntry make_landing_gear_system_entry(const LandingGearConfig& config);
 }
 }

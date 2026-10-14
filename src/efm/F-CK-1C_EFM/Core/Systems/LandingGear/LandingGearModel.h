@@ -53,11 +53,9 @@ inline void set_gear(LandingGearSystemState& landing_gear, bool down)
 inline void update_gear_position(LandingGearSystemState& landing_gear)
 {
 	landing_gear.position_normalized = Common::limit(
-		Common::actuator(
-			landing_gear.position_normalized,
-			{ landing_gear.switch_down ? 1.0 : 0.0, -0.001, 0.001 }),
-		0.0,
-		1.0);
+	    Common::actuator(landing_gear.position_normalized, { landing_gear.switch_down ? 1.0 : 0.0, -0.001, 0.001 }),
+	    0.0,
+	    1.0);
 }
 
 inline void reset_wheel_brakes(WheelState& wheels)
@@ -76,57 +74,41 @@ inline void reset_wheel_spin(WheelState& wheels)
 	wheels.nose_steering = 0.0;
 }
 
-inline double compute_nose_wheel_steering(
-	const LandingGearSystemState& landing_gear,
-	double true_airspeed_mps,
-	double yaw_input_normalized)
+inline double compute_nose_wheel_steering(const LandingGearSystemState& landing_gear,
+                                          double true_airspeed_mps,
+                                          double yaw_input_normalized)
 {
-	if (!landing_gear.wheels.nose_turn_enabled ||
-		landing_gear.position_normalized <= 0.5 ||
-		true_airspeed_mps >= kNoseWheelSteeringMaximumAirspeedMps)
+	if (!landing_gear.wheels.nose_turn_enabled || landing_gear.position_normalized <= 0.5 ||
+	    true_airspeed_mps >= kNoseWheelSteeringMaximumAirspeedMps)
 	{
 		return 0.0;
 	}
 
-	return -Common::limit(yaw_input_normalized, -1.0, 1.0) *
-		kNoseWheelSteeringScale;
+	return -Common::limit(yaw_input_normalized, -1.0, 1.0) * kNoseWheelSteeringScale;
 }
 
-inline void update_nose_wheel_steering(
-	WheelState& wheels,
-	double target_steering_normalized)
+inline void update_nose_wheel_steering(WheelState& wheels, double target_steering_normalized)
 {
-	wheels.nose_steering = Common::limit(
-		Common::actuator(
-			wheels.nose_steering,
-			{ target_steering_normalized, -0.06, 0.06 }),
-		-1.0,
-		1.0);
+	wheels.nose_steering =
+	    Common::limit(Common::actuator(wheels.nose_steering, { target_steering_normalized, -0.06, 0.06 }), -1.0, 1.0);
 }
 
-inline void update_wheel_spin(
-	WheelState& wheels,
-	double gear_position_normalized,
-	const WheelSpinInput& input)
+inline void update_wheel_spin(WheelState& wheels, double gear_position_normalized, const WheelSpinInput& input)
 {
-	const double spin_enable =
-		((gear_position_normalized >
-			kWheelSpinGearPositionThresholdNormalized) &&
-			(input.altitude_agl_m < kWheelSpinAltitudeThresholdM))
-		? 1.0 : 0.0;
+	const double spin_enable = ((gear_position_normalized > kWheelSpinGearPositionThresholdNormalized) &&
+	                            (input.altitude_agl_m < kWheelSpinAltitudeThresholdM))
+	                               ? 1.0
+	                               : 0.0;
 	for (unsigned i = 0; i < kLandingGearWheelCount; ++i)
 	{
-		const double wheel_circumference_m =
-			2.0 * Common::kPi * input.wheel_radius_m[i];
+		const double wheel_circumference_m = 2.0 * Common::kPi * input.wheel_radius_m[i];
 		if (wheel_circumference_m <= kMinimumWheelCircumferenceM)
 		{
 			continue;
 		}
-		wheels.spin[i] = std::fmod(
-			wheels.spin[i] +
-				(input.ground_speed_mps / wheel_circumference_m) *
-					input.dt_s * spin_enable,
-			1.0);
+		wheels.spin[i] =
+		    std::fmod(wheels.spin[i] + (input.ground_speed_mps / wheel_circumference_m) * input.dt_s * spin_enable,
+		              1.0);
 		if (wheels.spin[i] < 0.0)
 		{
 			wheels.spin[i] += 1.0;

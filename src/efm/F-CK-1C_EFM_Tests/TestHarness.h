@@ -42,14 +42,13 @@ public:
 		}
 
 		++failures_;
-		std::printf(
-			"FAIL %s:%d: %s (actual=%.12f expected=%.12f tolerance=%.12f)\n",
-			check.location.file,
-			check.location.line,
-			check.location.expression,
-			actual,
-			expected,
-			check.tolerance);
+		std::printf("FAIL %s:%d: %s (actual=%.12f expected=%.12f tolerance=%.12f)\n",
+		            check.location.file,
+		            check.location.line,
+		            check.location.expression,
+		            actual,
+		            expected,
+		            check.tolerance);
 	}
 
 	int finish() const
@@ -64,11 +63,7 @@ private:
 };
 }
 
-#define TEST_EXPECT(context, expression) \
-	(context).expect((expression), { #expression, __FILE__, __LINE__ })
+#define TEST_EXPECT(context, expression) (context).expect((expression), { #expression, __FILE__, __LINE__ })
 
-#define TEST_EXPECT_NEAR(context, actual, expected, tolerance) \
-	(context).expect_near( \
-		(actual), \
-		(expected), \
-		{ (tolerance), { #actual " ~= " #expected, __FILE__, __LINE__ } })
+#define TEST_EXPECT_NEAR(context, actual, expected, tolerance)                                                         \
+	(context).expect_near((actual), (expected), { (tolerance), { #actual " ~= " #expected, __FILE__, __LINE__ } })

@@ -21,17 +21,13 @@ namespace SystemPipelineTest
 {
 inline constexpr double kNeutralAxis = 0.0;
 inline constexpr std::uint32_t kTestUpdateRateHz = 64;
-inline constexpr Core::Systems::SystemScheduledTime kTestUpdatePeriod =
-	std::chrono::nanoseconds(15'625'000);
+inline constexpr Core::Systems::SystemScheduledTime kTestUpdatePeriod = std::chrono::nanoseconds(15'625'000);
 
 using SetupAction = std::function<void(Core::Systems::SystemSetup&)>;
-using StepAction = std::function<void(
-	const Core::Systems::AircraftDataView&,
-	Core::Systems::SystemResult&)>;
-using TimedStepAction = std::function<void(
-	const Core::Systems::SystemStepContext&,
-	const Core::Systems::AircraftDataView&,
-	Core::Systems::SystemResult&)>;
+using StepAction = std::function<void(const Core::Systems::AircraftDataView&, Core::Systems::SystemResult&)>;
+using TimedStepAction = std::function<void(const Core::Systems::SystemStepContext&,
+                                           const Core::Systems::AircraftDataView&,
+                                           Core::Systems::SystemResult&)>;
 
 struct SystemDefinition
 {
@@ -46,10 +42,10 @@ class CallbackSystem final : public Core::Systems::System
 {
 public:
 	explicit CallbackSystem(const SystemDefinition& definition)
-		: setup_(definition.setup),
-		step_(definition.step),
-		update_rate_hz_(definition.update_rate_hz),
-		timed_step_(definition.timed_step)
+	    : setup_(definition.setup),
+	      step_(definition.step),
+	      update_rate_hz_(definition.update_rate_hz),
+	      timed_step_(definition.timed_step)
 	{
 	}
 
@@ -62,10 +58,9 @@ public:
 		setup_(setup);
 	}
 
-	void step(
-		const Core::Systems::SystemStepContext& context,
-		const Core::Systems::AircraftDataView& aircraft,
-		Core::Systems::SystemResult& result) override
+	void step(const Core::Systems::SystemStepContext& context,
+	          const Core::Systems::AircraftDataView& aircraft,
+	          Core::Systems::SystemResult& result) override
 	{
 		if (timed_step_)
 		{
@@ -84,56 +79,41 @@ private:
 
 inline Core::Systems::SystemEntry entry(const SystemDefinition& definition)
 {
-	return {
-		definition.id,
-		[definition](const Core::Systems::FlightSetupContext&)
-		{
-			return std::make_unique<CallbackSystem>(definition);
-		}
-	};
+	return { definition.id,
+		     [definition](const Core::Systems::FlightSetupContext&)
+		     {
+		         return std::make_unique<CallbackSystem>(definition);
+		     } };
 }
 
 inline Core::Systems::FlightSetupContext flight_setup()
 {
-	return {
-		Core::StartMode::HotGround,
-		{},
-		{},
-		Tests::disabled_debug_telemetry()
-	};
+	return { Core::StartMode::HotGround, {}, {}, Tests::disabled_debug_telemetry() };
 }
 
-inline Core::Systems::AircraftDataSnapshot step_pipeline(
-	Core::Systems::SystemPipeline& pipeline,
-	const Core::FrameInput& frame,
-	const Core::AircraftObservation& observation)
+inline Core::Systems::AircraftDataSnapshot step_pipeline(Core::Systems::SystemPipeline& pipeline,
+                                                         const Core::FrameInput& frame,
+                                                         const Core::AircraftObservation& observation)
 {
-	return pipeline.step({
-		frame,
-		observation,
-		pipeline.advanced_through() + kTestUpdatePeriod
-	});
+	return pipeline.step({ frame, observation, pipeline.advanced_through() + kTestUpdatePeriod });
 }
 
-inline Core::Systems::AircraftDataSnapshot step_pipeline_to(
-	Core::Systems::SystemPipeline& pipeline,
-	const Core::FrameInput& frame,
-	const Core::AircraftObservation& observation,
-	Core::Systems::SystemScheduledTime target_time)
+inline Core::Systems::AircraftDataSnapshot step_pipeline_to(Core::Systems::SystemPipeline& pipeline,
+                                                            const Core::FrameInput& frame,
+                                                            const Core::AircraftObservation& observation,
+                                                            Core::Systems::SystemScheduledTime target_time)
 {
 	return pipeline.step({ frame, observation, target_time });
 }
 
-inline Core::Systems::AircraftDataSnapshot step_pipeline(
-	Core::Systems::SystemPipeline& pipeline)
+inline Core::Systems::AircraftDataSnapshot step_pipeline(Core::Systems::SystemPipeline& pipeline)
 {
 	const Core::FrameInput frame;
 	const Core::AircraftObservation observation;
 	return step_pipeline(pipeline, frame, observation);
 }
 
-inline bool construction_throws(
-	const std::vector<Core::Systems::SystemEntry>& catalog)
+inline bool construction_throws(const std::vector<Core::Systems::SystemEntry>& catalog)
 {
 	try
 	{
@@ -146,8 +126,7 @@ inline bool construction_throws(
 	return false;
 }
 
-template <typename Action>
-bool action_throws(const Action& action)
+template <typename Action> bool action_throws(const Action& action)
 {
 	try
 	{
@@ -161,10 +140,7 @@ bool action_throws(const Action& action)
 }
 
 template <typename Action>
-void expect_execution_error(
-	Tests::Context& context,
-	const Action& action,
-	const Core::ExecutionErrorDetails& expected)
+void expect_execution_error(Tests::Context& context, const Action& action, const Core::ExecutionErrorDetails& expected)
 {
 	bool caught = false;
 	try
@@ -175,16 +151,16 @@ void expect_execution_error(
 	{
 		caught = true;
 		const Core::ExecutionErrorDetails& actual = error.details();
-		if (actual.owner_type != expected.owner_type ||
-			actual.owner != expected.owner ||
-			actual.operation != expected.operation ||
-			actual.reason != expected.reason)
+		if (actual.owner_type != expected.owner_type || actual.owner != expected.owner ||
+		    actual.operation != expected.operation || actual.reason != expected.reason)
 		{
-			std::printf(
-				"ExecutionError expected [%s/%s/%s], actual [%s/%s/%s]\n",
-				expected.owner.c_str(), expected.operation.c_str(),
-				expected.reason.c_str(), actual.owner.c_str(),
-				actual.operation.c_str(), actual.reason.c_str());
+			std::printf("ExecutionError expected [%s/%s/%s], actual [%s/%s/%s]\n",
+			            expected.owner.c_str(),
+			            expected.operation.c_str(),
+			            expected.reason.c_str(),
+			            actual.owner.c_str(),
+			            actual.operation.c_str(),
+			            actual.reason.c_str());
 		}
 		TEST_EXPECT(context, actual.owner_type == expected.owner_type);
 		TEST_EXPECT(context, actual.owner == expected.owner);
@@ -194,14 +170,12 @@ void expect_execution_error(
 	TEST_EXPECT(context, caught);
 }
 
-inline Core::FlightControlActuatorCommand actuator_command(
-	double symmetric_stabilator_rad)
+inline Core::FlightControlActuatorCommand actuator_command(double symmetric_stabilator_rad)
 {
 	return { symmetric_stabilator_rad, kNeutralAxis, kNeutralAxis };
 }
 
-inline Core::FlightControlActuatorState actuator_state(
-	double symmetric_stabilator_rad)
+inline Core::FlightControlActuatorState actuator_state(double symmetric_stabilator_rad)
 {
 	Core::FlightControlActuatorState state;
 	state.symmetric_stabilator.position_rad = symmetric_stabilator_rad;
@@ -210,9 +184,7 @@ inline Core::FlightControlActuatorState actuator_state(
 
 inline StepAction no_step()
 {
-	return [](
-		const Core::Systems::AircraftDataView&,
-		Core::Systems::SystemResult&)
+	return [](const Core::Systems::AircraftDataView&, Core::Systems::SystemResult&)
 	{
 	};
 }

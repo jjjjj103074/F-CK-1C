@@ -19,66 +19,63 @@ constexpr size_t kUnsignedIntegerTextCapacity = 32;
 constexpr size_t kDoubleTextCapacity = 64;
 constexpr int kRoundTripDoubleDigits = std::numeric_limits<double>::max_digits10;
 
-constexpr const char* kStateCsvHeader =
-	"sequence,simulation_time_s,"
-	"flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,"
-	"flight_mach,flight_normal_acceleration_g,flight_angle_of_attack_deg,"
-	"flight_angle_of_slide_deg,flight_atmosphere_temperature_k,"
-	"flight_indicated_airspeed_mps,flight_vertical_speed_mps,"
-	"flight_world_yaw_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,"
-	"flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
-	"force_moment_force_x_N,force_moment_force_y_N,force_moment_force_z_N,"
-	"force_moment_moment_x_N_m,force_moment_moment_y_N_m,force_moment_moment_z_N_m,"
-	"force_moment_center_of_mass_x_m,force_moment_center_of_mass_y_m,"
-	"force_moment_center_of_mass_z_m,"
-	"engine_0_switch_on,engine_0_throttle_input_normalized,"
-	"engine_0_throttle_output_normalized,engine_0_power_readout_normalized,"
-	"engine_0_thrust_force_N,engine_0_afterburner_ratio_0_1,"
-	"engine_0_afterburner_lit,engine_0_nozzle_aperture_normalized,"
-	"engine_1_switch_on,engine_1_throttle_input_normalized,"
-	"engine_1_throttle_output_normalized,engine_1_power_readout_normalized,"
-	"engine_1_thrust_force_N,engine_1_afterburner_ratio_0_1,"
-	"engine_1_afterburner_lit,engine_1_nozzle_aperture_normalized,"
-	"controls_pitch_input_normalized,controls_roll_input_normalized,"
-	"controls_yaw_input_normalized,controls_symmetric_stabilator_position_rad,"
-	"controls_differential_flaperon_position_rad,controls_rudder_position_rad,"
-	"controls_flaps_position_normalized,controls_slats_position_normalized,"
-	"controls_airbrake_position_normalized,"
-	"landing_gear_gear_position_normalized,"
-	"landing_gear_nose_wheel_steering_normalized,"
-	"landing_gear_brake_left_normalized,landing_gear_brake_right_normalized,"
-	"landing_gear_wheel_spin_phase_0_1_0,"
-	"landing_gear_wheel_spin_phase_0_1_1,"
-	"landing_gear_wheel_spin_phase_0_1_2,"
-	"suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,"
-	"suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,"
-	"suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
-	"suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,"
-	"suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,"
-	"suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
-	"suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,"
-	"suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,"
-	"suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
-	"suspension_any_weight_on_wheels,suspension_on_ground,"
-	"fuel_internal_kg,fuel_external_kg,fuel_total_kg,"
-	"fuel_total_flow_kg_per_s,"
-	"shake_amplitude_normalized\n";
+constexpr const char* kStateCsvHeader = "sequence,simulation_time_s,"
+                                        "flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,"
+                                        "flight_mach,flight_normal_acceleration_g,flight_angle_of_attack_deg,"
+                                        "flight_angle_of_slide_deg,flight_atmosphere_temperature_k,"
+                                        "flight_indicated_airspeed_mps,flight_vertical_speed_mps,"
+                                        "flight_world_yaw_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,"
+                                        "flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
+                                        "force_moment_force_x_N,force_moment_force_y_N,force_moment_force_z_N,"
+                                        "force_moment_moment_x_N_m,force_moment_moment_y_N_m,force_moment_moment_z_N_m,"
+                                        "force_moment_center_of_mass_x_m,force_moment_center_of_mass_y_m,"
+                                        "force_moment_center_of_mass_z_m,"
+                                        "engine_0_switch_on,engine_0_throttle_input_normalized,"
+                                        "engine_0_throttle_output_normalized,engine_0_power_readout_normalized,"
+                                        "engine_0_thrust_force_N,engine_0_afterburner_ratio_0_1,"
+                                        "engine_0_afterburner_lit,engine_0_nozzle_aperture_normalized,"
+                                        "engine_1_switch_on,engine_1_throttle_input_normalized,"
+                                        "engine_1_throttle_output_normalized,engine_1_power_readout_normalized,"
+                                        "engine_1_thrust_force_N,engine_1_afterburner_ratio_0_1,"
+                                        "engine_1_afterburner_lit,engine_1_nozzle_aperture_normalized,"
+                                        "controls_pitch_input_normalized,controls_roll_input_normalized,"
+                                        "controls_yaw_input_normalized,controls_symmetric_stabilator_position_rad,"
+                                        "controls_differential_flaperon_position_rad,controls_rudder_position_rad,"
+                                        "controls_flaps_position_normalized,controls_slats_position_normalized,"
+                                        "controls_airbrake_position_normalized,"
+                                        "landing_gear_gear_position_normalized,"
+                                        "landing_gear_nose_wheel_steering_normalized,"
+                                        "landing_gear_brake_left_normalized,landing_gear_brake_right_normalized,"
+                                        "landing_gear_wheel_spin_phase_0_1_0,"
+                                        "landing_gear_wheel_spin_phase_0_1_1,"
+                                        "landing_gear_wheel_spin_phase_0_1_2,"
+                                        "suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,"
+                                        "suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,"
+                                        "suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
+                                        "suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,"
+                                        "suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,"
+                                        "suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
+                                        "suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,"
+                                        "suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,"
+                                        "suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
+                                        "suspension_any_weight_on_wheels,suspension_on_ground,"
+                                        "fuel_internal_kg,fuel_external_kg,fuel_total_kg,"
+                                        "fuel_total_flow_kg_per_s,"
+                                        "shake_amplitude_normalized\n";
 
 class CsvRowBuilder final
 {
 public:
 	explicit CsvRowBuilder(DcsBridge::Internal::FormattedStateCsvRow& row)
-		: row_(row)
+	    : row_(row)
 	{
 	}
 
 	bool append_uint64(std::uint64_t value)
 	{
 		char value_text[kUnsignedIntegerTextCapacity];
-		const std::to_chars_result result =
-			std::to_chars(value_text, value_text + sizeof(value_text), value);
-		return result.ec == std::errc() &&
-			append_cell(value_text, static_cast<size_t>(result.ptr - value_text));
+		const std::to_chars_result result = std::to_chars(value_text, value_text + sizeof(value_text), value);
+		return result.ec == std::errc() && append_cell(value_text, static_cast<size_t>(result.ptr - value_text));
 	}
 
 	bool append_double(double value, bool available = true)
@@ -88,21 +85,17 @@ public:
 			return append_text("-");
 		}
 		char value_text[kDoubleTextCapacity];
-		const std::to_chars_result result = std::to_chars(
-			value_text,
-			value_text + sizeof(value_text),
-			value,
-			std::chars_format::general,
-			kRoundTripDoubleDigits);
-		return result.ec == std::errc() &&
-			append_cell(value_text, static_cast<size_t>(result.ptr - value_text));
+		const std::to_chars_result result = std::to_chars(value_text,
+		                                                  value_text + sizeof(value_text),
+		                                                  value,
+		                                                  std::chars_format::general,
+		                                                  kRoundTripDoubleDigits);
+		return result.ec == std::errc() && append_cell(value_text, static_cast<size_t>(result.ptr - value_text));
 	}
 
 	bool append_bool(bool value, bool available = true)
 	{
-		return available
-			? append_text(value ? "True" : "False")
-			: append_text("-");
+		return available ? append_text(value ? "True" : "False") : append_text("-");
 	}
 
 	bool finish()
@@ -149,92 +142,68 @@ bool append_flight(CsvRowBuilder& row, const Core::FrameOutput& output)
 	const Core::FrameDataAvailability& available = output.availability;
 	const Core::FlightOutput& flight = output.flight;
 	return row.append_double(flight.altitude_asl_m, available.atmosphere) &&
-		row.append_double(
-			flight.altitude_agl_m,
-			available.atmosphere && available.surface) &&
-		row.append_double(flight.position_world_z_m, available.world_kinematics) &&
-		row.append_double(
-			flight.mach,
-			available.atmosphere && available.world_kinematics) &&
-		row.append_double(
-			flight.normal_acceleration_g, available.body_kinematics) &&
-		row.append_double(flight.angle_of_attack_deg, available.body_kinematics) &&
-		row.append_double(flight.angle_of_slide_deg, available.body_kinematics) &&
-		row.append_double(flight.atmosphere_temperature_k, available.atmosphere) &&
-		row.append_double(
-			flight.indicated_airspeed_mps,
-			available.atmosphere && available.world_kinematics) &&
-		row.append_double(flight.vertical_speed_mps, available.world_kinematics) &&
-		row.append_double(flight.world_yaw_rad, available.body_kinematics) &&
-		row.append_double(flight.pitch_attitude_rad, available.body_kinematics) &&
-		row.append_double(flight.roll_attitude_rad, available.body_kinematics) &&
-		row.append_double(flight.roll_rate_rad_s, available.body_kinematics) &&
-		row.append_double(flight.pitch_rate_rad_s, available.body_kinematics) &&
-		row.append_double(flight.yaw_rate_rad_s, available.body_kinematics);
+	       row.append_double(flight.altitude_agl_m, available.atmosphere && available.surface) &&
+	       row.append_double(flight.position_world_z_m, available.world_kinematics) &&
+	       row.append_double(flight.mach, available.atmosphere && available.world_kinematics) &&
+	       row.append_double(flight.normal_acceleration_g, available.body_kinematics) &&
+	       row.append_double(flight.angle_of_attack_deg, available.body_kinematics) &&
+	       row.append_double(flight.angle_of_slide_deg, available.body_kinematics) &&
+	       row.append_double(flight.atmosphere_temperature_k, available.atmosphere) &&
+	       row.append_double(flight.indicated_airspeed_mps, available.atmosphere && available.world_kinematics) &&
+	       row.append_double(flight.vertical_speed_mps, available.world_kinematics) &&
+	       row.append_double(flight.world_yaw_rad, available.body_kinematics) &&
+	       row.append_double(flight.pitch_attitude_rad, available.body_kinematics) &&
+	       row.append_double(flight.roll_attitude_rad, available.body_kinematics) &&
+	       row.append_double(flight.roll_rate_rad_s, available.body_kinematics) &&
+	       row.append_double(flight.pitch_rate_rad_s, available.body_kinematics) &&
+	       row.append_double(flight.yaw_rate_rad_s, available.body_kinematics);
 }
 
 bool append_vector(CsvRowBuilder& row, const Common::Vec3& value, bool available = true)
 {
-	return row.append_double(value.x, available) &&
-		row.append_double(value.y, available) &&
-		row.append_double(value.z, available);
+	return row.append_double(value.x, available) && row.append_double(value.y, available) &&
+	       row.append_double(value.z, available);
 }
 
 bool append_force_moment(CsvRowBuilder& row, const Core::FrameOutput& output)
 {
 	return append_vector(row, output.force_moment.force_body_n) &&
-		append_vector(row, output.force_moment.moment_body_nm) &&
-		append_vector(
-			row,
-			output.force_moment.center_of_mass_body_m,
-			output.availability.mass);
+	       append_vector(row, output.force_moment.moment_body_nm) &&
+	       append_vector(row, output.force_moment.center_of_mass_body_m, output.availability.mass);
 }
 
 bool append_engine(CsvRowBuilder& row, const Core::EngineOutput& engine)
 {
-	return row.append_bool(engine.switch_on) &&
-		row.append_double(engine.throttle_input_normalized) &&
-		row.append_double(engine.throttle_output_normalized) &&
-		row.append_double(engine.power_readout_normalized) &&
-		row.append_double(engine.thrust_force_n) &&
-		row.append_double(engine.afterburner_ratio_0_1) &&
-		row.append_bool(engine.afterburner_lit) &&
-		row.append_double(engine.nozzle_aperture_normalized);
+	return row.append_bool(engine.switch_on) && row.append_double(engine.throttle_input_normalized) &&
+	       row.append_double(engine.throttle_output_normalized) && row.append_double(engine.power_readout_normalized) &&
+	       row.append_double(engine.thrust_force_n) && row.append_double(engine.afterburner_ratio_0_1) &&
+	       row.append_bool(engine.afterburner_lit) && row.append_double(engine.nozzle_aperture_normalized);
 }
 
 bool append_controls(CsvRowBuilder& row, const Core::ControlOutput& controls)
 {
-	return row.append_double(controls.pitch_input_normalized) &&
-		row.append_double(controls.roll_input_normalized) &&
-		row.append_double(controls.yaw_input_normalized) &&
-		row.append_double(controls.symmetric_stabilator_position_rad) &&
-		row.append_double(controls.differential_flaperon_position_rad) &&
-		row.append_double(controls.rudder_position_rad) &&
-		row.append_double(controls.flaps_position_normalized) &&
-		row.append_double(controls.slats_position_normalized) &&
-		row.append_double(controls.airbrake_position_normalized);
+	return row.append_double(controls.pitch_input_normalized) && row.append_double(controls.roll_input_normalized) &&
+	       row.append_double(controls.yaw_input_normalized) &&
+	       row.append_double(controls.symmetric_stabilator_position_rad) &&
+	       row.append_double(controls.differential_flaperon_position_rad) &&
+	       row.append_double(controls.rudder_position_rad) && row.append_double(controls.flaps_position_normalized) &&
+	       row.append_double(controls.slats_position_normalized) &&
+	       row.append_double(controls.airbrake_position_normalized);
 }
 
 bool append_landing_gear(CsvRowBuilder& row, const Core::LandingGearOutput& gear)
 {
-	return row.append_double(gear.gear_position_normalized) &&
-		row.append_double(gear.nose_wheel_steering_normalized) &&
-		row.append_double(gear.brake_left_normalized) &&
-		row.append_double(gear.brake_right_normalized) &&
-		row.append_double(gear.wheel_spin_phase_0_1[0]) &&
-		row.append_double(gear.wheel_spin_phase_0_1[1]) &&
-		row.append_double(gear.wheel_spin_phase_0_1[2]);
+	return row.append_double(gear.gear_position_normalized) && row.append_double(gear.nose_wheel_steering_normalized) &&
+	       row.append_double(gear.brake_left_normalized) && row.append_double(gear.brake_right_normalized) &&
+	       row.append_double(gear.wheel_spin_phase_0_1[0]) && row.append_double(gear.wheel_spin_phase_0_1[1]) &&
+	       row.append_double(gear.wheel_spin_phase_0_1[2]);
 }
 
-bool append_suspension_wheel(
-	CsvRowBuilder& row,
-	const Core::SuspensionWheelOutput& wheel,
-	bool available)
+bool append_suspension_wheel(CsvRowBuilder& row, const Core::SuspensionWheelOutput& wheel, bool available)
 {
 	return append_vector(row, wheel.acting_force_body_n, available) &&
-		row.append_double(wheel.compression_m, available) &&
-		row.append_double(wheel.force_magnitude_n, available) &&
-		row.append_bool(wheel.weight_on_wheel, available);
+	       row.append_double(wheel.compression_m, available) && row.append_double(wheel.force_magnitude_n, available) &&
+	       row.append_bool(wheel.weight_on_wheel, available);
 }
 
 bool append_suspension(CsvRowBuilder& row, const Core::FrameOutput& output)
@@ -243,18 +212,16 @@ bool append_suspension(CsvRowBuilder& row, const Core::FrameOutput& output)
 	const auto& available = output.availability.suspension;
 	const bool any_available = available[0] || available[1] || available[2];
 	return append_suspension_wheel(row, suspension.wheels[0], available[0]) &&
-		append_suspension_wheel(row, suspension.wheels[1], available[1]) &&
-		append_suspension_wheel(row, suspension.wheels[2], available[2]) &&
-		row.append_bool(suspension.any_weight_on_wheels, any_available) &&
-		row.append_bool(suspension.on_ground, any_available);
+	       append_suspension_wheel(row, suspension.wheels[1], available[1]) &&
+	       append_suspension_wheel(row, suspension.wheels[2], available[2]) &&
+	       row.append_bool(suspension.any_weight_on_wheels, any_available) &&
+	       row.append_bool(suspension.on_ground, any_available);
 }
 
 bool append_fuel(CsvRowBuilder& row, const Core::FuelOutput& fuel)
 {
-	return row.append_double(fuel.internal_fuel_kg) &&
-		row.append_double(fuel.external_fuel_kg) &&
-		row.append_double(fuel.total_fuel_kg) &&
-		row.append_double(fuel.total_fuel_flow_kg_s);
+	return row.append_double(fuel.internal_fuel_kg) && row.append_double(fuel.external_fuel_kg) &&
+	       row.append_double(fuel.total_fuel_kg) && row.append_double(fuel.total_fuel_flow_kg_s);
 }
 
 int io_error_code()
@@ -267,10 +234,7 @@ namespace DcsBridge
 {
 namespace Internal
 {
-void LatestTelemetryMailbox::publish(
-	std::uint64_t flight_id,
-	std::uint64_t sequence,
-	const Core::FrameOutput& output)
+void LatestTelemetryMailbox::publish(std::uint64_t flight_id, std::uint64_t sequence, const Core::FrameOutput& output)
 {
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
@@ -287,11 +251,13 @@ std::optional<TelemetryRecord> LatestTelemetryMailbox::take_latest()
 	return result;
 }
 
-MailboxRead LatestTelemetryMailbox::wait_until(
-	const std::chrono::steady_clock::time_point& deadline)
+MailboxRead LatestTelemetryMailbox::wait_until(const std::chrono::steady_clock::time_point& deadline)
 {
 	std::unique_lock<std::mutex> lock(mutex_);
-	const auto ready = [this]() { return pending_.has_value() || stopping_; };
+	const auto ready = [this]()
+	{
+		return pending_.has_value() || stopping_;
+	};
 	if (deadline == std::chrono::steady_clock::time_point::max())
 	{
 		condition_.wait(lock, ready);
@@ -329,17 +295,12 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 	FormattedStateCsvRow result;
 	CsvRowBuilder row(result);
 	const Core::FrameOutput& output = record.output;
-	const bool appended = row.append_uint64(record.sequence) &&
-		row.append_double(output.simulation_time_s) &&
-		append_flight(row, output) &&
-		append_force_moment(row, output) &&
-		append_engine(row, output.engines[0]) &&
-		append_engine(row, output.engines[1]) &&
-		append_controls(row, output.controls) &&
-		append_landing_gear(row, output.landing_gear) &&
-		append_suspension(row, output) &&
-		append_fuel(row, output.fuel) &&
-		row.append_double(output.shake_amplitude_normalized);
+	const bool appended = row.append_uint64(record.sequence) && row.append_double(output.simulation_time_s) &&
+	                      append_flight(row, output) && append_force_moment(row, output) &&
+	                      append_engine(row, output.engines[0]) && append_engine(row, output.engines[1]) &&
+	                      append_controls(row, output.controls) && append_landing_gear(row, output.landing_gear) &&
+	                      append_suspension(row, output) && append_fuel(row, output.fuel) &&
+	                      row.append_double(output.shake_amplitude_normalized);
 	if (appended)
 	{
 		(void)row.finish();
@@ -348,8 +309,8 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 }
 
 StateCsvWriter::StateCsvWriter(const char* module_root, EventLog& event_log)
-	: event_log_(event_log),
-	last_flush_time_(std::chrono::steady_clock::now())
+    : event_log_(event_log),
+      last_flush_time_(std::chrono::steady_clock::now())
 {
 	Common::copy_path(module_root_, sizeof(module_root_), module_root);
 	initialize_execution_file();
@@ -393,16 +354,11 @@ int StateCsvWriter::last_error_code() const
 
 void StateCsvWriter::initialize_execution_file()
 {
-	const LogFilePreparation location =
-		prepare_rotating_log_file(module_root_, kStateCsvFileName);
+	const LogFilePreparation location = prepare_rotating_log_file(module_root_, kStateCsvFileName);
 	Common::copy_path(active_path_, sizeof(active_path_), location.active_path);
 	if (!location.ready)
 	{
-		report_error({
-			log_file_operation_name(location.failed_operation),
-			location.error_code,
-			std::nullopt,
-			0 });
+		report_error({ log_file_operation_name(location.failed_operation), location.error_code, std::nullopt, 0 });
 		return;
 	}
 	rotation_complete_ = true;
@@ -430,9 +386,7 @@ void StateCsvWriter::start_worker()
 	}
 	catch (const std::system_error& error)
 	{
-		const int error_code = error.code().value() != 0
-			? error.code().value()
-			: EAGAIN;
+		const int error_code = error.code().value() != 0 ? error.code().value() : EAGAIN;
 		report_error({ "start_worker", error_code, std::nullopt, 0 });
 		ready_.store(false);
 		close_file();
@@ -443,9 +397,8 @@ void StateCsvWriter::worker_loop()
 {
 	while (true)
 	{
-		const auto deadline = dirty_
-			? last_flush_time_ + kCsvFlushInterval
-			: std::chrono::steady_clock::time_point::max();
+		const auto deadline =
+		    dirty_ ? last_flush_time_ + kCsvFlushInterval : std::chrono::steady_clock::time_point::max();
 		const MailboxRead incoming = mailbox_.wait_until(deadline);
 		if (incoming.record)
 		{
@@ -472,14 +425,12 @@ void StateCsvWriter::process_record(const TelemetryRecord& record)
 	const FormattedStateCsvRow row = format_state_csv_row(record);
 	if (!row.valid)
 	{
-		fail_current_flight({
-			"format_row", EINVAL, record.output.simulation_time_s, record.flight_id });
+		fail_current_flight({ "format_row", EINVAL, record.output.simulation_time_s, record.flight_id });
 		return;
 	}
 	if (fwrite(row.data.data(), 1, row.size, file_) != row.size)
 	{
-		fail_current_flight({
-			"write_row", io_error_code(), record.output.simulation_time_s, record.flight_id });
+		fail_current_flight({ "write_row", io_error_code(), record.output.simulation_time_s, record.flight_id });
 		return;
 	}
 	dirty_ = true;
@@ -490,16 +441,14 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 {
 	if (!rotation_complete_)
 	{
-		const LogFilePreparation location =
-			prepare_rotating_log_file(module_root_, kStateCsvFileName);
+		const LogFilePreparation location = prepare_rotating_log_file(module_root_, kStateCsvFileName);
 		Common::copy_path(active_path_, sizeof(active_path_), location.active_path);
 		if (!location.ready)
 		{
-			fail_current_flight({
-				log_file_operation_name(location.failed_operation),
-				location.error_code,
-				record.output.simulation_time_s,
-				record.flight_id });
+			fail_current_flight({ log_file_operation_name(location.failed_operation),
+			                      location.error_code,
+			                      record.output.simulation_time_s,
+			                      record.flight_id });
 			return false;
 		}
 		rotation_complete_ = true;
@@ -507,14 +456,12 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 	file_ = _fsopen(active_path_, header_written_ ? "ab" : "wb", _SH_DENYNO);
 	if (file_ == nullptr)
 	{
-		fail_current_flight({
-			"open", io_error_code(), record.output.simulation_time_s, record.flight_id });
+		fail_current_flight({ "open", io_error_code(), record.output.simulation_time_s, record.flight_id });
 		return false;
 	}
 	if (!header_written_ && !write_header())
 	{
-		fail_current_flight({
-			"write_header", io_error_code(), record.output.simulation_time_s, record.flight_id });
+		fail_current_flight({ "write_header", io_error_code(), record.output.simulation_time_s, record.flight_id });
 		return false;
 	}
 	header_written_ = true;
@@ -527,8 +474,7 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 bool StateCsvWriter::write_header()
 {
 	const size_t length = state_csv_header_size();
-	return fwrite(state_csv_header(), 1, length, file_) == length &&
-		fflush(file_) == 0;
+	return fwrite(state_csv_header(), 1, length, file_) == length && fflush(file_) == 0;
 }
 
 void StateCsvWriter::flush_if_due(bool force)
@@ -544,11 +490,10 @@ void StateCsvWriter::flush_if_due(bool force)
 	}
 	if (fflush(file_) != 0)
 	{
-		fail_current_flight({
-			"flush",
-			io_error_code(),
-			last_written_record_.output.simulation_time_s,
-			last_written_record_.flight_id });
+		fail_current_flight({ "flush",
+		                      io_error_code(),
+		                      last_written_record_.output.simulation_time_s,
+		                      last_written_record_.flight_id });
 		return;
 	}
 	dirty_ = false;
@@ -568,13 +513,12 @@ void StateCsvWriter::report_error(const Failure& failure)
 {
 	last_error_code_.store(failure.error_code);
 	char message[kCsvErrorMessageCapacity];
-	snprintf(
-		message,
-		sizeof(message),
-		"csv operation=%s path=%s os_error=%d",
-		failure.operation ? failure.operation : "unknown",
-		active_path_[0] != '\0' ? active_path_ : "<unresolved>",
-		failure.error_code);
+	snprintf(message,
+	         sizeof(message),
+	         "csv operation=%s path=%s os_error=%d",
+	         failure.operation ? failure.operation : "unknown",
+	         active_path_[0] != '\0' ? active_path_ : "<unresolved>",
+	         failure.error_code);
 	(void)event_log_.write({ EventLevel::Error, failure.simulation_time_s, message });
 }
 

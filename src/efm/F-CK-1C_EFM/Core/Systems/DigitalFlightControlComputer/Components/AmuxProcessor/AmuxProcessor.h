@@ -14,8 +14,7 @@ class AmuxProcessor final
 public:
 	/// @brief 綁定此元件固定使用的資料庫；資料庫必須比元件更晚銷毀。
 	/// @param amux 固定綁定的 AMUX 資料分區。
-	explicit AmuxProcessor(
-		AmuxData& amux);
+	explicit AmuxProcessor(AmuxData& amux);
 
 	/// @brief 接收 Executive 的一次排程呼叫；目前不執行運算或修改資料。
 	/// @param scheduled_time 此任務本次預定的絕對模擬時間。

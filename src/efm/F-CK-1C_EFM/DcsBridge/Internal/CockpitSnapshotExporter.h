@@ -21,8 +21,7 @@ public:
 	CockpitSnapshotExporter& operator=(const CockpitSnapshotExporter&) = delete;
 
 	void reset();
-	CockpitParameterEvents export_snapshot(
-		const Core::CockpitSnapshot& snapshot);
+	CockpitParameterEvents export_snapshot(const Core::CockpitSnapshot& snapshot);
 
 private:
 	enum class Parameter : std::size_t
@@ -51,15 +50,10 @@ private:
 		Count
 	};
 
-	CockpitParameterEvents export_automatic_flight_control(
-		const Core::AutomaticFlightControlSnapshot& snapshot);
-	CockpitParameterEvents write_parameter(
-		Parameter parameter,
-		double value);
+	CockpitParameterEvents export_automatic_flight_control(const Core::AutomaticFlightControlSnapshot& snapshot);
+	CockpitParameterEvents write_parameter(Parameter parameter, double value);
 	const cockpit_param_api api_;
-	std::array<
-		CockpitParameterEndpoint,
-		static_cast<std::size_t>(Parameter::Count)> slots_;
+	std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)> slots_;
 	std::mutex mutex_;
 };
 }

@@ -14,10 +14,7 @@ public:
 	explicit PilotControls(const ThrottleLeverSignal& initial_throttle_levers);
 
 	void setup(SystemSetup& setup) override;
-	void step(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft,
-		SystemResult& result) override;
+	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 	void handle_command(const Command& command);
 
 	const PilotControlSignal& signal() const;

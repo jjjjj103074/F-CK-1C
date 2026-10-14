@@ -14,10 +14,7 @@ public:
 	explicit Fuel(const FlightFuelState& initial = {});
 
 	void setup(SystemSetup& setup) override;
-	void step(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft,
-		SystemResult& result) override;
+	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
 	const FuelData& step(const FuelDemand& demand, double dt_s);
 	void begin_frame(bool suppress_consumption);

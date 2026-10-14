@@ -22,11 +22,7 @@ const MassDeltaResult& MassPropertiesModel::step(const FuelData& fuel)
 	}
 	result_.available = true;
 	result_.delta.mass_kg = fuel.consumed_mass_kg;
-	result_.delta.position_body_m = {
-		kFuelMassPositionX,
-		kFuelMassPositionY,
-		kFuelMassPositionZ
-	};
+	result_.delta.position_body_m = { kFuelMassPositionX, kFuelMassPositionY, kFuelMassPositionZ };
 	return result_;
 }
 }

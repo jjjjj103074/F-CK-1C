@@ -18,8 +18,7 @@ struct CockpitStepInput
 	CockpitParameterEvents events;
 };
 
-template<typename TValue>
-struct CockpitValueResult
+template <typename TValue> struct CockpitValueResult
 {
 	TValue value;
 	CockpitParameterEvents events;
@@ -82,25 +81,18 @@ private:
 		double scanned_station_count = 0.0;
 	};
 
-	using ParameterSlots =
-		std::array<
-			CockpitParameterEndpoint,
-			static_cast<std::size_t>(Parameter::Count)>;
+	using ParameterSlots = std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)>;
 
 	static ParameterSlots make_parameter_slots();
 	CockpitParameterReadResult read_parameter(Parameter parameter);
-	CockpitValueResult<Core::PressureAltitudeObservation>
-		read_pressure_altitude();
-	CockpitValueResult<Core::MagneticHeadingObservation>
-		read_magnetic_heading();
+	CockpitValueResult<Core::PressureAltitudeObservation> read_pressure_altitude();
+	CockpitValueResult<Core::MagneticHeadingObservation> read_magnetic_heading();
 	CockpitValueResult<Core::RadarObservation> read_radar();
 	CockpitValueResult<Core::IrSeekerObservation> read_ir_seeker();
 	CockpitValueResult<Core::WeaponStationObservation> read_weapon_stations();
 	CockpitValueResult<WeaponStationValues> read_weapon_station_values();
-	static Core::ObservationStatus validate_weapon_station_status(
-		const WeaponStationValues& values);
-	static Core::WeaponStationObservation build_weapon_station_observation(
-		const WeaponStationValues& values);
+	static Core::ObservationStatus validate_weapon_station_status(const WeaponStationValues& values);
+	static Core::WeaponStationObservation build_weapon_station_observation(const WeaponStationValues& values);
 
 	const cockpit_param_api api_;
 	ParameterSlots slots_;

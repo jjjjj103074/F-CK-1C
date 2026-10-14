@@ -6,18 +6,13 @@ namespace DcsBridge
 {
 namespace Internal
 {
-ProcessBridgeContext::ProcessBridgeContext(
-	CockpitApiProvider cockpit_api_provider,
-	CoreFactory core_factory,
-	const void* module_address) noexcept
+ProcessBridgeContext::ProcessBridgeContext(CockpitApiProvider cockpit_api_provider,
+                                           CoreFactory core_factory,
+                                           const void* module_address) noexcept
 {
 	try
 	{
-		owner_ = new BridgeContextOwner({
-			cockpit_api_provider,
-			std::move(core_factory),
-			module_address
-		});
+		owner_ = new BridgeContextOwner({ cockpit_api_provider, std::move(core_factory), module_address });
 	}
 	catch (...)
 	{

@@ -18,8 +18,7 @@ inline bool all_finite(std::initializer_list<double> values)
 	return true;
 }
 
-template <typename Range>
-bool all_finite(const Range& values)
+template <typename Range> bool all_finite(const Range& values)
 {
 	for (const double value : values)
 	{
@@ -31,8 +30,7 @@ bool all_finite(const Range& values)
 	return true;
 }
 
-template <typename Range>
-bool finite_strictly_increasing(const Range& values)
+template <typename Range> bool finite_strictly_increasing(const Range& values)
 {
 	if (values.begin() == values.end())
 	{

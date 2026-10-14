@@ -11,10 +11,9 @@ namespace Internal
 class ProcessBridgeContext final
 {
 public:
-	ProcessBridgeContext(
-		CockpitApiProvider cockpit_api_provider,
-		CoreFactory core_factory,
-		const void* module_address) noexcept;
+	ProcessBridgeContext(CockpitApiProvider cockpit_api_provider,
+	                     CoreFactory core_factory,
+	                     const void* module_address) noexcept;
 
 	ProcessBridgeContext(const ProcessBridgeContext&) = delete;
 	ProcessBridgeContext& operator=(const ProcessBridgeContext&) = delete;

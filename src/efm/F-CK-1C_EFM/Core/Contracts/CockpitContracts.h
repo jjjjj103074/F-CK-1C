@@ -162,8 +162,7 @@ struct ObservationStatus
 {
 	bool available = false;
 	std::uint64_t revision = 0;
-	ObservationInvalidReason invalid_reason =
-		ObservationInvalidReason::NotProvided;
+	ObservationInvalidReason invalid_reason = ObservationInvalidReason::NotProvided;
 };
 
 struct MagneticHeadingObservation
@@ -252,7 +251,7 @@ struct DigitalFlightControlComputerSnapshot
 	bool developer_g_limiter_override_active = false;
 	bool angle_of_attack_limit_active = false;
 	FlightControlLongitudinalCommandMode longitudinal_command_mode =
-		FlightControlLongitudinalCommandMode::NormalAcceleration;
+	    FlightControlLongitudinalCommandMode::NormalAcceleration;
 	bool longitudinal_mode_transition_active = false;
 	double requested_normal_acceleration_reference_g = 1.0;
 	double effective_normal_acceleration_reference_g = 1.0;
@@ -278,14 +277,10 @@ struct DigitalFlightControlComputerSnapshot
 	bool control_authority_limited = false;
 	bool actuator_tracking_consistent = false;
 	double maximum_actuator_tracking_error_rad = 0.0;
-	FlightControlReferenceSource selected_longitudinal_source =
-		FlightControlReferenceSource::Manual;
-	FlightControlReferenceSource selected_lateral_source =
-		FlightControlReferenceSource::Manual;
-	FlightControlReferenceSource selected_directional_source =
-		FlightControlReferenceSource::Manual;
-	FlightControlVerticalReferenceType selected_vertical_reference_type =
-		FlightControlVerticalReferenceType::None;
+	FlightControlReferenceSource selected_longitudinal_source = FlightControlReferenceSource::Manual;
+	FlightControlReferenceSource selected_lateral_source = FlightControlReferenceSource::Manual;
+	FlightControlReferenceSource selected_directional_source = FlightControlReferenceSource::Manual;
+	FlightControlVerticalReferenceType selected_vertical_reference_type = FlightControlVerticalReferenceType::None;
 	double selected_normal_acceleration_reference_g = 0.0;
 	double selected_pitch_rate_command_rad_s = 0.0;
 	double selected_pitch_attitude_reference_rad = 0.0;
@@ -302,8 +297,7 @@ struct DigitalFlightControlComputerSnapshot
 	double symmetric_stabilator_demand_rad = 0.0;
 	double differential_flaperon_demand_rad = 0.0;
 	double rudder_demand_rad = 0.0;
-	FlightControlConstraintReason constraint_reason =
-		FlightControlConstraintReason::None;
+	FlightControlConstraintReason constraint_reason = FlightControlConstraintReason::None;
 	bool vertical_constrained = false;
 	bool lateral_constrained = false;
 };
@@ -315,10 +309,8 @@ struct AutomaticFlightControlSnapshot
 	bool bypass_active = false;
 	bool experimental_auto_throttle_available = false;
 	bool auto_throttle_engaged = false;
-	AutomaticFlightControlVerticalMode vertical_mode =
-		AutomaticFlightControlVerticalMode::Off;
-	AutomaticFlightControlLateralMode lateral_mode =
-		AutomaticFlightControlLateralMode::Off;
+	AutomaticFlightControlVerticalMode vertical_mode = AutomaticFlightControlVerticalMode::Off;
+	AutomaticFlightControlLateralMode lateral_mode = AutomaticFlightControlLateralMode::Off;
 	double pitch_attitude_reference_rad = 0.0;
 	double vertical_speed_reference_ft_s = 0.0;
 	double bank_angle_reference_rad = 0.0;
@@ -327,26 +319,17 @@ struct AutomaticFlightControlSnapshot
 	int target_heading_deg = 0;
 	double target_speed_mps = 0.0;
 	double target_pitch_rad = 0.0;
-	FlightControlAuthorityState longitudinal_authority =
-		FlightControlAuthorityState::Manual;
-	FlightControlAuthorityState lateral_authority =
-		FlightControlAuthorityState::Manual;
-	FlightControlConstraintReason constraint_reason =
-		FlightControlConstraintReason::None;
-	FlightControlDegradationReason degradation_reason =
-		FlightControlDegradationReason::None;
-	FlightControlDisconnectReason disconnect_reason =
-		FlightControlDisconnectReason::None;
+	FlightControlAuthorityState longitudinal_authority = FlightControlAuthorityState::Manual;
+	FlightControlAuthorityState lateral_authority = FlightControlAuthorityState::Manual;
+	FlightControlConstraintReason constraint_reason = FlightControlConstraintReason::None;
+	FlightControlDegradationReason degradation_reason = FlightControlDegradationReason::None;
+	FlightControlDisconnectReason disconnect_reason = FlightControlDisconnectReason::None;
 	bool vertical_degraded = false;
 	bool lateral_degraded = false;
-	AutomaticFlightControlReason autopilot_engage_rejection_reason =
-		AutomaticFlightControlReason::None;
-	AutomaticFlightControlReason autopilot_disengage_reason =
-		AutomaticFlightControlReason::None;
-	AutomaticFlightControlReason auto_throttle_engage_rejection_reason =
-		AutomaticFlightControlReason::None;
-	AutomaticFlightControlReason auto_throttle_disengage_reason =
-		AutomaticFlightControlReason::None;
+	AutomaticFlightControlReason autopilot_engage_rejection_reason = AutomaticFlightControlReason::None;
+	AutomaticFlightControlReason autopilot_disengage_reason = AutomaticFlightControlReason::None;
+	AutomaticFlightControlReason auto_throttle_engage_rejection_reason = AutomaticFlightControlReason::None;
+	AutomaticFlightControlReason auto_throttle_disengage_reason = AutomaticFlightControlReason::None;
 };
 
 struct FireControlSnapshot

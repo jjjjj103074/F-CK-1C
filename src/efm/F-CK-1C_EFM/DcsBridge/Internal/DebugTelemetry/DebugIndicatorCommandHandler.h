@@ -6,9 +6,6 @@ namespace Internal
 {
 class BridgeContext;
 
-bool handle_debug_indicator_command(
-	BridgeContext& context,
-	int command,
-	float value);
+bool handle_debug_indicator_command(BridgeContext& context, int command, float value);
 }
 }

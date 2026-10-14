@@ -48,8 +48,7 @@ inline void set_project_paths_from_config(ModulePaths& paths, const char* cfg_pa
 inline bool try_set_mod_root(ModulePaths& paths, const char* root)
 {
 	char cfg_path[kModulePathMax];
-	Common::build_path(
-		{ cfg_path, sizeof(cfg_path) }, { root, "FM\\config.lua" });
+	Common::build_path({ cfg_path, sizeof(cfg_path) }, { root, "FM\\config.lua" });
 	if (!Common::path_file_exists(cfg_path))
 	{
 		return false;
@@ -64,17 +63,14 @@ inline bool try_set_mod_root(ModulePaths& paths, const char* root)
 inline bool current_module_directory(char* output, const void* module_address)
 {
 	HMODULE module = nullptr;
-	if (!GetModuleHandleExA(
-		GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-			GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-		reinterpret_cast<LPCSTR>(module_address),
-		&module))
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+	                        reinterpret_cast<LPCSTR>(module_address),
+	                        &module))
 	{
 		return false;
 	}
 	char module_path[kModulePathMax];
-	const DWORD length = GetModuleFileNameA(
-		module, module_path, static_cast<DWORD>(sizeof(module_path)));
+	const DWORD length = GetModuleFileNameA(module, module_path, static_cast<DWORD>(sizeof(module_path)));
 	if (length == 0 || length >= sizeof(module_path))
 	{
 		return false;
@@ -92,9 +88,8 @@ inline void normalize_module_root_candidate(char* root)
 		Common::path_dirname(root, kModulePathMax);
 		return;
 	}
-	const bool legacy_build_folder =
-		Common::path_has_component_suffix(root, "vc100.debug") ||
-		Common::path_has_component_suffix(root, "vc100.release");
+	const bool legacy_build_folder = Common::path_has_component_suffix(root, "vc100.debug") ||
+	                                 Common::path_has_component_suffix(root, "vc100.release");
 	if (!legacy_build_folder)
 	{
 		return;
@@ -104,9 +99,7 @@ inline void normalize_module_root_candidate(char* root)
 	Common::path_dirname(root, kModulePathMax);
 }
 
-inline bool try_module_directory_candidates(
-	ModulePaths& paths,
-	const char* module_dir)
+inline bool try_module_directory_candidates(ModulePaths& paths, const char* module_dir)
 {
 	char root[kModulePathMax];
 	Common::copy_path(root, sizeof(root), module_dir);
@@ -122,9 +115,7 @@ inline bool try_module_directory_candidates(
 	return try_set_mod_root(paths, root);
 }
 
-inline void initialize_project_paths(
-	ModulePaths& paths,
-	const void* module_address)
+inline void initialize_project_paths(ModulePaths& paths, const void* module_address)
 {
 	if (paths.initialized)
 	{
@@ -144,9 +135,7 @@ inline void initialize_project_paths(
 	(void)try_module_directory_candidates(paths, module_dir);
 }
 
-inline void configure_module_paths(
-	ModulePaths& paths,
-	const ModulePathSource& source)
+inline void configure_module_paths(ModulePaths& paths, const ModulePathSource& source)
 {
 	if (source.config_path && source.config_path[0] != '\0')
 	{

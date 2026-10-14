@@ -11,9 +11,7 @@ inline constexpr double kCommandPressThreshold = 0.5;
  * @param threshold 判定門檻；未指定時使用共用的 0.5。
  * @return 數值嚴格大於指定門檻時為 true，其餘情況為 false。
  */
-constexpr bool command_value_is_pressed(
-	double value_normalized,
-	double threshold = kCommandPressThreshold) noexcept
+constexpr bool command_value_is_pressed(double value_normalized, double threshold = kCommandPressThreshold) noexcept
 {
 	return value_normalized > threshold;
 }

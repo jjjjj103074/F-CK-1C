@@ -14,23 +14,18 @@ struct Fck1cEfm::FlightPreparation
 };
 
 Fck1cEfm::Fck1cEfm(DebugTelemetrySink& debug_telemetry)
-	: Fck1cEfm(
-		Simulation::make_fck1c_aircraft_simulation_factory(),
-		debug_telemetry)
+    : Fck1cEfm(Simulation::make_fck1c_aircraft_simulation_factory(), debug_telemetry)
 {
 }
 
-Fck1cEfm::Fck1cEfm(
-	Simulation::AircraftSimulationFactory simulation_factory,
-	DebugTelemetrySink& debug_telemetry)
-	: simulation_factory_(std::move(simulation_factory)),
-	debug_telemetry_(debug_telemetry),
-	preparation_(std::make_unique<FlightPreparation>())
+Fck1cEfm::Fck1cEfm(Simulation::AircraftSimulationFactory simulation_factory, DebugTelemetrySink& debug_telemetry)
+    : simulation_factory_(std::move(simulation_factory)),
+      debug_telemetry_(debug_telemetry),
+      preparation_(std::make_unique<FlightPreparation>())
 {
 	if (!simulation_factory_)
 	{
-		throw std::invalid_argument(
-			"Fck1cEfm requires an AircraftSimulation factory.");
+		throw std::invalid_argument("Fck1cEfm requires an AircraftSimulation factory.");
 	}
 }
 
@@ -39,17 +34,11 @@ Fck1cEfm::~Fck1cEfm() = default;
 FrameOutput Fck1cEfm::start(StartMode mode)
 {
 	synchronize_preparation();
-	const Simulation::FlightSetupContext setup = {
-		mode,
-		preparation_->fuel,
-		preparation_->options,
-		debug_telemetry_
-	};
+	const Simulation::FlightSetupContext setup = { mode, preparation_->fuel, preparation_->options, debug_telemetry_ };
 	auto simulation = simulation_factory_(setup);
 	if (!simulation)
 	{
-		throw std::logic_error(
-			"AircraftSimulation factory returned no simulation.");
+		throw std::logic_error("AircraftSimulation factory returned no simulation.");
 	}
 	const FrameOutput output = simulation->initial_output();
 	simulation_ = std::move(simulation);
@@ -67,9 +56,7 @@ FrameOutput Fck1cEfm::step(const FrameInput& input)
 
 double Fck1cEfm::internal_fuel_kg() const
 {
-	return simulation_
-		? simulation_->internal_fuel_kg()
-		: preparation_->fuel.internal_fuel_kg;
+	return simulation_ ? simulation_->internal_fuel_kg() : preparation_->fuel.internal_fuel_kg;
 }
 
 double Fck1cEfm::external_fuel_kg() const
@@ -105,10 +92,7 @@ void Fck1cEfm::set_internal_fuel(double fuel_kg)
 
 void Fck1cEfm::set_external_fuel(const ExternalFuelInput& input)
 {
-	const Simulation::ExternalFuelLoad load = {
-		input.fuel_kg,
-		input.position_body_m
-	};
+	const Simulation::ExternalFuelLoad load = { input.fuel_kg, input.position_body_m };
 	if (input.fuel_kg > 0.0)
 	{
 		preparation_->fuel.external_fuel_by_station[input.station] = load;
@@ -157,9 +141,7 @@ void Fck1cEfm::set_invincible(bool enabled)
 
 DamageApplyResult Fck1cEfm::apply_damage(const DamageEvent& event)
 {
-	return simulation_
-		? simulation_->apply_damage(event)
-		: DamageApplyResult{ preparation_->options.invincible };
+	return simulation_ ? simulation_->apply_damage(event) : DamageApplyResult{ preparation_->options.invincible };
 }
 
 void Fck1cEfm::synchronize_preparation()

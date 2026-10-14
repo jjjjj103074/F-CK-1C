@@ -53,19 +53,15 @@ public:
 	virtual ~System() = default;
 
 	virtual void setup(SystemSetup& setup) = 0;
-	virtual void step(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft,
-		SystemResult& result) = 0;
+	virtual void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) = 0;
 };
 
-using SystemFactory =
-	std::function<std::unique_ptr<System>(const FlightSetupContext&)>;
+using SystemFactory = std::function<std::unique_ptr<System>(const FlightSetupContext&)>;
 
 struct SystemEntry
 {
-	std::string id;  // Pipeline 識別系統、檢查重複及標示錯誤時使用。
-	SystemFactory factory;  // 建立每架飛機實例時才呼叫的工廠。
+	std::string id; // Pipeline 識別系統、檢查重複及標示錯誤時使用。
+	SystemFactory factory; // 建立每架飛機實例時才呼叫的工廠。
 };
 }
 }

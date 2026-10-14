@@ -5,11 +5,9 @@
 
 namespace Core::Systems::Dflcc
 {
-SystemMonitor::SystemMonitor(
-	const InputOutputData& input_output,
-	SystemStatusTables& system_status)
-	: input_output_(input_output),
-	system_status_(system_status)
+SystemMonitor::SystemMonitor(const InputOutputData& input_output, SystemStatusTables& system_status)
+    : input_output_(input_output),
+      system_status_(system_status)
 {
 }
 

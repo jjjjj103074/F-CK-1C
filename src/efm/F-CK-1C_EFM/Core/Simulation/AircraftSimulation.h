@@ -59,9 +59,7 @@ struct AircraftSimulationDependencies
 class AircraftSimulation final
 {
 public:
-	AircraftSimulation(
-		const FlightSetupContext& setup,
-		AircraftSimulationDependencies dependencies);
+	AircraftSimulation(const FlightSetupContext& setup, AircraftSimulationDependencies dependencies);
 
 	FrameOutput initial_output() const;
 	FrameOutput step(const FrameInput& input);
@@ -78,10 +76,9 @@ public:
 	void repair(const RepairEvent& event);
 
 private:
-	FrameOutput make_frame_output(
-		const Systems::AircraftDataSnapshot& aircraft,
-		const SimulationResult& simulation,
-		const FrameDataAvailability& availability) const;
+	FrameOutput make_frame_output(const Systems::AircraftDataSnapshot& aircraft,
+	                              const SimulationResult& simulation,
+	                              const FrameDataAvailability& availability) const;
 	void apply_setup(const FlightSetupContext& setup);
 	void apply_frame_input(const FrameInput& input);
 	void begin_frame(double dt_s);

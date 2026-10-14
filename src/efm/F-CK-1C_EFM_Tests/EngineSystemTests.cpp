@@ -15,20 +15,14 @@ void test_engine_switches_and_throttle(Tests::Context& context)
 	TEST_EXPECT(context, engines.right.switch_on);
 
 	Systems::apply_engine_throttle_commands(engines, -1.0, 2.0);
-	TEST_EXPECT_NEAR(
-		context, engines.left.throttle_input_normalized, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, engines.right.throttle_input_normalized, 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, engines.left.throttle_input_normalized, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, engines.right.throttle_input_normalized, 1.0, kTolerance);
 }
 
 void test_engine_first_order(Tests::Context& context)
 {
-	TEST_EXPECT_NEAR(
-		context, Systems::engine_first_order(0.0, { 1.0, 1.0, 1.0 }),
-		0.5, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, Systems::engine_first_order(0.0, { 1.0, 0.0, 1.0 }),
-		1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, Systems::engine_first_order(0.0, { 1.0, 1.0, 1.0 }), 0.5, kTolerance);
+	TEST_EXPECT_NEAR(context, Systems::engine_first_order(0.0, { 1.0, 0.0, 1.0 }), 1.0, kTolerance);
 }
 
 void test_afterburner_ignition(Tests::Context& context)
@@ -40,27 +34,20 @@ void test_afterburner_ignition(Tests::Context& context)
 	Systems::AfterburnerConfig afterburner;
 	Systems::update_afterburner(engines.left, afterburner, 1.0);
 	TEST_EXPECT(context, engines.left.afterburner_lit);
-	TEST_EXPECT_NEAR(
-		context, engines.left.afterburner_ratio_0_1, 1.0 / 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, engines.left.afterburner_ratio_0_1, 1.0 / 3.0, kTolerance);
 }
 
-void test_digital_control_commands_are_separate_from_plant(
-	Tests::Context& context)
+void test_digital_control_commands_are_separate_from_plant(Tests::Context& context)
 {
 	const auto& config = Core::Systems::fck1c_engine_config();
 	const auto dry = Systems::command_dry_engine(0.5, 0.0, config);
 	TEST_EXPECT(context, dry.throttle_output_target_normalized > 0.0);
-	TEST_EXPECT_NEAR(
-		context, dry.spool_time_constant_s, config.spool_up_tau_s, kTolerance);
-	const auto afterburner = Systems::command_afterburner(
-		{ 1.0, 1.0, 0.0, true }, false, config.afterburner);
+	TEST_EXPECT_NEAR(context, dry.spool_time_constant_s, config.spool_up_tau_s, kTolerance);
+	const auto afterburner = Systems::command_afterburner({ 1.0, 1.0, 0.0, true }, false, config.afterburner);
 	TEST_EXPECT(context, afterburner.lit);
 	TEST_EXPECT(context, afterburner.ratio_target_0_1 > 0.0);
-	const auto fuel = Systems::command_fuel_flow(
-		{ 0.5, 0.5, 0.0, 0.0 }, config);
-	TEST_EXPECT_NEAR(
-		context, fuel.flow_rate_kg_s,
-		config.fuel_consumption_rate_kg_s * (2.0 / 3.0), kTolerance);
+	const auto fuel = Systems::command_fuel_flow({ 0.5, 0.5, 0.0, 0.0 }, config);
+	TEST_EXPECT_NEAR(context, fuel.flow_rate_kg_s, config.fuel_consumption_rate_kg_s * (2.0 / 3.0), kTolerance);
 }
 
 }

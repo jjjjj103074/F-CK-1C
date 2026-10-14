@@ -35,8 +35,7 @@ void test_carrier_launch_pop(Tests::Context& context)
 	TEST_EXPECT(context, output.event_type == ED_FM_EVENT_CARRIER_CATAPULT);
 	TEST_EXPECT_NEAR(context, output.event_params[0], kArmedPhase, kTolerance);
 	TEST_EXPECT_NEAR(context, output.event_params[1], kExpectedLaunchDelayS, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, output.event_params[2], kExpectedAddedVelocityMps, kTolerance);
+	TEST_EXPECT_NEAR(context, output.event_params[2], kExpectedAddedVelocityMps, kTolerance);
 	TEST_EXPECT_NEAR(context, output.event_params[3], kReferenceThrustN, kTolerance);
 	TEST_EXPECT(context, !bridge.pop_event({ kFullThrottle }, output));
 }

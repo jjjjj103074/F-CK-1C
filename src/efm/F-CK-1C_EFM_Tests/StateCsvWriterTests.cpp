@@ -34,26 +34,23 @@ std::vector<std::string> split(const std::string& text, char separator)
 std::vector<std::string> expected_header()
 {
 	return split(
-		"sequence,simulation_time_s,"
-		"flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,flight_mach,flight_normal_acceleration_g,flight_angle_of_attack_deg,flight_angle_of_slide_deg,flight_atmosphere_temperature_k,flight_indicated_airspeed_mps,flight_vertical_speed_mps,flight_world_yaw_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
-		"force_moment_force_x_N,force_moment_force_y_N,force_moment_force_z_N,force_moment_moment_x_N_m,force_moment_moment_y_N_m,force_moment_moment_z_N_m,force_moment_center_of_mass_x_m,force_moment_center_of_mass_y_m,force_moment_center_of_mass_z_m,"
-		"engine_0_switch_on,engine_0_throttle_input_normalized,engine_0_throttle_output_normalized,engine_0_power_readout_normalized,engine_0_thrust_force_N,engine_0_afterburner_ratio_0_1,engine_0_afterburner_lit,engine_0_nozzle_aperture_normalized,"
-		"engine_1_switch_on,engine_1_throttle_input_normalized,engine_1_throttle_output_normalized,engine_1_power_readout_normalized,engine_1_thrust_force_N,engine_1_afterburner_ratio_0_1,engine_1_afterburner_lit,engine_1_nozzle_aperture_normalized,"
-		"controls_pitch_input_normalized,controls_roll_input_normalized,controls_yaw_input_normalized,controls_symmetric_stabilator_position_rad,controls_differential_flaperon_position_rad,controls_rudder_position_rad,controls_flaps_position_normalized,controls_slats_position_normalized,controls_airbrake_position_normalized,"
-		"landing_gear_gear_position_normalized,landing_gear_nose_wheel_steering_normalized,landing_gear_brake_left_normalized,landing_gear_brake_right_normalized,landing_gear_wheel_spin_phase_0_1_0,landing_gear_wheel_spin_phase_0_1_1,landing_gear_wheel_spin_phase_0_1_2,"
-		"suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
-		"suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
-		"suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
-		"suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,shake_amplitude_normalized",
-		',');
+	    "sequence,simulation_time_s,"
+	    "flight_altitude_asl_m,flight_altitude_agl_m,flight_position_world_z_m,flight_mach,flight_normal_acceleration_g,flight_angle_of_attack_deg,flight_angle_of_slide_deg,flight_atmosphere_temperature_k,flight_indicated_airspeed_mps,flight_vertical_speed_mps,flight_world_yaw_rad,flight_pitch_attitude_rad,flight_roll_attitude_rad,flight_roll_rate_rad_s,flight_pitch_rate_rad_s,flight_yaw_rate_rad_s,"
+	    "force_moment_force_x_N,force_moment_force_y_N,force_moment_force_z_N,force_moment_moment_x_N_m,force_moment_moment_y_N_m,force_moment_moment_z_N_m,force_moment_center_of_mass_x_m,force_moment_center_of_mass_y_m,force_moment_center_of_mass_z_m,"
+	    "engine_0_switch_on,engine_0_throttle_input_normalized,engine_0_throttle_output_normalized,engine_0_power_readout_normalized,engine_0_thrust_force_N,engine_0_afterburner_ratio_0_1,engine_0_afterburner_lit,engine_0_nozzle_aperture_normalized,"
+	    "engine_1_switch_on,engine_1_throttle_input_normalized,engine_1_throttle_output_normalized,engine_1_power_readout_normalized,engine_1_thrust_force_N,engine_1_afterburner_ratio_0_1,engine_1_afterburner_lit,engine_1_nozzle_aperture_normalized,"
+	    "controls_pitch_input_normalized,controls_roll_input_normalized,controls_yaw_input_normalized,controls_symmetric_stabilator_position_rad,controls_differential_flaperon_position_rad,controls_rudder_position_rad,controls_flaps_position_normalized,controls_slats_position_normalized,controls_airbrake_position_normalized,"
+	    "landing_gear_gear_position_normalized,landing_gear_nose_wheel_steering_normalized,landing_gear_brake_left_normalized,landing_gear_brake_right_normalized,landing_gear_wheel_spin_phase_0_1_0,landing_gear_wheel_spin_phase_0_1_1,landing_gear_wheel_spin_phase_0_1_2,"
+	    "suspension_wheel_0_acting_force_x_N,suspension_wheel_0_acting_force_y_N,suspension_wheel_0_acting_force_z_N,suspension_wheel_0_compression_m,suspension_wheel_0_force_magnitude_N,suspension_wheel_0_weight_on_wheel,"
+	    "suspension_wheel_1_acting_force_x_N,suspension_wheel_1_acting_force_y_N,suspension_wheel_1_acting_force_z_N,suspension_wheel_1_compression_m,suspension_wheel_1_force_magnitude_N,suspension_wheel_1_weight_on_wheel,"
+	    "suspension_wheel_2_acting_force_x_N,suspension_wheel_2_acting_force_y_N,suspension_wheel_2_acting_force_z_N,suspension_wheel_2_compression_m,suspension_wheel_2_force_magnitude_N,suspension_wheel_2_weight_on_wheel,"
+	    "suspension_any_weight_on_wheels,suspension_on_ground,fuel_internal_kg,fuel_external_kg,fuel_total_kg,fuel_total_flow_kg_per_s,shake_amplitude_normalized",
+	    ',');
 }
 
 void assign_flight_and_force(Core::FrameOutput& output)
 {
-	output.flight = {
-		1, 2, 3, 4, 5, 6, 7, 8,
-		91, 92, 93, 94, 95, 96, 97, 98
-	};
+	output.flight = { 1, 2, 3, 4, 5, 6, 7, 8, 91, 92, 93, 94, 95, 96, 97, 98 };
 	output.force_moment.force_body_n = { 9, 10, 11 };
 	output.force_moment.moment_body_nm = { 12, 13, 14 };
 	output.force_moment.center_of_mass_body_m = { 15, 16, 17 };
@@ -91,13 +88,12 @@ Core::FrameOutput numbered_output()
 
 std::vector<std::string> expected_numbered_row()
 {
-	return split(
-		"7,0.125,1,2,3,4,5,6,7,8,91,92,93,94,95,96,97,98,9,10,11,12,13,14,15,16,17,"
-		"True,18,19,20,21,22,False,23,False,24,25,26,27,28,True,29,"
-		"30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,"
-		"46,47,48,49,50,True,51,52,53,54,55,False,56,57,58,59,60,True,"
-		"True,False,61,62,63,64,90",
-		',');
+	return split("7,0.125,1,2,3,4,5,6,7,8,91,92,93,94,95,96,97,98,9,10,11,12,13,14,15,16,17,"
+	             "True,18,19,20,21,22,False,23,False,24,25,26,27,28,True,29,"
+	             "30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,"
+	             "46,47,48,49,50,True,51,52,53,54,55,False,56,57,58,59,60,True,"
+	             "True,False,61,62,63,64,90",
+	             ',');
 }
 
 std::size_t line_count(const std::string& text)
@@ -129,8 +125,7 @@ void test_schema_and_complete_row(Tests::Context& context)
 	const std::vector<std::string> header_cells = split(header, ',');
 	TEST_EXPECT(context, header_cells == expected_header());
 	TEST_EXPECT(context, header_cells.size() == kExpectedColumnCount);
-	const DcsBridge::Internal::TelemetryRecord record = {
-		1, 1, 7, numbered_output() };
+	const DcsBridge::Internal::TelemetryRecord record = { 1, 1, 7, numbered_output() };
 	const auto row = DcsBridge::Internal::format_state_csv_row(record);
 	TEST_EXPECT(context, row.valid);
 	std::string text(row.data.data(), row.size - 1);
@@ -145,8 +140,7 @@ void test_unavailable_fields_and_round_trip(Tests::Context& context)
 	output.simulation_time_s = 0.10000000000000002;
 	const auto formatted = DcsBridge::Internal::format_state_csv_row({ 1, 1, 0, output });
 	TEST_EXPECT(context, formatted.valid);
-	const std::vector<std::string> cells = split(
-		std::string(formatted.data.data(), formatted.size - 1), ',');
+	const std::vector<std::string> cells = split(std::string(formatted.data.data(), formatted.size - 1), ',');
 	TEST_EXPECT(context, std::strtod(cells[1].c_str(), nullptr) == output.simulation_time_s);
 	for (std::size_t index = 2; index <= 17; ++index)
 	{
@@ -170,18 +164,15 @@ void test_latest_only_mailbox(Tests::Context& context)
 	second.simulation_time_s = 2.0;
 	mailbox.publish(1, 1, first);
 	mailbox.publish(1, 2, second);
-	const auto read = mailbox.wait_until(
-		(std::chrono::steady_clock::time_point::max)());
+	const auto read = mailbox.wait_until((std::chrono::steady_clock::time_point::max)());
 	const auto& latest = read.record;
 	TEST_EXPECT(context, !read.stopping);
 	TEST_EXPECT(context, latest && latest->publish_version == 2);
 	TEST_EXPECT(context, latest && latest->sequence == 2);
 	TEST_EXPECT(context, latest && latest->output.simulation_time_s == 2.0);
-	const auto row = latest
-		? DcsBridge::Internal::format_state_csv_row(*latest)
-		: DcsBridge::Internal::FormattedStateCsvRow{};
-	TEST_EXPECT(context, row.valid && split(
-		std::string(row.data.data(), row.size - 1), ',')[0] == "2");
+	const auto row =
+	    latest ? DcsBridge::Internal::format_state_csv_row(*latest) : DcsBridge::Internal::FormattedStateCsvRow{};
+	TEST_EXPECT(context, row.valid && split(std::string(row.data.data(), row.size - 1), ',')[0] == "2");
 	TEST_EXPECT(context, !mailbox.take_latest().has_value());
 	mailbox.publish(2, 0, first);
 	const auto next_flight = mailbox.take_latest();
@@ -202,12 +193,10 @@ void test_file_lifecycle_and_sequences(Tests::Context& context)
 	TestFiles::write_text(old, "obsolete old\n");
 	DcsBridge::Internal::EventLog event_log(root.path().string().c_str());
 	{
-		DcsBridge::Internal::StateCsvWriter writer(
-			root.path().string().c_str(), event_log);
+		DcsBridge::Internal::StateCsvWriter writer(root.path().string().c_str(), event_log);
 		TEST_EXPECT(context, writer.is_ready());
 		TEST_EXPECT(context, TestFiles::read_text_while_open(old) == "previous active\n");
-		TEST_EXPECT(context, TestFiles::read_text_while_open(active) ==
-			DcsBridge::Internal::state_csv_header());
+		TEST_EXPECT(context, TestFiles::read_text_while_open(active) == DcsBridge::Internal::state_csv_header());
 		Core::FrameOutput output;
 		writer.publish_start(output);
 		TEST_EXPECT(context, wait_for_lines(active, 2));
@@ -221,8 +210,7 @@ void test_file_lifecycle_and_sequences(Tests::Context& context)
 		writer.publish_start(output);
 		TEST_EXPECT(context, wait_for_lines(active, 5));
 	}
-	const std::vector<std::string> lines = split(
-		TestFiles::read_text_while_open(active), '\n');
+	const std::vector<std::string> lines = split(TestFiles::read_text_while_open(active), '\n');
 	TEST_EXPECT(context, lines.size() == 5);
 	TEST_EXPECT(context, split(lines[1], ',')[0] == "0");
 	TEST_EXPECT(context, split(lines[2], ',')[0] == "1");
@@ -244,8 +232,7 @@ void test_failure_report_and_next_start_retry(Tests::Context& context)
 	TEST_EXPECT(context, writer.last_error_code() != 0);
 	const auto event_path = log_directory / "fck1c_efm.log";
 	const std::string error = TestFiles::read_text_while_open(event_path);
-	TEST_EXPECT(context, error.find("[ERROR] csv operation=remove_old path=") !=
-		std::string::npos);
+	TEST_EXPECT(context, error.find("[ERROR] csv operation=remove_old path=") != std::string::npos);
 	TEST_EXPECT(context, error.find(" os_error=") != std::string::npos);
 	std::filesystem::remove(blocking_old);
 	Core::FrameOutput output;

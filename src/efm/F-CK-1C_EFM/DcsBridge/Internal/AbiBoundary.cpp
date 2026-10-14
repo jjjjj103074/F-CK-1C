@@ -31,38 +31,30 @@ const char* owner_type_name(Core::ExecutionOwnerType owner_type)
 	return "unknown";
 }
 
-void format_standard_exception(
-	const AbiErrorOutput& output,
-	const char* reason) noexcept
+void format_standard_exception(const AbiErrorOutput& output, const char* reason) noexcept
 {
-	std::snprintf(
-		output.data,
-		output.capacity,
-		"callback=%s unhandled_exception=%s caught_at=c_abi_boundary",
-		output.callback,
-		reason);
+	std::snprintf(output.data,
+	              output.capacity,
+	              "callback=%s unhandled_exception=%s caught_at=c_abi_boundary",
+	              output.callback,
+	              reason);
 }
 
-void format_execution_error(
-	const AbiErrorOutput& output,
-	const Core::ExecutionError& error) noexcept
+void format_execution_error(const AbiErrorOutput& output, const Core::ExecutionError& error) noexcept
 {
 	const Core::ExecutionErrorDetails& details = error.details();
-	std::snprintf(
-		output.data,
-		output.capacity,
-		"callback=%s source=%s owner=%s operation=%s reason=%s "
-		"caught_at=c_abi_boundary",
-		output.callback,
-		owner_type_name(details.owner_type),
-		details.owner.c_str(),
-		details.operation.c_str(),
-		details.reason.c_str());
+	std::snprintf(output.data,
+	              output.capacity,
+	              "callback=%s source=%s owner=%s operation=%s reason=%s "
+	              "caught_at=c_abi_boundary",
+	              output.callback,
+	              owner_type_name(details.owner_type),
+	              details.owner.c_str(),
+	              details.operation.c_str(),
+	              details.reason.c_str());
 }
 
-void format_exception(
-	const AbiErrorOutput& output,
-	const std::exception_ptr& exception) noexcept
+void format_exception(const AbiErrorOutput& output, const std::exception_ptr& exception) noexcept
 {
 	if (!exception)
 	{
@@ -99,10 +91,7 @@ namespace DcsBridge
 {
 namespace Internal
 {
-void report_abi_exception(
-	const char* callback,
-	const std::exception_ptr& exception,
-	EventLog* event_log) noexcept
+void report_abi_exception(const char* callback, const std::exception_ptr& exception, EventLog* event_log) noexcept
 {
 	char message[kAbiErrorMessageCapacity];
 	format_exception({ message, sizeof(message), callback }, exception);

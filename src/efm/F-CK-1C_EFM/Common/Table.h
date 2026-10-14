@@ -9,15 +9,11 @@ struct LinearTable
 	unsigned size = 0;
 };
 
-inline double interpolate_segment(
-	const LinearTable& table,
-	unsigned index,
-	double input)
+inline double interpolate_segment(const LinearTable& table, unsigned index, double input)
 {
 	const double denominator = table.x[index] - table.x[index - 1];
 	return ((table.values[index] - table.values[index - 1]) / denominator * input) +
-		(table.x[index] * table.values[index - 1] -
-			table.x[index - 1] * table.values[index]) / denominator;
+	       (table.x[index] * table.values[index - 1] - table.x[index - 1] * table.values[index]) / denominator;
 }
 
 inline double lerp(const LinearTable& table, double input)

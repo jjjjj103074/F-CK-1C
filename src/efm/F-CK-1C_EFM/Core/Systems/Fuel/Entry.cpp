@@ -10,13 +10,11 @@ namespace Fuel
 {
 SystemEntry create_entry()
 {
-	return {
-		"fuel",
-		[](const FlightSetupContext& setup)
-		{
-			return std::make_unique<Core::Systems::Fuel>(setup.fuel);
-		}
-	};
+	return { "fuel",
+		     [](const FlightSetupContext& setup)
+		     {
+		         return std::make_unique<Core::Systems::Fuel>(setup.fuel);
+		     } };
 }
 }
 }

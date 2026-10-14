@@ -67,29 +67,26 @@ struct FlightControlObservation
 	bool pressure_altitude_available = false;
 };
 
-inline FlightControlObservation make_flight_control_observation(
-	const AircraftObservation& source,
-	const PressureAltitudeObservation& pressure_altitude,
-	const MagneticHeadingObservation& heading)
+inline FlightControlObservation make_flight_control_observation(const AircraftObservation& source,
+                                                                const PressureAltitudeObservation& pressure_altitude,
+                                                                const MagneticHeadingObservation& heading)
 {
-	return {
-		pressure_altitude.pressure_altitude_ft,
-		source.indicated_airspeed_mps,
-		Common::feet(source.vertical_speed_mps),
-		source.mach,
-		source.dynamic_pressure_pa,
-		source.normal_acceleration_g,
-		Common::rad(source.alpha_deg),
-		Common::rad(source.beta_deg),
-		heading.status.available,
-		heading.magnetic_heading_deg,
-		source.roll_rad,
-		source.pitch_rad,
-		source.roll_rate_rad_s,
-		source.pitch_rate_rad_s,
-		source.yaw_rate_rad_s,
-		pressure_altitude.status.available
-	};
+	return { pressure_altitude.pressure_altitude_ft,
+		     source.indicated_airspeed_mps,
+		     Common::feet(source.vertical_speed_mps),
+		     source.mach,
+		     source.dynamic_pressure_pa,
+		     source.normal_acceleration_g,
+		     Common::rad(source.alpha_deg),
+		     Common::rad(source.beta_deg),
+		     heading.status.available,
+		     heading.magnetic_heading_deg,
+		     source.roll_rad,
+		     source.pitch_rad,
+		     source.roll_rate_rad_s,
+		     source.pitch_rate_rad_s,
+		     source.yaw_rate_rad_s,
+		     pressure_altitude.status.available };
 }
 
 /// @brief 三軸舵面位置需求；無因次，範圍為 [-1, 1]。
@@ -113,8 +110,7 @@ struct FlightControlSurfaceState
 {
 	double position_rad = 0.0;
 	double rate_rad_s = 0.0;
-	FlightControlPositionLimit position_limit =
-		FlightControlPositionLimit::None;
+	FlightControlPositionLimit position_limit = FlightControlPositionLimit::None;
 	bool at_position_limit = false;
 	bool rate_limited = false;
 	bool saturated = false;
@@ -162,10 +158,8 @@ struct LandingGearData
 	double brake_left_normalized = 0.0;
 	double brake_right_normalized = 0.0;
 	std::array<double, kFrameSuspensionWheelCount> wheel_radius_m = {};
-	std::array<double, kFrameSuspensionWheelCount>
-		wheel_spin_phase_0_1 = {};
-	std::array<SuspensionWheelData, kFrameSuspensionWheelCount>
-		suspension = {};
+	std::array<double, kFrameSuspensionWheelCount> wheel_spin_phase_0_1 = {};
+	std::array<SuspensionWheelData, kFrameSuspensionWheelCount> suspension = {};
 	bool any_weight_on_wheels = false;
 	bool on_ground = false;
 	// The longitudinal flight-control law is selected from the cockpit gear
@@ -239,8 +233,7 @@ enum class AircraftDataId
 	Count
 };
 
-template <typename T>
-struct AircraftDataKey
+template <typename T> struct AircraftDataKey
 {
 	AircraftDataId id;
 	const char* name;
@@ -248,118 +241,85 @@ struct AircraftDataKey
 
 namespace AircraftDataKeys
 {
-inline constexpr AircraftDataKey<FrameInput> kFrameInput = {
-	AircraftDataId::FrameInput,
-	"frame_input"
+inline constexpr AircraftDataKey<FrameInput> kFrameInput = { AircraftDataId::FrameInput, "frame_input" };
+
+inline constexpr AircraftDataKey<AircraftObservation> kAircraftObservation = { AircraftDataId::AircraftObservation,
+	                                                                           "aircraft_observation" };
+
+inline constexpr AircraftDataKey<FlightControlObservation> kFlightControlObservation = {
+	AircraftDataId::FlightControlObservation,
+	"flight_control_observation"
 };
 
-inline constexpr AircraftDataKey<AircraftObservation> kAircraftObservation = {
-	AircraftDataId::AircraftObservation,
-	"aircraft_observation"
+inline constexpr AircraftDataKey<PilotControlSignal> kPilotControlSignal = { AircraftDataId::PilotControlSignal,
+	                                                                         "pilot_control_signal" };
+
+inline constexpr AircraftDataKey<FlightControlActuatorCommand> kFlightControlActuatorCommand = {
+	AircraftDataId::FlightControlActuatorCommand,
+	"flight_control_actuator_command"
 };
 
-inline constexpr AircraftDataKey<FlightControlObservation>
-	kFlightControlObservation = {
-		AircraftDataId::FlightControlObservation,
-		"flight_control_observation"
+inline constexpr AircraftDataKey<FlightControlActuatorState> kFlightControlActuatorState = {
+	AircraftDataId::FlightControlActuatorState,
+	"flight_control_actuator_state"
 };
 
-inline constexpr AircraftDataKey<PilotControlSignal> kPilotControlSignal = {
-	AircraftDataId::PilotControlSignal,
-	"pilot_control_signal"
+inline constexpr AircraftDataKey<ThrottleLeverSignal> kThrottleLeverSignal = { AircraftDataId::ThrottleLeverSignal,
+	                                                                           "throttle_lever_signal" };
+
+inline constexpr AircraftDataKey<EngineThrottleCommand> kEngineThrottleCommand = {
+	AircraftDataId::EngineThrottleCommand,
+	"engine_throttle_command"
 };
 
-inline constexpr AircraftDataKey<FlightControlActuatorCommand>
-	kFlightControlActuatorCommand = {
-		AircraftDataId::FlightControlActuatorCommand,
-		"flight_control_actuator_command"
+inline constexpr AircraftDataKey<SecondaryControlPosition> kSecondaryControlPosition = {
+	AircraftDataId::SecondaryControlPosition,
+	"secondary_control_position"
 };
 
-inline constexpr AircraftDataKey<FlightControlActuatorState>
-	kFlightControlActuatorState = {
-		AircraftDataId::FlightControlActuatorState,
-		"flight_control_actuator_state"
+inline constexpr AircraftDataKey<LandingGearData> kLandingGearData = { AircraftDataId::LandingGearData,
+	                                                                   "landing_gear_data" };
+
+inline constexpr AircraftDataKey<EngineData> kEngineData = { AircraftDataId::EngineData, "engine_data" };
+
+inline constexpr AircraftDataKey<FuelDemand> kFuelDemand = { AircraftDataId::FuelDemand, "fuel_demand" };
+
+inline constexpr AircraftDataKey<FuelData> kFuelData = { AircraftDataId::FuelData, "fuel_data" };
+
+inline constexpr AircraftDataKey<AirframeIntegrity> kAirframeIntegrity = { AircraftDataId::AirframeIntegrity,
+	                                                                       "airframe_integrity" };
+
+inline constexpr AircraftDataKey<DigitalFlightControlComputerSnapshot> kDigitalFlightControlComputerSnapshot = {
+	AircraftDataId::DigitalFlightControlComputerSnapshot,
+	"digital_flight_control_computer_snapshot"
 };
 
-inline constexpr AircraftDataKey<ThrottleLeverSignal> kThrottleLeverSignal = {
-	AircraftDataId::ThrottleLeverSignal,
-	"throttle_lever_signal"
+inline constexpr AircraftDataKey<AutomaticFlightControlSnapshot> kAutomaticFlightControlSnapshot = {
+	AircraftDataId::AutomaticFlightControlSnapshot,
+	"automatic_flight_control_snapshot"
 };
 
-inline constexpr AircraftDataKey<EngineThrottleCommand>
-	kEngineThrottleCommand = {
-		AircraftDataId::EngineThrottleCommand,
-		"engine_throttle_command"
-};
-
-inline constexpr AircraftDataKey<SecondaryControlPosition>
-	kSecondaryControlPosition = {
-		AircraftDataId::SecondaryControlPosition,
-		"secondary_control_position"
-	};
-
-inline constexpr AircraftDataKey<LandingGearData> kLandingGearData = {
-	AircraftDataId::LandingGearData,
-	"landing_gear_data"
-};
-
-inline constexpr AircraftDataKey<EngineData> kEngineData = {
-	AircraftDataId::EngineData,
-	"engine_data"
-};
-
-inline constexpr AircraftDataKey<FuelDemand> kFuelDemand = {
-	AircraftDataId::FuelDemand,
-	"fuel_demand"
-};
-
-inline constexpr AircraftDataKey<FuelData> kFuelData = {
-	AircraftDataId::FuelData,
-	"fuel_data"
-};
-
-inline constexpr AircraftDataKey<AirframeIntegrity> kAirframeIntegrity = {
-	AircraftDataId::AirframeIntegrity,
-	"airframe_integrity"
-};
-
-inline constexpr AircraftDataKey<DigitalFlightControlComputerSnapshot>
-	kDigitalFlightControlComputerSnapshot = {
-		AircraftDataId::DigitalFlightControlComputerSnapshot,
-		"digital_flight_control_computer_snapshot"
-};
-
-inline constexpr AircraftDataKey<AutomaticFlightControlSnapshot>
-	kAutomaticFlightControlSnapshot = {
-		AircraftDataId::AutomaticFlightControlSnapshot,
-		"automatic_flight_control_snapshot"
-	};
-
-inline constexpr AircraftDataKey<PropulsionTestIntent> kPropulsionTestIntent = {
-	AircraftDataId::PropulsionTestIntent,
-	"propulsion_test_intent"
-};
+inline constexpr AircraftDataKey<PropulsionTestIntent> kPropulsionTestIntent = { AircraftDataId::PropulsionTestIntent,
+	                                                                             "propulsion_test_intent" };
 }
 
-using AircraftDataValue = std::variant<
-	FrameInput,
-	AircraftObservation,
-	FlightControlObservation,
-	PilotControlSignal,
-	FlightControlActuatorCommand,
-	FlightControlActuatorState,
-	ThrottleLeverSignal,
-	EngineThrottleCommand,
-	SecondaryControlPosition,
-	LandingGearData,
-	EngineData,
-	FuelDemand,
-	FuelData,
-	AirframeIntegrity,
-	DigitalFlightControlComputerSnapshot,
-	AutomaticFlightControlSnapshot,
-	PropulsionTestIntent>;
+using AircraftDataValue = std::variant<FrameInput,
+                                       AircraftObservation,
+                                       FlightControlObservation,
+                                       PilotControlSignal,
+                                       FlightControlActuatorCommand,
+                                       FlightControlActuatorState,
+                                       ThrottleLeverSignal,
+                                       EngineThrottleCommand,
+                                       SecondaryControlPosition,
+                                       LandingGearData,
+                                       EngineData,
+                                       FuelDemand,
+                                       FuelData,
+                                       AirframeIntegrity,
+                                       DigitalFlightControlComputerSnapshot,
+                                       AutomaticFlightControlSnapshot,
+                                       PropulsionTestIntent>;
 
-inline constexpr std::size_t kAircraftDataSlotCount =
-	static_cast<std::size_t>(AircraftDataId::Count);
+inline constexpr std::size_t kAircraftDataSlotCount = static_cast<std::size_t>(AircraftDataId::Count);
 }

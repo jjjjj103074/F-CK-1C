@@ -62,17 +62,10 @@ private:
 	};
 
 	bool initialize(const char* module_root);
-	bool format_line(
-		const EventRecord& record,
-		char* output,
-		size_t capacity) const;
+	bool format_line(const EventRecord& record, char* output, size_t capacity) const;
 	bool write_unlocked(const EventRecord& record);
-	bool write_summary(
-		const WarningCounter& counter,
-		const std::optional<double>& simulation_time_s);
-	WarningCounter* find_counter(
-		CountedWarningKind kind,
-		std::int64_t id);
+	bool write_summary(const WarningCounter& counter, const std::optional<double>& simulation_time_s);
+	WarningCounter* find_counter(CountedWarningKind kind, std::int64_t id);
 	void set_error(int error_code);
 
 	mutable std::mutex mutex_;

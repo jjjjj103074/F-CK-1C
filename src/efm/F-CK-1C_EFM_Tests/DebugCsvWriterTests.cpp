@@ -13,55 +13,41 @@ namespace
 using DcsBridge::Internal::DebugCsvWriter;
 using DcsBridge::Internal::DebugTelemetryHub;
 using namespace std::chrono_literals;
-constexpr auto kIsolatedPublishErrors =
-	Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport;
+constexpr auto kIsolatedPublishErrors = Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport;
 
 Core::DebugTelemetryChannelDescriptor descriptor(const char* name)
 {
-	return {
-		name,
-		"Value",
-		Core::DebugTelemetryValueType::Double,
-		"",
-		"csv test"
-	};
+	return { name, "Value", Core::DebugTelemetryValueType::Double, "", "csv test" };
 }
 
 void test_csv_formatting_and_escaping(Tests::Context& context)
 {
 	auto text_descriptor = descriptor("text,value");
 	text_descriptor.value_type = Core::DebugTelemetryValueType::Text;
-	const std::string header =
-		DcsBridge::Internal::format_debug_csv_header({ text_descriptor });
-	TEST_EXPECT(context,
-		header == "sequence,simulation_time_s,\"text,value\"\n");
+	const std::string header = DcsBridge::Internal::format_debug_csv_header({ text_descriptor });
+	TEST_EXPECT(context, header == "sequence,simulation_time_s,\"text,value\"\n");
 	Core::DebugTelemetrySample sample;
 	sample.sequence = 2;
 	sample.simulation_time = 15'625'000ns;
 	sample.values = { std::string("alpha,\"beta\"\nline") };
-	const std::string row =
-		DcsBridge::Internal::format_debug_csv_row(sample);
-	TEST_EXPECT(context,
-		row == "2,0.015625,\"alpha,\"\"beta\"\"\nline\"\n");
+	const std::string row = DcsBridge::Internal::format_debug_csv_row(sample);
+	TEST_EXPECT(context, row == "2,0.015625,\"alpha,\"\"beta\"\"\nline\"\n");
 }
 
-void test_csv_formats_all_values_and_nonfinite_numbers(
-	Tests::Context& context)
+void test_csv_formats_all_values_and_nonfinite_numbers(Tests::Context& context)
 {
 	Core::DebugTelemetrySample sample;
 	sample.sequence = 3;
 	sample.simulation_time = 1s;
-	sample.values = {
-		std::nullopt,
-		std::int64_t(-7),
-		true,
-		1.2345678901234567,
-		(std::numeric_limits<double>::quiet_NaN)(),
-		(std::numeric_limits<double>::infinity)(),
-		-(std::numeric_limits<double>::infinity)()
-	};
-	TEST_EXPECT(context, DcsBridge::Internal::format_debug_csv_row(sample) ==
-		"3,1,-,-7,True,1.2345678901234567,nan,inf,-inf\n");
+	sample.values = { std::nullopt,
+		              std::int64_t(-7),
+		              true,
+		              1.2345678901234567,
+		              (std::numeric_limits<double>::quiet_NaN)(),
+		              (std::numeric_limits<double>::infinity)(),
+		              -(std::numeric_limits<double>::infinity)() };
+	TEST_EXPECT(context,
+	            DcsBridge::Internal::format_debug_csv_row(sample) == "3,1,-,-7,True,1.2345678901234567,nan,inf,-inf\n");
 }
 
 void test_file_lifecycle_and_resampling(Tests::Context& context)
@@ -89,17 +75,13 @@ void test_file_lifecycle_and_resampling(Tests::Context& context)
 		writer.publish_step(0.040);
 		writer.release_flight(0.040);
 		TEST_EXPECT(context, writer.is_ready());
-		TEST_EXPECT(context,
-			TestFiles::read_text_while_open(old) == "previous\n");
-		const std::string shared_output =
-			TestFiles::read_text_while_open(active);
-		TEST_EXPECT(context, shared_output.find(
-			"sequence,simulation_time_s,value\n") == 0);
+		TEST_EXPECT(context, TestFiles::read_text_while_open(old) == "previous\n");
+		const std::string shared_output = TestFiles::read_text_while_open(active);
+		TEST_EXPECT(context, shared_output.find("sequence,simulation_time_s,value\n") == 0);
 	}
 	TEST_EXPECT(context, TestFiles::read_text_while_open(old) == "previous\n");
 	const std::string output = TestFiles::read_text_while_open(active);
-	TEST_EXPECT(context, output.find(
-		"sequence,simulation_time_s,value\n") == 0);
+	TEST_EXPECT(context, output.find("sequence,simulation_time_s,value\n") == 0);
 	// The latest-batch mailbox may replace the initial batch before the worker
 	// consumes it. Sequence gaps deliberately expose that overload behavior.
 	TEST_EXPECT(context, output.find("1,0.015625,2\n") != std::string::npos);
@@ -120,12 +102,10 @@ void test_no_channels_creates_no_file(Tests::Context& context)
 		writer.publish_step(0.1);
 		writer.release_flight(0.1);
 	}
-	TEST_EXPECT(context,
-		!std::filesystem::exists(root.path() / "log" / "debug.csv"));
+	TEST_EXPECT(context, !std::filesystem::exists(root.path() / "log" / "debug.csv"));
 }
 
-void test_no_channels_still_rotates_an_existing_file(
-	Tests::Context& context)
+void test_no_channels_still_rotates_an_existing_file(Tests::Context& context)
 {
 	TestFiles::TemporaryDirectory root("debug_empty_rotation");
 	TEST_EXPECT(context, root.valid());
@@ -139,11 +119,8 @@ void test_no_channels_still_rotates_an_existing_file(
 	hub.seal_schema();
 	DebugCsvWriter writer(root.path().string().c_str(), event_log, hub);
 	writer.publish_start(0.0);
-	TEST_EXPECT(context,
-		!std::filesystem::exists(log / "debug.csv"));
-	TEST_EXPECT(context,
-		TestFiles::read_text_while_open(log / "debug.csv.old") ==
-			"previous\n");
+	TEST_EXPECT(context, !std::filesystem::exists(log / "debug.csv"));
+	TEST_EXPECT(context, TestFiles::read_text_while_open(log / "debug.csv.old") == "previous\n");
 }
 
 void test_file_error_is_explicit(Tests::Context& context)
@@ -187,8 +164,7 @@ void test_next_flight_retries_a_transient_path_error(Tests::Context& context)
 	writer.release_flight(0.0);
 	TEST_EXPECT(context, writer.status().ready);
 	TEST_EXPECT(context, writer.status().error_code == 0);
-	TEST_EXPECT(context,
-		std::filesystem::exists(blocked / "log" / "debug.csv"));
+	TEST_EXPECT(context, std::filesystem::exists(blocked / "log" / "debug.csv"));
 }
 }
 

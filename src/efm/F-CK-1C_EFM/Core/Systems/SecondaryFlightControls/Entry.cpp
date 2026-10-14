@@ -10,14 +10,11 @@ namespace SecondaryFlightControls
 {
 SystemEntry create_entry()
 {
-	return {
-		"secondary_flight_controls",
-		[](const FlightSetupContext& setup)
-		{
-			return std::make_unique<Core::Systems::SecondaryFlightControls>(
-				setup.start_mode);
-		}
-	};
+	return { "secondary_flight_controls",
+		     [](const FlightSetupContext& setup)
+		     {
+		         return std::make_unique<Core::Systems::SecondaryFlightControls>(setup.start_mode);
+		     } };
 }
 }
 }

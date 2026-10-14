@@ -10,7 +10,6 @@ namespace Simulation
 class AircraftSimulation;
 struct FlightSetupContext;
 
-using AircraftSimulationFactory = std::function<
-	std::unique_ptr<AircraftSimulation>(const FlightSetupContext&)>;
+using AircraftSimulationFactory = std::function<std::unique_ptr<AircraftSimulation>(const FlightSetupContext&)>;
 }
 }

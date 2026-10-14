@@ -54,37 +54,19 @@ void test_units(Tests::Context& context)
 
 void test_command_value_press_threshold(Tests::Context& context)
 {
-	TEST_EXPECT(
-		context, Common::command_value_is_pressed(kDefaultPressedValue));
-	TEST_EXPECT(
-		context,
-		!Common::command_value_is_pressed(
-			kDefaultPressedValue, kCustomPressThreshold));
-	TEST_EXPECT(
-		context,
-		!Common::command_value_is_pressed(
-			kCustomPressThreshold, kCustomPressThreshold));
+	TEST_EXPECT(context, Common::command_value_is_pressed(kDefaultPressedValue));
+	TEST_EXPECT(context, !Common::command_value_is_pressed(kDefaultPressedValue, kCustomPressThreshold));
+	TEST_EXPECT(context, !Common::command_value_is_pressed(kCustomPressThreshold, kCustomPressThreshold));
 }
 
 void test_rescale_rejects_non_finite_values(Tests::Context& context)
 {
 	const double invalid = std::numeric_limits<double>::quiet_NaN();
-	TEST_EXPECT_NEAR(
-		context,
-		Common::rescale(-0.5, kNegativeScale, kPositiveScale),
-		-1.0,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		Common::rescale(0.5, kNegativeScale, kPositiveScale),
-		1.5,
-		kTolerance);
-	TEST_EXPECT(context, rescale_throws(
-		invalid, kNegativeScale, kPositiveScale));
-	TEST_EXPECT(context, rescale_throws(
-		0.5, invalid, kPositiveScale));
-	TEST_EXPECT(context, rescale_throws(
-		0.5, kNegativeScale, invalid));
+	TEST_EXPECT_NEAR(context, Common::rescale(-0.5, kNegativeScale, kPositiveScale), -1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, Common::rescale(0.5, kNegativeScale, kPositiveScale), 1.5, kTolerance);
+	TEST_EXPECT(context, rescale_throws(invalid, kNegativeScale, kPositiveScale));
+	TEST_EXPECT(context, rescale_throws(0.5, invalid, kPositiveScale));
+	TEST_EXPECT(context, rescale_throws(0.5, kNegativeScale, invalid));
 }
 
 void test_table_interpolation(Tests::Context& context)
@@ -95,11 +77,7 @@ void test_table_interpolation(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, Common::lerp(table, -1.0), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, Common::lerp(table, 0.5), 5.0, kTolerance);
 	TEST_EXPECT_NEAR(context, Common::lerp(table, 3.0), 20.0, kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		Common::lerp(table, std::numeric_limits<double>::quiet_NaN()),
-		20.0,
-		kTolerance);
+	TEST_EXPECT_NEAR(context, Common::lerp(table, std::numeric_limits<double>::quiet_NaN()), 20.0, kTolerance);
 }
 
 void test_path_join(Tests::Context& context)

@@ -16,9 +16,7 @@ public:
 	/// @brief 綁定此元件固定使用的資料庫；資料庫必須比元件更晚銷毀。
 	/// @param input_output 唯讀的輸入輸出分區。
 	/// @param system_status 供監控結果寫入的狀態分區。
-	SystemMonitor(
-		const InputOutputData& input_output,
-		SystemStatusTables& system_status);
+	SystemMonitor(const InputOutputData& input_output, SystemStatusTables& system_status);
 
 	/// @brief 接收 Executive 的一次排程呼叫；目前不執行運算或修改資料。
 	/// @param scheduled_time 此任務本次預定的絕對模擬時間。

@@ -35,11 +35,9 @@ struct CockpitParameterWriteResult
 class CockpitParameterEndpoint final
 {
 public:
-	CockpitParameterEndpoint(
-		const char* name = nullptr,
-		CockpitParameterAccess access = CockpitParameterAccess::Read)
-		: name_(name),
-		access_(access)
+	CockpitParameterEndpoint(const char* name = nullptr, CockpitParameterAccess access = CockpitParameterAccess::Read)
+	    : name_(name),
+	      access_(access)
 	{
 	}
 
@@ -64,26 +62,18 @@ public:
 			return { false, 0.0, record_failure({ "api_unavailable" }) };
 		}
 		double value = 0.0;
-		if (!api.pfn_ed_cockpit_parameter_value_to_number(
-			handle_, value, false))
+		if (!api.pfn_ed_cockpit_parameter_value_to_number(handle_, value, false))
 		{
 			return { false, 0.0, record_failure({ "unreadable_value" }) };
 		}
 		if (!std::isfinite(value))
 		{
-			return {
-				false,
-				0.0,
-				record_failure({ "invalid_numeric", value, true }),
-				true
-			};
+			return { false, 0.0, record_failure({ "invalid_numeric", value, true }), true };
 		}
 		return { true, value, record_available() };
 	}
 
-	CockpitParameterWriteResult write_number(
-		const cockpit_param_api& api,
-		double value)
+	CockpitParameterWriteResult write_number(const cockpit_param_api& api, double value)
 	{
 		if (access_ != CockpitParameterAccess::Write)
 		{
@@ -91,10 +81,7 @@ public:
 		}
 		if (!std::isfinite(value))
 		{
-			return {
-				false,
-				record_failure({ "invalid_numeric", value, true })
-			};
+			return { false, record_failure({ "invalid_numeric", value, true }) };
 		}
 		if (!ensure_handle(api))
 		{
@@ -108,9 +95,7 @@ public:
 		return { true, record_available() };
 	}
 
-	CockpitParameterWriteResult write_string(
-		const cockpit_param_api& api,
-		const std::string& value)
+	CockpitParameterWriteResult write_string(const cockpit_param_api& api, const std::string& value)
 	{
 		if (access_ != CockpitParameterAccess::Write)
 		{
@@ -159,23 +144,19 @@ private:
 
 	std::optional<CockpitParameterEvent> record_failure(Failure failure)
 	{
-		const bool repeated =
-			availability_ == Availability::Unavailable &&
-			failure_reason_ != nullptr &&
-			std::strcmp(failure_reason_, failure.reason) == 0;
+		const bool repeated = availability_ == Availability::Unavailable && failure_reason_ != nullptr &&
+		                      std::strcmp(failure_reason_, failure.reason) == 0;
 		availability_ = Availability::Unavailable;
 		failure_reason_ = failure.reason;
 		if (repeated)
 		{
 			return std::nullopt;
 		}
-		return CockpitParameterEvent{
-			CockpitParameterEventType::Error,
-			name_,
-			failure.reason,
-			failure.value,
-			failure.has_value
-		};
+		return CockpitParameterEvent{ CockpitParameterEventType::Error,
+			                          name_,
+			                          failure.reason,
+			                          failure.value,
+			                          failure.has_value };
 	}
 
 	std::optional<CockpitParameterEvent> record_available()
@@ -187,10 +168,7 @@ private:
 		{
 			return std::nullopt;
 		}
-		return CockpitParameterEvent{
-			CockpitParameterEventType::Recovery,
-			name_
-		};
+		return CockpitParameterEvent{ CockpitParameterEventType::Recovery, name_ };
 	}
 
 	const char* name_ = nullptr;

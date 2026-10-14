@@ -67,24 +67,21 @@ struct FallbackGearLoads
 	}
 };
 
-bool has_missing_suspension_feedback(
-	const Core::FrameDataAvailability& availability)
+bool has_missing_suspension_feedback(const Core::FrameDataAvailability& availability)
 {
-	return std::any_of(
-		availability.suspension.begin(),
-		availability.suspension.end(),
-		[](bool available) { return !available; });
+	return std::any_of(availability.suspension.begin(),
+	                   availability.suspension.end(),
+	                   [](bool available)
+	                   {
+		                   return !available;
+	                   });
 }
 
-bool has_current_dcs_gear_contact(
-	const GroundInteractionModelInput& input)
+bool has_current_dcs_gear_contact(const GroundInteractionModelInput& input)
 {
-	for (std::size_t index = 0;
-		index < Core::kFrameSuspensionWheelCount;
-		++index)
+	for (std::size_t index = 0; index < Core::kFrameSuspensionWheelCount; ++index)
 	{
-		if (input.availability.suspension[index] &&
-			input.landing_gear.suspension[index].weight_on_wheel)
+		if (input.availability.suspension[index] && input.landing_gear.suspension[index].weight_on_wheel)
 		{
 			return true;
 		}
@@ -92,56 +89,37 @@ bool has_current_dcs_gear_contact(
 	return false;
 }
 
-FallbackContext make_fallback_context(
-	const Core::Simulation::GroundInteractionConfig& config,
-	const GroundInteractionModelInput& input)
+FallbackContext make_fallback_context(const Core::Simulation::GroundInteractionConfig& config,
+                                      const GroundInteractionModelInput& input)
 {
 	return {
 		config,
 		input,
-		Common::limit(
-			-input.observation.velocity_world_mps.y, 0.0, kMaximumSinkRate),
-		Common::limit(
-			(input.landing_gear.position_normalized - kGearSupportStart) /
-				kGearSupportRange,
-			0.0,
-			1.0)
+		Common::limit(-input.observation.velocity_world_mps.y, 0.0, kMaximumSinkRate),
+		Common::limit((input.landing_gear.position_normalized - kGearSupportStart) / kGearSupportRange, 0.0, 1.0)
 	};
 }
 
-double world_vertical_offset(
-	const Common::Vec3& point,
-	const Core::AircraftState& observation)
+double world_vertical_offset(const Common::Vec3& point, const Core::AircraftState& observation)
 {
 	const double cos_pitch = std::cos(observation.pitch_rad);
 	const double sin_pitch = std::sin(observation.pitch_rad);
 	const double cos_roll = std::cos(observation.roll_rad);
 	const double sin_roll = std::sin(observation.roll_rad);
-	const double y_after_pitch =
-		point.x * sin_pitch + point.y * cos_pitch;
+	const double y_after_pitch = point.x * sin_pitch + point.y * cos_pitch;
 	return y_after_pitch * cos_roll - point.z * sin_roll;
 }
 
-double wheel_force(
-	const FallbackContext& context,
-	std::size_t index,
-	double compression)
+double wheel_force(const FallbackContext& context, std::size_t index, double compression)
 {
-	double force = compression * context.config.spring_rate_n_m[index] *
-		context.gear_support;
-	force += context.sink_rate * context.config.damping_n_s_m[index] *
-		context.gear_support;
+	double force = compression * context.config.spring_rate_n_m[index] * context.gear_support;
+	force += context.sink_rate * context.config.damping_n_s_m[index] * context.gear_support;
 	const double weight = context.input.observation.mass_kg * kGravity;
-	const double load_limit = index == kNoseWheelIndex
-		? kNoseWheelLoadLimit
-		: kMainWheelLoadLimit;
+	const double load_limit = index == kNoseWheelIndex ? kNoseWheelLoadLimit : kMainWheelLoadLimit;
 	return Common::limit(force, 0.0, weight * load_limit);
 }
 
-void record_wheel_load(
-	std::size_t index,
-	double force,
-	FallbackGearLoads& loads)
+void record_wheel_load(std::size_t index, double force, FallbackGearLoads& loads)
 {
 	loads.total_force += force;
 	loads.gear_contact = true;
@@ -155,60 +133,46 @@ void record_wheel_load(
 	}
 }
 
-FallbackGearLoads apply_wheel_contacts(
-	const FallbackContext& context,
-	GroundInteractionResult& result)
+FallbackGearLoads apply_wheel_contacts(const FallbackContext& context, GroundInteractionResult& result)
 {
 	FallbackGearLoads loads;
-	loads.gear_contact =
-		has_current_dcs_gear_contact(context.input);
+	loads.gear_contact = has_current_dcs_gear_contact(context.input);
 	if (context.gear_support <= 0.0)
 	{
 		return loads;
 	}
-	for (std::size_t index = 0;
-		index < Core::kFrameSuspensionWheelCount;
-		++index)
+	for (std::size_t index = 0; index < Core::kFrameSuspensionWheelCount; ++index)
 	{
 		if (context.input.availability.suspension[index])
 		{
 			continue;
 		}
 		const double wheel_bottom_agl =
-			context.input.observation.altitude_agl_m +
-			world_vertical_offset(
-				context.config.gear_points_body_m[index],
-				context.input.observation) -
-			context.input.landing_gear.wheel_radius_m[index];
-		const double compression =
-			context.config.contact_band_m[index] - wheel_bottom_agl;
+		    context.input.observation.altitude_agl_m +
+		    world_vertical_offset(context.config.gear_points_body_m[index], context.input.observation) -
+		    context.input.landing_gear.wheel_radius_m[index];
+		const double compression = context.config.contact_band_m[index] - wheel_bottom_agl;
 		if (compression <= 0.0)
 		{
 			continue;
 		}
 		const double force = wheel_force(context, index, compression);
-		result.effects.push_back(Core::Simulation::make_local_force_effect(
-			{ 0.0, force, 0.0 },
-			context.config.gear_points_body_m[index]));
+		result.effects.push_back(
+		    Core::Simulation::make_local_force_effect({ 0.0, force, 0.0 }, context.config.gear_points_body_m[index]));
 		record_wheel_load(index, force, loads);
 	}
 	return loads;
 }
 
-double brake_normal_force(
-	const GroundInteractionModelInput& input,
-	const FallbackGearLoads& loads)
+double brake_normal_force(const GroundInteractionModelInput& input, const FallbackGearLoads& loads)
 {
-	return loads.left_main_normal * Common::limit(
-		input.landing_gear.brake_left_normalized, 0.0, 1.0) +
-		loads.right_main_normal * Common::limit(
-			input.landing_gear.brake_right_normalized, 0.0, 1.0);
+	return loads.left_main_normal * Common::limit(input.landing_gear.brake_left_normalized, 0.0, 1.0) +
+	       loads.right_main_normal * Common::limit(input.landing_gear.brake_right_normalized, 0.0, 1.0);
 }
 
-void apply_longitudinal_resistance(
-	const FallbackContext& context,
-	const FallbackGearLoads& loads,
-	GroundInteractionResult& result)
+void apply_longitudinal_resistance(const FallbackContext& context,
+                                   const FallbackGearLoads& loads,
+                                   GroundInteractionResult& result)
 {
 	const double total_main_normal = loads.total_main_normal();
 	if (total_main_normal <= kMinimumMainNormalForce)
@@ -219,67 +183,46 @@ void apply_longitudinal_resistance(
 	const double forward_speed = input.observation.velocity_body_mps.x;
 	const double speed_abs = std::fabs(forward_speed);
 	const double speed_sign = forward_speed >= 0.0 ? 1.0 : -1.0;
-	const double average_throttle = kThrottleAverageFactor *
-		(input.engines.left.throttle_input_normalized +
-			input.engines.right.throttle_input_normalized);
+	const double average_throttle = kThrottleAverageFactor * (input.engines.left.throttle_input_normalized +
+	                                                          input.engines.right.throttle_input_normalized);
 	const double brake_normal = brake_normal_force(input, loads);
-	double resistance = total_main_normal * kRollingResistanceFactor +
-		brake_normal * kBrakeResistanceFactor;
-	if (speed_abs < kLowSpeedThreshold &&
-		average_throttle < kIdleThrottleThreshold)
+	double resistance = total_main_normal * kRollingResistanceFactor + brake_normal * kBrakeResistanceFactor;
+	if (speed_abs < kLowSpeedThreshold && average_throttle < kIdleThrottleThreshold)
 	{
-		resistance += Common::limit(
-			input.total_thrust_force_n,
-			0.0,
-			total_main_normal * kStaticThrustResistanceFactor);
+		resistance += Common::limit(input.total_thrust_force_n, 0.0, total_main_normal * kStaticThrustResistanceFactor);
 	}
 	if (speed_abs > kMovingSpeedThreshold)
 	{
 		result.effects.push_back(
-			Core::Simulation::make_local_force_effect(
-				{ -speed_sign * resistance, 0.0, 0.0 },
-				kGroundResistancePoint));
+		    Core::Simulation::make_local_force_effect({ -speed_sign * resistance, 0.0, 0.0 }, kGroundResistancePoint));
 		return;
 	}
-	if (average_throttle < kIdleThrottleThreshold ||
-		brake_normal > kMinimumMainNormalForce)
+	if (average_throttle < kIdleThrottleThreshold || brake_normal > kMinimumMainNormalForce)
 	{
 		result.effects.push_back(
-			Core::Simulation::make_local_force_effect(
-				{ -resistance, 0.0, 0.0 },
-				kGroundResistancePoint));
+		    Core::Simulation::make_local_force_effect({ -resistance, 0.0, 0.0 }, kGroundResistancePoint));
 	}
 }
 
-void apply_belly_contact(
-	const FallbackContext& context,
-	const FallbackGearLoads& loads,
-	GroundInteractionResult& result)
+void apply_belly_contact(const FallbackContext& context,
+                         const FallbackGearLoads& loads,
+                         GroundInteractionResult& result)
 {
 	if (loads.gear_contact)
 	{
 		return;
 	}
-	const double belly_bottom_agl =
-		context.input.observation.altitude_agl_m +
-		world_vertical_offset(
-			context.config.belly_point_body_m,
-			context.input.observation);
+	const double belly_bottom_agl = context.input.observation.altitude_agl_m +
+	                                world_vertical_offset(context.config.belly_point_body_m, context.input.observation);
 	const double compression = kBellyContactBand - belly_bottom_agl;
 	if (compression <= 0.0)
 	{
 		return;
 	}
-	double force = compression * kBellySpring +
-		context.sink_rate * kBellyDamping;
-	force = Common::limit(
-		force,
-		0.0,
-		context.input.observation.mass_kg *
-			kGravity * kBellyLoadLimit);
-	result.effects.push_back(Core::Simulation::make_local_force_effect(
-		{ 0.0, force, 0.0 },
-		context.config.belly_point_body_m));
+	double force = compression * kBellySpring + context.sink_rate * kBellyDamping;
+	force = Common::limit(force, 0.0, context.input.observation.mass_kg * kGravity * kBellyLoadLimit);
+	result.effects.push_back(
+	    Core::Simulation::make_local_force_effect({ 0.0, force, 0.0 }, context.config.belly_point_body_m));
 }
 }
 
@@ -290,50 +233,41 @@ namespace Simulation
 struct GroundInteractionModel::Implementation
 {
 	explicit Implementation(const GroundInteractionConfig& model_config)
-		: config(model_config)
+	    : config(model_config)
 	{
 		validate_ground_interaction_config(config);
 		result.effects.reserve(kGroundEffectCapacity);
 	}
 
-	const GroundInteractionResult& step(
-		const GroundInteractionModelInput& input);
+	const GroundInteractionResult& step(const GroundInteractionModelInput& input);
 
 	const GroundInteractionConfig config;
 	GroundInteractionResult result;
 };
 
-const GroundInteractionResult&
-	GroundInteractionModel::Implementation::step(
-		const GroundInteractionModelInput& input)
+const GroundInteractionResult& GroundInteractionModel::Implementation::step(const GroundInteractionModelInput& input)
 {
 	result.effects.clear();
-	result.used_fallback =
-		config.enable_fallback_ground_forces &&
-		has_missing_suspension_feedback(input.availability);
+	result.used_fallback = config.enable_fallback_ground_forces && has_missing_suspension_feedback(input.availability);
 	if (!result.used_fallback)
 	{
 		return result;
 	}
-	const FallbackContext context =
-		make_fallback_context(config, input);
-	const FallbackGearLoads loads =
-		apply_wheel_contacts(context, result);
+	const FallbackContext context = make_fallback_context(config, input);
+	const FallbackGearLoads loads = apply_wheel_contacts(context, result);
 	apply_longitudinal_resistance(context, loads, result);
 	apply_belly_contact(context, loads, result);
 	return result;
 }
 
-GroundInteractionModel::GroundInteractionModel(
-	const GroundInteractionConfig& config)
-	: implementation_(std::make_unique<Implementation>(config))
+GroundInteractionModel::GroundInteractionModel(const GroundInteractionConfig& config)
+    : implementation_(std::make_unique<Implementation>(config))
 {
 }
 
 GroundInteractionModel::~GroundInteractionModel() = default;
 
-const GroundInteractionResult& GroundInteractionModel::step(
-	const GroundInteractionModelInput& input)
+const GroundInteractionResult& GroundInteractionModel::step(const GroundInteractionModelInput& input)
 {
 	return implementation_->step(input);
 }

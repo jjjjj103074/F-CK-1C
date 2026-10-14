@@ -29,11 +29,7 @@ Core::FrameOutput make_output(double marker)
 	Core::FrameOutput output;
 	output.simulation_time_s = marker;
 	output.availability.atmosphere = marker == kFirstMarker;
-	output.force_moment.force_body_n = {
-		marker + kForceXOffset,
-		marker + kForceYOffset,
-		marker + kForceZOffset
-	};
+	output.force_moment.force_body_n = { marker + kForceXOffset, marker + kForceYOffset, marker + kForceZOffset };
 	output.engines[0].switch_on = marker == kFirstMarker;
 	output.engines[1].thrust_force_n = marker + kThrustOffset;
 	output.controls.rudder_position_rad = marker + kRudderOffset;
@@ -48,32 +44,26 @@ Core::FrameOutput make_mass_output(double mass)
 {
 	Core::FrameOutput output;
 	output.mass_effect.available = true;
-	output.mass_effect.delta = {
-		mass,
-		{ mass + kForceXOffset, mass + kForceYOffset, mass + kForceZOffset },
-		{ mass + kRudderOffset, mass + kWheelSpinOffset, mass + kCompressionOffset }
-	};
+	output.mass_effect.delta = { mass,
+		                         { mass + kForceXOffset, mass + kForceYOffset, mass + kForceZOffset },
+		                         { mass + kRudderOffset, mass + kWheelSpinOffset, mass + kCompressionOffset } };
 	return output;
 }
 
 bool has_complete_primary_output(const Core::FrameOutput& output, double marker, bool first)
 {
-	return output.availability.atmosphere == first &&
-		output.force_moment.force_body_n.x == marker + kForceXOffset &&
-		output.force_moment.force_body_n.z == marker + kForceZOffset &&
-		output.engines[0].switch_on == first &&
-		output.engines[1].thrust_force_n == marker + kThrustOffset &&
-		output.controls.rudder_position_rad == marker + kRudderOffset;
+	return output.availability.atmosphere == first && output.force_moment.force_body_n.x == marker + kForceXOffset &&
+	       output.force_moment.force_body_n.z == marker + kForceZOffset && output.engines[0].switch_on == first &&
+	       output.engines[1].thrust_force_n == marker + kThrustOffset &&
+	       output.controls.rudder_position_rad == marker + kRudderOffset;
 }
 
 bool has_complete_secondary_output(const Core::FrameOutput& output, double marker)
 {
-	return output.landing_gear.wheel_spin_phase_0_1[2] ==
-			marker + kWheelSpinOffset &&
-		output.suspension.wheels[1].compression_m ==
-			marker + kCompressionOffset &&
-		output.fuel.total_fuel_kg == marker + kFuelOffset &&
-		output.shake_amplitude_normalized == marker + kShakeOffset;
+	return output.landing_gear.wheel_spin_phase_0_1[2] == marker + kWheelSpinOffset &&
+	       output.suspension.wheels[1].compression_m == marker + kCompressionOffset &&
+	       output.fuel.total_fuel_kg == marker + kFuelOffset &&
+	       output.shake_amplitude_normalized == marker + kShakeOffset;
 }
 
 bool is_complete_output(const Core::FrameOutput& output)
@@ -81,9 +71,8 @@ bool is_complete_output(const Core::FrameOutput& output)
 	const double marker = output.simulation_time_s;
 	const bool first = marker == kFirstMarker;
 	const bool known_marker = first || marker == kSecondMarker;
-	return known_marker &&
-		has_complete_primary_output(output, marker, first) &&
-		has_complete_secondary_output(output, marker);
+	return known_marker && has_complete_primary_output(output, marker, first) &&
+	       has_complete_secondary_output(output, marker);
 }
 
 void test_lifecycle_and_immutable_copy(Tests::Context& context)
@@ -113,23 +102,26 @@ void test_concurrent_publish_and_read(Tests::Context& context)
 	DcsBridge::Internal::OutputStore store;
 	store.publish(make_output(kFirstMarker));
 	std::atomic<bool> complete_outputs_only(true);
-	std::thread writer([&]() {
-		for (int index = 0; index < kRaceIterations; ++index)
-		{
-			store.publish(make_output(
-				index % kAlternatingSamplePeriod == 0 ? kFirstMarker : kSecondMarker));
-		}
-	});
-	std::thread reader([&]() {
-		for (int index = 0; index < kRaceIterations; ++index)
-		{
-			const std::optional<Core::FrameOutput> output = store.read();
-			if (!output || !is_complete_output(*output))
-			{
-				complete_outputs_only.store(false, std::memory_order_relaxed);
-			}
-		}
-	});
+	std::thread writer(
+	    [&]()
+	    {
+		    for (int index = 0; index < kRaceIterations; ++index)
+		    {
+			    store.publish(make_output(index % kAlternatingSamplePeriod == 0 ? kFirstMarker : kSecondMarker));
+		    }
+	    });
+	std::thread reader(
+	    [&]()
+	    {
+		    for (int index = 0; index < kRaceIterations; ++index)
+		    {
+			    const std::optional<Core::FrameOutput> output = store.read();
+			    if (!output || !is_complete_output(*output))
+			    {
+				    complete_outputs_only.store(false, std::memory_order_relaxed);
+			    }
+		    }
+	    });
 	writer.join();
 	reader.join();
 	TEST_EXPECT(context, complete_outputs_only.load(std::memory_order_relaxed));
@@ -146,16 +138,8 @@ void test_mass_delta_queue_preserves_order(Tests::Context& context)
 	TEST_EXPECT(context, second.available);
 	TEST_EXPECT_NEAR(context, first.delta.mass_kg, kFirstMassDelta, 0.0);
 	TEST_EXPECT_NEAR(context, second.delta.mass_kg, kSecondMassDelta, 0.0);
-	TEST_EXPECT_NEAR(
-		context,
-		first.delta.position_body_m.x,
-		kFirstMassDelta + kForceXOffset,
-		0.0);
-	TEST_EXPECT_NEAR(
-		context,
-		second.delta.moment_of_inertia_delta_kg_m2.z,
-		kSecondMassDelta + kCompressionOffset,
-		0.0);
+	TEST_EXPECT_NEAR(context, first.delta.position_body_m.x, kFirstMassDelta + kForceXOffset, 0.0);
+	TEST_EXPECT_NEAR(context, second.delta.moment_of_inertia_delta_kg_m2.z, kSecondMassDelta + kCompressionOffset, 0.0);
 	TEST_EXPECT(context, !store.take_mass_delta().available);
 }
 
@@ -174,29 +158,33 @@ void test_concurrent_mass_publish_and_take(Tests::Context& context)
 {
 	DcsBridge::Internal::OutputStore store;
 	std::atomic<bool> ordered(true);
-	std::thread writer([&store]() {
-		for (int index = 1; index <= kMassRaceIterations; ++index)
-		{
-			store.publish(make_mass_output(static_cast<double>(index)));
-		}
-	});
-	std::thread reader([&store, &ordered]() {
-		int expected = 1;
-		while (expected <= kMassRaceIterations)
-		{
-			const Core::MassDeltaResult result = store.take_mass_delta();
-			if (!result.available)
-			{
-				std::this_thread::yield();
-				continue;
-			}
-			if (result.delta.mass_kg != static_cast<double>(expected))
-			{
-				ordered.store(false, std::memory_order_relaxed);
-			}
-			++expected;
-		}
-	});
+	std::thread writer(
+	    [&store]()
+	    {
+		    for (int index = 1; index <= kMassRaceIterations; ++index)
+		    {
+			    store.publish(make_mass_output(static_cast<double>(index)));
+		    }
+	    });
+	std::thread reader(
+	    [&store, &ordered]()
+	    {
+		    int expected = 1;
+		    while (expected <= kMassRaceIterations)
+		    {
+			    const Core::MassDeltaResult result = store.take_mass_delta();
+			    if (!result.available)
+			    {
+				    std::this_thread::yield();
+				    continue;
+			    }
+			    if (result.delta.mass_kg != static_cast<double>(expected))
+			    {
+				    ordered.store(false, std::memory_order_relaxed);
+			    }
+			    ++expected;
+		    }
+	    });
 	writer.join();
 	reader.join();
 	TEST_EXPECT(context, ordered.load(std::memory_order_relaxed));

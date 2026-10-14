@@ -14,22 +14,14 @@ namespace
 {
 using DcsBridge::Internal::DebugTelemetryHub;
 using namespace std::chrono_literals;
-constexpr auto kIsolatedPublishErrors =
-	Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport;
+constexpr auto kIsolatedPublishErrors = Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport;
 
 Core::DebugTelemetryChannelDescriptor channel(const char* name)
 {
-	return {
-		name,
-		std::string("Label ") + name,
-		Core::DebugTelemetryValueType::Double,
-		"",
-		"test channel"
-	};
+	return { name, std::string("Label ") + name, Core::DebugTelemetryValueType::Double, "", "test channel" };
 }
 
-template <typename Action>
-bool throws(Action action)
+template <typename Action> bool throws(Action action)
 {
 	try
 	{
@@ -55,9 +47,7 @@ void test_contract_supports_all_value_types(Tests::Context& context)
 	text.publish(4ns, std::string("alpha,beta\n\"quoted\""));
 	TEST_EXPECT(context, telemetry.channels().size() == 4);
 	TEST_EXPECT(context, telemetry.updates().size() == 4);
-	TEST_EXPECT(context,
-		std::get<std::string>(telemetry.updates()[3].value) ==
-			"alpha,beta\n\"quoted\"");
+	TEST_EXPECT(context, std::get<std::string>(telemetry.updates()[3].value) == "alpha,beta\n\"quoted\"");
 }
 
 void test_publication_is_not_commit_bound(Tests::Context& context)
@@ -65,14 +55,21 @@ void test_publication_is_not_commit_bound(Tests::Context& context)
 	Tests::RecordingDebugTelemetry telemetry;
 	auto value = telemetry.declare_channel<double>(channel("operation"));
 	value.publish(1ns, 4.0);
-	TEST_EXPECT(context, throws([]() { throw std::runtime_error("failed"); }));
+	TEST_EXPECT(context,
+	            throws(
+	                []()
+	                {
+		                throw std::runtime_error("failed");
+	                }));
 	TEST_EXPECT(context, telemetry.updates().size() == 1);
 	TEST_EXPECT(context, std::get<double>(telemetry.updates()[0].value) == 4.0);
 	Core::DebugTelemetryChannel<double> undeclared;
-	TEST_EXPECT(context, throws([&undeclared]()
-	{
-		undeclared.publish(0ns, 1.0);
-	}));
+	TEST_EXPECT(context,
+	            throws(
+	                [&undeclared]()
+	                {
+		                undeclared.publish(0ns, 1.0);
+	                }));
 }
 
 void test_latest_values_and_64_hz_resampling(Tests::Context& context)
@@ -104,10 +101,12 @@ void test_schema_is_stable_between_flights(Tests::Context& context)
 	DebugTelemetryHub hub(kIsolatedPublishErrors);
 	hub.begin_flight();
 	(void)hub.declare_channel<double>(channel("stable"));
-	TEST_EXPECT(context, throws([&hub]()
-	{
-		(void)hub.declare_channel<double>(channel("stable"));
-	}));
+	TEST_EXPECT(context,
+	            throws(
+	                [&hub]()
+	                {
+		                (void)hub.declare_channel<double>(channel("stable"));
+	                }));
 	hub.seal_schema();
 	hub.release_flight();
 	hub.begin_flight();
@@ -115,52 +114,65 @@ void test_schema_is_stable_between_flights(Tests::Context& context)
 	hub.seal_schema();
 	hub.release_flight();
 	hub.begin_flight();
-	TEST_EXPECT(context, throws([&hub]() { hub.seal_schema(); }));
+	TEST_EXPECT(context,
+	            throws(
+	                [&hub]()
+	                {
+		                hub.seal_schema();
+	                }));
 	hub.release_flight();
 	hub.begin_flight();
 	auto changed = channel("stable");
 	changed.label = "Changed Label";
-	TEST_EXPECT(context, throws([&hub, changed]() mutable
-	{
-		(void)hub.declare_channel<double>(std::move(changed));
-	}));
+	TEST_EXPECT(context,
+	            throws(
+	                [&hub, changed]() mutable
+	                {
+		                (void)hub.declare_channel<double>(std::move(changed));
+	                }));
 }
 
 void test_descriptor_and_time_errors_are_explicit(Tests::Context& context)
 {
 	DebugTelemetryHub hub(kIsolatedPublishErrors);
 	hub.begin_flight();
-	TEST_EXPECT(context, throws([&hub]()
-	{
-		(void)hub.declare_channel<double>(channel(""));
-	}));
+	TEST_EXPECT(context,
+	            throws(
+	                [&hub]()
+	                {
+		                (void)hub.declare_channel<double>(channel(""));
+	                }));
 	auto value = hub.declare_channel<double>(channel("value"));
 	value.publish(5ms, 1.0);
 	value.publish(4ms, 2.0);
 	value.publish(3ms, 3.0);
 	const auto status = hub.status();
 	TEST_EXPECT(context, status.publication_failed);
-	TEST_EXPECT(context,
-		std::string(status.message.data()).find("monotonic") !=
-			std::string::npos);
+	TEST_EXPECT(context, std::string(status.message.data()).find("monotonic") != std::string::npos);
 	TEST_EXPECT(context, status.channel_id == 0);
 	TEST_EXPECT(context, status.simulation_time_ns == 4'000'000);
 	TEST_EXPECT(context, status.flight_failure_count == 2);
 	hub.seal_schema();
-	TEST_EXPECT(context, throws([&hub]()
-	{
-		(void)hub.declare_channel<bool>(channel("late"));
-	}));
+	TEST_EXPECT(context,
+	            throws(
+	                [&hub]()
+	                {
+		                (void)hub.declare_channel<bool>(channel("late"));
+	                }));
 }
 
 void test_strict_publication_policy_rethrows(Tests::Context& context)
 {
-	DebugTelemetryHub hub(
-		Core::DebugTelemetryPublishErrorPolicy::ReportAndRethrow);
+	DebugTelemetryHub hub(Core::DebugTelemetryPublishErrorPolicy::ReportAndRethrow);
 	hub.begin_flight();
 	auto value = hub.declare_channel<double>(channel("strict"));
 	value.publish(2ms, 1.0);
-	TEST_EXPECT(context, throws([&value]() { value.publish(1ms, 2.0); }));
+	TEST_EXPECT(context,
+	            throws(
+	                [&value]()
+	                {
+		                value.publish(1ms, 2.0);
+	                }));
 	TEST_EXPECT(context, hub.status().publication_failed);
 }
 
@@ -189,23 +201,29 @@ void test_concurrent_latest_snapshot_is_complete(Tests::Context& context)
 	auto value = hub.declare_channel<std::int64_t>(channel("counter"));
 	hub.seal_schema();
 	std::atomic<bool> invalid_snapshot = false;
-	std::thread reader([&hub, &invalid_snapshot]()
-	{
-		for (int index = 0; index < 100; ++index)
-		{
-			const auto snapshot = hub.latest_snapshot();
-			if (snapshot.channels.size() != snapshot.values.size())
-			{
-				invalid_snapshot.store(true);
-			}
-		}
-	});
+	std::thread reader(
+	    [&hub, &invalid_snapshot]()
+	    {
+		    for (int index = 0; index < 100; ++index)
+		    {
+			    const auto snapshot = hub.latest_snapshot();
+			    if (snapshot.channels.size() != snapshot.values.size())
+			    {
+				    invalid_snapshot.store(true);
+			    }
+		    }
+	    });
 	std::vector<std::thread> publishers;
 	for (std::int64_t index = 0; index < 8; ++index)
 	{
-		publishers.emplace_back([value, index]() { value.publish(1ms, index); });
+		publishers.emplace_back(
+		    [value, index]()
+		    {
+			    value.publish(1ms, index);
+		    });
 	}
-	for (std::thread& publisher : publishers) publisher.join();
+	for (std::thread& publisher : publishers)
+		publisher.join();
 	reader.join();
 	const auto snapshot = hub.latest_snapshot();
 	TEST_EXPECT(context, !invalid_snapshot.load());

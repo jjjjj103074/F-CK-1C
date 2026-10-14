@@ -145,27 +145,22 @@ struct PrimaryAxisDynamics
 	bool center_only_outside_thresholds = false;
 };
 
-inline bool should_center_axis(
-	const PrimaryAxisState& axis,
-	const PrimaryAxisDynamics& dynamics)
+inline bool should_center_axis(const PrimaryAxisState& axis, const PrimaryAxisDynamics& dynamics)
 {
 	return axis.discrete == 0 &&
-		(!dynamics.center_only_outside_thresholds ||
-			axis.input > dynamics.centering_positive_threshold ||
-			axis.input < dynamics.centering_negative_threshold);
+	       (!dynamics.center_only_outside_thresholds || axis.input > dynamics.centering_positive_threshold ||
+	        axis.input < dynamics.centering_negative_threshold);
 }
 
-inline PrimaryAxisState update_primary_axis(
-	const PrimaryAxisState& current,
-	const PrimaryAxisDynamics& dynamics,
-	double dt_s)
+inline PrimaryAxisState update_primary_axis(const PrimaryAxisState& current,
+                                            const PrimaryAxisDynamics& dynamics,
+                                            double dt_s)
 {
 	constexpr double kReferenceUpdateRateHz = 64.0;
 	constexpr double kDiscreteCommandThreshold = 0.1;
 	if (!std::isfinite(dt_s) || dt_s <= 0.0)
 	{
-		throw std::invalid_argument(
-			"PilotControls axis dt must be positive and finite.");
+		throw std::invalid_argument("PilotControls axis dt must be positive and finite.");
 	}
 	PrimaryAxisState next = current;
 	if (current.analog)
@@ -173,28 +168,20 @@ inline PrimaryAxisState update_primary_axis(
 		next.input = Common::limit(current.input, -1.0, 1.0);
 		return next;
 	}
-	if (std::fabs(static_cast<double>(current.discrete)) >
-		kDiscreteCommandThreshold)
+	if (std::fabs(static_cast<double>(current.discrete)) > kDiscreteCommandThreshold)
 	{
-		next.input = Common::limit(
-			current.input + current.discrete *
-				dynamics.command_rate_normalized_s * dt_s,
-			-1.0,
-			1.0);
+		next.input =
+		    Common::limit(current.input + current.discrete * dynamics.command_rate_normalized_s * dt_s, -1.0, 1.0);
 		return next;
 	}
 	if (should_center_axis(current, dynamics))
 	{
-		next.input *= std::pow(
-			dynamics.centering_retention_per_reference_tick,
-			dt_s * kReferenceUpdateRateHz);
+		next.input *= std::pow(dynamics.centering_retention_per_reference_tick, dt_s * kReferenceUpdateRateHz);
 	}
 	return next;
 }
 
-inline PrimaryControlState update_primary_control_inputs(
-	const PrimaryControlState& current,
-	double dt_s);
+inline PrimaryControlState update_primary_control_inputs(const PrimaryControlState& current, double dt_s);
 
 inline double clamp_pitch_roll_trim(double trim)
 {
@@ -206,9 +193,7 @@ inline double clamp_yaw_trim(double trim)
 	return Common::limit(trim, -0.2, 0.2);
 }
 
-inline PrimaryControlState update_primary_control_inputs(
-	const PrimaryControlState& current,
-	double dt_s)
+inline PrimaryControlState update_primary_control_inputs(const PrimaryControlState& current, double dt_s)
 {
 	// These rates and retention factors preserve the legacy 64 Hz keyboard
 	// feel while making the result depend on elapsed simulation time.
@@ -218,27 +203,21 @@ inline PrimaryControlState update_primary_control_inputs(
 	constexpr double kRollYawCenteringRetention = 0.9;
 	constexpr double kPitchPositiveCenteringThreshold = 0.7;
 	constexpr double kPitchNegativeCenteringThreshold = -0.5;
-	constexpr PrimaryAxisDynamics kPitchDynamics = {
-		kPitchYawCommandRateNormalizedS,
-		kPitchCenteringRetention,
-		kPitchPositiveCenteringThreshold,
-		kPitchNegativeCenteringThreshold,
-		true
-	};
-	constexpr PrimaryAxisDynamics kRollDynamics = {
-		kRollCommandRateNormalizedS,
-		kRollYawCenteringRetention,
-		0.0,
-		0.0,
-		false
-	};
-	constexpr PrimaryAxisDynamics kYawDynamics = {
-		kPitchYawCommandRateNormalizedS,
-		kRollYawCenteringRetention,
-		0.0,
-		0.0,
-		false
-	};
+	constexpr PrimaryAxisDynamics kPitchDynamics = { kPitchYawCommandRateNormalizedS,
+		                                             kPitchCenteringRetention,
+		                                             kPitchPositiveCenteringThreshold,
+		                                             kPitchNegativeCenteringThreshold,
+		                                             true };
+	constexpr PrimaryAxisDynamics kRollDynamics = { kRollCommandRateNormalizedS,
+		                                            kRollYawCenteringRetention,
+		                                            0.0,
+		                                            0.0,
+		                                            false };
+	constexpr PrimaryAxisDynamics kYawDynamics = { kPitchYawCommandRateNormalizedS,
+		                                           kRollYawCenteringRetention,
+		                                           0.0,
+		                                           0.0,
+		                                           false };
 	PrimaryControlState next = current;
 	next.pitch = update_primary_axis(current.pitch, kPitchDynamics, dt_s);
 	next.roll = update_primary_axis(current.roll, kRollDynamics, dt_s);
@@ -305,10 +284,10 @@ inline double resolve_keyboard_throttle_base(double axis_cmd, double keyboard_cm
 
 inline void step_keyboard_throttle_channel(ThrottleChannelState& channel, double delta)
 {
-	channel.keyboard_cmd = Common::limit(
-		resolve_keyboard_throttle_base(channel.axis_cmd, channel.keyboard_cmd, channel.use_axis) + delta,
-		0.0,
-		1.0);
+	channel.keyboard_cmd =
+	    Common::limit(resolve_keyboard_throttle_base(channel.axis_cmd, channel.keyboard_cmd, channel.use_axis) + delta,
+	                  0.0,
+	                  1.0);
 	channel.use_axis = false;
 }
 
@@ -330,14 +309,10 @@ inline void step_right_keyboard_throttle(ThrottleInputState& throttles, double d
 
 inline void update_pilot_throttle_cmds(ThrottleInputState& throttles)
 {
-	throttles.left.pilot_cmd = resolve_pilot_throttle_cmd(
-		throttles.left.axis_cmd,
-		throttles.left.keyboard_cmd,
-		throttles.left.use_axis);
-	throttles.right.pilot_cmd = resolve_pilot_throttle_cmd(
-		throttles.right.axis_cmd,
-		throttles.right.keyboard_cmd,
-		throttles.right.use_axis);
+	throttles.left.pilot_cmd =
+	    resolve_pilot_throttle_cmd(throttles.left.axis_cmd, throttles.left.keyboard_cmd, throttles.left.use_axis);
+	throttles.right.pilot_cmd =
+	    resolve_pilot_throttle_cmd(throttles.right.axis_cmd, throttles.right.keyboard_cmd, throttles.right.use_axis);
 }
 
 }

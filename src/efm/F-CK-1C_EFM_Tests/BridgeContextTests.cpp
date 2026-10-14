@@ -32,8 +32,7 @@ constexpr double kPreviousFlightAltitudeAslM = 999.0;
 constexpr double kFirstQueuedMassKg = 1.25;
 constexpr double kSecondQueuedMassKg = 2.5;
 constexpr auto kInputConcurrencyTimeout = std::chrono::seconds(1);
-constexpr const char* kRepeatedStartWarning =
-	"lifecycle_warning=repeated_start_without_release";
+constexpr const char* kRepeatedStartWarning = "lifecycle_warning=repeated_start_without_release";
 std::atomic<int> g_cockpit_api_requests = 0;
 
 struct BridgeTestConfiguration
@@ -43,7 +42,7 @@ struct BridgeTestConfiguration
 
 void read_configuration(const Configuration::Value& root, BridgeTestConfiguration& result)
 {
-	root.object({"value"});
+	root.object({ "value" });
 	result.value = root.member("value").number();
 }
 
@@ -79,25 +78,18 @@ int compare_parameters(void*, void*)
 cockpit_param_api provide_cockpit_api()
 {
 	++g_cockpit_api_requests;
-	return {
-		get_parameter_handle,
-		update_string,
-		update_number,
-		read_number,
-		read_string,
-		compare_parameters
-	};
+	return { get_parameter_handle, update_string, update_number, read_number, read_string, compare_parameters };
 }
 
 std::string create_config_path(const std::filesystem::path& module_root)
 {
 	const std::filesystem::path fm_directory = module_root / "FM";
 	std::filesystem::create_directories(fm_directory);
-    // 在暫存模組的 FM 目錄放入控制律設定，供飛行初始化使用。
-    std::filesystem::create_directories(fm_directory / "DFLCC");
-    std::filesystem::copy_file("FM/DFLCC/ControlLaws.jsonc",
-        fm_directory / "DFLCC" / "ControlLaws.jsonc",
-        std::filesystem::copy_options::overwrite_existing);
+	// 在暫存模組的 FM 目錄放入控制律設定，供飛行初始化使用。
+	std::filesystem::create_directories(fm_directory / "DFLCC");
+	std::filesystem::copy_file("FM/DFLCC/ControlLaws.jsonc",
+	                           fm_directory / "DFLCC" / "ControlLaws.jsonc",
+	                           std::filesystem::copy_options::overwrite_existing);
 	const std::filesystem::path config_path = fm_directory / "config.lua";
 	TestFiles::write_text(config_path, "-- bridge context test\n");
 	return config_path.string();
@@ -106,31 +98,21 @@ std::string create_config_path(const std::filesystem::path& module_root)
 DcsBridge::Internal::BridgeContextEnvironment make_environment()
 {
 	static const int module_address_anchor = 0;
-	return {
-		provide_cockpit_api,
-		[](Core::DebugTelemetrySink& debug_telemetry)
-		{
-			return std::make_unique<Core::Fck1cEfm>(debug_telemetry);
-		},
-		&module_address_anchor
-	};
+	return { provide_cockpit_api,
+		     [](Core::DebugTelemetrySink& debug_telemetry)
+		     {
+		         return std::make_unique<Core::Fck1cEfm>(debug_telemetry);
+		     },
+		     &module_address_anchor };
 }
 
 Core::AtmosphereInput make_prepared_atmosphere(double altitude_asl_m)
 {
-	return {
-		altitude_asl_m,
-		kPreparedTemperatureK,
-		kPreparedSpeedOfSoundMps,
-		kPreparedDensityKgM3,
-		kPreparedPressurePa,
-		{}
-	};
+	return { altitude_asl_m,       kPreparedTemperatureK, kPreparedSpeedOfSoundMps,
+		     kPreparedDensityKgM3, kPreparedPressurePa,   {} };
 }
 
-void start_flight(
-	DcsBridge::Internal::BridgeContext& context,
-	Core::StartMode mode)
+void start_flight(DcsBridge::Internal::BridgeContext& context, Core::StartMode mode)
 {
 	const Core::FrameOutput output = context.start_flight(mode);
 	context.event_reporter().log_start(mode, output.simulation_time_s);
@@ -141,8 +123,7 @@ void release_flight(DcsBridge::Internal::BridgeContext& context)
 	const std::lock_guard<std::mutex> lock(context.execution_mutex());
 	const auto output = context.output_store().read();
 	context.debug_indicator_exporter().release_flight();
-	context.debug_csv_writer().release_flight(
-		output ? output->simulation_time_s : 0.0);
+	context.debug_csv_writer().release_flight(output ? output->simulation_time_s : 0.0);
 	context.core().release();
 	context.debug_telemetry_hub().release_flight();
 	context.input_collector().reset();
@@ -163,9 +144,7 @@ void test_first_callback_initializes_once(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContext& second = owner.get(second_config.c_str());
 	TEST_EXPECT(tests, &first == &second);
 	TEST_EXPECT(tests, g_cockpit_api_requests.load() == 1);
-	TEST_EXPECT(
-		tests,
-		std::filesystem::path(first.module_paths().mod_root_path) == first_root.path());
+	TEST_EXPECT(tests, std::filesystem::path(first.module_paths().mod_root_path) == first_root.path());
 }
 
 void test_files_ready_before_flight(Tests::Context& tests)
@@ -184,10 +163,7 @@ void test_files_ready_before_flight(Tests::Context& tests)
 	TEST_EXPECT(tests, std::filesystem::exists(csv_path));
 	TEST_EXPECT(tests, !std::filesystem::exists(debug_path));
 	TEST_EXPECT(tests, !context.output_store().read().has_value());
-	TEST_EXPECT(
-		tests,
-		TestFiles::read_text_while_open(csv_path) ==
-			DcsBridge::Internal::state_csv_header());
+	TEST_EXPECT(tests, TestFiles::read_text_while_open(csv_path) == DcsBridge::Internal::state_csv_header());
 }
 
 void test_debug_tools_share_core_channels(Tests::Context& tests)
@@ -200,12 +176,10 @@ void test_debug_tools_share_core_channels(Tests::Context& tests)
 	start_flight(context, Core::StartMode::HotAir);
 	TEST_EXPECT(tests, context.debug_csv_writer().is_ready());
 	TEST_EXPECT(tests, !context.debug_indicator_exporter().visible());
-	TEST_EXPECT(tests,
-		context.debug_indicator_exporter().toggle().count == 0);
+	TEST_EXPECT(tests, context.debug_indicator_exporter().toggle().count == 0);
 	TEST_EXPECT(tests, context.debug_indicator_exporter().visible());
 	TEST_EXPECT(tests,
-		context.debug_indicator_exporter().export_latest(
-			context.debug_csv_writer().status()).count == 0);
+	            context.debug_indicator_exporter().export_latest(context.debug_csv_writer().status()).count == 0);
 	release_flight(context);
 	const auto path = root.path() / "log" / "debug.csv";
 	const std::string csv = TestFiles::read_text_while_open(path);
@@ -220,16 +194,18 @@ void test_debug_indicator_command_is_owned_by_bridge(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
 	auto& context = owner.get(config_path.c_str());
 	start_flight(context, Core::StartMode::HotAir);
-	TEST_EXPECT(tests, !DcsBridge::Internal::handle_debug_indicator_command(
-		context, -1, 1.0F));
-	TEST_EXPECT(tests, DcsBridge::Internal::handle_debug_indicator_command(
-		context, DcsIds::Commands::DebugIndicatorToggle, 0.0F));
+	TEST_EXPECT(tests, !DcsBridge::Internal::handle_debug_indicator_command(context, -1, 1.0F));
+	TEST_EXPECT(
+	    tests,
+	    DcsBridge::Internal::handle_debug_indicator_command(context, DcsIds::Commands::DebugIndicatorToggle, 0.0F));
 	TEST_EXPECT(tests, !context.debug_indicator_exporter().visible());
-	TEST_EXPECT(tests, DcsBridge::Internal::handle_debug_indicator_command(
-		context, DcsIds::Commands::DebugIndicatorToggle, 1.0F));
+	TEST_EXPECT(
+	    tests,
+	    DcsBridge::Internal::handle_debug_indicator_command(context, DcsIds::Commands::DebugIndicatorToggle, 1.0F));
 	TEST_EXPECT(tests, context.debug_indicator_exporter().visible());
-	TEST_EXPECT(tests, DcsBridge::Internal::handle_debug_indicator_command(
-		context, DcsIds::Commands::DebugIndicatorToggle, 1.0F));
+	TEST_EXPECT(
+	    tests,
+	    DcsBridge::Internal::handle_debug_indicator_command(context, DcsIds::Commands::DebugIndicatorToggle, 1.0F));
 	TEST_EXPECT(tests, !context.debug_indicator_exporter().visible());
 	release_flight(context);
 }
@@ -253,8 +229,7 @@ void test_release_then_start_reuses_context(Tests::Context& tests)
 	const std::optional<Core::FrameOutput> output = context.output_store().read();
 	TEST_EXPECT(tests, output.has_value());
 	TEST_EXPECT_NEAR(tests, output->simulation_time_s, 0.0, 0.0);
-	const std::string log = TestFiles::read_text_while_open(
-		root.path() / "log" / "fck1c_efm.log");
+	const std::string log = TestFiles::read_text_while_open(root.path() / "log" / "fck1c_efm.log");
 	TEST_EXPECT(tests, log.find(kRepeatedStartWarning) == std::string::npos);
 }
 
@@ -266,21 +241,15 @@ void test_repeated_start_warns_without_resetting_input(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
 	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
 	start_flight(context, Core::StartMode::HotGround);
-	context.input_collector().publish_atmosphere(
-		make_prepared_atmosphere(kPreparedAltitudeAslM));
+	context.input_collector().publish_atmosphere(make_prepared_atmosphere(kPreparedAltitudeAslM));
 	start_flight(context, Core::StartMode::HotAir);
-	const Core::FrameInput retained =
-		context.input_collector().snapshot(kPreparedStepS);
+	const Core::FrameInput retained = context.input_collector().snapshot(kPreparedStepS);
 	TEST_EXPECT(tests, retained.availability.atmosphere);
-	TEST_EXPECT_NEAR(
-		tests, retained.atmosphere.altitude_asl_m, kPreparedAltitudeAslM, 0.0);
-	const std::string log = TestFiles::read_text_while_open(
-		root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT_NEAR(tests, retained.atmosphere.altitude_asl_m, kPreparedAltitudeAslM, 0.0);
+	const std::string log = TestFiles::read_text_while_open(root.path() / "log" / "fck1c_efm.log");
 	const std::size_t warning = log.find(kRepeatedStartWarning);
 	TEST_EXPECT(tests, warning != std::string::npos);
-	TEST_EXPECT(
-		tests,
-		log.find(kRepeatedStartWarning, warning + 1) == std::string::npos);
+	TEST_EXPECT(tests, log.find(kRepeatedStartWarning, warning + 1) == std::string::npos);
 	TEST_EXPECT(tests, log.find("flight release") == std::string::npos);
 }
 
@@ -298,16 +267,12 @@ void test_mass_delivery_drains_output_queue(Tests::Context& tests)
 	second.mass_effect = { true, { kSecondQueuedMassKg, {}, {} } };
 	context.output_store().publish(first);
 	context.output_store().publish(second);
-	const Core::MassDeltaResult first_result =
-		context.take_flight_mass_delta();
-	const Core::MassDeltaResult second_result =
-		context.take_flight_mass_delta();
+	const Core::MassDeltaResult first_result = context.take_flight_mass_delta();
+	const Core::MassDeltaResult second_result = context.take_flight_mass_delta();
 	TEST_EXPECT(tests, first_result.available);
 	TEST_EXPECT(tests, second_result.available);
-	TEST_EXPECT_NEAR(
-		tests, first_result.delta.mass_kg, kFirstQueuedMassKg, 0.0);
-	TEST_EXPECT_NEAR(
-		tests, second_result.delta.mass_kg, kSecondQueuedMassKg, 0.0);
+	TEST_EXPECT_NEAR(tests, first_result.delta.mass_kg, kFirstQueuedMassKg, 0.0);
+	TEST_EXPECT_NEAR(tests, second_result.delta.mass_kg, kSecondQueuedMassKg, 0.0);
 	TEST_EXPECT(tests, !context.take_flight_mass_delta().available);
 }
 
@@ -323,8 +288,11 @@ void test_concurrent_first_callbacks_share_context(Tests::Context& tests)
 	std::vector<std::thread> callbacks;
 	for (std::size_t index = 0; index < contexts.size(); ++index)
 	{
-		callbacks.emplace_back([&owner, &config_path, &contexts, index]()
-			{ contexts[index] = &owner.get(config_path.c_str()); });
+		callbacks.emplace_back(
+		    [&owner, &config_path, &contexts, index]()
+		    {
+			    contexts[index] = &owner.get(config_path.c_str());
+		    });
 	}
 	for (std::thread& callback : callbacks)
 	{
@@ -345,26 +313,20 @@ struct CoreActionCounters
 	std::atomic<int> completed = 0;
 };
 
-void perform_test_core_action(
-	DcsBridge::Internal::BridgeContext& context,
-	CoreActionCounters& counters,
-	int action)
+void perform_test_core_action(DcsBridge::Internal::BridgeContext& context, CoreActionCounters& counters, int action)
 {
-	(void)context.perform_core_action(
-		{ "test_execution_mutex_serializes_core_actions" },
-		[&counters, action](Core::Fck1cEfm& core)
-		{
-			const int active = ++counters.active;
-			counters.peak.store((std::max)(counters.peak.load(), active));
-			core.set_easy_flight((action % 2) == 0);
-			++counters.completed;
-			--counters.active;
-		});
+	(void)context.perform_core_action({ "test_execution_mutex_serializes_core_actions" },
+	                                  [&counters, action](Core::Fck1cEfm& core)
+	                                  {
+		                                  const int active = ++counters.active;
+		                                  counters.peak.store((std::max)(counters.peak.load(), active));
+		                                  core.set_easy_flight((action % 2) == 0);
+		                                  ++counters.completed;
+		                                  --counters.active;
+	                                  });
 }
 
-void perform_test_core_actions(
-	DcsBridge::Internal::BridgeContext& context,
-	CoreActionCounters& counters)
+void perform_test_core_actions(DcsBridge::Internal::BridgeContext& context, CoreActionCounters& counters)
 {
 	for (int action = 0; action < kCoreActionsPerCallback; ++action)
 	{
@@ -385,20 +347,18 @@ void test_execution_mutex_serializes_core_actions(Tests::Context& tests)
 	for (std::size_t index = 0; index < kConcurrentCallbackCount; ++index)
 	{
 		callbacks.emplace_back(
-			[&context, &counters]()
-			{
-				perform_test_core_actions(context, counters);
-			});
+		    [&context, &counters]()
+		    {
+			    perform_test_core_actions(context, counters);
+		    });
 	}
 	for (std::thread& callback : callbacks)
 	{
 		callback.join();
 	}
 	TEST_EXPECT(tests, counters.peak.load() == 1);
-	TEST_EXPECT(
-		tests,
-		counters.completed.load() ==
-			static_cast<int>(kConcurrentCallbackCount) * kCoreActionsPerCallback);
+	TEST_EXPECT(tests,
+	            counters.completed.load() == static_cast<int>(kConcurrentCallbackCount) * kCoreActionsPerCallback);
 }
 
 void test_input_collection_does_not_wait_for_core(Tests::Context& tests)
@@ -409,19 +369,18 @@ void test_input_collection_does_not_wait_for_core(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
 	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
 	std::unique_lock<std::mutex> core_lock(context.execution_mutex());
-	auto input_update = std::async(std::launch::async, [&context]()
-		{
-			context.input_collector().publish_atmosphere(
-				make_prepared_atmosphere(kPreparedAltitudeAslM));
-		});
+	auto input_update =
+	    std::async(std::launch::async,
+	               [&context]()
+	               {
+		               context.input_collector().publish_atmosphere(make_prepared_atmosphere(kPreparedAltitudeAslM));
+	               });
 	const bool completed_while_core_locked =
-		input_update.wait_for(kInputConcurrencyTimeout) == std::future_status::ready;
+	    input_update.wait_for(kInputConcurrencyTimeout) == std::future_status::ready;
 	core_lock.unlock();
 	input_update.get();
 	TEST_EXPECT(tests, completed_while_core_locked);
-	TEST_EXPECT(
-		tests,
-		context.input_collector().snapshot(kPreparedStepS).availability.atmosphere);
+	TEST_EXPECT(tests, context.input_collector().snapshot(kPreparedStepS).availability.atmosphere);
 }
 
 void test_core_action_rejects_released_flight(Tests::Context& tests)
@@ -434,16 +393,15 @@ void test_core_action_rejects_released_flight(Tests::Context& tests)
 	start_flight(context, Core::StartMode::HotGround);
 	release_flight(context);
 	bool action_executed = false;
-	const bool completed = context.perform_core_action(
-		{ "test_released_action" },
-		[&action_executed](Core::Fck1cEfm&) { action_executed = true; });
+	const bool completed = context.perform_core_action({ "test_released_action" },
+	                                                   [&action_executed](Core::Fck1cEfm&)
+	                                                   {
+		                                                   action_executed = true;
+	                                                   });
 	TEST_EXPECT(tests, !completed);
 	TEST_EXPECT(tests, !action_executed);
-	const std::string log = TestFiles::read_text_while_open(
-		root.path() / "log" / "fck1c_efm.log");
-	TEST_EXPECT(tests, log.find(
-		"callback=test_released_action invalid lifecycle state=released") !=
-		std::string::npos);
+	const std::string log = TestFiles::read_text_while_open(root.path() / "log" / "fck1c_efm.log");
+	TEST_EXPECT(tests, log.find("callback=test_released_action invalid lifecycle state=released") != std::string::npos);
 }
 
 void test_release_clears_previous_frame_input(Tests::Context& tests)
@@ -454,12 +412,9 @@ void test_release_clears_previous_frame_input(Tests::Context& tests)
 	DcsBridge::Internal::BridgeContextOwner owner(make_environment());
 	DcsBridge::Internal::BridgeContext& context = owner.get(config_path.c_str());
 	start_flight(context, Core::StartMode::HotGround);
-	context.input_collector().publish_atmosphere(
-		make_prepared_atmosphere(kPreviousFlightAltitudeAslM));
+	context.input_collector().publish_atmosphere(make_prepared_atmosphere(kPreviousFlightAltitudeAslM));
 	release_flight(context);
-	TEST_EXPECT(
-		tests,
-		!context.input_collector().snapshot(kPreparedStepS).availability.atmosphere);
+	TEST_EXPECT(tests, !context.input_collector().snapshot(kPreparedStepS).availability.atmosphere);
 }
 
 void test_configuration_loader_reports_to_event_log(Tests::Context& tests)
@@ -497,17 +452,14 @@ void test_configuration_error_survives_failed_restart(Tests::Context& tests)
 	auto& context = owner.get(config_path.c_str());
 	start_flight(context, Core::StartMode::HotGround);
 	TEST_EXPECT(tests, context.output_store().read().has_value());
-	auto loaded = Configuration::load<Core::Systems::Dflcc::ControlLawConfiguration>(
-		"DFLCC/ControlLaws.jsonc");
+	auto loaded = Configuration::load<Core::Systems::Dflcc::ControlLawConfiguration>("DFLCC/ControlLaws.jsonc");
 	TEST_EXPECT(tests, loaded.succeeded());
 	if (loaded.succeeded())
 		TEST_EXPECT(tests, loaded.value().direct_mapping.pitch.gain == 1.0);
 
 	// 多餘欄位中止本次載入，完整錯誤寫入紀錄。
-	TestFiles::write_text(root.path() / "FM" / "DFLCC" / "ControlLaws.jsonc",
-		"{\"extra\": 1}\n");
-	auto rejected = Configuration::load<Core::Systems::Dflcc::ControlLawConfiguration>(
-		"DFLCC/ControlLaws.jsonc");
+	TestFiles::write_text(root.path() / "FM" / "DFLCC" / "ControlLaws.jsonc", "{\"extra\": 1}\n");
+	auto rejected = Configuration::load<Core::Systems::Dflcc::ControlLawConfiguration>("DFLCC/ControlLaws.jsonc");
 	TEST_EXPECT(tests, !rejected.succeeded());
 	if (!rejected.succeeded())
 	{
@@ -529,8 +481,7 @@ void test_configuration_error_survives_failed_restart(Tests::Context& tests)
 	TEST_EXPECT(tests, failed);
 	TEST_EXPECT(tests, !context.output_store().read().has_value());
 	TEST_EXPECT(tests, context.output_store().is_released());
-	const std::string log = TestFiles::read_text_while_open(
-		root.path() / "log" / "fck1c_efm.log");
+	const std::string log = TestFiles::read_text_while_open(root.path() / "log" / "fck1c_efm.log");
 	TEST_EXPECT(tests, log.find("欄位=/extra") != std::string::npos);
 	TEST_EXPECT(tests, log.find("多餘的欄位") != std::string::npos);
 	TEST_EXPECT(tests, log.find("[Error]") != std::string::npos);

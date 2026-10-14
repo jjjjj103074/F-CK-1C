@@ -36,8 +36,7 @@ class LatestDebugBatchMailbox final
 {
 public:
 	void publish(DebugSampleBatch batch);
-	DebugMailboxRead wait_until(
-		const std::chrono::steady_clock::time_point& deadline);
+	DebugMailboxRead wait_until(const std::chrono::steady_clock::time_point& deadline);
 	std::uint64_t request_flush();
 	void wait_for_flush(std::uint64_t request);
 	void complete_flush(std::uint64_t request);
@@ -52,19 +51,14 @@ private:
 	bool stopping_ = false;
 };
 
-std::string format_debug_csv_header(
-	const std::vector<Core::DebugTelemetryChannelDescriptor>& schema);
-std::string format_debug_csv_row(
-	const Core::DebugTelemetrySample& sample);
+std::string format_debug_csv_header(const std::vector<Core::DebugTelemetryChannelDescriptor>& schema);
+std::string format_debug_csv_row(const Core::DebugTelemetrySample& sample);
 Core::DebugSimulationTime debug_time_from_seconds(double simulation_time_s);
 
 class DebugCsvWriter final
 {
 public:
-	DebugCsvWriter(
-		const char* module_root,
-		EventLog& event_log,
-		DebugTelemetryHub& hub);
+	DebugCsvWriter(const char* module_root, EventLog& event_log, DebugTelemetryHub& hub);
 	~DebugCsvWriter();
 
 	DebugCsvWriter(const DebugCsvWriter&) = delete;
@@ -114,9 +108,7 @@ private:
 	void worker_loop();
 	void process_batch(const DebugSampleBatch& batch);
 	bool retry_file(const DebugSampleBatch& batch);
-	void write_sample(
-		const Core::DebugTelemetrySample& sample,
-		std::uint64_t flight_id);
+	void write_sample(const Core::DebugTelemetrySample& sample, std::uint64_t flight_id);
 	void flush_if_due(bool force);
 	void fail_current_flight(const Failure& failure);
 	void report_error(const Failure& failure);
@@ -124,9 +116,7 @@ private:
 	void mark_ready();
 	void close_file();
 	void sample_and_publish(double simulation_time_s);
-	static const char* operation_name(
-		Operation operation,
-		LogFileOperation lifecycle_operation);
+	static const char* operation_name(Operation operation, LogFileOperation lifecycle_operation);
 
 	EventLog& event_log_;
 	DebugTelemetryHub& hub_;

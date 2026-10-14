@@ -5,8 +5,7 @@
 
 namespace Common
 {
-template <std::size_t SegmentCount>
-class SegmentedIntegrity final
+template <std::size_t SegmentCount> class SegmentedIntegrity final
 {
 public:
 	SegmentedIntegrity()

@@ -14,14 +14,9 @@ public:
 	explicit SecondaryFlightControls(StartMode start_mode);
 
 	void setup(SystemSetup& setup) override;
-	void step(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft,
-		SystemResult& result) override;
+	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
-	const SecondaryControlPosition& step(
-		double true_airspeed_mps,
-		double gear_position_normalized);
+	const SecondaryControlPosition& step(double true_airspeed_mps, double gear_position_normalized);
 	void handle_command(const Command& command);
 	const SecondaryControlPosition& position() const;
 

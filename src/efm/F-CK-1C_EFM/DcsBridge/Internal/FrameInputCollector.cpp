@@ -34,16 +34,14 @@ void FrameInputCollector::publish_mass(const Core::MassStateInput& sample)
 	latest_.availability.mass = true;
 }
 
-void FrameInputCollector::publish_world_kinematics(
-	const Core::WorldKinematicsInput& sample)
+void FrameInputCollector::publish_world_kinematics(const Core::WorldKinematicsInput& sample)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	latest_.world_kinematics = sample;
 	latest_.availability.world_kinematics = true;
 }
 
-void FrameInputCollector::publish_body_kinematics(
-	const Core::BodyKinematicsInput& sample)
+void FrameInputCollector::publish_body_kinematics(const Core::BodyKinematicsInput& sample)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	latest_.body_kinematics = sample;
@@ -52,8 +50,7 @@ void FrameInputCollector::publish_body_kinematics(
 
 bool FrameInputCollector::publish_suspension(const Core::SuspensionFeedbackInput& sample)
 {
-	if (sample.index < 0 ||
-		static_cast<std::size_t>(sample.index) >= Core::kFrameSuspensionWheelCount)
+	if (sample.index < 0 || static_cast<std::size_t>(sample.index) >= Core::kFrameSuspensionWheelCount)
 	{
 		return false;
 	}
@@ -65,8 +62,7 @@ bool FrameInputCollector::publish_suspension(const Core::SuspensionFeedbackInput
 	return true;
 }
 
-void FrameInputCollector::publish_cockpit_observation(
-	const Core::CockpitObservation& sample)
+void FrameInputCollector::publish_cockpit_observation(const Core::CockpitObservation& sample)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	latest_.cockpit = sample;

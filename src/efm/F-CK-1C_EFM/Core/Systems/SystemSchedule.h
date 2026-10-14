@@ -38,15 +38,9 @@ private:
 		std::uint64_t completed_ticks = 0;
 	};
 
-	static SystemScheduledTime tick_time(
-		const PeriodicSystem& system,
-		std::uint64_t tick);
-	static SystemScheduledTime rate_tick_time(
-		std::uint32_t update_rate_hz,
-		std::uint64_t tick);
-	static SystemScheduledTime period_tick_time(
-		SystemScheduledTime update_period,
-		std::uint64_t tick);
+	static SystemScheduledTime tick_time(const PeriodicSystem& system, std::uint64_t tick);
+	static SystemScheduledTime rate_tick_time(std::uint32_t update_rate_hz, std::uint64_t tick);
+	static SystemScheduledTime period_tick_time(SystemScheduledTime update_period, std::uint64_t tick);
 	void schedule_next(std::size_t system_index);
 
 	std::vector<PeriodicSystem> systems_;

@@ -35,12 +35,9 @@ void test_virtual_axes_use_elapsed_time(Tests::Context& context)
 	Systems::set_roll_discrete_input(coarse, -1);
 	Systems::set_yaw_discrete_input(coarse, 1);
 	Systems::PrimaryControlState fine = coarse;
-	coarse = Systems::update_primary_control_inputs(
-		coarse, kReferenceAxisDt);
-	fine = Systems::update_primary_control_inputs(
-		fine, kHalfReferenceAxisDt);
-	fine = Systems::update_primary_control_inputs(
-		fine, kHalfReferenceAxisDt);
+	coarse = Systems::update_primary_control_inputs(coarse, kReferenceAxisDt);
+	fine = Systems::update_primary_control_inputs(fine, kHalfReferenceAxisDt);
+	fine = Systems::update_primary_control_inputs(fine, kHalfReferenceAxisDt);
 	TEST_EXPECT_NEAR(context, coarse.pitch.input, fine.pitch.input, kTolerance);
 	TEST_EXPECT_NEAR(context, coarse.roll.input, fine.roll.input, kTolerance);
 	TEST_EXPECT_NEAR(context, coarse.yaw.input, fine.yaw.input, kTolerance);

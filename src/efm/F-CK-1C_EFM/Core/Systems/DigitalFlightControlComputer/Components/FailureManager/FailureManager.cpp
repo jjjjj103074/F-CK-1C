@@ -4,9 +4,8 @@
 
 namespace Core::Systems::Dflcc
 {
-FailureManager::FailureManager(
-	SystemStatusTables& system_status)
-	: system_status_(system_status)
+FailureManager::FailureManager(SystemStatusTables& system_status)
+    : system_status_(system_status)
 {
 }
 

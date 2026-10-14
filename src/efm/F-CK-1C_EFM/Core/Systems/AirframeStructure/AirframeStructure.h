@@ -12,10 +12,7 @@ class AirframeStructure final : public System
 {
 public:
 	void setup(SystemSetup& setup) override;
-	void step(
-		const SystemStepContext& context,
-		const AircraftDataView& aircraft,
-		SystemResult& result) override;
+	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
 	void apply_damage(const DamageEvent& event);
 	void repair(const RepairEvent& event);

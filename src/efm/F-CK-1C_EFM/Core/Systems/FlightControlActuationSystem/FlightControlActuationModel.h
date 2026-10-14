@@ -23,8 +23,7 @@ struct FlightControlAxisStepResult
 	Core::FlightControlSurfaceState surface_state;
 };
 
-FlightControlAxisStepResult update_flight_control_axis(
-	const FlightControlAxisModelState& current,
-	const Core::Systems::FlightControlAxisConfig& config,
-	const FlightControlAxisStepInput& input);
+FlightControlAxisStepResult update_flight_control_axis(const FlightControlAxisModelState& current,
+                                                       const Core::Systems::FlightControlAxisConfig& config,
+                                                       const FlightControlAxisStepInput& input);
 }

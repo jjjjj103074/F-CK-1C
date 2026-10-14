@@ -16,14 +16,13 @@ enum class LandingGearDamageSegment : std::size_t
 	Count
 };
 
-constexpr std::size_t landing_gear_segment_index(
-	LandingGearDamageSegment segment)
+constexpr std::size_t landing_gear_segment_index(LandingGearDamageSegment segment)
 {
 	return static_cast<std::size_t>(segment);
 }
 
 inline constexpr std::size_t kLandingGearDamageSegmentCount =
-	landing_gear_segment_index(LandingGearDamageSegment::Count);
+    landing_gear_segment_index(LandingGearDamageSegment::Count);
 
 enum class DamageArea
 {

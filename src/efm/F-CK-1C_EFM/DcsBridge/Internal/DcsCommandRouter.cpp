@@ -29,127 +29,121 @@ struct CommandBinding
 	double constant;
 };
 
-#define BIND_INPUT(id, action) \
-	{ DcsIds::Commands::id, Core::CommandId::action, ValueRule::PassThrough, 0.0 }
-#define BIND_NEGATED_INPUT(id, action) \
-	{ DcsIds::Commands::id, Core::CommandId::action, ValueRule::Negate, 0.0 }
-#define BIND_CONST(id, action, value) \
-	{ DcsIds::Commands::id, Core::CommandId::action, ValueRule::Constant, value }
-#define BIND_PRESS(id, action) \
-	{ DcsIds::Commands::id, Core::CommandId::action, ValueRule::PressOnly, 0.0 }
+#define BIND_INPUT(id, action) { DcsIds::Commands::id, Core::CommandId::action, ValueRule::PassThrough, 0.0 }
+#define BIND_NEGATED_INPUT(id, action) { DcsIds::Commands::id, Core::CommandId::action, ValueRule::Negate, 0.0 }
+#define BIND_CONST(id, action, value) { DcsIds::Commands::id, Core::CommandId::action, ValueRule::Constant, value }
+#define BIND_PRESS(id, action) { DcsIds::Commands::id, Core::CommandId::action, ValueRule::PressOnly, 0.0 }
 
-constexpr CommandBinding kBindings[] = {
-	BIND_INPUT(JoystickPitch, SetPitchAxis),
-	BIND_CONST(PitchUp, SetPitchDiscrete, 1.0),
-	BIND_CONST(PitchUpStop, SetPitchDiscrete, 0.0),
-	BIND_CONST(PitchDown, SetPitchDiscrete, -1.0),
-	BIND_CONST(PitchDownStop, SetPitchDiscrete, 0.0),
-	BIND_CONST(TrimUp, AdjustPitchTrim, kPitchTrimStep),
-	BIND_CONST(TrimDown, AdjustPitchTrim, -kPitchTrimStep),
-	BIND_INPUT(JoystickRoll, SetRollAxis),
-	BIND_CONST(RollLeft, SetRollDiscrete, -1.0),
-	BIND_CONST(RollLeftStop, SetRollDiscrete, 0.0),
-	BIND_CONST(RollRight, SetRollDiscrete, 1.0),
-	BIND_CONST(RollRightStop, SetRollDiscrete, 0.0),
-	BIND_CONST(TrimLeft, AdjustRollTrim, -kRollTrimStep),
-	BIND_CONST(TrimRight, AdjustRollTrim, kRollTrimStep),
-	BIND_NEGATED_INPUT(PedalYaw, SetYawAxis),
-	BIND_CONST(RudderLeft, SetYawDiscrete, 1.0),
-	BIND_CONST(RudderLeftStop, SetYawDiscrete, 0.0),
-	BIND_CONST(RudderRight, SetYawDiscrete, -1.0),
-	BIND_CONST(RudderRightStop, SetYawDiscrete, 0.0),
-	BIND_CONST(RudderTrimLeft, AdjustYawTrim, kYawTrimStep),
-	BIND_CONST(RudderTrimRight, AdjustYawTrim, -kYawTrimStep),
-	BIND_CONST(ResetTrim, ResetTrim, 0.0),
-	BIND_PRESS(FBWCatToggle, ToggleFbwCat),
-	BIND_PRESS(FBWCat1, SetFbwCat1),
-	BIND_PRESS(FBWCat3, SetFbwCat3),
-	BIND_PRESS(FBWGLimiterOverride, SetGLimiterOverride),
-	BIND_PRESS(FBWGLimiterOverrideToggle, ToggleGLimiterOverride),
-	BIND_CONST(EnginesOn, SetBothEngines, 1.0),
-	BIND_CONST(LeftEngineOn, SetLeftEngine, 1.0),
-	BIND_CONST(RightEngineOn, SetRightEngine, 1.0),
-	BIND_CONST(EnginesOff, SetBothEngines, 0.0),
-	BIND_CONST(LeftEngineOff, SetLeftEngine, 0.0),
-	BIND_CONST(RightEngineOff, SetRightEngine, 0.0),
-	BIND_INPUT(ThrottleAxis, SetCommonThrottleAxis),
-	BIND_INPUT(ThrottleAxisLeft, SetLeftThrottleAxis),
-	BIND_INPUT(ThrottleAxisRight, SetRightThrottleAxis),
-	BIND_CONST(ThrottleIncrease, StepCommonThrottle, kThrottleStep),
-	BIND_CONST(ThrottleLeftUp, StepLeftThrottle, kThrottleStep),
-	BIND_CONST(ThrottleRightUp, StepRightThrottle, kThrottleStep),
-	BIND_CONST(ThrottleDecrease, StepCommonThrottle, -kThrottleStep),
-	BIND_CONST(ThrottleLeftDown, StepLeftThrottle, -kThrottleStep),
-	BIND_CONST(ThrottleRightDown, StepRightThrottle, -kThrottleStep),
-	BIND_CONST(ThrottleStop, NoOp, 0.0),
-	BIND_CONST(AirBrakes, ToggleAirbrake, 0.0),
-	BIND_CONST(AirBrakesOff, SetAirbrake, 0.0),
-	BIND_CONST(AirBrakesOn, SetAirbrake, 1.0),
-	BIND_CONST(AirBrakesAuto, NoOp, 0.0),
-	BIND_CONST(AirBrakesUp, SetAirbrake, 0.0),
-	BIND_CONST(AirBrakesDown, SetAirbrake, 1.0),
-	BIND_CONST(FlapsToggle, ToggleFlaps, 0.0),
-	BIND_CONST(FlapsDown, SetFlapsDown, 0.0),
-	BIND_CONST(FlapsUp, SetFlapsUp, 0.0),
-	BIND_CONST(FlapsAuto, SetFlapsAuto, 0.0),
-	BIND_CONST(FlapsUpCmd, SetFlapsUp, 0.0),
-	BIND_CONST(FlapsDownCmd, SetFlapsDown, 0.0),
-	BIND_CONST(GearToggle, ToggleGear, 0.0),
-	BIND_CONST(GearDown, SetGear, 1.0),
-	BIND_CONST(GearUp, SetGear, 0.0),
-	BIND_CONST(GearAuto, NoOp, 0.0),
-	BIND_CONST(GearHandleUp, SetGear, 0.0),
-	BIND_CONST(GearHandleDown, SetGear, 1.0),
-	BIND_PRESS(NoseTurnToggle, ToggleNoseWheelSteering),
-	BIND_CONST(NoseTurnUp, SetNoseWheelSteering, 0.0),
-	BIND_CONST(NoseTurnAuto, SetNoseWheelSteering, 0.0),
-	BIND_CONST(NoseTurnDown, SetNoseWheelSteering, 1.0),
-	BIND_INPUT(WheelBrakeAxis, SetBrake),
-	BIND_INPUT(WheelBrakeAxisLeft, SetLeftBrake),
-	BIND_INPUT(WheelBrakeAxisRight, SetRightBrake),
-	BIND_CONST(WheelBrakeOn, SetBrake, 1.0),
-	BIND_CONST(WheelBrakeOff, SetBrake, 0.0),
-	BIND_CONST(WheelBrakeLeftOn, SetLeftBrake, 1.0),
-	BIND_CONST(WheelBrakeLeftOff, SetLeftBrake, 0.0),
-	BIND_CONST(WheelBrakeRightOn, SetRightBrake, 1.0),
-	BIND_CONST(WheelBrakeRightOff, SetRightBrake, 0.0),
-	BIND_INPUT(TriggerFirstStage, SetTriggerFirstStage),
-	BIND_PRESS(CMSForward, StartCmsForward),
-	BIND_PRESS(CMSAft, StartCmsAft),
-	BIND_PRESS(CMSLeft, StartCmsLeft),
-	BIND_PRESS(CMSRight, StartCmsRight),
-	BIND_PRESS(CMSPress, PressCms),
-	BIND_INPUT(TriggerSecondStage, SetTriggerSecondStage),
-	BIND_PRESS(MasterArmOn, SetMasterArmOn),
-	BIND_PRESS(MasterArmOff, SetMasterArmOff),
-	BIND_PRESS(MasterArmSim, SetMasterArmSim),
-	BIND_PRESS(DogfightSwitch, SelectDogfightMode),
-	BIND_INPUT(MissileUncage, SetMissileUncage),
-	BIND_INPUT(WeaponRelease, SetWeaponRelease),
-	BIND_INPUT(TMSUp, SetTmsUp),
-	BIND_PRESS(TMSDown, PressTmsDown),
-	BIND_PRESS(TMSLeft, PressTmsLeft),
-	BIND_PRESS(TMSRight, PressTmsRight),
-	BIND_PRESS(NavMode, SelectNavigationMode),
-	BIND_PRESS(MissileOverride, SelectMissileOverride),
-	BIND_PRESS(APMasterOn, EngageAutopilot),
-	BIND_PRESS(APMasterOff, DisengageAutopilot),
-	BIND_INPUT(APBypass, SetAutopilotBypass),
-	BIND_PRESS(APPitchAttitudeHold, SelectAutopilotPitchAttitudeHold),
-	BIND_PRESS(APPitchAltitudeHold, SelectAutopilotAltitudeHold),
-	BIND_PRESS(APRollAttitudeHold, SelectAutopilotRollAttitudeHold),
-	BIND_PRESS(APRollHeadingSelect, SelectAutopilotHeadingSelect),
-	BIND_PRESS(APHeadingSetIncrease, IncreaseAutopilotHeadingSelect),
-	BIND_PRESS(APHeadingSetDecrease, DecreaseAutopilotHeadingSelect),
-	BIND_PRESS(APAutoThrottleToggle, ToggleAutoThrottle),
-	BIND_PRESS(APAutoThrottleOn, EngageAutoThrottle),
-	BIND_PRESS(APAutoThrottleOff, DisengageAutoThrottle),
-	BIND_PRESS(APSpeedIncrease, IncreaseAutopilotSpeed),
-	BIND_PRESS(APSpeedDecrease, DecreaseAutopilotSpeed),
-	BIND_PRESS(EngineThrustCutTestToggle, ToggleThrustCutTest),
-	BIND_PRESS(EngineThrustCutTestEnable, EnableThrustCutTest),
-	BIND_PRESS(EngineThrustCutTestDisable, DisableThrustCutTest)
-};
+constexpr CommandBinding kBindings[] = { BIND_INPUT(JoystickPitch, SetPitchAxis),
+	                                     BIND_CONST(PitchUp, SetPitchDiscrete, 1.0),
+	                                     BIND_CONST(PitchUpStop, SetPitchDiscrete, 0.0),
+	                                     BIND_CONST(PitchDown, SetPitchDiscrete, -1.0),
+	                                     BIND_CONST(PitchDownStop, SetPitchDiscrete, 0.0),
+	                                     BIND_CONST(TrimUp, AdjustPitchTrim, kPitchTrimStep),
+	                                     BIND_CONST(TrimDown, AdjustPitchTrim, -kPitchTrimStep),
+	                                     BIND_INPUT(JoystickRoll, SetRollAxis),
+	                                     BIND_CONST(RollLeft, SetRollDiscrete, -1.0),
+	                                     BIND_CONST(RollLeftStop, SetRollDiscrete, 0.0),
+	                                     BIND_CONST(RollRight, SetRollDiscrete, 1.0),
+	                                     BIND_CONST(RollRightStop, SetRollDiscrete, 0.0),
+	                                     BIND_CONST(TrimLeft, AdjustRollTrim, -kRollTrimStep),
+	                                     BIND_CONST(TrimRight, AdjustRollTrim, kRollTrimStep),
+	                                     BIND_NEGATED_INPUT(PedalYaw, SetYawAxis),
+	                                     BIND_CONST(RudderLeft, SetYawDiscrete, 1.0),
+	                                     BIND_CONST(RudderLeftStop, SetYawDiscrete, 0.0),
+	                                     BIND_CONST(RudderRight, SetYawDiscrete, -1.0),
+	                                     BIND_CONST(RudderRightStop, SetYawDiscrete, 0.0),
+	                                     BIND_CONST(RudderTrimLeft, AdjustYawTrim, kYawTrimStep),
+	                                     BIND_CONST(RudderTrimRight, AdjustYawTrim, -kYawTrimStep),
+	                                     BIND_CONST(ResetTrim, ResetTrim, 0.0),
+	                                     BIND_PRESS(FBWCatToggle, ToggleFbwCat),
+	                                     BIND_PRESS(FBWCat1, SetFbwCat1),
+	                                     BIND_PRESS(FBWCat3, SetFbwCat3),
+	                                     BIND_PRESS(FBWGLimiterOverride, SetGLimiterOverride),
+	                                     BIND_PRESS(FBWGLimiterOverrideToggle, ToggleGLimiterOverride),
+	                                     BIND_CONST(EnginesOn, SetBothEngines, 1.0),
+	                                     BIND_CONST(LeftEngineOn, SetLeftEngine, 1.0),
+	                                     BIND_CONST(RightEngineOn, SetRightEngine, 1.0),
+	                                     BIND_CONST(EnginesOff, SetBothEngines, 0.0),
+	                                     BIND_CONST(LeftEngineOff, SetLeftEngine, 0.0),
+	                                     BIND_CONST(RightEngineOff, SetRightEngine, 0.0),
+	                                     BIND_INPUT(ThrottleAxis, SetCommonThrottleAxis),
+	                                     BIND_INPUT(ThrottleAxisLeft, SetLeftThrottleAxis),
+	                                     BIND_INPUT(ThrottleAxisRight, SetRightThrottleAxis),
+	                                     BIND_CONST(ThrottleIncrease, StepCommonThrottle, kThrottleStep),
+	                                     BIND_CONST(ThrottleLeftUp, StepLeftThrottle, kThrottleStep),
+	                                     BIND_CONST(ThrottleRightUp, StepRightThrottle, kThrottleStep),
+	                                     BIND_CONST(ThrottleDecrease, StepCommonThrottle, -kThrottleStep),
+	                                     BIND_CONST(ThrottleLeftDown, StepLeftThrottle, -kThrottleStep),
+	                                     BIND_CONST(ThrottleRightDown, StepRightThrottle, -kThrottleStep),
+	                                     BIND_CONST(ThrottleStop, NoOp, 0.0),
+	                                     BIND_CONST(AirBrakes, ToggleAirbrake, 0.0),
+	                                     BIND_CONST(AirBrakesOff, SetAirbrake, 0.0),
+	                                     BIND_CONST(AirBrakesOn, SetAirbrake, 1.0),
+	                                     BIND_CONST(AirBrakesAuto, NoOp, 0.0),
+	                                     BIND_CONST(AirBrakesUp, SetAirbrake, 0.0),
+	                                     BIND_CONST(AirBrakesDown, SetAirbrake, 1.0),
+	                                     BIND_CONST(FlapsToggle, ToggleFlaps, 0.0),
+	                                     BIND_CONST(FlapsDown, SetFlapsDown, 0.0),
+	                                     BIND_CONST(FlapsUp, SetFlapsUp, 0.0),
+	                                     BIND_CONST(FlapsAuto, SetFlapsAuto, 0.0),
+	                                     BIND_CONST(FlapsUpCmd, SetFlapsUp, 0.0),
+	                                     BIND_CONST(FlapsDownCmd, SetFlapsDown, 0.0),
+	                                     BIND_CONST(GearToggle, ToggleGear, 0.0),
+	                                     BIND_CONST(GearDown, SetGear, 1.0),
+	                                     BIND_CONST(GearUp, SetGear, 0.0),
+	                                     BIND_CONST(GearAuto, NoOp, 0.0),
+	                                     BIND_CONST(GearHandleUp, SetGear, 0.0),
+	                                     BIND_CONST(GearHandleDown, SetGear, 1.0),
+	                                     BIND_PRESS(NoseTurnToggle, ToggleNoseWheelSteering),
+	                                     BIND_CONST(NoseTurnUp, SetNoseWheelSteering, 0.0),
+	                                     BIND_CONST(NoseTurnAuto, SetNoseWheelSteering, 0.0),
+	                                     BIND_CONST(NoseTurnDown, SetNoseWheelSteering, 1.0),
+	                                     BIND_INPUT(WheelBrakeAxis, SetBrake),
+	                                     BIND_INPUT(WheelBrakeAxisLeft, SetLeftBrake),
+	                                     BIND_INPUT(WheelBrakeAxisRight, SetRightBrake),
+	                                     BIND_CONST(WheelBrakeOn, SetBrake, 1.0),
+	                                     BIND_CONST(WheelBrakeOff, SetBrake, 0.0),
+	                                     BIND_CONST(WheelBrakeLeftOn, SetLeftBrake, 1.0),
+	                                     BIND_CONST(WheelBrakeLeftOff, SetLeftBrake, 0.0),
+	                                     BIND_CONST(WheelBrakeRightOn, SetRightBrake, 1.0),
+	                                     BIND_CONST(WheelBrakeRightOff, SetRightBrake, 0.0),
+	                                     BIND_INPUT(TriggerFirstStage, SetTriggerFirstStage),
+	                                     BIND_PRESS(CMSForward, StartCmsForward),
+	                                     BIND_PRESS(CMSAft, StartCmsAft),
+	                                     BIND_PRESS(CMSLeft, StartCmsLeft),
+	                                     BIND_PRESS(CMSRight, StartCmsRight),
+	                                     BIND_PRESS(CMSPress, PressCms),
+	                                     BIND_INPUT(TriggerSecondStage, SetTriggerSecondStage),
+	                                     BIND_PRESS(MasterArmOn, SetMasterArmOn),
+	                                     BIND_PRESS(MasterArmOff, SetMasterArmOff),
+	                                     BIND_PRESS(MasterArmSim, SetMasterArmSim),
+	                                     BIND_PRESS(DogfightSwitch, SelectDogfightMode),
+	                                     BIND_INPUT(MissileUncage, SetMissileUncage),
+	                                     BIND_INPUT(WeaponRelease, SetWeaponRelease),
+	                                     BIND_INPUT(TMSUp, SetTmsUp),
+	                                     BIND_PRESS(TMSDown, PressTmsDown),
+	                                     BIND_PRESS(TMSLeft, PressTmsLeft),
+	                                     BIND_PRESS(TMSRight, PressTmsRight),
+	                                     BIND_PRESS(NavMode, SelectNavigationMode),
+	                                     BIND_PRESS(MissileOverride, SelectMissileOverride),
+	                                     BIND_PRESS(APMasterOn, EngageAutopilot),
+	                                     BIND_PRESS(APMasterOff, DisengageAutopilot),
+	                                     BIND_INPUT(APBypass, SetAutopilotBypass),
+	                                     BIND_PRESS(APPitchAttitudeHold, SelectAutopilotPitchAttitudeHold),
+	                                     BIND_PRESS(APPitchAltitudeHold, SelectAutopilotAltitudeHold),
+	                                     BIND_PRESS(APRollAttitudeHold, SelectAutopilotRollAttitudeHold),
+	                                     BIND_PRESS(APRollHeadingSelect, SelectAutopilotHeadingSelect),
+	                                     BIND_PRESS(APHeadingSetIncrease, IncreaseAutopilotHeadingSelect),
+	                                     BIND_PRESS(APHeadingSetDecrease, DecreaseAutopilotHeadingSelect),
+	                                     BIND_PRESS(APAutoThrottleToggle, ToggleAutoThrottle),
+	                                     BIND_PRESS(APAutoThrottleOn, EngageAutoThrottle),
+	                                     BIND_PRESS(APAutoThrottleOff, DisengageAutoThrottle),
+	                                     BIND_PRESS(APSpeedIncrease, IncreaseAutopilotSpeed),
+	                                     BIND_PRESS(APSpeedDecrease, DecreaseAutopilotSpeed),
+	                                     BIND_PRESS(EngineThrustCutTestToggle, ToggleThrustCutTest),
+	                                     BIND_PRESS(EngineThrustCutTestEnable, EnableThrustCutTest),
+	                                     BIND_PRESS(EngineThrustCutTestDisable, DisableThrustCutTest) };
 
 #undef BIND_INPUT
 #undef BIND_NEGATED_INPUT
@@ -160,10 +154,14 @@ double mapped_value(const CommandBinding& binding, float input)
 {
 	switch (binding.value_rule)
 	{
-	case ValueRule::PassThrough: return input;
-	case ValueRule::Negate: return -input;
-	case ValueRule::PressOnly: return 1.0;
-	case ValueRule::Constant: return binding.constant;
+	case ValueRule::PassThrough:
+		return input;
+	case ValueRule::Negate:
+		return -input;
+	case ValueRule::PressOnly:
+		return 1.0;
+	case ValueRule::Constant:
+		return binding.constant;
 	}
 	return 0.0;
 }
@@ -211,8 +209,7 @@ DcsBridge::CommandTableValidation inspect_command_bindings()
 
 bool is_ignored_command(int command)
 {
-	for (const DcsIds::CommandRouting::Entry& entry :
-		DcsIds::CommandRouting::CustomCommands)
+	for (const DcsIds::CommandRouting::Entry& entry : DcsIds::CommandRouting::CustomCommands)
 	{
 		if (entry.id == command)
 		{
@@ -235,11 +232,11 @@ namespace DcsBridge
 CommandTableValidation validate_command_bindings()
 {
 	static const CommandTableValidation validation = []()
-		{
-			CommandTableValidation result = inspect_command_bindings();
-			result.binding_count = std::size(kBindings);
-			return result;
-		}();
+	{
+		CommandTableValidation result = inspect_command_bindings();
+		result.binding_count = std::size(kBindings);
+		return result;
+	}();
 	return validation;
 }
 
@@ -252,11 +249,7 @@ DcsCommandMapping inspect_command_binding(int command, float value)
 	const CommandTableValidation validation = validate_command_bindings();
 	if (validation.error != CommandBindingError::None)
 	{
-		return {
-			DcsCommandMappingStatus::InvalidBindingTable,
-			{},
-			validation
-		};
+		return { DcsCommandMappingStatus::InvalidBindingTable, {}, validation };
 	}
 	for (const CommandBinding& binding : kBindings)
 	{
@@ -266,10 +259,7 @@ DcsCommandMapping inspect_command_binding(int command, float value)
 			{
 				return { DcsCommandMappingStatus::IgnoredRelease };
 			}
-			return {
-				DcsCommandMappingStatus::Mapped,
-				{ binding.command_id, mapped_value(binding, value) }
-			};
+			return { DcsCommandMappingStatus::Mapped, { binding.command_id, mapped_value(binding, value) } };
 		}
 	}
 	return { DcsCommandMappingStatus::UnknownCommand };

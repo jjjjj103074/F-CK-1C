@@ -5,7 +5,7 @@
 namespace Core::Systems::Dflcc
 {
 StartupAndRestart::StartupAndRestart(Executive& executive)
-	: executive_(executive)
+    : executive_(executive)
 {
 }
 

@@ -42,30 +42,30 @@ void run_system_pipeline_handler_tests(Tests::Context& context);
 
 namespace
 {
-    void initialize_configuration()
-    {
-        // 原生測試使用專案 FM 目錄，診斷輸出至標準錯誤串流。
-        Configuration::initialize("FM",
-        [](const Configuration::Diagnostic& diagnostic)
-        {
-            std::cerr << diagnostic.message() << '\n';
-        });
-    }
+void initialize_configuration()
+{
+	// 原生測試使用專案 FM 目錄，診斷輸出至標準錯誤串流。
+	Configuration::initialize("FM",
+	                          [](const Configuration::Diagnostic& diagnostic)
+	                          {
+		                          std::cerr << diagnostic.message() << '\n';
+	                          });
+}
 }
 
 int main()
 {
-    initialize_configuration();
+	initialize_configuration();
 	Tests::Context context;
 	run_configuration_loader_tests(context);
-    run_control_laws_tests(context);
-    initialize_configuration();
+	run_control_laws_tests(context);
+	initialize_configuration();
 	run_common_tests(context);
 	run_abi_boundary_tests(context);
-    initialize_configuration();
+	initialize_configuration();
 	run_boundary_validator_tests(context);
 	run_bridge_context_tests(context);
-    initialize_configuration();
+	initialize_configuration();
 	run_carrier_bridge_tests(context);
 	run_cockpit_bridge_tests(context);
 	run_cockpit_snapshot_exporter_tests(context);

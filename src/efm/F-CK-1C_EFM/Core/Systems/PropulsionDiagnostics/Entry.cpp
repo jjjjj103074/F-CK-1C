@@ -12,14 +12,11 @@ namespace PropulsionDiagnostics
 {
 SystemEntry create_entry()
 {
-	return {
-		"propulsion_diagnostics",
-		[](const FlightSetupContext&)
-		{
-			return std::make_unique<
-				Core::Systems::PropulsionDiagnostics>();
-		}
-	};
+	return { "propulsion_diagnostics",
+		     [](const FlightSetupContext&)
+		     {
+		         return std::make_unique<Core::Systems::PropulsionDiagnostics>();
+		     } };
 }
 }
 }

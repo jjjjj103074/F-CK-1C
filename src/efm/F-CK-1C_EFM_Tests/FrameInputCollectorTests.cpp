@@ -30,34 +30,14 @@ constexpr double kConcurrentNewBase = 2000.0;
 Core::CockpitObservation make_cockpit_observation()
 {
 	Core::CockpitObservation observation;
-	observation.magnetic_heading.status = {
-		true,
-		11,
-		Core::ObservationInvalidReason::None
-	};
+	observation.magnetic_heading.status = { true, 11, Core::ObservationInvalidReason::None };
 	observation.magnetic_heading.magnetic_heading_deg = 1.25;
-	observation.pressure_altitude.status = {
-		true,
-		15,
-		Core::ObservationInvalidReason::None
-	};
+	observation.pressure_altitude.status = { true, 15, Core::ObservationInvalidReason::None };
 	observation.pressure_altitude.pressure_altitude_ft = 5200.0;
-	observation.radar.status = {
-		true,
-		12,
-		Core::ObservationInvalidReason::None
-	};
+	observation.radar.status = { true, 12, Core::ObservationInvalidReason::None };
 	observation.radar.stt_range_m = 4500.0;
-	observation.ir_seeker.status = {
-		true,
-		13,
-		Core::ObservationInvalidReason::None
-	};
-	observation.weapon_stations.status = {
-		true,
-		14,
-		Core::ObservationInvalidReason::None
-	};
+	observation.ir_seeker.status = { true, 13, Core::ObservationInvalidReason::None };
+	observation.weapon_stations.status = { true, 14, Core::ObservationInvalidReason::None };
 	observation.weapon_stations.aim9_count = 2;
 	return observation;
 }
@@ -116,10 +96,7 @@ Core::BodyKinematicsInput make_body_kinematics(double base)
 	sample.acceleration_body_mps2 = make_vec(base + 10.0);
 	sample.velocity_body_mps = make_vec(base + 20.0);
 	sample.wind_velocity_body_mps = make_vec(base + 30.0);
-	sample.angular = {
-		base + 41.0, base + 42.0, base + 43.0,
-		base + 51.0, base + 52.0, base + 53.0
-	};
+	sample.angular = { base + 41.0, base + 42.0, base + 43.0, base + 51.0, base + 52.0, base + 53.0 };
 	sample.world_yaw_rad = base + 61.0;
 	sample.pitch_rad = base + 62.0;
 	sample.roll_rad = base + 63.0;
@@ -140,10 +117,7 @@ Core::SuspensionFeedbackInput make_suspension(int index, double base)
 	return sample;
 }
 
-void expect_vec(
-	Tests::Context& context,
-	const Common::Vec3& actual,
-	const Common::Vec3& expected)
+void expect_vec(Tests::Context& context, const Common::Vec3& actual, const Common::Vec3& expected)
 {
 	TEST_EXPECT_NEAR(context, actual.x, expected.x, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.y, expected.y, kTolerance);
@@ -165,11 +139,7 @@ void expect_surface(Tests::Context& context, const Core::SurfaceInput& actual)
 {
 	const Core::SurfaceInput expected = make_surface(kSurfaceBase);
 	TEST_EXPECT_NEAR(context, actual.surface_height_m, expected.surface_height_m, kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		actual.surface_height_with_objects_m,
-		expected.surface_height_with_objects_m,
-		kTolerance);
+	TEST_EXPECT_NEAR(context, actual.surface_height_with_objects_m, expected.surface_height_with_objects_m, kTolerance);
 	TEST_EXPECT(context, actual.surface_type == expected.surface_type);
 	expect_vec(context, actual.normal_world_unit, expected.normal_world_unit);
 }
@@ -182,9 +152,7 @@ void expect_mass(Tests::Context& context, const Core::MassStateInput& actual)
 	expect_vec(context, actual.moment_of_inertia_body_kg_m2, expected.moment_of_inertia_body_kg_m2);
 }
 
-void expect_world_kinematics(
-	Tests::Context& context,
-	const Core::WorldKinematicsInput& actual)
+void expect_world_kinematics(Tests::Context& context, const Core::WorldKinematicsInput& actual)
 {
 	const Core::WorldKinematicsInput expected = make_world_kinematics(kWorldKinematicsBase);
 	expect_vec(context, actual.acceleration_world_mps2, expected.acceleration_world_mps2);
@@ -198,50 +166,35 @@ void expect_world_kinematics(
 	TEST_EXPECT_NEAR(context, actual.orientation.w, expected.orientation.w, kTolerance);
 }
 
-void expect_body_angular_kinematics(
-	Tests::Context& context,
-	const Core::BodyAngularKinematicsInput& actual,
-	const Core::BodyAngularKinematicsInput& expected)
+void expect_body_angular_kinematics(Tests::Context& context,
+                                    const Core::BodyAngularKinematicsInput& actual,
+                                    const Core::BodyAngularKinematicsInput& expected)
 {
-	TEST_EXPECT_NEAR(context, actual.roll_acceleration_rad_s2,
-		expected.roll_acceleration_rad_s2, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.pitch_acceleration_rad_s2,
-		expected.pitch_acceleration_rad_s2, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.yaw_acceleration_rad_s2,
-		expected.yaw_acceleration_rad_s2, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.roll_rate_rad_s,
-		expected.roll_rate_rad_s, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.pitch_rate_rad_s,
-		expected.pitch_rate_rad_s, kTolerance);
-	TEST_EXPECT_NEAR(context, actual.yaw_rate_rad_s,
-		expected.yaw_rate_rad_s, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.roll_acceleration_rad_s2, expected.roll_acceleration_rad_s2, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.pitch_acceleration_rad_s2, expected.pitch_acceleration_rad_s2, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.yaw_acceleration_rad_s2, expected.yaw_acceleration_rad_s2, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.roll_rate_rad_s, expected.roll_rate_rad_s, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.pitch_rate_rad_s, expected.pitch_rate_rad_s, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.yaw_rate_rad_s, expected.yaw_rate_rad_s, kTolerance);
 }
 
-void expect_body_kinematics(
-	Tests::Context& context,
-	const Core::BodyKinematicsInput& actual)
+void expect_body_kinematics(Tests::Context& context, const Core::BodyKinematicsInput& actual)
 {
 	const Core::BodyKinematicsInput expected = make_body_kinematics(kBodyKinematicsBase);
 	expect_vec(context, actual.acceleration_body_mps2, expected.acceleration_body_mps2);
 	expect_vec(context, actual.velocity_body_mps, expected.velocity_body_mps);
 	expect_vec(context, actual.wind_velocity_body_mps, expected.wind_velocity_body_mps);
 	expect_body_angular_kinematics(context, actual.angular, expected.angular);
-	TEST_EXPECT_NEAR(
-		context, actual.world_yaw_rad, expected.world_yaw_rad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.world_yaw_rad, expected.world_yaw_rad, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.pitch_rad, expected.pitch_rad, kTolerance);
 	TEST_EXPECT_NEAR(context, actual.roll_rad, expected.roll_rad, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, actual.angle_of_attack_rad,
-		expected.angle_of_attack_rad, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, actual.angle_of_slide_rad,
-		expected.angle_of_slide_rad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.angle_of_attack_rad, expected.angle_of_attack_rad, kTolerance);
+	TEST_EXPECT_NEAR(context, actual.angle_of_slide_rad, expected.angle_of_slide_rad, kTolerance);
 }
 
-void expect_suspension(
-	Tests::Context& context,
-	const Core::SuspensionFeedbackInput& actual,
-	const Core::SuspensionFeedbackInput& expected)
+void expect_suspension(Tests::Context& context,
+                       const Core::SuspensionFeedbackInput& actual,
+                       const Core::SuspensionFeedbackInput& expected)
 {
 	TEST_EXPECT(context, actual.index == expected.index);
 	expect_vec(context, actual.acting_force_body_n, expected.acting_force_body_n);
@@ -260,15 +213,12 @@ void publish_complete_input(DcsBridge::Internal::FrameInputCollector& collector)
 	collector.publish_body_kinematics(make_body_kinematics(kBodyKinematicsBase));
 	for (int index = 0; index < static_cast<int>(Core::kFrameSuspensionWheelCount); ++index)
 	{
-		collector.publish_suspension(
-			make_suspension(index, kSuspensionBase + index * kSuspensionBaseStep));
+		collector.publish_suspension(make_suspension(index, kSuspensionBase + index * kSuspensionBaseStep));
 	}
 	collector.publish_cockpit_observation(make_cockpit_observation());
 }
 
-void expect_complete_availability(
-	Tests::Context& context,
-	const Core::FrameDataAvailability& availability)
+void expect_complete_availability(Tests::Context& context, const Core::FrameDataAvailability& availability)
 {
 	TEST_EXPECT(context, availability.atmosphere);
 	TEST_EXPECT(context, availability.surface);
@@ -292,18 +242,13 @@ void expect_complete_input(Tests::Context& context, const Core::FrameInput& inpu
 	expect_body_kinematics(context, input.body_kinematics);
 	for (int index = 0; index < static_cast<int>(Core::kFrameSuspensionWheelCount); ++index)
 	{
-		expect_suspension(
-			context,
-			input.suspension[index],
-			make_suspension(index, kSuspensionBase + index * kSuspensionBaseStep));
+		expect_suspension(context,
+		                  input.suspension[index],
+		                  make_suspension(index, kSuspensionBase + index * kSuspensionBaseStep));
 	}
 	TEST_EXPECT(context, input.cockpit.magnetic_heading.status.available);
 	TEST_EXPECT(context, input.cockpit.magnetic_heading.status.revision == 11);
-	TEST_EXPECT_NEAR(
-		context,
-		input.cockpit.magnetic_heading.magnetic_heading_deg,
-		1.25,
-		kTolerance);
+	TEST_EXPECT_NEAR(context, input.cockpit.magnetic_heading.magnetic_heading_deg, 1.25, kTolerance);
 	TEST_EXPECT(context, input.cockpit.radar.status.available);
 	TEST_EXPECT(context, input.cockpit.radar.status.revision == 12);
 	TEST_EXPECT_NEAR(context, input.cockpit.radar.stt_range_m, 4500.0, kTolerance);
@@ -312,9 +257,7 @@ void expect_complete_input(Tests::Context& context, const Core::FrameInput& inpu
 	TEST_EXPECT(context, input.cockpit.weapon_stations.aim9_count == 2);
 	TEST_EXPECT(context, input.cockpit.pressure_altitude.status.available);
 	TEST_EXPECT(context, input.cockpit.pressure_altitude.status.revision == 15);
-	TEST_EXPECT_NEAR(context,
-		input.cockpit.pressure_altitude.pressure_altitude_ft,
-		5200.0, kTolerance);
+	TEST_EXPECT_NEAR(context, input.cockpit.pressure_altitude.pressure_altitude_ft, 5200.0, kTolerance);
 }
 
 void expect_reset_input(Tests::Context& context, const Core::FrameInput& input)
@@ -354,8 +297,7 @@ void test_missing_categories_and_reset(Tests::Context& context)
 	expect_reset_input(context, collector.snapshot(kSnapshotDtSeconds));
 }
 
-void test_suspension_values_are_sticky_but_freshness_is_per_frame(
-	Tests::Context& context)
+void test_suspension_values_are_sticky_but_freshness_is_per_frame(Tests::Context& context)
 {
 	DcsBridge::Internal::FrameInputCollector collector;
 	const Core::SuspensionFeedbackInput first = make_suspension(0, kFirstSuspensionBase);
@@ -375,17 +317,12 @@ void test_suspension_values_are_sticky_but_freshness_is_per_frame(
 	{
 		TEST_EXPECT(context, !suspension_available);
 	}
-	const Core::SuspensionFeedbackInput replacement =
-		make_suspension(0, kReplacementSuspensionBase);
+	const Core::SuspensionFeedbackInput replacement = make_suspension(0, kReplacementSuspensionBase);
 	TEST_EXPECT(context, collector.publish_suspension(replacement));
-	TEST_EXPECT(
-		context,
-		!collector.publish_suspension(make_suspension(-1, kInvalidSuspensionBase)));
-	TEST_EXPECT(
-		context,
-		!collector.publish_suspension(make_suspension(
-			static_cast<int>(Core::kFrameSuspensionWheelCount),
-			kInvalidSuspensionBase)));
+	TEST_EXPECT(context, !collector.publish_suspension(make_suspension(-1, kInvalidSuspensionBase)));
+	TEST_EXPECT(context,
+	            !collector.publish_suspension(
+	                make_suspension(static_cast<int>(Core::kFrameSuspensionWheelCount), kInvalidSuspensionBase)));
 	input = collector.snapshot(kSnapshotDtSeconds);
 	expect_suspension(context, input.suspension[0], replacement);
 	expect_suspension(context, input.suspension[1], second);
@@ -399,16 +336,11 @@ bool same_vec(const Common::Vec3& left, const Common::Vec3& right)
 	return left.x == right.x && left.y == right.y && left.z == right.z;
 }
 
-bool same_atmosphere(
-	const Core::AtmosphereInput& left,
-	const Core::AtmosphereInput& right)
+bool same_atmosphere(const Core::AtmosphereInput& left, const Core::AtmosphereInput& right)
 {
-	return left.altitude_asl_m == right.altitude_asl_m &&
-		left.temperature_k == right.temperature_k &&
-		left.speed_of_sound_mps == right.speed_of_sound_mps &&
-		left.density_kg_m3 == right.density_kg_m3 &&
-		left.pressure_pa == right.pressure_pa &&
-		same_vec(left.wind_world_mps, right.wind_world_mps);
+	return left.altitude_asl_m == right.altitude_asl_m && left.temperature_k == right.temperature_k &&
+	       left.speed_of_sound_mps == right.speed_of_sound_mps && left.density_kg_m3 == right.density_kg_m3 &&
+	       left.pressure_pa == right.pressure_pa && same_vec(left.wind_world_mps, right.wind_world_mps);
 }
 
 void arrive_and_wait(std::atomic<int>& arrivals, int expected_arrivals)
@@ -429,30 +361,32 @@ void test_concurrent_publish_and_snapshot(Tests::Context& context)
 	std::atomic<int> ready_count(0);
 	std::atomic<int> complete_count(0);
 	std::atomic<bool> complete_samples_only(true);
-	std::thread writer([&]() {
-		for (int index = 0; index < kRaceIterations; ++index)
-		{
-			const int expected_arrivals = (index + 1) * kConcurrentParticipants;
-			arrive_and_wait(ready_count, expected_arrivals);
-			collector.publish_atmosphere(
-				index % kAlternatingSamplePeriod == 0 ? old_sample : new_sample);
-			arrive_and_wait(complete_count, expected_arrivals);
-		}
-	});
-	std::thread reader([&]() {
-		for (int index = 0; index < kRaceIterations; ++index)
-		{
-			const int expected_arrivals = (index + 1) * kConcurrentParticipants;
-			arrive_and_wait(ready_count, expected_arrivals);
-			const Core::AtmosphereInput sample =
-				collector.snapshot(kSnapshotDtSeconds).atmosphere;
-			if (!same_atmosphere(sample, old_sample) && !same_atmosphere(sample, new_sample))
-			{
-				complete_samples_only.store(false, std::memory_order_relaxed);
-			}
-			arrive_and_wait(complete_count, expected_arrivals);
-		}
-	});
+	std::thread writer(
+	    [&]()
+	    {
+		    for (int index = 0; index < kRaceIterations; ++index)
+		    {
+			    const int expected_arrivals = (index + 1) * kConcurrentParticipants;
+			    arrive_and_wait(ready_count, expected_arrivals);
+			    collector.publish_atmosphere(index % kAlternatingSamplePeriod == 0 ? old_sample : new_sample);
+			    arrive_and_wait(complete_count, expected_arrivals);
+		    }
+	    });
+	std::thread reader(
+	    [&]()
+	    {
+		    for (int index = 0; index < kRaceIterations; ++index)
+		    {
+			    const int expected_arrivals = (index + 1) * kConcurrentParticipants;
+			    arrive_and_wait(ready_count, expected_arrivals);
+			    const Core::AtmosphereInput sample = collector.snapshot(kSnapshotDtSeconds).atmosphere;
+			    if (!same_atmosphere(sample, old_sample) && !same_atmosphere(sample, new_sample))
+			    {
+				    complete_samples_only.store(false, std::memory_order_relaxed);
+			    }
+			    arrive_and_wait(complete_count, expected_arrivals);
+		    }
+	    });
 	writer.join();
 	reader.join();
 	TEST_EXPECT(context, complete_samples_only.load(std::memory_order_relaxed));

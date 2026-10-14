@@ -26,8 +26,7 @@ struct ExpectedSemanticCommand
 	Core::CommandId command_id = Core::CommandId::NoOp;
 };
 
-#define EXPECT_COMMAND(id, command_id) \
-	{ DcsIds::Commands::id, Core::CommandId::command_id }
+#define EXPECT_COMMAND(id, command_id) { DcsIds::Commands::id, Core::CommandId::command_id }
 
 constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 	EXPECT_COMMAND(EnginesOn, SetBothEngines),
@@ -103,74 +102,45 @@ constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 
 #undef EXPECT_COMMAND
 
-void expect_mapping(
-	Tests::Context& context,
-	const DcsCommandInput& input,
-	const Core::Command& expected)
+void expect_mapping(Tests::Context& context, const DcsCommandInput& input, const Core::Command& expected)
 {
-	const DcsBridge::DcsCommandMapping mapping =
-		DcsBridge::map_command(input.command, input.value);
+	const DcsBridge::DcsCommandMapping mapping = DcsBridge::map_command(input.command, input.value);
 	TEST_EXPECT(context, mapping.should_dispatch());
 	TEST_EXPECT(context, mapping.command.id == expected.id);
-	TEST_EXPECT_NEAR(
-		context,
-		mapping.command.value_normalized,
-		expected.value_normalized,
-		kTolerance);
+	TEST_EXPECT_NEAR(context, mapping.command.value_normalized, expected.value_normalized, kTolerance);
 }
 
 void test_system_command_mappings(Tests::Context& context)
 {
-	expect_mapping(
-		context,
-		{ DcsIds::Commands::LeftEngineOff, 1.0F },
-		{ Core::CommandId::SetLeftEngine, 0.0 });
-	expect_mapping(
-		context,
-		{ DcsIds::Commands::ThrottleAxis, -1.0F },
-		{ Core::CommandId::SetCommonThrottleAxis, -1.0 });
-	expect_mapping(
-		context,
-		{ DcsIds::Commands::WheelBrakeLeftOn, 1.0F },
-		{ Core::CommandId::SetLeftBrake, 1.0 });
+	expect_mapping(context, { DcsIds::Commands::LeftEngineOff, 1.0F }, { Core::CommandId::SetLeftEngine, 0.0 });
+	expect_mapping(context,
+	               { DcsIds::Commands::ThrottleAxis, -1.0F },
+	               { Core::CommandId::SetCommonThrottleAxis, -1.0 });
+	expect_mapping(context, { DcsIds::Commands::WheelBrakeLeftOn, 1.0F }, { Core::CommandId::SetLeftBrake, 1.0 });
 }
 
 void test_mapping_rules_and_errors(Tests::Context& context)
 {
-	const DcsBridge::CommandTableValidation table =
-		DcsBridge::validate_command_bindings();
+	const DcsBridge::CommandTableValidation table = DcsBridge::validate_command_bindings();
 	TEST_EXPECT(context, table.error == DcsBridge::CommandBindingError::None);
-	const DcsBridge::DcsCommandMapping press =
-		DcsBridge::map_command(DcsIds::Commands::NoseTurnToggle, 1.0F);
+	const DcsBridge::DcsCommandMapping press = DcsBridge::map_command(DcsIds::Commands::NoseTurnToggle, 1.0F);
 	TEST_EXPECT(context, press.should_dispatch());
 	TEST_EXPECT_NEAR(context, press.command.value_normalized, 1.0, kTolerance);
-	const DcsBridge::DcsCommandMapping release =
-		DcsBridge::map_command(DcsIds::Commands::NoseTurnToggle, 0.0F);
-	TEST_EXPECT(
-		context,
-		release.status == DcsBridge::DcsCommandMappingStatus::IgnoredRelease);
-	const DcsBridge::DcsCommandMapping unknown =
-		DcsBridge::map_command(kUnknownCommandId, 0.5F);
-	TEST_EXPECT(
-		context,
-		unknown.status == DcsBridge::DcsCommandMappingStatus::UnknownCommand);
-	const DcsBridge::DcsCommandMapping invalid = DcsBridge::map_command(
-		DcsIds::Commands::JoystickPitch,
-		std::numeric_limits<float>::infinity());
-	TEST_EXPECT(
-		context,
-		invalid.status == DcsBridge::DcsCommandMappingStatus::InvalidValue);
+	const DcsBridge::DcsCommandMapping release = DcsBridge::map_command(DcsIds::Commands::NoseTurnToggle, 0.0F);
+	TEST_EXPECT(context, release.status == DcsBridge::DcsCommandMappingStatus::IgnoredRelease);
+	const DcsBridge::DcsCommandMapping unknown = DcsBridge::map_command(kUnknownCommandId, 0.5F);
+	TEST_EXPECT(context, unknown.status == DcsBridge::DcsCommandMappingStatus::UnknownCommand);
+	const DcsBridge::DcsCommandMapping invalid =
+	    DcsBridge::map_command(DcsIds::Commands::JoystickPitch, std::numeric_limits<float>::infinity());
+	TEST_EXPECT(context, invalid.status == DcsBridge::DcsCommandMappingStatus::InvalidValue);
 }
 
-void test_non_flight_control_commands_have_expected_semantics(
-	Tests::Context& context)
+void test_non_flight_control_commands_have_expected_semantics(Tests::Context& context)
 {
 	for (const ExpectedSemanticCommand& expected : kExpectedSemanticCommands)
 	{
 		const DcsBridge::DcsCommandMapping mapping =
-			DcsBridge::inspect_command_binding(
-				expected.dcs_id,
-				kMappingProbeValue);
+		    DcsBridge::inspect_command_binding(expected.dcs_id, kMappingProbeValue);
 		TEST_EXPECT(context, mapping.should_dispatch());
 		TEST_EXPECT(context, mapping.command.id == expected.command_id);
 	}
@@ -179,51 +149,35 @@ void test_non_flight_control_commands_have_expected_semantics(
 void test_inactive_cockpit_binding_value_rules(Tests::Context& context)
 {
 	const DcsBridge::DcsCommandMapping held_release =
-		DcsBridge::inspect_command_binding(
-			DcsIds::Commands::MissileUncage,
-			0.0F);
+	    DcsBridge::inspect_command_binding(DcsIds::Commands::MissileUncage, 0.0F);
 	TEST_EXPECT(context, held_release.should_dispatch());
-	TEST_EXPECT(
-		context,
-		held_release.command.id == Core::CommandId::SetMissileUncage);
-	TEST_EXPECT_NEAR(
-		context, held_release.command.value_normalized, 0.0, kTolerance);
+	TEST_EXPECT(context, held_release.command.id == Core::CommandId::SetMissileUncage);
+	TEST_EXPECT_NEAR(context, held_release.command.value_normalized, 0.0, kTolerance);
 	const DcsBridge::DcsCommandMapping press_release =
-		DcsBridge::inspect_command_binding(
-			DcsIds::Commands::TMSDown,
-			0.0F);
-	TEST_EXPECT(
-		context,
-		press_release.status ==
-			DcsBridge::DcsCommandMappingStatus::IgnoredRelease);
+	    DcsBridge::inspect_command_binding(DcsIds::Commands::TMSDown, 0.0F);
+	TEST_EXPECT(context, press_release.status == DcsBridge::DcsCommandMappingStatus::IgnoredRelease);
 }
 
 void test_generated_command_routes(Tests::Context& context)
 {
-	for (const DcsIds::CommandRouting::Entry& entry :
-		DcsIds::CommandRouting::CustomCommands)
+	for (const DcsIds::CommandRouting::Entry& entry : DcsIds::CommandRouting::CustomCommands)
 	{
-		const DcsBridge::DcsCommandMapping mapping =
-			DcsBridge::map_command(entry.id, 1.0F);
+		const DcsBridge::DcsCommandMapping mapping = DcsBridge::map_command(entry.id, 1.0F);
 		if (entry.route == DcsIds::CommandRouting::Route::Efm)
 		{
 			TEST_EXPECT(context, mapping.should_dispatch());
 			continue;
 		}
 		const DcsBridge::DcsCommandMapping non_finite =
-			DcsBridge::map_command(entry.id, std::numeric_limits<float>::infinity());
+		    DcsBridge::map_command(entry.id, std::numeric_limits<float>::infinity());
 		if (entry.route == DcsIds::CommandRouting::Route::Cockpit)
 		{
-			TEST_EXPECT(context, mapping.status ==
-				DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
-			TEST_EXPECT(context, non_finite.status ==
-				DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+			TEST_EXPECT(context, mapping.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+			TEST_EXPECT(context, non_finite.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
 			continue;
 		}
-		TEST_EXPECT(context, mapping.status ==
-			DcsBridge::DcsCommandMappingStatus::UnknownCommand);
-		TEST_EXPECT(context, non_finite.status ==
-			DcsBridge::DcsCommandMappingStatus::InvalidValue);
+		TEST_EXPECT(context, mapping.status == DcsBridge::DcsCommandMappingStatus::UnknownCommand);
+		TEST_EXPECT(context, non_finite.status == DcsBridge::DcsCommandMappingStatus::InvalidValue);
 	}
 }
 
@@ -231,25 +185,18 @@ void test_generated_ignored_dcs_commands(Tests::Context& context)
 {
 	for (const int command : DcsIds::CommandRouting::IgnoredDcsCommands)
 	{
-		const DcsBridge::DcsCommandMapping mapping =
-			DcsBridge::map_command(command, 1.0F);
-		TEST_EXPECT(context,
-			mapping.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+		const DcsBridge::DcsCommandMapping mapping = DcsBridge::map_command(command, 1.0F);
+		TEST_EXPECT(context, mapping.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
 		const DcsBridge::DcsCommandMapping non_finite =
-			DcsBridge::map_command(command, std::numeric_limits<float>::infinity());
-		TEST_EXPECT(context,
-			non_finite.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
+		    DcsBridge::map_command(command, std::numeric_limits<float>::infinity());
+		TEST_EXPECT(context, non_finite.status == DcsBridge::DcsCommandMappingStatus::IgnoredCommand);
 	}
 }
 
 void test_sensor_command_id_contract(Tests::Context& context)
 {
-	TEST_EXPECT(context,
-		DcsIds::DcsCommands::iCommandPlaneRadarOnOff ==
-			kDcsRadarOnOffCommandId);
-	TEST_EXPECT(context,
-		DcsIds::DcsCommands::iCommandPlaneEOSOnOff ==
-			kDcsEosOnOffCommandId);
+	TEST_EXPECT(context, DcsIds::DcsCommands::iCommandPlaneRadarOnOff == kDcsRadarOnOffCommandId);
+	TEST_EXPECT(context, DcsIds::DcsCommands::iCommandPlaneEOSOnOff == kDcsEosOnOffCommandId);
 }
 }
 

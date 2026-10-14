@@ -18,9 +18,7 @@ struct FlightControlActuationSystemConfig
 	FlightControlAxisConfig rudder;
 };
 
-void validate_flight_control_actuation_system_config(
-	const FlightControlActuationSystemConfig& config);
-const FlightControlActuationSystemConfig&
-	fck1c_flight_control_actuation_system_config();
+void validate_flight_control_actuation_system_config(const FlightControlActuationSystemConfig& config);
+const FlightControlActuationSystemConfig& fck1c_flight_control_actuation_system_config();
 }
 }

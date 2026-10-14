@@ -24,8 +24,8 @@ class ExecutionError final : public std::runtime_error
 {
 public:
 	explicit ExecutionError(ExecutionErrorDetails details)
-		: std::runtime_error(details.reason),
-		details_(std::move(details))
+	    : std::runtime_error(details.reason),
+	      details_(std::move(details))
 	{
 	}
 

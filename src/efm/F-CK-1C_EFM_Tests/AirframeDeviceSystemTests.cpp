@@ -35,12 +35,9 @@ void test_device_actuators(Tests::Context& context)
 	devices.flap_mode = Systems::FLAP_MODE_DOWN;
 	const Systems::AirframeDeviceUpdateInput input = {};
 	Systems::update_airframe_device_positions(devices, input);
-	TEST_EXPECT_NEAR(
-		context, devices.airbrake_position_normalized, 0.004, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, devices.flaps_position_normalized, 0.002, kTolerance);
-	TEST_EXPECT_NEAR(
-		context, devices.slats_position_normalized, 0.003, kTolerance);
+	TEST_EXPECT_NEAR(context, devices.airbrake_position_normalized, 0.004, kTolerance);
+	TEST_EXPECT_NEAR(context, devices.flaps_position_normalized, 0.002, kTolerance);
+	TEST_EXPECT_NEAR(context, devices.slats_position_normalized, 0.003, kTolerance);
 }
 }
 

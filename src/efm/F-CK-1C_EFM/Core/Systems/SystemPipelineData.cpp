@@ -12,21 +12,15 @@ namespace Systems
 namespace
 {
 template <std::size_t... Indices>
-std::array<std::type_index, sizeof...(Indices)> make_aircraft_data_types(
-	std::index_sequence<Indices...>)
+std::array<std::type_index, sizeof...(Indices)> make_aircraft_data_types(std::index_sequence<Indices...>)
 {
-	return {
-		std::type_index(typeid(
-			std::variant_alternative_t<Indices, AircraftDataValue>))...
-	};
+	return { std::type_index(typeid(std::variant_alternative_t<Indices, AircraftDataValue>))... };
 }
 
-static_assert(
-	std::variant_size<AircraftDataValue>::value == kAircraftDataSlotCount,
-	"AircraftData IDs and value types must have the same size.");
+static_assert(std::variant_size<AircraftDataValue>::value == kAircraftDataSlotCount,
+              "AircraftData IDs and value types must have the same size.");
 
-const auto kAircraftDataTypes = make_aircraft_data_types(
-	std::make_index_sequence<kAircraftDataSlotCount>{});
+const auto kAircraftDataTypes = make_aircraft_data_types(std::make_index_sequence<kAircraftDataSlotCount>{});
 
 std::type_index expected_type(AircraftDataId id)
 {
@@ -55,33 +49,28 @@ void validate_key(const AircraftDataDescriptor& descriptor)
 	}
 	if (expected_type(descriptor.id) != descriptor.type)
 	{
-		throw std::logic_error(
-			std::string("AircraftData key type mismatch: ") + descriptor.name);
+		throw std::logic_error(std::string("AircraftData key type mismatch: ") + descriptor.name);
 	}
 }
 }
 
 AircraftDataSnapshot::AircraftDataSnapshot(const Storage& storage)
-	: storage_(storage)
+    : storage_(storage)
 {
 }
 
-const AircraftDataValue& AircraftDataSnapshot::read_value(
-	const AircraftDataDescriptor& descriptor) const
+const AircraftDataValue& AircraftDataSnapshot::read_value(const AircraftDataDescriptor& descriptor) const
 {
 	Detail::validate_key(descriptor);
 	const auto& value = storage_[Detail::slot(descriptor.id)];
 	if (!value)
 	{
-		throw std::logic_error(
-			std::string("AircraftData value is not initialized: ") +
-			descriptor.name);
+		throw std::logic_error(std::string("AircraftData value is not initialized: ") + descriptor.name);
 	}
 	return *value;
 }
 
-bool AircraftDataSnapshot::has_value(
-	const AircraftDataDescriptor& descriptor) const
+bool AircraftDataSnapshot::has_value(const AircraftDataDescriptor& descriptor) const
 {
 	Detail::validate_key(descriptor);
 	return storage_[Detail::slot(descriptor.id)].has_value();
@@ -89,32 +78,25 @@ bool AircraftDataSnapshot::has_value(
 
 void AircraftDataSnapshot::throw_type_error(const char* name)
 {
-	throw std::logic_error(
-		std::string("AircraftData stored type mismatch: ") + name);
+	throw std::logic_error(std::string("AircraftData stored type mismatch: ") + name);
 }
 
-AircraftDataView::AircraftDataView(
-	const AircraftDataSnapshot& snapshot,
-	const ReadableMask& readable)
-	: snapshot_(&snapshot),
-	readable_(&readable)
+AircraftDataView::AircraftDataView(const AircraftDataSnapshot& snapshot, const ReadableMask& readable)
+    : snapshot_(&snapshot),
+      readable_(&readable)
 {
 }
 
-void AircraftDataView::require_declared(
-	const AircraftDataDescriptor& descriptor) const
+void AircraftDataView::require_declared(const AircraftDataDescriptor& descriptor) const
 {
 	Detail::validate_key(descriptor);
 	if (!(*readable_)[Detail::slot(descriptor.id)])
 	{
-		throw std::logic_error(
-			std::string("System read undeclared AircraftData: ") +
-			descriptor.name);
+		throw std::logic_error(std::string("System read undeclared AircraftData: ") + descriptor.name);
 	}
 }
 
-void SystemResult::activate_publications(
-	const std::array<bool, kAircraftDataSlotCount>& writable)
+void SystemResult::activate_publications(const std::array<bool, kAircraftDataSlotCount>& writable)
 {
 	writable_ = writable;
 }
@@ -128,23 +110,17 @@ void SystemResult::clear()
 	}
 }
 
-void SystemResult::publish_value(
-	const AircraftDataDescriptor& descriptor,
-	const AircraftDataValue& value)
+void SystemResult::publish_value(const AircraftDataDescriptor& descriptor, const AircraftDataValue& value)
 {
 	Detail::validate_key(descriptor);
 	const std::size_t index = Detail::slot(descriptor.id);
 	if (!writable_[index])
 	{
-		throw std::logic_error(
-			std::string("System published undeclared AircraftData: ") +
-			descriptor.name);
+		throw std::logic_error(std::string("System published undeclared AircraftData: ") + descriptor.name);
 	}
 	if (pending_[index])
 	{
-		throw std::logic_error(
-			std::string("System published AircraftData twice in one step: ") +
-			descriptor.name);
+		throw std::logic_error(std::string("System published AircraftData twice in one step: ") + descriptor.name);
 	}
 	pending_[index] = value;
 }

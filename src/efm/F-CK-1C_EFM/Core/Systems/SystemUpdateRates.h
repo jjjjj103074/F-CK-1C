@@ -16,7 +16,6 @@ inline constexpr std::uint32_t kProjectDefinedFallbackUpdateRateHz = 64;
 
 // Project-defined numerical integration rate. This is not a confirmed
 // F-CK-1C actuator or position-sensor update rate.
-inline constexpr std::uint32_t
-	kFlightControlActuationProjectUpdateRateHz = 256;
+inline constexpr std::uint32_t kFlightControlActuationProjectUpdateRateHz = 256;
 }
 }

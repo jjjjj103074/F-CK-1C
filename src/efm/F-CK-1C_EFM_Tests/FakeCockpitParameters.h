@@ -26,17 +26,14 @@ public:
 	{
 		if (active_fixture() != nullptr)
 		{
-			throw std::logic_error(
-				"Only one fake cockpit parameter fixture may be active.");
+			throw std::logic_error("Only one fake cockpit parameter fixture may be active.");
 		}
-		for (const DcsIds::CockpitParams::Entry& entry :
-			DcsIds::CockpitParams::Catalog)
+		for (const DcsIds::CockpitParams::Entry& entry : DcsIds::CockpitParams::Catalog)
 		{
 			parameters_.push_back({ entry.name });
 		}
 		active_fixture() = this;
-		for (const DcsIds::RawCockpitParams::Entry& entry :
-			DcsIds::RawCockpitParams::Catalog)
+		for (const DcsIds::RawCockpitParams::Entry& entry : DcsIds::RawCockpitParams::Catalog)
 		{
 			parameters_.push_back({ entry.name });
 		}
@@ -78,9 +75,7 @@ public:
 	void* handle(const char* name)
 	{
 		FakeCockpitParameter* parameter = find(name);
-		return parameter != nullptr && parameter->available
-			? parameter
-			: nullptr;
+		return parameter != nullptr && parameter->available ? parameter : nullptr;
 	}
 
 	cockpit_param_api api()
@@ -112,16 +107,12 @@ private:
 
 	static void update_string(void* handle, const char* value)
 	{
-		FakeCockpitParameter* parameter =
-			static_cast<FakeCockpitParameter*>(handle);
+		FakeCockpitParameter* parameter = static_cast<FakeCockpitParameter*>(handle);
 		parameter->text = value;
 		++parameter->string_write_count;
 	}
 
-	static bool read_number(
-		const void* handle,
-		double& result,
-		bool interpolated)
+	static bool read_number(const void* handle, double& result, bool interpolated)
 	{
 		(void)interpolated;
 		result = static_cast<const FakeCockpitParameter*>(handle)->value;

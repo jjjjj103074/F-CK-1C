@@ -37,13 +37,9 @@ struct MailboxRead
 class LatestTelemetryMailbox final
 {
 public:
-	void publish(
-		std::uint64_t flight_id,
-		std::uint64_t sequence,
-		const Core::FrameOutput& output);
+	void publish(std::uint64_t flight_id, std::uint64_t sequence, const Core::FrameOutput& output);
 	std::optional<TelemetryRecord> take_latest();
-	MailboxRead wait_until(
-		const std::chrono::steady_clock::time_point& deadline);
+	MailboxRead wait_until(const std::chrono::steady_clock::time_point& deadline);
 	void stop();
 
 private:

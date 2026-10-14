@@ -29,8 +29,7 @@ const char* level_name(DcsBridge::Internal::EventLevel level)
 	return "ERROR";
 }
 
-const char* warning_kind_name(
-	DcsBridge::Internal::CountedWarningKind kind)
+const char* warning_kind_name(DcsBridge::Internal::CountedWarningKind kind)
 {
 	switch (kind)
 	{
@@ -42,14 +41,11 @@ const char* warning_kind_name(
 	return "unknown";
 }
 
-bool format_simulation_time(
-	const std::optional<double>& simulation_time_s,
-	char* output,
-	size_t capacity)
+bool format_simulation_time(const std::optional<double>& simulation_time_s, char* output, size_t capacity)
 {
 	const int length = simulation_time_s
-		? snprintf(output, capacity, "%.*g", kRoundTripDoubleDigits, *simulation_time_s)
-		: snprintf(output, capacity, "-");
+	                       ? snprintf(output, capacity, "%.*g", kRoundTripDoubleDigits, *simulation_time_s)
+	                       : snprintf(output, capacity, "-");
 	return length >= 0 && static_cast<size_t>(length) < capacity;
 }
 }
@@ -75,8 +71,7 @@ EventLog::~EventLog()
 
 bool EventLog::initialize(const char* module_root)
 {
-	const LogFilePreparation location =
-		prepare_rotating_log_file(module_root, kActiveFileName);
+	const LogFilePreparation location = prepare_rotating_log_file(module_root, kActiveFileName);
 	if (!location.ready)
 	{
 		set_error(location.error_code);
@@ -90,10 +85,7 @@ bool EventLog::initialize(const char* module_root)
 	}
 	return true;
 }
-bool EventLog::format_line(
-	const EventRecord& record,
-	char* output,
-	size_t capacity) const
+bool EventLog::format_line(const EventRecord& record, char* output, size_t capacity) const
 {
 	if (record.message == nullptr)
 	{
@@ -102,27 +94,23 @@ bool EventLog::format_line(
 	SYSTEMTIME wall_clock = {};
 	GetLocalTime(&wall_clock);
 	char simulation_time[64];
-	if (!format_simulation_time(
-		record.simulation_time_s,
-		simulation_time,
-		sizeof(simulation_time)))
+	if (!format_simulation_time(record.simulation_time_s, simulation_time, sizeof(simulation_time)))
 	{
 		return false;
 	}
-	const int length = snprintf(
-		output,
-		capacity,
-		"[%04u-%02u-%02u %02u:%02u:%02u.%03u][%s][%s] %s\n",
-		wall_clock.wYear,
-		wall_clock.wMonth,
-		wall_clock.wDay,
-		wall_clock.wHour,
-		wall_clock.wMinute,
-		wall_clock.wSecond,
-		wall_clock.wMilliseconds,
-		simulation_time,
-		level_name(record.level),
-		record.message);
+	const int length = snprintf(output,
+	                            capacity,
+	                            "[%04u-%02u-%02u %02u:%02u:%02u.%03u][%s][%s] %s\n",
+	                            wall_clock.wYear,
+	                            wall_clock.wMonth,
+	                            wall_clock.wDay,
+	                            wall_clock.wHour,
+	                            wall_clock.wMinute,
+	                            wall_clock.wSecond,
+	                            wall_clock.wMilliseconds,
+	                            simulation_time,
+	                            level_name(record.level),
+	                            record.message);
 	return length >= 0 && static_cast<size_t>(length) < capacity;
 }
 
@@ -158,9 +146,7 @@ bool EventLog::write_unlocked(const EventRecord& record)
 	return true;
 }
 
-EventLog::WarningCounter* EventLog::find_counter(
-	CountedWarningKind kind,
-	std::int64_t id)
+EventLog::WarningCounter* EventLog::find_counter(CountedWarningKind kind, std::int64_t id)
 {
 	for (WarningCounter& counter : warning_counters_)
 	{
@@ -187,25 +173,18 @@ bool EventLog::write_counted_warning(const CountedWarningEvent& event)
 		return true;
 	}
 	warning_counters_.push_back({ event.kind, event.id, 1 });
-	return write_unlocked({
-		EventLevel::Warning,
-		event.simulation_time_s,
-		event.first_message
-	});
+	return write_unlocked({ EventLevel::Warning, event.simulation_time_s, event.first_message });
 }
 
-bool EventLog::write_summary(
-	const WarningCounter& counter,
-	const std::optional<double>& simulation_time_s)
+bool EventLog::write_summary(const WarningCounter& counter, const std::optional<double>& simulation_time_s)
 {
 	char message[kWarningSummaryMessageCapacity];
-	const int length = snprintf(
-		message,
-		sizeof(message),
-		"counted_warning kind=%s id=%lld total=%llu flight_release_summary",
-		warning_kind_name(counter.kind),
-		static_cast<long long>(counter.id),
-		static_cast<unsigned long long>(counter.count));
+	const int length = snprintf(message,
+	                            sizeof(message),
+	                            "counted_warning kind=%s id=%lld total=%llu flight_release_summary",
+	                            warning_kind_name(counter.kind),
+	                            static_cast<long long>(counter.id),
+	                            static_cast<unsigned long long>(counter.count));
 	if (length < 0 || static_cast<size_t>(length) >= sizeof(message))
 	{
 		set_error(EINVAL);
@@ -214,8 +193,7 @@ bool EventLog::write_summary(
 	return write_unlocked({ EventLevel::Warning, simulation_time_s, message });
 }
 
-bool EventLog::release_flight(
-	const std::optional<double>& simulation_time_s)
+bool EventLog::release_flight(const std::optional<double>& simulation_time_s)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	bool success = true;

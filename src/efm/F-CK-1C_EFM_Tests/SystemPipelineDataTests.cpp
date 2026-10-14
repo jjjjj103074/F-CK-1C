@@ -23,8 +23,7 @@ constexpr int kFirstCall = 0;
 constexpr std::size_t kCurrentCatalogSize = 9;
 constexpr std::uint32_t kInvalidUpdateRateHz = 0;
 constexpr SystemScheduledTime kZeroUpdatePeriod = {};
-constexpr SystemScheduledTime kNegativeUpdatePeriod =
-	std::chrono::nanoseconds(-1);
+constexpr SystemScheduledTime kNegativeUpdatePeriod = std::chrono::nanoseconds(-1);
 
 struct DemandPublisherOptions
 {
@@ -35,21 +34,15 @@ struct DemandPublisherOptions
 
 SystemDefinition demand_publisher(const DemandPublisherOptions& options)
 {
-	return {
-		options.id,
-		[options](SystemSetup& setup)
-		{
-			setup.publish(
-				AircraftDataKeys::kFlightControlActuatorCommand,
-				actuator_command(options.initial));
-		},
-		[options](const AircraftDataView&, SystemResult& result)
-		{
-			result.publish(
-				AircraftDataKeys::kFlightControlActuatorCommand,
-				actuator_command(options.next));
-		}
-	};
+	return { options.id,
+		     [options](SystemSetup& setup)
+		     {
+		         setup.publish(AircraftDataKeys::kFlightControlActuatorCommand, actuator_command(options.initial));
+		     },
+		     [options](const AircraftDataView&, SystemResult& result)
+		     {
+		         result.publish(AircraftDataKeys::kFlightControlActuatorCommand, actuator_command(options.next));
+		     } };
 }
 
 SystemDefinition demand_observer()
@@ -58,232 +51,191 @@ SystemDefinition demand_observer()
 		"observer",
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
-			setup.publish(
-				AircraftDataKeys::kFlightControlActuatorState,
-				actuator_state(kNeutralValue));
+		    setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
+		    setup.publish(AircraftDataKeys::kFlightControlActuatorState, actuator_state(kNeutralValue));
 		},
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
-			const double pitch =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
-			result.publish(
-				AircraftDataKeys::kFlightControlActuatorState, actuator_state(pitch));
+		    const double pitch =
+		        aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
+		    result.publish(AircraftDataKeys::kFlightControlActuatorState, actuator_state(pitch));
 		}
 	};
 }
 
 void test_missing_provider_fails(Tests::Context& context)
 {
-	const SystemDefinition reader = {
-		"reader",
-		[](SystemSetup& setup)
-		{
-			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
-		},
-		no_step()
-	};
+	const SystemDefinition reader = { "reader",
+		                              [](SystemSetup& setup)
+		                              {
+		                                  setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
+		                              },
+		                              no_step() };
 	TEST_EXPECT(context, construction_throws({ entry(reader) }));
 }
 
 void test_type_mismatch_fails(Tests::Context& context)
 {
-	const AircraftDataKey<FlightControlActuatorState> wrong_key = {
-		AircraftDataId::FlightControlActuatorCommand,
-		"wrong_demand_type"
-	};
-	const SystemDefinition publisher = {
-		"wrong_type",
-		[wrong_key](SystemSetup& setup)
-		{
-			setup.publish(wrong_key, actuator_state(kNeutralValue));
-		},
-		no_step()
-	};
+	const AircraftDataKey<FlightControlActuatorState> wrong_key = { AircraftDataId::FlightControlActuatorCommand,
+		                                                            "wrong_demand_type" };
+	const SystemDefinition publisher = { "wrong_type",
+		                                 [wrong_key](SystemSetup& setup)
+		                                 {
+		                                     setup.publish(wrong_key, actuator_state(kNeutralValue));
+		                                 },
+		                                 no_step() };
 	TEST_EXPECT(context, construction_throws({ entry(publisher) }));
 }
 
 void test_required_initial_value_fails(Tests::Context& context)
 {
-	const SystemDefinition publisher = {
-		"publisher",
-		[](SystemSetup& setup)
-		{
-			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
-		},
-		no_step()
-	};
-	const SystemDefinition reader = {
-		"reader",
-		[](SystemSetup& setup)
-		{
-			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
-		},
-		no_step()
-	};
-	TEST_EXPECT(
-		context, construction_throws({ entry(publisher), entry(reader) }));
-	TEST_EXPECT(
-		context, construction_throws({ entry(reader), entry(publisher) }));
+	const SystemDefinition publisher = { "publisher",
+		                                 [](SystemSetup& setup)
+		                                 {
+		                                     setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
+		                                 },
+		                                 no_step() };
+	const SystemDefinition reader = { "reader",
+		                              [](SystemSetup& setup)
+		                              {
+		                                  setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
+		                              },
+		                              no_step() };
+	TEST_EXPECT(context, construction_throws({ entry(publisher), entry(reader) }));
+	TEST_EXPECT(context, construction_throws({ entry(reader), entry(publisher) }));
 }
 
 void test_optional_initial_value_is_explicit(Tests::Context& context)
 {
-	const SystemDefinition publisher = {
-		"publisher",
-		[](SystemSetup& setup)
-		{
-			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
-		},
-		no_step()
-	};
-	const SystemDefinition reader = {
-		"reader",
-		[](SystemSetup& setup)
-		{
-			setup.read(
-				AircraftDataKeys::kFlightControlActuatorCommand,
-				InitialValueRequirement::Optional);
-		},
-		no_step()
-	};
-	SystemPipeline pipeline(
-		flight_setup(), { entry(reader), entry(publisher) });
-	TEST_EXPECT(
-		context,
-		!pipeline.snapshot().has(AircraftDataKeys::kFlightControlActuatorCommand));
+	const SystemDefinition publisher = { "publisher",
+		                                 [](SystemSetup& setup)
+		                                 {
+		                                     setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
+		                                 },
+		                                 no_step() };
+	const SystemDefinition reader = { "reader",
+		                              [](SystemSetup& setup)
+		                              {
+		                                  setup.read(AircraftDataKeys::kFlightControlActuatorCommand,
+		                                             InitialValueRequirement::Optional);
+		                              },
+		                              no_step() };
+	SystemPipeline pipeline(flight_setup(), { entry(reader), entry(publisher) });
+	TEST_EXPECT(context, !pipeline.snapshot().has(AircraftDataKeys::kFlightControlActuatorCommand));
 }
 
 void test_undeclared_read_fails(Tests::Context& context)
 {
-	const SystemDefinition reader = {
-		"reader",
-		[](SystemSetup&) {},
-		[](const AircraftDataView& aircraft, SystemResult&)
-		{
-			(void)aircraft.read(AircraftDataKeys::kFrameInput);
-		}
-	};
+	const SystemDefinition reader = { "reader",
+		                              [](SystemSetup&)
+		                              {
+		                              },
+		                              [](const AircraftDataView& aircraft, SystemResult&)
+		                              {
+		                                  (void)aircraft.read(AircraftDataKeys::kFrameInput);
+		                              } };
 	SystemPipeline pipeline(flight_setup(), { entry(reader) });
 	expect_execution_error(
-		context,
-		[&pipeline]() { (void)step_pipeline(pipeline); },
-		{
-			ExecutionOwnerType::System,
-			"reader",
-			"step",
-			"System read undeclared AircraftData: frame_input"
-		});
+	    context,
+	    [&pipeline]()
+	    {
+		    (void)step_pipeline(pipeline);
+	    },
+	    { ExecutionOwnerType::System, "reader", "step", "System read undeclared AircraftData: frame_input" });
 }
 
 void test_undeclared_has_fails(Tests::Context& context)
 {
-	const SystemDefinition reader = {
-		"reader",
-		[](SystemSetup&) {},
-		[](const AircraftDataView& aircraft, SystemResult&)
-		{
-			(void)aircraft.has(AircraftDataKeys::kFrameInput);
-		}
-	};
+	const SystemDefinition reader = { "reader",
+		                              [](SystemSetup&)
+		                              {
+		                              },
+		                              [](const AircraftDataView& aircraft, SystemResult&)
+		                              {
+		                                  (void)aircraft.has(AircraftDataKeys::kFrameInput);
+		                              } };
 	SystemPipeline pipeline(flight_setup(), { entry(reader) });
 	expect_execution_error(
-		context,
-		[&pipeline]() { (void)step_pipeline(pipeline); },
-		{
-			ExecutionOwnerType::System,
-			"reader",
-			"step",
-			"System read undeclared AircraftData: frame_input"
-		});
+	    context,
+	    [&pipeline]()
+	    {
+		    (void)step_pipeline(pipeline);
+	    },
+	    { ExecutionOwnerType::System, "reader", "step", "System read undeclared AircraftData: frame_input" });
 }
 
 void test_declared_optional_has_reports_missing(Tests::Context& context)
 {
 	auto observed = std::make_shared<bool>(true);
-	const SystemDefinition publisher = {
-		"publisher",
-		[](SystemSetup& setup)
-		{
-			setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
-		},
-		no_step()
-	};
-	const SystemDefinition reader = {
-		"reader",
-		[](SystemSetup& setup)
-		{
-			setup.read(
-				AircraftDataKeys::kFlightControlActuatorCommand,
-				InitialValueRequirement::Optional);
-		},
-		[observed](const AircraftDataView& aircraft, SystemResult&)
-		{
-			*observed =
-				aircraft.has(AircraftDataKeys::kFlightControlActuatorCommand);
-		}
-	};
-	SystemPipeline pipeline(
-		flight_setup(), { entry(publisher), entry(reader) });
+	const SystemDefinition publisher = { "publisher",
+		                                 [](SystemSetup& setup)
+		                                 {
+		                                     setup.publish(AircraftDataKeys::kFlightControlActuatorCommand);
+		                                 },
+		                                 no_step() };
+	const SystemDefinition reader = { "reader",
+		                              [](SystemSetup& setup)
+		                              {
+		                                  setup.read(AircraftDataKeys::kFlightControlActuatorCommand,
+		                                             InitialValueRequirement::Optional);
+		                              },
+		                              [observed](const AircraftDataView& aircraft, SystemResult&)
+		                              {
+		                                  *observed = aircraft.has(AircraftDataKeys::kFlightControlActuatorCommand);
+		                              } };
+	SystemPipeline pipeline(flight_setup(), { entry(publisher), entry(reader) });
 	(void)step_pipeline(pipeline);
 	TEST_EXPECT(context, !*observed);
 }
 
 void test_duplicate_writer_fails(Tests::Context& context)
 {
-	const SystemDefinition first =
-		demand_publisher({
-			"first", kNeutralValue, kInitialDemand });
-	const SystemDefinition second =
-		demand_publisher({
-			"second",
-			kNeutralValue,
-			kInitialCrossPosition
-		});
+	const SystemDefinition first = demand_publisher({ "first", kNeutralValue, kInitialDemand });
+	const SystemDefinition second = demand_publisher({ "second", kNeutralValue, kInitialCrossPosition });
 	TEST_EXPECT(context, construction_throws({ entry(first), entry(second) }));
 	TEST_EXPECT(context, construction_throws({ entry(second), entry(first) }));
 }
 
 void test_missing_update_rate_fails(Tests::Context& context)
 {
-	SystemDefinition system = {
-		"missing_rate",
-		[](SystemSetup&) {},
-		no_step()
-	};
+	SystemDefinition system = { "missing_rate",
+		                        [](SystemSetup&)
+		                        {
+		                        },
+		                        no_step() };
 	system.update_rate_hz = std::nullopt;
 	TEST_EXPECT(context, construction_throws({ entry(system) }));
 }
 
 void test_duplicate_update_rate_fails(Tests::Context& context)
 {
-	const SystemDefinition system = {
-		"duplicate_rate",
-		[](SystemSetup& setup)
-		{
-			setup.update_rate_hz(kTestUpdateRateHz);
-		},
-		no_step()
-	};
+	const SystemDefinition system = { "duplicate_rate",
+		                              [](SystemSetup& setup)
+		                              {
+		                                  setup.update_rate_hz(kTestUpdateRateHz);
+		                              },
+		                              no_step() };
 	TEST_EXPECT(context, construction_throws({ entry(system) }));
 }
 
 void test_invalid_update_timing_fails(Tests::Context& context)
 {
-	SystemDefinition zero_rate = {
-		"zero_rate", [](SystemSetup&) {}, no_step()
-	};
+	SystemDefinition zero_rate = { "zero_rate",
+		                           [](SystemSetup&)
+		                           {
+		                           },
+		                           no_step() };
 	zero_rate.update_rate_hz = kInvalidUpdateRateHz;
 	TEST_EXPECT(context, construction_throws({ entry(zero_rate) }));
 
-	for (const SystemScheduledTime period :
-		{ kZeroUpdatePeriod, kNegativeUpdatePeriod })
+	for (const SystemScheduledTime period : { kZeroUpdatePeriod, kNegativeUpdatePeriod })
 	{
-		SystemDefinition invalid_period = {
-			"invalid_period",
-			[period](SystemSetup& setup) { setup.update_period(period); },
-			no_step()
-		};
+		SystemDefinition invalid_period = { "invalid_period",
+			                                [period](SystemSetup& setup)
+			                                {
+			                                    setup.update_period(period);
+			                                },
+			                                no_step() };
 		invalid_period.update_rate_hz = std::nullopt;
 		TEST_EXPECT(context, construction_throws({ entry(invalid_period) }));
 	}
@@ -291,227 +243,181 @@ void test_invalid_update_timing_fails(Tests::Context& context)
 
 void test_same_time_bucket_reads_fixed_snapshot(Tests::Context& context)
 {
-	const SystemDefinition publisher = demand_publisher({
-		"publisher", kInitialDemand, kNextDemand });
-	SystemPipeline pipeline(
-		flight_setup(),
-		{ entry(publisher), entry(demand_observer()) });
+	const SystemDefinition publisher = demand_publisher({ "publisher", kInitialDemand, kNextDemand });
+	SystemPipeline pipeline(flight_setup(), { entry(publisher), entry(demand_observer()) });
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
-		kNextDemand,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
-		kInitialDemand,
-		kTolerance);
+	    context,
+	    output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    kNextDemand,
+	    kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
+	                 kInitialDemand,
+	                 kTolerance);
 }
 
-void test_catalog_order_does_not_create_a_commit(
-	Tests::Context& context)
+void test_catalog_order_does_not_create_a_commit(Tests::Context& context)
 {
-	const SystemDefinition publisher = demand_publisher({
-		"publisher", kInitialDemand, kNextDemand });
-	SystemPipeline pipeline(
-		flight_setup(),
-		{ entry(demand_observer()), entry(publisher) });
+	const SystemDefinition publisher = demand_publisher({ "publisher", kInitialDemand, kNextDemand });
+	SystemPipeline pipeline(flight_setup(), { entry(demand_observer()), entry(publisher) });
 	const AircraftDataSnapshot output = step_pipeline(pipeline);
-	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
-		kInitialDemand,
-		kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
+	                 kInitialDemand,
+	                 kTolerance);
 }
 
 void test_failed_system_keeps_previous_frame(Tests::Context& context)
 {
 	auto observed = std::make_shared<double>(kNeutralValue);
-	const SystemDefinition publisher = demand_publisher({
-		"publisher", kInitialDemand, kNextDemand });
+	const SystemDefinition publisher = demand_publisher({ "publisher", kInitialDemand, kNextDemand });
 	const SystemDefinition failing_system = {
 		"failing_system",
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
-			setup.publish(
-				AircraftDataKeys::kFlightControlActuatorState,
-				actuator_state(kNeutralValue));
+		    setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
+		    setup.publish(AircraftDataKeys::kFlightControlActuatorState, actuator_state(kNeutralValue));
 		},
 		[observed](const AircraftDataView& aircraft, SystemResult&)
 		{
-			*observed =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
-			throw std::runtime_error("expected system failure");
+		    *observed =
+		        aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
+		    throw std::runtime_error("expected system failure");
 		}
 	};
-	SystemPipeline pipeline(
-		flight_setup(), { entry(publisher), entry(failing_system) });
+	SystemPipeline pipeline(flight_setup(), { entry(publisher), entry(failing_system) });
 	FrameInput failed_input;
 	failed_input.availability.world_kinematics = true;
 	failed_input.world_kinematics.velocity_world_mps.x = kNextDemand;
-	TEST_EXPECT(
-		context,
-		action_throws([&pipeline, &failed_input]()
-		{
-			const Core::AircraftObservation observation;
-			(void)pipeline.step({
-				failed_input,
-				observation,
-				kTestUpdatePeriod
-			});
-		}));
+	TEST_EXPECT(context,
+	            action_throws(
+	                [&pipeline, &failed_input]()
+	                {
+		                const Core::AircraftObservation observation;
+		                (void)pipeline.step({ failed_input, observation, kTestUpdatePeriod });
+	                }));
 	const AircraftDataSnapshot unchanged = pipeline.snapshot();
 	TEST_EXPECT_NEAR(context, *observed, kInitialDemand, kTolerance);
 	TEST_EXPECT_NEAR(
-		context,
-		unchanged.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
-		kInitialDemand,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		unchanged.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
-		kNeutralValue,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		unchanged.read(
-			AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
-		kNeutralValue,
-		kTolerance);
+	    context,
+	    unchanged.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    kInitialDemand,
+	    kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 unchanged.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
+	                 kNeutralValue,
+	                 kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 unchanged.read(AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
+	                 kNeutralValue,
+	                 kTolerance);
 }
 
 void test_missing_new_value_retains_last_commit(Tests::Context& context)
 {
 	auto calls = std::make_shared<int>(kFirstCall);
-	const SystemDefinition publisher = {
-		"publisher",
-		[](SystemSetup& setup)
-		{
-			setup.publish(
-				AircraftDataKeys::kFlightControlActuatorCommand,
-				actuator_command(kInitialDemand));
-		},
-		[calls](const AircraftDataView&, SystemResult& result)
-		{
-			if ((*calls)++ == kFirstCall)
-			{
-				result.publish(
-					AircraftDataKeys::kFlightControlActuatorCommand,
-					actuator_command(kNextDemand));
-			}
-		}
-	};
+	const SystemDefinition publisher = { "publisher",
+		                                 [](SystemSetup& setup)
+		                                 {
+		                                     setup.publish(AircraftDataKeys::kFlightControlActuatorCommand,
+		                                                   actuator_command(kInitialDemand));
+		                                 },
+		                                 [calls](const AircraftDataView&, SystemResult& result)
+		                                 {
+		                                     if ((*calls)++ == kFirstCall)
+		                                     {
+			                                     result.publish(AircraftDataKeys::kFlightControlActuatorCommand,
+			                                                    actuator_command(kNextDemand));
+		                                     }
+		                                 } };
 	SystemPipeline pipeline(flight_setup(), { entry(publisher) });
 	(void)step_pipeline(pipeline);
 	const AircraftDataSnapshot second = step_pipeline(pipeline);
 	TEST_EXPECT_NEAR(
-		context,
-		second.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
-		kNextDemand,
-		kTolerance);
+	    context,
+	    second.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    kNextDemand,
+	    kTolerance);
 }
 
 void test_pending_storage_does_not_leak(Tests::Context& context)
 {
 	auto calls = std::make_shared<int>(kFirstCall);
-	const SystemDefinition publisher = {
-		"publisher",
-		[](SystemSetup& setup)
-		{
-			setup.publish(
-				AircraftDataKeys::kFlightControlActuatorCommand,
-				actuator_command(kNeutralValue));
-		},
-		[calls](const AircraftDataView&, SystemResult& result)
-		{
-			if ((*calls)++ == kFirstCall)
-			{
-				result.publish(
-					AircraftDataKeys::kFlightControlActuatorCommand,
-					actuator_command(kPendingDemand));
-				throw std::runtime_error("expected test failure");
-			}
-		}
-	};
+	const SystemDefinition publisher = { "publisher",
+		                                 [](SystemSetup& setup)
+		                                 {
+		                                     setup.publish(AircraftDataKeys::kFlightControlActuatorCommand,
+		                                                   actuator_command(kNeutralValue));
+		                                 },
+		                                 [calls](const AircraftDataView&, SystemResult& result)
+		                                 {
+		                                     if ((*calls)++ == kFirstCall)
+		                                     {
+			                                     result.publish(AircraftDataKeys::kFlightControlActuatorCommand,
+			                                                    actuator_command(kPendingDemand));
+			                                     throw std::runtime_error("expected test failure");
+		                                     }
+		                                 } };
 	SystemPipeline pipeline(flight_setup(), { entry(publisher) });
-	expect_execution_error(
-		context,
-		[&pipeline]() { (void)step_pipeline(pipeline); },
-		{
-			ExecutionOwnerType::System,
-			"publisher",
-			"step",
-			"expected test failure"
-		});
+	expect_execution_error(context,
+	                       [&pipeline]()
+	                       {
+		                       (void)step_pipeline(pipeline);
+	                       },
+	                       { ExecutionOwnerType::System, "publisher", "step", "expected test failure" });
 	const AircraftDataSnapshot next = step_pipeline(pipeline);
-	TEST_EXPECT_NEAR(
-		context,
-		next.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
-		kNeutralValue,
-		kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 next.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	                 kNeutralValue,
+	                 kTolerance);
 }
 
-SystemDefinition cross_reader(
-	const std::string& id,
-	bool publishes_demand)
+SystemDefinition cross_reader(const std::string& id, bool publishes_demand)
 {
 	if (publishes_demand)
 	{
-		return {
-			id,
-			[](SystemSetup& setup)
-			{
-				setup.read(AircraftDataKeys::kFlightControlActuatorState);
-				setup.publish(
-					AircraftDataKeys::kFlightControlActuatorCommand,
-					actuator_command(kInitialDemand));
-			},
-			[](const AircraftDataView& aircraft, SystemResult& result)
-			{
-				const double source = aircraft.read(
-					AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad;
-				result.publish(
-					AircraftDataKeys::kFlightControlActuatorCommand,
-					actuator_command(source + kDemandOffset));
-			}
-		};
+		return { id,
+			     [](SystemSetup& setup)
+			     {
+			         setup.read(AircraftDataKeys::kFlightControlActuatorState);
+			         setup.publish(AircraftDataKeys::kFlightControlActuatorCommand, actuator_command(kInitialDemand));
+			     },
+			     [](const AircraftDataView& aircraft, SystemResult& result)
+			     {
+			         const double source =
+			             aircraft.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad;
+			         result.publish(AircraftDataKeys::kFlightControlActuatorCommand,
+			                        actuator_command(source + kDemandOffset));
+			     } };
 	}
 	return {
 		id,
 		[](SystemSetup& setup)
 		{
-			setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
-			setup.publish(
-				AircraftDataKeys::kFlightControlActuatorState,
-				actuator_state(kInitialCrossPosition));
+		    setup.read(AircraftDataKeys::kFlightControlActuatorCommand);
+		    setup.publish(AircraftDataKeys::kFlightControlActuatorState, actuator_state(kInitialCrossPosition));
 		},
 		[](const AircraftDataView& aircraft, SystemResult& result)
 		{
-			const double source =
-				aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
-			result.publish(
-				AircraftDataKeys::kFlightControlActuatorState,
-				actuator_state(source + kPositionOffset));
+		    const double source =
+		        aircraft.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized;
+		    result.publish(AircraftDataKeys::kFlightControlActuatorState, actuator_state(source + kPositionOffset));
 		}
 	};
 }
 
-void expect_order_independent_result(
-	Tests::Context& context,
-	const AircraftDataSnapshot& output)
+void expect_order_independent_result(Tests::Context& context, const AircraftDataSnapshot& output)
 {
 	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
-		kInitialCrossPosition + kDemandOffset,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
-		kInitialDemand + kPositionOffset,
-		kTolerance);
+	    context,
+	    output.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    kInitialCrossPosition + kDemandOffset,
+	    kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
+	                 kInitialDemand + kPositionOffset,
+	                 kTolerance);
 }
 
 void test_catalog_order_does_not_change_batch_result(Tests::Context& context)
@@ -528,24 +434,23 @@ void test_systems_share_one_flight_result_buffer(Tests::Context& context)
 {
 	auto first_result = std::make_shared<const SystemResult*>(nullptr);
 	auto second_result = std::make_shared<const SystemResult*>(nullptr);
-	const SystemDefinition first = {
-		"first",
-		[](SystemSetup&) {},
-		[first_result](const AircraftDataView&, SystemResult& result)
-		{
-			*first_result = &result;
-		}
-	};
-	const SystemDefinition second = {
-		"second",
-		[](SystemSetup&) {},
-		[second_result](const AircraftDataView&, SystemResult& result)
-		{
-			*second_result = &result;
-		}
-	};
-	SystemPipeline pipeline(
-		flight_setup(), { entry(first), entry(second) });
+	const SystemDefinition first = { "first",
+		                             [](SystemSetup&)
+		                             {
+		                             },
+		                             [first_result](const AircraftDataView&, SystemResult& result)
+		                             {
+		                                 *first_result = &result;
+		                             } };
+	const SystemDefinition second = { "second",
+		                              [](SystemSetup&)
+		                              {
+		                              },
+		                              [second_result](const AircraftDataView&, SystemResult& result)
+		                              {
+		                                  *second_result = &result;
+		                              } };
+	SystemPipeline pipeline(flight_setup(), { entry(first), entry(second) });
 	(void)step_pipeline(pipeline);
 	TEST_EXPECT(context, *first_result != nullptr);
 	TEST_EXPECT(context, *first_result == *second_result);
@@ -556,91 +461,67 @@ void test_phase_three_generated_catalog(Tests::Context& context)
 	SystemPipeline pipeline(flight_setup());
 	TEST_EXPECT(context, pipeline.system_count() == kCurrentCatalogSize);
 	const AircraftDataSnapshot output = pipeline.snapshot();
-	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kPilotControlSignal).pitch_axis_normalized,
-		kNeutralValue,
-		kTolerance);
-	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
-		kNeutralValue,
-		kTolerance);
-	TEST_EXPECT(
-		context,
-		output.read(AircraftDataKeys::kFuelData).total_fuel_flow_kg_s >=
-			kNeutralValue);
-	TEST_EXPECT_NEAR(
-		context,
-		output.read(AircraftDataKeys::kAirframeIntegrity).left_wing_0_1,
-		kFullIntegrity,
-		kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 output.read(AircraftDataKeys::kPilotControlSignal).pitch_axis_normalized,
+	                 kNeutralValue,
+	                 kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 output.read(AircraftDataKeys::kFlightControlActuatorState).symmetric_stabilator.position_rad,
+	                 kNeutralValue,
+	                 kTolerance);
+	TEST_EXPECT(context, output.read(AircraftDataKeys::kFuelData).total_fuel_flow_kg_s >= kNeutralValue);
+	TEST_EXPECT_NEAR(context,
+	                 output.read(AircraftDataKeys::kAirframeIntegrity).left_wing_0_1,
+	                 kFullIntegrity,
+	                 kTolerance);
 }
 
 void test_factory_receives_start_mode(Tests::Context& context)
 {
 	auto received_mode = std::make_shared<StartMode>(StartMode::ColdGround);
-	SystemEntry system = {
-		"context_reader",
-		[received_mode](const FlightSetupContext& setup)
-		{
-			*received_mode = setup.start_mode;
-			return std::make_unique<CallbackSystem>(SystemDefinition{
-				"context_reader",
-				[](SystemSetup&) {},
-				no_step()
-			});
-		}
-	};
+	SystemEntry system = { "context_reader",
+		                   [received_mode](const FlightSetupContext& setup)
+		                   {
+		                       *received_mode = setup.start_mode;
+		                       return std::make_unique<CallbackSystem>(SystemDefinition{ "context_reader",
+		                                                                                 [](SystemSetup&)
+		                                                                                 {
+		                                                                                 },
+		                                                                                 no_step() });
+		                   } };
 	SystemPipeline pipeline(flight_setup(), { std::move(system) });
 	TEST_EXPECT(context, *received_mode == StartMode::HotGround);
 }
 
 void test_factory_error_identifies_system_create(Tests::Context& context)
 {
-	SystemEntry system = {
-		"throwing_factory",
-		[](const FlightSetupContext&) -> std::unique_ptr<System>
-		{
-			throw std::runtime_error("expected factory failure");
-		}
-	};
-	expect_execution_error(
-		context,
-		[&system]()
-		{
-			SystemPipeline pipeline(flight_setup(), { system });
-		},
-		{
-			ExecutionOwnerType::System,
-			"throwing_factory",
-			"create",
-			"expected factory failure"
-		});
+	SystemEntry system = { "throwing_factory",
+		                   [](const FlightSetupContext&) -> std::unique_ptr<System>
+		                   {
+		                       throw std::runtime_error("expected factory failure");
+		                   } };
+	expect_execution_error(context,
+	                       [&system]()
+	                       {
+		                       SystemPipeline pipeline(flight_setup(), { system });
+	                       },
+	                       { ExecutionOwnerType::System, "throwing_factory", "create", "expected factory failure" });
 }
 
 void test_setup_error_identifies_system_setup(Tests::Context& context)
 {
-	const SystemDefinition system = {
-		"throwing_setup",
-		[](SystemSetup&)
-		{
-			throw std::runtime_error("expected setup failure");
-		},
-		no_step()
-	};
-	expect_execution_error(
-		context,
-		[&system]()
-		{
-			SystemPipeline pipeline(flight_setup(), { entry(system) });
-		},
-		{
-			ExecutionOwnerType::System,
-			"throwing_setup",
-			"setup",
-			"expected setup failure"
-		});
+	const SystemDefinition system = { "throwing_setup",
+		                              [](SystemSetup&)
+		                              {
+		                                  throw std::runtime_error("expected setup failure");
+		                              },
+		                              no_step() };
+	expect_execution_error(context,
+	                       [&system]()
+	                       {
+		                       SystemPipeline pipeline(flight_setup(), { entry(system) });
+	                       },
+	                       { ExecutionOwnerType::System, "throwing_setup", "setup", "expected setup failure" });
 }
 }
 

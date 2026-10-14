@@ -53,26 +53,20 @@ struct AircraftState
 	double yaw_rate_rad_s = 0.0;
 };
 
-inline void set_atmosphere(
-	AircraftState& state,
-	const AtmosphereInput& input)
+inline void set_atmosphere(AircraftState& state, const AtmosphereInput& input)
 {
 	state.wind_world_mps = input.wind_world_mps;
 	state.atmosphere_density_kg_m3 = input.density_kg_m3;
 	state.speed_of_sound_mps = input.speed_of_sound_mps;
 	state.altitude_asl_m = input.altitude_asl_m;
-	state.engine_altitude_factor = Common::limit(
-		std::pow(
-			1.0 - (input.altitude_asl_m / kEngineAltitudeReferenceM),
-			kEngineAltitudeExponent),
-		kMinimumEngineAltitudeFactor,
-		1.0);
+	state.engine_altitude_factor =
+	    Common::limit(std::pow(1.0 - (input.altitude_asl_m / kEngineAltitudeReferenceM), kEngineAltitudeExponent),
+	                  kMinimumEngineAltitudeFactor,
+	                  1.0);
 	state.atmosphere_temperature_k = input.temperature_k;
 }
 
-inline void set_surface(
-	AircraftState& state,
-	const SurfaceInput& input)
+inline void set_surface(AircraftState& state, const SurfaceInput& input)
 {
 	state.surface_height_m = input.surface_height_m;
 	state.surface_height_with_objects_m = input.surface_height_with_objects_m;
@@ -80,26 +74,20 @@ inline void set_surface(
 	state.altitude_agl_m = state.altitude_asl_m - input.surface_height_m;
 }
 
-inline void set_mass_state(
-	AircraftState& state,
-	const MassStateInput& input)
+inline void set_mass_state(AircraftState& state, const MassStateInput& input)
 {
 	state.mass_kg = input.mass_kg;
 	state.center_of_mass_body_m = input.center_of_mass_body_m;
 }
 
-inline void set_world_kinematics(
-	AircraftState& state,
-	const WorldKinematicsInput& input)
+inline void set_world_kinematics(AircraftState& state, const WorldKinematicsInput& input)
 {
 	state.velocity_world_mps = input.velocity_world_mps;
 	state.angular_velocity_world_rad_s = input.angular_velocity_world_rad_s;
 	state.position_world_z_m = input.position_world_m.z;
 }
 
-inline void set_body_kinematics(
-	AircraftState& state,
-	const BodyKinematicsInput& input)
+inline void set_body_kinematics(AircraftState& state, const BodyKinematicsInput& input)
 {
 	state.velocity_body_mps = input.velocity_body_mps;
 
@@ -107,8 +95,7 @@ inline void set_body_kinematics(
 	state.angle_of_attack_deg = Common::deg(input.angle_of_attack_rad);
 	state.angle_of_slide_rad = input.angle_of_slide_rad;
 	state.angle_of_slide_deg = Common::deg(input.angle_of_slide_rad);
-	state.normal_acceleration_g =
-		(input.acceleration_body_mps2.y / kStandardGravityMps2) + 1.0;
+	state.normal_acceleration_g = (input.acceleration_body_mps2.y / kStandardGravityMps2) + 1.0;
 
 	state.pitch_rad = input.pitch_rad;
 	state.roll_rad = input.roll_rad;
@@ -120,62 +107,51 @@ inline void set_body_kinematics(
 
 inline void update_airspeed(AircraftState& state)
 {
-	state.airspeed_world_mps.x =
-		state.velocity_world_mps.x - state.wind_world_mps.x;
-	state.airspeed_world_mps.y =
-		state.velocity_world_mps.y - state.wind_world_mps.y;
-	state.airspeed_world_mps.z =
-		state.velocity_world_mps.z - state.wind_world_mps.z;
+	state.airspeed_world_mps.x = state.velocity_world_mps.x - state.wind_world_mps.x;
+	state.airspeed_world_mps.y = state.velocity_world_mps.y - state.wind_world_mps.y;
+	state.airspeed_world_mps.z = state.velocity_world_mps.z - state.wind_world_mps.z;
 
-	state.true_airspeed_mps = std::sqrt(
-		state.airspeed_world_mps.x * state.airspeed_world_mps.x +
-		state.airspeed_world_mps.y * state.airspeed_world_mps.y +
-		state.airspeed_world_mps.z * state.airspeed_world_mps.z);
+	state.true_airspeed_mps = std::sqrt(state.airspeed_world_mps.x * state.airspeed_world_mps.x +
+	                                    state.airspeed_world_mps.y * state.airspeed_world_mps.y +
+	                                    state.airspeed_world_mps.z * state.airspeed_world_mps.z);
 	state.mach = state.true_airspeed_mps / state.speed_of_sound_mps;
 }
 
 inline double ground_speed_mps(const AircraftState& state)
 {
-	return std::sqrt(
-		state.velocity_world_mps.x * state.velocity_world_mps.x +
-		state.velocity_world_mps.z * state.velocity_world_mps.z);
+	return std::sqrt(state.velocity_world_mps.x * state.velocity_world_mps.x +
+	                 state.velocity_world_mps.z * state.velocity_world_mps.z);
 }
 
 inline double indicated_airspeed_mps(const AircraftState& state)
 {
-	return state.true_airspeed_mps * std::sqrt(
-		state.atmosphere_density_kg_m3 / kSeaLevelAirDensityKgM3);
+	return state.true_airspeed_mps * std::sqrt(state.atmosphere_density_kg_m3 / kSeaLevelAirDensityKgM3);
 }
 
-inline AircraftObservation make_aircraft_observation(
-	const AircraftState& state)
+inline AircraftObservation make_aircraft_observation(const AircraftState& state)
 {
-	return {
-		state.altitude_asl_m,
-		state.altitude_agl_m,
-		state.atmosphere_density_kg_m3,
-		state.true_airspeed_mps,
-		ground_speed_mps(state),
-		indicated_airspeed_mps(state),
-		state.velocity_world_mps.y,
-		state.mach,
-		kDynamicPressureCoefficient * state.atmosphere_density_kg_m3 *
-			state.true_airspeed_mps * state.true_airspeed_mps,
-		state.normal_acceleration_g,
-		state.angle_of_attack_deg,
-		state.angle_of_slide_deg,
-		state.world_yaw_rad,
-		state.roll_rad,
-		state.pitch_rad,
-		state.roll_rate_rad_s,
-		state.pitch_rate_rad_s,
-		state.yaw_rate_rad_s
-	};
+	return { state.altitude_asl_m,
+		     state.altitude_agl_m,
+		     state.atmosphere_density_kg_m3,
+		     state.true_airspeed_mps,
+		     ground_speed_mps(state),
+		     indicated_airspeed_mps(state),
+		     state.velocity_world_mps.y,
+		     state.mach,
+		     kDynamicPressureCoefficient * state.atmosphere_density_kg_m3 * state.true_airspeed_mps *
+		         state.true_airspeed_mps,
+		     state.normal_acceleration_g,
+		     state.angle_of_attack_deg,
+		     state.angle_of_slide_deg,
+		     state.world_yaw_rad,
+		     state.roll_rad,
+		     state.pitch_rad,
+		     state.roll_rate_rad_s,
+		     state.pitch_rate_rad_s,
+		     state.yaw_rate_rad_s };
 }
 
-inline void apply_aircraft_observations(
-	AircraftState& state,
-	const FrameInput& input)
+inline void apply_aircraft_observations(AircraftState& state, const FrameInput& input)
 {
 	if (input.availability.atmosphere)
 	{
