@@ -7,5 +7,8 @@ const instances=JSON.parse(execFileSync(path.join(p86,'Microsoft Visual Studio/I
 const instance=instances.find(v=>fs.existsSync(path.join(v.installationPath,'VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe')));
 const tools=path.join(instance.installationPath,'VC/Tools/MSVC/14.29.30133'),sdk=path.join(p86,'Windows Kits/10');
 const inputs=[['msvc',tools,'include/yvals_core.h'],['msvc',tools,'lib/x64/libcmt.lib'],['msvc',tools,'lib/x64/libcpmt.lib'],['msvc',tools,'lib/x64/libvcruntime.lib'],['sdk',sdk,'Include/10.0.26100.0/ucrt/corecrt.h'],['sdk',sdk,'Lib/10.0.26100.0/ucrt/x64/libucrt.lib']];
+const headerNames=fs.readdirSync(path.join(tools,'include'),{withFileTypes:true}).filter(e=>e.isFile()).map(e=>e.name).sort();
+const sdkHeaders=['um/Windows.h','shared/sdkddkver.h','ucrt/corecrt_math.h','ucrt/stdio.h','ucrt/stdlib.h','ucrt/corecrt_malloc.h'];
+inputs.push(...headerNames.map(name=>['msvc',tools,'include/'+name]),...sdkHeaders.map(name=>['sdk',sdk,'Include/10.0.26100.0/'+name]));
 const data={publicRunner:true,visualStudioVersion:instance.installationVersion,inputs:inputs.map(([kind,root,file])=>{const bytes=fs.readFileSync(path.join(root,file));return{kind,file,size:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex').toUpperCase()};})};
 console.log(JSON.stringify(data));
