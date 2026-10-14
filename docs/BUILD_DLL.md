@@ -39,10 +39,16 @@ directory; it is a disposable build artifact and must not be committed.
 - Visual Studio Build Tools or Visual Studio with MSBuild
 - MSVC C++ toolchain and Windows SDK
 - Pinned v142 tools 14.29.30133 (cl 19.29.30159.0, link 14.29.30159.0)
-- Windows SDK 10.0.26100.0; compiler/linker/backend fingerprints must match
+- Windows SDK 10.0.26100.0; compiler/linker/backend and static runtime library fingerprints must match
 - C++17 language support
 
 Visual Studio / Build Tools can be newer if they include the pinned components.
+Visual Studio / Build Tools 2026 is the verified installation family. Older VS
+installations can provide different CRT/UCRT libraries under the same version
+directory. Install the v142 x64/x86 component and Windows SDK 10.0.26100.0, then
+check the complete profile rather than relying on component labels alone.
+PR jobs use the standard `windows-2025-vs2026` image. IDE updates remain possible,
+but changed pinned inputs require a reviewed profile update and reproduction tests.
 The script finds them with vswhere and enters their developer environment.
 Run `npm run check:efm-toolchain` to check installation. The common profile in
 `src/efm/EfmBuild.props` is read by both projects, Visual Studio and CLI builds.
@@ -65,7 +71,8 @@ Do not use Debug, x86, or Win32 builds for the runtime DLL.
 ## Native Logic Tests
 
 The native test executable does not link the DCS runtime. Build and run it from
-the repository root; the script sets up the pinned developer environment:
+the repository root with the tracked `FM/` configuration files present. The script
+sets up the pinned developer environment:
 
 ```powershell
 .\tools\build_efm.ps1 -Target Tests
