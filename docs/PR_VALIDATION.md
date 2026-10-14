@@ -63,6 +63,8 @@ PR 的可信目標提交。首次 PR 需人工檢視；只合併到 `dev` 尚未
 
 `src/efm/EfmBuild.props` 是共用來源：MSVC v142 / 14.29.30133、cl 19.29.30159.0、
 link 14.29.30159.0、Windows SDK 10.0.26100.0，以及四個編譯／連結工具檔案的 SHA-256。
+`PreferredToolArchitecture` 明確固定為 x64，讓實際執行的工具與被核對的 Hostx64 檔案一致；
+這與 DLL 的 x64 目標架構是兩項不同設定。
 VS IDE 可更新；固定工具組件仍須安裝。工具不符時明確報環境錯誤，不自動換版本。
 
 參數包含 `/Brepro`、`/experimental:deterministic`、來源 `/pathmap` 與 `/PDBALTPATH`。
@@ -103,6 +105,8 @@ CLI 自動找到安裝位置並設定對應開發工具環境；無須手動開 
 Windows/MSVC remains the compiler; Linux is for editing. The shared profile in
 `src/efm/EfmBuild.props` pins the v142 toolchain, Windows SDK and compiler/linker
 fingerprints and enables deterministic time/path handling. Install the v142
+The profile also pins PreferredToolArchitecture to x64 so actual host tools match
+the fingerprinted Hostx64 binaries, independently of the output target architecture.
 x64/x86 tools and Windows SDK 10.0.26100.0 through Visual Studio Installer.
 `npm run build:efm` rebuilds and publishes the local DLL; `npm run validate:efm`
 verifies the working-tree submission without publishing or staging it.

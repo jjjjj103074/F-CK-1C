@@ -3,6 +3,7 @@
   <!-- One profile for Visual Studio, command-line builds, and PR validation. -->
   <PropertyGroup>
     <EfmPlatformToolset>v142</EfmPlatformToolset>
+    <EfmHostArchitecture>x64</EfmHostArchitecture>
     <EfmVCToolsVersion>14.29.30133</EfmVCToolsVersion>
     <EfmWindowsSdkVersion>10.0.26100.0</EfmWindowsSdkVersion>
     <EfmCompilerVersion>19.29.30159.0</EfmCompilerVersion>
@@ -14,6 +15,7 @@
     <EfmRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..').TrimEnd('\'))</EfmRepoRoot>
     <EfmCanonicalSourceRoot>D:\efm-repro</EfmCanonicalSourceRoot>
     <VCToolsVersion>$(EfmVCToolsVersion)</VCToolsVersion>
+    <PreferredToolArchitecture>$(EfmHostArchitecture)</PreferredToolArchitecture>
     <WindowsTargetPlatformVersion>$(EfmWindowsSdkVersion)</WindowsTargetPlatformVersion>
     <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
     <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>

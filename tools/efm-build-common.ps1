@@ -23,7 +23,7 @@ function Get-EfmBuildProfile {
     }
     finally { $reader.Dispose() }
     $values = @{}
-    foreach ($name in @('EfmPlatformToolset', 'EfmVCToolsVersion', 'EfmWindowsSdkVersion',
+    foreach ($name in @('EfmPlatformToolset', 'EfmHostArchitecture', 'EfmVCToolsVersion', 'EfmWindowsSdkVersion',
             'EfmCompilerVersion', 'EfmLinkerVersion', 'EfmCompilerSha256', 'EfmLinkerSha256',
             'EfmFrontendSha256', 'EfmBackendSha256', 'EfmCanonicalSourceRoot')) {
         $nodes = $document.GetElementsByTagName($name)
@@ -38,6 +38,7 @@ function Get-EfmBuildProfile {
     foreach ($name in @('EfmCompilerSha256', 'EfmLinkerSha256', 'EfmFrontendSha256', 'EfmBackendSha256')) {
         if ($values[$name] -notmatch '^[A-Fa-f0-9]{64}$') { throw "Invalid tool hash: $name" }
     }
+    if ($values.EfmHostArchitecture -ne 'x64') { throw 'The pinned build profile requires x64 host tools.' }
     return $values
 }
 

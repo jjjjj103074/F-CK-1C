@@ -3,6 +3,8 @@
   <Target Name="ValidateEfmBuildProfile" BeforeTargets="PrepareForBuild">
     <Error Condition="'$(Configuration)|$(Platform)' != 'Release|x64'"
            Text="EFM supports only Release|x64." />
+    <Error Condition="'$(PreferredToolArchitecture)' != '$(EfmHostArchitecture)'"
+           Text="EFM must use the pinned x64 host compiler and linker." />
     <Error Condition="'$(PlatformToolset)' != '$(EfmPlatformToolset)' Or '$(VCToolsVersion)' != '$(EfmVCToolsVersion)' Or '$(WindowsTargetPlatformVersion)' != '$(EfmWindowsSdkVersion)'"
            Text="EFM toolchain differs from src/efm/EfmBuild.props. Use the pinned profile." />
     <Error Condition="'$(CL)' != '' Or '$(_CL_)' != '' Or '$(LINK)' != '' Or '$(_LINK_)' != ''"
