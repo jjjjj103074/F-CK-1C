@@ -104,10 +104,10 @@ CLI 自動找到安裝位置並設定對應開發工具環境；無須手動開 
 
 Windows/MSVC remains the compiler; Linux is for editing. The shared profile in
 `src/efm/EfmBuild.props` pins the v142 toolchain, Windows SDK and compiler/linker
-fingerprints and enables deterministic time/path handling. Install the v142
+fingerprints and enables deterministic time/path handling.
 The profile also pins PreferredToolArchitecture to x64 so actual host tools match
 the fingerprinted Hostx64 binaries, independently of the output target architecture.
-x64/x86 tools and Windows SDK 10.0.26100.0 through Visual Studio Installer.
+Install the v142 x64/x86 tools and Windows SDK 10.0.26100.0 through Visual Studio Installer.
 `npm run build:efm` rebuilds and publishes the local DLL; `npm run validate:efm`
 verifies the working-tree submission without publishing or staging it.
 
