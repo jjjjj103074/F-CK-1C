@@ -30,11 +30,26 @@ test('the real submission sparse checkout supports DCS generator fixtures', { ti
         assert.ok(path.resolve(root).startsWith(prefix));
         fs.rmSync(root, { recursive: true, force: true });
     });
-    git(repository, ['clone', '--quiet', '--shared', '--no-checkout', '--local', repository, root]);
+    // CI uses a shallow partial clone. Copy only materialized generator inputs
+    // into an independent fixture instead of cloning incomplete object storage.
+    git(root, ['init', '--quiet']);
     git(root, ['config', 'core.hooksPath', '.no-hooks']);
+    const inputs = git(repository, ['ls-files', '-z', '--', '.gitattributes',
+        'Cockpit', 'Input', 'src/efm/F-CK-1C_EFM/DcsIds',
+        'tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1']).split('\0').filter(Boolean);
+    for (const relative of inputs) {
+        const source = path.join(repository, relative);
+        assert.ok(fs.existsSync(source), `Missing checked-out generator input: ${relative}`);
+        const target = path.join(root, relative);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.copyFileSync(source, target);
+    }
+    git(root, ['add', '.']);
+    git(root, ['-c', 'user.name=PRCheckoutTests', '-c', 'user.email=pr-checkout-tests@example.invalid',
+        'commit', '--quiet', '-m', 'fixture generator inputs']);
     git(root, ['sparse-checkout', 'init', '--no-cone']);
     git(root, ['sparse-checkout', 'set', '--no-cone', '--stdin'], patterns.join('\n') + '\n');
-    git(root, ['checkout', '--quiet', '--detach', git(repository, ['rev-parse', 'HEAD']).trim()]);
+    git(root, ['checkout', '--quiet', '--detach', git(root, ['rev-parse', 'HEAD']).trim()]);
     for (const file of ['Cockpit/Scripts/command_defs.lua', 'Cockpit/Scripts/generated/CockpitParams.g.lua']) {
         assert.ok(fs.existsSync(path.join(root, file)), `Missing generator output: ${file}`);
     }
