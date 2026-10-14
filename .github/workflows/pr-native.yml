@@ -93,6 +93,7 @@ jobs:
           sparse-checkout: |
             /src/efm/
             /tools/
+            /FM/
             /bin/F-CK-1C_EFM.dll
             /.gitattributes
             /.gitignore
