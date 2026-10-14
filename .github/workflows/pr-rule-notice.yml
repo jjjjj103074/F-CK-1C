@@ -1,0 +1,37 @@
+name: PR Build and Validation Rule Notice
+
+on:
+  pull_request_target:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: efm-rule-notice-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  rule-notice:
+    name: 建置與驗證規則變更提醒
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Only trusted target-branch scripts are checked out. This job reads PR
+      # metadata/diffs and maintains one notice; it never executes PR code.
+      - name: Checkout the trusted target commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: tools
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: List specific changed rules and update the PR notice
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/pr-rule-changes.mjs

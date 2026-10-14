@@ -1,0 +1,147 @@
+name: PR Native Validation
+
+on:
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: efm-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-submission:
+    name: PR 提交驗證
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_BASE: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - name: Checkout the exact submitted commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/efm/
+            /tools/
+            /Cockpit/
+            /Input/
+            /bin/F-CK-1C_EFM.dll
+            /package.json
+            /package-lock.json
+            /.clang-format
+            /.clang-format-ignore
+            /.gitattributes
+            /.gitignore
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Install tools without repository lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Formatting and validation-tool tests
+        shell: pwsh
+        run: |
+          node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/cpp-format.mjs --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Rebuild, verify the submitted DLL, and run source tests
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/validate_efm.ps1 -Phase Submission -ExpectedHead $env:PR_HEAD -ReportDirectory "$env:RUNNER_TEMP\efm-submission"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: efm-submission-diagnostics
+          retention-days: 3
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/efm-submission/*.json
+            ${{ runner.temp }}/efm-submission/*.md
+            ${{ runner.temp }}/efm-submission/*.log
+
+  merge-compatibility:
+    name: 合併相容驗證
+    needs: pr-submission
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_BASE: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - name: Checkout the exact submitted commit and merge history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/efm/
+            /tools/
+            /bin/F-CK-1C_EFM.dll
+            /.gitattributes
+            /.gitignore
+      - name: Preserve the PR DLL and simulate merging the target commit
+        shell: pwsh
+        run: |
+          if ($env:PR_HEAD -notmatch '^[a-f0-9]{40}$' -or $env:PR_BASE -notmatch '^[a-f0-9]{40}$') { throw 'Invalid PR commit identity.' }
+          git fetch --no-tags --filter=blob:none origin $env:PR_BASE
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot fetch the pinned target commit.' }
+          git config user.name 'EFM CI'
+          git config user.email 'efm-ci@users.noreply.github.com'
+          ./tools/prepare_efm_merge.ps1 -HeadSha $env:PR_HEAD -BaseSha $env:PR_BASE -OutputDirectory "$env:RUNNER_TEMP\efm-prepared-merge"
+      - name: Compile and test the merged source with the original submitted DLL
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\efm-prepared-merge\controller\validate_efm.ps1" -Phase Merge -RepoRoot "$env:GITHUB_WORKSPACE" -ExpectedHead $env:PR_HEAD -SubmittedDllPath "$env:RUNNER_TEMP\efm-prepared-merge\pr-uploaded.dll" -ReportDirectory "$env:RUNNER_TEMP\efm-merge"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: efm-merge-diagnostics
+          retention-days: 3
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/efm-merge/*.json
+            ${{ runner.temp }}/efm-merge/*.md
+            ${{ runner.temp }}/efm-merge/*.log
+
+  validation-summary:
+    name: PR 驗證總結
+    if: always()
+    needs: [pr-submission, merge-compatibility]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    env:
+      SUBMISSION_RESULT: ${{ needs.pr-submission.result }}
+      MERGE_RESULT: ${{ needs.merge-compatibility.result }}
+    steps:
+      - name: Report separate results and reject stale PR identities
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const expected = context.payload.pull_request;
+            const {data: current} = await github.rest.pulls.get({...context.repo, pull_number: expected.number});
+            const fresh = current.state === 'open' && current.head.sha === expected.head.sha && current.base.sha === expected.base.sha;
+            await core.summary.addHeading('PR 驗證結果').addTable([
+              [{data: '項目', header: true}, {data: '結果', header: true}],
+              ['PR 提交驗證', process.env.SUBMISSION_RESULT],
+              ['合併相容驗證', process.env.MERGE_RESULT],
+              ['PR／目標分支版本', fresh ? '最新' : '已變更，請重新執行'],
+              ['DCS 遊戲內實測', '未執行；人工驗證另行記錄']
+            ]).addRaw(`\nPR: ${expected.head.sha}\n\n目標: ${expected.base.sha}\n`).write();
+            if (!fresh || process.env.SUBMISSION_RESULT !== 'success' || process.env.MERGE_RESULT !== 'success') {
+              core.setFailed('兩項自動驗證必須通過，且結果須對應目前 PR 與目標分支。');
+            }

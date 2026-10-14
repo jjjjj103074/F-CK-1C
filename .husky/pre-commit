@@ -17,7 +17,11 @@ git_explicit_inputs()
         src/efm/F-CK-1C_EFM/F-CK-1C_EFM.vcxproj \
         src/efm/EfmCore.props \
         src/efm/EfmCore.targets \
+        src/efm/EfmBuild.props \
+        src/efm/EfmBuild.targets \
         tools/build_dll.ps1 \
+        tools/efm-build-common.ps1 \
+        tools/check_efm_toolchain.ps1 \
         tools/check_efm_architecture.ps1 \
         tools/generate_system_catalog.ps1
 }

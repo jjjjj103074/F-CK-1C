@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- One profile for Visual Studio, command-line builds, and PR validation. -->
+  <PropertyGroup>
+    <EfmPlatformToolset>v142</EfmPlatformToolset>
+    <EfmVCToolsVersion>14.29.30133</EfmVCToolsVersion>
+    <EfmWindowsSdkVersion>10.0.26100.0</EfmWindowsSdkVersion>
+    <EfmCompilerVersion>19.29.30159.0</EfmCompilerVersion>
+    <EfmLinkerVersion>14.29.30159.0</EfmLinkerVersion>
+    <EfmCompilerSha256>8E4352B523F4FF37B429AEA1D340094BE1E17BBDF4F687247FC0BE92D6EB9440</EfmCompilerSha256>
+    <EfmLinkerSha256>7D80B89E242E2AB4D002C3B3508361A45691A01BD1F4BE4D19EB765C8D319762</EfmLinkerSha256>
+    <EfmFrontendSha256>9A4005AF7B8468DDE3948F9FE7323772412F4A489D4C4FDD5F727C413F262B33</EfmFrontendSha256>
+    <EfmBackendSha256>AD3D999355C5E9CEEEBF63B4F8E00B23CBA939EA59E484E4BD2BD6AA02B0BAEC</EfmBackendSha256>
+    <EfmRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..').TrimEnd('\'))</EfmRepoRoot>
+    <EfmCanonicalSourceRoot>D:\efm-repro</EfmCanonicalSourceRoot>
+    <VCToolsVersion>$(EfmVCToolsVersion)</VCToolsVersion>
+    <WindowsTargetPlatformVersion>$(EfmWindowsSdkVersion)</WindowsTargetPlatformVersion>
+    <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
+    <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalOptions>/Brepro /experimental:deterministic /pathmap:"$(EfmRepoRoot)=$(EfmCanonicalSourceRoot)" %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/Brepro /PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>

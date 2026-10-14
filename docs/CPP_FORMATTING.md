@@ -72,8 +72,9 @@ settings first. The staged check rejects unstaged changes to `package.json`,
 path, including untracked or ignored overrides. This ensures its scope and style
 match the index while still permitting partially staged C++ source files.
 
-The `C++ Format Check` workflow runs the same pinned tool and workflow tests
-on Windows for pull requests and pushes to `dev` / `main`. It checks the active scope
+The `PR Native Validation` workflow runs the same pinned formatter and tool tests
+for pull requests; `C++ Format Check` retains checks on pushes to `dev` / `main`.
+Both run on Windows and check the active scope
 without changing or committing files. Repository branch protection must select
 this check separately if it should be required for merging.
 
@@ -187,7 +188,8 @@ Hook 讀取 Git index，處理 Git 將 CRLF 正規化為 LF 的差異。
 子設定也包含在內。這能確保檢查採用與暫存區一致的範圍及規則，仍支援 C++ 來源的部分暫存。
 格式通過後，原有 DLL hook 才繼續執行；runtime 建置來源存在未暫存修改時，仍會拒絕建置。
 
-PR 與推送至 `dev`／`main` 的 CI 會用相同版本跑工具流程測試與全部自有 C++ 檢查。
+PR 的 `PR Native Validation` 與推送至 `dev`／`main` 的 `C++ Format Check` 會用相同版本
+跑工具流程測試與全部自有 C++ 檢查。
 若要禁止未通過的 PR 合併，另於 GitHub 分支保護設定將此檢查列為必須通過。
 
 ### 排版外觀

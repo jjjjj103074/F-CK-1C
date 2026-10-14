@@ -24,7 +24,7 @@ npm run build:efm
 
 The script:
 
-- resolves `MSBuild.exe` from PATH or common Visual Studio install locations
+- locates MSBuild and the pinned C++ components through Visual Studio Installer/vswhere
 - rebuilds only `src\efm\F-CK-1C_EFM\F-CK-1C_EFM.vcxproj`
 - copies the output DLL into `bin\F-CK-1C_EFM.dll`
 - verifies that the source and runtime DLL SHA256 hashes match
@@ -38,10 +38,17 @@ directory; it is a disposable build artifact and must not be committed.
 
 - Visual Studio Build Tools or Visual Studio with MSBuild
 - MSVC C++ toolchain and Windows SDK
-- C++ toolset compatible with `PlatformToolset=v142`
+- Pinned v142 tools 14.29.30133 (cl 19.29.30159.0, link 14.29.30159.0)
+- Windows SDK 10.0.26100.0; compiler/linker/backend fingerprints must match
 - C++17 language support
 
-Visual Studio 2019 Build Tools works directly. Newer Visual Studio versions can also work if they include the v142 toolset.
+Visual Studio / Build Tools can be newer if they include the pinned components.
+The script finds them with vswhere and enters their developer environment.
+Run `npm run check:efm-toolchain` to check installation. The common profile in
+`src/efm/EfmBuild.props` is read by both projects, Visual Studio and CLI builds.
+It uses deterministic timestamps, source-path mapping and a fixed PDB filename;
+personal user.props and Directory.Build overrides are excluded. See
+[PR validation](PR_VALIDATION.md) for the complete recipe and adoption limits.
 
 ## Manual Debug Command
 
@@ -58,10 +65,10 @@ Do not use Debug, x86, or Win32 builds for the runtime DLL.
 ## Native Logic Tests
 
 The native test executable does not link the DCS runtime. Build and run it from
-the repository root using a Visual Studio Developer PowerShell:
+the repository root; the script sets up the pinned developer environment:
 
 ```powershell
-MSBuild.exe .\src\efm\F-CK-1C_EFM_Tests\F-CK-1C_EFM_Tests.vcxproj /t:Rebuild /p:Configuration=Release /p:Platform=x64
+.\tools\build_efm.ps1 -Target Tests
 .\src\efm\x64\Release\F-CK-1C_EFM_Tests.exe
 ```
 
@@ -96,6 +103,12 @@ This command compares `bin\F-CK-1C_EFM.dll` with
 An intentional ABI change must update the code, baseline, and DCS integration
 together.
 
+`npm run check:efm-dll` normally loads the uploaded DLL in an isolated x64
+Windows process, resolves the expected exports and unloads it. It has a timeout
+and makes no EFM/DCS callback. `npm run validate:efm` performs a clean DLL rebuild,
+whole-file hash comparison, these DLL checks, fixtures and native tests without
+replacing or staging bin/F-CK-1C_EFM.dll. See [PR validation](PR_VALIDATION.md).
+
 ## Commit Hook
 
 Before checking runtime build inputs, the hook runs the read-only staged C++
@@ -108,7 +121,8 @@ The pre-commit hook rebuilds and stages `bin/F-CK-1C_EFM.dll` when the staged
 change includes a whitelisted runtime EFM build input. The runtime whitelist
 contains C/C++ source and header extensions (`.c`, `.cc`, `.cpp`, `.cxx`, `.h`,
 `.hh`, `.hpp`, `.hxx`, `.inc`, `.inl`, `.ipp`, and `.tpp`). The exact-path
-whitelist contains `F-CK-1C_EFM.vcxproj`, the shared `EfmCore.props` and
+whitelist contains `F-CK-1C_EFM.vcxproj`, the shared `EfmBuild.props` / `EfmBuild.targets`,
+`efm-build-common.ps1`, `check_efm_toolchain.ps1`, `EfmCore.props` and
 `EfmCore.targets` rules, and the build, architecture-check, and System-catalog
 scripts used by that project. Added, copied, modified, renamed, and deleted
 inputs are covered. Staging the runtime DLL itself also triggers a clean

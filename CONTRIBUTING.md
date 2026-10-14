@@ -62,6 +62,8 @@ DCSBridge, Core, System, and DCS ID contributor guides.
 Use the canonical commands and hook behavior documented in the
 [DLL build guide](docs/BUILD_DLL.md). The pre-commit hook does not replace the
 native tests, architecture checks, or export verification.
+The [PR validation guide](docs/PR_VALIDATION.md) covers reproducible Windows builds,
+separate submission/merge checks and specific build/validation-rule notices.
 Changes that depend on DCS callback order, cockpit parameters, or flight
 lifecycle also require an in-game test before merging.
 
@@ -197,6 +199,7 @@ DCSBridge、Core、System 或 DCS ID Contributor Guide。
 請使用 [DLL 建置指南](docs/BUILD_DLL.md) 中唯一維護的驗證指令與 hook
 行為說明。Pre-commit hook 不會取代 Native Tests、架構檢查或匯出介面
 驗證。
+完整的提交／合併驗證與規則變更提醒，請見 [PR 驗證指南](docs/PR_VALIDATION.md)。
 涉及 DCS Callback 順序、座艙 Param 或飛行生命週期的變更，
 合併前還需要進行遊戲內測試。
 
