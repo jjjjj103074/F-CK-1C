@@ -101,8 +101,38 @@ CLI 自動找到安裝位置並設定對應開發工具環境；無須手動開 
 自動檢查通過不等於 DCS 遊戲內驗證成功。DCS 留給人工實測，安排於發佈前，或影響
 回呼整合、飛行行為、座艙參數、生命週期的改動。PR 應另外記錄人工結果。
 
-**目前驗收限制：** 本機可驗證同一電腦不同路徑的完整 DLL 雜湊；雲端一致性仍須在你
-檢查、提交並部署後實際執行。在成功前不要將新檢查設成強制合併門檻。
+### 隔離 Draft PR 實測（2026-10-15）
+
+[測試用 Draft PR #27](https://github.com/jjjjj103074/F-CK-1C/pull/27) 保持未合併，
+只使用 `codex/ci-test-*` 分支。正式 `main` / `dev` 與分支保護未變更。
+
+| 實測 | 結果／證據 |
+|---|---|
+| 本機最後工具版本 | 乾淨來源的完整 Submission 通過：整份 DLL SHA-256 相同、37 個接口、載入／卸載、8 項驗證 fixtures、3,257 項原生檢查；約 104 秒 |
+| 第一次完整雲端正測 | [提交、合併、總結全部通過](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38602491686)；兩階段各 3,257 項原生檢查，原 PR DLL 保留 |
+| 故意修改 DLL 一個位元組 | [雲端按預期拒絕](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604318858)：顯示不同雜湊，未載入 DLL，合併跳過，總結失敗 |
+| 取消舊驗證 | [舊工作取消](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604947711)，總結未成為通過；最後驗收使用還原後的新 head |
+| 最後還原重跑 | [最後驗收](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604973891) 全部通過：提交、合併、總結均 success，包含新增的 8 項驗證 fixtures；head 為 `aca668e` |
+| 規則變更提醒 | [同一則更新的提醒](https://github.com/jjjjj103074/F-CK-1C/pull/27#issuecomment-6172320654)，列出具體規則檔案與差異；測試入口使用可信 base 的正式提醒程式 |
+| 開發工具依賴修補 | fast-uri 3.1.8、js-yaml 4.3.2；本機及雲端安裝稽核均為 0 vulnerabilities |
+
+第一輪完整雲端工作的實際執行時間為提交 4 分 41 秒、合併 2 分 35 秒、總結 4 秒，
+合計約 7 分 20 秒，另加工作排隊與切換時間。錯誤 DLL 在提交工作的約 2 分 12 秒被拒絕。
+這些是本次實測數值，後續會隨 runner 負載與專案規模變動。
+本專案為公開 repository，使用標準 GitHub-hosted runner 的計算免費；artifacts 共用
+帳號儲存配額，參見 [GitHub 計費規則](https://docs.github.com/en/billing/concepts/product-billing/github-actions)。
+錯誤 DLL 的失敗 artifact 實測約 3.4 KB，只含三個文字診斷檔，保存三天。
+
+實測曾找出並修正 shallow clone fixture、FM 配置遺漏、未明確指定 x64 host，
+以及多套 VS 並存時選到不合格工具的問題。Windows 2022 / VS 2022 的同版號組件
+帶有不同 CRT／UCRT，造成完整 DLL 雜湊不符；改用官方
+[VS 2026 runner](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-VS2026-Readme.md)
+後才取得跨機一致結果，沒有放寬或正規化 DLL 比對。
+正式配方現在也固定四個靜態執行期函式庫，提早指出這類環境差異。
+
+**啟用限制：** 此測試不部署正式 `pull_request_target` 入口，也不啟用強制合併檢查。
+正式入口仍須部署到預設 `main`，依前述方式確認 event policy 與分支保護；
+DCS 遊戲內驗證仍未執行。臨時函式庫診斷 workflow 已從最後測試分支移除。
 
 ## English
 
@@ -149,3 +179,10 @@ the same whole DLL hash. Then require `PR 提交驗證`, `合併相容驗證` an
 `PR 驗證總結`, plus up-to-date branches on dev/main. Rule notices do not add required
 reviewers. Failed runs retain only small diagnostics for three days. DCS is never
 launched; in-game flight/cockpit/lifecycle tests remain separate manual evidence.
+
+An isolated, unmerged [test Draft PR](https://github.com/jjjjj103074/F-CK-1C/pull/27)
+has exercised successful submission/merge/summary checks, one-byte DLL tampering
+rejection before loading, cancellation of superseded runs, and a single updating
+rule notice. The detailed evidence, timings and final acceptance status are in
+the Chinese test table above. This does not deploy the production default-branch
+notice trigger or configure required checks; those remain separate adoption steps.
