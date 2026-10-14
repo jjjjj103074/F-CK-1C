@@ -1,0 +1,4 @@
+# Third-party SDK headers and generated code retain their source formatting.
+src/efm/F-CK-1C_EFM/include/**
+src/efm/F-CK-1C_EFM/ThirdParty/**
+**/*.g.*

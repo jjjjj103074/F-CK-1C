@@ -28,6 +28,23 @@
     "files.eol": "\r\n",
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
+    // Use the same pinned native formatter as the CLI and Visual Studio.
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "C_Cpp.clang_format_fallbackStyle": "none",
+    "C_Cpp.clang_format_path": "${workspaceFolder}/node_modules/@polycam/clang-tools-win32-x64/bin/clang-format.exe",
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": false
+    },
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": false
+    },
     "[lua]": {
         "editor.defaultFormatter": "JohnnyMorganz.stylua",
         "editor.tabSize": 4,

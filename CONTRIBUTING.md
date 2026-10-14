@@ -20,7 +20,7 @@
 git clone https://github.com/jjjjj103074/F-CK-1C.git
 
 # 2. Install Node.js dependencies
-#    This automatically installs Git hooks via Husky
+#    This installs Git hooks and verifies the pinned C++ formatter
 npm install
 
 # 3. Make sure MSBuild.exe is available for runtime EFM changes
@@ -121,6 +121,14 @@ chore(tooling): add pre-commit EFM build
 
 ### Code Style
 
+C++ uses the shared clang-format rules: tabs at width 4, Allman braces, and a
+120-column target. Formatting covers authored EFM sources and tests, excluding
+SDK, third-party, and generated files.
+Run `npm run format:cpp` before staging and `npm run check:cpp-format` to verify
+the active scope. The hook checks staged content before the existing DLL build.
+See [C++ formatting](docs/CPP_FORMATTING.md) for installation, VS Code / Visual
+Studio setup, and Codex / Claude Code instructions.
+
 Lua files are formatted with [StyLua](https://github.com/JohnnyMorganz/StyLua).
 If you use VSCode, format-on-save is already configured in `.vscode/settings.json`.
 
@@ -148,7 +156,7 @@ Commit messages, code comments, and PR descriptions may be written in **English 
 git clone https://github.com/jjjjj103074/F-CK-1C.git
 
 # 2. 安裝 Node.js 依賴
-#    此步驟會透過 Husky 自動安裝 Git hooks
+#    此步驟會安裝 Git hooks 並驗證固定版本的 C++ 排版工具
 npm install
 
 # 3. 修改 EFM runtime 時，確認 MSBuild.exe 可用
@@ -247,6 +255,12 @@ chore(tooling): 新增 commit 前 EFM 建置
 - 不強制要求 reviewer，但歡迎留下 review 意見
 
 ### 程式碼風格
+
+C++ 共用 clang-format 規則：Tab 寬 4、Allman 大括號、行寬以 120 字元為目標。
+套用於自有 EFM 來源與測試，排除 SDK、第三方及生成檔；暫存前執行 `npm run format:cpp`，並用
+`npm run check:cpp-format` 驗證。Hook 在原有 DLL 建置前檢查暫存版本。
+安裝、VS Code／Visual Studio 與 Codex／Claude Code 接法，
+請見 [C++ 自動排版](docs/CPP_FORMATTING.md)。
 
 Lua 檔案使用 [StyLua](https://github.com/JohnnyMorganz/StyLua) 格式化。
 若使用 VSCode，`.vscode/settings.json` 已設定存檔時自動格式化。

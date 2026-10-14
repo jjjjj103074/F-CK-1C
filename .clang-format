@@ -1,0 +1,38 @@
+# Shared style for authored C++. See docs/CPP_FORMATTING.md.
+BasedOnStyle: Microsoft
+Language: Cpp
+DisableFormat: false
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+AlignAfterOpenBracket: true
+ConstructorInitializerIndentWidth: 4
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: Never
+Cpp11BracedListStyle: Block
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+NamespaceIndentation: None
+AccessModifierOffset: -4
+IndentCaseLabels: false
+BinPackArguments: false
+BinPackParameters: OnePerLine
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: None
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+SortIncludes: Never
+ReflowComments: Never
+FixNamespaceComments: false
+BreakStringLiterals: false
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignTrailingComments:
+  Kind: Never
+LineEnding: CRLF

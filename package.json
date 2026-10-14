@@ -3,7 +3,13 @@
   "description": "F-CK-1C DCS World mod — dev tooling config (commitlint, husky, czg)",
   "private": true,
   "scripts": {
-    "prepare": "husky",
+    "prepare": "husky && node tools/cpp-format.mjs --setup",
+    "setup:cpp-format": "node tools/cpp-format.mjs --setup",
+    "format:cpp": "node tools/cpp-format.mjs --write",
+    "format:cpp:all": "node tools/cpp-format.mjs --write --all",
+    "check:cpp-format": "node tools/cpp-format.mjs --check",
+    "check:cpp-format:staged": "node tools/cpp-format.mjs --check --staged",
+    "test:cpp-format": "node --test tools/cpp-format.test.mjs",
     "build:efm": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1",
     "test:cockpit-baseline": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/capture_cockpit_baseline.ps1 -Mode Check",
     "test:dcs-id-generator": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_dcs_id_generator.ps1",
@@ -16,6 +22,12 @@
       "path": "node_modules/czg"
     }
   },
+  "cppFormat": {
+    "roots": [
+      "src/efm/F-CK-1C_EFM",
+      "src/efm/F-CK-1C_EFM_Tests"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jjjjj103074/F-CK-1C.git"
@@ -24,6 +36,7 @@
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
+    "@polycam/clang-tools": "22.1.8",
     "czg": "^1.13.1",
     "husky": "^9.1.7"
   }

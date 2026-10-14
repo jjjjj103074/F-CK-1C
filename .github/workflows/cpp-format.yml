@@ -1,0 +1,29 @@
+name: C++ Format Check
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  cpp-format:
+    name: Verify C++ formatting
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install development tools
+        run: npm ci
+      - name: Test formatter workflow
+        run: npm run test:cpp-format
+      - name: Check authored C++ sources and tests
+        run: npm run check:cpp-format

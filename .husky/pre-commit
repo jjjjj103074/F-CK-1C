@@ -2,6 +2,10 @@
 # Rebuild the runtime DLL only for staged EFM build inputs.
 set -e
 
+# Read staged C++ files without modifying the worktree or Git index.
+# Keep this before the existing DLL build and its automatic DLL staging.
+node tools/cpp-format.mjs --check --staged
+
 git_runtime_inputs()
 {
     git "$@" -- src/efm/F-CK-1C_EFM

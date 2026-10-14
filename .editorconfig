@@ -10,5 +10,10 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
+[*.{c,cc,cpp,cxx,h,hh,hpp,hxx,inc,inl,ipp,tpp}]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+
 [*.md]
 trim_trailing_whitespace = false

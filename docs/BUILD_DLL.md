@@ -98,6 +98,12 @@ together.
 
 ## Commit Hook
 
+Before checking runtime build inputs, the hook runs the read-only staged C++
+formatting check. It covers authored EFM sources and tests, and reads source
+from the Git index without modifying or staging C++ files. Format working-tree
+files before staging. See [C++ formatting](CPP_FORMATTING.md) for setup and
+scope. A formatting failure stops the commit before the DLL build.
+
 The pre-commit hook rebuilds and stages `bin/F-CK-1C_EFM.dll` when the staged
 change includes a whitelisted runtime EFM build input. The runtime whitelist
 contains C/C++ source and header extensions (`.c`, `.cc`, `.cpp`, `.cxx`, `.h`,
