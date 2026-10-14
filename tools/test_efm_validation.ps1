@@ -32,6 +32,38 @@ try {
     foreach ($name in @('cl.exe', 'link.exe')) { Copy-Item -LiteralPath (Join-Path $realTools "bin\Hostx64\x64\$name") -Destination (Join-Path $fakeTools $name) }
     [IO.File]::WriteAllText((Join-Path $fakeTools 'c1xx.dll'), 'wrong compiler frontend')
     Expect-Failure 'Modified compiler frontend' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot (Join-Path $fixtureRoot 'tools') } 'Toolchain mismatch: c1xx.dll'
+    $profile = Get-EfmBuildProfile $repoRoot
+    $fakeSdk = Join-Path $fixtureRoot 'sdk'
+    [IO.Directory]::CreateDirectory((Join-Path $fakeSdk "Include\$($profile.EfmWindowsSdkVersion)")) | Out-Null
+    $sdkLibrary = "Lib\$($profile.EfmWindowsSdkVersion)\ucrt\x64\libucrt.lib"
+    $fakeLibrary = Join-Path $fakeSdk $sdkLibrary
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $fakeLibrary)) | Out-Null
+    [IO.File]::WriteAllText($fakeLibrary, 'different SDK runtime with the same version directory')
+    Expect-Failure 'Different runtime with matching SDK version' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot $realTools -SdkRoot $fakeSdk } 'Toolchain mismatch: Lib\\.*\\libucrt\.lib'
+    $fakeInstance = Join-Path $fixtureRoot 'incompatible-vs'
+    $fakeBuild = Join-Path $fakeInstance 'MSBuild\Current\Bin\MSBuild.exe'
+    $fakeShell = Join-Path $fakeInstance 'Common7\Tools\VsDevCmd.bat'
+    $fakeToolchain = Join-Path $fakeInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)"
+    foreach ($file in @($fakeBuild, $fakeShell)) {
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
+        [IO.File]::WriteAllText($file, 'fixture placeholder; never execute')
+    }
+    $candidateTools = Join-Path $fakeToolchain 'bin\Hostx64\x64'
+    [IO.Directory]::CreateDirectory($candidateTools) | Out-Null
+    foreach ($name in @('cl.exe', 'link.exe', 'c1xx.dll', 'c2.dll')) {
+        Copy-Item -LiteralPath (Join-Path $realTools "bin\Hostx64\x64\$name") -Destination (Join-Path $candidateTools $name)
+    }
+    $candidateRuntime = Join-Path $fakeToolchain 'lib\x64\libcmt.lib'
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $candidateRuntime)) | Out-Null
+    [IO.File]::WriteAllText($candidateRuntime, 'different CRT with identical compiler tools')
+    $realInstance = [IO.Directory]::GetParent($realTools).Parent.Parent.Parent.FullName
+    $candidates = @([pscustomobject]@{ installationPath = $fakeInstance }, [pscustomobject]@{ installationPath = $realInstance })
+    $selected = Select-EfmBuildTools -RepoRoot $repoRoot -Instances $candidates
+    if ($selected.Toolchain -ne $realTools) { throw 'Automatic selection did not skip an incompatible runtime installation.' }
+    $checks++
+    Expect-Failure 'Explicit incompatible MSBuild must not fall back' {
+        Select-EfmBuildTools -RepoRoot $repoRoot -Instances $candidates -MsBuildPath $fakeBuild
+    } 'Toolchain mismatch: lib\\x64\\libcmt\.lib'
     $gitRepo = Join-Path $fixtureRoot 'merge-repo'
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'tools')) | Out-Null

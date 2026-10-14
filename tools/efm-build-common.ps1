@@ -25,7 +25,8 @@ function Get-EfmBuildProfile {
     $values = @{}
     foreach ($name in @('EfmPlatformToolset', 'EfmHostArchitecture', 'EfmVCToolsVersion', 'EfmWindowsSdkVersion',
             'EfmCompilerVersion', 'EfmLinkerVersion', 'EfmCompilerSha256', 'EfmLinkerSha256',
-            'EfmFrontendSha256', 'EfmBackendSha256', 'EfmCanonicalSourceRoot')) {
+            'EfmFrontendSha256', 'EfmBackendSha256', 'EfmLibcmtSha256', 'EfmLibcpmtSha256',
+            'EfmLibvcruntimeSha256', 'EfmLibucrtSha256', 'EfmCanonicalSourceRoot')) {
         $nodes = $document.GetElementsByTagName($name)
         if ($nodes.Count -ne 1 -or [string]::IsNullOrWhiteSpace($nodes[0].InnerText)) {
             throw "Invalid build profile property: $name"
@@ -35,7 +36,8 @@ function Get-EfmBuildProfile {
     foreach ($name in @('EfmVCToolsVersion', 'EfmWindowsSdkVersion', 'EfmCompilerVersion', 'EfmLinkerVersion')) {
         if ($values[$name] -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw "Invalid version: $name" }
     }
-    foreach ($name in @('EfmCompilerSha256', 'EfmLinkerSha256', 'EfmFrontendSha256', 'EfmBackendSha256')) {
+    foreach ($name in @('EfmCompilerSha256', 'EfmLinkerSha256', 'EfmFrontendSha256', 'EfmBackendSha256',
+            'EfmLibcmtSha256', 'EfmLibcpmtSha256', 'EfmLibvcruntimeSha256', 'EfmLibucrtSha256')) {
         if ($values[$name] -notmatch '^[A-Fa-f0-9]{64}$') { throw "Invalid tool hash: $name" }
     }
     if ($values.EfmHostArchitecture -ne 'x64') { throw 'The pinned build profile requires x64 host tools.' }
@@ -62,19 +64,16 @@ function Get-EfmSourceFingerprint {
     return $lines -join "`n"
 }
 
-function Find-EfmBuildTools {
-    param([string]$RepoRoot, [string]$MsBuildPath = '')
+function Select-EfmBuildTools {
+    param([string]$RepoRoot, [object[]]$Instances, [string]$MsBuildPath = '')
 
     $profile = Get-EfmBuildProfile $RepoRoot
-    $vswherePath = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-    if (-not (Test-Path -LiteralPath $vswherePath)) { throw 'Visual Studio Installer/vswhere was not found. Install C++ Build Tools; see docs/BUILD_DLL.md.' }
-    $instances = @((& $vswherePath -all -products '*' -requires Microsoft.Component.MSBuild -format json) | ConvertFrom-Json)
-    if ($LASTEXITCODE -ne 0) { throw 'vswhere could not locate MSBuild.' }
     $requested = ''
     if ($MsBuildPath -and $MsBuildPath -ne 'MSBuild.exe') {
         $requested = (Get-Command $MsBuildPath -ErrorAction Stop).Source
     }
-    foreach ($instance in $instances) {
+    $mismatches = @()
+    foreach ($instance in $Instances) {
         $toolchain = Join-Path $instance.installationPath ('VC\Tools\MSVC\' + $profile.EfmVCToolsVersion)
         $build = Join-Path $instance.installationPath 'MSBuild\Current\Bin\MSBuild.exe'
         if ($requested) {
@@ -84,10 +83,28 @@ function Find-EfmBuildTools {
         $developerShell = Join-Path $instance.installationPath 'Common7\Tools\VsDevCmd.bat'
         if ((Test-Path -LiteralPath $build) -and (Test-Path -LiteralPath $developerShell) -and
             (Test-Path -LiteralPath (Join-Path $toolchain 'bin\Hostx64\x64\cl.exe'))) {
+            try {
+                & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $RepoRoot -ToolchainRoot $toolchain | Out-Null
+            }
+            catch {
+                if ($requested) { throw }
+                $mismatches += $_.Exception.Message
+                continue
+            }
             return [pscustomobject]@{ MsBuild = $build; DeveloperShell = $developerShell; Toolchain = $toolchain; Profile = $profile }
         }
     }
-    throw "MSBuild with MSVC $($profile.EfmVCToolsVersion) was not found. Install the pinned v142 component; see docs/BUILD_DLL.md."
+    throw "MSBuild matching the pinned MSVC/runtime profile was not found. Install the pinned v142 component; see docs/BUILD_DLL.md. $($mismatches -join ' ')"
+}
+
+function Find-EfmBuildTools {
+    param([string]$RepoRoot, [string]$MsBuildPath = '')
+
+    $vswherePath = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path -LiteralPath $vswherePath)) { throw 'Visual Studio Installer/vswhere was not found. Install C++ Build Tools; see docs/BUILD_DLL.md.' }
+    $instances = @((& $vswherePath -all -products '*' -requires Microsoft.Component.MSBuild -format json) | ConvertFrom-Json)
+    if ($LASTEXITCODE -ne 0) { throw 'vswhere could not locate MSBuild.' }
+    return Select-EfmBuildTools -RepoRoot $RepoRoot -Instances $instances -MsBuildPath $MsBuildPath
 }
 
 function ConvertTo-EfmBatchArgument {

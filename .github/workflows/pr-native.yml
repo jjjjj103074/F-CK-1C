@@ -58,10 +58,6 @@ jobs:
         run: |
           powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/validate_efm.ps1 -Phase Submission -ExpectedHead $env:PR_HEAD -ReportDirectory "$env:RUNNER_TEMP\efm-submission"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: CI TEST ONLY - compare uploaded and rebuilt DLL sections
-        if: failure()
-        shell: pwsh
-        run: node tools/ci-test-repro-diagnostics.mjs
       - name: Failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
