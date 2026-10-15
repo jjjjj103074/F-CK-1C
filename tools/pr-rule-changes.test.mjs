@@ -15,6 +15,7 @@ test('build, CI, validation and baseline changes are distinguished from ordinary
     assert.equal(classifyRuleFile('docs/BUILD_DLL.md'), null);
     assert.equal(classifyRuleFile('commitlint.config.js'), '標題規則');
     assert.equal(classifyRuleFile('.husky/commit-msg'), '提交設定');
+    assert.equal(classifyRuleFile('.vsconfig'), '編譯設定');
 });
 
 test('renaming or removing a rule file cannot hide its former category', () => {
