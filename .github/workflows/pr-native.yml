@@ -76,6 +76,9 @@ jobs:
         run: |
           node tools/cpp-format.mjs --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: C++ 建置設定比對（測試）
+        shell: pwsh
+        run: powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/efm_toolchain_probe.ps1
       - name: DLL 與原生測試
         shell: pwsh
         run: |
