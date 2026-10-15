@@ -39,6 +39,7 @@ jobs:
             /commitlint.config.js
             /.github/workflows/pr-native.yml
             /.github/workflows/pr-title.yml
+            /.github/workflows/pr-rule-notice.yml
             /.clang-format
             /.clang-format-ignore
             /.gitattributes
@@ -128,6 +129,7 @@ jobs:
     needs: [pr-submission, merge-compatibility]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     env:
       SUBMISSION_RESULT: ${{ needs.pr-submission.result }}
@@ -139,15 +141,16 @@ jobs:
           script: |
             const expected = context.payload.pull_request;
             const {data: current} = await github.rest.pulls.get({...context.repo, pull_number: expected.number});
-            const fresh = current.state === 'open' && current.head.sha === expected.head.sha && current.base.sha === expected.base.sha;
+            const {data: target} = await github.rest.git.getRef({...context.repo, ref: `heads/${current.base.ref}`});
+            const fresh = current.state === 'open' && current.head.sha === expected.head.sha && current.base.ref === expected.base.ref && target.object.sha === expected.base.sha;
             const labels = {success: '通過', failure: '失敗', cancelled: '已取消', skipped: '已跳過'};
             const resultLabel = value => labels[value] ?? '未知';
             await core.summary.addHeading('檢查結果').addTable([
               [{data: '項目', header: true}, {data: '結果', header: true}],
               ['提交檢查', resultLabel(process.env.SUBMISSION_RESULT)],
               ['合併檢查', resultLabel(process.env.MERGE_RESULT)],
-              ['檢查版本', fresh ? '最新' : '已過期，請重跑']
+              ['檢查版本', fresh ? '最新' : '已過期，請同步目標分支後重跑']
             ]).addDetails('版本', `PR: ${expected.head.sha}\n\n目標: ${expected.base.sha}`).write();
             if (!fresh || process.env.SUBMISSION_RESULT !== 'success' || process.env.MERGE_RESULT !== 'success') {
-              core.setFailed(fresh ? '檢查未通過，請查看失敗項目。' : '檢查版本已過期，請重跑。');
+              core.setFailed(fresh ? '檢查未通過，請查看失敗項目。' : '檢查版本已過期，請同步目標分支後重跑。');
             }

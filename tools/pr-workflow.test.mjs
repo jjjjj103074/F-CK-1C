@@ -83,20 +83,42 @@ test('the real sparse checkouts retain native-test configuration and DCS generat
     assertConfiguration();
 });
 
+test('notice checks the actual target before checking out its renderer', async () => {
+    const workflow = readWorkflow('.github/workflows/pr-rule-notice.yml');
+    const block = workflow.match(/ {10}script: \|\r?\n((?: {12}[^\r\n]*\r?\n)+)/);
+    assert.ok(block, 'Target guard not found.');
+    assert.ok(block.index < workflow.indexOf('uses: actions/checkout@'));
+    const script = block[1].split(/\r?\n/).map(line => line.replace(/^ {12}/, '')).join('\n');
+    for (const current of ['a'.repeat(40), 'b'.repeat(40)]) {
+        const failures = [];
+        await vm.runInNewContext(`(async () => {${script}\n})()`, {
+            context: {payload: {pull_request: {base: {ref: 'release/candidate', sha: 'a'.repeat(40)}}}, repo: {owner: 'owner', repo: 'repo'}},
+            github: {rest: {git: {getRef: async ({ref}) => {
+                assert.equal(ref, 'heads/release/candidate');
+                return {data: {object: {sha: current}}};
+            }}}},
+            core: {setFailed: message => failures.push(message)},
+        });
+        assert.equal(failures.length === 0, current === 'a'.repeat(40));
+    }
+});
+
 test('summary requires successful checks and current open PR revisions', async () => {
     const workflow = readWorkflow('.github/workflows/pr-native.yml');
     const block = workflow.match(/ {10}script: \|\r?\n([\s\S]+)$/);
     assert.ok(block, 'Summary script not found.');
     const script = block[1].split(/\r?\n/).map(line => line.replace(/^ {12}/, '')).join('\n');
-    const expected = {number: 7, head: {sha: 'a'.repeat(40)}, base: {sha: 'b'.repeat(40)}};
+    const expected = {number: 7, head: {sha: 'a'.repeat(40)}, base: {sha: 'b'.repeat(40), ref: 'main'}};
     const fresh = {...expected, state: 'open'};
-    for (const [submission, merge, current, passes] of [
+    for (const [submission, merge, current, passes, targetSha = current.base.sha] of [
         ['success', 'success', fresh, true],
         ['failure', 'skipped', fresh, false],
         ['cancelled', 'cancelled', fresh, false],
         ['success', 'unknown', fresh, false],
         ['success', 'success', {...fresh, head: {sha: 'c'.repeat(40)}}, false],
         ['success', 'success', {...fresh, base: {sha: 'c'.repeat(40)}}, false],
+        ['success', 'success', {...fresh, base: {...fresh.base, ref: 'dev'}}, false],
+        ['success', 'success', fresh, false, 'c'.repeat(40)],
         ['success', 'success', {...fresh, state: 'closed'}, false],
     ]) {
         const failures = [], rows = [], details = [];
@@ -108,7 +130,10 @@ test('summary requires successful checks and current open PR revisions', async (
         };
         await vm.runInNewContext(`(async () => {${script}\n})()`, {
             context: {payload: {pull_request: expected}, repo: {owner: 'owner', repo: 'repo'}},
-            github: {rest: {pulls: {get: async () => ({data: current})}}},
+            github: {rest: {pulls: {get: async () => ({data: current})}, git: {getRef: async ({ref}) => {
+                assert.equal(ref, `heads/${current.base.ref}`);
+                return {data: {object: {sha: targetSha}}};
+            }}}},
             core: {summary, setFailed: message => failures.push(message)},
             process: {env: {SUBMISSION_RESULT: submission, MERGE_RESULT: merge}},
         });
