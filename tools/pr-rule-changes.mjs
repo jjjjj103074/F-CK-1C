@@ -31,7 +31,7 @@ export function changedRules(files) {
 }
 
 export function sameRevision(expected, current) {
-    return current.state === 'open' && expected.head.sha === current.head.sha && expected.base.sha === current.base.sha;
+    return current.state === 'open' && expected.head.sha === current.head.sha && expected.base.ref === current.base.ref && expected.base.sha === current.base.sha;
 }
 
 function inlineCode(value) {
@@ -89,8 +89,14 @@ export async function publishNotice(event, request, writeSummary) {
     const repository = event.repository.full_name;
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !Number.isSafeInteger(expected.number)) throw new Error('Repository 或 PR 編號格式錯誤。');
     const route = `/repos/${repository}`;
-    const current = await request(`${route}/pulls/${expected.number}`);
-    if (!sameRevision(expected, current)) throw new Error('PR 版本已變更，請重跑規則檢查。');
+    async function assertCurrentRevision() {
+        const current = await request(`${route}/pulls/${expected.number}`);
+        if (!sameRevision(expected, current)) throw new Error('PR 版本已變更，請重跑規則檢查。');
+        const target = await request(`${route}/git/ref/heads/${encodeURIComponent(current.base.ref)}`);
+        if (target.object?.sha !== expected.base.sha) throw new Error('目標分支已更新，請同步目標分支後重跑。');
+        return current;
+    }
+    const current = await assertCurrentRevision();
     const files = [];
     for (let page = 1; page <= 30; page++) {
         const batch = await request(`${route}/pulls/${expected.number}/files?per_page=100&page=${page}`);
@@ -108,7 +114,7 @@ export async function publishNotice(event, request, writeSummary) {
         existing = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.startsWith(marker));
         if (existing || comments.length < 100) break;
     }
-    if (!sameRevision(expected, await request(`${route}/pulls/${expected.number}`))) throw new Error('PR 版本已變更，請重跑規則檢查。');
+    await assertCurrentRevision();
     let notice = existing;
     if (existing) {
         if (existing.body !== body) await request(`${route}/issues/comments/${existing.id}`, { method: 'PATCH', body: { body } });

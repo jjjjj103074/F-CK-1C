@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { classifyRuleFile, changedRules, renderNotice, publishNotice } from './pr-rule-changes.mjs';
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40);
-const expected = { number: 7, head: {sha: head}, base: {sha: base} };
+const expected = { number: 7, head: {sha: head}, base: {sha: base, ref: 'main'} };
 const event = { repository: {full_name: 'owner/repo'}, pull_request: expected };
 const current = { ...expected, state: 'open', changed_files: 1 };
 const file = { filename: 'src/efm/EfmBuild.props', status: 'modified', additions: 1, deletions: 1,
@@ -55,6 +55,7 @@ test('metadata publisher paginates files and updates only its own sticky notice'
     let pages = 0;
     const request = async (route, options) => {
         if (options) { writes.push({route,options}); return {}; }
+        if (route.includes('/git/ref/')) return {object: {sha: base}};
         if (route.includes('/files?')) { pages++; return pages===1 ? Array(100).fill({filename:'docs/a.md'}) : [file]; }
         if (route.includes('/comments?')) return [{id:4,user:{login:'a-human'},body:'<!-- efm-pr-rule-notice -->'}, {id:9,user:{login:'github-actions[bot]'},body:'<!-- efm-pr-rule-notice --> old'}];
         return {...current,changed_files:101};
@@ -73,10 +74,25 @@ test('stale source or target identities abort before publishing', async () => {
     assert.equal(writes,0);
 });
 
+test('target branch advancement aborts even when PR metadata retains the old base SHA', async () => {
+    for (const advanceOnRead of [1, 2]) {
+        let writes = 0, targetReads = 0;
+        await assert.rejects(() => publishNotice(event, async (route, options) => {
+            if (options) { writes++; return {}; }
+            if (route.includes('/git/ref/')) return {object: {sha: ++targetReads >= advanceOnRead ? 'c'.repeat(40) : base}};
+            if (route.includes('/files?')) return [file];
+            if (route.includes('/comments?')) return [];
+            return current;
+        }, () => {}), /目標分支已更新/);
+        assert.equal(writes, 0);
+    }
+});
+
 test('missing changed-file data is reported as incomplete rather than no rules', async () => {
     const writes=[];
     const request=async(route,options)=>{
         if(options){writes.push(options);return{};}
+        if(route.includes('/git/ref/'))return {object:{sha:base}};
         if(route.includes('/files?')||route.includes('/comments?'))return[];
         return current;
     };
