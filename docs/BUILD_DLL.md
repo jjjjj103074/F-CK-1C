@@ -12,7 +12,7 @@
 | Visual Studio / Build Tools | 已驗證 2026 **18.10.3**；其他安裝需通過相同內容指紋 |
 | MSBuild | 檔案版本 **18.10.1.42706**，含建置引擎、C++ targets 與 tasks 的內容指紋 |
 | MSVC v142 x64/x86 | 14.29.30133; cl 19.29.30159.0, link 14.29.30159.0 |
-| Windows SDK | 10.0.26100.0；標頭、x64 函式庫與工具內容須符合配方 |
+| Windows SDK | 10.0.26100.0；本配方 `rc.exe`／`mt.exe` 為 10.0.26100.8249，內容須符合指紋 |
 | PowerShell | Windows PowerShell 5.1；腳本使用 `-NoProfile` |
 | Node.js | 22 LTS；提交／排版工具使用 `package-lock.json`，直接執行 DLL 建置腳本不需 Node.js |
 
@@ -24,7 +24,7 @@ npm run check:efm-toolchain
 ```
 
 腳本會選擇符合配方的安裝；明確指定不相符的 MSBuild 時會報錯。
-不相符時還原安裝包，不修改配方雜湊來略過檢查。
+不相符時還原安裝包；配方指紋在工具鏈更新 PR 中調整。
 
 ### 固定安裝包
 
@@ -123,14 +123,16 @@ Formatting setup: [C++ formatting](CPP_FORMATTING.md).
 | 建置 | `/t:Rebuild /p:Configuration=Release /p:Platform=x64`，x64 主機工具 |
 | C++ | C++17、UTF-8、`/O2 /Oi /GL /EHsc /MT /GS /Gy /fp:precise` |
 | 定義 | DLL 使用專案檔的 `WIN32/NDEBUG/_WINDOWS/_USRDLL/F_CK_1C_EFM_EXPORTS` 與 Unicode 定義 |
+| 工具功能 | 原生 MSVC；ASAN、CLR 與 vcpkg 停用 |
 | 可重現輸出 | `/Brepro /experimental:deterministic`、來源映射為 `D:\efm-repro`、PDB 僅記錄檔名 |
 | MSBuild | `/noAutoResponse /nr:false /p:UseEnv=false /p:VcpkgEnabled=false /m` |
-| 個人設定 | 使用獨立子程序與白名單環境；重新設定 PATH，再由指定 VsDevCmd 初始化 |
+| 個人設定 | 使用獨立子程序與白名單環境；固定 PATH，直接呼叫指定 MSBuild |
 | 匯入 | 停用 Directory.Build.props／targets；使用空的 MSBuild 使用者匯入目錄；專案不匯入 user.props |
 
 呼叫端的 `CL/_CL_/LINK/_LINK_`、工具路徑、INCLUDE／LIB 與 ForceImport 等環境設定不會傳入共用建置程序。
 直接在 VS／MSBuild 建置仍會檢查工具鏈；提交用產物使用共用腳本，以套用完整環境隔離。
 各來源檔的 PCH、輸出路徑與其他參數取自已提交的專案檔；完整指令見建置 log。
+提交用建置使用已核對的 Windows C++ targets 快照，隔離其他工作負載的全域匯入。
 
 ### 內容指紋範圍
 
@@ -140,19 +142,19 @@ Formatting setup: [C++ formatting](CPP_FORMATTING.md).
 |---|---|
 | MSVC | `bin/Hostx64/x64`、`include`、`lib/x64` |
 | Windows SDK | 指定版本的 `Include`、`Lib/ucrt/x64`、`Lib/um/x64`、`bin/x64` |
-| MSBuild | `MSBuild/Current/Bin`，含 x64 引擎與相依檔案 |
-| C++ targets/tasks | `MSBuild/Microsoft/VC/v180` |
-| 開發環境初始化 | `Common7/Tools/VsDevCmd.bat`、`vsdevcmd/` 與 `VC/Auxiliary/Build` |
+| MSBuild | `MSBuild/Current/Bin` 的引擎與相依檔案；原生 C++ 不使用 SDK resolvers |
+| C++ targets/tasks | `v160/v170/v180` 核心、Windows 平台與工具集設定；以建置腳本的快照範圍為準 |
 
 群組指紋依相對路徑排序，與安裝位置、檔案時間無關。
 語系資源 `*.resources.dll` 與數字語系目錄不參與指紋；它們只影響診斷訊息。
+ASAN／LLVM 附帶工具及函式庫不參與本原生 MSVC 配方；其他工作負載的匯入設定不會複製到快照。
 Windows／.NET Framework 作業環境並未封存，最後仍以完整 DLL 雜湊一致判定重現成功。
 
 ### 更新工具鏈
 
 以獨立 PR 更新配方、安裝指引與 `.vsconfig`，並重新建立、保存通過驗證的 layout。
 在開發電腦與 CI 以新配方重建並比對 DLL，再更新提交產物。
-配方差異會列入規則提醒；新版本需整套驗證，不能只更換版本字串或接受目前環境的雜湊。
+配方差異會列入規則提醒；工具鏈更新需通過整套驗證與跨機 DLL 比對。
 GitHub runner 不提供相符內容時，CI 會明確報錯；先還原固定安裝包或審查工具鏈更新。
 
 Visual Studio 除錯時可能需要指定本機來源路徑，因為產物中的來源映射為 `D:\efm-repro`。
@@ -165,7 +167,7 @@ To register a System, add `Core/Systems/<Owner>/Entry.cpp`.
 Use the pinned profile and `.vsconfig`; the validated reference is VS/Build Tools
 18.10.3, MSBuild file version 18.10.1.42706, v142 14.29.30133 and SDK 10.0.26100.0.
 Content fingerprints also cover headers, x64 libraries, SDK tools, MSBuild/C++ tasks
-and the developer-shell scripts. Matching version labels alone are insufficient.
+and build-task files. Matching version labels alone are insufficient.
 
 For an existing commit, run `npm ci`, `npm run check:efm-toolchain`, then
 `npm run validate:efm` against its original DLL. To publish a changed DLL, use

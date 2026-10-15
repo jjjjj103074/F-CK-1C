@@ -9,6 +9,8 @@
            Text="工具鏈不符，請使用 src/efm/EfmBuild.props 的配方。" />
     <Error Condition="'$(CL)' != '' Or '$(_CL_)' != '' Or '$(LINK)' != '' Or '$(_LINK_)' != ''"
            Text="請清除 CL/_CL_/LINK/_LINK_ 環境變數後重建。" />
+    <Error Condition="'$(EnableASAN)' == 'true' Or ('$(CLRSupport)' != '' And '$(CLRSupport)' != 'false')"
+           Text="本建置配方使用原生 C++，ASAN 與 CLR 均停用。" />
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(EfmRepoRoot)\tools\check_efm_toolchain.ps1&quot; -ToolchainRoot &quot;$(VCToolsInstallDir).&quot; -SdkRoot &quot;$(WindowsSdkDir).&quot; -MsBuildPath &quot;$(MSBuildBinPath)\MSBuild.exe&quot;" />
   </Target>
 </Project>

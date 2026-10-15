@@ -42,9 +42,8 @@ try {
     Expect-Failure 'Different runtime with matching SDK version' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot $realTools -SdkRoot $fakeSdk } '工具鏈不符：Lib\\.*\\libucrt\.lib'
     $fakeInstance = Join-Path $fixtureRoot 'incompatible-vs'
     $fakeBuild = Join-Path $fakeInstance 'MSBuild\Current\Bin\MSBuild.exe'
-    $fakeShell = Join-Path $fakeInstance 'Common7\Tools\VsDevCmd.bat'
     $fakeToolchain = Join-Path $fakeInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)"
-    foreach ($file in @($fakeBuild, $fakeShell)) {
+    foreach ($file in @($fakeBuild)) {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
         [IO.File]::WriteAllText($file, 'fixture placeholder; never execute')
     }
@@ -64,6 +63,21 @@ try {
     Expect-Failure 'Explicit incompatible MSBuild must not fall back' {
         Select-EfmBuildTools -RepoRoot $repoRoot -Instances $candidates -MsBuildPath $fakeBuild
     } '工具鏈不符：lib\\x64\\libcmt\.lib'
+    $profileRepo = Join-Path $fixtureRoot 'profile-repo'
+    $profileFile = Join-Path $profileRepo 'src\efm\EfmBuild.props'
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $profileFile)) | Out-Null
+    $profileXml = [xml][IO.File]::ReadAllText((Join-Path $repoRoot 'src\efm\EfmBuild.props'))
+    $profileXml.GetElementsByTagName('EfmMsBuildVersion')[0].InnerText = '0.0.0.0'
+    $profileXml.Save($profileFile)
+    Expect-Failure 'Wrong MSBuild version' {
+        & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $profileRepo -ToolchainRoot $realTools
+    } 'MSBuild 版本不符'
+    $profileXml.GetElementsByTagName('EfmMsBuildVersion')[0].InnerText = $profile.EfmMsBuildVersion
+    $profileXml.GetElementsByTagName('EfmSdkHeadersSha256')[0].InnerText = '0' * 64
+    $profileXml.Save($profileFile)
+    Expect-Failure 'Wrong SDK header fingerprint' {
+        & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $profileRepo -ToolchainRoot $realTools
+    } '工具鏈內容不符：EfmSdkHeadersSha256'
     $fingerprintInstance = Join-Path $fixtureRoot 'fingerprint-vs'
     $fingerprintTools = Join-Path $fingerprintInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)"
     $fingerprintSdk = Join-Path $fixtureRoot 'fingerprint-sdk'
@@ -76,11 +90,8 @@ try {
         EfmSdkToolsSha256 = (Join-Path $fingerprintSdk "bin\$($profile.EfmWindowsSdkVersion)\x64\rc.exe")
         EfmMsBuildFilesSha256 = (Join-Path $fingerprintInstance 'MSBuild\Current\Bin\MSBuild.exe')
         EfmCppTargetsSha256 = (Join-Path $fingerprintInstance 'MSBuild\Microsoft\VC\v180\fixture.targets')
-        EfmDevShellSha256 = (Join-Path $fingerprintInstance 'Common7\Tools\VsDevCmd.bat')
-        EfmVcSetupSha256 = (Join-Path $fingerprintInstance 'VC\Auxiliary\Build\vcvarsall.bat')
     }
-    $extraFiles = @((Join-Path $fingerprintSdk "Lib\$($profile.EfmWindowsSdkVersion)\um\x64\fixture.lib"),
-        (Join-Path $fingerprintInstance 'Common7\Tools\vsdevcmd\fixture.bat'))
+    $extraFiles = @((Join-Path $fingerprintSdk "Lib\$($profile.EfmWindowsSdkVersion)\um\x64\fixture.lib"))
     foreach ($file in @($inputs.Values) + $extraFiles) {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
         [IO.File]::WriteAllText($file, 'original fixture content')

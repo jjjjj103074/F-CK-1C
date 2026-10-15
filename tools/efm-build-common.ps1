@@ -5,7 +5,7 @@ function Get-EfmSha256 {
     param([string]$Path)
 
     $stream = [IO.File]::OpenRead($Path)
-    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $algorithm = if ($PSVersionTable.PSEdition -eq 'Desktop') { [Security.Cryptography.SHA256Cng]::new() } else { [Security.Cryptography.SHA256]::Create() }
     try { return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '') }
     finally { $algorithm.Dispose(); $stream.Dispose() }
 }
@@ -28,7 +28,7 @@ function Get-EfmBuildProfile {
             'EfmFrontendSha256', 'EfmBackendSha256', 'EfmLibcmtSha256', 'EfmLibcpmtSha256',
             'EfmLibvcruntimeSha256', 'EfmLibucrtSha256', 'EfmCanonicalSourceRoot', 'EfmMsBuildVersion',
             'EfmToolFilesSha256', 'EfmToolHeadersSha256', 'EfmToolLibrariesSha256', 'EfmSdkHeadersSha256',
-            'EfmSdkLibrariesSha256', 'EfmSdkToolsSha256', 'EfmMsBuildFilesSha256', 'EfmCppTargetsSha256', 'EfmDevShellSha256', 'EfmVcSetupSha256')) {
+            'EfmSdkLibrariesSha256', 'EfmSdkToolsSha256', 'EfmMsBuildFilesSha256', 'EfmCppTargetsSha256')) {
         $nodes = $document.GetElementsByTagName($name)
         if ($nodes.Count -ne 1 -or [string]::IsNullOrWhiteSpace($nodes[0].InnerText)) {
             throw "建置設定缺少或重複：$name"
@@ -57,22 +57,23 @@ function Get-EfmToolchainFingerprint {
         EfmSdkLibrariesSha256 = @((Join-Path $SdkRoot "Lib\$SdkVersion\ucrt\x64"), (Join-Path $SdkRoot "Lib\$SdkVersion\um\x64"))
         EfmSdkToolsSha256 = @((Join-Path $SdkRoot "bin\$SdkVersion\x64"))
         EfmMsBuildFilesSha256 = @((Join-Path $instance 'MSBuild\Current\Bin'))
-        EfmCppTargetsSha256 = @((Join-Path $instance 'MSBuild\Microsoft\VC\v180'))
-        EfmDevShellSha256 = @((Join-Path $instance 'Common7\Tools\VsDevCmd.bat'), (Join-Path $instance 'Common7\Tools\vsdevcmd'))
-        EfmVcSetupSha256 = @((Join-Path $instance 'VC\Auxiliary\Build'))
+        EfmCppTargetsSha256 = @((Join-Path $instance 'MSBuild\Microsoft\VC'))
     }
     $result = [ordered]@{}
     foreach ($group in $groups.GetEnumerator()) {
         $records = [Collections.Generic.List[string]]::new()
         for ($index = 0; $index -lt $group.Value.Count; $index++) {
             $root = (Get-Item -LiteralPath $group.Value[$index]).FullName.TrimEnd('\')
-            $files = @(Get-ChildItem -LiteralPath $root -File -Recurse)
+            $files = @(if ($group.Key -eq 'EfmCppTargetsSha256') { Get-EfmCppTargetFiles $root } else { Get-ChildItem -LiteralPath $root -File -Recurse })
             if (-not $files.Count) { throw "工具鏈目錄為空：$root" }
             foreach ($file in $files) {
                 $relative = if ($file.FullName -eq $root) { $file.Name } else { $file.FullName.Substring($root.Length + 1) }
                 $relative = $relative.Replace('\', '/').ToLowerInvariant()
                 # Localized diagnostics do not participate in compilation.
                 if ($relative -match '(^|/)\d{4}/' -or $relative.EndsWith('.resources.dll')) { continue }
+                if ($group.Key -in @('EfmToolFilesSha256', 'EfmToolLibrariesSha256') -and
+                    $relative -match '(^|/)(asan_blacklist\.txt|llvm-symbolizer\.exe|clang_rt\..*|(?:lib)?vcasand?\.lib|libsancov\.lib)$') { continue }
+                if ($group.Key -eq 'EfmMsBuildFilesSha256' -and $relative.StartsWith('sdkresolvers/')) { continue }
                 $records.Add("$index/$relative=" + (Get-EfmSha256 $file.FullName))
             }
         }
@@ -82,6 +83,16 @@ function Get-EfmToolchainFingerprint {
         finally { $algorithm.Dispose() }
     }
     return $result
+}
+
+function Get-EfmCppTargetFiles {
+    param([string]$Root)
+
+    Get-ChildItem -LiteralPath $Root -File -Recurse | Where-Object {
+        $relative = $_.FullName.Substring($Root.TrimEnd('\').Length + 1).Replace('\', '/').ToLowerInvariant()
+        $relative -match '^v(160|170|180)/([^/]+|platforms/(win32|x64)/([^/]+|platformtoolsets/v(142|145)/[^/]+))$' -and
+            $relative -notmatch 'microsoft\.cpp\.(clangcl|lldlink|buildasx)\.'
+    }
 }
 
 function Get-EfmSourceFingerprint {
@@ -120,8 +131,7 @@ function Select-EfmBuildTools {
             if (-not $requested.StartsWith($instance.installationPath + '\', [StringComparison]::OrdinalIgnoreCase)) { continue }
             $build = $requested
         }
-        $developerShell = Join-Path $instance.installationPath 'Common7\Tools\VsDevCmd.bat'
-        if ((Test-Path -LiteralPath $build) -and (Test-Path -LiteralPath $developerShell) -and
+        if ((Test-Path -LiteralPath $build) -and
             (Test-Path -LiteralPath (Join-Path $toolchain 'bin\Hostx64\x64\cl.exe'))) {
             try {
                 & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $RepoRoot -ToolchainRoot $toolchain -MsBuildPath $build | Out-Null
@@ -131,7 +141,7 @@ function Select-EfmBuildTools {
                 $mismatches += $_.Exception.Message
                 continue
             }
-            return [pscustomobject]@{ MsBuild = $build; DeveloperShell = $developerShell; Toolchain = $toolchain; Profile = $profile }
+            return [pscustomobject]@{ MsBuild = $build; Toolchain = $toolchain; Profile = $profile }
         }
     }
     throw "找不到符合配方的 MSBuild，請依 docs/BUILD_DLL.md 安裝。`n$($mismatches -join "`n")"
@@ -165,15 +175,22 @@ function Invoke-EfmNativeBuild {
     $project = Join-Path $root "src\efm\$projectName\$projectName.vcxproj"
     if (-not $LogDirectory) { $LogDirectory = Join-Path $root 'tmp\efm-build' }
     [IO.Directory]::CreateDirectory($LogDirectory) | Out-Null
+    $LogDirectory = [IO.Path]::GetFullPath($LogDirectory)
     $log = Join-Path $LogDirectory ($Target.ToLowerInvariant() + '-build.log')
+    if (Test-Path -LiteralPath $log) { Remove-Item -LiteralPath $log -Force }
     $helper = Join-Path $LogDirectory ('build-' + [Guid]::NewGuid().ToString('N') + '.cmd')
     $userImports = Join-Path $LogDirectory ('msbuild-user-' + [Guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($userImports) | Out-Null
+    $cppTargets = Join-Path $LogDirectory ('cpp-targets-' + [Guid]::NewGuid().ToString('N'))
+    $instance = [IO.Directory]::GetParent($tools.Toolchain.TrimEnd('\')).Parent.Parent.Parent.FullName
+    $installedTargets = Join-Path $instance 'MSBuild\Microsoft\VC'
+    foreach ($file in Get-EfmCppTargetFiles $installedTargets) {
+        $destination = Join-Path $cppTargets $file.FullName.Substring($installedTargets.Length + 1)
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $destination)) | Out-Null
+        Copy-Item -LiteralPath $file.FullName -Destination $destination
+    }
     $command = @(
         '@echo off', 'chcp 65001 >nul', 'setlocal DisableDelayedExpansion',
-        ('call ' + (ConvertTo-EfmBatchArgument $tools.DeveloperShell) + ' -no_logo -arch=x64 -host_arch=x64 -vcvars_ver=' + $tools.Profile.EfmVCToolsVersion + ' -winsdk=' + $tools.Profile.EfmWindowsSdkVersion),
-        'if errorlevel 1 exit /b %errorlevel%',
-        'set "CL="', 'set "_CL_="', 'set "LINK="', 'set "_LINK_="',
         ((ConvertTo-EfmBatchArgument $tools.MsBuild) + ' ' + (ConvertTo-EfmBatchArgument $project) +
             ' /noAutoResponse /nr:false /t:Rebuild /p:Configuration=Release /p:Platform=x64 /p:UseEnv=false /p:VcpkgEnabled=false' +
             ' /p:MSBuildUserExtensionsPath=' + (ConvertTo-EfmBatchArgument $userImports) +
@@ -201,6 +218,8 @@ function Invoke-EfmNativeBuild {
         }
         $start.EnvironmentVariables['PATH'] = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
         $start.EnvironmentVariables['VSLANG'] = '1033'
+        $start.EnvironmentVariables['EfmVCTargetsRoot'] = $cppTargets
+        $start.EnvironmentVariables['VCInstallDir'] = (Join-Path $instance 'VC') + '\'
         $process.StartInfo = $start
         $process.Start() | Out-Null
         $stdout = $process.StandardOutput.ReadToEndAsync()
@@ -217,6 +236,10 @@ function Invoke-EfmNativeBuild {
         $process.Dispose()
         Remove-Item -LiteralPath $helper -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $userImports -ErrorAction SilentlyContinue
+        $resolved = [IO.Path]::GetFullPath($cppTargets)
+        $expectedParent = [IO.Path]::GetFullPath($LogDirectory).TrimEnd('\')
+        if ([IO.Path]::GetDirectoryName($resolved) -ne $expectedParent -or [IO.Path]::GetFileName($resolved) -notmatch '^cpp-targets-[a-f0-9]{32}$') { throw '建置暫存路徑不符。' }
+        Remove-Item -LiteralPath $resolved -Recurse -Force -ErrorAction SilentlyContinue
     }
     $extension = if ($Target -eq 'Dll') { 'dll' } else { 'exe' }
     $output = Join-Path $root "src\efm\x64\Release\$projectName.$extension"
