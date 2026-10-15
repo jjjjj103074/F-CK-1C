@@ -21,3 +21,13 @@ foreach($file in Get-ChildItem -LiteralPath $bin -File -Recurse) {
     if ($relative -match '(^|/)\d{4}/' -or $relative.EndsWith('.resources.dll')) {continue}
     Write-Output ('NATIVE-TOOL '+$relative+' '+(Get-EfmSha256 $file.FullName))
 }
+$instanceRoot=[IO.Directory]::GetParent($toolchain).Parent.Parent.Parent.FullName
+$directories=[ordered]@{LIB=(Join-Path $toolchain 'lib\x64'); MSBUILD=(Join-Path $instanceRoot 'MSBuild\Current\Bin'); CPP=(Join-Path $instanceRoot 'MSBuild\Microsoft\VC\v180')}
+foreach($group in $directories.GetEnumerator()) {
+    foreach($file in Get-ChildItem -LiteralPath $group.Value -File -Recurse) {
+        $relative=$file.FullName.Substring($group.Value.Length+1).Replace('\','/').ToLowerInvariant()
+        if($relative -match '(^|/)\d{4}/' -or $relative.EndsWith('.resources.dll')){continue}
+        Write-Output ('NATIVE-FILE '+$group.Key+' '+$relative+' '+(Get-EfmSha256 $file.FullName))
+    }
+}
+throw 'Diagnostic run completed; full validation resumes after resolving content differences.'
