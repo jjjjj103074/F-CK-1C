@@ -25,6 +25,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
           sparse-checkout-cone-mode: false
           sparse-checkout: |
@@ -41,26 +42,44 @@ jobs:
             /.github/workflows/pr-title.yml
             /.github/workflows/pr-rule-notice.yml
             /.clang-format
+            /_clang-format
             /.clang-format-ignore
+            /src/.clang-format
+            /src/_clang-format
+            /src/.clang-format-ignore
             /.gitattributes
             /.gitignore
       - name: 準備 Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - name: 安裝工具
-        run: npm ci --ignore-scripts
-      - name: 排版與工具測試
+      - name: 規劃檢查
+        id: plan
         shell: pwsh
         run: |
-          node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs
+          git fetch --no-tags --filter=blob:none origin $env:PR_BASE
+          if ($LASTEXITCODE -ne 0) { throw '無法取得目標版本。' }
+          node tools/pr-checks.mjs $env:PR_HEAD $env:PR_BASE Submission
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 安裝工具
+        if: steps.plan.outputs.format == 'true' || steps.plan.outputs.tools == 'true'
+        run: npm ci --ignore-scripts
+      - name: 工具測試
+        if: steps.plan.outputs.tools == 'true'
+        shell: pwsh
+        run: |
+          node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs tools/pr-checks.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: C++ 排版
+        if: steps.plan.outputs.format == 'true'
+        shell: pwsh
+        run: |
           node tools/cpp-format.mjs --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: DLL 與原生測試
         shell: pwsh
         run: |
-          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/validate_efm.ps1 -Phase Submission -ExpectedHead $env:PR_HEAD -ReportDirectory "$env:RUNNER_TEMP\efm-submission"
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/validate_efm.ps1 -Phase Submission -Checks '${{ steps.plan.outputs.checks }}' -ExpectedHead $env:PR_HEAD -ReportDirectory "$env:RUNNER_TEMP\efm-submission"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: 保存失敗紀錄
         if: failure()
@@ -97,19 +116,29 @@ jobs:
             /bin/F-CK-1C_EFM.dll
             /.gitattributes
             /.gitignore
+      - name: 準備 Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: 規劃檢查
+        id: plan
+        shell: pwsh
+        run: |
+          git fetch --no-tags --filter=blob:none origin $env:PR_BASE
+          if ($LASTEXITCODE -ne 0) { throw '無法取得目標版本。' }
+          node tools/pr-checks.mjs $env:PR_HEAD $env:PR_BASE Merge
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: 模擬合併
         shell: pwsh
         run: |
           if ($env:PR_HEAD -notmatch '^[a-f0-9]{40}$' -or $env:PR_BASE -notmatch '^[a-f0-9]{40}$') { throw '提交版本格式錯誤。' }
-          git fetch --no-tags --filter=blob:none origin $env:PR_BASE
-          if ($LASTEXITCODE -ne 0) { throw '無法取得目標版本，請重跑檢查。' }
           git config user.name 'EFM CI'
           git config user.email 'efm-ci@users.noreply.github.com'
           ./tools/prepare_efm_merge.ps1 -HeadSha $env:PR_HEAD -BaseSha $env:PR_BASE -OutputDirectory "$env:RUNNER_TEMP\efm-prepared-merge"
       - name: DLL 與原生測試
         shell: pwsh
         run: |
-          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\efm-prepared-merge\controller\validate_efm.ps1" -Phase Merge -RepoRoot "$env:GITHUB_WORKSPACE" -ExpectedHead $env:PR_HEAD -SubmittedDllPath "$env:RUNNER_TEMP\efm-prepared-merge\pr-uploaded.dll" -ReportDirectory "$env:RUNNER_TEMP\efm-merge"
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\efm-prepared-merge\controller\validate_efm.ps1" -Phase Merge -Checks '${{ steps.plan.outputs.checks }}' -RepoRoot "$env:GITHUB_WORKSPACE" -ExpectedHead $env:PR_HEAD -SubmittedDllPath "$env:RUNNER_TEMP\efm-prepared-merge\pr-uploaded.dll" -ReportDirectory "$env:RUNNER_TEMP\efm-merge"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: 保存失敗紀錄
         if: failure()

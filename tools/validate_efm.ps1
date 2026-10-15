@@ -3,7 +3,8 @@
     Validate a PR submission or its simulated merge without replacing bin/F-CK-1C_EFM.dll.
 #>
 param([ValidateSet('Submission', 'Merge')][string]$Phase = 'Submission',
-    [string]$RepoRoot = '', [string]$ReportDirectory = '', [string]$ExpectedHead = '', [string]$SubmittedDllPath = '')
+    [string]$RepoRoot = '', [string]$ReportDirectory = '', [string]$ExpectedHead = '', [string]$SubmittedDllPath = '',
+    [string]$Checks = 'all')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -14,13 +15,20 @@ if (-not $ReportDirectory) { $ReportDirectory = Join-Path $RepoRoot ('tmp\pr-val
 [IO.Directory]::CreateDirectory($ReportDirectory) | Out-Null
 $report = [ordered]@{ phase = $Phase; status = 'running'; dcs = 'not_run'; steps = [Collections.Generic.List[object]]::new(); hashes = @{} }
 $failure = $null
+$run = @{}
+$selected = $Checks -split ','
+$names = @('dll', 'native', 'architecture', 'catalog', 'dcs', 'validation')
+if (@($selected | Where-Object { $_ -notin ($names + @('all', 'none')) }).Count) { throw '未知的檢查項目。' }
+foreach ($name in $names) { $run[$name] = 'all' -in $selected -or $name -in $selected }
+if ($run.validation) { $run.dll = $true }
 
 function Invoke-ValidationStep {
-    param([string]$Name, [scriptblock]$Action)
+    param([string]$Name, [scriptblock]$Action, [bool]$Enabled = $true)
 
     $watch = [Diagnostics.Stopwatch]::StartNew()
     $step = [ordered]@{ name = $Name; status = 'running'; seconds = 0 }
     $report.steps.Add($step)
+    if (-not $Enabled) { $step.status = 'skipped'; return }
     try { & $Action | Out-Host; $step.status = 'passed' }
     catch { $step.status = 'failed'; $step['error'] = $_.Exception.Message; throw }
     finally { $watch.Stop(); $step.seconds = [math]::Round($watch.Elapsed.TotalSeconds, 2) }
@@ -54,19 +62,21 @@ try {
     Invoke-ValidationStep '編譯工具' {
         $report['toolchain'] = Get-EfmBuildProfile $RepoRoot
         & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $RepoRoot
-    }
+    } ($run.dll -or $run.native)
     $sourceFingerprint = Get-EfmSourceFingerprint $RepoRoot
-    $uploadedPath = if ($SubmittedDllPath) { (Resolve-Path -LiteralPath $SubmittedDllPath).Path } else { Join-Path $RepoRoot 'bin\F-CK-1C_EFM.dll' }
-    $uploadedCopy = Join-Path $ReportDirectory 'uploaded.dll'
-    if (Test-Path -LiteralPath $uploadedCopy) { Remove-Item -LiteralPath $uploadedCopy -Force }
-    Copy-Item -LiteralPath $uploadedPath -Destination $uploadedCopy
-    $uploadedHash = Get-EfmSha256 $uploadedCopy
-    $report.hashes['uploaded'] = $uploadedHash
-    $originalHash = Get-EfmSha256 $uploadedPath
+    if ($run.dll) {
+        $uploadedPath = if ($SubmittedDllPath) { (Resolve-Path -LiteralPath $SubmittedDllPath).Path } else { Join-Path $RepoRoot 'bin\F-CK-1C_EFM.dll' }
+        $uploadedCopy = Join-Path $ReportDirectory 'uploaded.dll'
+        if (Test-Path -LiteralPath $uploadedCopy) { Remove-Item -LiteralPath $uploadedCopy -Force }
+        Copy-Item -LiteralPath $uploadedPath -Destination $uploadedCopy
+        $uploadedHash = Get-EfmSha256 $uploadedCopy
+        $report.hashes['uploaded'] = $uploadedHash
+        $originalHash = Get-EfmSha256 $uploadedPath
+    }
     $buildResult = $null
     Invoke-ValidationStep 'DLL 重建' {
         $script:buildResult = Invoke-EfmNativeBuild -RepoRoot $RepoRoot -Target Dll -LogDirectory $ReportDirectory
-    }
+    } $run.dll
     Invoke-ValidationStep 'DLL 雜湊' {
         $rebuiltHash = Get-EfmSha256 $script:buildResult.Output
         $report.hashes['rebuilt'] = $rebuiltHash
@@ -77,35 +87,39 @@ try {
             throw $reason
         }
         Write-Output 'DLL 雜湊一致。'
-    }
+    } $run.dll
     if ($Phase -eq 'Submission') {
         Invoke-ValidationStep 'DLL 接口' {
             & (Join-Path $PSScriptRoot 'check_efm_exports.ps1') -DllPath $uploadedCopy -BaselinePath (Join-Path $RepoRoot 'src\efm\F-CK-1C_EFM\DcsBridge\EfmExports.baseline.txt') -DumpbinPath (Join-Path $script:buildResult.Toolchain 'bin\Hostx64\x64\dumpbin.exe')
-        }
+        } $run.dll
         Invoke-ValidationStep 'DLL 載入／卸載' {
             & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $uploadedCopy -BaselinePath (Join-Path $RepoRoot 'src\efm\F-CK-1C_EFM\DcsBridge\EfmExports.baseline.txt') -ExpectedSha256 $uploadedHash
-        }
-        Invoke-ValidationStep '架構與產生器' {
-            foreach ($scriptName in @('test_efm_architecture_checker.ps1', 'test_system_catalog_generator.ps1', 'test_dcs_id_generator.ps1')) {
+        } $run.dll
+        foreach ($fixture in @(
+            @('架構測試', 'architecture', 'test_efm_architecture_checker.ps1'),
+            @('系統目錄產生器', 'catalog', 'test_system_catalog_generator.ps1'),
+            @('DCS ID 產生器', 'dcs', 'test_dcs_id_generator.ps1'))) {
+            $scriptName = $fixture[2]
+            Invoke-ValidationStep $fixture[0] {
                 & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $scriptName)
                 Assert-ExternalSuccess $scriptName
-            }
+            } $run[$fixture[1]]
         }
     }
     if ($Phase -eq 'Submission') {
         Invoke-ValidationStep '驗證工具' {
             & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test_efm_validation.ps1') -DllPath $uploadedCopy
             Assert-ExternalSuccess '驗證工具測試'
-        }
+        } $run.validation
     }
     Invoke-ValidationStep '原生測試' {
         $tests = Invoke-EfmNativeBuild -RepoRoot $RepoRoot -Target Tests -LogDirectory $ReportDirectory
         & $tests.Output 2>&1 | Tee-Object -FilePath (Join-Path $ReportDirectory 'native-tests.log') | Out-Host
         Assert-ExternalSuccess '原生測試'
-    }
+    } $run.native
     Invoke-ValidationStep '來源完整性' {
         if ((Get-EfmSourceFingerprint $RepoRoot) -ne $sourceFingerprint) { throw '驗證改動了來源或設定，請檢查建置與測試腳本。' }
-        if ((Get-EfmSha256 $uploadedPath) -ne $originalHash -or (Get-EfmSha256 $uploadedCopy) -ne $uploadedHash) { throw '驗證改動了提交 DLL，請檢查驗證腳本。' }
+        if ($run.dll -and ((Get-EfmSha256 $uploadedPath) -ne $originalHash -or (Get-EfmSha256 $uploadedCopy) -ne $uploadedHash)) { throw '驗證改動了提交 DLL，請檢查驗證腳本。' }
     }
     $report.status = 'passed'
 }
@@ -114,7 +128,7 @@ finally {
     $encoding = [Text.UTF8Encoding]::new($false)
     [IO.File]::WriteAllText((Join-Path $ReportDirectory 'report.json'), ($report | ConvertTo-Json -Depth 8), $encoding)
     $phaseLabel = if ($Phase -eq 'Submission') { '提交檢查' } else { '合併檢查' }
-    $statusLabels = @{ passed = '通過'; failed = '失敗'; running = '執行中' }
+    $statusLabels = @{ passed = '通過'; failed = '失敗'; running = '執行中'; skipped = '不適用' }
     $lines = @("### ${phaseLabel}：$($statusLabels[$report.status])", '', '| 檢查 | 結果 | 秒 |', '|---|---|---:|')
     foreach ($step in $report.steps) { $lines += "| $($step.name) | $($statusLabels[$step.status]) | $($step.seconds) |" }
     if ($failure) { $lines += "`n" + ($failure.Exception.Message -split "`r?`n")[0] }
