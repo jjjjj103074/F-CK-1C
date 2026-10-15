@@ -90,7 +90,7 @@ function Get-EfmCppTargetFiles {
 
     Get-ChildItem -LiteralPath $Root -File -Recurse | Where-Object {
         $relative = $_.FullName.Substring($Root.TrimEnd('\').Length + 1).Replace('\', '/').ToLowerInvariant()
-        $relative -match '^v(160|170|180)/([^/]+|platforms/(win32|x64)/([^/]+|platformtoolsets/v(142|145)/[^/]+))$' -and
+        $relative -match '^v(160|180)/([^/]+|platforms/(win32|x64)/([^/]+|platformtoolsets/v(142|145)/[^/]+))$' -and
             $relative -notmatch 'microsoft\.cpp\.(clangcl|lldlink|buildasx)\.'
     }
 }

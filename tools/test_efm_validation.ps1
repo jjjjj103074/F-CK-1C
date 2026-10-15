@@ -110,6 +110,13 @@ try {
     if ((Get-EfmToolchainFingerprint @fingerprintArgs).EfmToolHeadersSha256 -eq $baseline.EfmToolHeadersSha256) { throw 'Fingerprint missed an added header.' }
     Remove-Item -LiteralPath $addedHeader
     $checks++
+    foreach ($relative in @('v170\Microsoft.Build.CppTasks.Common.dll', 'v180\ImportBefore\external.targets', 'v180\Platforms\x64\PlatformToolsets\v143\Toolset.props')) {
+        $file = Join-Path $fingerprintInstance ('MSBuild\Microsoft\VC\' + $relative)
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
+        [IO.File]::WriteAllText($file, 'unrelated installed workload')
+    }
+    if ((Get-EfmToolchainFingerprint @fingerprintArgs).EfmCppTargetsSha256 -ne $baseline.EfmCppTargetsSha256) { throw 'Unrelated installed workloads changed the native build profile.' }
+    $checks++
     $relocatedInstance = Join-Path $fixtureRoot 'relocated-vs'
     $relocatedSdk = Join-Path $fixtureRoot 'relocated-sdk'
     Copy-Item -LiteralPath $fingerprintInstance -Destination $relocatedInstance -Recurse

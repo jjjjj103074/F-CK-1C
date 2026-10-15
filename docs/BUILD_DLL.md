@@ -143,7 +143,7 @@ Formatting setup: [C++ formatting](CPP_FORMATTING.md).
 | MSVC | `bin/Hostx64/x64`、`include`、`lib/x64` |
 | Windows SDK | 指定版本的 `Include`、`Lib/ucrt/x64`、`Lib/um/x64`、`bin/x64` |
 | MSBuild | `MSBuild/Current/Bin` 的引擎與相依檔案；原生 C++ 不使用 SDK resolvers |
-| C++ targets/tasks | `v160/v170/v180` 核心、Windows 平台與工具集設定；以建置腳本的快照範圍為準 |
+| C++ targets/tasks | `v160/v180` 核心、Windows 平台與工具集設定；以建置腳本的快照範圍為準 |
 
 群組指紋依相對路徑排序，與安裝位置、檔案時間無關。
 語系資源 `*.resources.dll` 與數字語系目錄不參與指紋；它們只影響診斷訊息。
@@ -166,8 +166,8 @@ To register a System, add `Core/Systems/<Owner>/Entry.cpp`.
 
 Use the pinned profile and `.vsconfig`; the validated reference is VS/Build Tools
 18.10.3, MSBuild file version 18.10.1.42706, v142 14.29.30133 and SDK 10.0.26100.0.
-Content fingerprints also cover headers, x64 libraries, SDK tools, MSBuild/C++ tasks
-and build-task files. Matching version labels alone are insufficient.
+Content fingerprints also cover headers, x64 libraries, SDK tools, MSBuild and
+C++ build files. Matching version labels alone are insufficient.
 
 For an existing commit, run `npm ci`, `npm run check:efm-toolchain`, then
 `npm run validate:efm` against its original DLL. To publish a changed DLL, use
