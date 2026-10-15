@@ -14,7 +14,7 @@ const tests = 'src/efm/F-CK-1C_EFM_Tests/';
 for (const file of [runtime + 'Core/A.cpp', runtime + 'Core/A.hpp', runtime + 'SDK/wHumanCustomPhysicsAPI.h',
     runtime + 'ThirdParty/data.inc', runtime + 'DcsIds/CommandIds.json', runtime + 'DcsBridge/EfmExports.baseline.txt',
     runtime + 'F-CK-1C_EFM.vcxproj', 'src/efm/EfmBuild.props', 'src/efm/EfmCore.targets',
-    'tools/generate_system_catalog.ps1', 'tools/efm-build-common.ps1', '.gitattributes', 'bin/F-CK-1C_EFM.dll']) {
+    'tools/generate_system_catalog.ps1', 'tools/efm-build-common.ps1', '.gitattributes', '.vsconfig', 'bin/F-CK-1C_EFM.dll']) {
     test(`DLL verification covers ${file} without requiring a DLL change`, () => {
         assert.equal(selectChecks([file]).dll, true);
         assert.equal(selectChecks([file], 'Merge').dll, true);

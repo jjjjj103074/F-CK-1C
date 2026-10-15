@@ -17,12 +17,12 @@ export function selectChecks(files, phase = 'Submission') {
         '.github/workflows/pr-native.yml');
     const packages = has('package.json', 'package-lock.json');
     const runtimeChanged = files.some(file => file.startsWith(runtime) && !file.endsWith('.md'));
-    const build = control || has('.gitattributes') || changed(/^src\/efm\/[^/]+\.(props|targets|sln|vcxproj)$/i)
+    const build = control || has('.gitattributes', '.vsconfig') || changed(/^src\/efm\/[^/]+\.(props|targets|sln|vcxproj)$/i)
         || has('tools/efm-build-common.ps1', 'tools/check_efm_toolchain.ps1', 'tools/build_dll.ps1',
             'tools/build_efm.ps1', 'tools/generate_system_catalog.ps1', 'tools/check_efm_architecture.ps1',
             'tools/generate_dcs_ids.ps1');
     const validation = control || has('tools/test_efm_validation.ps1', 'tools/check_efm_dll.ps1', 'tools/check_efm_exports.ps1',
-        'tools/check_efm_toolchain.ps1', 'tools/efm-build-common.ps1', 'src/efm/EfmBuild.props');
+        'tools/check_efm_toolchain.ps1', 'tools/efm-build-common.ps1', 'src/efm/EfmBuild.props', '.vsconfig');
     const dll = build || runtimeChanged || has(dllPath) || validation;
     const native = build || runtimeChanged || files.some(file => file.startsWith(tests) && !file.endsWith('.md'))
         || changed(/^FM\/.*\.jsonc$/i);

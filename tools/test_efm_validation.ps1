@@ -64,6 +64,48 @@ try {
     Expect-Failure 'Explicit incompatible MSBuild must not fall back' {
         Select-EfmBuildTools -RepoRoot $repoRoot -Instances $candidates -MsBuildPath $fakeBuild
     } '工具鏈不符：lib\\x64\\libcmt\.lib'
+    $fingerprintInstance = Join-Path $fixtureRoot 'fingerprint-vs'
+    $fingerprintTools = Join-Path $fingerprintInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)"
+    $fingerprintSdk = Join-Path $fixtureRoot 'fingerprint-sdk'
+    $inputs = [ordered]@{
+        EfmToolFilesSha256 = (Join-Path $fingerprintTools 'bin\Hostx64\x64\cl.exe')
+        EfmToolHeadersSha256 = (Join-Path $fingerprintTools 'include\fixture.h')
+        EfmToolLibrariesSha256 = (Join-Path $fingerprintTools 'lib\x64\fixture.lib')
+        EfmSdkHeadersSha256 = (Join-Path $fingerprintSdk "Include\$($profile.EfmWindowsSdkVersion)\um\fixture.h")
+        EfmSdkLibrariesSha256 = (Join-Path $fingerprintSdk "Lib\$($profile.EfmWindowsSdkVersion)\ucrt\x64\fixture.lib")
+        EfmSdkToolsSha256 = (Join-Path $fingerprintSdk "bin\$($profile.EfmWindowsSdkVersion)\x64\rc.exe")
+        EfmMsBuildFilesSha256 = (Join-Path $fingerprintInstance 'MSBuild\Current\Bin\MSBuild.exe')
+        EfmCppTargetsSha256 = (Join-Path $fingerprintInstance 'MSBuild\Microsoft\VC\v180\fixture.targets')
+        EfmDevShellSha256 = (Join-Path $fingerprintInstance 'Common7\Tools\VsDevCmd.bat')
+        EfmVcSetupSha256 = (Join-Path $fingerprintInstance 'VC\Auxiliary\Build\vcvarsall.bat')
+    }
+    $extraFiles = @((Join-Path $fingerprintSdk "Lib\$($profile.EfmWindowsSdkVersion)\um\x64\fixture.lib"),
+        (Join-Path $fingerprintInstance 'Common7\Tools\vsdevcmd\fixture.bat'))
+    foreach ($file in @($inputs.Values) + $extraFiles) {
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
+        [IO.File]::WriteAllText($file, 'original fixture content')
+    }
+    $fingerprintArgs = @{ ToolchainRoot = $fingerprintTools; SdkRoot = $fingerprintSdk; SdkVersion = $profile.EfmWindowsSdkVersion }
+    $baseline = Get-EfmToolchainFingerprint @fingerprintArgs
+    foreach ($entry in $inputs.GetEnumerator()) {
+        [IO.File]::WriteAllText($entry.Value, 'changed content with unchanged version label')
+        $changed = Get-EfmToolchainFingerprint @fingerprintArgs
+        if ($changed[$entry.Key] -eq $baseline[$entry.Key]) { throw "Fingerprint missed $($entry.Key)." }
+        [IO.File]::WriteAllText($entry.Value, 'original fixture content')
+        $checks++
+    }
+    $addedHeader = Join-Path $fingerprintTools 'include\additional.h'
+    [IO.File]::WriteAllText($addedHeader, 'additional include')
+    if ((Get-EfmToolchainFingerprint @fingerprintArgs).EfmToolHeadersSha256 -eq $baseline.EfmToolHeadersSha256) { throw 'Fingerprint missed an added header.' }
+    Remove-Item -LiteralPath $addedHeader
+    $checks++
+    $relocatedInstance = Join-Path $fixtureRoot 'relocated-vs'
+    $relocatedSdk = Join-Path $fixtureRoot 'relocated-sdk'
+    Copy-Item -LiteralPath $fingerprintInstance -Destination $relocatedInstance -Recurse
+    Copy-Item -LiteralPath $fingerprintSdk -Destination $relocatedSdk -Recurse
+    $relocated = Get-EfmToolchainFingerprint -ToolchainRoot (Join-Path $relocatedInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)") -SdkRoot $relocatedSdk -SdkVersion $profile.EfmWindowsSdkVersion
+    foreach ($name in $baseline.Keys) { if ($relocated[$name] -ne $baseline[$name]) { throw "Installation location changed $name." } }
+    $checks++
     $gitRepo = Join-Path $fixtureRoot 'merge-repo'
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'tools')) | Out-Null

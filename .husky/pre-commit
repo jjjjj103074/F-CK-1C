@@ -19,6 +19,7 @@ git_explicit_inputs()
         src/efm/EfmCore.targets \
         src/efm/EfmBuild.props \
         src/efm/EfmBuild.targets \
+        .vsconfig \
         tools/build_dll.ps1 \
         tools/efm-build-common.ps1 \
         tools/check_efm_toolchain.ps1 \
