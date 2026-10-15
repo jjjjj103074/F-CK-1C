@@ -36,6 +36,7 @@
     <CLRSupport>false</CLRSupport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(EfmVCTargetsRoot)' != ''">
+    <DisableInstalledVCTargetsUse>true</DisableInstalledVCTargetsUse>
     <VCTargetsPath>$(EfmVCTargetsRoot)\v180\</VCTargetsPath>
     <VCTargetsPath18>$(EfmVCTargetsRoot)\v180\</VCTargetsPath18>
     <VCTargetsPath17>$(EfmVCTargetsRoot)\v170\</VCTargetsPath17>

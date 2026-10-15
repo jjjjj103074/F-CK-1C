@@ -132,7 +132,7 @@ Formatting setup: [C++ formatting](CPP_FORMATTING.md).
 呼叫端的 `CL/_CL_/LINK/_LINK_`、工具路徑、INCLUDE／LIB 與 ForceImport 等環境設定不會傳入共用建置程序。
 直接在 VS／MSBuild 建置仍會檢查工具鏈；提交用產物使用共用腳本，以套用完整環境隔離。
 各來源檔的 PCH、輸出路徑與其他參數取自已提交的專案檔；完整指令見建置 log。
-提交用建置使用已核對的 Windows C++ targets 快照，隔離其他工作負載的全域匯入。
+提交用建置使用已核對的 Windows C++ targets 快照，停用其他 VS 安裝搜尋與工作負載的全域匯入。
 
 ### 內容指紋範圍
 
