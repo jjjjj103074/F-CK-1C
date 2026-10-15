@@ -42,7 +42,7 @@ DCS 遊戲內測試由人工執行，結果記錄於 PR。
 | DLL 雜湊 | 確認工具鏈，重新建置並提交 DLL |
 | 合併後 DLL 不同／合併衝突 | 同步目標分支，解決衝突後重新建置並提交 DLL |
 | 接口／載入／原生測試 | 查看失敗項目與診斷紀錄，修正後重跑 |
-| 檢查版本已過期 | 重新執行檢查 |
+| 檢查版本已過期 | 同步目標分支，再執行檢查 |
 
 ### 規則提醒
 
@@ -111,6 +111,7 @@ clean rebuild. Reports are saved in `tmp/pr-validation/submission/`.
 PRs to main/dev, including drafts, run these checks. Updates cancel older runs.
 Push formatting checks remain on main/dev. Summaries show results; diagnostics
 and patches are collapsed. Failed runs retain JSON, Markdown and logs for three days.
+If revisions are stale, sync the target branch and rerun.
 Record manual DCS tests in the PR.
 
 ### Rule changes and setup
