@@ -69,14 +69,15 @@ Windows runner 使用 `windows-2025-vs2026`。
 
 | 測試 | 結果 |
 |---|---|
-| 本機完整驗證 | 通過；37 個接口、8 項驗證工具測試、3,257 項原生檢查，約 104 秒 |
-| [完整雲端驗證](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604973891) | 提交、合併、總結通過；兩階段各 3,257 項原生檢查 |
+| 本機完整驗證 | 通過；37 個接口、8 項驗證工具測試、3,257 項原生檢查，約 3 分鐘 |
+| [完整雲端驗證](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38676747211) | 提交、合併與結果檢查通過；24 項工具流程測試，兩階段各 3,257 項原生檢查 |
+| [目標版本過期](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38676692562) | 提醒在取出程式前停止，提示同步目標分支後重跑 |
 | [DLL 改動一個位元組](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604318858) | 雜湊不同，載入停止、合併跳過、總結失敗 |
 | [取消舊工作](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604947711) | 舊工作取消，總結未通過 |
 | [規則提醒](https://github.com/jjjjj103074/F-CK-1C/pull/27#issuecomment-6172320654) | 同一則提醒隨 PR 更新 |
 | 開發工具依賴 | fast-uri 3.1.8、js-yaml 4.3.2；稽核 0 漏洞 |
 
-完整雲端工作合計約 8 分鐘，另加排隊；錯誤 DLL 約 2 分鐘被攔下。
+完整雲端工作合計約 7 分鐘，另加排隊；錯誤 DLL 約 2 分鐘被攔下。
 失敗 artifact 約 3.4 KB。
 跨機雜湊一致需使用相同編譯工具與 CRT／UCRT；固定配方見 `src/efm/EfmBuild.props`。
 
