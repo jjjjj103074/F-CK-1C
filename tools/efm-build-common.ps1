@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Get-EfmSha256 {
@@ -29,18 +29,18 @@ function Get-EfmBuildProfile {
             'EfmLibvcruntimeSha256', 'EfmLibucrtSha256', 'EfmCanonicalSourceRoot')) {
         $nodes = $document.GetElementsByTagName($name)
         if ($nodes.Count -ne 1 -or [string]::IsNullOrWhiteSpace($nodes[0].InnerText)) {
-            throw "Invalid build profile property: $name"
+            throw "建置設定缺少或重複：$name"
         }
         $values[$name] = $nodes[0].InnerText
     }
     foreach ($name in @('EfmVCToolsVersion', 'EfmWindowsSdkVersion', 'EfmCompilerVersion', 'EfmLinkerVersion')) {
-        if ($values[$name] -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw "Invalid version: $name" }
+        if ($values[$name] -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw "版本格式錯誤：$name" }
     }
     foreach ($name in @('EfmCompilerSha256', 'EfmLinkerSha256', 'EfmFrontendSha256', 'EfmBackendSha256',
             'EfmLibcmtSha256', 'EfmLibcpmtSha256', 'EfmLibvcruntimeSha256', 'EfmLibucrtSha256')) {
-        if ($values[$name] -notmatch '^[A-Fa-f0-9]{64}$') { throw "Invalid tool hash: $name" }
+        if ($values[$name] -notmatch '^[A-Fa-f0-9]{64}$') { throw "工具雜湊格式錯誤：$name" }
     }
-    if ($values.EfmHostArchitecture -ne 'x64') { throw 'The pinned build profile requires x64 host tools.' }
+    if ($values.EfmHostArchitecture -ne 'x64') { throw '建置配方需使用 x64 主機工具。' }
     return $values
 }
 
@@ -94,23 +94,23 @@ function Select-EfmBuildTools {
             return [pscustomobject]@{ MsBuild = $build; DeveloperShell = $developerShell; Toolchain = $toolchain; Profile = $profile }
         }
     }
-    throw "MSBuild matching the pinned MSVC/runtime profile was not found. Install the pinned v142 component; see docs/BUILD_DLL.md. $($mismatches -join ' ')"
+    throw "找不到符合配方的 MSBuild，請依 docs/BUILD_DLL.md 安裝。`n$($mismatches -join "`n")"
 }
 
 function Find-EfmBuildTools {
     param([string]$RepoRoot, [string]$MsBuildPath = '')
 
     $vswherePath = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-    if (-not (Test-Path -LiteralPath $vswherePath)) { throw 'Visual Studio Installer/vswhere was not found. Install C++ Build Tools; see docs/BUILD_DLL.md.' }
+    if (-not (Test-Path -LiteralPath $vswherePath)) { throw '缺少 Visual Studio Installer，請依 docs/BUILD_DLL.md 安裝。' }
     $instances = @((& $vswherePath -all -products '*' -requires Microsoft.Component.MSBuild -format json) | ConvertFrom-Json)
-    if ($LASTEXITCODE -ne 0) { throw 'vswhere could not locate MSBuild.' }
+    if ($LASTEXITCODE -ne 0) { throw '無法讀取 Visual Studio 安裝清單。' }
     return Select-EfmBuildTools -RepoRoot $RepoRoot -Instances $instances -MsBuildPath $MsBuildPath
 }
 
 function ConvertTo-EfmBatchArgument {
     param([string]$Value)
 
-    if ($Value -match '["\r\n\x00]') { throw 'A build argument contains a quote, newline, or NUL.' }
+    if ($Value -match '["\r\n\x00]') { throw '建置參數含無效字元。' }
     return '"' + $Value.Replace('%', '%%') + '"'
 }
 
@@ -118,7 +118,7 @@ function Invoke-EfmNativeBuild {
     param([string]$RepoRoot, [ValidateSet('Dll', 'Tests')][string]$Target = 'Dll',
         [string]$MsBuildPath = '', [string]$LogDirectory = '')
 
-    if ($env:OS -ne 'Windows_NT') { throw 'EFM compilation requires Windows. Linux is supported for editing only.' }
+    if ($env:OS -ne 'Windows_NT') { throw '請在 Windows 建置 EFM。' }
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
     $tools = Find-EfmBuildTools -RepoRoot $root -MsBuildPath $MsBuildPath
     $projectName = if ($Target -eq 'Dll') { 'F-CK-1C_EFM' } else { 'F-CK-1C_EFM_Tests' }
@@ -140,7 +140,7 @@ function Invoke-EfmNativeBuild {
     try {
         & cmd.exe /d /c $helper 2>&1 | ForEach-Object { "$($_)" } | Tee-Object -FilePath $log | Out-Host
         $buildCode = $LASTEXITCODE
-        if ($buildCode -ne 0) { throw "EFM $Target build failed (exit $buildCode). Log: $log" }
+        if ($buildCode -ne 0) { throw "EFM $Target 建置失敗（結束碼 $buildCode）。`n紀錄：$log" }
     }
     finally {
         $watch.Stop()
@@ -148,6 +148,6 @@ function Invoke-EfmNativeBuild {
     }
     $extension = if ($Target -eq 'Dll') { 'dll' } else { 'exe' }
     $output = Join-Path $root "src\efm\x64\Release\$projectName.$extension"
-    if (-not (Test-Path -LiteralPath $output)) { throw "Build succeeded but output is missing: $output" }
+    if (-not (Test-Path -LiteralPath $output)) { throw "找不到建置產物：$output" }
     return [pscustomobject]@{ Output = $output; Log = $log; Seconds = [math]::Round($watch.Elapsed.TotalSeconds, 2); Toolchain = $tools.Toolchain }
 }

@@ -9,7 +9,7 @@
 ### Prerequisites
 
 - **Node.js** — Required for commit tooling (commitlint, husky, czg)
-- **DCS World** — Required for testing changes
+- **DCS World** — In-game tests
 - **Visual Studio Build Tools / MSBuild** — Required when committing runtime EFM build inputs; the hook rebuilds the DLL
 - **VSCode** with the [StyLua](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.stylua) extension (recommended)
 
@@ -59,13 +59,9 @@ DCSBridge, Core, System, and DCS ID contributor guides.
 
 ### EFM Verification
 
-Use the canonical commands and hook behavior documented in the
-[DLL build guide](docs/BUILD_DLL.md). The pre-commit hook does not replace the
-native tests, architecture checks, or export verification.
-The [PR validation guide](docs/PR_VALIDATION.md) covers reproducible Windows builds,
-separate submission/merge checks and specific build/validation-rule notices.
-Changes that depend on DCS callback order, cockpit parameters, or flight
-lifecycle also require an in-game test before merging.
+Build and local checks: [DLL build](docs/BUILD_DLL.md).
+CI results and rule changes: [PR validation](docs/PR_VALIDATION.md).
+Record in-game tests for DCS callbacks, cockpit parameters and flight lifecycle changes.
 
 ### Branch Strategy
 
@@ -147,7 +143,7 @@ Commit messages, code comments, and PR descriptions may be written in **English 
 ### 前置需求
 
 - **Node.js** — 提交工具所需（commitlint、husky、czg）
-- **DCS World** — 測試變更所需
+- **DCS World** — 遊戲內測試所需
 - **Visual Studio Build Tools / MSBuild** — 提交 EFM runtime 建置輸入時需要；hook 會重建 DLL
 - **VSCode** 搭配 [StyLua](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.stylua) 擴充套件（建議安裝）
 
@@ -196,12 +192,9 @@ DCSBridge、Core、System 或 DCS ID Contributor Guide。
 
 ### EFM 驗證
 
-請使用 [DLL 建置指南](docs/BUILD_DLL.md) 中唯一維護的驗證指令與 hook
-行為說明。Pre-commit hook 不會取代 Native Tests、架構檢查或匯出介面
-驗證。
-完整的提交／合併驗證與規則變更提醒，請見 [PR 驗證指南](docs/PR_VALIDATION.md)。
-涉及 DCS Callback 順序、座艙 Param 或飛行生命週期的變更，
-合併前還需要進行遊戲內測試。
+建置與本機檢查見 [DLL 建置](docs/BUILD_DLL.md)。
+CI 結果與規則提醒見 [PR 驗證](docs/PR_VALIDATION.md)。
+涉及 DCS 回呼、座艙參數或飛行生命週期的變更，請記錄遊戲內測試結果。
 
 ### 分支策略
 

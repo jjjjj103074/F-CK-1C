@@ -1,151 +1,130 @@
-# PR validation / PR 驗證
+# PR 驗證 / PR validation
 
 ## 繁體中文
 
-### 日常操作
+### 日常使用
 
-Linux 可以編輯程式碼；DLL 與原生測試仍在 Windows 建置。沿用 MSVC、VS 與 VS Code，
-不用改用 CMake 或另一套編譯器。正式建置只支援 Release / x64。
+Linux 可編輯；DLL 與原生測試在 Windows 執行。
+安裝方式見 [DLL 建置](BUILD_DLL.md)。
 
 ```powershell
 npm ci
-npm run check:efm-toolchain
 npm run build:efm
 npm run validate:efm
 ```
 
-`build:efm` 重建並更新工作目錄的 `bin/F-CK-1C_EFM.dll`。既有提交 hook 在需要時
-仍會執行它並暫存 DLL。`validate:efm` 只驗證，不覆寫或暫存上傳 DLL；結果在
-`tmp/pr-validation/submission/`。驗證不會啟動 DCS。
+`build:efm` 更新 `bin/F-CK-1C_EFM.dll`；`validate:efm` 比對提交 DLL 與重建結果。
+本機報告位於 `tmp/pr-validation/submission/`。
 
-### PR 執行順序
+### CI 檢查
 
-| 順序 | 檢查 | 責任／失敗處理 |
-|---|---|---|
-| 1 | 建置與驗證規則變更提醒 | 在 PR 維持一則更新的提醒，列出規則分類、檔案、變更行數、舊／新片段與完整差異連結；不新增人工核准門檻 |
-| 2 | PR 排版與工具測試 | 使用鎖定的 clang-format；失敗就停止提交驗證 |
-| 3 | PR 來源與工具鏈 | 取得指定提交的乾淨來源；確認 MSVC、連結器、編譯器前後端、靜態執行期函式庫雜湊與 SDK 版本 |
-| 4 | PR DLL 重建與 SHA-256 | 完整重建，與保留的上傳副本比對整份 SHA-256；不同就失敗，顯示兩份雜湊 |
-| 5 | 上傳 DLL 接口與載入 | 對同一份驗證通過的上傳副本比對完整匯出名稱清單，再於獨立 x64 Windows 程序正常載入、查詢必要接口、卸載；不呼叫 EFM 回呼 |
-| 6 | PR 原生測試與檢查器 fixtures | 執行既有原生測試，以及架構／System catalog／DCS ID 產生器的測試 |
-| 7 | 合併相容驗證 | 保留 PR 原 DLL，模擬與指定目標提交合併；重建 DLL、核對它仍與 PR DLL 相同、執行原生測試 |
-| 8 | 合併前總結 | 分開顯示兩項結果，重新查詢 PR／目標提交是否仍為最新；失敗、跳過或過期都不能作為通過 |
+| 檢查 | 內容 |
+|---|---|
+| 標題格式 | 驗證 PR 標題的 commit 格式 |
+| 提交檢查 | 排版、工具鏈、DLL 雜湊與接口、載入／卸載、原生測試 |
+| 合併檢查 | 模擬合併目標版本，重建並比對 PR 原 DLL，再執行原生測試 |
+| 檢查結果 | 彙整提交與合併結果，確認 PR／目標版本仍為最新 |
+| 變更提醒 | 列出規則檔案、變更類型與差異連結 |
 
-如果目標分支改變了 DLL 的有效輸入，合併階段會要求同步 PR、重建並提交 DLL，
-不會偷偷換用合併後產出的 DLL，也不會將差異直接認定為惡意程式碼。
-建置與測試不得改變來源、建置設定或上傳 DLL。
-提交與合併 checkout 都保留原生測試需要的 `FM/` 配置；`.jsonc` 也納入驗證期間的來源不變檢查。
+PR 至 `main`／`dev` 時執行，Draft PR 也適用；更新 PR 會取消舊驗證。
+`main`／`dev` 的 push 另有排版檢查。
 
-新原生驗證只在 PR 建立、更新、重新開啟、修改目標等事件執行；Draft PR 一樣檢查。
-沒有 PR 的一般分支 push 不觸發它。既有 `main` / `dev` push 排版檢查保留。
-同一 PR 更新時取消舊驗證；合併前總結會拒絕過期結果。
+摘要顯示各項結果；版本、雜湊與差異片段可展開查看。
+失敗紀錄含 JSON、摘要與 log，保存三天。
+DCS 遊戲內測試由人工執行，結果記錄於 PR。
 
-### 規則變更與信任邊界
+### 失敗處理
 
-提醒涵蓋 `.github/workflows/`、建置專案／props／targets、工具鏈固定值、建置與來源產生
-腳本、提交 hook、來源正規化設定、工具版本、排版設定、測試內容與接口基準。
-一般 runtime C++ 功能修改依正常 PR 審查，不額外標成建置規則。
-刪除或重新命名規則檔案也會提醒。GitHub 未提供完整檔案清單時會明確指出無法完整判斷。
+| 項目 | 處理方式 |
+|---|---|
+| 排版 | 執行 `npm run format:cpp`，重新暫存與提交 |
+| 工具鏈 | 依 [建置需求](BUILD_DLL.md#requirements) 安裝符合配方的元件 |
+| DLL 雜湊 | 確認工具鏈，重新建置並提交 DLL |
+| 合併後 DLL 不同／合併衝突 | 同步目標分支，解決衝突後重新建置並提交 DLL |
+| 接口／載入／原生測試 | 查看失敗項目與診斷紀錄，修正後重跑 |
+| 檢查版本已過期 | 重新執行檢查 |
 
-`PR Build and Validation Rule Notice` 使用可信目標分支的提醒程式，只讀 PR metadata／diff，
-並更新自己的同一則提醒；不 checkout、建置或執行 PR 程式碼。
-原生驗證使用低權限的 `pull_request` runner，不使用 repository secrets、寫入權限或共享快取。
-PR 的建置／測試配方可以改動，會明確提醒人工審查。此設計採取**提醒加人工檢視**，
-沒有設定強制 CODEOWNERS 核准；CI 綠燈不能證明新配方沒有繞過驗證。
-特別檢視來源選擇、重建動作、DLL 複製、雜湊比較，以及測試是否被跳過。
+### 規則提醒
 
-提醒工作流程須先部署到預設分支 `main`，被驗證的目標分支也須包含可信提醒程式。
-GitHub 從預設分支載入 `pull_request_target` 工作流程，再由此流程明確 checkout
-PR 的可信目標提交。首次 PR 需人工檢視；只合併到 `dev` 尚未完成提醒流程的部署。
-未合併前的隔離測試可使用測試分支專用入口執行相同提醒程式，但不代表正式觸發已啟用。
-本機可預覽具體規則差異：`npm run preview:pr-rules -- HEAD`。
+涵蓋 CI、編譯設定、建置腳本、提交與標題規則、工具版本、排版、測試與接口基準。
+PR 留一則更新的提醒：檔案表供略讀，差異片段供審查。
+本機預覽：`npm run preview:pr-rules -- HEAD`。
 
-### 固定建置配方
+提醒使用目標分支的程式讀取 PR 差異；建置與測試使用 PR 的程式。
+規則變更由人工審查，提醒本身不列入必要通過檢查。
 
-`src/efm/EfmBuild.props` 是共用來源：MSVC v142 / 14.29.30133、cl 19.29.30159.0、
-link 14.29.30159.0、Windows SDK 10.0.26100.0，以及四個編譯／連結工具檔案與
-`libcmt.lib`、`libcpmt.lib`、`libvcruntime.lib`、SDK `libucrt.lib` 的 SHA-256。
-`PreferredToolArchitecture` 明確固定為 x64，讓實際執行的工具與被核對的 Hostx64 檔案一致；
-這與 DLL 的 x64 目標架構是兩項不同設定。
-VS IDE 可更新；固定工具組件仍須安裝。工具不符時明確報環境錯誤，不自動換版本。
-已驗證 VS／Build Tools 2026 的組件；雲端使用官方 `windows-2025-vs2026`。
-舊版 VS 可在相同工具／SDK 版號目錄內帶有不同 CRT／UCRT 內容；只看版號不足以確認一致。
+### 啟用
 
-參數包含 `/Brepro`、`/experimental:deterministic`、來源 `/pathmap` 與 `/PDBALTPATH`。
-真實 checkout 路徑映射成邏輯 `D:\efm-repro`，不需要實際建立該資料夾或磁碟。
-PDB 保留；DLL 只記錄 PDB 檔名。VS 除錯可能要求你指定實際來源位置。
-這些參數包含實驗性選項，更新工具鏈時必須重新確認跨路徑／跨 Windows 環境的結果。
-正式專案不匯入個人 user.props 或 Directory.Build.props/targets，避免隱藏設定改變產物。
+1. 將提醒 workflow 部署到預設 `main`，並將提醒程式部署到各目標分支。
+2. 依 [GitHub 事件政策](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target) 啟用 `pull_request_target`。
+3. 實跑通過後，在 `main`／`dev` 將 `提交檢查`、`合併檢查`、`檢查結果` 設為必要檢查，並要求分支為最新。
 
-請在 Visual Studio Installer 安裝 v142 x64/x86 C++ Build Tools 與 Windows SDK 10.0.26100.0。
-CLI 自動找到安裝位置並設定對應開發工具環境；無須手動開 Developer Shell。
-直接用 VS 也讀同一份 props，建置前檢查版本。完整安裝／原生測試指令見
-[DLL build guide](BUILD_DLL.md)。
+Windows runner 使用 `windows-2025-vs2026`。
+本公開專案的標準 runner 計算免費；artifacts 使用帳號儲存配額。
+詳見 [GitHub 計費](https://docs.github.com/en/billing/concepts/product-billing/github-actions)。
 
-### GitHub 啟用與人工 DCS 驗證
+### 實測紀錄（2026-10-15）
 
-工作流程檔案本身不會變更 GitHub 分支保護。部署並實際跑過後，於 `dev` / `main` 設定：
+[測試 Draft PR #27](https://github.com/jjjjj103074/F-CK-1C/pull/27)。
 
-也須確認 Actions event policy 允許 `pull_request_target`。GitHub 對部分公開 repository
-的預設封鎖政策目前採評估模式，並規劃於 2026-11-02 強制套用；正式啟用前依
-[官方事件安全指引](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
-確認當下政策。本機或測試分支不會自動變更此政策。
+| 測試 | 結果 |
+|---|---|
+| 本機完整驗證 | 通過；37 個接口、8 項驗證工具測試、3,257 項原生檢查，約 104 秒 |
+| [完整雲端驗證](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604973891) | 提交、合併、總結通過；兩階段各 3,257 項原生檢查 |
+| [DLL 改動一個位元組](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604318858) | 雜湊不同，載入停止、合併跳過、總結失敗 |
+| [取消舊工作](https://github.com/jjjjj103074/F-CK-1C/actions/runs/38604947711) | 舊工作取消，總結未通過 |
+| [規則提醒](https://github.com/jjjjj103074/F-CK-1C/pull/27#issuecomment-6172320654) | 同一則提醒隨 PR 更新 |
+| 開發工具依賴 | fast-uri 3.1.8、js-yaml 4.3.2；稽核 0 漏洞 |
 
-- Require status checks：`PR 提交驗證`、`合併相容驗證`、`PR 驗證總結`。
-- Require branches to be up to date before merging，避免目標更新後沿用舊結果。
-- 規則變更提醒是審查資訊，不是新的人工核准限制。
+完整雲端工作合計約 8 分鐘，另加排隊；錯誤 DLL 約 2 分鐘被攔下。
+失敗 artifact 約 3.4 KB。
+跨機雜湊一致需使用相同編譯工具與 CRT／UCRT；固定配方見 `src/efm/EfmBuild.props`。
 
-原生工作使用 `windows-2025-vs2026`。只在失敗時保留小型 JSON、摘要與文字 log，保存三天，
-不額外上傳 DLL 或專案來源。紀錄工具版本、兩份雜湊、步驟結果及耗時。
-
-自動檢查通過不等於 DCS 遊戲內驗證成功。DCS 留給人工實測，安排於發佈前，或影響
-回呼整合、飛行行為、座艙參數、生命週期的改動。PR 應另外記錄人工結果。
-
-**目前驗收限制：** 本機可驗證同一電腦不同路徑的完整 DLL 雜湊；雲端一致性仍須在你
-檢查、提交並部署後實際執行。在成功前不要將新檢查設成強制合併門檻。
+此 PR 使用測試專用提醒入口，保持 Draft。
+正式提醒入口與必要檢查依「啟用」步驟部署；DCS 留待人工實測。
 
 ## English
 
-Windows/MSVC remains the compiler; Linux is for editing. The shared profile in
-`src/efm/EfmBuild.props` pins the v142 toolchain, Windows SDK and compiler/linker
-fingerprints and enables deterministic time/path handling.
-Four static CRT/UCRT libraries are also fingerprinted; identical compiler and SDK
-version labels can still contain different serviced runtime libraries. The verified
-installation family is VS/Build Tools 2026, and PR jobs use `windows-2025-vs2026`.
-The profile also pins PreferredToolArchitecture to x64 so actual host tools match
-the fingerprinted Hostx64 binaries, independently of the output target architecture.
-Install the v142 x64/x86 tools and Windows SDK 10.0.26100.0 through Visual Studio Installer.
-`npm run build:efm` rebuilds and publishes the local DLL; `npm run validate:efm`
-verifies the working-tree submission without publishing or staging it.
+### Use
 
-PR submission and simulated-merge compatibility are separate Windows jobs.
-Submission checks formatting/tool tests, the pinned environment, whole-file
-SHA-256, the original uploaded DLL's exports/load/unload, generator fixtures,
-and native source tests. A hash failure prevents DLL execution. Merge validation
-preserves the submitted DLL before merging, rejects changed DLL results with an
-instruction to update the branch/rebuild, and runs native tests. The final job
-rejects failed/skipped jobs and checks both commit identities against current PR
-metadata. Existing push formatting is retained; native validation runs only for PRs.
-Both sparse checkouts retain the tracked FM configuration needed by native tests;
-JSONC configuration is included in the source-unchanged check.
+Edit on Linux; build and test on Windows. See [DLL build](BUILD_DLL.md) for setup.
 
-The independent target-branch notice job never executes PR code. It maintains
-one PR comment listing exact changed rule files, line ranges, categories, old/new
-diff excerpts and links. Renames/deletions and incomplete API responses are covered.
-Build/validation rules in the PR may change; this is an advisory policy requiring
-human scrutiny, not an immutable builder or enforced approval policy. Green checks
-are not proof that a modified recipe has not bypassed validation. The initial
-deployment requires manual review. GitHub loads the `pull_request_target`
-workflow from the default branch (`main`); it then explicitly checks out the
-trusted target commit. Deploy the workflow to main and the notice script to
-each supported target branch. A dev-only merge does not activate this trigger.
-An isolated test-branch entry can exercise the same notice code before deployment,
-but does not prove the production trigger is active. Check the applicable Actions
-event policy against GitHub's current official guidance before activation.
-Preview locally with `npm run preview:pr-rules -- HEAD`.
+```powershell
+npm ci
+npm run build:efm
+npm run validate:efm
+```
 
-Do not make the three validation checks required until a real cloud run produces
-the same whole DLL hash. Then require `PR 提交驗證`, `合併相容驗證` and
-`PR 驗證總結`, plus up-to-date branches on dev/main. Rule notices do not add required
-reviewers. Failed runs retain only small diagnostics for three days. DCS is never
-launched; in-game flight/cockpit/lifecycle tests remain separate manual evidence.
+`build:efm` updates `bin/F-CK-1C_EFM.dll`; `validate:efm` compares that DLL with a
+clean rebuild. Reports are saved in `tmp/pr-validation/submission/`.
+
+### Checks
+
+| Check | Purpose |
+|---|---|
+| 標題格式 | PR title convention |
+| 提交檢查 | Formatting, toolchain, whole-DLL hash, exports, loading and native tests |
+| 合併檢查 | Simulated merge, rebuild against the original PR DLL, native tests |
+| 檢查結果 | Submission/merge results and current PR/base revisions |
+| 變更提醒 | Changed rule files and diffs |
+
+PRs to main/dev, including drafts, run these checks. Updates cancel older runs.
+Push formatting checks remain on main/dev. Summaries show results; diagnostics
+and patches are collapsed. Failed runs retain JSON, Markdown and logs for three days.
+Record manual DCS tests in the PR.
+
+### Rule changes and setup
+
+The target branch's notice script reads PR diffs and updates one comment.
+It covers CI, builds, hooks, title rules, tool versions, formatting, tests and exports.
+Review rule changes manually. Preview with `npm run preview:pr-rules -- HEAD`.
+
+Deploy the notice workflow to default main and its script to each target branch.
+Enable `pull_request_target` under the applicable
+[event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target).
+After a successful run, require `提交檢查`, `合併檢查`, `檢查結果` and up-to-date branches.
+
+The Windows runner is `windows-2025-vs2026`. The
+[test Draft PR](https://github.com/jjjjj103074/F-CK-1C/pull/27) records successful runs,
+tampered-DLL rejection and cancellation. The Chinese evidence table has run links
+and timings. Production activation and manual DCS tests are separate steps.

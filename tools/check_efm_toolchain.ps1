@@ -1,4 +1,4 @@
-param([string]$ToolchainRoot = '', [string]$SdkRoot = '', [string]$RepoRoot = '')
+﻿param([string]$ToolchainRoot = '', [string]$SdkRoot = '', [string]$RepoRoot = '')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -15,18 +15,18 @@ $tools = @(
 )
 foreach ($tool in $tools) {
     $file = Join-Path $ToolchainRoot ('bin\Hostx64\x64\' + $tool.File)
-    if (-not (Test-Path -LiteralPath $file)) { throw "Pinned tool is missing: $file" }
+    if (-not (Test-Path -LiteralPath $file)) { throw "缺少編譯工具：$file" }
     if ($tool.Version) {
         $version = (Get-Item -LiteralPath $file).VersionInfo
         $actual = "$($version.FileMajorPart).$($version.FileMinorPart).$($version.FileBuildPart).$($version.FilePrivatePart)"
-        if ($actual -ne $tool.Version) { throw "Toolchain mismatch: $($tool.File) expected $($tool.Version), found $actual." }
+        if ($actual -ne $tool.Version) { throw "工具版本不符：$($tool.File)。請依 docs/BUILD_DLL.md 安裝。`n預期：$($tool.Version)`n目前：$actual" }
     }
     $hash = Get-EfmSha256 $file
-    if ($hash -ne $tool.Hash) { throw "Toolchain mismatch: $($tool.File) SHA256 expected $($tool.Hash), found $hash. Do not bypass this check; see docs/BUILD_DLL.md." }
+    if ($hash -ne $tool.Hash) { throw "工具鏈不符：$($tool.File)。請依 docs/BUILD_DLL.md 安裝。`n預期 SHA256：$($tool.Hash)`n目前 SHA256：$hash" }
 }
 foreach ($directory in @('Include', 'Lib')) {
     $sdkPath = Join-Path $SdkRoot "$directory\$($profile.EfmWindowsSdkVersion)"
-    if (-not (Test-Path -LiteralPath $sdkPath -PathType Container)) { throw "Windows SDK $($profile.EfmWindowsSdkVersion) is missing: $sdkPath" }
+    if (-not (Test-Path -LiteralPath $sdkPath -PathType Container)) { throw "缺少 Windows SDK $($profile.EfmWindowsSdkVersion)：$sdkPath" }
 }
 $libraries = @(
     @{ Root = $ToolchainRoot; File = 'lib\x64\libcmt.lib'; Hash = $profile.EfmLibcmtSha256 },
@@ -36,8 +36,8 @@ $libraries = @(
 )
 foreach ($library in $libraries) {
     $file = Join-Path $library.Root $library.File
-    if (-not (Test-Path -LiteralPath $file)) { throw "Pinned runtime library is missing: $file" }
+    if (-not (Test-Path -LiteralPath $file)) { throw "缺少執行期函式庫：$file" }
     $hash = Get-EfmSha256 $file
-    if ($hash -ne $library.Hash) { throw "Toolchain mismatch: $($library.File) SHA256 expected $($library.Hash), found $hash. Matching version labels alone are insufficient; see docs/BUILD_DLL.md." }
+    if ($hash -ne $library.Hash) { throw "工具鏈不符：$($library.File)。請依 docs/BUILD_DLL.md 安裝。`n預期 SHA256：$($library.Hash)`n目前 SHA256：$hash" }
 }
-Write-Output "EFM toolchain matched: MSVC $($profile.EfmCompilerVersion), linker $($profile.EfmLinkerVersion), SDK $($profile.EfmWindowsSdkVersion), pinned static runtime libraries."
+Write-Output '編譯工具與執行期函式庫一致。'

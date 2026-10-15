@@ -1,4 +1,4 @@
-param([string]$DllPath = '')
+﻿param([string]$DllPath = '')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -19,19 +19,19 @@ function Expect-Failure {
     throw "$Name unexpectedly passed."
 }
 try {
-    Expect-Failure 'Wrong submitted hash' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $DllPath -ExpectedSha256 ('0' * 64) } 'DLL changed before loading'
+    Expect-Failure 'Wrong submitted hash' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $DllPath -ExpectedSha256 ('0' * 64) } '載入前 DLL 雜湊不符'
     $invalid = Join-Path $fixtureRoot 'invalid.dll'
     [IO.File]::WriteAllBytes($invalid, [Text.Encoding]::ASCII.GetBytes('not a Windows DLL'))
-    Expect-Failure 'Invalid executable image' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $invalid } 'Windows DLL load failed'
+    Expect-Failure 'Invalid executable image' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $invalid } 'DLL 載入失敗'
     $missingBaseline = Join-Path $fixtureRoot 'missing-export.txt'
     [IO.File]::WriteAllText($missingBaseline, 'ed_fm_missing_fixture_export')
-    Expect-Failure 'Missing required export' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $DllPath -BaselinePath $missingBaseline } 'Missing DLL export'
+    Expect-Failure 'Missing required export' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $DllPath -BaselinePath $missingBaseline } '缺少 DLL 接口'
     $fakeTools = Join-Path $fixtureRoot 'tools\bin\Hostx64\x64'
     [IO.Directory]::CreateDirectory($fakeTools) | Out-Null
     $realTools = (Find-EfmBuildTools $repoRoot).Toolchain
     foreach ($name in @('cl.exe', 'link.exe')) { Copy-Item -LiteralPath (Join-Path $realTools "bin\Hostx64\x64\$name") -Destination (Join-Path $fakeTools $name) }
     [IO.File]::WriteAllText((Join-Path $fakeTools 'c1xx.dll'), 'wrong compiler frontend')
-    Expect-Failure 'Modified compiler frontend' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot (Join-Path $fixtureRoot 'tools') } 'Toolchain mismatch: c1xx.dll'
+    Expect-Failure 'Modified compiler frontend' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot (Join-Path $fixtureRoot 'tools') } '工具鏈不符：c1xx.dll'
     $profile = Get-EfmBuildProfile $repoRoot
     $fakeSdk = Join-Path $fixtureRoot 'sdk'
     [IO.Directory]::CreateDirectory((Join-Path $fakeSdk "Include\$($profile.EfmWindowsSdkVersion)")) | Out-Null
@@ -39,7 +39,7 @@ try {
     $fakeLibrary = Join-Path $fakeSdk $sdkLibrary
     [IO.Directory]::CreateDirectory((Split-Path -Parent $fakeLibrary)) | Out-Null
     [IO.File]::WriteAllText($fakeLibrary, 'different SDK runtime with the same version directory')
-    Expect-Failure 'Different runtime with matching SDK version' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot $realTools -SdkRoot $fakeSdk } 'Toolchain mismatch: Lib\\.*\\libucrt\.lib'
+    Expect-Failure 'Different runtime with matching SDK version' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot $realTools -SdkRoot $fakeSdk } '工具鏈不符：Lib\\.*\\libucrt\.lib'
     $fakeInstance = Join-Path $fixtureRoot 'incompatible-vs'
     $fakeBuild = Join-Path $fakeInstance 'MSBuild\Current\Bin\MSBuild.exe'
     $fakeShell = Join-Path $fakeInstance 'Common7\Tools\VsDevCmd.bat'
@@ -63,7 +63,7 @@ try {
     $checks++
     Expect-Failure 'Explicit incompatible MSBuild must not fall back' {
         Select-EfmBuildTools -RepoRoot $repoRoot -Instances $candidates -MsBuildPath $fakeBuild
-    } 'Toolchain mismatch: lib\\x64\\libcmt\.lib'
+    } '工具鏈不符：lib\\x64\\libcmt\.lib'
     $gitRepo = Join-Path $fixtureRoot 'merge-repo'
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'tools')) | Out-Null
@@ -86,7 +86,7 @@ try {
     if ([IO.File]::ReadAllText((Join-Path $prepared 'pr-uploaded.dll')) -ne 'original PR artifact' -or
         [IO.File]::ReadAllText((Join-Path $gitRepo 'bin\F-CK-1C_EFM.dll')) -ne 'new base artifact') { throw 'Merge fixture did not preserve the PR artifact before a base-only replacement.' }
     $checks++
-    Write-Output "EFM validation fixtures passed: $checks rejection/artifact-preservation checks."
+    Write-Output "驗證工具測試通過：$checks 項。"
 }
 finally {
     $resolved = [IO.Path]::GetFullPath($fixtureRoot)
