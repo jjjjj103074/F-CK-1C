@@ -1,4 +1,4 @@
-name: C++ Format Check
+name: C++ 排版
 
 on:
   push:
@@ -9,19 +9,19 @@ permissions:
 
 jobs:
   cpp-format:
-    name: Verify C++ formatting
+    name: 排版檢查
     runs-on: windows-latest
     steps:
-      - name: Checkout
+      - name: 取出程式碼
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Setup Node.js
+      - name: 準備 Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
-      - name: Install development tools
+      - name: 安裝工具
         run: npm ci
-      - name: Test formatter workflow
+      - name: 排版工具測試
         run: npm run test:cpp-format
-      - name: Check authored C++ sources and tests
+      - name: 檢查排版
         run: npm run check:cpp-format

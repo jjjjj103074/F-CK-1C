@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Rebuild the pinned Release/x64 EFM DLL and publish it to the mod bin folder.
 #>
@@ -14,7 +14,6 @@ $destination = Join-Path $repoRoot 'bin\F-CK-1C_EFM.dll'
 Copy-Item -LiteralPath $result.Output -Destination $destination -Force
 $sourceHash = Get-EfmSha256 $result.Output
 $runtimeHash = Get-EfmSha256 $destination
-if ($sourceHash -ne $runtimeHash) { throw 'Runtime DLL hash does not match the build output.' }
-Write-Output "Built and copied: $destination"
-Write-Output "SRC HASH: $sourceHash"
-Write-Output "BIN HASH: $runtimeHash"
+if ($sourceHash -ne $runtimeHash) { throw 'DLL 複製後雜湊不同，請重新建置。' }
+Write-Output "DLL 已更新：$destination"
+Write-Output "SHA256：$runtimeHash"

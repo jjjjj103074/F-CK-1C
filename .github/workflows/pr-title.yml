@@ -1,31 +1,36 @@
-name: PR Title Check
+name: PR 標題
 
-# Validate that the PR title follows the project's commit message convention.
-# When using Squash merge, the PR title becomes the squashed commit message,
-# so enforcing the title format is sufficient.
+# Squash merges use the PR title as the commit message.
 
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
     branches: [main, dev]
 
+permissions:
+  contents: read
+
 jobs:
   commitlint:
-    name: Validate PR title format
+    name: 標題格式
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: 取出程式碼
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          node-version: lts/*
+          persist-credentials: false
+
+      - name: 準備 Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: 安裝工具
+        run: npm ci --ignore-scripts
 
-      - name: Validate PR title against commitlint rules
-        run: echo "${{ github.event.pull_request.title }}" | ./node_modules/.bin/commitlint --no-color
+      - name: 檢查標題
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | ./node_modules/.bin/commitlint --no-color

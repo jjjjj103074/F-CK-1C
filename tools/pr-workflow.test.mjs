@@ -5,8 +5,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+function readWorkflow(filename) {
+    return fs.existsSync(path.join(repository, filename))
+        ? fs.readFileSync(path.join(repository, filename), 'utf8')
+        : git(repository, ['show', `HEAD:${filename}`]);
+}
 
 function git(root, args, input) {
     const result = spawnSync('git', args, { cwd: root, input, encoding: 'utf8', windowsHide: true, timeout: 30000 });
@@ -16,9 +23,7 @@ function git(root, args, input) {
 
 test('the real sparse checkouts retain native-test configuration and DCS generator fixtures', { timeout: 90000 }, context => {
     const workflowPath = '.github/workflows/pr-native.yml';
-    const workflow = fs.existsSync(path.join(repository, workflowPath))
-        ? fs.readFileSync(path.join(repository, workflowPath), 'utf8')
-        : git(repository, ['show', `HEAD:${workflowPath}`]);
+    const workflow = readWorkflow(workflowPath);
     const sections = workflow.split('\n  merge-compatibility:');
     const checkoutPatterns = section => {
         const block = section.match(/sparse-checkout: \|\r?\n((?: {12}\/[^\r\n]+\r?\n)+)/);
@@ -38,7 +43,7 @@ test('the real sparse checkouts retain native-test configuration and DCS generat
     // into an independent fixture instead of cloning incomplete object storage.
     git(root, ['init', '--quiet']);
     git(root, ['config', 'core.hooksPath', '.no-hooks']);
-    const inputs = git(repository, ['ls-files', '-z', '--', '.gitattributes',
+    const inputs = git(repository, ['ls-files', '-z', '--', '.gitattributes', 'commitlint.config.js',
         'Cockpit', 'Input', 'FM', 'src/efm/F-CK-1C_EFM/DcsIds',
         'tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1']).split('\0').filter(Boolean);
     for (const relative of inputs) {
@@ -54,6 +59,7 @@ test('the real sparse checkouts retain native-test configuration and DCS generat
     git(root, ['sparse-checkout', 'init', '--no-cone']);
     git(root, ['sparse-checkout', 'set', '--no-cone', '--stdin'], patterns.join('\n') + '\n');
     git(root, ['checkout', '--quiet', '--detach', git(root, ['rev-parse', 'HEAD']).trim()]);
+    assert.ok(fs.existsSync(path.join(root, 'commitlint.config.js')), 'PR title rules must be present.');
     for (const file of ['Cockpit/Scripts/command_defs.lua', 'Cockpit/Scripts/generated/CockpitParams.g.lua']) {
         assert.ok(fs.existsSync(path.join(root, file)), `Missing generator output: ${file}`);
     }
@@ -75,4 +81,64 @@ test('the real sparse checkouts retain native-test configuration and DCS generat
     }
     git(root, ['sparse-checkout', 'set', '--no-cone', '--stdin'], mergePatterns.join('\n') + '\n');
     assertConfiguration();
+});
+
+test('summary requires successful checks and current open PR revisions', async () => {
+    const workflow = readWorkflow('.github/workflows/pr-native.yml');
+    const block = workflow.match(/ {10}script: \|\r?\n([\s\S]+)$/);
+    assert.ok(block, 'Summary script not found.');
+    const script = block[1].split(/\r?\n/).map(line => line.replace(/^ {12}/, '')).join('\n');
+    const expected = {number: 7, head: {sha: 'a'.repeat(40)}, base: {sha: 'b'.repeat(40)}};
+    const fresh = {...expected, state: 'open'};
+    for (const [submission, merge, current, passes] of [
+        ['success', 'success', fresh, true],
+        ['failure', 'skipped', fresh, false],
+        ['cancelled', 'cancelled', fresh, false],
+        ['success', 'unknown', fresh, false],
+        ['success', 'success', {...fresh, head: {sha: 'c'.repeat(40)}}, false],
+        ['success', 'success', {...fresh, base: {sha: 'c'.repeat(40)}}, false],
+        ['success', 'success', {...fresh, state: 'closed'}, false],
+    ]) {
+        const failures = [], rows = [], details = [];
+        const summary = {
+            addHeading() { return this; },
+            addTable(value) { rows.push(...value); return this; },
+            addDetails(...value) { details.push(value); return this; },
+            async write() {},
+        };
+        await vm.runInNewContext(`(async () => {${script}\n})()`, {
+            context: {payload: {pull_request: expected}, repo: {owner: 'owner', repo: 'repo'}},
+            github: {rest: {pulls: {get: async () => ({data: current})}}},
+            core: {summary, setFailed: message => failures.push(message)},
+            process: {env: {SUBMISSION_RESULT: submission, MERGE_RESULT: merge}},
+        });
+        assert.equal(failures.length === 0, passes, `${submission}/${merge}/${current.state}`);
+        assert.equal(rows.length, 4);
+        assert.ok(details[0][1].includes(expected.head.sha));
+        assert.ok(details[0][1].includes(expected.base.sha));
+    }
+});
+
+test('PR title input preserves shell characters and commitlint still validates format', () => {
+    const workflow = readWorkflow('.github/workflows/pr-title.yml');
+    const run = workflow.match(/ {8}run: (.*commitlint.*)/)?.[1];
+    assert.ok(run, 'Title command not found.');
+    assert.match(workflow, /PR_TITLE: \$\{\{ github\.event\.pull_request\.title \}\}/);
+    assert.ok(!run.includes('${{'));
+    const gitExec = spawnSync('git', ['--exec-path'], {encoding: 'utf8', windowsHide: true});
+    assert.equal(gitExec.status, 0);
+    const shell = process.platform === 'win32'
+        ? path.resolve(gitExec.stdout.trim(), '../../../bin/bash.exe') : 'bash';
+    for (const title of ['chore(tooling): 保留 "引號"', 'chore(tooling): $(printf EXECUTED)', 'chore(tooling): `printf EXECUTED`; $PATH']) {
+        const result = spawnSync(shell, ['--noprofile', '--norc', '-c', run.replace('./node_modules/.bin/commitlint --no-color', 'cat')],
+            {cwd: repository, env: {...process.env, PR_TITLE: title}, encoding: 'utf8', windowsHide: true, timeout: 10000});
+        assert.equal(result.status, 0, result.stderr || result.error?.message);
+        assert.equal(result.stdout.replaceAll('\r\n', '\n'), title + '\n');
+    }
+    const cli = path.join(repository, 'node_modules/@commitlint/cli/cli.js');
+    for (const [title, valid] of [['chore(tooling): 檢查文案', true], ['chore: missing scope', false]]) {
+        const result = spawnSync(process.execPath, [cli, '--no-color'],
+            {cwd: repository, input: title + '\n', encoding: 'utf8', windowsHide: true, timeout: 10000});
+        assert.equal(result.status === 0, valid, result.stdout + result.stderr);
+    }
 });

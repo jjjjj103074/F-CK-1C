@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Verify that the EFM DLL exports the recorded DCS ABI names.
 
@@ -43,7 +43,7 @@ function Find-Dumpbin {
         Sort-Object -Property LastWriteTime -Descending |
         Select-Object -First 1
     if (-not $match) {
-        throw 'dumpbin.exe was not found. Run from a Visual Studio Developer shell or pass -DumpbinPath.'
+        throw '找不到 dumpbin.exe，請指定 -DumpbinPath。'
     }
     return $match.FullName
 }
@@ -56,7 +56,7 @@ function Read-ExportNames {
 
     $output = & $ToolPath /nologo /exports $TargetDll
     if ($LASTEXITCODE -ne 0) {
-        throw "dumpbin failed with exit code $LASTEXITCODE."
+        throw "接口讀取失敗（結束碼 $LASTEXITCODE）。"
     }
 
     $names = foreach ($line in $output) {
@@ -66,7 +66,7 @@ function Read-ExportNames {
     }
     $result = @($names | Sort-Object -Unique)
     if ($result.Count -eq 0) {
-        throw "No named exports were found in $TargetDll."
+        throw "DLL 沒有具名接口：$TargetDll"
     }
     return $result
 }
@@ -80,10 +80,10 @@ if (-not $BaselinePath) {
         'src\efm\F-CK-1C_EFM\DcsBridge\EfmExports.baseline.txt'
 }
 if (-not (Test-Path -LiteralPath $DllPath)) {
-    throw "EFM DLL not found: $DllPath"
+    throw "找不到 DLL：$DllPath"
 }
 if (-not (Test-Path -LiteralPath $BaselinePath)) {
-    throw "Export baseline not found: $BaselinePath"
+    throw "找不到接口基準：$BaselinePath"
 }
 
 $resolvedDumpbin = Find-Dumpbin $DumpbinPath
@@ -97,12 +97,10 @@ $expected = @(
 $differences = @(Compare-Object -ReferenceObject $expected -DifferenceObject $actual)
 if ($differences.Count -ne 0) {
     $details = $differences | ForEach-Object {
-        $meaning = if ($_.SideIndicator -eq '<=') { 'missing' } else { 'unexpected' }
-        "$meaning export: $($_.InputObject)"
+        $meaning = if ($_.SideIndicator -eq '<=') { '缺少' } else { '多出' }
+        "${meaning}接口：$($_.InputObject)"
     }
-    throw "EFM export baseline mismatch:`n$($details -join "`n")"
+    throw "DLL 接口不符，請核對接口基準。`n$($details -join "`n")"
 }
 
-Write-Output "EFM export baseline matched: $($actual.Count) names."
-Write-Output "DLL: $DllPath"
-Write-Output "Baseline: $BaselinePath"
+Write-Output "DLL 接口一致：$($actual.Count) 個。"
