@@ -5,45 +5,32 @@
 
 ## Requirements
 
-在 Visual Studio Installer 匯入 [`.vsconfig`](../.vsconfig)。只需 Build Tools，不必安裝完整 IDE。
+依 [Microsoft 安裝指引](https://learn.microsoft.com/en-us/cpp/overview/acquire-msvc)
+安裝 Build Tools，並在 Visual Studio Installer 匯入 [`.vsconfig`](../.vsconfig)。
+VS、VS Code 與 AI 工具共用這套建置工具。
 
 | Component | Version |
 |---|---|
-| Visual Studio / Build Tools | 已驗證 2026 **18.10.3**；其他安裝需通過相同內容指紋 |
-| MSBuild | 檔案版本 **18.10.1.42706**，含建置引擎、C++ targets 與 tasks 的內容指紋 |
+| Visual Studio / Build Tools | 2026 **18.10.3**，本配方的參考安裝版本 |
+| MSBuild | 檔案版本 **18.10.1.42706** |
 | MSVC v142 x64/x86 | 14.29.30133; cl 19.29.30159.0, link 14.29.30159.0 |
-| Windows SDK | 10.0.26100.0；本配方 `rc.exe`／`mt.exe` 為 10.0.26100.8249，內容須符合指紋 |
+| Windows SDK | 10.0.26100.0 |
 | PowerShell | Windows PowerShell 5.1；腳本使用 `-NoProfile` |
 | Node.js | 22 LTS；提交／排版工具使用 `package-lock.json`，直接執行 DLL 建置腳本不需 Node.js |
 
-安裝元件 ID 不會鎖定修補版；版本目錄名稱相同也可能有不同內容。安裝後先檢查：
+從 [Microsoft 版本歷史](https://learn.microsoft.com/en-us/visualstudio/releases/2026/release-history)
+取得對應版本的 Build Tools 安裝器；已有符合版本的安裝時，匯入設定補齊元件即可。
+操作方式見 [官方 `.vsconfig` 指引](https://learn.microsoft.com/en-us/visualstudio/install/import-export-installation-configurations)。
+安裝後執行：
 
 ```powershell
 npm ci
 npm run check:efm-toolchain
 ```
 
-腳本會選擇符合配方的安裝；明確指定不相符的 MSBuild 時會報錯。
-不相符時還原安裝包；配方指紋在工具鏈更新 PR 中調整。
-
-### 固定安裝包
-
-從 [Microsoft 版本歷史](https://learn.microsoft.com/en-us/visualstudio/releases/2026/release-history)
-下載 **18.10.3 的固定版 Build Tools 安裝器**，檔名存為 `vs_buildtools.exe`。
-依 [官方離線安裝指引](https://learn.microsoft.com/en-us/visualstudio/install/create-a-network-installation-of-visual-studio)
-建立安裝包：
-
-```powershell
-$configPath = (Resolve-Path .\.vsconfig).Path
-.\vs_buildtools.exe --layout C:\EFM-BuildTools-18.10.3 --config $configPath --lang en-US
-C:\EFM-BuildTools-18.10.3\vs_buildtools.exe --layout C:\EFM-BuildTools-18.10.3 --verify
-C:\EFM-BuildTools-18.10.3\vs_buildtools.exe --noWeb --config $configPath --installPath C:\EFM-BuildTools --passive --wait --norestart
-```
-
-保存整個 layout、安裝器及 `.vsconfig`；封存後不更新該 layout。
-首次建立的安裝包需通過 `check:efm-toolchain` 與 DLL 比對，再作為團隊共用版本。
-固定版安裝器仍需這項驗證，因為 SDK／獨立元件可能有 servicing 差異。
-`--noWeb` 限制本次安裝來源；之後的 Installer／系統更新仍需自行管理。
+腳本依 [Microsoft `vswhere` 指引](https://github.com/microsoft/vswhere/wiki/Find-MSBuild)
+尋找安裝，確認 MSBuild、編譯器、連結器版本與 SDK。
+版本不符會顯示預期值與實際值；依本表安裝對應版本後重跑。
 
 ## Build
 
@@ -75,6 +62,7 @@ npm run validate:efm
 
 `git status` 應為空。`validate:efm` 保留提交 DLL，獨立重建並比對完整 SHA-256。
 要驗證既有 DLL，直接執行驗證；`build:efm` 是產生並更新 DLL 的指令。
+DLL 雜湊使用 PowerShell 官方 [`Get-FileHash`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-filehash?view=powershell-5.1)。
 
 ## Native tests
 
@@ -132,30 +120,16 @@ Formatting setup: [C++ formatting](CPP_FORMATTING.md).
 呼叫端的 `CL/_CL_/LINK/_LINK_`、工具路徑、INCLUDE／LIB 與 ForceImport 等環境設定不會傳入共用建置程序。
 直接在 VS／MSBuild 建置仍會檢查工具鏈；提交用產物使用共用腳本，以套用完整環境隔離。
 各來源檔的 PCH、輸出路徑與其他參數取自已提交的專案檔；完整指令見建置 log。
-提交用建置使用已核對的 Windows C++ targets 快照，停用其他 VS 安裝搜尋與工作負載的全域匯入。
-
-### 內容指紋範圍
-
-配方除了原有編譯器及 CRT 單檔雜湊，也檢查下列群組的相對路徑與內容：
-
-| 群組 | 範圍 |
-|---|---|
-| MSVC | `bin/Hostx64/x64`、`include`、`lib/x64` |
-| Windows SDK | 指定版本的 `Include`、`Lib/ucrt/x64`、`Lib/um/x64`、`bin/x64` |
-| MSBuild | `MSBuild/Current/Bin` 的引擎與相依檔案；原生 C++ 不使用 SDK resolvers |
-| C++ targets/tasks | `v160/v180` 核心、Windows 平台與工具集設定；以建置腳本的快照範圍為準 |
-
-群組指紋依相對路徑排序，與安裝位置、檔案時間無關。
-語系資源 `*.resources.dll` 與數字語系目錄不參與指紋；它們只影響診斷訊息。
-ASAN／LLVM 附帶工具及函式庫不參與本原生 MSVC 配方；其他工作負載的匯入設定不會複製到快照。
-Windows／.NET Framework 作業環境並未封存，最後仍以完整 DLL 雜湊一致判定重現成功。
+建置直接使用所選安裝的 Microsoft C++ targets。
+工具集與 SDK 透過 MSBuild 的 `PlatformToolset`、`VCToolsVersion`、`WindowsTargetPlatformVersion` 選用，
+方式見 [官方命令列建置指引](https://learn.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=msvc-170)。
 
 ### 更新工具鏈
 
-以獨立 PR 更新配方、安裝指引與 `.vsconfig`，並重新建立、保存通過驗證的 layout。
+以獨立 PR 更新配方、安裝指引與 `.vsconfig`。
 在開發電腦與 CI 以新配方重建並比對 DLL，再更新提交產物。
 配方差異會列入規則提醒；工具鏈更新需通過整套驗證與跨機 DLL 比對。
-GitHub runner 不提供相符內容時，CI 會明確報錯；先還原固定安裝包或審查工具鏈更新。
+GitHub runner 缺少指定版本時，安裝對應官方元件或更新工具鏈配方。
 
 Visual Studio 除錯時可能需要指定本機來源路徑，因為產物中的來源映射為 `D:\efm-repro`。
 
@@ -166,8 +140,8 @@ To register a System, add `Core/Systems/<Owner>/Entry.cpp`.
 
 Use the pinned profile and `.vsconfig`; the validated reference is VS/Build Tools
 18.10.3, MSBuild file version 18.10.1.42706, v142 14.29.30133 and SDK 10.0.26100.0.
-Content fingerprints also cover headers, x64 libraries, SDK tools, MSBuild and
-C++ build files. Matching version labels alone are insufficient.
+Install the official Build Tools and import `.vsconfig`. The version check verifies
+MSBuild, compiler and linker file versions and the requested SDK installation.
 
 For an existing commit, run `npm ci`, `npm run check:efm-toolchain`, then
 `npm run validate:efm` against its original DLL. To publish a changed DLL, use
@@ -175,7 +149,7 @@ For an existing commit, run `npm ci`, `npm run check:efm-toolchain`, then
 It rebuilds in a clean child environment, ignores automatic response files and
 isolates user imports. Logs contain the actual compiler/linker commands.
 
-Preserve a verified offline layout made with the fixed-version bootstrapper.
-The Windows/.NET host is not an archived image; a matching whole-DLL hash remains
-the acceptance criterion. Update the profile, installation recipe and DLL together
-through a reviewed PR, with cross-machine validation.
+Builds use Microsoft's installed C++ targets and the toolset/SDK versions from the
+project profile. Validation compares the whole DLL using PowerShell `Get-FileHash`,
+then checks exports, loading and native tests. Update the profile, installation
+instructions and DLL together through a PR, with cross-machine validation.

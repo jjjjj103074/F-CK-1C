@@ -26,104 +26,40 @@ try {
     $missingBaseline = Join-Path $fixtureRoot 'missing-export.txt'
     [IO.File]::WriteAllText($missingBaseline, 'ed_fm_missing_fixture_export')
     Expect-Failure 'Missing required export' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $DllPath -BaselinePath $missingBaseline } '缺少 DLL 接口'
-    $fakeTools = Join-Path $fixtureRoot 'tools\bin\Hostx64\x64'
-    [IO.Directory]::CreateDirectory($fakeTools) | Out-Null
     $realTools = (Find-EfmBuildTools $repoRoot).Toolchain
-    foreach ($name in @('cl.exe', 'link.exe')) { Copy-Item -LiteralPath (Join-Path $realTools "bin\Hostx64\x64\$name") -Destination (Join-Path $fakeTools $name) }
-    [IO.File]::WriteAllText((Join-Path $fakeTools 'c1xx.dll'), 'wrong compiler frontend')
-    Expect-Failure 'Modified compiler frontend' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot (Join-Path $fixtureRoot 'tools') } '工具鏈不符：c1xx.dll'
     $profile = Get-EfmBuildProfile $repoRoot
     $fakeSdk = Join-Path $fixtureRoot 'sdk'
-    [IO.Directory]::CreateDirectory((Join-Path $fakeSdk "Include\$($profile.EfmWindowsSdkVersion)")) | Out-Null
-    $sdkLibrary = "Lib\$($profile.EfmWindowsSdkVersion)\ucrt\x64\libucrt.lib"
-    $fakeLibrary = Join-Path $fakeSdk $sdkLibrary
-    [IO.Directory]::CreateDirectory((Split-Path -Parent $fakeLibrary)) | Out-Null
-    [IO.File]::WriteAllText($fakeLibrary, 'different SDK runtime with the same version directory')
-    Expect-Failure 'Different runtime with matching SDK version' { & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot $realTools -SdkRoot $fakeSdk } '工具鏈不符：Lib\\.*\\libucrt\.lib'
+    Expect-Failure 'Missing requested SDK' {
+        & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -ToolchainRoot $realTools -SdkRoot $fakeSdk
+    } '缺少 Windows SDK'
     $fakeInstance = Join-Path $fixtureRoot 'incompatible-vs'
     $fakeBuild = Join-Path $fakeInstance 'MSBuild\Current\Bin\MSBuild.exe'
-    $fakeToolchain = Join-Path $fakeInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)"
-    foreach ($file in @($fakeBuild)) {
-        [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
-        [IO.File]::WriteAllText($file, 'fixture placeholder; never execute')
-    }
-    $candidateTools = Join-Path $fakeToolchain 'bin\Hostx64\x64'
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $fakeBuild)) | Out-Null
+    [IO.File]::WriteAllText($fakeBuild, 'fixture placeholder; never execute')
+    $candidateTools = Join-Path $fakeInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)\bin\Hostx64\x64"
     [IO.Directory]::CreateDirectory($candidateTools) | Out-Null
-    foreach ($name in @('cl.exe', 'link.exe', 'c1xx.dll', 'c2.dll')) {
-        Copy-Item -LiteralPath (Join-Path $realTools "bin\Hostx64\x64\$name") -Destination (Join-Path $candidateTools $name)
-    }
-    $candidateRuntime = Join-Path $fakeToolchain 'lib\x64\libcmt.lib'
-    [IO.Directory]::CreateDirectory((Split-Path -Parent $candidateRuntime)) | Out-Null
-    [IO.File]::WriteAllText($candidateRuntime, 'different CRT with identical compiler tools')
+    Copy-Item -LiteralPath (Join-Path $realTools 'bin\Hostx64\x64\cl.exe') -Destination (Join-Path $candidateTools 'cl.exe')
     $realInstance = [IO.Directory]::GetParent($realTools).Parent.Parent.Parent.FullName
     $candidates = @([pscustomobject]@{ installationPath = $fakeInstance }, [pscustomobject]@{ installationPath = $realInstance })
     $selected = Select-EfmBuildTools -RepoRoot $repoRoot -Instances $candidates
-    if ($selected.Toolchain -ne $realTools) { throw 'Automatic selection did not skip an incompatible runtime installation.' }
+    if ($selected.Toolchain -ne $realTools) { throw 'Automatic selection did not skip an incompatible MSBuild version.' }
     $checks++
     Expect-Failure 'Explicit incompatible MSBuild must not fall back' {
         Select-EfmBuildTools -RepoRoot $repoRoot -Instances $candidates -MsBuildPath $fakeBuild
-    } '工具鏈不符：lib\\x64\\libcmt\.lib'
+    } '工具版本不符：MSBuild.exe'
     $profileRepo = Join-Path $fixtureRoot 'profile-repo'
     $profileFile = Join-Path $profileRepo 'src\efm\EfmBuild.props'
     [IO.Directory]::CreateDirectory((Split-Path -Parent $profileFile)) | Out-Null
     $profileXml = [xml][IO.File]::ReadAllText((Join-Path $repoRoot 'src\efm\EfmBuild.props'))
-    $profileXml.GetElementsByTagName('EfmMsBuildVersion')[0].InnerText = '0.0.0.0'
-    $profileXml.Save($profileFile)
-    Expect-Failure 'Wrong MSBuild version' {
-        & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $profileRepo -ToolchainRoot $realTools
-    } 'MSBuild 版本不符'
-    $profileXml.GetElementsByTagName('EfmMsBuildVersion')[0].InnerText = $profile.EfmMsBuildVersion
-    $profileXml.GetElementsByTagName('EfmSdkHeadersSha256')[0].InnerText = '0' * 64
-    $profileXml.Save($profileFile)
-    Expect-Failure 'Wrong SDK header fingerprint' {
-        & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $profileRepo -ToolchainRoot $realTools
-    } '工具鏈內容不符：EfmSdkHeadersSha256'
-    $fingerprintInstance = Join-Path $fixtureRoot 'fingerprint-vs'
-    $fingerprintTools = Join-Path $fingerprintInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)"
-    $fingerprintSdk = Join-Path $fixtureRoot 'fingerprint-sdk'
-    $inputs = [ordered]@{
-        EfmToolFilesSha256 = (Join-Path $fingerprintTools 'bin\Hostx64\x64\cl.exe')
-        EfmToolHeadersSha256 = (Join-Path $fingerprintTools 'include\fixture.h')
-        EfmToolLibrariesSha256 = (Join-Path $fingerprintTools 'lib\x64\fixture.lib')
-        EfmSdkHeadersSha256 = (Join-Path $fingerprintSdk "Include\$($profile.EfmWindowsSdkVersion)\um\fixture.h")
-        EfmSdkLibrariesSha256 = (Join-Path $fingerprintSdk "Lib\$($profile.EfmWindowsSdkVersion)\ucrt\x64\fixture.lib")
-        EfmSdkToolsSha256 = (Join-Path $fingerprintSdk "bin\$($profile.EfmWindowsSdkVersion)\x64\rc.exe")
-        EfmMsBuildFilesSha256 = (Join-Path $fingerprintInstance 'MSBuild\Current\Bin\MSBuild.exe')
-        EfmCppTargetsSha256 = (Join-Path $fingerprintInstance 'MSBuild\Microsoft\VC\v180\fixture.targets')
+    foreach ($entry in @(
+        @('EfmMsBuildVersion', 'MSBuild.exe'), @('EfmCompilerVersion', 'cl.exe'), @('EfmLinkerVersion', 'link.exe'))) {
+        $profileXml.GetElementsByTagName($entry[0])[0].InnerText = '0.0.0.0'
+        $profileXml.Save($profileFile)
+        Expect-Failure ('Wrong version: ' + $entry[1]) {
+            & (Join-Path $PSScriptRoot 'check_efm_toolchain.ps1') -RepoRoot $profileRepo -ToolchainRoot $realTools
+        } ('工具版本不符：' + [regex]::Escape($entry[1]))
+        $profileXml.GetElementsByTagName($entry[0])[0].InnerText = $profile[$entry[0]]
     }
-    $extraFiles = @((Join-Path $fingerprintSdk "Lib\$($profile.EfmWindowsSdkVersion)\um\x64\fixture.lib"))
-    foreach ($file in @($inputs.Values) + $extraFiles) {
-        [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
-        [IO.File]::WriteAllText($file, 'original fixture content')
-    }
-    $fingerprintArgs = @{ ToolchainRoot = $fingerprintTools; SdkRoot = $fingerprintSdk; SdkVersion = $profile.EfmWindowsSdkVersion }
-    $baseline = Get-EfmToolchainFingerprint @fingerprintArgs
-    foreach ($entry in $inputs.GetEnumerator()) {
-        [IO.File]::WriteAllText($entry.Value, 'changed content with unchanged version label')
-        $changed = Get-EfmToolchainFingerprint @fingerprintArgs
-        if ($changed[$entry.Key] -eq $baseline[$entry.Key]) { throw "Fingerprint missed $($entry.Key)." }
-        [IO.File]::WriteAllText($entry.Value, 'original fixture content')
-        $checks++
-    }
-    $addedHeader = Join-Path $fingerprintTools 'include\additional.h'
-    [IO.File]::WriteAllText($addedHeader, 'additional include')
-    if ((Get-EfmToolchainFingerprint @fingerprintArgs).EfmToolHeadersSha256 -eq $baseline.EfmToolHeadersSha256) { throw 'Fingerprint missed an added header.' }
-    Remove-Item -LiteralPath $addedHeader
-    $checks++
-    foreach ($relative in @('v170\Microsoft.Build.CppTasks.Common.dll', 'v180\ImportBefore\external.targets', 'v180\Platforms\x64\PlatformToolsets\v143\Toolset.props')) {
-        $file = Join-Path $fingerprintInstance ('MSBuild\Microsoft\VC\' + $relative)
-        [IO.Directory]::CreateDirectory((Split-Path -Parent $file)) | Out-Null
-        [IO.File]::WriteAllText($file, 'unrelated installed workload')
-    }
-    if ((Get-EfmToolchainFingerprint @fingerprintArgs).EfmCppTargetsSha256 -ne $baseline.EfmCppTargetsSha256) { throw 'Unrelated installed workloads changed the native build profile.' }
-    $checks++
-    $relocatedInstance = Join-Path $fixtureRoot 'relocated-vs'
-    $relocatedSdk = Join-Path $fixtureRoot 'relocated-sdk'
-    Copy-Item -LiteralPath $fingerprintInstance -Destination $relocatedInstance -Recurse
-    Copy-Item -LiteralPath $fingerprintSdk -Destination $relocatedSdk -Recurse
-    $relocated = Get-EfmToolchainFingerprint -ToolchainRoot (Join-Path $relocatedInstance "VC\Tools\MSVC\$($profile.EfmVCToolsVersion)") -SdkRoot $relocatedSdk -SdkVersion $profile.EfmWindowsSdkVersion
-    foreach ($name in $baseline.Keys) { if ($relocated[$name] -ne $baseline[$name]) { throw "Installation location changed $name." } }
-    $checks++
     $gitRepo = Join-Path $fixtureRoot 'merge-repo'
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $gitRepo 'tools')) | Out-Null
