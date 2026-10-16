@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
@@ -20,6 +21,20 @@ function git(root, args, input) {
     assert.equal(result.status, 0, result.stderr || result.error?.message);
     return result.stdout;
 }
+
+function gitShell() {
+    return process.platform === 'win32'
+        ? path.resolve(git(repository, ['--exec-path']).trim(), '../../../bin/bash.exe') : 'bash';
+}
+
+test('Git shell can invoke DLL hashing in Windows PowerShell', { skip: process.platform !== 'win32' }, () => {
+    const result = spawnSync(gitShell(), ['--noprofile', '--norc', '-c',
+        `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '. "./tools/efm-build-common.ps1"; Get-EfmSha256 "./bin/F-CK-1C_EFM.dll"'`],
+    { cwd: repository, env: process.env, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+    const expected = createHash('sha256').update(fs.readFileSync(path.join(repository, 'bin/F-CK-1C_EFM.dll'))).digest('hex');
+    assert.equal(result.stdout.trim().toLowerCase(), expected);
+});
 
 test('the real sparse checkouts retain native-test configuration and DCS generator fixtures', { timeout: 90000 }, context => {
     const workflowPath = '.github/workflows/pr-native.yml';
@@ -150,10 +165,7 @@ test('PR title input preserves shell characters and commitlint still validates f
     assert.ok(run, 'Title command not found.');
     assert.match(workflow, /PR_TITLE: \$\{\{ github\.event\.pull_request\.title \}\}/);
     assert.ok(!run.includes('${{'));
-    const gitExec = spawnSync('git', ['--exec-path'], {encoding: 'utf8', windowsHide: true});
-    assert.equal(gitExec.status, 0);
-    const shell = process.platform === 'win32'
-        ? path.resolve(gitExec.stdout.trim(), '../../../bin/bash.exe') : 'bash';
+    const shell = gitShell();
     for (const title of ['chore(tooling): 保留 "引號"', 'chore(tooling): $(printf EXECUTED)', 'chore(tooling): `printf EXECUTED`; $PATH']) {
         const result = spawnSync(shell, ['--noprofile', '--norc', '-c', run.replace('./node_modules/.bin/commitlint --no-color', 'cat')],
             {cwd: repository, env: {...process.env, PR_TITLE: title}, encoding: 'utf8', windowsHide: true, timeout: 10000});

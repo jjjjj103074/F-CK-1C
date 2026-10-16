@@ -10,6 +10,7 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 export function classifyRuleFile(filename) {
     const name = filename.replaceAll('\\', '/');
     if (/^\.github\/(workflows|actions)\//.test(name)) return 'CI 流程';
+    if (name === '.vsconfig') return '編譯設定';
     if (/^src\/efm\/.*\.(vcxproj|props|targets|sln)$/.test(name) || /(^|\/)Directory\.Build\.(props|targets)$/.test(name)) return '編譯設定';
     if (name === '.husky/pre-commit' || name === '.husky/commit-msg' || name === '.gitattributes' || name === '.gitignore') return '提交設定';
     if (name === 'commitlint.config.js') return '標題規則';

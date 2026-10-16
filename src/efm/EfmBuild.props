@@ -8,14 +8,7 @@
     <EfmWindowsSdkVersion>10.0.26100.0</EfmWindowsSdkVersion>
     <EfmCompilerVersion>19.29.30159.0</EfmCompilerVersion>
     <EfmLinkerVersion>14.29.30159.0</EfmLinkerVersion>
-    <EfmCompilerSha256>8E4352B523F4FF37B429AEA1D340094BE1E17BBDF4F687247FC0BE92D6EB9440</EfmCompilerSha256>
-    <EfmLinkerSha256>7D80B89E242E2AB4D002C3B3508361A45691A01BD1F4BE4D19EB765C8D319762</EfmLinkerSha256>
-    <EfmFrontendSha256>9A4005AF7B8468DDE3948F9FE7323772412F4A489D4C4FDD5F727C413F262B33</EfmFrontendSha256>
-    <EfmBackendSha256>AD3D999355C5E9CEEEBF63B4F8E00B23CBA939EA59E484E4BD2BD6AA02B0BAEC</EfmBackendSha256>
-    <EfmLibcmtSha256>EA6DE3079F96374269B3530B81166A0D25C87B92C81D686AB2BAD88C0D73DE11</EfmLibcmtSha256>
-    <EfmLibcpmtSha256>9FCFD079AE918372FBF8801BB29F592B1D24F60209AFE10E649D03F13608571F</EfmLibcpmtSha256>
-    <EfmLibvcruntimeSha256>1EB044056E692649FF362B9506F4DC12753BCE8E3EF88B1CBD0A3086D6BC7489</EfmLibvcruntimeSha256>
-    <EfmLibucrtSha256>EA2FFA5D9B1EBC3FA76F34C364471750DB8951B341DBCCBC1BEF628EF1A20E39</EfmLibucrtSha256>
+    <EfmMsBuildVersion>18.10.1.42706</EfmMsBuildVersion>
     <EfmRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..').TrimEnd('\'))</EfmRepoRoot>
     <EfmCanonicalSourceRoot>D:\efm-repro</EfmCanonicalSourceRoot>
     <VCToolsVersion>$(EfmVCToolsVersion)</VCToolsVersion>
@@ -23,6 +16,8 @@
     <WindowsTargetPlatformVersion>$(EfmWindowsSdkVersion)</WindowsTargetPlatformVersion>
     <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
     <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+    <EnableASAN>false</EnableASAN>
+    <CLRSupport>false</CLRSupport>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
