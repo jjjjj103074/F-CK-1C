@@ -1,0 +1,29 @@
+name: PowerShell 環境比較（測試用）
+on:
+  push:
+    branches: [codex/ci-env-probe-20261016]
+permissions:
+  contents: read
+jobs:
+  environment:
+    name: 同機環境比較
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            src/efm
+      - name: 比較環境變數
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/efm_env_probe.ps1 -OutputDirectory "$env:RUNNER_TEMP\efm-env-probe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: efm-env-probe
+          retention-days: 3
+          path: ${{ runner.temp }}/efm-env-probe/
