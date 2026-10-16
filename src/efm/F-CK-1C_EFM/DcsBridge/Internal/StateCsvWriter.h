@@ -89,7 +89,7 @@ private:
 	void start_worker();
 	void worker_loop();
 	void process_record(const TelemetryRecord& record);
-	bool retry_file(const TelemetryRecord& record);
+	FILE* retry_file(const TelemetryRecord& record);
 	bool write_header();
 	void flush_if_due(bool force);
 	void fail_current_flight(const Failure& failure);

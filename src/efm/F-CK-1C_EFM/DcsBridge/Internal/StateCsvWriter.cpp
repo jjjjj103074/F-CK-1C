@@ -418,7 +418,8 @@ void StateCsvWriter::process_record(const TelemetryRecord& record)
 	{
 		return;
 	}
-	if (file_ == nullptr && !retry_file(record))
+	FILE* const file = file_ != nullptr ? file_ : retry_file(record);
+	if (file == nullptr)
 	{
 		return;
 	}
@@ -428,7 +429,7 @@ void StateCsvWriter::process_record(const TelemetryRecord& record)
 		fail_current_flight({ "format_row", EINVAL, record.output.simulation_time_s, record.flight_id });
 		return;
 	}
-	if (fwrite(row.data.data(), 1, row.size, file_) != row.size)
+	if (fwrite(row.data.data(), 1, row.size, file) != row.size)
 	{
 		fail_current_flight({ "write_row", io_error_code(), record.output.simulation_time_s, record.flight_id });
 		return;
@@ -437,7 +438,7 @@ void StateCsvWriter::process_record(const TelemetryRecord& record)
 	last_written_record_ = record;
 }
 
-bool StateCsvWriter::retry_file(const TelemetryRecord& record)
+FILE* StateCsvWriter::retry_file(const TelemetryRecord& record)
 {
 	if (!rotation_complete_)
 	{
@@ -449,7 +450,7 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 			                      location.error_code,
 			                      record.output.simulation_time_s,
 			                      record.flight_id });
-			return false;
+			return nullptr;
 		}
 		rotation_complete_ = true;
 	}
@@ -457,18 +458,18 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 	if (file_ == nullptr)
 	{
 		fail_current_flight({ "open", io_error_code(), record.output.simulation_time_s, record.flight_id });
-		return false;
+		return nullptr;
 	}
 	if (!header_written_ && !write_header())
 	{
 		fail_current_flight({ "write_header", io_error_code(), record.output.simulation_time_s, record.flight_id });
-		return false;
+		return nullptr;
 	}
 	header_written_ = true;
 	failed_flight_id_ = 0;
 	last_error_code_.store(0);
 	ready_.store(true);
-	return true;
+	return file_;
 }
 
 bool StateCsvWriter::write_header()

@@ -234,8 +234,12 @@ void test_failure_report_and_next_start_retry(Tests::Context& context)
 	const std::string error = TestFiles::read_text_while_open(event_path);
 	TEST_EXPECT(context, error.find("[ERROR] csv operation=remove_old path=") != std::string::npos);
 	TEST_EXPECT(context, error.find(" os_error=") != std::string::npos);
-	std::filesystem::remove(blocking_old);
 	Core::FrameOutput output;
+	writer.publish_start(output);
+	TEST_EXPECT(context, wait_for_lines(event_path, line_count(error) + 1));
+	TEST_EXPECT(context, !writer.is_ready());
+	TEST_EXPECT(context, writer.last_error_code() != 0);
+	std::filesystem::remove(blocking_old);
 	writer.publish_start(output);
 	const auto active = log_directory / "fck1c_state.csv";
 	TEST_EXPECT(context, wait_for_lines(active, 2));
