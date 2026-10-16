@@ -1,0 +1,47 @@
+name: 建置耗時比較（測試用）
+
+on:
+  push:
+    branches: [codex/ci-test-pr-20261014]
+    paths:
+      - .github/workflows/efm-build-benchmark.yml
+      - tools/efm-benchmark/**
+
+permissions:
+  contents: read
+
+jobs:
+  comparison:
+    name: 同機建置比較
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 75
+    steps:
+      - name: 取出測試版本
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/efm/
+            /tools/
+            /FM/
+            /Cockpit/
+            /Input/
+            /bin/F-CK-1C_EFM.dll
+            /.gitattributes
+            /.gitignore
+      - name: 比較建置流程
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/efm-benchmark/compare.ps1 -OutputDirectory "$env:RUNNER_TEMP\efm-comparison"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 保存比較紀錄
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: efm-build-comparison
+          retention-days: 3
+          path: |
+            ${{ runner.temp }}/efm-comparison/**/*.json
+            ${{ runner.temp }}/efm-comparison/**/*.md
+            ${{ runner.temp }}/efm-comparison/**/*.log

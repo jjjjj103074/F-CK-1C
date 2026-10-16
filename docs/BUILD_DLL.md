@@ -87,7 +87,7 @@ DLL 雜湊使用 PowerShell 官方 [`Get-FileHash`](https://learn.microsoft.com/
 | `./tools/test_dcs_id_generator.ps1` | Generated DCS identifiers |
 
 驗證報告位於 `tmp/pr-validation/`；CLI 建置紀錄預設位於 `tmp/efm-build/`。
-`dll-build.log`／`tests-build.log` 保留實際編譯與連結指令，供比較參數。
+`dll-build.log`／`tests-build.log` 保留實際編譯、連結指令與各項工作耗時，供比較參數及定位效能問題。
 接口變更需一起更新來源、接口基準與 DCS 整合。CI 設定見 [PR 驗證](PR_VALIDATION.md)。
 
 ## Commit hook
@@ -111,14 +111,14 @@ Formatting setup: [C++ formatting](CPP_FORMATTING.md).
 | 建置 | `/t:Rebuild /p:Configuration=Release /p:Platform=x64`，x64 主機工具 |
 | C++ | C++17、UTF-8、`/O2 /Oi /GL /EHsc /MT /GS /Gy /fp:precise` |
 | 定義 | DLL 使用專案檔的 `WIN32/NDEBUG/_WINDOWS/_USRDLL/F_CK_1C_EFM_EXPORTS` 與 Unicode 定義 |
-| 工具功能 | 原生 MSVC；ASAN、CLR 與 vcpkg 停用 |
+| 工具功能 | 原生 MSVC；ASAN 與 CLR 停用 |
 | 可重現輸出 | `/Brepro /experimental:deterministic`、來源映射為 `D:\efm-repro`、PDB 僅記錄檔名 |
-| MSBuild | `/noAutoResponse /nr:false /p:UseEnv=false /p:VcpkgEnabled=false /m` |
-| 個人設定 | 使用獨立子程序與白名單環境；固定 PATH，直接呼叫指定 MSBuild |
-| 匯入 | 停用 Directory.Build.props／targets；使用空的 MSBuild 使用者匯入目錄；專案不匯入 user.props |
+| MSBuild | `/noAutoResponse /p:UseEnv=false /m`；程序重用採預設設定 |
+| 初始化 | 使用所選安裝的 `VsDevCmd.bat`，指定 x64、工具集與 SDK，清除 `CL/_CL_/LINK/_LINK_` |
+| 匯入 | 停用 Directory.Build.props／targets；專案不匯入 user.props |
 
-呼叫端的 `CL/_CL_/LINK/_LINK_`、工具路徑、INCLUDE／LIB 與 ForceImport 等環境設定不會傳入共用建置程序。
-直接在 VS／MSBuild 建置仍會檢查工具鏈；提交用產物使用共用腳本，以套用完整環境隔離。
+初始化由 Microsoft 腳本設定工具環境；共用建置指令清除額外編譯／連結參數，並停用自動讀取預設參數檔。
+直接在 VS／MSBuild 建置仍會檢查工具鏈；提交用產物使用共用腳本，以套用相同初始化與建置參數。
 各來源檔的 PCH、輸出路徑與其他參數取自已提交的專案檔；完整指令見建置 log。
 建置直接使用所選安裝的 Microsoft C++ targets。
 工具集與 SDK 透過 MSBuild 的 `PlatformToolset`、`VCToolsVersion`、`WindowsTargetPlatformVersion` 選用，
@@ -146,8 +146,9 @@ MSBuild, compiler and linker file versions and the requested SDK installation.
 For an existing commit, run `npm ci`, `npm run check:efm-toolchain`, then
 `npm run validate:efm` against its original DLL. To publish a changed DLL, use
 `npm run build:efm`. All editors use this shared command for submitted artifacts.
-It rebuilds in a clean child environment, ignores automatic response files and
-isolates user imports. Logs contain the actual compiler/linker commands.
+It initializes the selected tools with Microsoft's `VsDevCmd.bat`, clears extra
+compiler/linker flags and ignores automatic response files. Output is streamed;
+logs contain the actual compiler/linker commands and task timings.
 
 Builds use Microsoft's installed C++ targets and the toolset/SDK versions from the
 project profile. Validation compares the whole DLL using PowerShell `Get-FileHash`,
