@@ -59,26 +59,20 @@ AircraftDataSnapshot::AircraftDataSnapshot(const Storage& storage)
 {
 }
 
-const AircraftDataValue& AircraftDataSnapshot::read_value(const AircraftDataDescriptor& descriptor) const
+void AircraftDataSnapshot::validate_read_key(const AircraftDataDescriptor& descriptor)
 {
 	Detail::validate_key(descriptor);
-	const auto& value = storage_[Detail::slot(descriptor.id)];
-	if (!value)
-	{
-		throw std::logic_error(std::string("AircraftData value is not initialized: ") + descriptor.name);
-	}
-	return *value;
 }
 
 bool AircraftDataSnapshot::has_value(const AircraftDataDescriptor& descriptor) const
 {
 	Detail::validate_key(descriptor);
-	return storage_[Detail::slot(descriptor.id)].has_value();
+	return storage_.has(Detail::slot(descriptor.id));
 }
 
-void AircraftDataSnapshot::throw_type_error(const char* name)
+void AircraftDataSnapshot::throw_uninitialized(const char* name)
 {
-	throw std::logic_error(std::string("AircraftData stored type mismatch: ") + name);
+	throw std::logic_error(std::string("AircraftData value is not initialized: ") + name);
 }
 
 AircraftDataView::AircraftDataView(const AircraftDataSnapshot& snapshot, const ReadableMask& readable)
@@ -104,10 +98,7 @@ void SystemResult::activate_publications(const std::array<bool, kAircraftDataSlo
 void SystemResult::clear()
 {
 	writable_.fill(false);
-	for (auto& value : pending_)
-	{
-		value.reset();
-	}
+	pending_.clear();
 }
 
 void SystemResult::publish_value(const AircraftDataDescriptor& descriptor, const AircraftDataValue& value)
@@ -118,11 +109,11 @@ void SystemResult::publish_value(const AircraftDataDescriptor& descriptor, const
 	{
 		throw std::logic_error(std::string("System published undeclared AircraftData: ") + descriptor.name);
 	}
-	if (pending_[index])
+	if (pending_.has(index))
 	{
 		throw std::logic_error(std::string("System published AircraftData twice in one step: ") + descriptor.name);
 	}
-	pending_[index] = value;
+	pending_.assign(value);
 }
 }
 }

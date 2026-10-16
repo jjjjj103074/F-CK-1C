@@ -183,13 +183,13 @@ SystemPipeline::Implementation::Implementation(const FlightSetupContext& context
 	writers.fill(kNoAircraftDataWriter);
 	const std::size_t frame_input_slot = slot(AircraftDataId::FrameInput);
 	writers[frame_input_slot] = kExternalAircraftDataWriter;
-	committed[frame_input_slot] = FrameInput{};
+	committed.get<FrameInput>() = FrameInput{};
 	const std::size_t observation_slot = slot(AircraftDataId::AircraftObservation);
 	writers[observation_slot] = kExternalAircraftDataWriter;
-	committed[observation_slot] = AircraftObservation{};
+	committed.get<AircraftObservation>() = AircraftObservation{};
 	const std::size_t flight_control_observation_slot = slot(AircraftDataId::FlightControlObservation);
 	writers[flight_control_observation_slot] = kExternalAircraftDataWriter;
-	committed[flight_control_observation_slot] = FlightControlObservation{};
+	committed.get<FlightControlObservation>() = FlightControlObservation{};
 	create_systems(context, std::move(catalog));
 	collect_declarations();
 	validate_and_commit_setup();
@@ -305,7 +305,7 @@ void SystemPipeline::Implementation::validate_publication(Storage& initial,
 		}
 		writers[data_slot] = static_cast<int>(system_index);
 		runtime.publications[data_slot] = true;
-		initial[data_slot] = declaration.initial;
+		initial.initialize(data_slot, declaration.initial);
 	}
 }
 
@@ -334,7 +334,7 @@ void SystemPipeline::Implementation::validate_read(const Storage& initial,
 		throw std::logic_error(
 		    system_error(runtime.setup.system_id, "missing AircraftData provider: " + declaration.name));
 	}
-	if (declaration.initial == InitialValueRequirement::Required && !initial[data_slot])
+	if (declaration.initial == InitialValueRequirement::Required && !initial.has(data_slot))
 	{
 		throw std::logic_error(
 		    system_error(runtime.setup.system_id, "required AircraftData has no initial value: " + declaration.name));
@@ -435,12 +435,11 @@ AircraftDataSnapshot SystemPipeline::Implementation::step(const SystemFrameInput
 		throw std::logic_error("SystemPipeline target time must be monotonic.");
 	}
 	Storage next = committed;
-	next[slot(AircraftDataId::FrameInput)] = input.frame;
-	next[slot(AircraftDataId::AircraftObservation)] = input.observation;
-	next[slot(AircraftDataId::FlightControlObservation)] =
-	    make_flight_control_observation(input.observation,
-	                                    input.frame.cockpit.pressure_altitude,
-	                                    input.frame.cockpit.magnetic_heading);
+	next.get<FrameInput>() = input.frame;
+	next.get<AircraftObservation>() = input.observation;
+	next.get<FlightControlObservation>() = make_flight_control_observation(input.observation,
+	                                                                       input.frame.cockpit.pressure_altitude,
+	                                                                       input.frame.cockpit.magnetic_heading);
 	SystemSchedule next_schedule = schedule;
 	while (next_schedule.has_due(input.target_time))
 	{
@@ -476,13 +475,7 @@ void SystemPipeline::Implementation::run_batch(const ScheduledSystemBatch& batch
 
 void SystemPipeline::Implementation::commit_batch(Storage& next)
 {
-	for (std::size_t index = 0; index < kAircraftDataSlotCount; ++index)
-	{
-		if (pending_result.pending_[index])
-		{
-			next[index] = pending_result.pending_[index];
-		}
-	}
+	pending_result.pending_.commit_to(next);
 }
 
 SystemPipeline::SystemPipeline(const FlightSetupContext& setup)
@@ -549,7 +542,7 @@ FuelManagementHandlers& SystemPipeline::Implementation::require_fuel_management(
 
 void SystemPipeline::Implementation::commit_current_fuel_data()
 {
-	committed[slot(AircraftDataId::FuelData)] = require_fuel_management().current_data();
+	committed.get<FuelData>() = require_fuel_management().current_data();
 }
 
 FlightFuelState SystemPipeline::fuel_state() const

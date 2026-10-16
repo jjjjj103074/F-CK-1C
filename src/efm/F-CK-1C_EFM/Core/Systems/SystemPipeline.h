@@ -2,6 +2,7 @@
 
 #include "System.h"
 #include "../Contracts/AircraftData.h"
+#include "AircraftDataStorage.h"
 
 #include <array>
 #include <cstddef>
@@ -63,13 +64,13 @@ class AircraftDataSnapshot final
 public:
 	template <typename T> const T& read(const AircraftDataKey<T>& key) const
 	{
-		const AircraftDataValue& value = read_value({ key.id, typeid(T), key.name });
-		const T* typed = std::get_if<T>(&value);
-		if (typed == nullptr)
+		validate_read_key({ key.id, typeid(T), key.name });
+		const std::optional<T>& value = storage_.get<T>();
+		if (!value)
 		{
-			throw_type_error(key.name);
+			throw_uninitialized(key.name);
 		}
-		return *typed;
+		return *value;
 	}
 
 	template <typename T> bool has(const AircraftDataKey<T>& key) const
@@ -78,13 +79,13 @@ public:
 	}
 
 private:
-	using Storage = std::array<std::optional<AircraftDataValue>, kAircraftDataSlotCount>;
+	using Storage = Detail::AircraftDataStorage;
 
 	explicit AircraftDataSnapshot(const Storage& storage);
 
-	const AircraftDataValue& read_value(const AircraftDataDescriptor& descriptor) const;
+	static void validate_read_key(const AircraftDataDescriptor& descriptor);
 	bool has_value(const AircraftDataDescriptor& descriptor) const;
-	[[noreturn]] static void throw_type_error(const char* name);
+	[[noreturn]] static void throw_uninitialized(const char* name);
 
 	Storage storage_;
 
@@ -127,7 +128,7 @@ public:
 	}
 
 private:
-	using PendingStorage = std::array<std::optional<AircraftDataValue>, kAircraftDataSlotCount>;
+	using PendingStorage = Detail::AircraftDataStorage;
 
 	void activate_publications(const std::array<bool, kAircraftDataSlotCount>& writable);
 	void clear();
