@@ -50,10 +50,10 @@ namespace Internal
 {
 BridgeContext::BridgeContext(const BridgeContextConfig& config)
     : module_paths_(make_module_paths(config.path_source)),
-      event_log_(module_paths_.mod_root_path),
-      state_csv_writer_(module_paths_.mod_root_path, event_log_),
+      event_log_(module_paths_.mod_root_path.c_str()),
+      state_csv_writer_(module_paths_.mod_root_path.c_str(), event_log_),
       debug_telemetry_hub_(Core::DebugTelemetryPublishErrorPolicy::IsolateAndReport),
-      debug_csv_writer_(module_paths_.mod_root_path, event_log_, debug_telemetry_hub_),
+      debug_csv_writer_(module_paths_.mod_root_path.c_str(), event_log_, debug_telemetry_hub_),
       event_reporter_(event_log_, output_store_),
       param_exporter_(event_reporter_),
       cockpit_api_(make_cockpit_api(config.cockpit_api_provider)),
@@ -63,7 +63,7 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
       carrier_bridge_(make_carrier_config()),
       core_(make_core(config.core_factory, debug_telemetry_hub_))
 {
-	Configuration::initialize(module_paths_.mod_root_path[0] == '\0'
+	Configuration::initialize(module_paths_.mod_root_path.empty()
 	                              ? std::filesystem::path{}
 	                              : std::filesystem::path(module_paths_.mod_root_path) / "FM",
 	                          [this](const Configuration::Diagnostic& diagnostic)

@@ -1,13 +1,11 @@
 #pragma once
 
-#include <cstddef>
+#include <string>
 
 namespace DcsBridge
 {
 namespace Internal
 {
-inline constexpr std::size_t kLogFilePathCapacity = 1024;
-
 enum class LogFileOperation
 {
 	None,
@@ -21,7 +19,7 @@ const char* log_file_operation_name(LogFileOperation operation);
 
 struct LogFilePreparation
 {
-	char active_path[kLogFilePathCapacity] = {};
+	std::string active_path;
 	bool ready = false;
 	int error_code = 0;
 	LogFileOperation failed_operation = LogFileOperation::None;

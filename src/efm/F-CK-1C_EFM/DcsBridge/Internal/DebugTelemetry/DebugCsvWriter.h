@@ -120,8 +120,8 @@ private:
 
 	EventLog& event_log_;
 	DebugTelemetryHub& hub_;
-	char module_root_[kLogFilePathCapacity] = {};
-	char active_path_[kLogFilePathCapacity] = {};
+	std::string module_root_;
+	std::string active_path_;
 	std::vector<Core::DebugTelemetryChannelDescriptor> schema_;
 	LatestDebugBatchMailbox mailbox_;
 	std::mutex publication_mutex_;

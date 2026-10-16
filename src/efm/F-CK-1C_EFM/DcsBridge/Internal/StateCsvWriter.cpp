@@ -310,9 +310,9 @@ FormattedStateCsvRow format_state_csv_row(const TelemetryRecord& record)
 
 StateCsvWriter::StateCsvWriter(const char* module_root, EventLog& event_log)
     : event_log_(event_log),
+      module_root_(module_root ? module_root : ""),
       last_flush_time_(std::chrono::steady_clock::now())
 {
-	Common::copy_path(module_root_, sizeof(module_root_), module_root);
 	initialize_execution_file();
 	start_worker();
 }
@@ -354,15 +354,15 @@ int StateCsvWriter::last_error_code() const
 
 void StateCsvWriter::initialize_execution_file()
 {
-	const LogFilePreparation location = prepare_rotating_log_file(module_root_, kStateCsvFileName);
-	Common::copy_path(active_path_, sizeof(active_path_), location.active_path);
+	const LogFilePreparation location = prepare_rotating_log_file(module_root_.c_str(), kStateCsvFileName);
+	active_path_ = location.active_path;
 	if (!location.ready)
 	{
 		report_error({ log_file_operation_name(location.failed_operation), location.error_code, std::nullopt, 0 });
 		return;
 	}
 	rotation_complete_ = true;
-	file_ = _fsopen(active_path_, "wb", _SH_DENYNO);
+	file_ = _fsopen(active_path_.c_str(), "wb", _SH_DENYNO);
 	if (file_ == nullptr)
 	{
 		report_error({ "open", io_error_code(), std::nullopt, 0 });
@@ -441,8 +441,8 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 {
 	if (!rotation_complete_)
 	{
-		const LogFilePreparation location = prepare_rotating_log_file(module_root_, kStateCsvFileName);
-		Common::copy_path(active_path_, sizeof(active_path_), location.active_path);
+		const LogFilePreparation location = prepare_rotating_log_file(module_root_.c_str(), kStateCsvFileName);
+		active_path_ = location.active_path;
 		if (!location.ready)
 		{
 			fail_current_flight({ log_file_operation_name(location.failed_operation),
@@ -453,7 +453,7 @@ bool StateCsvWriter::retry_file(const TelemetryRecord& record)
 		}
 		rotation_complete_ = true;
 	}
-	file_ = _fsopen(active_path_, header_written_ ? "ab" : "wb", _SH_DENYNO);
+	file_ = _fsopen(active_path_.c_str(), header_written_ ? "ab" : "wb", _SH_DENYNO);
 	if (file_ == nullptr)
 	{
 		fail_current_flight({ "open", io_error_code(), record.output.simulation_time_s, record.flight_id });
@@ -517,7 +517,7 @@ void StateCsvWriter::report_error(const Failure& failure)
 	         sizeof(message),
 	         "csv operation=%s path=%s os_error=%d",
 	         failure.operation ? failure.operation : "unknown",
-	         active_path_[0] != '\0' ? active_path_ : "<unresolved>",
+	         !active_path_.empty() ? active_path_.c_str() : "<unresolved>",
 	         failure.error_code);
 	(void)event_log_.write({ EventLevel::Error, failure.simulation_time_s, message });
 }

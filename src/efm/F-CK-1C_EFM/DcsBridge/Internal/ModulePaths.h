@@ -1,16 +1,19 @@
 #pragma once
 
 #include "../../Common/PathUtils.h"
+#include <limits>
+#include <string>
+#include <utility>
 #include <windows.h>
 
 namespace DcsBridge
 {
-static const size_t kModulePathMax = 1024;
+inline constexpr std::size_t kInitialModulePathCapacity = 1024;
 
 struct ModulePaths
 {
-	char mod_root_path[kModulePathMax];
-	char fm_config_path[kModulePathMax];
+	std::string mod_root_path;
+	std::string fm_config_path;
 	bool initialized;
 };
 
@@ -20,47 +23,45 @@ struct ModulePathSource
 	const void* module_address;
 };
 
-inline void set_project_paths_from_config(ModulePaths& paths, const char* cfg_path)
+inline void set_project_paths_from_config(ModulePaths& paths, const std::string& cfg_path)
 {
-	if (!cfg_path || cfg_path[0] == '\0')
+	if (cfg_path.empty())
 	{
 		return;
 	}
 
-	Common::copy_path(paths.fm_config_path, sizeof(paths.fm_config_path), cfg_path);
+	paths.fm_config_path = cfg_path;
 	Common::normalize_path_separators(paths.fm_config_path);
 
-	char fm_dir[kModulePathMax];
-	Common::copy_path(fm_dir, sizeof(fm_dir), paths.fm_config_path);
-	Common::path_dirname(fm_dir, kModulePathMax);
+	std::string fm_dir = paths.fm_config_path;
+	Common::path_dirname(fm_dir);
 
 	if (Common::path_has_component_suffix(fm_dir, "FM"))
 	{
-		Common::copy_path(paths.mod_root_path, sizeof(paths.mod_root_path), fm_dir);
-		Common::path_dirname(paths.mod_root_path, kModulePathMax);
+		paths.mod_root_path = fm_dir;
+		Common::path_dirname(paths.mod_root_path);
 	}
 	else
 	{
-		Common::copy_path(paths.mod_root_path, sizeof(paths.mod_root_path), fm_dir);
+		paths.mod_root_path = fm_dir;
 	}
 }
 
-inline bool try_set_mod_root(ModulePaths& paths, const char* root)
+inline bool try_set_mod_root(ModulePaths& paths, const std::string& root)
 {
-	char cfg_path[kModulePathMax];
-	Common::build_path({ cfg_path, sizeof(cfg_path) }, { root, "FM\\config.lua" });
+	const std::string cfg_path = Common::build_path({ root.c_str(), "FM\\config.lua" });
 	if (!Common::path_file_exists(cfg_path))
 	{
 		return false;
 	}
 
-	Common::copy_path(paths.mod_root_path, sizeof(paths.mod_root_path), root);
+	paths.mod_root_path = root;
 	Common::normalize_path_separators(paths.mod_root_path);
-	Common::copy_path(paths.fm_config_path, sizeof(paths.fm_config_path), cfg_path);
+	paths.fm_config_path = cfg_path;
 	return true;
 }
 
-inline bool current_module_directory(char* output, const void* module_address)
+inline bool current_module_directory(std::string& output, const void* module_address)
 {
 	HMODULE module = nullptr;
 	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -69,23 +70,36 @@ inline bool current_module_directory(char* output, const void* module_address)
 	{
 		return false;
 	}
-	char module_path[kModulePathMax];
-	const DWORD length = GetModuleFileNameA(module, module_path, static_cast<DWORD>(sizeof(module_path)));
-	if (length == 0 || length >= sizeof(module_path))
+	std::string module_path(kInitialModulePathCapacity, '\0');
+	while (true)
 	{
-		return false;
+		const DWORD length = GetModuleFileNameA(module, module_path.data(), static_cast<DWORD>(module_path.size()));
+		if (length == 0)
+		{
+			return false;
+		}
+		if (length < module_path.size())
+		{
+			module_path.resize(length);
+			break;
+		}
+		if (module_path.size() > (std::numeric_limits<DWORD>::max)() / 2)
+		{
+			return false;
+		}
+		module_path.resize(module_path.size() * 2);
 	}
 	Common::normalize_path_separators(module_path);
-	Common::copy_path(output, kModulePathMax, module_path);
-	Common::path_dirname(output, kModulePathMax);
+	Common::path_dirname(module_path);
+	output = std::move(module_path);
 	return true;
 }
 
-inline void normalize_module_root_candidate(char* root)
+inline void normalize_module_root_candidate(std::string& root)
 {
 	if (Common::path_has_component_suffix(root, "bin"))
 	{
-		Common::path_dirname(root, kModulePathMax);
+		Common::path_dirname(root);
 		return;
 	}
 	const bool legacy_build_folder = Common::path_has_component_suffix(root, "vc100.debug") ||
@@ -94,24 +108,23 @@ inline void normalize_module_root_candidate(char* root)
 	{
 		return;
 	}
-	Common::path_dirname(root, kModulePathMax);
-	Common::path_dirname(root, kModulePathMax);
-	Common::path_dirname(root, kModulePathMax);
+	Common::path_dirname(root);
+	Common::path_dirname(root);
+	Common::path_dirname(root);
 }
 
-inline bool try_module_directory_candidates(ModulePaths& paths, const char* module_dir)
+inline bool try_module_directory_candidates(ModulePaths& paths, const std::string& module_dir)
 {
-	char root[kModulePathMax];
-	Common::copy_path(root, sizeof(root), module_dir);
+	std::string root = module_dir;
 	normalize_module_root_candidate(root);
 	if (try_set_mod_root(paths, root))
 	{
 		return true;
 	}
-	Common::copy_path(root, sizeof(root), module_dir);
-	Common::path_dirname(root, kModulePathMax);
-	Common::path_dirname(root, kModulePathMax);
-	Common::path_dirname(root, kModulePathMax);
+	root = module_dir;
+	Common::path_dirname(root);
+	Common::path_dirname(root);
+	Common::path_dirname(root);
 	return try_set_mod_root(paths, root);
 }
 
@@ -127,7 +140,7 @@ inline void initialize_project_paths(ModulePaths& paths, const void* module_addr
 		set_project_paths_from_config(paths, paths.fm_config_path);
 		return;
 	}
-	char module_dir[kModulePathMax];
+	std::string module_dir;
 	if (!module_address || !current_module_directory(module_dir, module_address))
 	{
 		return;

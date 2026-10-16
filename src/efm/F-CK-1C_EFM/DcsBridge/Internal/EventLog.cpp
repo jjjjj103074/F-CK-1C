@@ -77,7 +77,7 @@ bool EventLog::initialize(const char* module_root)
 		set_error(location.error_code);
 		return false;
 	}
-	file_ = _fsopen(location.active_path, "wb", _SH_DENYNO);
+	file_ = _fsopen(location.active_path.c_str(), "wb", _SH_DENYNO);
 	if (file_ == nullptr)
 	{
 		set_error(errno);

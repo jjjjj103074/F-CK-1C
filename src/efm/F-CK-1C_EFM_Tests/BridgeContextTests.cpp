@@ -130,6 +130,17 @@ void release_flight(DcsBridge::Internal::BridgeContext& context)
 	context.output_store().mark_released();
 }
 
+void test_module_paths_preserve_long_config_paths(Tests::Context& tests)
+{
+	const std::string root = "C:\\" + std::string(1200, 'x');
+	const std::string config_path = root + "\\FM\\config.lua";
+	DcsBridge::ModulePaths paths = { "", "", false };
+	DcsBridge::configure_module_paths(paths, { config_path.c_str(), nullptr });
+	TEST_EXPECT(tests, paths.initialized);
+	TEST_EXPECT(tests, paths.mod_root_path == root);
+	TEST_EXPECT(tests, paths.fm_config_path == config_path);
+}
+
 void test_first_callback_initializes_once(Tests::Context& tests)
 {
 	TestFiles::TemporaryDirectory first_root("bc1");
@@ -491,6 +502,7 @@ void test_configuration_error_survives_failed_restart(Tests::Context& tests)
 
 void run_bridge_context_tests(Tests::Context& context)
 {
+	test_module_paths_preserve_long_config_paths(context);
 	test_first_callback_initializes_once(context);
 	test_files_ready_before_flight(context);
 	test_debug_tools_share_core_channels(context);

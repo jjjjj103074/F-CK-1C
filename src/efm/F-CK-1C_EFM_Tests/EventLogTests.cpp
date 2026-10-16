@@ -3,10 +3,12 @@
 
 #include "DcsBridge/Internal/EfmEventReporter.h"
 #include "DcsBridge/Internal/EventLog.h"
+#include "DcsBridge/Internal/LogFileLifecycle.h"
 #include "DcsBridge/Internal/RuntimeDiagnostics.h"
 
 #include <atomic>
 #include <cctype>
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -147,6 +149,18 @@ void test_open_failure_is_exposed(Tests::Context& context)
 	TEST_EXPECT(context, unresolved_path_log.last_error_code() != 0);
 }
 
+void test_rotation_rejects_overlong_file_names(Tests::Context& context)
+{
+	TestFiles::TemporaryDirectory root;
+	const std::string file_name(252, 'x');
+	const auto location =
+	    DcsBridge::Internal::prepare_rotating_log_file(root.path().string().c_str(), file_name.c_str());
+	TEST_EXPECT(context, !location.ready);
+	TEST_EXPECT(context, location.failed_operation == DcsBridge::Internal::LogFileOperation::ResolvePath);
+	TEST_EXPECT(context, location.error_code == ENAMETOOLONG);
+	TEST_EXPECT(context, std::filesystem::path(location.active_path) == root.path() / "log" / file_name);
+}
+
 void test_error_messages_include_required_parameters(Tests::Context& context)
 {
 	char message[256];
@@ -276,6 +290,7 @@ void run_event_log_tests(Tests::Context& context)
 	test_rotation_format_and_external_read(context);
 	test_concurrent_writes_are_complete(context);
 	test_open_failure_is_exposed(context);
+	test_rotation_rejects_overlong_file_names(context);
 	test_error_messages_include_required_parameters(context);
 	test_reporter_writes_required_error_context(context);
 	test_reporter_writes_boundary_and_recovery_events(context);

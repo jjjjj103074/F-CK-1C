@@ -160,9 +160,9 @@ Core::DebugSimulationTime debug_time_from_seconds(double simulation_time_s)
 DebugCsvWriter::DebugCsvWriter(const char* module_root, EventLog& event_log, DebugTelemetryHub& hub)
     : event_log_(event_log),
       hub_(hub),
+      module_root_(module_root ? module_root : ""),
       last_flush_time_(std::chrono::steady_clock::now())
 {
-	Common::copy_path(module_root_, sizeof(module_root_), module_root);
 }
 
 DebugCsvWriter::~DebugCsvWriter()
@@ -247,8 +247,8 @@ bool DebugCsvWriter::prepare_file()
 {
 	if (rotation_complete_)
 		return true;
-	const LogFilePreparation location = prepare_rotating_log_file(module_root_, kDebugCsvFileName);
-	Common::copy_path(active_path_, sizeof(active_path_), location.active_path);
+	const LogFilePreparation location = prepare_rotating_log_file(module_root_.c_str(), kDebugCsvFileName);
+	active_path_ = location.active_path;
 	if (!location.ready)
 	{
 		report_error({ Operation::LogFileLifecycle,
@@ -265,7 +265,7 @@ bool DebugCsvWriter::prepare_file()
 
 bool DebugCsvWriter::open_file()
 {
-	file_ = _fsopen(active_path_, header_written_ ? "ab" : "wb", _SH_DENYNO);
+	file_ = _fsopen(active_path_.c_str(), header_written_ ? "ab" : "wb", _SH_DENYNO);
 	if (file_ != nullptr)
 		return true;
 	report_error({ Operation::Open, io_error_code(), std::nullopt, current_flight_id_ });
@@ -424,7 +424,7 @@ void DebugCsvWriter::report_error(const Failure& failure)
 	         sizeof(message),
 	         "debug_csv operation=%s path=%s os_error=%d detail=%s",
 	         operation_name(failure.operation, failure.lifecycle_operation),
-	         active_path_[0] == '\0' ? "<unresolved>" : active_path_,
+	         active_path_.empty() ? "<unresolved>" : active_path_.c_str(),
 	         failure.error_code,
 	         detail);
 	(void)event_log_.write({ EventLevel::Error, failure.simulation_time_s, message });

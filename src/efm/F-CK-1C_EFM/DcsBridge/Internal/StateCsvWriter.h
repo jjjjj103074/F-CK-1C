@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <thread>
 
 namespace DcsBridge
@@ -96,8 +97,8 @@ private:
 	void close_file();
 
 	EventLog& event_log_;
-	char module_root_[kLogFilePathCapacity] = {};
-	char active_path_[kLogFilePathCapacity] = {};
+	std::string module_root_;
+	std::string active_path_;
 	LatestTelemetryMailbox mailbox_;
 	std::mutex publication_mutex_;
 	std::uint64_t current_flight_id_ = 0;

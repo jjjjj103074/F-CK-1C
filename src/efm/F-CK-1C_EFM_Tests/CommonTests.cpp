@@ -8,8 +8,8 @@
 #include "Common/Table.h"
 #include "Common/Units.h"
 
-#include <cstring>
 #include <limits>
+#include <string>
 
 namespace
 {
@@ -82,11 +82,42 @@ void test_table_interpolation(Tests::Context& context)
 
 void test_path_join(Tests::Context& context)
 {
-	char path[128];
-	Common::build_path({ path, sizeof(path) }, { "C:/DCS/Mods", "FM/config.lua" });
-	TEST_EXPECT(context, std::strcmp(path, "C:\\DCS\\Mods\\FM\\config.lua") == 0);
-	Common::build_path({ path, sizeof(path) }, { ".", "FM/config.lua" });
-	TEST_EXPECT(context, std::strcmp(path, "FM\\config.lua") == 0);
+	TEST_EXPECT(context, Common::build_path({ "C:/DCS/Mods", "FM/config.lua" }) == "C:\\DCS\\Mods\\FM\\config.lua");
+	TEST_EXPECT(context, Common::build_path({ ".", "FM/config.lua" }) == "FM\\config.lua");
+	TEST_EXPECT(context, Common::build_path({ nullptr, "FM/config.lua" }) == "FM\\config.lua");
+	TEST_EXPECT(context, Common::build_path({ "", "FM/config.lua" }) == "FM\\config.lua");
+	TEST_EXPECT(context, Common::build_path({ "C:/DCS/Mods/", "FM/config.lua" }) == "C:\\DCS\\Mods\\FM\\config.lua");
+	TEST_EXPECT(context, Common::build_path({ "C:\\DCS\\Mods\\", "FM/config.lua" }) == "C:\\DCS\\Mods\\FM\\config.lua");
+	TEST_EXPECT(context, Common::build_path({ "C:/DCS/Mods", nullptr }) == "C:\\DCS\\Mods\\");
+}
+
+void test_path_join_preserves_long_paths(Tests::Context& context)
+{
+	const std::string component(1200, 'x');
+	const std::string root = "C:/" + component;
+	const std::string path = Common::build_path({ root.c_str(), "FM/config.lua" });
+	TEST_EXPECT(context, path == "C:\\" + component + "\\FM\\config.lua");
+}
+
+void test_path_directory_rules(Tests::Context& context)
+{
+	std::string path = "C:/DCS/Mods/FM/config.lua";
+	Common::path_dirname(path);
+	TEST_EXPECT(context, path == "C:\\DCS\\Mods\\FM");
+	path = "config.lua";
+	Common::path_dirname(path);
+	TEST_EXPECT(context, path == ".");
+	path = "C:/config.lua";
+	Common::path_dirname(path);
+	TEST_EXPECT(context, path == "C:\\");
+	path = "/config.lua";
+	Common::path_dirname(path);
+	TEST_EXPECT(context, path == "\\");
+	path = "C:/DCS/Mods/";
+	Common::path_dirname(path);
+	TEST_EXPECT(context, path == "C:\\DCS");
+	TEST_EXPECT(context, Common::path_has_component_suffix(path, "dcs"));
+	TEST_EXPECT(context, !Common::path_has_component_suffix(path, "cs"));
 }
 }
 
@@ -99,4 +130,6 @@ void run_common_tests(Tests::Context& context)
 	test_rescale_rejects_non_finite_values(context);
 	test_table_interpolation(context);
 	test_path_join(context);
+	test_path_join_preserves_long_paths(context);
+	test_path_directory_rules(context);
 }
