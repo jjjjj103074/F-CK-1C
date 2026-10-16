@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <share.h>
 
 namespace Common
 {
@@ -51,7 +53,7 @@ inline bool is_path_separator(char c)
 
 inline bool path_file_exists(const char* path)
 {
-	FILE* f = fopen(path, "rb");
+	FILE* f = _fsopen(path, "rb", _SH_DENYNO);
 	if (!f)
 	{
 		return false;
@@ -141,17 +143,27 @@ inline void build_path(const PathTarget& target, const PathParts& parts)
 	normalize_path_separators(target.data);
 }
 
+inline std::unique_ptr<char, decltype(&std::free)> read_environment_variable(const char* name)
+{
+	char* value = nullptr;
+	if (_dupenv_s(&value, nullptr, name) != 0)
+	{
+		return { nullptr, &std::free };
+	}
+	return { value, &std::free };
+}
+
 inline bool resolve_saved_games_logs_dir(char* out, size_t out_size)
 {
-	const char* userprofile = getenv("USERPROFILE");
-	if (!userprofile || userprofile[0] == '\0')
+	const auto userprofile = read_environment_variable("USERPROFILE");
+	if (!userprofile || userprofile.get()[0] == '\0')
 	{
-		const char* home_drive = getenv("HOMEDRIVE");
-		const char* home_path = getenv("HOMEPATH");
-		if (home_drive && home_drive[0] != '\0' && home_path && home_path[0] != '\0')
+		const auto home_drive = read_environment_variable("HOMEDRIVE");
+		const auto home_path = read_environment_variable("HOMEPATH");
+		if (home_drive && home_drive.get()[0] != '\0' && home_path && home_path.get()[0] != '\0')
 		{
 			char home[1024];
-			snprintf(home, sizeof(home), "%s%s", home_drive, home_path);
+			snprintf(home, sizeof(home), "%s%s", home_drive.get(), home_path.get());
 			build_path({ out, out_size }, { home, "Saved Games\\DCS\\Logs" });
 			return true;
 		}
@@ -159,7 +171,7 @@ inline bool resolve_saved_games_logs_dir(char* out, size_t out_size)
 		return false;
 	}
 
-	build_path({ out, out_size }, { userprofile, "Saved Games\\DCS\\Logs" });
+	build_path({ out, out_size }, { userprofile.get(), "Saved Games\\DCS\\Logs" });
 	return true;
 }
 }

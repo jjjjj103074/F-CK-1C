@@ -149,7 +149,7 @@ Core::DebugSimulationTime debug_time_from_seconds(double simulation_time_s)
 		throw std::invalid_argument("Debug CSV simulation time must be finite and non-negative.");
 	}
 	const long double nanoseconds = static_cast<long double>(simulation_time_s) * kNanosecondsPerSecond;
-	const long double maximum = static_cast<long double>((std::numeric_limits<std::int64_t>::max)());
+	constexpr long double maximum = static_cast<long double>((std::numeric_limits<std::int64_t>::max)());
 	if (nanoseconds > maximum)
 	{
 		throw std::overflow_error("Debug CSV simulation time exceeded its range.");

@@ -9,7 +9,7 @@ constexpr std::uint64_t kNanosecondsPerSecond = 1'000'000'000ULL;
 
 std::uint64_t checked_seconds_to_nanoseconds(std::uint64_t seconds)
 {
-	const std::uint64_t maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
+	constexpr std::uint64_t maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
 	if (seconds > maximum / kNanosecondsPerSecond)
 	{
 		throw std::overflow_error("System schedule exceeded its time range.");
@@ -85,7 +85,7 @@ SystemScheduledTime SystemSchedule::rate_tick_time(std::uint32_t update_rate_hz,
 	const std::uint64_t whole_nanoseconds = checked_seconds_to_nanoseconds(seconds);
 	const std::uint64_t fractional_nanoseconds = (remainder * kNanosecondsPerSecond) / update_rate_hz;
 	const std::uint64_t total = whole_nanoseconds + fractional_nanoseconds;
-	const std::uint64_t maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
+	constexpr std::uint64_t maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
 	if (total > maximum)
 	{
 		throw std::overflow_error("System schedule exceeded its time range.");
@@ -96,7 +96,7 @@ SystemScheduledTime SystemSchedule::rate_tick_time(std::uint32_t update_rate_hz,
 SystemScheduledTime SystemSchedule::period_tick_time(SystemScheduledTime update_period, std::uint64_t tick)
 {
 	const std::uint64_t period = static_cast<std::uint64_t>(update_period.count());
-	const std::uint64_t maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
+	constexpr std::uint64_t maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
 	if (tick > maximum / period)
 	{
 		throw std::overflow_error("System schedule exceeded its time range.");

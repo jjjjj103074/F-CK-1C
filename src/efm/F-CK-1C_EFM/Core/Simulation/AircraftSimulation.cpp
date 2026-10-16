@@ -197,7 +197,7 @@ void AircraftSimulation::begin_frame(double dt_s)
 Systems::SystemScheduledTime AircraftSimulation::scheduled_time() const
 {
 	const long double nanoseconds = static_cast<long double>(simulation_time_s_) * kNanosecondsPerSecond;
-	const long double maximum = static_cast<long double>((std::numeric_limits<std::int64_t>::max)());
+	constexpr long double maximum = static_cast<long double>((std::numeric_limits<std::int64_t>::max)());
 	if (nanoseconds > maximum)
 	{
 		throw std::overflow_error("AircraftSimulation exceeded its time range.");

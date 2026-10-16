@@ -246,7 +246,7 @@ Core::DebugSimulationTime DebugTelemetryHub::sample_time(std::uint64_t sequence)
 {
 	const std::uint64_t seconds = sequence / kDebugCsvSampleRateHz;
 	const std::uint64_t remainder = sequence % kDebugCsvSampleRateHz;
-	const auto maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
+	constexpr auto maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
 	if (seconds > maximum / kNanosecondsPerSecond)
 	{
 		throw std::overflow_error("Debug telemetry sample time exceeded its range.");
