@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -158,9 +159,16 @@ void test_unavailable_fields_and_round_trip(Tests::Context& context)
 
 void test_latest_only_mailbox(Tests::Context& context)
 {
-	DcsBridge::Internal::LatestTelemetryMailbox mailbox;
-	Core::FrameOutput first;
-	Core::FrameOutput second;
+	struct MailboxFixture
+	{
+		DcsBridge::Internal::LatestTelemetryMailbox mailbox;
+		Core::FrameOutput first;
+		Core::FrameOutput second;
+	};
+	const auto fixture = std::make_unique<MailboxFixture>();
+	auto& mailbox = fixture->mailbox;
+	const auto& first = fixture->first;
+	auto& second = fixture->second;
 	second.simulation_time_s = 2.0;
 	mailbox.publish(1, 1, first);
 	mailbox.publish(1, 2, second);
