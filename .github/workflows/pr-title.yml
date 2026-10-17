@@ -12,7 +12,8 @@ permissions:
 
 jobs:
   commitlint:
-    name: 標題格式
+    name: 標題格式${{ github.event.action == 'edited' && !github.event.changes.title && !github.event.changes.base && '（略過）' || '' }}
+    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base
     runs-on: ubuntu-latest
 
     steps:

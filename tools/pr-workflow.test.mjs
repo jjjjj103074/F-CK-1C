@@ -27,6 +27,93 @@ function gitShell() {
         ? path.resolve(git(repository, ['--exec-path']).trim(), '../../../bin/bash.exe') : 'bash';
 }
 
+function workflowJob(workflow, id) {
+    const marker = `\n  ${id}:\n`;
+    const text = workflow.replaceAll('\r\n', '\n');
+    assert.ok(text.includes(marker), `Missing job: ${id}`);
+    const block = text.split(marker)[1].split(/\n  (?=\S)/)[0];
+    return {
+        name: block.match(/^    name: (.+)$/m)?.[1],
+        condition: block.match(/^    if: (.+)$/m)?.[1],
+        needs: block.match(/^    needs: (.+)$/m)?.[1],
+    };
+}
+
+function evaluateEvent(expression, event) {
+    // The tested expressions use only the shared JS/Actions boolean operators.
+    // Actions resolves a missing changes object as null rather than throwing.
+    return vm.runInNewContext(expression, {
+        github: {event: {changes: {}, pull_request: {number: 29}, ...event}},
+        always: () => true,
+    });
+}
+
+function eventText(template, event) {
+    return template.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => evaluateEvent(expression, event));
+}
+
+test('metadata edits preserve native check results and do not cancel validation or rule notices', () => {
+    const native = readWorkflow('.github/workflows/pr-native.yml');
+    const notice = readWorkflow('.github/workflows/pr-rule-notice.yml');
+    const normal = {action: 'synchronize'};
+    for (const event of [
+        {action: 'edited', changes: {body: {from: 'old'}}},
+        {action: 'edited', changes: {title: {from: 'old'}}},
+        {action: 'edited', changes: {title: {from: 'old'}, body: {from: 'old'}}},
+        {action: 'edited'},
+    ]) {
+        for (const [workflow, ids] of [[native, ['pr-submission', 'validation-summary']], [notice, ['rule-notice']]]) {
+            const group = workflow.match(/^  group: (.+)$/m)?.[1];
+            assert.ok(group);
+            assert.notEqual(eventText(group, event), eventText(group, normal), 'Metadata must not cancel active or pending validation.');
+            for (const id of ids) assert.ok(!evaluateEvent(workflowJob(workflow, id).condition, event));
+        }
+        for (const id of ['pr-submission', 'merge-compatibility', 'validation-summary']) {
+            const job = workflowJob(native, id);
+            assert.notEqual(eventText(job.name, event), eventText(job.name, normal), 'Skipped checks must not replace required results.');
+        }
+    }
+    assert.equal(workflowJob(native, 'merge-compatibility').needs, 'pr-submission');
+});
+
+test('code updates and PR retargeting retain validation, cancellation and the final version guard', () => {
+    const native = readWorkflow('.github/workflows/pr-native.yml');
+    const notice = readWorkflow('.github/workflows/pr-rule-notice.yml');
+    for (const event of [
+        {action: 'opened'}, {action: 'synchronize'}, {action: 'reopened'},
+        {action: 'edited', changes: {base: {ref: {from: 'main'}}}},
+        {action: 'edited', changes: {base: {sha: {from: 'a'.repeat(40)}}, body: {from: 'old'}}},
+    ]) {
+        for (const [workflow, ids] of [[native, ['pr-submission', 'validation-summary']], [notice, ['rule-notice']]]) {
+            const group = workflow.match(/^  group: (.+)$/m)?.[1];
+            assert.ok(group);
+            assert.equal(eventText(group, event), eventText(group, {action: 'synchronize'}));
+            assert.match(workflow, /cancel-in-progress: true/);
+            assert.match(workflow, /types: \[opened, synchronize, reopened, edited\]/);
+            for (const id of ids) assert.ok(evaluateEvent(workflowJob(workflow, id).condition, event));
+        }
+        assert.equal(eventText(workflowJob(native, 'pr-submission').name, event), '提交檢查');
+        assert.equal(eventText(workflowJob(native, 'merge-compatibility').name, event), '合併檢查');
+        assert.equal(eventText(workflowJob(native, 'validation-summary').name, event), '檢查結果');
+    }
+    assert.match(workflowJob(native, 'validation-summary').condition, /^always\(\) &&/);
+});
+
+test('title edits still validate titles while description edits preserve the previous title result', () => {
+    const job = workflowJob(readWorkflow('.github/workflows/pr-title.yml'), 'commitlint');
+    for (const [event, expected] of [
+        [{action: 'opened'}, true], [{action: 'synchronize'}, true], [{action: 'reopened'}, true],
+        [{action: 'edited', changes: {title: {from: 'old'}}}, true],
+        [{action: 'edited', changes: {title: {from: 'old'}, body: {from: 'old'}}}, true],
+        [{action: 'edited', changes: {base: {ref: {from: 'main'}}}}, true],
+        [{action: 'edited', changes: {body: {from: 'old'}}}, false],
+        [{action: 'edited'}, false],
+    ]) {
+        assert.equal(Boolean(evaluateEvent(job.condition, event)), expected);
+        assert.equal(eventText(job.name, event), expected ? '標題格式' : '標題格式（略過）');
+    }
+});
+
 test('Git shell can invoke DLL hashing in Windows PowerShell', { skip: process.platform !== 'win32' }, () => {
     const result = spawnSync(gitShell(), ['--noprofile', '--norc', '-c',
         `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '. "./tools/efm-build-common.ps1"; Get-EfmSha256 "./bin/F-CK-1C_EFM.dll"'`],

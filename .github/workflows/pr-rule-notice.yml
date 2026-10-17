@@ -10,12 +10,13 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: efm-rule-notice-${{ github.event.pull_request.number }}
+  group: efm-rule-notice-${{ github.event.pull_request.number }}${{ github.event.action == 'edited' && !github.event.changes.base && '-metadata' || '' }}
   cancel-in-progress: true
 
 jobs:
   rule-notice:
     name: 變更提醒
+    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

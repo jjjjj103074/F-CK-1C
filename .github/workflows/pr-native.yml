@@ -9,12 +9,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: efm-pr-${{ github.event.pull_request.number }}
+  group: efm-pr-${{ github.event.pull_request.number }}${{ github.event.action == 'edited' && !github.event.changes.base && '-metadata' || '' }}
   cancel-in-progress: true
 
 jobs:
   pr-submission:
-    name: 提交檢查
+    name: 提交檢查${{ github.event.action == 'edited' && !github.event.changes.base && '（略過）' || '' }}
+    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: windows-2025-vs2026
     timeout-minutes: 20
     env:
@@ -94,7 +95,7 @@ jobs:
             ${{ runner.temp }}/efm-submission/*.log
 
   merge-compatibility:
-    name: 合併檢查
+    name: 合併檢查${{ github.event.action == 'edited' && !github.event.changes.base && '（略過）' || '' }}
     needs: pr-submission
     runs-on: windows-2025-vs2026
     timeout-minutes: 20
@@ -153,8 +154,8 @@ jobs:
             ${{ runner.temp }}/efm-merge/*.log
 
   validation-summary:
-    name: 檢查結果
-    if: always()
+    name: 檢查結果${{ github.event.action == 'edited' && !github.event.changes.base && '（略過）' || '' }}
+    if: always() && (github.event.action != 'edited' || github.event.changes.base)
     needs: [pr-submission, merge-compatibility]
     runs-on: ubuntu-latest
     permissions:

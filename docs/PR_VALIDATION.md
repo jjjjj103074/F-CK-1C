@@ -26,7 +26,10 @@ npm run validate:efm
 | 檢查結果 | 彙整提交與合併結果，確認 PR／目標版本仍為最新 |
 | 變更提醒 | 列出規則檔案、變更類型與差異連結 |
 
-PR 至 `main`／`dev` 時執行，Draft PR 也適用；更新 PR 會取消舊驗證。
+PR 至 `main`／`dev` 時執行，Draft PR 也適用。
+建立、重新開啟、push 或切換目標分支會驗證，並取消舊驗證。
+只改說明會略過所有檢查；只改標題僅驗證標題。這些編輯不會取消原生驗證或規則提醒。
+略過項目另加「（略過）」名稱，保留原檢查結果。
 `main`／`dev` 的 push 另有排版檢查。
 
 ### 觸發門檻
@@ -45,7 +48,8 @@ PR 至 `main`／`dev` 時執行，Draft PR 也適用；更新 PR 會取消舊驗
 | DCS ID 產生器 | `DcsIds/`、Cockpit／Input Lua、產生器及其測試 |
 | 驗證工具 | DLL／工具鏈驗證腳本、共用建置工具、工具鏈配方、分析規則及其測試；先重建並比對 DLL |
 | 合併與版本 | 每次檢查，確認可合併及 PR／目標版本仍為最新 |
-| 標題與規則提醒 | 每次 PR 事件，檢查標題並更新規則清單 |
+| 標題格式 | 建立、重新開啟、push、切換目標分支或修改標題 |
+| 規則提醒 | 建立、重新開啟、push 或切換目標分支 |
 
 修改門檻或主驗證流程會執行完整檢查，並列入規則提醒。
 未觸發的項目顯示「不適用」；差異讀取失敗則檢查失敗。
@@ -169,7 +173,11 @@ clean rebuild. Reports are saved in `tmp/pr-validation/submission/`.
 | 檢查結果 | Submission/merge results and current PR/base revisions |
 | 變更提醒 | Changed rule files and diffs |
 
-PRs to main/dev, including drafts, run these checks. Updates cancel older runs.
+PRs to main/dev, including drafts, run these checks when opened, reopened,
+pushed or retargeted; these events cancel older validation runs.
+Description-only edits skip all checks; title-only edits run title validation.
+Neither cancels native validation or rule notices. Skipped validation/title jobs
+use a separate “（略過）” name to preserve existing check results.
 Push formatting checks remain on main/dev. Summaries show results; diagnostics
 and patches are collapsed. Failed runs retain JSON, Markdown and logs for three days.
 If revisions are stale, sync the target branch and rerun.
