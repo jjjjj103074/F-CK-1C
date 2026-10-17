@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: 確認目標版本
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const expected = context.payload.pull_request.base;
@@ -28,13 +28,13 @@ jobs:
             if (target.object.sha !== expected.sha) core.setFailed('目標分支已更新，請同步目標分支後重跑。');
       # Use the target branch's notice script.
       - name: 取出目標版本
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
           sparse-checkout: tools
       - name: 準備 Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - name: 更新變更提醒
