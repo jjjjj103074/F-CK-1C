@@ -14,7 +14,7 @@ export function selectChecks(files, phase = 'Submission') {
     const changed = pattern => files.some(file => new RegExp(pattern.source, 'i').test(file));
     const has = (...paths) => files.some(file => paths.some(candidate => candidate.toLowerCase() === file));
     const control = has('tools/pr-checks.mjs', 'tools/validate_efm.ps1', 'tools/prepare_efm_merge.ps1',
-        '.github/workflows/pr-native.yml');
+        '.github/workflows/pr-native.yml', '.github/workflows/pr-native-checks.yml');
     const packages = has('package.json', 'package-lock.json');
     const runtimeChanged = files.some(file => file.startsWith(runtime) && !file.endsWith('.md'));
     const build = control || has('.gitattributes', '.vsconfig') || changed(/^src\/efm\/[^/]+\.(props|targets|sln|vcxproj)$/i)
@@ -34,7 +34,7 @@ export function selectChecks(files, phase = 'Submission') {
             || has('.gitattributes', '.editorconfig', 'tools/cpp-format.mjs', 'tools/cpp-format.test.mjs')
             || files.some(file => (file.startsWith(runtime) || file.startsWith(tests)) && cpp.test(file)),
         tools: control || packages || changed(/^tools\/(cpp-format|pr-rule-changes|pr-workflow|pr-checks)(\.test)?\.mjs$/)
-            || changed(/^\.github\/workflows\/(pr-title|pr-rule-notice)\.yml$/)
+            || changed(/^\.github\/workflows\/(pr-title(?:-checks)?|pr-rule-notice)\.yml$/)
             || has('commitlint.config.js', '.gitattributes'),
         dll, native, analysis,
         architecture: control || runtimeChanged || has('tools/check_efm_architecture.ps1', 'tools/test_efm_architecture_checker.ps1'),

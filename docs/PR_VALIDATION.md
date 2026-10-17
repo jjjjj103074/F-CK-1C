@@ -29,7 +29,7 @@ npm run validate:efm
 PR 至 `main`／`dev` 時執行，Draft PR 也適用。
 建立、重新開啟、push 或切換目標分支會驗證，並取消舊驗證。
 只改說明會略過所有檢查；只改標題僅驗證標題。這些編輯不會取消原生驗證或規則提醒。
-略過項目另加「（略過）」名稱，保留原檢查結果。
+略過事件只顯示入口 `PR`，保留原檢查結果；符合條件才呼叫實際檢查流程。
 `main`／`dev` 的 push 另有排版檢查。
 
 ### 觸發門檻
@@ -88,7 +88,7 @@ PR 留一則更新的提醒：檔案表供略讀，差異片段供審查。
 
 1. 將提醒 workflow 部署到預設 `main`，並將提醒程式部署到各目標分支。
 2. 依 [GitHub 事件政策](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target) 啟用 `pull_request_target`。
-3. 實跑通過後，在 `main`／`dev` 將 `提交檢查`、`合併檢查`、`檢查結果` 設為必要檢查，並要求分支為最新。
+3. 實跑通過後，在 `main`／`dev` 將 `PR / 提交檢查`、`PR / 合併檢查`、`PR / 檢查結果` 設為必要檢查，並要求分支為最新。
 
 Windows runner 使用 `windows-2025-vs2026`。
 本公開專案的標準 runner 計算免費；artifacts 使用帳號儲存配額。
@@ -176,8 +176,9 @@ clean rebuild. Reports are saved in `tmp/pr-validation/submission/`.
 PRs to main/dev, including drafts, run these checks when opened, reopened,
 pushed or retargeted; these events cancel older validation runs.
 Description-only edits skip all checks; title-only edits run title validation.
-Neither cancels native validation or rule notices. Skipped validation/title jobs
-use a separate “（略過）” name to preserve existing check results.
+Neither cancels native validation or rule notices. Skipped events show only the
+`PR` entry job and preserve existing check results. Eligible events call the
+reusable check workflows.
 Push formatting checks remain on main/dev. Summaries show results; diagnostics
 and patches are collapsed. Failed runs retain JSON, Markdown and logs for three days.
 If revisions are stale, sync the target branch and rerun.
@@ -200,7 +201,8 @@ Review rule changes manually. Preview with `npm run preview:pr-rules -- HEAD`.
 Deploy the notice workflow to default main and its script to each target branch.
 Enable `pull_request_target` under the applicable
 [event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target).
-After a successful run, require `提交檢查`, `合併檢查`, `檢查結果` and up-to-date branches.
+After a successful run, require `PR / 提交檢查`, `PR / 合併檢查`, `PR / 檢查結果`
+and up-to-date branches.
 
 The Windows runner is `windows-2025-vs2026`. The
 [closed test PR](https://github.com/jjjjj103074/F-CK-1C/pull/27) records successful runs,

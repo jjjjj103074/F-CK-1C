@@ -36,6 +36,7 @@ function workflowJob(workflow, id) {
         name: block.match(/^    name: (.+)$/m)?.[1],
         condition: block.match(/^    if: (.+)$/m)?.[1],
         needs: block.match(/^    needs: (.+)$/m)?.[1],
+        uses: block.match(/^    uses: (.+)$/m)?.[1],
     };
 }
 
@@ -44,7 +45,6 @@ function evaluateEvent(expression, event) {
     // Actions resolves a missing changes object as null rather than throwing.
     return vm.runInNewContext(expression, {
         github: {event: {changes: {}, pull_request: {number: 29}, ...event}},
-        always: () => true,
     });
 }
 
@@ -53,54 +53,71 @@ function eventText(template, event) {
 }
 
 test('metadata edits preserve native check results and do not cancel validation or rule notices', () => {
-    const native = readWorkflow('.github/workflows/pr-native.yml');
+    const router = readWorkflow('.github/workflows/pr-native.yml');
+    const entry = workflowJob(router, 'validation');
+    const native = readWorkflow('.github/workflows/pr-native-checks.yml');
     const notice = readWorkflow('.github/workflows/pr-rule-notice.yml');
     const normal = {action: 'synchronize'};
+    assert.doesNotMatch(router, /concurrency:/);
+    assert.equal(entry.uses, './.github/workflows/pr-native-checks.yml');
+    assert.match(router, /pull-requests: read/);
+    assert.match(native, /on:\r?\n  workflow_call:/);
     for (const event of [
         {action: 'edited', changes: {body: {from: 'old'}}},
         {action: 'edited', changes: {title: {from: 'old'}}},
         {action: 'edited', changes: {title: {from: 'old'}, body: {from: 'old'}}},
         {action: 'edited'},
     ]) {
-        for (const [workflow, ids] of [[native, ['pr-submission', 'validation-summary']], [notice, ['rule-notice']]]) {
-            const group = workflow.match(/^  group: (.+)$/m)?.[1];
-            assert.ok(group);
-            assert.notEqual(eventText(group, event), eventText(group, normal), 'Metadata must not cancel active or pending validation.');
-            for (const id of ids) assert.ok(!evaluateEvent(workflowJob(workflow, id).condition, event));
-        }
+        assert.ok(!evaluateEvent(entry.condition, event), 'Metadata must not enter native validation or its cancellation group.');
+        assert.ok(!evaluateEvent(workflowJob(notice, 'rule-notice').condition, event));
+        const group = notice.match(/^  group: (.+)$/m)?.[1];
+        assert.ok(group);
+        assert.notEqual(eventText(group, event), eventText(group, normal), 'Metadata must not cancel active or pending rule notices.');
         for (const id of ['pr-submission', 'merge-compatibility', 'validation-summary']) {
-            const job = workflowJob(native, id);
-            assert.notEqual(eventText(job.name, event), eventText(job.name, normal), 'Skipped checks must not replace required results.');
+            const name = workflowJob(native, id).name;
+            assert.ok(!name.includes('${{'), 'Check names must remain readable when skipped.');
+            assert.notEqual(entry.name, name, 'A skipped caller must not replace required results.');
         }
     }
     assert.equal(workflowJob(native, 'merge-compatibility').needs, 'pr-submission');
 });
 
 test('code updates and PR retargeting retain validation, cancellation and the final version guard', () => {
-    const native = readWorkflow('.github/workflows/pr-native.yml');
+    const router = readWorkflow('.github/workflows/pr-native.yml');
+    const native = readWorkflow('.github/workflows/pr-native-checks.yml');
     const notice = readWorkflow('.github/workflows/pr-rule-notice.yml');
+    assert.match(native, /cancel-in-progress: true/);
+    for (const workflow of [router, notice]) assert.match(workflow, /types: \[opened, synchronize, reopened, edited\]/);
     for (const event of [
         {action: 'opened'}, {action: 'synchronize'}, {action: 'reopened'},
         {action: 'edited', changes: {base: {ref: {from: 'main'}}}},
         {action: 'edited', changes: {base: {sha: {from: 'a'.repeat(40)}}, body: {from: 'old'}}},
     ]) {
-        for (const [workflow, ids] of [[native, ['pr-submission', 'validation-summary']], [notice, ['rule-notice']]]) {
+        assert.ok(evaluateEvent(workflowJob(router, 'validation').condition, event));
+        assert.ok(evaluateEvent(workflowJob(notice, 'rule-notice').condition, event));
+        for (const workflow of [native, notice]) {
             const group = workflow.match(/^  group: (.+)$/m)?.[1];
             assert.ok(group);
             assert.equal(eventText(group, event), eventText(group, {action: 'synchronize'}));
             assert.match(workflow, /cancel-in-progress: true/);
-            assert.match(workflow, /types: \[opened, synchronize, reopened, edited\]/);
-            for (const id of ids) assert.ok(evaluateEvent(workflowJob(workflow, id).condition, event));
         }
         assert.equal(eventText(workflowJob(native, 'pr-submission').name, event), '提交檢查');
         assert.equal(eventText(workflowJob(native, 'merge-compatibility').name, event), '合併檢查');
         assert.equal(eventText(workflowJob(native, 'validation-summary').name, event), '檢查結果');
     }
-    assert.match(workflowJob(native, 'validation-summary').condition, /^always\(\) &&/);
+    assert.equal(workflowJob(native, 'pr-submission').condition, undefined);
+    assert.equal(workflowJob(native, 'validation-summary').condition, 'always()');
 });
 
 test('title edits still validate titles while description edits preserve the previous title result', () => {
-    const job = workflowJob(readWorkflow('.github/workflows/pr-title.yml'), 'commitlint');
+    const job = workflowJob(readWorkflow('.github/workflows/pr-title.yml'), 'title');
+    const title = readWorkflow('.github/workflows/pr-title-checks.yml');
+    const check = workflowJob(title, 'commitlint');
+    assert.equal(job.uses, './.github/workflows/pr-title-checks.yml');
+    assert.match(title, /on:\r?\n  workflow_call:/);
+    assert.equal(check.name, '標題格式');
+    assert.notEqual(job.name, check.name);
+    assert.ok(!job.name.includes('${{'));
     for (const [event, expected] of [
         [{action: 'opened'}, true], [{action: 'synchronize'}, true], [{action: 'reopened'}, true],
         [{action: 'edited', changes: {title: {from: 'old'}}}, true],
@@ -110,7 +127,6 @@ test('title edits still validate titles while description edits preserve the pre
         [{action: 'edited'}, false],
     ]) {
         assert.equal(Boolean(evaluateEvent(job.condition, event)), expected);
-        assert.equal(eventText(job.name, event), expected ? '標題格式' : '標題格式（略過）');
     }
 });
 
@@ -124,7 +140,7 @@ test('Git shell can invoke DLL hashing in Windows PowerShell', { skip: process.p
 });
 
 test('the real sparse checkouts retain native-test configuration and DCS generator fixtures', { timeout: 90000 }, context => {
-    const workflowPath = '.github/workflows/pr-native.yml';
+    const workflowPath = '.github/workflows/pr-native-checks.yml';
     const workflow = readWorkflow(workflowPath);
     const sections = workflow.split('\n  merge-compatibility:');
     const checkoutPatterns = section => {
@@ -206,7 +222,7 @@ test('notice checks the actual target before checking out its renderer', async (
 });
 
 test('summary requires successful checks and current open PR revisions', async () => {
-    const workflow = readWorkflow('.github/workflows/pr-native.yml');
+    const workflow = readWorkflow('.github/workflows/pr-native-checks.yml');
     const block = workflow.match(/ {10}script: \|\r?\n([\s\S]+)$/);
     assert.ok(block, 'Summary script not found.');
     const script = block[1].split(/\r?\n/).map(line => line.replace(/^ {12}/, '')).join('\n');
@@ -247,7 +263,7 @@ test('summary requires successful checks and current open PR revisions', async (
 });
 
 test('PR title input preserves shell characters and commitlint still validates format', () => {
-    const workflow = readWorkflow('.github/workflows/pr-title.yml');
+    const workflow = readWorkflow('.github/workflows/pr-title-checks.yml');
     const run = workflow.match(/ {8}run: (.*commitlint.*)/)?.[1];
     assert.ok(run, 'Title command not found.');
     assert.match(workflow, /PR_TITLE: \$\{\{ github\.event\.pull_request\.title \}\}/);
