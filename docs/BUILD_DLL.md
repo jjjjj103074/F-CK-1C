@@ -75,16 +75,45 @@ DLL 雜湊使用 PowerShell 官方 [`Get-FileHash`](https://learn.microsoft.com/
 
 結束碼 0 代表通過。DCS 遊戲內測試另行執行。
 
+## C++ warnings and analysis
+
+[`EfmBuild.targets`](../src/efm/EfmBuild.targets) 統一 DLL 與測試的 `/W4 /WX`：
+自有程式有警告即建置失敗。`ThirdParty/` 透過 `/external:I` 載入，使用 `/external:W0`
+與 `/analyze:external-` 排除其診斷；SDK 與自有產生碼維持檢查。
+第三方標頭使用外部目錄下的路徑，例如 `#include <nlohmann/json.hpp>`。
+
+一般建置與 commit hook 不執行靜態分析。完整驗證會在既有建置中加入 `/analyze`：
+
+```powershell
+npm run validate:efm
+```
+
+只分析單一專案：
+
+```powershell
+./tools/build_efm.ps1 -Target Dll -Analyze
+./tools/build_efm.ps1 -Target Tests -Analyze
+```
+
+Visual Studio 使用「分析 → 執行程式碼分析」；命令列也可指定 `/p:RunCodeAnalysis=true`。
+規則採 `NativeRecommendedRules.ruleset`，並載入固定 MSVC 工具鏈的 `CppCoreCheck.dll`。
+分析警告同樣使驗證失敗；報告中的「DLL 編譯／分析」、「測試編譯／分析」各自顯示結果，
+完整位置與訊息保留於 build log。分析與編譯共用一輪建置。
+
+外部標頭與分析設定依 [Microsoft 指引](https://learn.microsoft.com/en-us/cpp/build/reference/analyze-code-analysis?view=msvc-170)。
+`ThirdParty/` 由上游維護，排除範圍與既有排版規則一致；第三方程式仍參與編譯及整合測試。
+
 ## Verification
 
 | Command | Check |
 |---|---|
-| `npm run validate:efm` | Clean rebuild, whole-DLL hash, exports/loading, tool fixtures and native tests |
+| `npm run validate:efm` | Clean rebuild with static analysis, whole-DLL hash, exports/loading, tool fixtures and native tests |
 | `npm run check:efm-dll` | DLL load, required exports and unload in an x64 process |
 | `./tools/check_efm_exports.ps1` | Complete export list against `EfmExports.baseline.txt` |
 | `./tools/test_efm_architecture_checker.ps1` | Source dependency rules |
 | `./tools/test_system_catalog_generator.ps1` | System discovery and generated catalog |
 | `./tools/test_dcs_id_generator.ps1` | Generated DCS identifiers |
+| `./tools/test_cpp_analysis.ps1` | External-header exclusion and warning rejection |
 
 驗證報告位於 `tmp/pr-validation/`；CLI 建置紀錄預設位於 `tmp/efm-build/`。
 `dll-build.log`／`tests-build.log` 保留實際編譯、連結指令與各項工作耗時，供比較參數及定位效能問題。
@@ -110,6 +139,7 @@ Formatting setup: [C++ formatting](CPP_FORMATTING.md).
 |---|---|
 | 建置 | `/t:Rebuild /p:Configuration=Release /p:Platform=x64`，x64 主機工具 |
 | C++ | C++17、UTF-8、`/O2 /Oi /GL /EHsc /MT /GS /Gy /fp:precise` |
+| 警告 | 自有程式 `/W4 /WX`；`ThirdParty/` 為外部標頭 |
 | 定義 | DLL 使用專案檔的 `WIN32/NDEBUG/_WINDOWS/_USRDLL/F_CK_1C_EFM_EXPORTS` 與 Unicode 定義 |
 | 工具功能 | 原生 MSVC；ASAN 與 CLR 停用 |
 | 可重現輸出 | `/Brepro /experimental:deterministic`、來源映射為 `D:\efm-repro`、PDB 僅記錄檔名 |
@@ -154,3 +184,10 @@ Builds use Microsoft's installed C++ targets and the toolset/SDK versions from t
 project profile. Validation compares the whole DLL using PowerShell `Get-FileHash`,
 then checks exports, loading and native tests. Update the profile, installation
 instructions and DLL together through a PR, with cross-machine validation.
+
+DLL and test builds enforce `/W4 /WX`. Only `ThirdParty/` is excluded through external-header
+settings; SDK and generated project code remain checked. Use `<nlohmann/json.hpp>` for
+the bundled JSON header. Full validation adds MSVC analysis to the same builds using
+Native Recommended Rules and C++ Core Check. Normal builds and the commit hook stay
+without analysis. For one project, run `./tools/build_efm.ps1 -Target Dll -Analyze`
+or `-Target Tests -Analyze`; Visual Studio's Run Code Analysis uses the same settings.

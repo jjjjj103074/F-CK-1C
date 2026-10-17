@@ -26,6 +26,7 @@ test('test and FM-only changes run native tests without rebuilding/loading the D
         const checks = selectChecks([file]);
         assert.equal(checks.native, true);
         assert.equal(checks.dll, false);
+        assert.equal(checks.analysis, file !== 'FM/config.jsonc');
     }
 });
 
@@ -36,7 +37,8 @@ test('checks own their scripts, fixtures, configuration and dependency gates', (
         ['tools/test_system_catalog_generator.ps1', 'catalog'], ['Input/F-CK-1C/joystick/default.lua', 'dcs'],
         ['tools/test_dcs_id_generator.ps1', 'dcs'], ['tools/check_efm_exports.ps1', 'validation'],
         ['tools/check_efm_toolchain.ps1', 'validation'], ['tools/efm-build-common.ps1', 'validation'],
-        ['src/efm/EfmBuild.props', 'validation'], ['src/.clang-format', 'format']]) {
+        ['src/efm/EfmBuild.props', 'validation'], ['src/efm/EfmBuild.targets', 'validation'],
+        ['tools/test_cpp_analysis.ps1', 'validation'], ['src/.clang-format', 'format']]) {
         assert.equal(selectChecks([file])[key], true, file);
     }
     assert.equal(selectChecks(['tools/check_efm_dll.ps1']).dll, true, 'Loading validators require a rebuilt/hash-verified DLL.');
@@ -79,6 +81,8 @@ test('whole-PR diff covers earlier commits, deletion and rename out of runtime s
     write('docs/new.md', 'later docs-only commit');
     const head = commit();
     assert.equal(planChecks(root, head, base, 'Submission').dll, true);
+    assert.equal(planChecks(root, head, base, 'Submission').analysis, true);
+    assert.equal(planChecks(root, head, base, 'Merge').analysis, false, 'An unchanged base reuses submission analysis.');
     git(['checkout', '--quiet', '--detach', base]);
     git(['rm', runtime + 'A.cpp']);
     assert.equal(planChecks(root, commit(), base, 'Submission').dll, true);
@@ -95,6 +99,8 @@ test('merge gates include target-only source changes and reject missing/wrong re
     const head = commit();
     assert.equal(planChecks(root, head, base, 'Submission').dll, false);
     assert.equal(planChecks(root, head, base, 'Merge').dll, true);
+    assert.equal(planChecks(root, head, base, 'Submission').analysis, false);
+    assert.equal(planChecks(root, head, base, 'Merge').analysis, true, 'Base-only C++ changes require merge analysis.');
     assert.throws(() => planChecks(root, ancestor, base, 'Merge'), /Checkout does not match/);
     assert.throws(() => planChecks(root, head, '--all', 'Submission'), /full head\/base/);
     assert.throws(() => planChecks(root, head, '0'.repeat(40), 'Submission'));

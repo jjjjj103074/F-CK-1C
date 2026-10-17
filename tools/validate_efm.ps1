@@ -17,10 +17,11 @@ $report = [ordered]@{ phase = $Phase; status = 'running'; dcs = 'not_run'; steps
 $failure = $null
 $run = @{}
 $selected = $Checks -split ','
-$names = @('dll', 'native', 'architecture', 'catalog', 'dcs', 'validation')
+$names = @('dll', 'native', 'analysis', 'architecture', 'catalog', 'dcs', 'validation')
 if (@($selected | Where-Object { $_ -notin ($names + @('all', 'none')) }).Count) { throw '未知的檢查項目。' }
 foreach ($name in $names) { $run[$name] = 'all' -in $selected -or $name -in $selected }
 if ($run.validation) { $run.dll = $true }
+if ($run.analysis -and -not ($run.dll -or $run.native)) { throw '靜態分析需搭配 DLL 或原生測試建置。' }
 
 function Invoke-ValidationStep {
     param([string]$Name, [scriptblock]$Action, [bool]$Enabled = $true)
@@ -74,8 +75,9 @@ try {
         $originalHash = Get-EfmSha256 $uploadedPath
     }
     $buildResult = $null
-    Invoke-ValidationStep 'DLL 重建' {
-        $script:buildResult = Invoke-EfmNativeBuild -RepoRoot $RepoRoot -Target Dll -LogDirectory $ReportDirectory
+    $dllBuildLabel = if ($run.analysis) { 'DLL 編譯／分析' } else { 'DLL 重建' }
+    Invoke-ValidationStep $dllBuildLabel {
+        $script:buildResult = Invoke-EfmNativeBuild -RepoRoot $RepoRoot -Target Dll -LogDirectory $ReportDirectory -Analyze:$run.analysis
     } $run.dll
     Invoke-ValidationStep 'DLL 雜湊' {
         $rebuiltHash = Get-EfmSha256 $script:buildResult.Output
@@ -111,10 +113,17 @@ try {
             & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test_efm_validation.ps1') -DllPath $uploadedCopy
             Assert-ExternalSuccess '驗證工具測試'
         } $run.validation
+        Invoke-ValidationStep '分析規則測試' {
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test_cpp_analysis.ps1') -RepoRoot $RepoRoot
+            Assert-ExternalSuccess '分析規則測試'
+        } $run.validation
     }
+    $testsBuildLabel = if ($run.analysis) { '測試編譯／分析' } else { '測試編譯' }
+    Invoke-ValidationStep $testsBuildLabel {
+        $script:testBuild = Invoke-EfmNativeBuild -RepoRoot $RepoRoot -Target Tests -LogDirectory $ReportDirectory -Analyze:$run.analysis
+    } $run.native
     Invoke-ValidationStep '原生測試' {
-        $tests = Invoke-EfmNativeBuild -RepoRoot $RepoRoot -Target Tests -LogDirectory $ReportDirectory
-        & $tests.Output 2>&1 | Tee-Object -FilePath (Join-Path $ReportDirectory 'native-tests.log') | Out-Host
+        & $script:testBuild.Output 2>&1 | Tee-Object -FilePath (Join-Path $ReportDirectory 'native-tests.log') | Out-Host
         Assert-ExternalSuccess '原生測試'
     } $run.native
     Invoke-ValidationStep '來源完整性' {

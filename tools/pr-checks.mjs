@@ -21,12 +21,14 @@ export function selectChecks(files, phase = 'Submission') {
         || has('tools/efm-build-common.ps1', 'tools/check_efm_toolchain.ps1', 'tools/build_dll.ps1',
             'tools/build_efm.ps1', 'tools/generate_system_catalog.ps1', 'tools/check_efm_architecture.ps1',
             'tools/generate_dcs_ids.ps1');
-    const validation = control || has('tools/test_efm_validation.ps1', 'tools/check_efm_dll.ps1', 'tools/check_efm_exports.ps1',
-        'tools/check_efm_toolchain.ps1', 'tools/efm-build-common.ps1', 'src/efm/EfmBuild.props', '.vsconfig');
+    const validation = control || has('tools/test_efm_validation.ps1', 'tools/test_cpp_analysis.ps1', 'tools/check_efm_dll.ps1', 'tools/check_efm_exports.ps1',
+        'tools/check_efm_toolchain.ps1', 'tools/efm-build-common.ps1', 'src/efm/EfmBuild.props', 'src/efm/EfmBuild.targets', '.vsconfig');
     const dll = build || runtimeChanged || has(dllPath) || validation;
-    const native = build || runtimeChanged || files.some(file => file.startsWith(tests) && !file.endsWith('.md'))
+    const testChanged = files.some(file => file.startsWith(tests) && !file.endsWith('.md'));
+    const analysis = build || runtimeChanged || testChanged || has('tools/test_cpp_analysis.ps1');
+    const native = build || runtimeChanged || testChanged
         || changed(/^FM\/.*\.jsonc$/i);
-    if (phase === 'Merge') return {dll, native};
+    if (phase === 'Merge') return {dll, native, analysis};
     return {
         format: control || packages || changed(/(^|\/)\.?_?clang-format(?:-ignore)?$/)
             || has('.gitattributes', '.editorconfig', 'tools/cpp-format.mjs', 'tools/cpp-format.test.mjs')
@@ -34,7 +36,7 @@ export function selectChecks(files, phase = 'Submission') {
         tools: control || packages || changed(/^tools\/(cpp-format|pr-rule-changes|pr-workflow|pr-checks)(\.test)?\.mjs$/)
             || changed(/^\.github\/workflows\/(pr-title|pr-rule-notice)\.yml$/)
             || has('commitlint.config.js', '.gitattributes'),
-        dll, native,
+        dll, native, analysis,
         architecture: control || runtimeChanged || has('tools/check_efm_architecture.ps1', 'tools/test_efm_architecture_checker.ps1'),
         catalog: control || changed(/^src\/efm\/F-CK-1C_EFM\/Core\/Systems\//)
             || has('tools/generate_system_catalog.ps1', 'tools/test_system_catalog_generator.ps1'),
@@ -53,15 +55,19 @@ export function planChecks(root, head, base, phase) {
     const ancestor = git(['merge-base', head, base]).trim();
     // Disable rename detection so both deleted and added paths are checked.
     const pathsAt = tip => git(['diff', '--name-only', '--no-renames', '-z', ancestor, tip, '--']).split('\0').filter(Boolean);
-    const files = [...new Set([...pathsAt(head), ...(phase === 'Merge' ? pathsAt(base) : [])])];
-    return selectChecks(files, phase);
+    const baseFiles = phase === 'Merge' ? pathsAt(base) : [];
+    const files = [...new Set([...pathsAt(head), ...baseFiles])];
+    const checks = selectChecks(files, phase);
+    // Submission already analyzed the PR; analyze the merge when its base adds C++ inputs.
+    if (phase === 'Merge') checks.analysis = selectChecks(baseFiles).analysis;
+    return checks;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const [head, base, phase = 'Submission'] = process.argv.slice(2);
     const checks = planChecks(process.cwd(), head, base, phase);
     const labels = {format: 'C++ 排版', tools: '工具測試', dll: 'DLL 一致性與接口', native: '原生測試',
-        architecture: '架構測試', catalog: '系統目錄產生器', dcs: 'DCS ID 產生器', validation: 'DLL 驗證工具'};
+        analysis: 'C++ 靜態分析', architecture: '架構測試', catalog: '系統目錄產生器', dcs: 'DCS ID 產生器', validation: '驗證工具'};
     const summary = ['### 檢查範圍', '', '| 檢查 | 執行 |', '|---|---|',
         ...Object.entries(checks).map(([key, run]) => `| ${labels[key]} | ${run ? '需要' : '不適用'} |`), ''].join('\n');
     process.stdout.write(summary);

@@ -21,8 +21,8 @@ npm run validate:efm
 | 檢查 | 內容 |
 |---|---|
 | 標題格式 | 驗證 PR 標題的 commit 格式 |
-| 提交檢查 | 排版、工具鏈、DLL 雜湊與接口、載入／卸載、原生測試 |
-| 合併檢查 | 模擬合併目標版本，重建並比對 PR 原 DLL，再執行原生測試 |
+| 提交檢查 | 排版、工具鏈、C++ 靜態分析、DLL 雜湊與接口、載入／卸載、原生測試 |
+| 合併檢查 | 模擬合併、DLL 比對與原生測試；目標分支帶入 C++ 輸入變更時補做分析 |
 | 檢查結果 | 彙整提交與合併結果，確認 PR／目標版本仍為最新 |
 | 變更提醒 | 列出規則檔案、變更類型與差異連結 |
 
@@ -39,10 +39,11 @@ PR 至 `main`／`dev` 時執行，Draft PR 也適用；更新 PR 會取消舊驗
 | 工具測試 | 排版／PR 工具及其測試、相關 workflow、套件與標題設定 |
 | DLL 一致性與接口 | 執行期來源／標頭（含 SDK、第三方與產生檔）、DLL、共用建置設定與腳本、DLL 驗證工具 |
 | 原生測試 | 執行期來源、測試來源／專案、共用建置設定與腳本、`FM/*.jsonc` |
+| C++ 靜態分析 | 執行期／測試輸入、共用建置設定與腳本、分析規則測試；純 `FM/*.jsonc` 變更跳過 |
 | 架構測試 | 執行期來源、架構檢查器及其測試 |
 | 系統目錄產生器 | `Core/Systems/`、產生器及其測試 |
 | DCS ID 產生器 | `DcsIds/`、Cockpit／Input Lua、產生器及其測試 |
-| DLL 驗證工具 | DLL／工具鏈驗證腳本、共用建置工具、工具鏈配方及其測試；先重建並比對 DLL |
+| 驗證工具 | DLL／工具鏈驗證腳本、共用建置工具、工具鏈配方、分析規則及其測試；先重建並比對 DLL |
 | 合併與版本 | 每次檢查，確認可合併及 PR／目標版本仍為最新 |
 | 標題與規則提醒 | 每次 PR 事件，檢查標題並更新規則清單 |
 
@@ -50,6 +51,9 @@ PR 至 `main`／`dev` 時執行，Draft PR 也適用；更新 PR 會取消舊驗
 未觸發的項目顯示「不適用」；差異讀取失敗則檢查失敗。
 C++ 有改動即重建比對，不要求 DLL 一定改動；註解或排版可能產生相同 DLL。
 門檻集中於 [`tools/pr-checks.mjs`](../tools/pr-checks.mjs)。本機 `validate:efm` 維持完整驗證。
+
+一般編譯使用 `/W4 /WX`，靜態分析加入同一輪建置。合併檢查在目標分支沒有新增分析輸入時，
+沿用提交階段的分析結果。只有 `ThirdParty/` 排除診斷；規則與手動指令見 [DLL 建置](BUILD_DLL.md#c-warnings-and-analysis)。
 
 摘要顯示各項結果；版本、雜湊與差異片段可展開查看。
 失敗紀錄含 JSON、摘要與 log，保存三天。
@@ -60,6 +64,7 @@ DCS 遊戲內測試由人工執行，結果記錄於 PR。
 | 項目 | 處理方式 |
 |---|---|
 | 排版 | 執行 `npm run format:cpp`，重新暫存與提交 |
+| 編譯／分析 | 查看 build log 的檔案、行號與規則，修正後重跑；第三方範圍設定變更須審查 |
 | 工具版本 | 依 [建置需求](BUILD_DLL.md#requirements) 安裝對應版本的官方元件 |
 | DLL 雜湊 | 確認工具鏈，重新建置並提交 DLL |
 | 合併後 DLL 不同／合併衝突 | 同步目標分支，解決衝突後重新建置並提交 DLL |
@@ -136,7 +141,7 @@ Windows runner 使用 `windows-2025-vs2026`。
 
 ### 後續待辦（依順序）
 
-- [ ] 靜態分析與警告報告：先確認規則與零警告門檻，再實作。
+- [x] MSVC 靜態分析與零警告門檻：自有程式 `/W4 /WX`、Native Recommended Rules，排除 `ThirdParty/`。
 - [ ] 測試品質整理：在前項之後進行，開始前討論範圍與方法。
 
 ## English
@@ -159,8 +164,8 @@ clean rebuild. Reports are saved in `tmp/pr-validation/submission/`.
 | Check | Purpose |
 |---|---|
 | 標題格式 | PR title convention |
-| 提交檢查 | Formatting, toolchain, whole-DLL hash, exports, loading and native tests |
-| 合併檢查 | Simulated merge, rebuild against the original PR DLL, native tests |
+| 提交檢查 | Formatting, toolchain, MSVC analysis, whole-DLL hash, exports, loading and native tests |
+| 合併檢查 | Simulated merge, original PR DLL comparison, native tests; analysis when the base adds C++ inputs |
 | 檢查結果 | Submission/merge results and current PR/base revisions |
 | 變更提醒 | Changed rule files and diffs |
 
@@ -194,5 +199,7 @@ The Windows runner is `windows-2025-vs2026`. The
 tampered-DLL rejection and cancellation. The Chinese evidence table has run links
 and timings. Production activation and manual DCS tests are separate steps.
 
-Next: static analysis and warning reports, followed by test-quality review.
-Discuss each item's scope and criteria before implementation.
+MSVC analysis shares the native builds; normal compilation enforces `/W4 /WX`.
+Only `ThirdParty/` is excluded. Merge analysis reuses the submission result when
+the base introduces no analysis inputs. See [DLL build](BUILD_DLL.md#c-warnings-and-analysis).
+Next: test-quality review; discuss its scope and criteria before implementation.
