@@ -134,7 +134,7 @@ function ConvertTo-EfmBatchArgument {
 
 function Invoke-EfmNativeBuild {
     param([string]$RepoRoot, [ValidateSet('Dll', 'Tests')][string]$Target = 'Dll',
-        [string]$MsBuildPath = '', [string]$LogDirectory = '')
+        [string]$MsBuildPath = '', [string]$LogDirectory = '', [switch]$Analyze)
 
     if ($env:OS -ne 'Windows_NT') { throw '請在 Windows 建置 EFM。' }
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -156,6 +156,7 @@ function Invoke-EfmNativeBuild {
         'set "VSLANG=1033"',
         ((ConvertTo-EfmBatchArgument $tools.MsBuild) + ' ' + (ConvertTo-EfmBatchArgument $project) +
             ' /noAutoResponse /t:Rebuild /p:Configuration=Release /p:Platform=x64 /p:UseEnv=false' +
+            $(if ($Analyze) { ' /p:RunCodeAnalysis=true' } else { '' }) +
             ' /m /v:minimal /fl /flp:' + (ConvertTo-EfmBatchArgument ("LogFile=$log;Verbosity=normal;PerformanceSummary;ShowTimestamp;Encoding=UTF-8"))),
         'exit /b %errorlevel%'
     )

@@ -1,5 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
+      <AdditionalOptions>/external:I"$(EfmRepoRoot)\src\efm\F-CK-1C_EFM\ThirdParty" %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(RunCodeAnalysis)' == 'true' Or '$(RunCodeAnalysisOnce)' == 'true'">
+    <ClCompile>
+      <EnablePREfast>true</EnablePREfast>
+      <PREfastAdditionalPlugins>$(VCToolsInstallDir)bin\Hostx64\x64\EspXEngine.dll;%(PREfastAdditionalPlugins)</PREfastAdditionalPlugins>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Target Name="ConfigureEfmAnalysis" BeforeTargets="ClCompile"
+          Condition="'$(RunCodeAnalysis)' == 'true' Or '$(RunCodeAnalysisOnce)' == 'true'">
+    <SetEnv Name="Esp.Extensions" Value="CppCoreCheck.dll" Prefix="false" />
+  </Target>
   <Target Name="ValidateEfmBuildProfile" BeforeTargets="PrepareForBuild">
     <Error Condition="'$(Configuration)|$(Platform)' != 'Release|x64'"
            Text="請使用 Release|x64 建置 EFM。" />

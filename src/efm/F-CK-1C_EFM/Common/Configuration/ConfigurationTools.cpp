@@ -1,5 +1,5 @@
 #include "ConfigurationTools.h"
-#include "ThirdParty/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cmath>

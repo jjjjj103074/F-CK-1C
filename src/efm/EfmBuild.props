@@ -18,6 +18,8 @@
     <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
     <EnableASAN>false</EnableASAN>
     <CLRSupport>false</CLRSupport>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
