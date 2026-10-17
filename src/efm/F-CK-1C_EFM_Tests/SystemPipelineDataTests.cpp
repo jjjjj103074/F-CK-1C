@@ -405,7 +405,6 @@ void test_each_system_data_type_can_be_published(Tests::Context& context)
 	expect_optional_publication(context, AircraftDataKeys::kFlightControlActuatorCommand);
 	expect_optional_publication(context, AircraftDataKeys::kFlightControlActuatorState);
 	expect_optional_publication(context, AircraftDataKeys::kThrottleLeverSignal);
-	expect_optional_publication(context, AircraftDataKeys::kEngineThrottleCommand);
 	expect_optional_publication(context, AircraftDataKeys::kSecondaryControlPosition);
 	expect_optional_publication(context, AircraftDataKeys::kLandingGearData);
 	expect_optional_publication(context, AircraftDataKeys::kEngineData);

@@ -36,7 +36,7 @@ void Engine::setup(SystemSetup& setup)
 {
 	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
 	setup.read(AircraftDataKeys::kAircraftObservation);
-	setup.read(AircraftDataKeys::kEngineThrottleCommand);
+	setup.read(AircraftDataKeys::kThrottleLeverSignal);
 	setup.read(AircraftDataKeys::kFuelData);
 	setup.publish(AircraftDataKeys::kEngineData, data_);
 	setup.publish(AircraftDataKeys::kFuelDemand, fuel_demand_);
@@ -76,7 +76,7 @@ void Engine::step(const SystemStepContext& context, const AircraftDataView& airc
 	const AircraftObservation& observation = aircraft.read(AircraftDataKeys::kAircraftObservation);
 	const FuelData& fuel = aircraft.read(AircraftDataKeys::kFuelData);
 	step({ context.dt_s,
-	       aircraft.read(AircraftDataKeys::kEngineThrottleCommand),
+	       aircraft.read(AircraftDataKeys::kThrottleLeverSignal),
 	       fuel.internal_fuel_kg,
 	       observation.altitude_asl_m });
 	result.publish(AircraftDataKeys::kEngineData, data_);
@@ -86,8 +86,8 @@ void Engine::step(const SystemStepContext& context, const AircraftDataView& airc
 const EngineData& Engine::step(const EngineFrameInput& input)
 {
 	::Systems::apply_engine_throttle_commands(engines_,
-	                                          input.throttle_command.left_normalized,
-	                                          input.throttle_command.right_normalized);
+	                                          input.throttle_levers.left_normalized,
+	                                          input.throttle_levers.right_normalized);
 	::Systems::clamp_engine_throttle_inputs(engines_);
 	::Systems::update_dry_engine_channels(engines_, config_, input.dt_s);
 	::Systems::update_afterburners(engines_, config_, input.dt_s);

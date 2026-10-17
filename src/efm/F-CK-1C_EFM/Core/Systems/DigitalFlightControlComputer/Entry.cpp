@@ -10,11 +10,10 @@ SystemEntry create_entry()
 
 	entry.id = "digital_flight_control_computer"; // Pipeline 識別系統及回報錯誤時使用的 ID。
 
-	// Pipeline 建立一架飛機時才呼叫工廠，並傳入該次飛行的初始資料。
-	entry.factory = [](const FlightSetupContext& setup)
+	// Pipeline 建立一架飛機時才呼叫工廠，建立此架飛機持有的電腦。
+	entry.factory = [](const FlightSetupContext&)
 	{
-		return std::make_unique<Core::Systems::DigitalFlightControlComputer>(
-		    setup.initial_throttle_levers); // 首次更新前的油門桿位置。
+		return std::make_unique<Core::Systems::DigitalFlightControlComputer>();
 	};
 	return entry;
 }

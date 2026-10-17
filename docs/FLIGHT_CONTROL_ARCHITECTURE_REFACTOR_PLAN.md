@@ -427,7 +427,7 @@ AFTI 的 AMUX Processor 與 F/A-18 data management，在目前專案由 DCSBridg
 
 - `ExperimentalAutoThrottleAssist` 與 throttle composition 合併於 `Experimental/AutoThrottleAssist`。
 - 有獨立 feature switch 與 Developer/Experimental 標記。
-- 只輸出 `EngineThrottleCommand`，不進入 Flight Control Laws 或 surface synthesis。
+- 輸出自動油門需求，不進入 Flight Control Laws 或 surface synthesis；與手動油門的合成資料契約尚未實作。
 
 ## 17. 資料契約、狀態與時序
 

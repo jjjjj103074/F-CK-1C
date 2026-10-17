@@ -189,9 +189,10 @@ through the same typed snapshot; Systems do not know which DCS callback
 produced them.
 
 `PilotControls` separately publishes `PilotControlSignal` and the physical
-`ThrottleLeverSignal`. While legacy A/T placement remains deliberately out of
-scope, the FCC publishes its composed value as `EngineThrottleCommand`; this
-transitional command must not be mistaken for physical lever position.
+`ThrottleLeverSignal`. Engine reads the throttle-lever signal directly and
+applies its existing digital-control approximations and engine dynamics.
+Manual throttle input is independent of DFLCC power. Automatic throttle and
+manual/automatic demand selection remain unimplemented.
 
 Commands have one registered handler per semantic `CommandId`. A handler may
 latch intent immediately, but an observation-dependent transition or reference
@@ -219,12 +220,12 @@ an immutable task definition beside its current runtime state. These components
 are not separate Pipeline Systems. DFLCC owns assembly and the Pipeline boundary,
 while Executive owns internal timing and invocation order.
 
-Setup declares five typed inputs and four typed outputs. Each step copies the
+Setup declares four typed inputs and three typed outputs. Each powered step copies the
 inputs into its database, advances Executive to the scheduled simulation time,
 and publishes the database outputs. ControlLaws maps the three pilot axes through
 configured piecewise linear curves and gains into normalized surface position
-demands. Other component algorithms remain unimplemented; throttle demand retains
-its initial value and both status snapshots remain unavailable. No DFLCC commands are registered.
+demands. Other component algorithms remain unimplemented, and both status
+snapshots remain unavailable. No DFLCC commands are registered.
 The exact boundary and scheduling contract are documented in the
 [DFLCC guide](DigitalFlightControlComputer/README.md).
 

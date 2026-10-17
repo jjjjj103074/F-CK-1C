@@ -5,7 +5,7 @@
 
 namespace Core::Systems
 {
-DigitalFlightControlComputer::DigitalFlightControlComputer(const ThrottleLeverSignal& initial_throttle_levers)
+DigitalFlightControlComputer::DigitalFlightControlComputer()
     : amux_processor_(amux_data_),
       system_monitor_(input_output_data_, system_status_tables_),
       selector_monitor_(input_output_data_, system_status_tables_),
@@ -19,8 +19,6 @@ DigitalFlightControlComputer::DigitalFlightControlComputer(const ThrottleLeverSi
                  control_laws_),
       startup_and_restart_(executive_)
 {
-	input_output_data_.output.engine_throttle_command = { initial_throttle_levers.left_normalized,
-		                                                  initial_throttle_levers.right_normalized };
 	startup_and_restart_.start();
 }
 
@@ -40,12 +38,10 @@ void DigitalFlightControlComputer::setup(SystemSetup& setup)
 	setup.update_rate_hz(kF16XlDflcsReferenceUpdateRateHz);
 	setup.read(AircraftDataKeys::kFlightControlObservation);
 	setup.read(AircraftDataKeys::kPilotControlSignal);
-	setup.read(AircraftDataKeys::kThrottleLeverSignal);
 	setup.read(AircraftDataKeys::kLandingGearData);
 	setup.read(AircraftDataKeys::kFlightControlActuatorState);
 
 	setup.publish(AircraftDataKeys::kFlightControlActuatorCommand, input_output_data_.output.actuator_command);
-	setup.publish(AircraftDataKeys::kEngineThrottleCommand, input_output_data_.output.engine_throttle_command);
 	setup.publish(AircraftDataKeys::kAutomaticFlightControlSnapshot, system_status_tables_.automatic_flight_control);
 	setup.publish(AircraftDataKeys::kDigitalFlightControlComputerSnapshot,
 	              system_status_tables_.digital_flight_control_computer);
@@ -70,16 +66,14 @@ void DigitalFlightControlComputer::read_inputs(const AircraftDataView& aircraft)
 {
 	input_output_data_.input = { aircraft.read(AircraftDataKeys::kFlightControlObservation),
 		                         aircraft.read(AircraftDataKeys::kPilotControlSignal),
-		                         aircraft.read(AircraftDataKeys::kThrottleLeverSignal),
 		                         aircraft.read(AircraftDataKeys::kLandingGearData),
 		                         aircraft.read(AircraftDataKeys::kFlightControlActuatorState) };
 }
 
 void DigitalFlightControlComputer::publish_outputs(SystemResult& result) const
 {
-	// 舵面需求由 ControlLaws 更新；油門控制與完整狀態計算尚未實作。
+	// 舵面需求由 ControlLaws 更新；完整狀態計算尚未實作。
 	result.publish(AircraftDataKeys::kFlightControlActuatorCommand, input_output_data_.output.actuator_command);
-	result.publish(AircraftDataKeys::kEngineThrottleCommand, input_output_data_.output.engine_throttle_command);
 	result.publish(AircraftDataKeys::kAutomaticFlightControlSnapshot, system_status_tables_.automatic_flight_control);
 	result.publish(AircraftDataKeys::kDigitalFlightControlComputerSnapshot,
 	               system_status_tables_.digital_flight_control_computer);

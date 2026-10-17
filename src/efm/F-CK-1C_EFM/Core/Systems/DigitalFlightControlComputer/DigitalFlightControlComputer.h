@@ -24,9 +24,8 @@ namespace Core::Systems
 class DigitalFlightControlComputer final : public System
 {
 public:
-	/// @brief 建立資料庫、元件與固定任務表，完成初始輸出後啟用排程。
-	/// @param initial_throttle_levers 控制需求計算完成前保留的左右油門初值，範圍為 0 到 1。
-	explicit DigitalFlightControlComputer(const ThrottleLeverSignal& initial_throttle_levers);
+	/// @brief 建立資料庫、元件與固定任務表後啟用排程。
+	DigitalFlightControlComputer();
 
 	// 資料庫參照與任務的成員函式綁定使用此實例的固定地址。
 	DigitalFlightControlComputer(const DigitalFlightControlComputer&) = delete;
@@ -42,14 +41,14 @@ public:
 	/// @return true 表示有電，false 表示沒電。
 	bool powered() const noexcept;
 
-	/// @brief 宣告外層頻率、五個輸入與四個輸出。
+	/// @brief 宣告外層頻率、四個輸入與三個輸出。
 	/// @param setup Pipeline 提供的系統宣告介面。
 	void setup(SystemSetup& setup) override;
 
 	/// @brief 有電時接收輸入、推進 Executive 並發布輸出；沒電時直接返回。
 	/// @param context 外層的預定模擬時間；內部任務週期由各任務頻率決定。
 	/// @param aircraft Pipeline 提供的唯讀飛機資料快照。
-	/// @param result 四個具型別輸出的發布介面。
+	/// @param result 三個具型別輸出的發布介面。
 	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
 private:
@@ -59,7 +58,7 @@ private:
 	/// @param aircraft 本次外層 step 的飛機資料快照。
 	void read_inputs(const AircraftDataView& aircraft);
 
-	/// @brief 發布正規化舵面需求、油門初值與尚未完成的系統狀態。
+	/// @brief 發布正規化舵面需求與尚未完成的系統狀態。
 	/// @param result Pipeline 提供的輸出介面。
 	void publish_outputs(SystemResult& result) const;
 

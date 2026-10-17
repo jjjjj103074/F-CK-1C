@@ -50,7 +50,7 @@ DigitalFlightControlComputer/
 2. DFLCC 將 ExecutiveTables 與五個元件的參照交給 Executive。
 3. Executive 在建構時一次建立完整任務表，驗證名稱與入口，保持填表列順序。
 4. StartupAndRestart 在 Executive 之後建立，綁定 Executive，不直接存取資料庫。
-5. DFLCC 建構子完成初始輸出後，呼叫 `StartupAndRestart::start()`，由它呼叫 `Executive::start()`。
+5. DFLCC 建構子完成資料庫與元件組裝後，呼叫 `StartupAndRestart::start()`，由它呼叫 `Executive::start()`。
 6. `start()` 只啟用排程；外層後續呼叫 `DFLCC::step`，由 DFLCC 直接呼叫 `Executive::step`。
 
 頻率、順序及入口統一維護於 [Executive.cpp](Components/Executive/Executive.cpp)
@@ -198,13 +198,16 @@ ControlLawData 保存唯讀的直接映射設定與目前的限幅狀態；AmuxD
 
 ## Pipeline 邊界與目前行為
 
-DFLCC 讀取 FlightControlObservation、PilotControlSignal、ThrottleLeverSignal、
-LandingGearData 與 FlightControlActuatorState，存入 InputOutputData。
-對外發布 FlightControlActuatorCommand、EngineThrottleCommand、
-AutomaticFlightControlSnapshot 與 DigitalFlightControlComputerSnapshot。
+DFLCC 讀取 FlightControlObservation、PilotControlSignal、LandingGearData 與
+FlightControlActuatorState，存入 InputOutputData。
+對外發布 FlightControlActuatorCommand、AutomaticFlightControlSnapshot 與
+DigitalFlightControlComputerSnapshot。
 
 ControlLaws 將三軸操縱輸入依曲線與增益映射為 [-1, 1] 的舵面位置需求。
-FlightControlActuationSystem 負責將正規化需求轉成實際舵面角度，油門需求維持建構時初值。
+FlightControlActuationSystem 負責將正規化需求轉成實際舵面角度。
+手動油門由 Engine 直接讀取 PilotControls 發布的 ThrottleLeverSignal；
+油門桿初值由 PilotControls 提供，引擎的初始運轉狀態由 StartMode 決定。
+DFLCC 的供電狀態不影響 Engine 讀取手動油門；自動油門尚未實作。
 其餘元件尚未實作內部運算，也尚未登記 DFLCC 指令處理器。
 兩種狀態快照保持不可用，不以空白任務的成功呼叫表示飛控功能已完成。
 

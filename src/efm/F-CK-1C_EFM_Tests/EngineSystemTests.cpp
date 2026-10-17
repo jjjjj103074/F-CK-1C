@@ -1,5 +1,6 @@
-#include "TestHarness.h"
+#include "SystemPipelineTestFixture.h"
 
+#include "Core/Systems/Engine/Engine.h"
 #include "Core/Systems/Engine/EngineModel.h"
 #include "Core/Systems/Engine/EngineConfig.h"
 
@@ -50,6 +51,38 @@ void test_digital_control_commands_are_separate_from_plant(Tests::Context& conte
 	TEST_EXPECT_NEAR(context, fuel.flow_rate_kg_s, config.fuel_consumption_rate_kg_s * (2.0 / 3.0), kTolerance);
 }
 
+/// @brief 驗證 Engine 可獨立於 DFLCC 讀取左右油門桿初值及後續變化。
+void test_engine_reads_throttle_levers_without_dflcc(Tests::Context& context)
+{
+	using namespace Core;
+	using namespace Core::Systems;
+	using namespace SystemPipelineTest;
+	ThrottleLeverSignal levers{ 0.2, 0.7 };
+	const SystemDefinition inputs{ "engine_test_inputs",
+		                           [&levers](SystemSetup& setup)
+		                           {
+		                               setup.publish(AircraftDataKeys::kThrottleLeverSignal, levers);
+		                               setup.publish(AircraftDataKeys::kFuelData, FuelData{ 100.0 });
+		                           },
+		                           [&levers](const AircraftDataView&, SystemResult& result)
+		                           {
+		                               result.publish(AircraftDataKeys::kThrottleLeverSignal, levers);
+		                           } };
+	SystemPipeline pipeline(flight_setup(), { entry(inputs), make_engine_system_entry(fck1c_engine_config()) });
+	const auto initial = step_pipeline(pipeline);
+	const auto& initial_engines = initial.read(AircraftDataKeys::kEngineData);
+	TEST_EXPECT_NEAR(context, initial_engines.left.throttle_input_normalized, 0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, initial_engines.right.throttle_input_normalized, 0.7, kTolerance);
+
+	levers = { 0.8, 0.4 };
+	// 同時到期的 System 共用輸入快照，下一批才讀到本批發布的油門桿變化。
+	step_pipeline(pipeline);
+	const auto changed = step_pipeline(pipeline);
+	const auto& changed_engines = changed.read(AircraftDataKeys::kEngineData);
+	TEST_EXPECT_NEAR(context, changed_engines.left.throttle_input_normalized, 0.8, kTolerance);
+	TEST_EXPECT_NEAR(context, changed_engines.right.throttle_input_normalized, 0.4, kTolerance);
+}
+
 }
 
 void run_engine_system_tests(Tests::Context& context)
@@ -58,4 +91,5 @@ void run_engine_system_tests(Tests::Context& context)
 	test_engine_first_order(context);
 	test_afterburner_ignition(context);
 	test_digital_control_commands_are_separate_from_plant(context);
+	test_engine_reads_throttle_levers_without_dflcc(context);
 }

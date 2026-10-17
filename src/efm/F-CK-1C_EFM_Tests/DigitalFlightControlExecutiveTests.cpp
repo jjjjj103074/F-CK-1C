@@ -403,7 +403,6 @@ void test_dflcc_power_gate(Tests::Context& context)
 		                           [&pilot](SystemSetup& setup)
 		                           {
 		                               setup.publish(AircraftDataKeys::kPilotControlSignal, pilot);
-		                               setup.publish(AircraftDataKeys::kThrottleLeverSignal, ThrottleLeverSignal{});
 		                               setup.publish(AircraftDataKeys::kLandingGearData, LandingGearData{});
 		                               setup.publish(AircraftDataKeys::kFlightControlActuatorState,
 		                                             FlightControlActuatorState{});
@@ -418,8 +417,7 @@ void test_dflcc_power_gate(Tests::Context& context)
 	                          { "digital_flight_control_computer",
 	                            [&dflcc](const FlightSetupContext&)
 	                            {
-		                            auto computer =
-		                                std::make_unique<DigitalFlightControlComputer>(ThrottleLeverSignal{});
+		                            auto computer = std::make_unique<DigitalFlightControlComputer>();
 		                            dflcc = computer.get();
 		                            return computer;
 	                            } } });
@@ -472,10 +470,8 @@ void test_pipeline_skeleton(Tests::Context& context)
 	const SystemDefinition inputs{ "dflcc_test_inputs",
 		                           [](SystemSetup& setup)
 		                           {
-		                               // 飛行觀測由 Pipeline 發布；此來源只提供其他四個元件輸入。
+		                               // 飛行觀測由 Pipeline 發布；此來源只提供其他三個元件輸入。
 		                               setup.publish(AircraftDataKeys::kPilotControlSignal, PilotControlSignal{});
-		                               setup.publish(AircraftDataKeys::kThrottleLeverSignal,
-		                                             ThrottleLeverSignal{ 0.8, 0.9 });
 		                               setup.publish(AircraftDataKeys::kLandingGearData, LandingGearData{});
 		                               setup.publish(AircraftDataKeys::kFlightControlActuatorState,
 		                                             FlightControlActuatorState{});
@@ -487,8 +483,7 @@ void test_pipeline_skeleton(Tests::Context& context)
 	                          { "digital_flight_control_computer",
 	                            [](const FlightSetupContext&)
 	                            {
-		                            return std::make_unique<DigitalFlightControlComputer>(
-		                                ThrottleLeverSignal{ 0.2, 0.3 });
+		                            return std::make_unique<DigitalFlightControlComputer>();
 	                            } } });
 	const auto after = step_pipeline_to(pipeline, {}, {}, seconds(1));
 	TEST_EXPECT(context, pipeline.advanced_through() == seconds(1));
@@ -498,8 +493,6 @@ void test_pipeline_skeleton(Tests::Context& context)
 	                 after.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 	                 0.0,
 	                 kTolerance);
-	TEST_EXPECT_NEAR(context, after.read(AircraftDataKeys::kEngineThrottleCommand).left_normalized, 0.2, kTolerance);
-	TEST_EXPECT_NEAR(context, after.read(AircraftDataKeys::kEngineThrottleCommand).right_normalized, 0.3, kTolerance);
 }
 }
 

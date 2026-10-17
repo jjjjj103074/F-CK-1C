@@ -13,7 +13,7 @@ namespace Systems
 struct EngineFrameInput
 {
 	double dt_s = 0.0;
-	EngineThrottleCommand throttle_command;
+	ThrottleLeverSignal throttle_levers;
 	double internal_fuel_kg = 0.0;
 	double altitude_asl_m = 0.0;
 };

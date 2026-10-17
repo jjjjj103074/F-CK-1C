@@ -130,12 +130,6 @@ struct ThrottleLeverSignal
 	double right_normalized = 0.0;
 };
 
-struct EngineThrottleCommand
-{
-	double left_normalized = 0.0;
-	double right_normalized = 0.0;
-};
-
 struct SecondaryControlPosition
 {
 	double flaps_position_normalized = 0.0;
@@ -220,7 +214,6 @@ enum class AircraftDataId
 	FlightControlActuatorCommand,
 	FlightControlActuatorState,
 	ThrottleLeverSignal,
-	EngineThrottleCommand,
 	SecondaryControlPosition,
 	LandingGearData,
 	EngineData,
@@ -267,11 +260,6 @@ inline constexpr AircraftDataKey<FlightControlActuatorState> kFlightControlActua
 inline constexpr AircraftDataKey<ThrottleLeverSignal> kThrottleLeverSignal = { AircraftDataId::ThrottleLeverSignal,
 	                                                                           "throttle_lever_signal" };
 
-inline constexpr AircraftDataKey<EngineThrottleCommand> kEngineThrottleCommand = {
-	AircraftDataId::EngineThrottleCommand,
-	"engine_throttle_command"
-};
-
 inline constexpr AircraftDataKey<SecondaryControlPosition> kSecondaryControlPosition = {
 	AircraftDataId::SecondaryControlPosition,
 	"secondary_control_position"
@@ -310,7 +298,6 @@ using AircraftDataValue = std::variant<FrameInput,
                                        FlightControlActuatorCommand,
                                        FlightControlActuatorState,
                                        ThrottleLeverSignal,
-                                       EngineThrottleCommand,
                                        SecondaryControlPosition,
                                        LandingGearData,
                                        EngineData,
