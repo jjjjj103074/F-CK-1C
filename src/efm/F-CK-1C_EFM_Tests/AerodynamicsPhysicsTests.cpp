@@ -100,22 +100,20 @@ void test_directional_aerodynamics_oppose_positive_yaw(Tests::Context& context)
 	Common::Vec3 yaw_damping_force;
 	AerodynamicsPhysics::AerodynamicsFrameInput yaw_input;
 	yaw_input.yaw_rate_rad_s = 0.2;
-	AerodynamicsPhysics::apply_rudder_aerodynamics(state,
-	                                               { config, yaw_input },
-	                                               [&yaw_damping_force](const Common::Vec3& force, const Common::Vec3&)
-	                                               {
-		                                               yaw_damping_force = force;
-	                                               });
+	const auto capture_yaw_damping_force = [&yaw_damping_force](const Common::Vec3& force, const Common::Vec3&)
+	{
+		yaw_damping_force = force;
+	};
+	AerodynamicsPhysics::apply_rudder_aerodynamics(state, { config, yaw_input }, capture_yaw_damping_force);
 	TEST_EXPECT(context, yaw_damping_force.z < 0.0);
 	Common::Vec3 right_rudder_force;
 	AerodynamicsPhysics::AerodynamicsFrameInput rudder_input;
 	rudder_input.rudder_position_rad = -0.2;
-	AerodynamicsPhysics::apply_rudder_aerodynamics(state,
-	                                               { config, rudder_input },
-	                                               [&right_rudder_force](const Common::Vec3& force, const Common::Vec3&)
-	                                               {
-		                                               right_rudder_force = force;
-	                                               });
+	const auto capture_right_rudder_force = [&right_rudder_force](const Common::Vec3& force, const Common::Vec3&)
+	{
+		right_rudder_force = force;
+	};
+	AerodynamicsPhysics::apply_rudder_aerodynamics(state, { config, rudder_input }, capture_right_rudder_force);
 	TEST_EXPECT(context, right_rudder_force.z < 0.0);
 }
 
