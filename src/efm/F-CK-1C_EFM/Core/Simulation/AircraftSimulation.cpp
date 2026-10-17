@@ -1,0 +1,229 @@
+#include "AircraftSimulation.h"
+
+#include "Models/Aerodynamics/AerodynamicsConfig.h"
+#include "Models/Aerodynamics/AerodynamicsModel.h"
+#include "Models/GroundInteraction/GroundInteractionConfig.h"
+#include "Models/GroundInteraction/GroundInteractionModel.h"
+#include "Models/MassProperties/MassPropertiesModel.h"
+#include "Models/Propulsion/PropulsionConfig.h"
+#include "Models/Propulsion/PropulsionModel.h"
+#include "Models/ModelExecutionContext.h"
+
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+#include <utility>
+
+namespace
+{
+constexpr long double kNanosecondsPerSecond = 1'000'000'000.0L;
+constexpr double kColdStartThrottle = 0.0;
+constexpr double kHotAirStartThrottle = 0.5;
+
+Core::ThrottleLeverSignal make_initial_throttle_levers(Core::StartMode start_mode)
+{
+	const double throttle = start_mode == Core::StartMode::HotAir ? kHotAirStartThrottle : kColdStartThrottle;
+	return { throttle, throttle };
+}
+
+Core::Systems::FlightFuelState make_system_fuel_state(const Core::Simulation::FlightFuelLoad& load)
+{
+	Core::Systems::FlightFuelState result;
+	result.internal_fuel_kg = load.internal_fuel_kg;
+	result.external_fuel.reserve(load.external_fuel_by_station.size());
+	for (const auto& station : load.external_fuel_by_station)
+	{
+		result.external_fuel.push_back({ station.first, station.second.fuel_kg, station.second.position_body_m });
+	}
+	return result;
+}
+
+Core::Systems::FlightSetupContext make_system_setup(const Core::Simulation::FlightSetupContext& setup)
+{
+	return { setup.start_mode,
+		     make_system_fuel_state(setup.fuel),
+		     make_initial_throttle_levers(setup.start_mode),
+		     setup.debug_telemetry };
+}
+
+Core::Simulation::SimulationModels make_fck1c_simulation_models()
+{
+	Core::Simulation::SimulationModels models;
+	using namespace Core::Simulation;
+	models.aerodynamics =
+	    Detail::invoke_model_action(Detail::kAerodynamicsOwner,
+	                                Detail::kModelCreateOperation,
+	                                []()
+	                                {
+		                                return std::make_unique<AerodynamicsModel>(fck1c_aerodynamics_config());
+	                                });
+	models.propulsion =
+	    Detail::invoke_model_action(Detail::kPropulsionOwner,
+	                                Detail::kModelCreateOperation,
+	                                []()
+	                                {
+		                                return std::make_unique<PropulsionModel>(fck1c_propulsion_config());
+	                                });
+	models.ground_interaction = Detail::invoke_model_action(Detail::kGroundInteractionOwner,
+	                                                        Detail::kModelCreateOperation,
+	                                                        []()
+	                                                        {
+		                                                        return std::make_unique<GroundInteractionModel>(
+		                                                            fck1c_ground_interaction_config());
+	                                                        });
+	models.mass_properties = Detail::invoke_model_action(Detail::kMassPropertiesOwner,
+	                                                     Detail::kModelCreateOperation,
+	                                                     []()
+	                                                     {
+		                                                     return std::make_unique<MassPropertiesModel>();
+	                                                     });
+	return models;
+}
+}
+
+namespace Core
+{
+namespace Simulation
+{
+AircraftSimulation::AircraftSimulation(const FlightSetupContext& setup, AircraftSimulationDependencies dependencies)
+    : system_pipeline_(make_system_setup(setup), std::move(dependencies.system_catalog)),
+      simulation_pipeline_(std::move(dependencies.simulation_models))
+{
+	apply_setup(setup);
+}
+
+void AircraftSimulation::apply_setup(const FlightSetupContext& setup)
+{
+	gameplay_.options = setup.options;
+	simulation_time_s_ = 0.0;
+	cockpit_snapshot_revision_ = 0;
+}
+
+FrameOutput AircraftSimulation::initial_output() const
+{
+	return make_frame_output(system_pipeline_.snapshot(), simulation_pipeline_.result(), {});
+}
+
+void AircraftSimulation::handle_command(const Command& command)
+{
+	(void)system_pipeline_.send(command);
+}
+
+double AircraftSimulation::internal_fuel_kg() const
+{
+	return system_pipeline_.snapshot().read(AircraftDataKeys::kFuelData).internal_fuel_kg;
+}
+
+double AircraftSimulation::external_fuel_kg() const
+{
+	return system_pipeline_.snapshot().read(AircraftDataKeys::kFuelData).external_fuel_kg;
+}
+
+FlightFuelLoad AircraftSimulation::fuel_load() const
+{
+	const Systems::FlightFuelState state = system_pipeline_.fuel_state();
+	FlightFuelLoad load;
+	load.internal_fuel_kg = state.internal_fuel_kg;
+	for (const ExternalFuelInput& external : state.external_fuel)
+	{
+		load.external_fuel_by_station[external.station] = { external.fuel_kg, external.position_body_m };
+	}
+	return load;
+}
+
+void AircraftSimulation::set_internal_fuel(double fuel_kg)
+{
+	system_pipeline_.set_internal_fuel(fuel_kg);
+}
+
+void AircraftSimulation::set_external_fuel(int station, const ExternalFuelLoad& fuel)
+{
+	system_pipeline_.set_external_fuel({ station, fuel.fuel_kg, fuel.position_body_m });
+}
+
+void AircraftSimulation::set_infinite_fuel(bool enabled)
+{
+	gameplay_.options.infinite_fuel = enabled;
+}
+
+void AircraftSimulation::set_easy_flight(bool enabled)
+{
+	gameplay_.options.easy_flight = enabled;
+}
+
+void AircraftSimulation::set_invincible(bool enabled)
+{
+	gameplay_.options.invincible = enabled;
+}
+
+DamageApplyResult AircraftSimulation::apply_damage(const DamageEvent& event)
+{
+	if (gameplay_.options.invincible)
+	{
+		return { true };
+	}
+	(void)system_pipeline_.apply(event);
+	return { false };
+}
+
+void AircraftSimulation::apply_frame_input(const FrameInput& input)
+{
+	Core::apply_aircraft_observations(aircraft_state_, input);
+}
+
+FrameOutput AircraftSimulation::step(const FrameInput& input)
+{
+	apply_frame_input(input);
+	begin_frame(input.dt_s);
+	update_airspeed(aircraft_state_);
+	system_pipeline_.begin_fuel_frame(gameplay_.options.infinite_fuel);
+	const AircraftObservation observation = make_aircraft_observation(aircraft_state_);
+	const Systems::AircraftDataSnapshot aircraft = system_pipeline_.step({ input, observation, scheduled_time() });
+	const SimulationResult& simulation =
+	    simulation_pipeline_.step({ aircraft, aircraft_state_, input, gameplay_.options.easy_flight });
+	return make_frame_output(aircraft, simulation, input.availability);
+}
+
+void AircraftSimulation::begin_frame(double dt_s)
+{
+	if (!std::isfinite(dt_s) || dt_s < 0.0)
+	{
+		throw std::invalid_argument("AircraftSimulation dt_s must be finite and non-negative.");
+	}
+	simulation_time_s_ += dt_s;
+	++cockpit_snapshot_revision_;
+}
+
+Systems::SystemScheduledTime AircraftSimulation::scheduled_time() const
+{
+	const long double nanoseconds = static_cast<long double>(simulation_time_s_) * kNanosecondsPerSecond;
+	constexpr long double maximum = static_cast<long double>((std::numeric_limits<std::int64_t>::max)());
+	if (nanoseconds > maximum)
+	{
+		throw std::overflow_error("AircraftSimulation exceeded its time range.");
+	}
+	return Systems::SystemScheduledTime(static_cast<std::int64_t>(std::llround(nanoseconds)));
+}
+
+void AircraftSimulation::repair(const RepairEvent& event)
+{
+	(void)system_pipeline_.apply(event);
+}
+
+AircraftSimulationFactory make_fck1c_aircraft_simulation_factory()
+{
+	return [](const FlightSetupContext& setup)
+	{
+		AircraftSimulationDependencies dependencies;
+		dependencies.system_catalog = Systems::load_generated_system_catalog();
+		dependencies.simulation_models = make_fck1c_simulation_models();
+		return std::make_unique<AircraftSimulation>(setup, std::move(dependencies));
+	};
+}
+
+double carrier_launch_reference_thrust_n()
+{
+	return fck1c_carrier_launch_reference_thrust_n();
+}
+}
+}

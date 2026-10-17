@@ -1,0 +1,27 @@
+name: C++ 排版
+
+on:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  cpp-format:
+    name: 排版檢查
+    runs-on: windows-latest
+    steps:
+      - name: 取出程式碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: 準備 Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安裝工具
+        run: npm ci
+      - name: 排版工具測試
+        run: npm run test:cpp-format
+      - name: 檢查排版
+        run: npm run check:cpp-format

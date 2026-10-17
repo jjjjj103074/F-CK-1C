@@ -1,0 +1,18 @@
+Scenario,Field,Minimum,Maximum,Rows,Notes
+COLD-CLEAN,simulation_time_s,0,29.928,4988,cold_ground
+COLD-CLEAN,afcs_master_engaged,0,0,4988,AP拒絕接通
+COLD-CLEAN,afcs_ap_engage_rejection_reason,0,2,4988,2=BelowMinimumIndicatedAirspeed
+COLD-CLEAN,afcs_at_engage_rejection_reason,0,3,4988,3=WeightOnWheels
+AIR-CLEAN,simulation_time_s,0,163.830,27296,hot_air
+AIR-CLEAN,afcs_master_engaged,0,1,27296,23770 engaged rows
+AIR-CLEAN,afcs_bypass_active,0,1,27296,808 active rows
+AIR-CLEAN,afcs_auto_throttle_engaged,0,1,27296,4580 engaged rows
+AIR-CLEAN,afcs_vertical_mode,0,3,27296,Pitch/VS/ALT observed
+AIR-CLEAN,afcs_lateral_mode,0,3,27296,HH/HS/NAV observed
+AIR-CLEAN-ALT,simulation_time_s,36.294,153.744,19571,117.450 s
+AIR-CLEAN-ALT,afcs_target_altitude_m,1913.361,1913.361,19571,
+AIR-CLEAN-ALT,flight_altitude_asl_m,1912.201,2037.086,19571,error -123.725..+1.160 m
+AIR-CLEAN-ALT,afcs_pitch_command_normalized,-0.6,0.6,19571,7517 negative and 2674 positive saturated rows
+AIR-CLEAN-ALT,flight_g_load,-1.772,4.827,19571,
+RWY-CLEAN,simulation_time_s,0,29.724,4955,hot_ground
+RWY-CLEAN,propulsion_test_thrust_cut_requested,0,1,4955,404 requested rows

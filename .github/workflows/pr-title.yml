@@ -1,0 +1,15 @@
+name: PR 標題
+
+on:
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: PR
+    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base
+    uses: ./.github/workflows/pr-title-checks.yml

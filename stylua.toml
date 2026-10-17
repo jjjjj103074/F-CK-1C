@@ -1,0 +1,6 @@
+column_width = 999
+indent_type = "Spaces"
+indent_width = 4
+line_endings = "Windows"
+quote_style = "AutoPreferDouble"
+collapse_simple_statement = "ConditionalOnly"

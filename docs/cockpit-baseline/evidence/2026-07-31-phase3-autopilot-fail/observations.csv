@@ -1,0 +1,17 @@
+Scenario,Check,Result,Evidence,Notes
+COLD-CLEAN,AP ground engage gate,PASS,"master true rows=0; rejection=BelowMinimumIndicatedAirspeed","IAS gate先成立"
+COLD-CLEAN,A/T ground engage gate,PASS,"A/T true rows=0; rejection=WeightOnWheels",
+AIR-CLEAN,Pitch Hold,PASS,"vertical/lateral mode 1/1 observed","測試者未回報異常"
+AIR-CLEAN,VS Hold,PASS,"vertical mode 2 observed","測試者未回報異常"
+AIR-CLEAN,ALT Hold,FAIL,"target=1913.361 m; altitude=1912.201..2037.086 m; command=-0.6..+0.6; G=-1.772..4.827","明顯上下擺盪"
+AIR-CLEAN,Heading Hold,PASS,"lateral mode 1 observed","測試者未回報異常"
+AIR-CLEAN,Heading Select,PASS,"lateral mode 2 observed","測試者未回報異常"
+AIR-CLEAN,NAV placeholder,PASS,"lateral mode 3 observed","測試者未回報異常"
+AIR-CLEAN,Bypass,PASS,"808 bypass-active rows; ALT command同時為0",
+AIR-CLEAN,A/T,PASS,"4580 engaged rows; commanded disengage reason observed","測試者未回報異常"
+AIR-CLEAN,Vertical Reference increment,NOT_RUN,"沒有預設按鍵綁定",
+AIR-CLEAN,Heading Reference increment,NOT_RUN,"沒有預設按鍵綁定",
+RWY-CLEAN,Thrust Cut Test,PASS,"404 requested rows",
+ALL,EFM load,PASS,"DCS loaded installed F-CK-1C_EFM.dll",
+ALL,Removed Lua,PASS,"dcs.log沒有autopilot_system.lua",
+ALL,Unknown command,KNOWN,"command 2659 warning in each run","非本次AP command route"

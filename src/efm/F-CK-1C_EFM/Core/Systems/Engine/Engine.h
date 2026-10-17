@@ -1,0 +1,56 @@
+#pragma once
+
+#include "EngineConfig.h"
+#include "EngineModel.h"
+#include "../System.h"
+#include "../../Contracts/AircraftData.h"
+#include "Common/SegmentedIntegrity.h"
+
+namespace Core
+{
+namespace Systems
+{
+struct EngineFrameInput
+{
+	double dt_s = 0.0;
+	EngineThrottleCommand throttle_command;
+	double internal_fuel_kg = 0.0;
+	double altitude_asl_m = 0.0;
+};
+
+class Engine final : public System
+{
+public:
+	Engine(const EngineConfig& config, StartMode start_mode);
+
+	void setup(SystemSetup& setup) override;
+	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
+
+	const EngineData& step(const EngineFrameInput& input);
+	void handle_command(const Command& command);
+	void apply_damage(const DamageEvent& event);
+	void repair(const RepairEvent& event);
+
+	const EngineData& data() const;
+	const FuelDemand& fuel_demand() const;
+	const ::Systems::EngineSystemState& state() const;
+	double left_integrity() const;
+	double right_integrity() const;
+
+private:
+	void configure_start(StartMode start_mode);
+	void register_handlers(SystemSetup& setup);
+	void refresh_outputs();
+
+	const EngineConfig config_;
+	::Systems::EngineSystemState engines_;
+	Common::SegmentedIntegrity<kEngineDamageSegmentCount> left_integrity_;
+	Common::SegmentedIntegrity<kEngineDamageSegmentCount> right_integrity_;
+	EngineData data_;
+	FuelDemand fuel_demand_;
+	bool thrust_inhibited_ = false;
+};
+
+SystemEntry make_engine_system_entry(const EngineConfig& config);
+}
+}

@@ -2,8 +2,13 @@ local dev = GetSelf()
 local sensor_data = get_base_data()
 
 dofile(LockOn_Options.script_path .. "command_defs.lua")
+dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
-local update_rate = 0.05
+-- Project-defined 64 Hz: no confirmed F-CK-1C heading-reference sampling
+-- rate is public. This keeps the DCS-only magnetic observation aligned with
+-- the current FCC reference rate until an aircraft source is available.
+local HEADING_OBSERVATION_RATE_HZ = 64
+local update_rate = 1.0 / HEADING_OBSERVATION_RATE_HZ
 make_default_activity(update_rate)
 
 local CMD_MASTER_ARM_ON = device_commands.MasterArmOn
@@ -36,12 +41,15 @@ local submode_dogfight = 0
 
 local hmcs_ias_kts = get_param_handle("HMCS_IAS_KTS")
 local hmcs_alt_ft = get_param_handle("HMCS_ALT_FT")
+local pressure_altitude_available = get_param_handle(cockpit_params.PressureAltitudeAvailable)
+local pressure_altitude_m = get_param_handle(cockpit_params.PressureAltitudeM)
 local hmcs_hdg_deg = get_param_handle("HMCS_HDG_DEG")
+local magnetic_heading_available = get_param_handle(cockpit_params.MagneticHeadingAvailable)
+local magnetic_heading_rad = get_param_handle(cockpit_params.MagneticHeadingRad)
 local hmcs_hdg_minor_offset = get_param_handle("HMCS_HDG_MINOR_OFFSET")
 local hmcs_master_mode = get_param_handle("HMCS_MASTER_MODE")
 local hmcs_weapon_class = get_param_handle("HMCS_WEAPON_CLASS")
 local hmcs_weapon_qty = get_param_handle("HMCS_WEAPON_QTY")
-local hmcs_dogfight_mode = get_param_handle("HMCS_DOGFIGHT_MODE")
 local hmcs_fc_mode = get_param_handle("HMCS_FC_MODE")
 local hmcs_gun_firing = get_param_handle("HMCS_GUN_FIRING")
 local hmcs_enabled = get_param_handle("HMCS_ENABLED")
@@ -70,64 +78,40 @@ end
 
 local function shared_master_mode()
     local value = hmcs_master_mode:get()
-    if value >= MASTER_OFF - 0.1 and value <= MASTER_ON + 0.1 then
-        return value
-    end
+    if value >= MASTER_OFF - 0.1 and value <= MASTER_ON + 0.1 then return value end
     return master_mode
-end
-
-local function shared_dogfight_mode()
-    local value = hmcs_dogfight_mode:get()
-    if value > 0.5 then
-        return 1
-    end
-    return 0
 end
 
 local function shared_fc_mode()
     local value = hmcs_fc_mode:get()
-    if value >= -0.1 and value <= 2.1 then
-        return math.floor(value + 0.5)
-    end
-    if submode_dogfight > 0 then
-        return 1
-    end
+    if value >= -0.1 and value <= 2.1 then return math.floor(value + 0.5) end
+    if submode_dogfight > 0 then return 1 end
     return 0
 end
 
 local function safe_sensor_call(method_name, default_value)
     local method = sensor_data and sensor_data[method_name]
-    if type(method) ~= "function" then
-        return default_value
-    end
+    if type(method) ~= "function" then return default_value end
 
     local ok, value = pcall(method, sensor_data)
-    if ok and type(value) == "number" then
-        return value
-    end
+    if ok and type(value) == "number" then return value end
 
     return default_value
 end
 
 local function try_global_number_call(function_name, ...)
     local fn = _G[function_name]
-    if type(fn) ~= "function" then
-        return false, nil
-    end
+    if type(fn) ~= "function" then return false, nil end
 
     local ok, value = pcall(fn, ...)
-    if ok and type(value) == "number" then
-        return true, value
-    end
+    if ok and type(value) == "number" then return true, value end
 
     return false, nil
 end
 
 local function read_draw_argument(argument_number, default_value)
     local ok, value = try_global_number_call("get_aircraft_draw_argument_value", argument_number)
-    if ok then
-        return value
-    end
+    if ok then return value end
     return default_value
 end
 
@@ -137,9 +121,7 @@ local function update_display_mode_params()
     local helmet_installed = math.abs(helmet_arg - 0.0) < 0.25
     local display_mode_value = 0
 
-    if display_mode_arg >= 0.5 then
-        display_mode_value = 1
-    end
+    if display_mode_arg >= 0.5 then display_mode_value = 1 end
 
     hmcs_enabled:set(helmet_installed and 1 or 0)
     hmcs_display_mode:set(display_mode_value)
@@ -147,86 +129,62 @@ end
 
 local function try_sensor_call(method_name)
     local method = sensor_data and sensor_data[method_name]
-    if type(method) ~= "function" then
-        return false, nil
-    end
+    if type(method) ~= "function" then return false, nil end
 
     local ok, value = pcall(method, sensor_data)
-    if ok and type(value) == "number" then
-        return true, value
-    end
+    if ok and type(value) == "number" then return true, value end
 
     return false, nil
 end
 
-local function normalize_heading_deg(heading_rad)
-    local heading_deg = math.deg(heading_rad or 0.0)
-    heading_deg = heading_deg % 360.0
-    if heading_deg < 0.0 then
-        heading_deg = heading_deg + 360.0
-    end
-    return heading_deg
+local function normalize_heading_rad(heading_rad)
+    local normalized = heading_rad % (2.0 * math.pi)
+    if normalized < 0.0 then normalized = normalized + 2.0 * math.pi end
+    return normalized
 end
 
-local function safe_heading_deg()
-    local has_magnetic_heading, magnetic_heading = try_sensor_call("getMagneticHeading")
-    if has_magnetic_heading then
-        return normalize_heading_deg(magnetic_heading + math.rad(hmcs_heading_bias_deg))
-    end
+local function read_magnetic_heading()
+    local available, heading_rad = try_sensor_call("getMagneticHeading")
+    magnetic_heading_available:set(available and 1 or 0)
+    if not available then return nil end
 
-    local heading = safe_sensor_call("getHeading", 0.0)
-    return normalize_heading_deg(-heading + math.rad(hmcs_heading_bias_deg))
+    local normalized = normalize_heading_rad(
+        heading_rad + math.rad(hmcs_heading_bias_deg)
+    )
+    magnetic_heading_rad:set(normalized)
+    return normalized
+end
+
+local function read_pressure_altitude()
+    local available, altitude_m = try_sensor_call("getBarometricAltitude")
+    pressure_altitude_available:set(available and 1 or 0)
+    if not available then return nil end
+
+    pressure_altitude_m:set(altitude_m)
+    return altitude_m
 end
 
 local function heading_label_code(heading_deg)
     local normalized = heading_deg % 360
-    if normalized % 30 ~= 0 then
-        return 0
-    end
-    if normalized == 0 then
-        return 1
-    end
-    if normalized == 30 then
-        return 2
-    end
-    if normalized == 60 then
-        return 3
-    end
-    if normalized == 90 then
-        return 4
-    end
-    if normalized == 120 then
-        return 5
-    end
-    if normalized == 150 then
-        return 6
-    end
-    if normalized == 180 then
-        return 7
-    end
-    if normalized == 210 then
-        return 8
-    end
-    if normalized == 240 then
-        return 9
-    end
-    if normalized == 270 then
-        return 10
-    end
-    if normalized == 300 then
-        return 11
-    end
+    if normalized % 30 ~= 0 then return 0 end
+    if normalized == 0 then return 1 end
+    if normalized == 30 then return 2 end
+    if normalized == 60 then return 3 end
+    if normalized == 90 then return 4 end
+    if normalized == 120 then return 5 end
+    if normalized == 150 then return 6 end
+    if normalized == 180 then return 7 end
+    if normalized == 210 then return 8 end
+    if normalized == 240 then return 9 end
+    if normalized == 270 then return 10 end
+    if normalized == 300 then return 11 end
     return 12
 end
 
 local function heading_tick_code(heading_deg)
     local normalized = heading_deg % 360
-    if normalized % 90 == 0 then
-        return 3
-    end
-    if normalized % 30 == 0 then
-        return 2
-    end
+    if normalized % 90 == 0 then return 3 end
+    if normalized % 30 == 0 then return 2 end
     return 1
 end
 
@@ -254,25 +212,14 @@ local function safe_gun_quantity()
 
     for _, method_name in ipairs(candidates) do
         local value = safe_sensor_call(method_name, -1.0)
-        if value >= 0.0 then
-            return value
-        end
+        if value >= 0.0 then return value end
     end
 
     return -1.0
 end
 
-local function push_params()
-    local ias_mps = safe_sensor_call("getIndicatedAirSpeed", 0.0)
-    local baro_alt_m = safe_sensor_call("getBarometricAltitude", 0.0)
-    local heading_deg = safe_heading_deg()
+local function resolve_weapon_display(display_master_mode, display_fc_mode)
     local gun_quantity_live = safe_gun_quantity()
-    local display_master_mode = shared_master_mode()
-    local display_dogfight_mode = shared_dogfight_mode()
-    local display_fc_mode = shared_fc_mode()
-
-    update_display_mode_params()
-
     local gun_firing = hmcs_gun_firing:get() > 0.5 or hmcs_trigger_down
     local display_weapon_class = weapon_class
     local display_weapon_quantity = weapon_quantity
@@ -300,18 +247,29 @@ local function push_params()
         display_weapon_quantity = hmcs_gun_qty_sim
     end
 
-    hmcs_ias_kts:set(math.max(0.0, ias_mps * 1.943844))
-    hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084))
-    hmcs_hdg_deg:set(heading_deg)
-    hmcs_master_mode:set(display_master_mode)
-    hmcs_weapon_class:set(display_weapon_class)
     if display_weapon_class == WEAPON_GUN then
-        hmcs_weapon_qty:set(hmcs_gun_qty_sim)
-    else
-        hmcs_weapon_qty:set(display_weapon_quantity)
+        return display_weapon_class, hmcs_gun_qty_sim
     end
-    hmcs_dogfight_mode:set(display_dogfight_mode)
-    update_heading_slots(heading_deg)
+    return display_weapon_class, display_weapon_quantity
+end
+
+local function push_params()
+    local ias_mps = safe_sensor_call("getIndicatedAirSpeed", 0.0)
+    local baro_alt_m = read_pressure_altitude()
+    local heading_rad = read_magnetic_heading()
+    local display_master_mode = shared_master_mode()
+    local display_fc_mode = shared_fc_mode()
+    local display_weapon_class, display_weapon_quantity = resolve_weapon_display(display_master_mode, display_fc_mode)
+
+    update_display_mode_params()
+    hmcs_ias_kts:set(math.max(0.0, ias_mps * 1.943844))
+    if baro_alt_m ~= nil then
+        hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084))
+    end
+    if heading_rad ~= nil then hmcs_hdg_deg:set(math.deg(heading_rad)) end
+    hmcs_weapon_class:set(display_weapon_class)
+    hmcs_weapon_qty:set(display_weapon_quantity)
+    if heading_rad ~= nil then update_heading_slots(math.deg(heading_rad)) end
 end
 
 dev:listen_command(CMD_MASTER_ARM_ON)
@@ -335,9 +293,7 @@ function SetCommand(command, value)
         return
     end
 
-    if value <= 0.5 then
-        return
-    end
+    if value <= 0.5 then return end
 
     if command == CMD_MASTER_ARM_ON then
         master_mode = MASTER_ON
@@ -400,7 +356,6 @@ function SetCommand(command, value)
         push_params()
         return
     end
-
 end
 
 function update()

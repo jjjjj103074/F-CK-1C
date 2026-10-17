@@ -1,0 +1,185 @@
+name: PR 原生檢查
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: efm-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-submission:
+    name: 提交檢查
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    env:
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_BASE: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - name: 取出提交版本
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/efm/
+            /tools/
+            /Cockpit/
+            /Input/
+            /FM/
+            /bin/F-CK-1C_EFM.dll
+            /package.json
+            /package-lock.json
+            /commitlint.config.js
+            /.github/workflows/pr-native.yml
+            /.github/workflows/pr-native-checks.yml
+            /.github/workflows/pr-title.yml
+            /.github/workflows/pr-title-checks.yml
+            /.github/workflows/pr-rule-notice.yml
+            /.clang-format
+            /_clang-format
+            /.clang-format-ignore
+            /src/.clang-format
+            /src/_clang-format
+            /src/.clang-format-ignore
+            /.gitattributes
+            /.gitignore
+      - name: 準備 Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: 規劃檢查
+        id: plan
+        shell: pwsh
+        run: |
+          git fetch --no-tags --filter=blob:none origin $env:PR_BASE
+          if ($LASTEXITCODE -ne 0) { throw '無法取得目標版本。' }
+          node tools/pr-checks.mjs $env:PR_HEAD $env:PR_BASE Submission
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 安裝工具
+        if: steps.plan.outputs.format == 'true' || steps.plan.outputs.tools == 'true'
+        run: npm ci --ignore-scripts
+      - name: 工具測試
+        if: steps.plan.outputs.tools == 'true'
+        shell: pwsh
+        run: |
+          node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs tools/pr-checks.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: C++ 排版
+        if: steps.plan.outputs.format == 'true'
+        shell: pwsh
+        run: |
+          node tools/cpp-format.mjs --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: DLL 與原生測試
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/validate_efm.ps1 -Phase Submission -Checks '${{ steps.plan.outputs.checks }}' -ExpectedHead $env:PR_HEAD -ReportDirectory "$env:RUNNER_TEMP\efm-submission"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 保存失敗紀錄
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: efm-submission-diagnostics
+          retention-days: 3
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/efm-submission/*.json
+            ${{ runner.temp }}/efm-submission/*.md
+            ${{ runner.temp }}/efm-submission/*.log
+
+  merge-compatibility:
+    name: 合併檢查
+    needs: pr-submission
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    env:
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_BASE: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - name: 取出提交與歷史
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/efm/
+            /tools/
+            /FM/
+            /bin/F-CK-1C_EFM.dll
+            /.gitattributes
+            /.gitignore
+      - name: 準備 Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: 規劃檢查
+        id: plan
+        shell: pwsh
+        run: |
+          git fetch --no-tags --filter=blob:none origin $env:PR_BASE
+          if ($LASTEXITCODE -ne 0) { throw '無法取得目標版本。' }
+          node tools/pr-checks.mjs $env:PR_HEAD $env:PR_BASE Merge
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 模擬合併
+        shell: pwsh
+        run: |
+          if ($env:PR_HEAD -notmatch '^[a-f0-9]{40}$' -or $env:PR_BASE -notmatch '^[a-f0-9]{40}$') { throw '提交版本格式錯誤。' }
+          git config user.name 'EFM CI'
+          git config user.email 'efm-ci@users.noreply.github.com'
+          ./tools/prepare_efm_merge.ps1 -HeadSha $env:PR_HEAD -BaseSha $env:PR_BASE -OutputDirectory "$env:RUNNER_TEMP\efm-prepared-merge"
+      - name: DLL 與原生測試
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\efm-prepared-merge\controller\validate_efm.ps1" -Phase Merge -Checks '${{ steps.plan.outputs.checks }}' -RepoRoot "$env:GITHUB_WORKSPACE" -ExpectedHead $env:PR_HEAD -SubmittedDllPath "$env:RUNNER_TEMP\efm-prepared-merge\pr-uploaded.dll" -ReportDirectory "$env:RUNNER_TEMP\efm-merge"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 保存失敗紀錄
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: efm-merge-diagnostics
+          retention-days: 3
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/efm-merge/*.json
+            ${{ runner.temp }}/efm-merge/*.md
+            ${{ runner.temp }}/efm-merge/*.log
+
+  validation-summary:
+    name: 檢查結果
+    if: always()
+    needs: [pr-submission, merge-compatibility]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      SUBMISSION_RESULT: ${{ needs.pr-submission.result }}
+      MERGE_RESULT: ${{ needs.merge-compatibility.result }}
+    steps:
+      - name: 確認結果與版本
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const expected = context.payload.pull_request;
+            const {data: current} = await github.rest.pulls.get({...context.repo, pull_number: expected.number});
+            const {data: target} = await github.rest.git.getRef({...context.repo, ref: `heads/${current.base.ref}`});
+            const fresh = current.state === 'open' && current.head.sha === expected.head.sha && current.base.ref === expected.base.ref && target.object.sha === expected.base.sha;
+            const labels = {success: '通過', failure: '失敗', cancelled: '已取消', skipped: '已跳過'};
+            const resultLabel = value => labels[value] ?? '未知';
+            await core.summary.addHeading('檢查結果').addTable([
+              [{data: '項目', header: true}, {data: '結果', header: true}],
+              ['提交檢查', resultLabel(process.env.SUBMISSION_RESULT)],
+              ['合併檢查', resultLabel(process.env.MERGE_RESULT)],
+              ['檢查版本', fresh ? '最新' : '已過期，請同步目標分支後重跑']
+            ]).addDetails('版本', `PR: ${expected.head.sha}\n\n目標: ${expected.base.sha}`).write();
+            if (!fresh || process.env.SUBMISSION_RESULT !== 'success' || process.env.MERGE_RESULT !== 'success') {
+              core.setFailed(fresh ? '檢查未通過，請查看失敗項目。' : '檢查版本已過期，請同步目標分支後重跑。');
+            }

@@ -1,0 +1,12 @@
+Scenario,Area,Step,Expected,Observed,Result,Evidence
+AIR-CLEAN,Environment,Version,DCS version is recorded,DCS 2.9.28.26283 x86_64 MT,CAPTURED,dcs-relevant.txt
+AIR-CLEAN,EFM,Load,EFM DLL load result is explicit,F-CK-1C_EFM.dll loaded,CAPTURED,dcs-relevant.txt
+AIR-CLEAN,DamageModel,Load,All load errors are retained,Missing lineFG lineLG lineRG and corrupt damage model,KNOWN_FAIL,dcs-relevant.txt
+AIR-CLEAN,Actuators,Load,Lua device loads or exposes the exact failure,angle_of_draw_left_rudder missing and actuators_system.lua did not load,KNOWN_FAIL,dcs-relevant.txt
+AIR-CLEAN,Autopilot,Load,Lua device loads or exposes the exact failure,Function has more than 60 upvalues and autopilot_system.lua did not load,KNOWN_FAIL,dcs-relevant.txt
+AIR-CLEAN,CMS,Initialize,CMS state is visible,Loaded with connected true Master ON NAV AIM9 fallback count 1,CAPTURED,dcs-relevant.txt
+AIR-CLEAN,Inventory,Probe,Store source is explicit,All candidate gun and AIM9 methods reported missing,KNOWN_FAIL,dcs-relevant.txt
+AIR-CLEAN,WeaponSystem,Initialize,Weapon device load result is explicit,FCK1C WPN initialized but no armed station test was run,CAPTURED_PARTIAL,dcs-relevant.txt
+AIR-CLEAN,Audio,Initialize,Host and sound resources are explicit,Radar warn headphones host plus seek acquire lock sounds and playlist 23 created,CAPTURED,dcs-relevant.txt
+AIR-CLEAN,Radar,IdleFallback,Idle source and state are explicit,Fallback source radar on no contact no lock AIM9 count 1,CAPTURED,dcs-relevant.txt
+AIR-CLEAN,ManualSteps,FullProtocol,All AIR-CLEAN manual steps completed,No evidence of complete manual sequence,NOT_RUN,RUN.md

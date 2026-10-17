@@ -1,0 +1,25 @@
+2026-07-31 05:15:24.730 INFO APP (Main): DCS/2.9.28.26385 (x86_64; MT; Windows NT 10.0.26200)
+2026-07-31 05:15:24.730 INFO APP (Main): Application revision: 266385
+2026-07-31 05:15:24.730 INFO APP (Main): Renderer revision: 26305
+2026-07-31 05:15:24.730 INFO APP (Main): Terrain revision: 27850
+2026-07-31 05:22:32.855 INFO EDCORE (Main): Loaded C:/Users/jjjjj/Saved Games/DCS/Mods/aircraft/F-CK-1C/bin/F-CK-1C_EFM.dll
+2026-07-31 05:22:32.910 ERROR APP (Main): Error: Unit [F-CK-1C]: Corrupt damage model.
+2026-07-31 05:22:33.067 ERROR COCKPITBASE (Main): Cockpit:Parent 'hmcs_vr_tfov' for 'hmcs_vr_root' is not found
+[2026-07-31 13:22:33.813][0][INFO] flight start mode=cold_ground
+[2026-07-31 13:22:40.485][0][WARN] callback=ed_fm_set_command command=2659 unknown value=1
+[2026-07-31 13:23:11.922][29.92800000000091][INFO] flight release
+[2026-07-31 13:23:11.922][29.92800000000091][WARN] counted_warning kind=unknown_command id=2659 total=2 flight_release_summary
+2026-07-31 05:23:24.974 ERROR APP (Main): Error: Unit [F-CK-1C]: Corrupt damage model.
+2026-07-31 05:23:24.985 ERROR COCKPITBASE (Main): Cockpit:Parent 'hmcs_vr_tfov' for 'hmcs_vr_root' is not found
+[2026-07-31 13:23:25.868][0][INFO] flight start mode=hot_air
+[2026-07-31 13:23:28.664][0][WARN] callback=ed_fm_set_command command=2659 unknown value=1
+[2026-07-31 13:26:50.360][163.83000000000598][INFO] flight release
+[2026-07-31 13:26:50.360][163.83000000000598][WARN] counted_warning kind=unknown_command id=2659 total=3 flight_release_summary
+2026-07-31 05:27:01.372 ERROR APP (Main): Error: Unit [F-CK-1C]: Corrupt damage model.
+2026-07-31 05:27:01.385 ERROR COCKPITBASE (Main): Cockpit:Parent 'hmcs_vr_tfov' for 'hmcs_vr_root' is not found
+[2026-07-31 13:27:02.267][0][INFO] flight start mode=hot_ground
+[2026-07-31 13:27:06.462][0][WARN] callback=ed_fm_set_command command=2659 unknown value=1
+[2026-07-31 13:27:37.775][29.724000000000903][INFO] flight release
+[2026-07-31 13:27:37.775][29.724000000000903][WARN] counted_warning kind=unknown_command id=2659 total=2 flight_release_summary
+
+No "autopilot_system.lua" occurrence was present in dcs.log.

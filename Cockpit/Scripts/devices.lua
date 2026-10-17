@@ -1,17 +1,13 @@
-local count = 0
-local function counter()
-    count = count + 1
-    return count
-end
--------DEVICE ID-------
-devices = {}
-
-devices["Gear"] = counter()
-devices["Actuators"] = counter()
-devices["CMS"] = counter()
-devices["WEAPON_SYSTEM"] = counter()
-devices["HMCS"] = counter()
-devices["AAM_AUDIO"] = counter()
-devices["RADAR"] = counter()
-devices["RADAR_STATE"] = counter()
-devices["AUTOPILOT"] = counter()
+-- Stable DCS cockpit device IDs. Never compact or reuse reserved slots.
+devices = {
+    -- Reserved after migration; do not register or reuse IDs 1, 2, or 9.
+    Gear = 1,
+    Actuators = 2,
+    CMS = 3,
+    WEAPON_SYSTEM = 4,
+    HMCS = 5,
+    AAM_AUDIO = 6,
+    RADAR = 7,
+    RADAR_STATE = 8,
+    AUTOPILOT = 9,
+}

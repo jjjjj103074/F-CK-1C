@@ -5,11 +5,11 @@ purposes = { render_purpose.SCREENSPACE_INSIDE_COCKPIT, render_purpose.HUD_ONLY_
 screenspace_scale = 4
 
 id_Page = {
-	MAIN = 0,
+    MAIN = 0,
 }
 
 id_pagesubset = {
-	COMMON = 0,
+    COMMON = 0,
 }
 
 page_subsets = {}

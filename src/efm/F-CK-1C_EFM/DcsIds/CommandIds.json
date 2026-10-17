@@ -1,0 +1,308 @@
+{
+  "commands": [
+    { "name": "FBWCatToggle", "value": 3007, "route": "efm" },
+    { "name": "FBWCat1", "value": 3008, "route": "efm" },
+    { "name": "FBWCat3", "value": 3009, "route": "efm" },
+    { "name": "AirBrakesAuto", "value": 3010, "route": "efm" },
+    { "name": "GearAuto", "value": 3011, "route": "efm" },
+    { "name": "FlapsAuto", "value": 3012, "route": "efm" },
+    { "name": "NoseTurnUp", "value": 3013, "route": "efm" },
+    { "name": "NoseTurnAuto", "value": 3014, "route": "efm" },
+    { "name": "NoseTurnDown", "value": 3015, "route": "efm" },
+    { "name": "AirBrakesUp", "value": 3016, "route": "efm" },
+    { "name": "AirBrakesDown", "value": 3017, "route": "efm" },
+    { "name": "GearHandleUp", "value": 3018, "route": "efm" },
+    { "name": "GearHandleDown", "value": 3019, "route": "efm" },
+    { "name": "FlapsUpCmd", "value": 3020, "route": "efm" },
+    { "name": "FlapsDownCmd", "value": 3021, "route": "efm" },
+    { "name": "NoseTurnToggle", "value": 3022, "route": "efm" },
+    { "name": "WheelBrakeAxis", "value": 3023, "route": "efm" },
+    { "name": "WheelBrakeAxisLeft", "value": 3024, "route": "efm" },
+    { "name": "WheelBrakeAxisRight", "value": 3025, "route": "efm" },
+    { "name": "FBWGLimiterOverride", "value": 3026, "route": "efm" },
+    { "name": "FBWGLimiterOverrideToggle", "value": 3027, "route": "efm" },
+
+    { "name": "TriggerFirstStage", "value": 3030, "route": "cockpit" },
+    { "name": "CMSForward", "value": 3031, "route": "cockpit" },
+    { "name": "CMSAft", "value": 3032, "route": "cockpit" },
+    { "name": "CMSLeft", "value": 3033, "route": "cockpit" },
+    { "name": "CMSRight", "value": 3034, "route": "cockpit" },
+    { "name": "CMSPress", "value": 3035, "route": "cockpit" },
+    { "name": "TriggerSecondStage", "value": 3036, "route": "cockpit" },
+    { "name": "MasterArmOn", "value": 3040, "route": "cockpit" },
+    { "name": "MasterArmOff", "value": 3041, "route": "cockpit" },
+    { "name": "MasterArmSim", "value": 3042, "route": "cockpit" },
+    { "name": "DogfightSwitch", "value": 3043, "route": "cockpit" },
+    { "name": "MissileUncage", "value": 3044, "route": "cockpit" },
+    { "name": "WeaponRelease", "value": 3045, "route": "cockpit" },
+    { "name": "TMSUp", "value": 3046, "route": "cockpit" },
+    { "name": "TMSDown", "value": 3047, "route": "cockpit" },
+    { "name": "TMSLeft", "value": 3048, "route": "cockpit" },
+    { "name": "TMSRight", "value": 3049, "route": "cockpit" },
+    { "name": "NavMode", "value": 3050, "route": "cockpit" },
+    { "name": "MissileOverride", "value": 3051, "route": "cockpit" },
+    { "name": "SoundTestCycle", "value": 3052, "route": "cockpit" },
+
+    { "name": "APMasterOn", "value": 3101, "route": "efm" },
+    { "name": "APMasterOff", "value": 3102, "route": "efm" },
+    { "name": "APBypass", "value": 3103, "route": "efm" },
+    { "name": "APPitchAttitudeHold", "value": 3110, "route": "efm" },
+    { "name": "APPitchAltitudeHold", "value": 3112, "route": "efm" },
+    { "name": "APRollAttitudeHold", "value": 3120, "route": "efm" },
+    { "name": "APRollHeadingSelect", "value": 3121, "route": "efm" },
+    { "name": "APHeadingSetIncrease", "value": 3123, "route": "efm" },
+    { "name": "APHeadingSetDecrease", "value": 3124, "route": "efm" },
+    { "name": "APAutoThrottleToggle", "value": 3130, "route": "efm" },
+    { "name": "APAutoThrottleOn", "value": 3131, "route": "efm" },
+    { "name": "APAutoThrottleOff", "value": 3132, "route": "efm" },
+    { "name": "APSpeedIncrease", "value": 3133, "route": "efm" },
+    { "name": "APSpeedDecrease", "value": 3134, "route": "efm" },
+    { "name": "EngineThrustCutTestToggle", "value": 3135, "route": "efm" },
+    { "name": "EngineThrustCutTestEnable", "value": 3136, "route": "efm" },
+    { "name": "EngineThrustCutTestDisable", "value": 3137, "route": "efm" },
+    { "name": "DebugIndicatorToggle", "value": 3140, "route": "bridge" }
+  ],
+  "efm_ignored_dcs_commands": [
+    {
+      "name": "iCommandPlaneFire",
+      "value": 84,
+      "reason": "DCS owns the weapon fire command used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneFireOff",
+      "value": 85,
+      "reason": "DCS owns the weapon fire release command used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneRadarOnOff",
+      "value": 86,
+      "reason": "DCS owns the radar sensor toggle dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneEOSOnOff",
+      "value": 87,
+      "reason": "DCS owns the electro-optical sensor toggle used by the input profiles."
+    },
+    {
+      "name": "iCommandPlaneChangeLock",
+      "value": 100,
+      "reason": "DCS owns target-lock selection dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneChangeWeapon",
+      "value": 101,
+      "reason": "DCS owns weapon selection used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeBVR",
+      "value": 106,
+      "reason": "DCS owns the BVR sensor and weapon mode used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeVS",
+      "value": 107,
+      "reason": "DCS owns the vertical-scan sensor mode dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeBore",
+      "value": 108,
+      "reason": "DCS owns the bore sensor mode used by the input profiles."
+    },
+    {
+      "name": "iCommandPlaneModeHelmet",
+      "value": 109,
+      "reason": "DCS owns the helmet sensor mode used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeFI0",
+      "value": 110,
+      "reason": "DCS owns the longitudinal missile-aiming mode used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneModeCannon",
+      "value": 113,
+      "reason": "DCS owns cannon mode dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropSnarOnce",
+      "value": 176,
+      "reason": "DCS owns the combined countermeasure release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneLaunchPermissionOverride",
+      "value": 349,
+      "reason": "DCS owns launch-permission override used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlanePickleOn",
+      "value": 350,
+      "reason": "DCS owns weapon release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlanePickleOff",
+      "value": 351,
+      "reason": "DCS owns weapon release termination used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropFlareOnce",
+      "value": 357,
+      "reason": "DCS owns flare release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropChaffOnce",
+      "value": 358,
+      "reason": "DCS owns chaff release used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneLockOnStart",
+      "value": 509,
+      "reason": "DCS owns target-lock press handling dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneLockOnFinish",
+      "value": 510,
+      "reason": "DCS owns target-lock release handling dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneDropSnarOnceOff",
+      "value": 536,
+      "reason": "DCS owns combined countermeasure release termination used by the input profiles and CMS Lua."
+    },
+    {
+      "name": "iCommandPlane_ShowControls",
+      "value": 851,
+      "reason": "DCS owns the Controls Indicator visibility command."
+    },
+    {
+      "name": "iCommandViewPauseOnOff",
+      "value": 1609,
+      "reason": "DCS owns the view and pause lifecycle command."
+    },
+    {
+      "name": "iCommandPlaneChangeLockUp",
+      "value": 1627,
+      "reason": "DCS owns target-lock release selection dispatched by CMS Lua."
+    },
+    {
+      "name": "iCommandPlaneFeedbackTrimmer",
+      "value": 2035,
+      "reason": "Force-feedback output is not implemented; tracked by GitHub issue 24."
+    },
+    {
+      "name": "iServiceInformAboutUserHAngle",
+      "value": 2142,
+      "reason": "DCS owns the horizontal user-view service value."
+    },
+    {
+      "name": "iServiceInformAboutUserVAngle",
+      "value": 2143,
+      "reason": "DCS owns the vertical user-view service value."
+    }
+  ],
+  "cockpit_params": [
+    { "name": "TemperatureC", "value": "FM_TEMPERATURE_C", "direction": "cpp_to_lua", "unit": "kelvin", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "PressureAltitudeAvailable", "value": "OBS_PRESSURE_ALTITUDE_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "PressureAltitudeObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "PressureAltitudeM", "value": "OBS_PRESSURE_ALTITUDE_M", "direction": "lua_to_cpp", "unit": "meters", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "PressureAltitudeObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "MagneticHeadingAvailable", "value": "OBS_MAGNETIC_HEADING_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "MagneticHeadingObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "MagneticHeadingRad", "value": "OBS_MAGNETIC_HEADING_RAD", "direction": "lua_to_cpp", "unit": "radians", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "MagneticHeadingObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "MaxPowerSwitch", "value": "FM_MAXPOWER_SWITCH", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "PropulsionDiagnostics" },
+    { "name": "ApMasterEngaged", "value": "AP_MASTER_ENGAGED", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApVerticalMode", "value": "AP_VERT_MODE", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApLateralMode", "value": "AP_LAT_MODE", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApPitchAttitudeReference", "value": "AP_PITCH_REFERENCE_RAD", "direction": "cpp_to_lua", "unit": "radians", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApVerticalSpeedReference", "value": "AP_VERTICAL_SPEED_REFERENCE_MPS", "direction": "cpp_to_lua", "unit": "meters_per_second", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApBankAngleReference", "value": "AP_BANK_REFERENCE_RAD", "direction": "cpp_to_lua", "unit": "radians", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApThrottleCommand", "value": "AP_THROTTLE_CMD", "direction": "cpp_to_lua", "unit": "normalized", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApBypassActive", "value": "AP_BYPASS_ACTIVE", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApAutoThrottleEngaged", "value": "AP_AT_ENGAGED", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApTargetAltitudeFt", "value": "AP_TARGET_ALT_FT", "direction": "cpp_to_lua", "unit": "feet", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApTargetHeadingDeg", "value": "AP_TARGET_HDG_DEG", "direction": "cpp_to_lua", "unit": "degrees", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApTargetSpeedKts", "value": "AP_TARGET_SPD_KTS", "direction": "cpp_to_lua", "unit": "knots", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApTargetPitchDeg", "value": "AP_TARGET_PITCH_DEG", "direction": "cpp_to_lua", "unit": "degrees", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApEngageRejectionReason", "value": "AP_ENGAGE_REJECTION_REASON", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApDisengageReason", "value": "AP_DISENGAGE_REASON", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApAutoThrottleEngageRejectionReason", "value": "AP_AT_ENGAGE_REJECTION_REASON", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+    { "name": "ApAutoThrottleDisengageReason", "value": "AP_AT_DISENGAGE_REASON", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "DigitalFlightControlComputer" },
+
+    { "name": "HmcsIasKts", "value": "HMCS_IAS_KTS", "direction": "lua_internal", "unit": "knots", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "HmcsAltitudeFt", "value": "HMCS_ALT_FT", "direction": "lua_internal", "unit": "feet", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "HmcsHeadingDeg", "value": "HMCS_HDG_DEG", "direction": "lua_internal", "unit": "degrees", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "HmcsHeadingMinorOffset", "value": "HMCS_HDG_MINOR_OFFSET", "direction": "lua_internal", "unit": "normalized", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "HmcsPresenter" },
+    { "name": "HmcsHeadingSlotTickPrefix", "value": "HMCS_HDG_SLOT_TICK_", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "HmcsPresenter" },
+    { "name": "HmcsHeadingSlotLabelPrefix", "value": "HMCS_HDG_SLOT_LABEL_", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "HmcsPresenter" },
+    { "name": "HmcsMasterMode", "value": "HMCS_MASTER_MODE", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "HmcsWeaponClass", "value": "HMCS_WEAPON_CLASS", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "HmcsWeaponQuantity", "value": "HMCS_WEAPON_QTY", "direction": "lua_internal", "unit": "count", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "HmcsDogfightMode", "value": "HMCS_DOGFIGHT_MODE", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "HmcsFireControlMode", "value": "HMCS_FC_MODE", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "HmcsAamSubmode", "value": "HMCS_AAM_SUBMODE", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "HmcsGunFiring", "value": "HMCS_GUN_FIRING", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "HmcsEnabled", "value": "HMCS_ENABLED", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "HmcsPresenter" },
+    { "name": "HmcsDisplayMode", "value": "HMCS_DISPLAY_MODE", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "HmcsPresenter" },
+
+    { "name": "Aim9UncageHeld", "value": "AIM9_UNCAGE_HELD", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9ToneState", "value": "AIM9_TONE_STATE", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9SeekerState", "value": "AIM9_SEEKER_STATE", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9SeekerContact", "value": "AIM9_SEEKER_CONTACT", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9SeekerLock", "value": "AIM9_SEEKER_LOCK", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9TargetDesignated", "value": "AIM9_TARGET_DESIGNATED", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9WeaponActive", "value": "AIM9_WEAPON_ACTIVE", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9MissileStatus", "value": "AIM9_MISSILE_STATUS", "direction": "lua_internal", "unit": "enum", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9MissileCount", "value": "AIM9_MISSILE_COUNT", "direction": "lua_internal", "unit": "count", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9SeekerAzimuth", "value": "AIM9_SEEKER_AZIMUTH", "direction": "lua_internal", "unit": "radians", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9SeekerElevation", "value": "AIM9_SEEKER_ELEVATION", "direction": "lua_internal", "unit": "radians", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "Aim9LockRange", "value": "AIM9_LOCK_RANGE", "direction": "lua_internal", "unit": "meters", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "CombatAvionics" },
+    { "name": "RadarState", "value": "RADARSTATE", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "RadarAdapter" },
+    { "name": "RadarPowerState", "value": "RADARPOWER_STATE", "direction": "lua_internal", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/radar_state_system.lua", "target_owner": "RadarAdapter" },
+
+    { "name": "WeaponObservationAvailable", "value": "OBS_WEAPON_STATIONS_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/weapon_system.lua", "target_owner": "WeaponStationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "WeaponObservationRevision", "value": "OBS_WEAPON_STATIONS_REVISION", "direction": "lua_to_cpp", "unit": "revision", "writer": "Cockpit/Scripts/Systems/weapon_system.lua", "target_owner": "WeaponStationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "WeaponObservationInvalidReason", "value": "OBS_WEAPON_STATIONS_INVALID_REASON", "direction": "lua_to_cpp", "unit": "enum", "writer": "Cockpit/Scripts/Systems/weapon_system.lua", "target_owner": "WeaponStationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "WeaponObservationAim9Count", "value": "OBS_WEAPON_STATIONS_AIM9_COUNT", "direction": "lua_to_cpp", "unit": "count", "writer": "Cockpit/Scripts/Systems/weapon_system.lua", "target_owner": "WeaponStationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "WeaponObservationSelectedStation", "value": "OBS_WEAPON_STATIONS_SELECTED", "direction": "lua_to_cpp", "unit": "station_index", "writer": "Cockpit/Scripts/Systems/weapon_system.lua", "target_owner": "WeaponStationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "WeaponObservationScannedStationCount", "value": "OBS_WEAPON_STATIONS_SCANNED", "direction": "lua_to_cpp", "unit": "count", "writer": "Cockpit/Scripts/Systems/weapon_system.lua", "target_owner": "WeaponStationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+
+    { "name": "CockpitSnapshotAvailable", "value": "CPP_COCKPIT_SNAPSHOT_AVAILABLE", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "CockpitSnapshotRevision", "value": "CPP_COCKPIT_SNAPSHOT_REVISION", "direction": "cpp_to_lua", "unit": "revision", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "CockpitSnapshotTimeS", "value": "CPP_COCKPIT_SNAPSHOT_TIME_S", "direction": "cpp_to_lua", "unit": "seconds", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "DebugIndicatorVisible", "value": "DEBUG_INDICATOR_VISIBLE", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText1", "value": "DEBUG_INDICATOR_TEXT_1", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText2", "value": "DEBUG_INDICATOR_TEXT_2", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText3", "value": "DEBUG_INDICATOR_TEXT_3", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText4", "value": "DEBUG_INDICATOR_TEXT_4", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText5", "value": "DEBUG_INDICATOR_TEXT_5", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorText6", "value": "DEBUG_INDICATOR_TEXT_6", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "DebugIndicatorStatus", "value": "DEBUG_INDICATOR_STATUS", "direction": "cpp_to_lua", "unit": "text", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "target_owner": "DebugIndicatorExporter" },
+    { "name": "RadarRequestedPower", "value": "CPP_RADAR_REQUESTED_POWER", "direction": "cpp_to_lua", "unit": "boolean", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "Aim9RequestedTone", "value": "CPP_AIM9_REQUESTED_TONE", "direction": "cpp_to_lua", "unit": "enum", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "WeaponRequestedStation", "value": "CPP_WEAPON_REQUESTED_STATION", "direction": "cpp_to_lua", "unit": "station_index", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionGunFireRequested", "value": "CPP_ACTION_GUN_FIRE_REQUESTED", "direction": "cpp_to_lua", "unit": "boolean", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionPickleRequested", "value": "CPP_ACTION_PICKLE_REQUESTED", "direction": "cpp_to_lua", "unit": "boolean", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionSensorMode", "value": "CPP_ACTION_SENSOR_MODE", "direction": "cpp_to_lua", "unit": "enum", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionLockStartCount", "value": "CPP_ACTION_LOCK_START_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionLockFinishCount", "value": "CPP_ACTION_LOCK_FINISH_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionWeaponChangeCount", "value": "CPP_ACTION_WEAPON_CHANGE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionFlareReleaseCount", "value": "CPP_ACTION_FLARE_RELEASE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionChaffReleaseCount", "value": "CPP_ACTION_CHAFF_RELEASE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "ActionCombinedReleaseCount", "value": "CPP_ACTION_COMBINED_RELEASE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" }
+  ],
+  "raw_dcs_cockpit_params": [
+    { "name": "RadarMode", "value": "RADAR_MODE", "data_direction": "dcs_to_cpp", "unit": "enum", "axis_convention": "not_applicable", "source": "avSimpleRadar", "verification_basis": "community_documentation", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_mode", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarSttAzimuth", "value": "RADAR_STT_AZIMUTH", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_azimuth_unmodified", "source": "avSimpleRadar", "verification_basis": "community_documentation", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_azimuth", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarSttElevation", "value": "RADAR_STT_ELEVATION", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_elevation_unmodified", "source": "avSimpleRadar", "verification_basis": "community_documentation", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_elevation", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarSttRange", "value": "RADAR_STT_RANGE", "data_direction": "dcs_to_cpp", "unit": "meters", "axis_convention": "non_negative_range", "source": "avSimpleRadar", "verification_basis": "community_documentation", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_range", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarSttAzimuthStabilized", "value": "RADAR_STT_AZIMUTH_STAB", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_azimuth_unmodified", "source": "avSimpleRadar", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarSttElevationStabilized", "value": "RADAR_STT_ELEVATION_STAB", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_elevation_unmodified", "source": "avSimpleRadar", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarTdcAzimuth", "value": "RADAR_TDC_AZIMUTH", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_azimuth_unmodified", "source": "avSimpleRadar", "verification_basis": "community_documentation", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_tdc_azimuth", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarTdcRangeScaled", "value": "RADAR_TDC_RANGE_SCALED", "data_direction": "dcs_to_cpp", "unit": "normalized", "axis_convention": "native_dcs_range_scale_unmodified", "source": "avSimpleRadar", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarGateRangeScaled", "value": "RADAR_GATE_RANGE_SCALED", "data_direction": "dcs_to_cpp", "unit": "normalized", "axis_convention": "native_dcs_range_scale_unmodified", "source": "avSimpleRadar", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarContact01Azimuth", "value": "RADAR_CONTACT_01_AZIMUTH", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_azimuth_unmodified", "source": "avSimpleRadar", "verification_basis": "community_documentation", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_contact_xx_", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "RadarContact01RangeScaled", "value": "RADAR_CONTACT_01_RANGE_SCALED", "data_direction": "dcs_to_cpp", "unit": "normalized", "axis_convention": "native_dcs_range_scale_unmodified", "source": "avSimpleRadar", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "WeaponTargetRange", "value": "WS_TARGET_RANGE", "data_direction": "dcs_to_cpp", "unit": "meters", "axis_convention": "non_negative_range", "source": "avSimpleWeaponSystem", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "IrDesiredAzimuth", "value": "WS_IR_MISSILE_SEEKER_DESIRED_AZIMUTH", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_azimuth_unmodified", "source": "avSimpleWeaponSystem", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "IrDesiredElevation", "value": "WS_IR_MISSILE_SEEKER_DESIRED_ELEVATION", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_elevation_unmodified", "source": "avSimpleWeaponSystem", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "IrLock", "value": "WS_IR_MISSILE_LOCK", "data_direction": "dcs_to_cpp", "unit": "boolean", "axis_convention": "not_applicable", "source": "avSimpleWeaponSystem", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "IrTargetAzimuth", "value": "WS_IR_MISSILE_TARGET_AZIMUTH", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_azimuth_unmodified", "source": "avSimpleWeaponSystem", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { "name": "IrTargetElevation", "value": "WS_IR_MISSILE_TARGET_ELEVATION", "data_direction": "dcs_to_cpp", "unit": "radians", "axis_convention": "native_dcs_elevation_unmodified", "source": "avSimpleWeaponSystem", "verification_basis": "existing_module_contract", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" }
+  ]
+}

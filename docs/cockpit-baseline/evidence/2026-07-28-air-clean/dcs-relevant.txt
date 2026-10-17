@@ -1,0 +1,33 @@
+2026-07-28 12:39:46.627 INFO    APP (Main): DCS/2.9.28.26283 (x86_64; MT; Windows NT 10.0.26200)
+2026-07-28 12:39:46.627 INFO    APP (Main): Application revision: 266283
+2026-07-28 12:39:46.627 INFO    APP (Main): Renderer revision: 26305
+2026-07-28 12:39:46.627 INFO    APP (Main): Terrain revision: 27850
+2026-07-28 12:40:18.905 INFO    APP (Main): MissionSpawn:spawnLocalPlayer 1,F-CK-1C
+2026-07-28 12:40:18.913 INFO    EDCORE (Main): Loaded C:/Users/jjjjj/Saved Games/DCS/Mods/aircraft/F-CK-1C/bin/F-CK-1C_EFM.dll
+2026-07-28 12:40:18.936 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineFG".
+2026-07-28 12:40:18.936 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineLG".
+2026-07-28 12:40:18.936 ERROR   WORLDGENERAL (Main): Error: Unit [F-CK-1C]: No property record for segment "lineRG".
+2026-07-28 12:40:18.936 ERROR   APP (Main): Error: Unit [F-CK-1C]: Corrupt damage model.
+2026-07-28 12:40:18.972 ERROR   COCKPITBASE (Main): ccLuaLoader::LuaDofile(L, "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/actuators_system.lua"): Can't execute Lua file C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/actuators_system.lua - [string "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/actuators.lua"]:10: Actuator: argument name 'angle_of_draw_left_rudder' not found in arguments table
+2026-07-28 12:40:18.980 ERROR   COCKPITBASE (Main): ccLuaLoader::LuaDofile(L, "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua"): Can't execute Lua file C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/autopilot_system.lua - [string "C:\Users\jjjjj\Saved Games\DCS\Mods/aircraft/F-CK-1C/Cockpit/Sc..."]:838: function at line 676 has more than 60 upvalues
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: loaded; CMS connected=true, master=2
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: DBG[init] master=ON fcmode=NAV sub=NONE stores=1 cms=1 trig=0 relpend=0 hold=0.00 uncage=0 pickle=0 pickrel=0 pickhold=0.00 lock=0 lockrel=0 lockhold=0.00 desig=0 aim9=1 tone=0 cmsprog=0 mode=idle cmsrem=0 gun=not_in_dgft aam=not_in_aam_mode
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/weapon_system.lua (Main): FCK1C WPN: initialized
+2026-07-28 12:40:19.327 INFO    /aircraft/F-CK-1C/Cockpit/Scripts/Systems/aam_audio_system.lua (Main): FCK1C AAM AUDIO: host -> COCKPIT_RADAR_WARN/HEADPHONES
+2026-07-28 12:40:19.327 INFO    /aircraft/F-CK-1C/Cockpit/Scripts/Systems/aam_audio_system.lua (Main): FCK1C AAM AUDIO: seek sound created=true
+2026-07-28 12:40:19.327 INFO    /aircraft/F-CK-1C/Cockpit/Scripts/Systems/aam_audio_system.lua (Main): FCK1C AAM AUDIO: acquire sound created=true
+2026-07-28 12:40:19.327 INFO    /aircraft/F-CK-1C/Cockpit/Scripts/Systems/aam_audio_system.lua (Main): FCK1C AAM AUDIO: lock sound created=true
+2026-07-28 12:40:19.327 INFO    /aircraft/F-CK-1C/Cockpit/Scripts/Systems/aam_audio_system.lua (Main): FCK1C AAM AUDIO: test playlist size=23
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe gun getGunAmmoCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe gun getCannonsAmmoCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe gun getAmmoCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getAAMMissileCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getAAMCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getAirMissileCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getAirToAirMissileCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getMissileCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getMissilesCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getWeaponCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getSelectedWeaponCount -> missing
+2026-07-28 12:40:19.327 INFO    \Mods/aircraft/F-CK-1C/Cockpit/Scripts/Systems/cms_system.lua (Main): FCK1C CMS: probe aim9 getAmmoCount -> missing
+2026-07-28 12:40:22.436 INFO    /aircraft/F-CK-1C/Cockpit/Scripts/Systems/radar_state_system.lua (Main): FCK1C RADAR: DBG uncage=0 aam=0 weapon=0 contact=0 lock=0 desig=0 status=0 aim9=1 src=fallback radar=1 mode=0.0 ir=(0.0000,0.0000) stt=(0.0000,0.0000,0.0) stab=(0.0000,0.0000) tdc=(0.0000,0.0000) gate=0.0000 c1=(0.0000,0.0000) ws=1000.0

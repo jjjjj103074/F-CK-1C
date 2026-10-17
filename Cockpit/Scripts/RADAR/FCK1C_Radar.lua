@@ -7,8 +7,7 @@ local radar = GetSelf()
 
 make_default_activity(update_time_step)
 
-perfomance =
-{
+perfomance = {
     roll_compensation_limits = { math.rad(-180.0), math.rad(180.0) },
     pitch_compensation_limits = { math.rad(-45.0), math.rad(45.0) },
     tracking_azimuth = { -math.rad(70.0), math.rad(70.0) },
@@ -24,7 +23,7 @@ perfomance =
         artificial = { 1, 4, 4 },
         rays_density = 0.1,
         max_distance = 40000,
-    }
+    },
 }
 
 function update()

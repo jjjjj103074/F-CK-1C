@@ -1,0 +1,111 @@
+# EFM Core
+
+`Core` owns one DCS-neutral F-CK-1C flight simulation. Its public entry is
+`Fck1cEfm`; DCS-specific IDs, callbacks, coordinates, logging, and cockpit
+adapters remain in `DcsBridge`.
+
+## Responsibilities
+
+- `Fck1cEfm.h/.cpp` is the only source-level facade in the Core root.
+- `Contracts/` defines semantic commands, events, AircraftData, frame
+  input/output, and the DCS-neutral typed debug-telemetry boundary shared
+  across Core modules.
+- `Diagnostics/` defines the structured execution error that carries Core
+  owner and operation context across the public boundary.
+- `Systems/` owns aircraft equipment state and behavior. `SystemPipeline`
+  validates declarations, routes commands/events, schedules fixed-rate
+  time buckets, and publishes one completed AircraftData snapshot.
+- `Simulation/` retains DCS-owned observations, schedules physical models,
+  aggregates their effects, and projects one completed `FrameOutput`.
+- `Simulation/Models/<Owner>/` owns each physical model, its configuration,
+  production values, tables, and validation.
+
+Each concrete System likewise owns its configuration, production values, and
+validation under `Systems/<Owner>/`. There is no global aircraft configuration
+bag. Geometry belongs in `Simulation/Definition/` only when more than one model
+actually shares it; no such definition exists yet.
+
+Databases may load their own typed settings through the shared
+`Configuration::load<T>()` entry in `Common/Configuration/`.
+Configuration.h exposes a thin `load<T>()` template that supplies the typed
+conversion callback. Configuration.cpp implements the load workflow and directly
+calls the path, file-reading and JSONC parsing tools.
+DcsBridge supplies the shared FM root and
+diagnostic callback through `initialize()`, then clears them through `shutdown()`
+when its environment is destroyed. Each load parses one JSONC file into a
+temporary JsonDocument, releases the source text, and executes the owner's field
+rules. The JSON parser validates UTF-8 in data strings and object keys;
+comments receive no separate encoding validation. It returns one
+`LoadResult<T>` containing either the complete validated structure or a failure
+diagnostic. Missing required fields are errors; duplicate names follow the JSON
+parser's behavior and retain one value without an additional diagnostic;
+extra object fields are errors and stop the load. Load failures are reported
+through the diagnostic callback and returned to the caller. Tools provide the
+stage, field and reason; the load workflow attaches the source file before
+reporting the error. JsonDocument owns only the JSON tree. The database owns
+the resulting settings and runtime state, determines when to load them, and
+decides whether initialization may continue after a failure.
+
+## Dependency boundaries
+
+Allowed dependencies point inward through contracts and pipelines:
+
+```text
+DcsBridge -> Fck1cEfm -> AircraftSimulation
+AircraftSimulation -> SystemPipeline + SimulationPipeline
+Concrete System -> System contract + SystemPipeline setup/data API
+                   + Core Contracts + Common
+Simulation Model -> Core Contracts + completed AircraftData + Common
+```
+
+Concrete Systems do not include one another, `DcsBridge`, or anything under
+`Simulation/`. They use the SystemPipeline contract types `SystemSetup`,
+`AircraftDataView`, and `SystemResult`, but do not schedule or commit
+themselves. Concrete Simulation Models do not include one another or anything
+under `Systems/`; `SimulationPipeline` translates their results into the next
+Model's plain input values. `DcsBridge` reaches Core only through
+`Fck1cEfm.h`, `Core/Contracts/`, and the exact
+`Core/Diagnostics/ExecutionError.h` boundary type; it does not include Core
+pipeline, diagnostic wrapping, or Simulation implementation headers.
+
+Systems and Simulation Models do not write logs. Their pipelines attach the
+registered owner and lifecycle operation (`create`, `setup`, `step`, or a
+handler operation) to unexpected exceptions as an `ExecutionError`;
+DCSBridge remains the single owner that writes those errors to the runtime
+EventLog.
+
+Debug telemetry is a separate observational contract. The composition root
+injects a `DebugTelemetrySink`; producers declare stable typed channels during
+setup and may push values at the operation that owns them with an explicit
+simulation timestamp. Publication is not limited to committed AircraftData,
+but it also cannot change simulation state. Core never knows about the DCS
+Indicator, cockpit parameters, CSV paths, files, buffers, or writer threads.
+
+## Flight and frame execution
+
+`Fck1cEfm` persists across DCS flights and stores only preparation values that
+must survive between `release()` and the next `start()`. Each start constructs
+a new `AircraftSimulation`; release destroys that per-flight state. Individual
+Systems do not have a separate release hook.
+
+Every valid frame follows one fixed path:
+
+```text
+FrameInput
+  -> retain available external observations
+  -> SystemPipeline: run every scheduled bucket through frame-end
+     (same-time Systems sample together, then commit together)
+  -> SimulationPipeline: Aerodynamics, Propulsion,
+                         GroundInteraction, MassProperties
+  -> one complete FrameOutput
+```
+
+Commands and events may be routed between frames, but continuous state advances
+only on each owner's scheduled tick. Observation-dependent command effects are
+latched until that tick. The SimulationPipeline remains host-driven and reads
+the latest completed System snapshot.
+
+See [`Systems/README.md`](Systems/README.md) for the System extension contract.
+Use the
+[`DLL build guide`](../../../../docs/BUILD_DLL.md) for the canonical build,
+test, architecture-check, and export-verification commands.

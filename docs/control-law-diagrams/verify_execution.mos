@@ -1,0 +1,21 @@
+loadModel(Modelica);
+print(getErrorString());
+
+loadFile("ControlLawDiagrams/package.mo");
+print(getErrorString());
+
+checkModel(ControlLawDiagrams.F16Block25.LongitudinalControl);
+print(getErrorString());
+
+checkModel(ControlLawDiagrams.F16Block25.LongitudinalControlVerification);
+print(getErrorString());
+
+simulate(
+  ControlLawDiagrams.F16Block25.LongitudinalControlVerification,
+  startTime=0.0,
+  stopTime=2.0,
+  numberOfIntervals=400,
+  method="dassl",
+  outputFormat="mat",
+  fileNamePrefix="figure31_verify");
+print(getErrorString());

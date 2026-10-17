@@ -1,0 +1,98 @@
+#pragma once
+
+#include "Common/Actuator.h"
+#include "Common/Clamp.h"
+#include "Common/Units.h"
+
+namespace Systems
+{
+inline constexpr double kFlapsFullyExtendedSpeedMps = 240.0 * Common::kMetersPerSecondPerKnot;
+inline constexpr double kFlapsFullyRetractedSpeedMps = 450.0 * Common::kMetersPerSecondPerKnot;
+
+enum FlapMode
+{
+	FLAP_MODE_UP = 0,
+	FLAP_MODE_AUTO = 1,
+	FLAP_MODE_DOWN = 2
+};
+
+struct AirframeDeviceState
+{
+	bool airbrake_switch = false;
+	double airbrake_position_normalized = 0.0;
+	FlapMode flap_mode = FLAP_MODE_UP;
+	double flaps_position_normalized = 0.0;
+	double slats_position_normalized = 0.0;
+};
+
+struct AirframeDeviceUpdateInput
+{
+	double true_airspeed_mps = 0.0;
+	double gear_position_normalized = 0.0;
+};
+
+inline void toggle_airbrake(AirframeDeviceState& devices)
+{
+	devices.airbrake_switch = !devices.airbrake_switch;
+}
+
+inline void set_airbrake(AirframeDeviceState& devices, bool enabled)
+{
+	devices.airbrake_switch = enabled;
+}
+
+inline void toggle_flap_mode(AirframeDeviceState& devices)
+{
+	devices.flap_mode = (devices.flap_mode == FLAP_MODE_DOWN) ? FLAP_MODE_UP : FLAP_MODE_DOWN;
+}
+
+inline void set_flap_mode(AirframeDeviceState& devices, FlapMode mode)
+{
+	devices.flap_mode = mode;
+}
+
+inline void configure_hot_ground_start_devices(AirframeDeviceState& devices)
+{
+	devices.flap_mode = FLAP_MODE_DOWN;
+	devices.flaps_position_normalized = 1.0;
+	devices.slats_position_normalized = 1.0;
+}
+
+inline double compute_flap_target(const AirframeDeviceState& devices, const AirframeDeviceUpdateInput& input)
+{
+	if (devices.flap_mode == FLAP_MODE_DOWN)
+	{
+		return 1.0;
+	}
+
+	if (devices.flap_mode == FLAP_MODE_AUTO)
+	{
+		if (input.gear_position_normalized > 0.5 || input.true_airspeed_mps <= kFlapsFullyExtendedSpeedMps)
+		{
+			return 1.0;
+		}
+		if (input.true_airspeed_mps >= kFlapsFullyRetractedSpeedMps)
+		{
+			return 0.0;
+		}
+		return 1.0 - ((input.true_airspeed_mps - kFlapsFullyExtendedSpeedMps) /
+		              (kFlapsFullyRetractedSpeedMps - kFlapsFullyExtendedSpeedMps));
+	}
+
+	return 0.0;
+}
+
+inline void update_airframe_device_positions(AirframeDeviceState& devices, const AirframeDeviceUpdateInput& input)
+{
+	devices.airbrake_position_normalized = Common::limit(
+	    Common::actuator(devices.airbrake_position_normalized, { devices.airbrake_switch ? 1.0 : 0.0, -0.003, 0.004 }),
+	    0.0,
+	    1.0);
+
+	const double flap_target = compute_flap_target(devices, input);
+	devices.flaps_position_normalized =
+	    Common::limit(Common::actuator(devices.flaps_position_normalized, { flap_target, -0.002, 0.002 }), 0.0, 1.0);
+	devices.slats_position_normalized =
+	    Common::limit(Common::actuator(devices.slats_position_normalized, { flap_target, -0.003, 0.003 }), 0.0, 1.0);
+}
+}

@@ -1,0 +1,100 @@
+#include "TestHarness.h"
+#include "Common/Configuration/Configuration.h"
+
+#include <iostream>
+
+void run_common_tests(Tests::Context& context);
+void run_abi_boundary_tests(Tests::Context& context);
+void run_boundary_validator_tests(Tests::Context& context);
+void run_bridge_context_tests(Tests::Context& context);
+void run_carrier_bridge_tests(Tests::Context& context);
+void run_cockpit_bridge_tests(Tests::Context& context);
+void run_cockpit_snapshot_exporter_tests(Tests::Context& context);
+void run_aerodynamics_physics_tests(Tests::Context& context);
+void run_dcs_command_router_tests(Tests::Context& context);
+void run_dcs_kinematics_adapter_tests(Tests::Context& context);
+void run_dcs_damage_mapper_tests(Tests::Context& context);
+void run_debug_csv_writer_tests(Tests::Context& context);
+void run_debug_indicator_exporter_tests(Tests::Context& context);
+void run_debug_telemetry_hub_tests(Tests::Context& context);
+void run_output_adapter_tests(Tests::Context& context);
+void run_airframe_device_system_tests(Tests::Context& context);
+void run_engine_system_tests(Tests::Context& context);
+void run_event_log_tests(Tests::Context& context);
+void run_frame_input_collector_tests(Tests::Context& context);
+void run_flight_control_actuation_system_tests(Tests::Context& context);
+void run_digital_flight_control_executive_tests(Tests::Context& context);
+void run_configuration_ownership_tests(Tests::Context& context);
+void run_configuration_loader_tests(Tests::Context& context);
+void run_control_laws_tests(Tests::Context& context);
+void run_input_system_tests(Tests::Context& context);
+void run_landing_gear_system_tests(Tests::Context& context);
+void run_mass_delta_tests(Tests::Context& context);
+void run_output_store_tests(Tests::Context& context);
+void run_param_export_tests(Tests::Context& context);
+void run_propulsion_diagnostics_tests(Tests::Context& context);
+void run_phase_four_system_timing_tests(Tests::Context& context);
+void run_simulation_model_tests(Tests::Context& context);
+void run_state_csv_writer_tests(Tests::Context& context);
+void run_suspension_feedback_tests(Tests::Context& context);
+void run_system_pipeline_data_tests(Tests::Context& context);
+void run_system_pipeline_handler_tests(Tests::Context& context);
+
+namespace
+{
+void initialize_configuration()
+{
+	// 原生測試使用專案 FM 目錄，診斷輸出至標準錯誤串流。
+	Configuration::initialize("FM",
+	                          [](const Configuration::Diagnostic& diagnostic)
+	                          {
+		                          std::cerr << diagnostic.message() << '\n';
+	                          });
+}
+}
+
+int main()
+{
+	initialize_configuration();
+	Tests::Context context;
+	run_configuration_loader_tests(context);
+	run_control_laws_tests(context);
+	initialize_configuration();
+	run_common_tests(context);
+	run_abi_boundary_tests(context);
+	initialize_configuration();
+	run_boundary_validator_tests(context);
+	run_bridge_context_tests(context);
+	initialize_configuration();
+	run_carrier_bridge_tests(context);
+	run_cockpit_bridge_tests(context);
+	run_cockpit_snapshot_exporter_tests(context);
+	run_aerodynamics_physics_tests(context);
+	run_airframe_device_system_tests(context);
+	run_input_system_tests(context);
+	run_landing_gear_system_tests(context);
+	run_dcs_command_router_tests(context);
+	run_dcs_kinematics_adapter_tests(context);
+	run_dcs_damage_mapper_tests(context);
+	run_debug_csv_writer_tests(context);
+	run_debug_indicator_exporter_tests(context);
+	run_debug_telemetry_hub_tests(context);
+	run_output_adapter_tests(context);
+	run_mass_delta_tests(context);
+	run_output_store_tests(context);
+	run_param_export_tests(context);
+	run_propulsion_diagnostics_tests(context);
+	run_phase_four_system_timing_tests(context);
+	run_simulation_model_tests(context);
+	run_state_csv_writer_tests(context);
+	run_suspension_feedback_tests(context);
+	run_engine_system_tests(context);
+	run_event_log_tests(context);
+	run_frame_input_collector_tests(context);
+	run_flight_control_actuation_system_tests(context);
+	run_digital_flight_control_executive_tests(context);
+	run_configuration_ownership_tests(context);
+	run_system_pipeline_data_tests(context);
+	run_system_pipeline_handler_tests(context);
+	return context.finish();
+}
