@@ -163,7 +163,7 @@ void test_rotation_rejects_overlong_file_names(Tests::Context& context)
 
 void test_error_messages_include_required_parameters(Tests::Context& context)
 {
-	char message[256];
+	char message[256] = {};
 	Diagnostics::format_callback_lifecycle_error({ message, sizeof(message) },
 	                                             { "ed_fm_get_param", "released", "index", 42 });
 	TEST_EXPECT(context, std::string(message) == "callback=ed_fm_get_param index=42 invalid lifecycle state=released");

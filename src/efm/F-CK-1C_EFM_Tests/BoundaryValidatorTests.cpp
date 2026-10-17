@@ -70,7 +70,7 @@ void test_frame_dt_contract(Tests::Context& context)
 void test_invalid_typed_inputs_are_rejected(Tests::Context& context)
 {
 	ValidationFixture fixture;
-	const double infinity = std::numeric_limits<double>::infinity();
+	constexpr double infinity = std::numeric_limits<double>::infinity();
 	Core::SurfaceInput surface = {};
 	surface.normal_world_unit.x = infinity;
 	TEST_EXPECT(context, !DcsBridge::Internal::validate_surface_input(surface, fixture.reporter));

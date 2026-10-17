@@ -309,7 +309,7 @@ void test_exact_frequency_arithmetic(Tests::Context& context)
 	            TaskFrequency(4'000'000'000U, 5).tick_time(6'000'000'000'000'000'000ULL) ==
 	                nanoseconds(7'500'000'000'000'000'000LL));
 
-	const auto maximum = (std::numeric_limits<nanoseconds::rep>::max)();
+	constexpr auto maximum = (std::numeric_limits<nanoseconds::rep>::max)();
 	TEST_EXPECT(context,
 	            TaskFrequency(1'000'000'000).tick_time(static_cast<std::uint64_t>(maximum)) == nanoseconds(maximum));
 	TEST_EXPECT(context,
@@ -436,7 +436,7 @@ void test_dflcc_power_gate(Tests::Context& context)
 
 	dflcc->set_powered(true);
 	const auto powered_snapshot = step_pipeline(pipeline);
-	const auto held_command = powered_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	const auto& held_command = powered_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
 	TEST_EXPECT_NEAR(context, held_command.symmetric_stabilator_demand_normalized, 0.5, kTolerance);
 	TEST_EXPECT_NEAR(context, held_command.differential_flaperon_demand_normalized, -0.25, kTolerance);
 	TEST_EXPECT_NEAR(context, held_command.rudder_demand_normalized, 0.75, kTolerance);

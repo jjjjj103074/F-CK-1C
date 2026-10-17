@@ -61,7 +61,7 @@ void test_command_value_press_threshold(Tests::Context& context)
 
 void test_rescale_rejects_non_finite_values(Tests::Context& context)
 {
-	const double invalid = std::numeric_limits<double>::quiet_NaN();
+	constexpr double invalid = std::numeric_limits<double>::quiet_NaN();
 	TEST_EXPECT_NEAR(context, Common::rescale(-0.5, kNegativeScale, kPositiveScale), -1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, Common::rescale(0.5, kNegativeScale, kPositiveScale), 1.5, kTolerance);
 	TEST_EXPECT(context, rescale_throws(invalid, kNegativeScale, kPositiveScale));
