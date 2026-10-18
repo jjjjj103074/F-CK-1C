@@ -56,6 +56,7 @@ Magnetic heading increases clockwise and is independent of `world_yaw_rad`.
 | Surface demand -> actuator target | Actuation: normalized demand times nominal travel to radians |
 | Actuator state -> aerodynamics | Preserve physical radians; convert only for tables explicitly defined in degrees |
 | Surface angle -> DCS draw argument | `DrawArgs`: normalize using visual travel calibration |
+| Core atmosphere -> `FM_TEMPERATURE_C` | `CockpitBridge`: kelvin to Celsius |
 | Engine temperature -> DCS parameter | `ParamExport`: kelvin to Celsius, then the project-defined temperature rise |
 | Core value -> telemetry | Preserve source unit in the channel/header |
 

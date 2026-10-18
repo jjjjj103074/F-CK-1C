@@ -5,6 +5,7 @@
 #include "DcsBridge/Internal/CockpitBridge.h"
 #include "DcsIds/CockpitParams.g.h"
 
+#include <cstring>
 #include <limits>
 
 namespace
@@ -18,12 +19,39 @@ void expect_invalid_numeric(Tests::Context& context, const Core::ObservationStat
 	TEST_EXPECT(context, status.invalid_reason == Core::ObservationInvalidReason::InvalidNumeric);
 }
 
-void test_temperature_export(Tests::Context& context)
+void test_atmosphere_temperature_is_exported_in_celsius(Tests::Context& context)
 {
 	Tests::FakeCockpitParameters cockpit;
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
-	TEST_EXPECT(context, bridge.export_temperature(15.0).count == 0);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::TemperatureC), 288.0, kTolerance);
+	struct TemperatureSample
+	{
+		double temperature_k;
+		double expected_c;
+	};
+	constexpr TemperatureSample samples[] = { { 273.15, 0.0 }, { 288.15, 15.0 }, { 253.15, -20.0 }, { 313.15, 40.0 } };
+	for (const TemperatureSample& sample : samples)
+	{
+		TEST_EXPECT(context, bridge.export_temperature(sample.temperature_k).count == 0);
+		TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::TemperatureC), sample.expected_c, kTolerance);
+	}
+}
+
+void test_non_finite_temperature_preserves_last_cockpit_value(Tests::Context& context)
+{
+	for (const double value : { std::numeric_limits<double>::quiet_NaN(),
+	                            std::numeric_limits<double>::infinity(),
+	                            -std::numeric_limits<double>::infinity() })
+	{
+		Tests::FakeCockpitParameters cockpit;
+		cockpit.set(DcsIds::CockpitParams::TemperatureC, 15.0);
+		DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+		const auto events = bridge.export_temperature(value);
+		TEST_EXPECT(context, events.count == 1);
+		TEST_EXPECT(context, events.items[0].type == DcsBridge::Internal::CockpitParameterEventType::Error);
+		TEST_EXPECT(context,
+		            events.items[0].reason != nullptr && std::strcmp(events.items[0].reason, "invalid_numeric") == 0);
+		TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::TemperatureC), 15.0, kTolerance);
+	}
 }
 
 void test_pressure_altitude_observation_is_typed_in_feet(Tests::Context& context)
@@ -235,7 +263,8 @@ void test_non_finite_weapon_station_value_is_rejected(Tests::Context& context)
 
 void run_cockpit_bridge_tests(Tests::Context& context)
 {
-	test_temperature_export(context);
+	test_atmosphere_temperature_is_exported_in_celsius(context);
+	test_non_finite_temperature_preserves_last_cockpit_value(context);
 	test_pressure_altitude_observation_is_typed_in_feet(context);
 	test_pressure_altitude_unavailability_is_explicit(context);
 	test_non_finite_pressure_altitude_is_rejected(context);

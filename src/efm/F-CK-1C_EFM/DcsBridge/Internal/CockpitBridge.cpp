@@ -12,7 +12,7 @@
 namespace
 {
 constexpr double kEnabledThreshold = 0.5;
-constexpr double kLegacyCockpitTemperatureOffset = 273.0;
+constexpr double kCelsiusZeroInKelvin = 273.15;
 constexpr double kMaximumExactInteger = 9007199254740991.0;
 constexpr int kNoWeaponStation = -1;
 
@@ -198,12 +198,11 @@ CockpitValueResult<Core::PressureAltitudeObservation> CockpitBridge::read_pressu
 	return { result, events_from(reads) };
 }
 
-CockpitParameterEvents CockpitBridge::export_temperature(double dcs_temperature)
+CockpitParameterEvents CockpitBridge::export_temperature(double atmosphere_temperature_k)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	CockpitParameterEndpoint& slot = slots_[static_cast<std::size_t>(Parameter::Temperature)];
-	const CockpitParameterWriteResult write =
-	    slot.write_number(api_, dcs_temperature + kLegacyCockpitTemperatureOffset);
+	const CockpitParameterWriteResult write = slot.write_number(api_, atmosphere_temperature_k - kCelsiusZeroInKelvin);
 	return with_endpoint_event({}, write.event);
 }
 

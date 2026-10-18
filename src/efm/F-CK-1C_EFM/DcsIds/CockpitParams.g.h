@@ -99,7 +99,7 @@ struct Entry
 };
 
 static constexpr Entry Catalog[] = {
-    { TemperatureC, "cpp_to_lua", "kelvin", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
+    { TemperatureC, "cpp_to_lua", "celsius", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
     { PressureAltitudeAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { PressureAltitudeM, "lua_to_cpp", "meters", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { MagneticHeadingAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "MagneticHeadingObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

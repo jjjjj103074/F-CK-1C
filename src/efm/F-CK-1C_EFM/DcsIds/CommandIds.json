@@ -200,7 +200,7 @@
     }
   ],
   "cockpit_params": [
-    { "name": "TemperatureC", "value": "FM_TEMPERATURE_C", "direction": "cpp_to_lua", "unit": "kelvin", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "target_owner": "CockpitSnapshotExporter" },
+    { "name": "TemperatureC", "value": "FM_TEMPERATURE_C", "direction": "cpp_to_lua", "unit": "celsius", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "target_owner": "CockpitSnapshotExporter" },
     { "name": "PressureAltitudeAvailable", "value": "OBS_PRESSURE_ALTITUDE_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "PressureAltitudeObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { "name": "PressureAltitudeM", "value": "OBS_PRESSURE_ALTITUDE_M", "direction": "lua_to_cpp", "unit": "meters", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "PressureAltitudeObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { "name": "MagneticHeadingAvailable", "value": "OBS_MAGNETIC_HEADING_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "MagneticHeadingObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

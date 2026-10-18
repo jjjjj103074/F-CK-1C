@@ -33,7 +33,7 @@ public:
 	CockpitBridge& operator=(const CockpitBridge&) = delete;
 
 	CockpitStepInput read_step_input();
-	CockpitParameterEvents export_temperature(double dcs_temperature);
+	CockpitParameterEvents export_temperature(double atmosphere_temperature_k);
 
 private:
 	enum class Parameter : std::size_t

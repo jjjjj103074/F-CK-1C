@@ -16,6 +16,7 @@ $validVerificationBases = @(
 )
 $validUnits = @(
     'boolean',
+    'celsius',
     'count',
     'counter',
     'degrees',
