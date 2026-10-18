@@ -1,268 +1,139 @@
-# Contributing to F-CK-1C
+# Contributing / 貢獻指南
 
 [English](#english) | [繁體中文](#繁體中文)
 
----
-
 ## English
 
-### Prerequisites
+### Setup
 
-- **Node.js** — Required for commit tooling (commitlint, husky, czg)
-- **DCS World** — In-game tests
-- **Visual Studio Build Tools / MSBuild** — Required when committing runtime EFM build inputs; the hook rebuilds the DLL
-- **VSCode** with the [StyLua](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.stylua) extension (recommended)
+Use Git, Node.js 22 LTS and the Windows toolchain in
+[BUILD_DLL.md](docs/BUILD_DLL.md). DCS is required for in-game verification.
 
-### Development Setup
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/jjjjj103074/F-CK-1C.git
-
-# 2. Install Node.js dependencies
-#    This installs Git hooks and verifies the pinned C++ formatter
-npm install
-
-# 3. Make sure MSBuild.exe is available for runtime EFM changes
-#    The pre-commit hook rebuilds and stages bin/F-CK-1C_EFM.dll
-
-# 4. Install the module in DCS World to test your changes
-#    Run install.bat or follow your usual DCS mod installation workflow
+```powershell
+npm ci
+npm run check:efm-toolchain
+npm run validate:efm
 ```
 
-### EFM Architecture
+Validation preserves the committed DLL and compares it with a clean rebuild.
+After changing runtime build inputs, use `npm run build:efm` to update the DLL,
+then validate it. Reports are written to `tmp/pr-validation/`.
 
-The C++ EFM is divided by responsibility:
+### Architecture
 
-- `DcsBridge/` owns the DCS C ABI, DCS value translation, callback lifecycle,
-  cockpit/carrier adapters, EventLog, and CSV telemetry.
-- `Core/` owns the DCS-neutral aircraft simulation. Flight calculations and
-  aircraft-system behavior belong here.
-- `DcsIds/` owns DCS boundary identifiers and generated command/parameter
-  tables. It is not a Core dependency.
+- `DcsBridge/` owns DCS callbacks, validation, unit translation and runtime tools.
+- `Core/` owns aircraft simulation. Systems exchange typed `AircraftData`;
+  physical models run through `SimulationPipeline`.
+- `DcsIds/` owns DCS boundary identifiers and generated C++/Lua tables.
+- Cockpit Lua owns the currently implemented CMS, weapon, radar, HMCS and audio
+  paths described in the [cockpit guide](docs/COCKPIT.md).
 
-Inside Core, `Systems/` owns aircraft equipment and control behavior, while
-`Simulation/` owns the physical effects returned to DCS. Systems exchange
-typed state only through `AircraftData`; concrete Systems do not include or
-call one another. New Systems register through
-`Core/Systems/<Owner>/Entry.cpp`. Physical Models are intentionally fixed and
-run in the order Aerodynamics, Propulsion, GroundInteraction, MassProperties.
+Start with the [EFM overview](src/efm/README.md).
+Concrete Systems do not include or call one another. Core remains independent
+of DCS identifiers and bridge internals. C++ exceptions must end at the DCS ABI.
 
-`DcsBridge/Internal/` is private implementation, not a public include surface.
-DCSBridge may enter Core only through `Core/Fck1cEfm.h`, `Core/Contracts/`,
-and the structured `Core/Diagnostics/ExecutionError.h` boundary type. Every
-DCS export must keep the common exception boundary so that a C++ exception
-never crosses the C ABI.
+### Style and verification
 
-Start with the [EFM overview](src/efm/README.md). It links to the current
-DCSBridge, Core, System, and DCS ID contributor guides.
+C++ uses the shared [formatting rules](docs/CPP_FORMATTING.md):
+tabs at width 4, Allman braces and a 120-column target.
 
-### EFM Verification
+```powershell
+npm run format:cpp
+npm run check:cpp-format
+```
 
-Build and local checks: [DLL build](docs/BUILD_DLL.md).
-CI results and rule changes: [PR validation](docs/PR_VALIDATION.md).
-Record in-game tests for DCS callbacks, cockpit parameters and flight lifecycle changes.
+Format before staging. SDK, vendor and generated files follow their owning
+source or generator. Lua uses StyLua.
 
-### Branch Strategy
+Add tests for observable behavior and relevant lifecycle/error paths.
+Use [PR validation](docs/PR_VALIDATION.md) for CI requirements and
+[DCS testing](docs/DCS_TESTING.md) for callback order, cockpit parameters,
+flight lifecycle and runtime loading.
 
-| Branch | Purpose |
-|---|---|
-| `main` | Stable releases only — merged from `dev` via PR |
-| `dev` | Integration branch — all features merge here first |
-| `feature/your-feature` | Your daily work — branch from `dev`, PR back to `dev` |
+### Submissions
 
-### Commit Format
+`dev` is the integration branch; `main` contains releases.
+Branch daily work from `dev` and submit a PR back to `dev`.
+Release PRs go from `dev` to `main`; use Squash merge.
 
-All commits must follow [Conventional Commits](https://www.conventionalcommits.org/).
-Use `npm run commit` for interactive guided input (recommended).
-
-**Format:** `<type>(<scope>): <description>`
-
-**Types:**
-
-| Type | When to use |
-|---|---|
-| `feat` | New feature or capability |
-| `fix` | Bug fix |
-| `refactor` | Code restructure without behavior change |
-| `docs` | Documentation only |
-| `chore` | Maintenance, tooling, assets, or config |
-
-**Scopes:**
-
-Scopes are required and must be lowercase.
+Commits and PR titles use `<type>(<scope>): <description>`.
+Types are `feat`, `fix`, `refactor`, `docs`, and `chore`.
+Type and scope are lowercase; descriptions may use English or Traditional Chinese.
+`npm run commit` provides an interactive prompt.
+[commitlint.config.js](commitlint.config.js) defines the enforced rules.
 
 | Scope | Area |
 |---|---|
-| `core` | Module entry, aircraft definition, SFM/FM config, weapons, runtime Lua |
-| `efm` | C++ EFM project, DLL, MSBuild |
-| `cockpit` | Cockpit scripts, devices, indicators, input bindings |
-| `assets` | Shapes, Textures, Sounds, Liveries |
-| `tooling` | Git hooks, commitlint, GitHub Actions, repo tools |
-| `docs` | README, CONTRIBUTING, docs |
+| `core` | Entry, aircraft definition, SFM/FM configuration, weapons, runtime Lua |
+| `efm` | C++ EFM, DLL and MSBuild |
+| `cockpit` | Cockpit scripts, devices, indicators and input bindings |
+| `assets` | Shapes, textures, sounds and liveries |
+| `tooling` | Hooks, CI and development tools |
+| `docs` | Project documentation |
 
-**Examples:**
-
-```
-feat(cockpit): add radar mode switch
-fix(efm): correct landing gear compression feedback
-docs(docs): update build instructions
-chore(tooling): add pre-commit EFM build
-```
-
-### Pull Request Process
-
-- **Target branch:** `dev` for features and fixes; `main` is updated only via `dev` PRs for releases
-- **PR title** must follow the commit format above — it is validated automatically by CI
-- **Merge method:** Squash only (the PR title becomes the squashed commit message)
-- No required reviewers, but review comments are welcome
-
-### Code Style
-
-C++ uses the shared clang-format rules: tabs at width 4, Allman braces, and a
-120-column target. Formatting covers authored EFM sources and tests, excluding
-SDK, third-party, and generated files.
-Run `npm run format:cpp` before staging and `npm run check:cpp-format` to verify
-the active scope. The hook checks staged content before the existing DLL build.
-See [C++ formatting](docs/CPP_FORMATTING.md) for installation, VS Code / Visual
-Studio setup, and Codex / Claude Code instructions.
-
-Lua files are formatted with [StyLua](https://github.com/JohnnyMorganz/StyLua).
-If you use VSCode, format-on-save is already configured in `.vscode/settings.json`.
-
-> No need to manually align table entries — StyLua handles all formatting.
-
-### Language Policy
-
-Commit messages, code comments, and PR descriptions may be written in **English or Traditional Chinese** — both are equally accepted.
-
----
+Stage related build inputs together. The pre-commit hook checks staged C++
+formatting and rebuilds/stages the DLL when runtime inputs are affected.
+It rejects runtime inputs left unstaged or outside tracking.
+Native tests and in-game verification remain separate requirements.
 
 ## 繁體中文
 
-### 前置需求
+### 環境
 
-- **Node.js** — 提交工具所需（commitlint、husky、czg）
-- **DCS World** — 遊戲內測試所需
-- **Visual Studio Build Tools / MSBuild** — 提交 EFM runtime 建置輸入時需要；hook 會重建 DLL
-- **VSCode** 搭配 [StyLua](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.stylua) 擴充套件（建議安裝）
+使用 Git、Node.js 22 LTS，以及 [BUILD_DLL.md](docs/BUILD_DLL.md) 指定的
+Windows 工具鏈。遊戲內驗證需要 DCS。
 
-### 開發環境設定
-
-```bash
-# 1. Clone 專案
-git clone https://github.com/jjjjj103074/F-CK-1C.git
-
-# 2. 安裝 Node.js 依賴
-#    此步驟會安裝 Git hooks 並驗證固定版本的 C++ 排版工具
-npm install
-
-# 3. 修改 EFM runtime 時，確認 MSBuild.exe 可用
-#    pre-commit hook 會重建並暫存 bin/F-CK-1C_EFM.dll
-
-# 4. 將模組安裝至 DCS World 以測試變更
-#    執行 install.bat 或依照你慣用的 DCS 模組安裝流程
+```powershell
+npm ci
+npm run check:efm-toolchain
+npm run validate:efm
 ```
 
-### EFM 架構
+驗證保留提交中的 DLL，與乾淨重建結果比對。
+修改執行期建置輸入後，以 `npm run build:efm` 更新 DLL，再執行驗證。
+報告位於 `tmp/pr-validation/`。
 
-C++ EFM 依照責任分成三個主要區域：
+### 架構
 
-- `DcsBridge/` 負責 DCS C ABI、DCS 數值翻譯、Callback 生命週期、
-  座艙與航空母艦轉接、EventLog 和 CSV 遙測。
-- `Core/` 負責不依賴 DCS 的飛機模擬。飛行計算和飛機系統行為應放在這裡。
-- `DcsIds/` 負責 DCS 邊界 ID，以及產生的 Command／Param 表格；
-  Core 不得依賴它。
+- `DcsBridge/`：DCS 回呼、驗證、單位轉換與執行期工具。
+- `Core/`：飛機模擬；System 以 typed `AircraftData` 交換狀態，
+  物理模型由 `SimulationPipeline` 執行。
+- `DcsIds/`：DCS 邊界 ID 與生成的 C++／Lua 表格。
+- Cockpit Lua：目前的 CMS、武器、雷達、HMCS 與音效路徑，
+  詳見[座艙指南](docs/COCKPIT.md)。
 
-Core 內部由 `Systems/` 負責飛機設備與控制行為，`Simulation/` 負責回傳
-DCS 的物理效果。System 只能透過 typed `AircraftData` 交換狀態；
-具體 System 不得互相 Include 或直接呼叫。新增 System 時，以
-`Core/Systems/<Owner>/Entry.cpp` 在建置期註冊。物理 Model 則刻意維持
-固定，依 Aerodynamics、Propulsion、GroundInteraction、MassProperties
-順序執行。
+由 [EFM 總覽](src/efm/README.md) 進入各模組指南。
+具體 System 不互相 include 或呼叫；Core 不依賴 DCS ID 或 bridge 私有實作。
+C++ 例外必須在 DCS ABI 邊界處理。
 
-`DcsBridge/Internal/` 是私有實作，不是對外 Include 介面。
-DCSBridge 進入 Core 時，只能使用 `Core/Fck1cEfm.h`、
-`Core/Contracts/`，以及作為結構化錯誤邊界的
-`Core/Diagnostics/ExecutionError.h`。每個 DCS 匯出函式都必須保留
-共用的例外邊界，避免 C++ 例外穿越 C ABI。
+### 風格與驗證
 
-請先閱讀 [EFM 總覽](src/efm/README.md)，再依變更責任前往目前的
-DCSBridge、Core、System 或 DCS ID Contributor Guide。
+C++ 使用共用[排版規則](docs/CPP_FORMATTING.md)：
+Tab 寬 4、Allman 大括號、行寬以 120 字元為目標。
 
-### EFM 驗證
-
-建置與本機檢查見 [DLL 建置](docs/BUILD_DLL.md)。
-CI 結果與規則提醒見 [PR 驗證](docs/PR_VALIDATION.md)。
-涉及 DCS 回呼、座艙參數或飛行生命週期的變更，請記錄遊戲內測試結果。
-
-### 分支策略
-
-| 分支 | 用途 |
-|---|---|
-| `main` | 僅存放穩定版本，從 `dev` 透過 PR 合併 |
-| `dev` | 整合分支，所有功能先合併至此 |
-| `feature/你的功能` | 日常開發，從 `dev` 建立，PR 回 `dev` |
-
-### Commit 格式
-
-所有 commit 必須遵循 [Conventional Commits](https://www.conventionalcommits.org/)。
-建議使用 `npm run commit` 進行互動式引導輸入。
-
-**格式：** `<type>(<scope>): <描述>`
-
-**Type 類型：**
-
-| Type | 使用時機 |
-|---|---|
-| `feat` | 新功能或新能力 |
-| `fix` | 錯誤修正 |
-| `refactor` | 程式碼重構（不改變行為） |
-| `docs` | 純文件變更 |
-| `chore` | 維護、工具、素材、設定 |
-
-**Scope 範圍：**
-
-Scope 必填，且必須使用小寫。
-
-| Scope | 對應區域 |
-|---|---|
-| `core` | 模組進入點、飛機定義、SFM/FM config、武器、runtime Lua |
-| `efm` | C++ EFM 專案、DLL、MSBuild |
-| `cockpit` | 座艙腳本、裝置、指示器、輸入綁定 |
-| `assets` | Shapes、Textures、Sounds、Liveries |
-| `tooling` | Git hooks、commitlint、GitHub Actions、專案工具 |
-| `docs` | README、CONTRIBUTING、docs |
-
-**範例：**
-
-```
-feat(cockpit): 新增雷達模式切換
-fix(efm): 修正起落架壓縮回饋
-docs(docs): 更新建置說明
-chore(tooling): 新增 commit 前 EFM 建置
+```powershell
+npm run format:cpp
+npm run check:cpp-format
 ```
 
-### Pull Request 流程
+先排版再暫存。SDK、第三方及生成檔由原始來源或生成器管理；Lua 使用 StyLua。
 
-- **目標分支：** 功能與修正 PR 至 `dev`；`main` 僅由 `dev` 的 PR 更新（作為 Release）
-- **PR 標題** 必須符合上方 commit 格式，CI 會自動驗證
-- **合併方式：** 僅允許 Squash（PR 標題會成為壓縮後的 commit 訊息）
-- 不強制要求 reviewer，但歡迎留下 review 意見
+測試應涵蓋可觀察行為及相關生命週期、錯誤路徑。
+CI 規則見 [PR 驗證](docs/PR_VALIDATION.md)；
+回呼順序、座艙參數、飛行生命週期與載入行為依 [DCS 測試](docs/DCS_TESTING.md) 驗證。
 
-### 程式碼風格
+### 提交
 
-C++ 共用 clang-format 規則：Tab 寬 4、Allman 大括號、行寬以 120 字元為目標。
-套用於自有 EFM 來源與測試，排除 SDK、第三方及生成檔；暫存前執行 `npm run format:cpp`，並用
-`npm run check:cpp-format` 驗證。Hook 在原有 DLL 建置前檢查暫存版本。
-安裝、VS Code／Visual Studio 與 Codex／Claude Code 接法，
-請見 [C++ 自動排版](docs/CPP_FORMATTING.md)。
+`dev` 是整合分支，`main` 用於 Release。
+日常工作由 `dev` 分支，PR 回 `dev`；Release 由 `dev` PR 至 `main`，
+合併方式使用 Squash。
 
-Lua 檔案使用 [StyLua](https://github.com/JohnnyMorganz/StyLua) 格式化。
-若使用 VSCode，`.vscode/settings.json` 已設定存檔時自動格式化。
+Commit 與 PR 標題使用 `<type>(<scope>): <描述>`。
+Type 為 `feat`、`fix`、`refactor`、`docs` 或 `chore`；
+Type 與 Scope 使用小寫，描述可用英文或繁體中文。
+Scope 對照上表；實際規則由 [commitlint.config.js](commitlint.config.js) 定義。
+`npm run commit` 提供互動式輸入。
 
-> 不需要手動對齊 table 欄位，StyLua 會處理所有格式化工作。
-
-### 語言政策
-
-Commit 訊息、程式碼註解、PR 說明均可使用**英文或繁體中文**，兩者同樣接受。
+相關建置輸入應一起暫存。Pre-commit hook 檢查暫存的 C++ 排版，
+受執行期輸入影響時重建並暫存 DLL，並拒絕未暫存或未納入追蹤的執行期輸入。
+原生測試與遊戲內驗證須另行執行。

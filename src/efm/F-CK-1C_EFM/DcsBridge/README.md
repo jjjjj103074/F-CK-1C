@@ -1,394 +1,191 @@
-# DCSBridge contributor guide
+# DcsBridge contributor guide
 
-DCSBridge is the boundary between the DCS EFM C ABI and the DCS-neutral
-simulation in `Core`. It validates and translates DCS values, coordinates the
-runtime tools, and converts typed Core results back to the ABI. Physics and
-aircraft-system calculations do not belong here.
+DcsBridge translates the DCS EFM C ABI into Core contracts and completed results
+back into DCS outputs. It owns validation, lifecycle, logging and runtime tools;
+aircraft-system behavior and physics belong to Core.
 
-To trace the main path, read these files in order:
+Entry points:
 
-1. [`EfmExports.cpp`](EfmExports.cpp) — all exported callbacks and the
-   production composition root.
-2. [`../Core/Contracts/FrameContracts.h`](../Core/Contracts/FrameContracts.h) —
-   typed frame input and output shared across the boundary.
-3. [`../Core/Fck1cEfm.h`](../Core/Fck1cEfm.h) — the small Core command and
-   immediate-operation interface.
+- [EfmExports.cpp](EfmExports.cpp): exported callbacks and production composition.
+- [FrameContracts.h](../Core/Contracts/FrameContracts.h): typed frame input/output.
+- [Fck1cEfm.h](../Core/Fck1cEfm.h): Core lifecycle, commands and preparation.
 
 ## Data flow
 
 ```text
-DCS setter callbacks
-  -> EfmExports validation and translation
-  -> Internal/FrameInputCollector (latest complete value per input category)
-  -> ed_fm_simulate snapshots FrameInput
-  -> Core::Fck1cEfm::step
-  -> Core::FrameOutput
-  -> EfmExports publishes the same completed output to
-       -> Internal/OutputStore
-            -> DCS force, moment, draw-arg, param, and event callbacks
-       -> Internal/StateCsvWriter
+DCS setters -> validation/adapters -> FrameInputCollector
+ed_fm_simulate -> FrameInput snapshot -> Fck1cEfm::step -> FrameOutput
+FrameOutput -> OutputStore -> force, moment, draw-arg, param and event callbacks
+            -> StateCsvWriter
+
+ed_fm_set_command -> DcsCommandRouter -> semantic Core CommandId -> System handler
+
+Core debug producer -> DebugTelemetryHub -> latest Indicator values
+                                        -> 64 Hz samples -> DebugCsvWriter
 ```
 
-Core debug producers follow a separate, DCS-neutral path:
+CockpitSnapshotExporter writes completed C++ snapshots to generated parameters.
+Cockpit-only sensor observations enter separately through CockpitBridge.
+HMCS Lua publishes availability plus magnetic heading in radians and barometric
+altitude in metres; CockpitBridge converts these once to degrees and feet.
+Missing observations remain unavailable. World yaw and geometric ASL altitude
+are separate quantities.
 
-```text
-Core setup declares typed debug channels
-  -> Core producers push timestamped values
-  -> Internal/DebugTelemetryHub
-       -> latest snapshot -> Internal/DebugIndicatorExporter
-       -> 64 Hz zero-order-hold samples -> Internal/DebugCsvWriter
-```
+AP/A/T control is unimplemented and its snapshots remain unavailable.
+The [cockpit guide](../../../../docs/COCKPIT.md) identifies current Lua ownership.
 
-Debug publication is observational. It does not pass through `FrameOutput`,
-does not participate in a System's AircraftData commit, and is never read back
-into simulation state.
+## ABI and units
 
-Semantic input commands follow a separate direct path:
+The [unit contract](../../../../docs/EFM_UNIT_CONVENTIONS.md) defines quantities
+and signs. DcsKinematicsAdapter names body angular x/z/y as roll/pitch/yaw while
+preserving signs: right roll, nose-up pitch and nose-left yaw are positive.
+Force/moment outputs retain local x-forward/y-up/z-right axes and use N, N·m and m.
+ParamExport converts atmosphere K to the Celsius engine-temperature parameter.
 
-```text
-DCS ed_fm_set_command
-  -> Internal/DcsCommandRouter
-  -> Core::CommandId
-  -> owning System command handler
-```
+Every callback initializes output parameters before work, validates inputs and
+uses the shared ABI exception boundary. Unexpected exceptions produce an EventLog
+error, or debugger output when the log is unavailable, and return neutral values.
+Core errors preserve owner, operation and reason. C++ exceptions never cross the ABI.
 
-Cockpit presentation is one-way. `CockpitSnapshotExporter` writes completed
-C++ snapshot values to generated DCS parameters. AP／A/T parameters are not
-read back into `FrameInput` or used as Core state.
-
-Cockpit-only DCS sensor APIs are a separate observation path. The HMCS Lua
-adapter samples `getMagneticHeading()` at the Project-defined 64 Hz rate and
-writes `OBS_MAGNETIC_HEADING_AVAILABLE` plus
-`OBS_MAGNETIC_HEADING_RAD`. `CockpitBridge` converts the DCS parameter radians
-once into the typed continuous-degree `MagneticHeadingObservation`. Missing
-data stays explicitly unavailable;
-the bridge never substitutes EFM world yaw. DCS body yaw is preserved as
-`world_yaw_rad` for simulator orientation and state CSV output.
-
-The same adapter samples `getBarometricAltitude()` and writes
-`OBS_PRESSURE_ALTITUDE_AVAILABLE` plus `OBS_PRESSURE_ALTITUDE_M`.
-`CockpitBridge` converts metres to the typed feet-based
-`PressureAltitudeObservation`. Missing data stays unavailable; the bridge and
-Core never substitute geometric ASL altitude for an AFCS pressure-altitude
-measurement.
-
-## Kinematics adapter and unit contract
-
-The project-wide normative contract is
-[`docs/EFM_UNIT_CONVENTIONS.md`](../../../../docs/EFM_UNIT_CONVENTIONS.md).
-DCSBridge owns only the conversions at the simulator ABI boundary.
-
-The DCS body-state callback establishes the Core local-body handedness.
-`DcsKinematicsAdapter` names the rotational components once without changing
-their signs:
-
-| DCS body component | Canonical aircraft signal | Core unit | Positive direction |
-|---|---|---|---|
-| `x` angular component | roll | rad/s or rad/s^2 | right roll |
-| `z` angular component | pitch | rad/s or rad/s^2 | nose up |
-| `y` angular component | yaw | rad/s or rad/s^2 | nose left |
-
-All DCS callback contracts name their physical units. Atmosphere uses m, K,
-m/s, kg/m^3, and Pa. Surface height and mass geometry use m; mass and inertia
-use kg and kg*m^2. World/body kinematics use m, m/s, m/s^2, rad, rad/s, and
-rad/s^2. Suspension uses N, m, and m/s. DCS `yaw` remains `world_yaw_rad`; it
-is simulator world orientation and must not be substituted for aviation
-heading.
-
-This convention continues through manual controls, FCC/AFCS references,
-actuator commands, aerodynamic forces and moments, telemetry, and CSV. A right
-yaw or right rudder command is negative; a left yaw is positive. Force/moment
-outputs retain DCS local axes (x forward, y up, z right) and use N, N*m, and m.
-
-Aviation heading is a separate cockpit observation. Lua publishes
-`getMagneticHeading()` in radians and `CockpitBridge` converts it once to the
-continuous magnetic degrees used by the AFCS and whole-degree Heading Set
-storage. Heading Set is wrapped to 0..359 degrees; lateral guidance converts
-its completed bank-reference output to radians at the guidance/control-law
-seam.
-
-DCS's engine-temperature parameter uses Celsius. Core retains atmosphere
-temperature in kelvin; `ParamExport` performs the only K-to-C conversion before
-adding the project-defined engine temperature rise.
-
-Fuel getters use `BridgeContext::query_core_preparation`; flight-preparation
-setters use `BridgeContext::perform_core_preparation`.
-Each completed `FrameOutput` mass effect is queued by `OutputStore`.
-`ed_fm_change_mass` drains that queue in publication order, while ordinary
-outputs retain latest-value semantics. Other callbacks publish input and wait
-for the next simulation step unless the DCS ABI requires an immediate return.
-
-`EfmExports.cpp` owns boundary orchestration: ABI defaults, validation,
-translation, locking, tool coordination, and return values. Every exported
-callback initializes any output parameters before work and uses the shared ABI
-exception boundary. Unexpected C++ exceptions are written to EventLog when it
-is available, otherwise to debugger output, and the callback returns its
-neutral result; no exception may cross the DCS C ABI. Structured Core
-execution errors retain their System or Simulation Model owner, operation, and
-reason in the same EventLog. It must not gain flight calculations, log message
-formatting, or CSV row formatting.
+Fuel getters use `query_core_preparation`; preparation setters use
+`perform_core_preparation`. Ordinary outputs retain the latest complete frame.
+Mass effects are queued and drained in publication order by `ed_fm_change_mass`.
 
 ## Lifecycle and concurrency
 
-The production bridge has two separate lifetimes:
+ProcessBridgeContext lazily owns one process-lifetime BridgeContext.
+Its allocation avoids logger/thread destruction under the Windows DLL loader lock.
+BridgeContext owns Core, collectors, outputs, cockpit/carrier adapters and tools.
 
-- `ProcessBridgeContext` owns process-level tools and the single
-  `BridgeContext`. It is initialized on the first DCS callback that needs it.
-  Its process-lifetime allocation deliberately avoids destructor work under
-  the Windows DLL loader lock.
-- A flight begins with `ed_fm_cold_start`, `ed_fm_hot_start`, or
-  `ed_fm_hot_start_in_air`. Start creates the Core's initial `FrameOutput`,
-  publishes CSV sequence `0`, and makes a complete initial result available
-  before the first simulation step.
-- If another start arrives while a flight is active, DCSBridge writes
-  `lifecycle_warning=repeated_start_without_release` at Warning level. Core
-  preserves the current fuel preparation when DCSBridge releases the old
-  simulation and clears completed output before starting the new flight.
-  If initialization fails, no active simulation or previous completed output
-  remains. DCSBridge does not synthesize an `ed_fm_release` callback.
-- `ed_fm_release` releases only the active flight. It clears collected input,
-  completed output, and queued mass effects, then emits counted-warning
-  summaries. A later start reuses the process tools for a new flight.
-- Callbacks that require an active flight report a lifecycle or unavailable
-  output error after release. Preparation setters and observation collectors
-  are intentionally allowed before the next start: preparation goes directly
-  to Core's single `FlightPreparation`, while normalized observations remain
-  in `FrameInputCollector` for the first `step()`.
+Cold, hot-ground and hot-air starts create a new Core flight and publish its
+complete initial FrameOutput at CSV sequence 0. Repeated start writes
+`lifecycle_warning=repeated_start_without_release`, preserves fuel preparation,
+releases the previous simulation and clears its output before initialization.
+Initialization failure leaves no active simulation or previous completed output.
 
-Core execution is serialized by `BridgeContext::execution_mutex()`.
-`FrameInputCollector`, `OutputStore`, Param availability history, EventLog,
-and CSV publication also protect their own state, so DCS callback threading
-does not expose a partly updated `FrameInput` or `FrameOutput`.
+Release clears active-flight input, outputs and mass effects, flushes debug CSV
+and emits counted-warning summaries. Process tools remain for the next flight.
+Preparation setters and observation collectors may run before a start; callbacks
+requiring an active flight report unavailable output after release.
 
-Input categories normally use latest-value semantics. A frame snapshot copies
-one complete input set; suspension values are retained, but each wheel's
-availability is consumed per step so Core can distinguish fresh feedback from
-fallback. Completed ordinary outputs also use latest-value semantics. Mass
-deltas are the exception: they remain ordered and lossless until DCS consumes
-them.
+Core execution uses `BridgeContext::execution_mutex()`.
+Collectors, output stores, availability history and tools protect their own state.
+A FrameInput snapshot copies complete input categories. Suspension values are
+retained, but per-wheel availability is consumed each step.
+Ordinary outputs use latest-value semantics; mass effects remain ordered and lossless.
 
 ## Runtime diagnostics
 
-The bridge exposes three distinct diagnostics under `<module-root>/log`.
-Files are opened with sharing enabled and may be read while DCS is running:
+Files under `<module-root>/log/` allow concurrent readers:
 
-- `fck1c_efm.log` contains code events only. Each line includes wall-clock
-  time, simulation time, severity, and a traceable message. It is flushed
-  immediately.
-- `fck1c_state.csv` contains CSV sequence, simulation time, and completed
-  physical aircraft-state `FrameOutput` values. It deliberately excludes FCC,
-  AFCS, and developer-tool internals.
-- `debug.csv` is the reusable history for Core-pushed debug channels. It uses
-  the fixed header `sequence,simulation_time_s,<channel...>` and samples the
-  latest values at the project-defined 64 Hz rate, independent of DCS frame
-  rate. A value that has not yet been published is `-`.
+| File | Content |
+|---|---|
+| `fck1c_efm.log` | Wall time, simulation time, severity and event/error messages |
+| `fck1c_state.csv` | Sequence, simulation time and completed physical FrameOutput |
+| `debug.csv` | Sequence, simulation time and declared Core debug channels |
 
-The dedicated EFM Debug Indicator presents the same channels' latest values in
-DCS. Bind `[Developer] EFM Debug Indicator - Toggle` under `Developer Tools`;
-the display starts hidden on every flight. The Indicator uses the generated
-`DEBUG_INDICATOR_VISIBLE`, six `DEBUG_INDICATOR_TEXT_n` blocks, and the
-independent `DEBUG_INDICATOR_STATUS` cockpit parameter. Its responsive
-two-column by three-block layout displays up to 60 channels without paging and
-is independent of the operational Controls Indicator. Values retain their
-declaration order; only changed blocks are rewritten. Indicator doubles use
-six significant digits for display, while `debug.csv` retains full round-trip
-precision. Additional channels produce an explicit status directing the user
-to `debug.csv`. A `debug.csv` I/O failure also appears in the status row and in
-`fck1c_efm.log` with the failed operation and OS error.
-Invalid runtime publication is isolated from aircraft control, remains visible
-in the Indicator, and is written to `fck1c_efm.log` on the next diagnostics pass.
-The first error identifies its channel, attempted simulation time, and original
-detail; a per-flight count exposes later failures without losing the root
-cause. Production explicitly selects isolation; tests may select the strict
-report-and-rethrow policy when publication failure must stop a run.
+EventLog flushes each line. State CSV excludes control-law internals.
+Debug CSV samples latest values at 64 Hz with zero-order hold; unpublished values
+use `-`. Its header follows channel declaration order and doubles retain
+round-trip precision.
 
-The legacy DCS debug-info ABI exports remain present for compatibility:
-`ed_fm_enable_debug_info()` returns `false`, while `ed_fm_debug_watch()` clears
-the supplied buffer and returns `0`. The module does not depend on DCS Debug
-Watch activation, `autoexec.cfg`, or the frame-rate overlay shortcut.
+EventLog and state CSV rotate at process-tool initialization; debug CSV rotates
+on its first flight-start publication. Each active file becomes `.old`, replacing
+the previous `.old`. Files stay open across flights; CSV sequence resets per flight.
+Without channels, debug CSV rotates an existing file but creates no empty replacement.
 
-At the next DLL execution, the active file becomes `.old` and the previous
-`.old` is removed. Files are not reopened between flights; CSV sequence resets
-to `0` for each new flight. With no declared channels, an existing active file
-is still rotated, but a new empty `debug.csv` is not created.
+CSV writers use separate worker threads and bounded latest-record/latest-batch
+mailboxes. Publication does not wait for disk I/O; newer pending data may replace
+older data, visible as sequence gaps. Dirty data flushes within approximately
+100 ms; release waits for pending debug CSV data. Process termination reclaims the
+process tools.
 
-Both CSV writers use a worker thread and a single latest-record or latest-batch
-mailbox. Publishing never waits for disk I/O. If a writer falls behind, pending
-older data is replaced by newer data; sequence gaps expose this condition
-without an unbounded queue. Dirty data is flushed within approximately 100 ms,
-and `ed_fm_release` explicitly waits for the pending `debug.csv` batch to be
-written and flushed. The production process context intentionally avoids DLL
-detach-time teardown and lets process termination reclaim process resources.
+The EFM Debug Indicator starts hidden each flight. Bind
+`[Developer] EFM Debug Indicator - Toggle` under Developer Tools.
+Six text blocks display up to 60 channels in declaration order; extra channels
+are available in debug.csv. Display doubles use six significant digits.
+Debug CSV I/O failures and invalid debug publications appear in the status row
+and EventLog. State CSV I/O failures are reported through EventLog.
 
-The writers deliberately keep separate worker and mailbox implementations.
-State CSV starts with the bridge and consumes one latest `FrameOutput`; debug
-CSV starts only after a non-empty schema, consumes resampled batches, and must
-support a synchronous release flush. Keeping these failure and lifetime rules
-independent prevents the developer tool from coupling state telemetry. Their
-shared path and rotation policy remains centralized in `LogFileLifecycle`.
+Production isolates publication errors from aircraft control. The first diagnostic
+preserves channel, attempted time and reason; a per-flight count records later
+failures. Tests can select report-and-rethrow behavior.
 
-Unknown Command and Param IDs write one counted warning per ID on first use.
-Repeated uses are counted, and `ed_fm_release` writes the total. Declared
-commands that do not belong to the EFM are ignored without warnings. Invalid
-runtime data, invalid callback values, structured Core failures, and lifecycle
-violations other than the repeated-start warning above are errors rather than
-telemetry.
+Unknown command/parameter IDs write one counted warning per ID; release summarizes
+repeated uses. Declared non-EFM commands are ignored. Invalid callback data, Core
+execution failures and lifecycle violations are errors.
 
-## Layout and ownership
+Legacy debug exports remain present: `ed_fm_enable_debug_info()` returns false;
+`ed_fm_debug_watch()` clears the buffer and returns 0.
+The dedicated Indicator supplies the display.
 
-- `EfmExports.cpp` is the only DCSBridge entry point compiled into the DLL.
-- `Internal/` contains all C++ implementation details: callback adapters,
-  command and damage mapping, bridges, latest-value stores, logging, CSV, and
-  lifecycle coordination.
-- `ProcessBridgeContext` constructs one process-lifetime production context
-  without running logger or worker-thread destruction under the Windows loader
-  lock. `BridgeContext` owns Core, the collector and output store,
-  cockpit/carrier bridges, CockpitSnapshotExporter, EventLog, StateCsvWriter,
-  DebugTelemetryHub, DebugCsvWriter, DebugIndicatorExporter, and the execution
-  mutex. The Hub is constructed before Core and is injected through the Core
-  debug-telemetry contract; no production global publisher exists.
-- `Core::Fck1cEfm` is the stable façade and owns the current per-flight
-  `AircraftSimulation`. DCSBridge reads per-frame simulation results only from
-  a completed `FrameOutput`; it must not inspect System or Simulation state
-  during a frame. Fuel preparation getters are separate façade queries through
-  `query_core_preparation`, not simulation-result reads.
-- `FrameInputCollector` owns the latest typed inputs. `OutputStore` owns the
-  latest completed frame plus the lossless per-flight mass-effect queue.
-  `StateCsvWriter` owns its worker thread and latest-record mailbox.
-- Suspension sample values retain latest-value semantics, while their
-  availability flags are consumed by each frame snapshot so Core can select
-  DCS feedback or fallback per wheel.
-- `../DcsIds/` contains DCS boundary identifiers and generated ID tables. It is
-  boundary-only, is not a supported external include, and is not a Core
-  dependency.
+## Dependencies
 
-There is no DCSBridge umbrella or stable public C++ header. Files under
-`Internal/` are private and may be included only by DCSBridge implementation or
-native tests. Other production modules use `Core/Contracts/` and the explicit
-Core interface instead. DCS itself sees only the exported C ABI.
+`Internal/` contains private adapters, stores and tools.
+Only DcsBridge implementation and native tests may include it.
+DCS sees the exported C ABI, not a public DcsBridge C++ header.
 
-The build-time architecture checker enforces this dependency boundary.
-DCSBridge may include only `Core/Fck1cEfm.h`, `Core/Contracts/`, and the
-specific structured error boundary in `Core/Diagnostics/ExecutionError.h`;
-it must not reach into Core Systems, pipelines, or Simulation implementation.
+DcsBridge may include `Core/Fck1cEfm.h`, `Core/Contracts/` and
+`Core/Diagnostics/ExecutionError.h`. Core, Systems and physical models remain
+independent of DCS IDs and bridge implementation.
+The architecture checker covers the DcsBridge allowlist and selected System/model
+rules; [issue #31](https://github.com/jjjjj103074/F-CK-1C/issues/31) tracks
+additional Core/DCS enforcement.
 
-## Adding or changing a DCS callback
+## Extending the bridge
 
-1. Keep the DCS-defined signature and record any intentional ABI change in
-   `EfmExports.baseline.txt`.
-2. Initialize every output parameter to its neutral value before work.
-3. Validate and translate DCS values in `EfmExports.cpp` or a focused adapter
-   under `Internal/`.
-4. Use the shared ABI catch macro. Do not add a second exception policy.
-5. Test neutral output, invalid input, lifecycle behavior, and the observable
-   Core result.
+### Callback
 
-Do not call a concrete Core System or Simulation Model from a callback.
+Keep the DCS signature and update `EfmExports.baseline.txt` for intentional ABI
+changes. Initialize outputs, validate/translate in the focused adapter, use the
+shared catch boundary, and test neutral output, invalid input and lifecycle behavior.
+Call the public Core interface rather than concrete Systems or physical models.
 
-## Adding a command
+### Command
 
-1. Reuse or add the DCS ID in `../DcsIds/Commands.h`. For a generated custom
-   command, update `../DcsIds/CommandIds.json` and run
-   `.\tools\generate_dcs_ids.ps1` from the repository root.
-2. Add one binding in `Internal/DcsCommandRouter.cpp` with its explicit value
-   rule: `PassThrough`, `Constant`, or `PressOnly`.
-3. If the semantic command is new, extend `CommandId` in
-   `../Core/Contracts/Commands.h`, then register its handler from the owning
-   System's `setup()`.
-4. Test both the DCS-to-command mapping and the observable `FrameOutput` result.
+Declare custom IDs/routes in `DcsIds/CommandIds.json` and run the
+[DcsIds generator](../DcsIds/README.md).
+DCS built-in IDs used by Core bindings belong in `DcsIds/Commands.h`.
+Add the DcsCommandRouter binding with PassThrough, Constant or PressOnly;
+new semantic commands also need a Core CommandId and owning System handler.
+Command metadata and routing alone do not implement behavior.
 
-Do not add callback-specific methods to `BridgeContext`, and do not store
-pressed state for `PressOnly` commands.
+Known cockpit/DCS-owned commands are ignored when received by the EFM.
+Undeclared IDs produce counted warnings.
+Test input mapping and observable output; PressOnly bindings do not store pressed state.
 
-Commands have three explicit outcomes:
+### Output
 
-- Supported EFM commands map to one semantic Core command.
-- Known non-EFM commands are declared in `DcsIds/CommandIds.json` and ignored.
-- Undeclared commands remain unknown and generate a counted warning.
+Define typed fields in FrameContracts, populate them in
+`AircraftSimulationFrameOutput.cpp` and consume completed FrameOutput values.
+For Params, use ParamIds and ParamExport; define explicit safe initial values
+when DCS requests data before its runtime source is available.
+For state CSV, update header and row order together.
+Scalars preserve units, vectors expand x/y/z, booleans use True/False and missing
+values use `-`. Keep publication non-blocking.
 
-## Adding a Param export
+### Debug channel
 
-1. Define or reuse its semantic ID in `../DcsIds/ParamIds.h`. Generated cockpit
-   parameter names belong in `../DcsIds/CommandIds.json`.
-2. Add the mapping to the focused lookup in `Internal/ParamExport.h`.
-3. Read only the published `FrameOutput`; do not query Core implementation
-   state or recalculate a completed simulation result.
-4. If DCS queries the value before its runtime input has ever been available,
-   define an explicit start-compatibility value and comment why it is safe.
-5. Test the value, missing-data behavior, and unknown-ID warning.
+Store a `DebugTelemetryChannel<T>` in the producer, declare it during setup with
+a stable name, label, unit and description, and publish at the owning operation's
+simulation time. Types are double, int64, bool and UTF-8 string.
+The first-flight schema locks names, types and descriptors for the process;
+later flights must redeclare every channel with matching descriptors.
+Publication timestamps are nonnegative and nondecreasing across all channels
+in the flight. Use the owning operation's scheduled time consistently.
 
-## Adding a FrameOutput field
+The current System producer is PropulsionDiagnostics'
+`propulsion_test_thrust_cut_requested` channel.
+Additional channels use the same injected sink; Core does not know files,
+cockpit parameters or display formatting.
+Test descriptors, timestamps, escaping and error behavior.
 
-1. Add the typed field to the appropriate output structure in
-   `../Core/Contracts/FrameContracts.h`, using the value's existing unit.
-2. Populate it in
-   `../Core/Simulation/AircraftSimulationFrameOutput.cpp` from Core-owned state.
-3. Consume it only where required: an ABI callback, an adapter in `Internal/`,
-   or CSV output.
-4. Add input/output tests. Do not expose a full Core snapshot to make testing
-   easier.
+## Build and verification
 
-## Adding a physical state CSV field
+Non-Core DLL sources belong in F-CK-1C_EFM.vcxproj.
+Bridge sources needed by tests also belong in the native test project.
+Shared EfmCore rules discover Core sources and System Entries.
 
-CSV mirrors `FrameOutput` explicitly. In `Internal/StateCsvWriter.cpp`, update
-the header and the matching row formatter in the same order, then update the
-CSV tests. Scalars retain their existing units, vectors expand as fixed
-`x,y,z` columns, booleans use `True`/`False`, and unavailable data uses `-`.
-CSV publication must remain non-blocking for `ed_fm_simulate`.
-
-Do not add System internals, control-law intermediates, or temporary developer
-values to `FrameOutput` solely for logging. Add those through a debug channel.
-
-## Adding a Debug Indicator / `debug.csv` channel
-
-1. Store a typed `DebugTelemetryChannel<T>` handle in the Core producer that
-   owns the value. Supported types are `double`, signed 64-bit integer, `bool`,
-   and UTF-8 `std::string`.
-2. Declare the channel during setup with a unique stable `name`, readable
-   `label`, actual unit, and description.
-3. Publish from the location whose state you need to observe, using that
-   operation's simulation timestamp. The tool intentionally does not require
-   an AircraftData commit.
-4. Update native tests for descriptor stability, timestamp order, visible
-   value, and escaping when applicable. A channel cannot be added or renamed
-   after the process has locked its first-flight schema.
-
-Core does not know CSV paths, the DCS Indicator, cockpit parameters, or display
-formatting. DcsBridge consumes only
-`Core/Contracts/Diagnostics/DebugTelemetry.h`; it must never include the
-concrete producer to obtain a debug value.
-
-Flight-control telemetry uses explicit layers rather than a generic `command`:
-
-- `afcs_target_*` records selected/captured mode targets.
-- `afcs_*_reference_*` records the AP's shaped physical guidance references.
-- `flight_control_selected_*` records the active manual or automatic payload
-  after per-axis reference selection and before guidance coordination.
-- `flight_control_*_reference_*` records the coordinated maneuver reference
-  consumed by the shared FBW control path.
-- `flight_control_*_demand_normalized` records FCC primary-surface position demand.
-- `flight_control_constraint_*` and `afcs_*reason` record typed constraint,
-  degradation, disconnect, and engage/disengage results.
-
-Attitude and aerodynamic angles use radians, angular rates use radians per
-second, AFCS altitude uses feet, AFCS vertical speed uses feet per second,
-magnetic heading uses degrees, normal acceleration uses g, and primary-surface
-position demands use dimensionless [-1, 1] values. Actual primary-surface positions
-use radians. The FCC and AFCS snapshot revisions make
-the row a read-only observation; CSV values must never be read back into Core
-control state.
-
-## Project references and verification
-
-Non-Core production sources belong in `F-CK-1C_EFM.vcxproj`. A DCSBridge
-source needed by native tests must also be referenced by
-`../../F-CK-1C_EFM_Tests/F-CK-1C_EFM_Tests.vcxproj`.
-Core sources and System Entries instead come from the shared
-`EfmCore.props`/`EfmCore.targets` rules.
-
-Follow the
-[`DLL build guide`](../../../../docs/BUILD_DLL.md) for the canonical native
-tests, architecture checks, DLL build, and export verification. A DCSBridge
-change must also test its boundary validation and neutral return behavior.
-Use DCS when the result depends on callback order, cockpit Param access, flight
-start/release, or the runtime loader.
+Use the [build guide](../../../../docs/BUILD_DLL.md) for native checks and
+[DCS testing](../../../../docs/DCS_TESTING.md) for loading, callback order,
+cockpit parameter access and flight lifecycle.

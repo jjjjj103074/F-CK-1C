@@ -27,7 +27,7 @@ body:
     attributes:
       label: "Use Case / 使用情境"
       description: "Why is this feature needed? How would it be used? / 為什麼需要這個功能？如何使用？"
-      placeholder: "e.g. Currently, uncaging the seeker requires going through menus, which breaks immersion in a dogfight..."
+      placeholder: "Describe the situation, current limitation and expected benefit. / 說明使用情境、目前限制與預期效益。"
     validations:
       required: true
 

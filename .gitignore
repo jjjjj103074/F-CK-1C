@@ -50,7 +50,7 @@ src/efm/bin/
 *.original.*
 *.pretrim*
 temp/
-# 根目錄的本機測試與研究輸出；需長期引用的來源檔移至 docs/
+# 本機測試與研究輸出；專案文件位於 docs/，研究來源位於 research/
 /.tmp/
 /tmp/
 /output/

@@ -19,8 +19,8 @@
 
 ## Verification / 驗證
 
-- [ ] Tested in DCS / 已在 DCS 中測試
-- [ ] EFM build passes if affected / 若影響 EFM，建置已通過
+- [ ] DCS integration verified if affected / 涉及 DCS 整合時已完成遊戲內驗證
+- [ ] EFM validation passes if affected / 涉及 EFM 時完整驗證已通過
 - [ ] No unrelated files changed / 未混入無關變更
 - [ ] PR title follows `<type>(<scope>): <description>` / PR 標題符合格式
 

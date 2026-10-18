@@ -46,11 +46,6 @@ function Copy-CheckerFixture {
             Join-Path $resolvedRoot "src\efm\F-CK-1C_EFM\DcsBridge\Internal\$name") `
             -Destination $destination
     }
-    $inventoryDirectory = Join-Path $Root 'docs\cockpit-baseline\generated'
-    [IO.Directory]::CreateDirectory($inventoryDirectory) | Out-Null
-    Copy-Item -LiteralPath (
-        Join-Path $resolvedRoot 'docs\cockpit-baseline\generated\parameter-access.csv') `
-        -Destination $inventoryDirectory
 }
 
 function Invoke-FixtureChecker {
@@ -92,19 +87,15 @@ try {
         $utf8NoBom)
     Invoke-FixtureChecker $temporaryRoot
     Remove-Item -LiteralPath $rawReferenceScript -Force
-    $parameterInventory = Join-Path (
-        $temporaryRoot) 'docs\cockpit-baseline\generated\parameter-access.csv'
-    $originalInventory = [IO.File]::ReadAllText($parameterInventory)
+    $duplicateLuaWriter = Join-Path $temporaryRoot 'Cockpit\Scripts\DuplicateWriter.lua'
     Assert-Rejected {
-        [IO.File]::AppendAllText(
-            $parameterInventory,
-            "`"AIM9_TONE_STATE`",`"Write`",`"Lua`",`"Bad.lua`"`r`n",
+        [IO.File]::WriteAllText(
+            $duplicateLuaWriter,
+            "local duplicate = get_param_handle(`"AIM9_TONE_STATE`")`r`nduplicate:set(1)`r`n",
             $utf8NoBom)
     } 'Parameter has multiple writers' $temporaryRoot
-    [IO.File]::WriteAllText(
-        $parameterInventory,
-        $originalInventory,
-        $utf8NoBom)
+    Remove-Item -LiteralPath $duplicateLuaWriter -Force
+    Invoke-FixtureChecker $temporaryRoot
 
     $badWriter = Join-Path (
         $temporaryRoot) 'src\efm\F-CK-1C_EFM\DcsBridge\Internal\BadWriter.cpp'
@@ -146,7 +137,7 @@ try {
     Assert-Rejected {
         [IO.File]::WriteAllText(
             $badScript,
-            "local bad = get_param_handle(`"NOT_CATALOGUED`")`r`n",
+            "local bad = get_param_handle(`"NOT_CATALOGUED`")`r`nbad:get()`r`n",
             $utf8NoBom)
     } 'Uncatalogued parameter literal' $temporaryRoot
     Remove-Item -LiteralPath $badScript -Force

@@ -1,29 +1,25 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("Check", "Refresh")]
-    [string]$Mode = "Check",
-    [string]$RepoRoot = ""
+    [string]$RepoRoot = "",
+    [switch]$ParametersOnly
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$BaselineRepoRoot = if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+$InventoryRepoRoot = if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
     Split-Path -Parent $PSScriptRoot
 } else {
     [System.IO.Path]::GetFullPath($RepoRoot)
 }
-$ExpectedCockpitFileCount = 23
-$ExpectedDeviceCount = 6
-$ExpectedIndicatorCount = 4
 $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-$OutputRoot = Join-Path $BaselineRepoRoot "docs\cockpit-baseline\generated"
-$CommandCatalogPath = Join-Path $BaselineRepoRoot "src\efm\F-CK-1C_EFM\DcsIds\CommandIds.json"
+$OutputRoot = Join-Path $InventoryRepoRoot "tmp\cockpit-inventory"
+$CommandCatalogPath = Join-Path $InventoryRepoRoot "src\efm\F-CK-1C_EFM\DcsIds\CommandIds.json"
 
 function Get-RelativePath {
     param([string]$Path)
 
-    $root = [System.IO.Path]::GetFullPath($BaselineRepoRoot).TrimEnd("\", "/") + "\"
+    $root = [System.IO.Path]::GetFullPath($InventoryRepoRoot).TrimEnd("\", "/") + "\"
     $fullPath = [System.IO.Path]::GetFullPath($Path)
     if (-not $fullPath.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Path is outside repository: $fullPath"
@@ -50,12 +46,9 @@ function Get-LineCount {
     return $lineBreaks + 1
 }
 
-function Get-BaselineSourceFiles {
-    $cockpitFiles = @(Get-ChildItem (Join-Path $BaselineRepoRoot "Cockpit\Scripts") -Recurse -File |
+function Get-InventorySourceFiles {
+    $cockpitFiles = @(Get-ChildItem (Join-Path $InventoryRepoRoot "Cockpit\Scripts") -Recurse -File |
         Sort-Object FullName)
-    if ($cockpitFiles.Count -ne $ExpectedCockpitFileCount) {
-        throw "Expected $ExpectedCockpitFileCount Cockpit files, found $($cockpitFiles.Count)."
-    }
     $contractPaths = @(
         "F-CK-1C.lua",
         "Input\F-CK-1C\joystick\default.lua",
@@ -79,9 +72,9 @@ function Get-BaselineSourceFiles {
         "src\efm\F-CK-1C_EFM\Core\Contracts\FrameContracts.h"
     )
     $contractFiles = foreach ($relativePath in $contractPaths) {
-        $path = Join-Path $BaselineRepoRoot $relativePath
+        $path = Join-Path $InventoryRepoRoot $relativePath
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-            throw "Required baseline source is missing: $relativePath"
+            throw "Required inventory source is missing: $relativePath"
         }
         Get-Item -LiteralPath $path
     }
@@ -92,7 +85,7 @@ function ConvertTo-StableCsv {
     param([object[]]$Rows)
 
     if ($Rows.Count -eq 0) {
-        throw "Baseline artifact cannot be empty."
+        throw "Inventory artifact cannot be empty."
     }
     $csv = $Rows | ConvertTo-Csv -NoTypeInformation
     return (($csv -join "`r`n") + "`r`n")
@@ -103,11 +96,17 @@ function New-SourceManifest {
 
     $rows = foreach ($file in $Files) {
         $text = Get-Text $file.FullName
-        [pscustomobject]@{
-            Path = Get-RelativePath $file.FullName
-            Bytes = $file.Length
-            Lines = Get-LineCount $text
-            SHA256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+        $hasher = [Security.Cryptography.SHA256]::Create()
+        try {
+            $digest = $hasher.ComputeHash([IO.File]::ReadAllBytes($file.FullName))
+            [pscustomobject]@{
+                Path = Get-RelativePath $file.FullName
+                Bytes = $file.Length
+                Lines = Get-LineCount $text
+                SHA256 = [BitConverter]::ToString($digest).Replace('-', '')
+            }
+        } finally {
+            $hasher.Dispose()
         }
     }
     return ConvertTo-StableCsv @($rows)
@@ -125,7 +124,7 @@ function Get-DeviceVariableMap {
 }
 
 function New-DeviceLoadChain {
-    $path = Join-Path $BaselineRepoRoot "Cockpit\Scripts\device_init.lua"
+    $path = Join-Path $InventoryRepoRoot "Cockpit\Scripts\device_init.lua"
     $text = Get-Text $path
     $deviceMap = Get-DeviceVariableMap $text
     $rows = [System.Collections.Generic.List[object]]::new()
@@ -156,8 +155,13 @@ function New-DeviceLoadChain {
     }
     $deviceCount = @($rows | Where-Object Kind -eq "Device").Count
     $indicatorCount = @($rows | Where-Object Kind -eq "Indicator").Count
-    if ($deviceCount -ne $ExpectedDeviceCount -or $indicatorCount -ne $ExpectedIndicatorCount) {
-        throw "Expected $ExpectedDeviceCount devices and $ExpectedIndicatorCount indicators; found $deviceCount and $indicatorCount."
+    if ($deviceCount -eq 0 -or $indicatorCount -eq 0) {
+        throw "Device and indicator declarations must be present in device_init.lua."
+    }
+    foreach ($row in $rows) {
+        if (-not (Test-Path -LiteralPath (Join-Path $InventoryRepoRoot $row.Script) -PathType Leaf)) {
+            throw "Device or indicator script is missing: $($row.Script)"
+        }
     }
     return ConvertTo-StableCsv @($rows)
 }
@@ -223,9 +227,9 @@ function Get-CockpitTargets {
 function New-CommandRouting {
     param([object]$Catalog)
 
-    $inputFiles = @(Get-ChildItem (Join-Path $BaselineRepoRoot "Input\F-CK-1C") -Recurse -File -Filter "*.lua" |
+    $inputFiles = @(Get-ChildItem (Join-Path $InventoryRepoRoot "Input\F-CK-1C") -Recurse -File -Filter "*.lua" |
         Sort-Object FullName)
-    $cockpitFiles = @(Get-ChildItem (Join-Path $BaselineRepoRoot "Cockpit\Scripts") -Recurse -File -Filter "*.lua" |
+    $cockpitFiles = @(Get-ChildItem (Join-Path $InventoryRepoRoot "Cockpit\Scripts") -Recurse -File -Filter "*.lua" |
         Sort-Object FullName)
     $rows = foreach ($command in $Catalog.commands) {
         [pscustomobject]@{
@@ -243,8 +247,8 @@ function New-CommandRouting {
 function New-DcsActionUsage {
     param([object]$Catalog)
 
-    $files = @(Get-ChildItem (Join-Path $BaselineRepoRoot "Cockpit\Scripts") -Recurse -File -Filter "*.lua")
-    $files += @(Get-ChildItem (Join-Path $BaselineRepoRoot "Input\F-CK-1C") -Recurse -File -Filter "*.lua")
+    $files = @(Get-ChildItem (Join-Path $InventoryRepoRoot "Cockpit\Scripts") -Recurse -File -Filter "*.lua")
+    $files += @(Get-ChildItem (Join-Path $InventoryRepoRoot "Input\F-CK-1C") -Recurse -File -Filter "*.lua")
     $files = @($files | Sort-Object FullName -Unique)
     $rows = foreach ($command in $Catalog.efm_ignored_dcs_commands) {
         $pattern = "\b$([regex]::Escape($command.name))\b"
@@ -439,7 +443,7 @@ function Get-CppParameterRows {
     foreach ($parameter in $Catalog.cockpit_params) {
         $parametersByName[[string]$parameter.name] = $parameter
     }
-    $cppRoot = Join-Path $BaselineRepoRoot 'src\efm\F-CK-1C_EFM'
+    $cppRoot = Join-Path $InventoryRepoRoot 'src\efm\F-CK-1C_EFM'
     $writerPattern = (
         'cockpit_parameter_writer\s*\(\s*' +
         '(?:DcsIds::)?CockpitParams::([A-Za-z_][A-Za-z0-9_]*)\s*\)')
@@ -485,7 +489,7 @@ function Get-CppParameterRows {
 function New-ParameterAccess {
     param([object]$Catalog)
 
-    $luaFiles = @(Get-ChildItem (Join-Path $BaselineRepoRoot "Cockpit\Scripts") -Recurse -File -Filter "*.lua" |
+    $luaFiles = @(Get-ChildItem (Join-Path $InventoryRepoRoot "Cockpit\Scripts") -Recurse -File -Filter "*.lua" |
         Sort-Object FullName)
     $paramMap = Get-ParamNameMap $Catalog
     $handleRows = @(foreach ($file in $luaFiles) {
@@ -517,51 +521,32 @@ function New-ParameterAccess {
 }
 
 function Get-ArtifactContents {
-    $catalog = Get-Content -LiteralPath $CommandCatalogPath -Raw | ConvertFrom-Json
-    $files = Get-BaselineSourceFiles
+    param([object]$Catalog)
+
+    $files = Get-InventorySourceFiles
     return [ordered]@{
         "source-manifest.csv" = New-SourceManifest $files
         "device-load-chain.csv" = New-DeviceLoadChain
-        "command-routing.csv" = New-CommandRouting $catalog
-        "dcs-action-usage.csv" = New-DcsActionUsage $catalog
-        "parameter-access.csv" = New-ParameterAccess $catalog
+        "command-routing.csv" = New-CommandRouting $Catalog
+        "dcs-action-usage.csv" = New-DcsActionUsage $Catalog
+        "parameter-access.csv" = New-ParameterAccess $Catalog
     }
 }
 
-function Write-BaselineArtifacts {
+function Write-InventoryArtifacts {
     param([System.Collections.IDictionary]$Artifacts)
 
     [void](New-Item -ItemType Directory -Path $OutputRoot -Force)
     foreach ($name in $Artifacts.Keys) {
         $path = Join-Path $OutputRoot $name
         [System.IO.File]::WriteAllText($path, $Artifacts[$name], $Utf8NoBom)
-        Write-Host "Refreshed $name"
+        Write-Host "Generated $path"
     }
 }
 
-function Test-BaselineArtifacts {
-    param([System.Collections.IDictionary]$Artifacts)
-
-    $drift = [System.Collections.Generic.List[string]]::new()
-    foreach ($name in $Artifacts.Keys) {
-        $path = Join-Path $OutputRoot $name
-        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-            $drift.Add("$name is missing")
-            continue
-        }
-        if ((Get-Text $path) -cne $Artifacts[$name]) {
-            $drift.Add("$name differs from current sources")
-        }
-    }
-    if ($drift.Count -gt 0) {
-        throw "Cockpit baseline drift detected:`n - $($drift -join "`n - ")`nRun with -Mode Refresh after reviewing the source change."
-    }
-    Write-Host "Cockpit baseline is reproducible: $($Artifacts.Count) artifacts match."
+$catalog = Get-Content -LiteralPath $CommandCatalogPath -Raw | ConvertFrom-Json
+if ($ParametersOnly) {
+    New-ParameterAccess $catalog
+    return
 }
-
-$artifacts = Get-ArtifactContents
-if ($Mode -eq "Refresh") {
-    Write-BaselineArtifacts $artifacts
-} else {
-    Test-BaselineArtifacts $artifacts
-}
+Write-InventoryArtifacts (Get-ArtifactContents $catalog)

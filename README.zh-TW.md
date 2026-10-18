@@ -1,57 +1,47 @@
 # F-CK-1C 經國號
 
-> English version: **[README.md](README.md)**
+[English](README.md)
 
-DCS World 社群模組，重現中華民國空軍輕型多功能戰鬥機 AIDC F-CK-1C 經國號。
+DCS World 社群模組，重現 AIDC F-CK-1C 經國號。
 
-![Status](https://img.shields.io/badge/狀態-僅供AI使用-blue)
-![DCS](https://img.shields.io/badge/DCS-OpenBeta%20%7C%20Stable-informational)
+## 狀態
 
----
+Release 支援任務中的 AI 飛機。玩家座艙與 EFM 仍在開發，
+開發版本位於 [dev](https://github.com/jjjjj103074/F-CK-1C/tree/dev)。
 
-## 目前版本
+EFM 目前提供可設定的三軸直接映射；回授控制、配平、自動駕駛與自動油門尚未實作。
+控制路徑與限制見 [DFLCC 指南](src/efm/F-CK-1C_EFM/Core/Systems/DigitalFlightControlComputer/README.md)。
 
-目前 Release 版本**僅供 AI 使用**。飛機可作為 AI 單位出現在任務中，支援完整的武器掛載設定。
+## 安裝
 
-可供玩家駕駛的座艙版本正在開發中。
+從 [Releases](https://github.com/jjjjj103074/F-CK-1C/releases/latest) 下載套件，執行 `install.bat`，
+或將模組資料夾複製到 `Saved Games/DCS/Mods/aircraft/F-CK-1C/`。
 
-## 搶先體驗 — `dev` 分支
+安裝器會刪除並替換既有模組資料夾；執行前先備份其中的自訂內容。
 
-如果想試用最新的開發中版本，請切換至 [`dev`](../../tree/dev) 分支。
-
-> `dev` 分支尚未完整，可能不穩定，請自行評估風險。
-
-## 安裝方式
-
-1. 從 [Releases](../../releases/latest) 下載最新版本。
-2. 執行 `install.bat`，**或**手動將模組資料夾複製至：
-   ```
-   Saved Games\DCS\Mods\aircraft\F-CK-1C\
-   ```
-
-如果你的 Saved Games 不是預設位置，可以把 DCS Saved Games 根目錄傳給安裝器：
+Saved Games 位於自訂位置時：
 
 ```bat
 install.bat "D:\Saved Games\DCS"
 ```
 
-## 回報問題
+## 開發
 
-請使用 [Issues](../../issues) 頁面並套用對應的模板：
-- **Bug Report** — 行為錯誤或當機問題
-- **Feature Request** — 功能建議
+- [貢獻指南](CONTRIBUTING.md)：環境、流程與提交規則。
+- [EFM](src/efm/README.md)：架構與各模組指南。
+- [座艙](docs/COCKPIT.md)：Lua device、輸入路由與參數。
+- [建置與驗證](docs/BUILD_DLL.md)：工具鏈與本機指令。
+- [DCS 測試](docs/DCS_TESTING.md)：驗證情境與觀察項目。
 
-## 授權與標註
+錯誤與功能建議請提交至 [Issues](https://github.com/jjjjj103074/F-CK-1C/issues)。
 
-程式碼、工具、文件與由原始碼產生的 runtime binary 採用 MIT License。非程式素材若未另行標註，採用 CC BY 4.0。
+## 研究
 
-使用、修改或再散布時，請保留原作者與貢獻者標註。第三方或原始元件的既有授權聲明仍然有效，包含 `src/efm/LICENSE`。
+[控制律模型](research/control-law-diagrams/README.md) 提供獨立的
+F-16 Modelica 研究模型與驗證工具。
 
-詳細內容請見 [LICENSE](LICENSE)。
+## 授權
 
-## 開發文件
-
-- [貢獻指南](CONTRIBUTING.md) — 環境設定、分支策略、驗證方式與 Commit 格式
-- [EFM 總覽](src/efm/README.md) — 目前的 C++ 架構，以及各責任專用
-  Contributor Guide 的入口
-- [DLL 建置指南](docs/BUILD_DLL.md) — 支援的工具鏈與驗證方式
+程式碼、工具、文件與生成的執行期二進位檔採 MIT；
+非程式素材未另行標註時採 CC BY 4.0。
+詳見 [LICENSE](LICENSE) 與保留的 [EFM 授權](src/efm/LICENSE)。

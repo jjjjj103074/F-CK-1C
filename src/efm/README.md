@@ -1,84 +1,58 @@
 # F-CK-1C EFM
 
-This directory contains the C++ external flight model source for the F-CK-1C
-DCS module.
+C++17 external flight model for the DCS module.
+The supported build is Release/x64 using the toolchain in
+[BUILD_DLL.md](../../docs/BUILD_DLL.md).
 
-The current contributor contracts are the
-[`DcsBridge` guide](F-CK-1C_EFM/DcsBridge/README.md),
-[`Core` guide](F-CK-1C_EFM/Core/README.md),
-[`System` guide](F-CK-1C_EFM/Core/Systems/README.md), and
-[`DcsIds` guide](F-CK-1C_EFM/DcsIds/README.md). These guides describe only the
-current structure, responsibilities, and extension rules.
+## Structure
 
-## Layout
+| Path | Responsibility |
+|---|---|
+| `F-CK-1C_EFM/DcsBridge/` | DCS C ABI, adapters, lifecycle and runtime tools |
+| `F-CK-1C_EFM/Core/` | DCS-neutral per-flight simulation and typed contracts |
+| `F-CK-1C_EFM/Core/Systems/` | Aircraft equipment and control state |
+| `F-CK-1C_EFM/Core/Simulation/Models/` | Aerodynamics, propulsion, ground interaction and mass |
+| `F-CK-1C_EFM/DcsIds/` | DCS IDs and generated C++/Lua tables |
+| `F-CK-1C_EFM/Common/` | Shared units, configuration loader and utilities |
+| `F-CK-1C_EFM_Tests/` | Native tests independent of DCS |
+| `F-CK-1C_EFM/include/`, `ThirdParty/` | SDK and vendor-owned sources |
 
-- `F-CK-1C_EFM.sln` - Visual Studio solution.
-- `F-CK-1C_EFM/F-CK-1C_EFM.vcxproj` - C++ dynamic library project.
-- `F-CK-1C_EFM/DcsBridge/EfmExports.cpp` - DCS callback composition root.
-- `F-CK-1C_EFM/DcsBridge/README.md` - boundary data flow and contributor guide.
-- `F-CK-1C_EFM/DcsIds/` - DCS-owned identifiers, generated custom command
-  tables, and cockpit parameter names.
-- `F-CK-1C_EFM/Core/` - stable façade, shared contracts, and DCS-neutral
-  per-flight simulation.
-- `F-CK-1C_EFM/Core/Diagnostics/` - structured execution errors shared by Core
-  pipelines and the DCS ABI boundary; it does not write logs.
-- `F-CK-1C_EFM/Core/Systems/` - aircraft-owned systems and their pipeline
-  contracts.
-- `F-CK-1C_EFM/Core/Simulation/Models/` - DCS-neutral physical effect models
-  for aerodynamics, propulsion, ground interaction, and mass properties.
-- `F-CK-1C_EFM/DcsBridge/Internal/` - private DCS adapters, lifecycle, log, and CSV implementation.
-- `F-CK-1C_EFM/include/` - DCS cockpit and flight model API headers.
-- `F-CK-1C_EFM_Tests/` - native input/output, lifecycle, boundary, and
-  regression tests that do not require DCS.
+[DcsBridge](F-CK-1C_EFM/DcsBridge/README.md),
+[Core](F-CK-1C_EFM/Core/README.md),
+[Systems](F-CK-1C_EFM/Core/Systems/README.md) and
+[DcsIds](F-CK-1C_EFM/DcsIds/README.md) define extension contracts.
+Units are defined in [EFM_UNIT_CONVENTIONS.md](../../docs/EFM_UNIT_CONVENTIONS.md).
+Cockpit ownership is described in [COCKPIT.md](../../docs/COCKPIT.md).
 
-Every concrete System and Simulation Model owns its configuration, production
-values, lookup tables, and validation inside its own directory. There is no
-global `Data` configuration bag or legacy top-level `Systems` implementation.
+DFLCC currently implements configurable three-axis direct mapping.
+Feedback, trim application, autopilot and automatic throttle are unimplemented;
+see the [DFLCC guide](F-CK-1C_EFM/Core/Systems/DigitalFlightControlComputer/README.md).
 
-## Build
-
-The projects compile as C++17 with the `v142` platform toolset. Use a shell
-where `MSBuild.exe` is available, then run from the repository root:
+## Build and verification
 
 ```powershell
-.\tools\build_dll.ps1
+npm run build:efm
+npm run validate:efm
 ```
 
-The script builds the `Release|x64` EFM DLL project and copies the resulting
-`F-CK-1C_EFM.dll` into the runtime `bin` folder.
+Run from the repository root. Build updates `bin/F-CK-1C_EFM.dll`;
+validation preserves that DLL and compares it with a clean rebuild.
+To verify an existing commit, run validation directly.
 
-Only `Release|x64` is supported for this DLL.
+Shared EfmCore rules compile the same Core sources in the DLL and test projects,
+check dependencies and generate the System catalog from
+`Core/Systems/*/Entry.cpp`. Physical models remain in a fixed execution order.
 
-The Lua runtime references this DLL from `entry.lua`.
+Native production-entry integration coverage is tracked in
+[issue #30](https://github.com/jjjjj103074/F-CK-1C/issues/30);
+Core/DCS dependency-check coverage is tracked in
+[issue #31](https://github.com/jjjjj103074/F-CK-1C/issues/31).
+DCS-dependent loading, callbacks and flight lifecycle require
+[in-game verification](../../docs/DCS_TESTING.md).
 
-Both the DLL and native test projects import `EfmCore.props` and
-`EfmCore.targets`. These shared rules compile the same Core sources and
-check architecture boundaries, then generate the build-time System catalog
-from `Core/Systems/*/Entry.cpp` into the intermediate directory. No generated
-catalog is stored in the source tree.
-Simulation models are deliberately not registered or scanned: the
-`SimulationPipeline` executes each one exactly once in the fixed order
-Aerodynamics, Propulsion, GroundInteraction, then MassProperties.
+## Diagnostics
 
-## Runtime diagnostics
-
-DCSBridge creates these share-readable files under the installed module's
-`log` directory:
-
-- `fck1c_efm.log` - program events, warnings, and errors.
-- `fck1c_state.csv` - completed physical aircraft-state `FrameOutput` values.
-- `debug.csv` - reusable 64 Hz history of Core-pushed System and development
-  diagnostics; the same latest values are available through the dedicated EFM
-  Debug Indicator.
-
-See the
-[`DcsBridge` guide](F-CK-1C_EFM/DcsBridge/README.md) for file rotation,
-warning aggregation, CSV publication, and failure behavior.
-
-## Verification
-
-Use the [DLL build guide](../../docs/BUILD_DLL.md) as the single source for
-native tests, DLL build, architecture checks, System catalog fixtures, export
-verification, and pre-commit hook behavior. Changes that depend on DCS
-callback order, cockpit parameters, flight lifecycle, or runtime loading also
-require an in-game test.
+The installed module's `log/` contains `fck1c_efm.log`,
+`fck1c_state.csv` and `debug.csv` when channels are declared.
+[Runtime diagnostics](F-CK-1C_EFM/DcsBridge/README.md#runtime-diagnostics)
+defines their timing, rotation, failure and display behavior.

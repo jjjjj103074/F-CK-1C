@@ -46,22 +46,20 @@ body:
     validations:
       required: true
 
-  - type: dropdown
+  - type: input
     id: dcs-version
     attributes:
       label: "DCS Version / DCS 版本"
-      options:
-        - DCS World Stable
-        - DCS World OpenBeta
+      description: "Full version/build from dcs.log; required for DCS behavior reports. / DCS 行為問題請填 dcs.log 中的完整版本與 build。"
     validations:
-      required: true
+      required: false
 
   - type: input
     id: module-version
     attributes:
       label: "Module Version / 模組版本"
-      description: "Check entry.lua or the DCS module manager. / 查看 entry.lua 或 DCS 模組管理器。"
-      placeholder: "e.g. v0.1.3"
+      description: "Release version or Git commit; include the branch and local changes for development builds. / 填 Release 版本或 Git commit；開發版本另註分支與本機變更。"
+      placeholder: "e.g. v0.1.3 or dev @ <commit>"
     validations:
       required: true
 
@@ -69,9 +67,11 @@ body:
     id: mission-type
     attributes:
       label: "Mission Type / 任務類型"
+      description: "For in-game issues. / 遊戲內問題請填寫。"
       options:
         - Single-player Mission / 單人任務
         - Multiplayer Server / 多人伺服器
+        - Not applicable / 不適用
     validations:
       required: true
 

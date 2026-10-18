@@ -1,58 +1,51 @@
 # F-CK-1C Ching-kuo (經國號)
 
-> 繁體中文版請見 **[README.zh-TW.md](README.zh-TW.md)**
+[繁體中文](README.zh-TW.md)
 
-A DCS World community mod recreating the AIDC F-CK-1C Ching-kuo (經國號), a lightweight multirole fighter operated by the Republic of China Air Force.
+A DCS World community mod of the AIDC F-CK-1C Ching-kuo.
 
-![Status](https://img.shields.io/badge/Status-AI--Only%20Release-blue)
-![DCS](https://img.shields.io/badge/DCS-OpenBeta%20%7C%20Stable-informational)
+## Status
 
----
+The release supports AI aircraft in missions. The player cockpit and EFM are
+under development; development builds are available on [dev](https://github.com/jjjjj103074/F-CK-1C/tree/dev).
 
-## Current Release
-
-The current release supports **AI use only**. The aircraft is available as an AI unit in missions with full weapon loadout support.
-
-A player-flyable cockpit is under active development.
-
-## Early Access — `dev` Branch
-
-To try the latest unstable development build, switch to the [`dev`](../../tree/dev) branch.
-
-> The `dev` branch is incomplete and may be unstable. Use at your own risk.
+The EFM currently provides configurable three-axis direct mapping. Feedback
+control, trim, autopilot and automatic throttle are unimplemented. See the
+[DFLCC guide](src/efm/F-CK-1C_EFM/Core/Systems/DigitalFlightControlComputer/README.md)
+for the supported control path and limitations.
 
 ## Installation
 
-1. Download the latest release from [Releases](../../releases/latest).
-2. Run `install.bat`, **or** copy the module folder manually to:
-   ```
-   Saved Games\DCS\Mods\aircraft\F-CK-1C\
-   ```
+Download a package from [Releases](https://github.com/jjjjj103074/F-CK-1C/releases/latest), then run
+`install.bat` or copy the module folder to
+`Saved Games/DCS/Mods/aircraft/F-CK-1C/`.
 
-If your Saved Games folder is not in the default location, pass the DCS Saved Games root to the installer:
+The installer deletes and replaces the existing module folder. Back up local
+changes inside that folder before running it.
+
+For a custom Saved Games location:
 
 ```bat
 install.bat "D:\Saved Games\DCS"
 ```
 
-## Reporting Issues
+## Development
 
-Please use the [Issues](../../issues) tab with the provided templates:
-- **Bug Report** — for incorrect behavior or crashes
-- **Feature Request** — for suggestions
+- [Contributing](CONTRIBUTING.md): setup, workflow and submission rules.
+- [EFM](src/efm/README.md): architecture and module guides.
+- [Cockpit](docs/COCKPIT.md): Lua devices, input routing and parameters.
+- [Build and verification](docs/BUILD_DLL.md): toolchain and local commands.
+- [DCS testing](docs/DCS_TESTING.md): scenarios and checks.
 
-## License and Attribution
+Report reproducible problems or feature requests in [Issues](https://github.com/jjjjj103074/F-CK-1C/issues).
 
-Source code, tooling, documentation, and generated runtime binaries are licensed under the MIT License. Non-code assets are licensed under CC BY 4.0 unless otherwise noted.
+## Research
 
-Please preserve attribution to the original author(s) and contributors. Third-party or original component notices remain in effect, including `src/efm/LICENSE`.
+[Control-law models](research/control-law-diagrams/README.md) contain independent
+F-16 Modelica research and verification tools.
 
-See [LICENSE](LICENSE) for details.
+## License
 
-## Development Documentation
-
-- [Contributing guide](CONTRIBUTING.md) — setup, branch strategy, validation,
-  and commit format
-- [EFM overview](src/efm/README.md) — current C++ architecture and links to
-  responsibility-specific contributor guides
-- [DLL build guide](docs/BUILD_DLL.md) — supported toolchain and verification
+Code, tooling, documentation and generated runtime binaries use MIT.
+Non-code assets use CC BY 4.0 unless otherwise specified.
+See [LICENSE](LICENSE) and the retained [EFM notice](src/efm/LICENSE).

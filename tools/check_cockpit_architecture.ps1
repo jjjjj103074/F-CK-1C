@@ -482,18 +482,20 @@ $catalogPath = Join-Path (
     $resolvedRoot) 'src\efm\F-CK-1C_EFM\DcsIds\CommandIds.json'
 $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
 $maps = Get-CatalogMaps $catalog
-$accessPath = if ($ParameterAccessPath) {
-    [IO.Path]::GetFullPath($ParameterAccessPath)
+$inventoryRows = if ($ParameterAccessPath) {
+    $accessPath = [IO.Path]::GetFullPath($ParameterAccessPath)
+    if (-not (Test-Path -LiteralPath $accessPath -PathType Leaf)) {
+        throw "Parameter access inventory is missing: $accessPath"
+    }
+    @(Import-Csv -LiteralPath $accessPath)
 } else {
-    Join-Path $resolvedRoot 'docs\cockpit-baseline\generated\parameter-access.csv'
+    $generator = Join-Path $PSScriptRoot 'generate_cockpit_inventory.ps1'
+    $parameterCsv = & $generator -RepoRoot $resolvedRoot -ParametersOnly
+    @($parameterCsv | ConvertFrom-Csv)
 }
-if (-not (Test-Path -LiteralPath $accessPath -PathType Leaf)) {
-    throw "Parameter access inventory is missing: $accessPath"
-}
-$baselineRows = @(Import-Csv -LiteralPath $accessPath)
 $cppWriterRows = @(Get-CppWriterRows $resolvedRoot $maps)
 $parameterRows = @(
-    $baselineRows | Where-Object {
+    $inventoryRows | Where-Object {
         $_.Layer -cne 'C++' -or $_.Access -notmatch 'Write'
     }
     $cppWriterRows
