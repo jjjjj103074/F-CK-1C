@@ -85,13 +85,14 @@ function Test-DuplicateParameterRejected {
         $utf8NoBom)
     try {
         & $generator -RepoRoot $Root | Out-Null
-        throw 'Generator accepted duplicate cockpit parameter values.'
     }
     catch {
         if ($_.Exception.Message -notlike '*Duplicate cockpit parameter value*') {
             throw
         }
+        return
     }
+    throw 'Generator accepted duplicate cockpit parameter values.'
 }
 
 function Test-RawMetadataRejected {
@@ -106,14 +107,15 @@ function Test-RawMetadataRejected {
         $utf8NoBom)
     try {
         & $generator -RepoRoot $Root | Out-Null
-        throw 'Generator accepted missing raw DCS parameter metadata.'
     }
     catch {
         if ($_.Exception.Message -notlike (
             '*Missing raw DCS parameter axis convention*')) {
             throw
         }
+        return
     }
+    throw 'Generator accepted missing raw DCS parameter metadata.'
 }
 
 $temporaryRoot = [IO.Path]::GetFullPath(

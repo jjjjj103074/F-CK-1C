@@ -64,13 +64,14 @@ function Assert-Rejected {
     & $Arrange
     try {
         Invoke-FixtureChecker $Root
-        throw "Checker accepted invalid fixture: $ExpectedMessage"
     }
     catch {
         if ($_.Exception.Message -notlike "*$ExpectedMessage*") {
             throw
         }
+        return
     }
+    throw "Checker accepted invalid fixture: $ExpectedMessage"
 }
 
 $temporaryRoot = [IO.Path]::GetFullPath(
