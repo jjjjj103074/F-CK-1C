@@ -3,12 +3,14 @@
 #include "DcsBridge/Internal/OutputStore.h"
 
 #include <atomic>
+#include <chrono>
 #include <thread>
 
 namespace
 {
 constexpr int kRaceIterations = 20000;
 constexpr int kMassRaceIterations = 5000;
+constexpr std::chrono::seconds kMassRaceTimeout(10);
 constexpr int kAlternatingSamplePeriod = 2;
 constexpr double kFirstMarker = 1000.0;
 constexpr double kSecondMarker = 2000.0;
@@ -83,17 +85,35 @@ void test_lifecycle_and_immutable_copy(Tests::Context& context)
 	Core::FrameOutput start = make_output(kFirstMarker);
 	store.publish(start);
 	start.fuel.total_fuel_kg = -1.0;
-	TEST_EXPECT(context, is_complete_output(*store.read()));
+	const auto first = store.read();
+	TEST_EXPECT(context, first.has_value());
+	if (!first)
+	{
+		return;
+	}
+	TEST_EXPECT(context, is_complete_output(*first));
 	const Core::FrameOutput next = make_output(kSecondMarker);
-	TEST_EXPECT(context, store.read()->simulation_time_s == kFirstMarker);
+	TEST_EXPECT(context, first->simulation_time_s == kFirstMarker);
 	store.publish(next);
-	TEST_EXPECT(context, is_complete_output(*store.read()));
-	TEST_EXPECT(context, store.read()->simulation_time_s == kSecondMarker);
+	const auto second = store.read();
+	TEST_EXPECT(context, second.has_value());
+	if (!second)
+	{
+		return;
+	}
+	TEST_EXPECT(context, is_complete_output(*second));
+	TEST_EXPECT(context, second->simulation_time_s == kSecondMarker);
 	store.mark_released();
 	TEST_EXPECT(context, !store.read());
 	TEST_EXPECT(context, store.is_released());
 	store.publish(make_output(kFirstMarker));
-	TEST_EXPECT(context, is_complete_output(*store.read()));
+	const auto restarted = store.read();
+	TEST_EXPECT(context, restarted.has_value());
+	if (!restarted)
+	{
+		return;
+	}
+	TEST_EXPECT(context, is_complete_output(*restarted));
 	TEST_EXPECT(context, !store.is_released());
 }
 
@@ -158,35 +178,51 @@ void test_concurrent_mass_publish_and_take(Tests::Context& context)
 {
 	DcsBridge::Internal::OutputStore store;
 	std::atomic<bool> ordered(true);
+	std::atomic<bool> writer_finished(false);
+	int received = 0;
+	const auto deadline = std::chrono::steady_clock::now() + kMassRaceTimeout;
 	std::thread writer(
-	    [&store]()
+	    [&store, &writer_finished]()
 	    {
 		    for (int index = 1; index <= kMassRaceIterations; ++index)
 		    {
 			    store.publish(make_mass_output(static_cast<double>(index)));
 		    }
+		    writer_finished.store(true, std::memory_order_release);
 	    });
 	std::thread reader(
-	    [&store, &ordered]()
+	    [&store, &ordered, &writer_finished, &received, deadline]()
 	    {
-		    int expected = 1;
-		    while (expected <= kMassRaceIterations)
+		    while (received < kMassRaceIterations && std::chrono::steady_clock::now() < deadline)
 		    {
+			    const bool finished = writer_finished.load(std::memory_order_acquire);
 			    const Core::MassDeltaResult result = store.take_mass_delta();
 			    if (!result.available)
 			    {
+				    if (finished)
+				    {
+					    break;
+				    }
 				    std::this_thread::yield();
 				    continue;
 			    }
-			    if (result.delta.mass_kg != static_cast<double>(expected))
+			    if (result.delta.mass_kg != static_cast<double>(received + 1))
 			    {
 				    ordered.store(false, std::memory_order_relaxed);
 			    }
-			    ++expected;
+			    ++received;
 		    }
 	    });
 	writer.join();
 	reader.join();
+	if (received != kMassRaceIterations)
+	{
+		std::printf("mass publish/take incomplete: received=%d expected=%d timeout_s=%lld\n",
+		            received,
+		            kMassRaceIterations,
+		            static_cast<long long>(kMassRaceTimeout.count()));
+	}
+	TEST_EXPECT(context, received == kMassRaceIterations);
 	TEST_EXPECT(context, ordered.load(std::memory_order_relaxed));
 	TEST_EXPECT(context, !store.take_mass_delta().available);
 }

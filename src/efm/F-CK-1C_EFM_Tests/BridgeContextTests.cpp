@@ -239,6 +239,10 @@ void test_release_then_start_reuses_context(Tests::Context& tests)
 	TEST_EXPECT(tests, !context.output_store().is_released());
 	const std::optional<Core::FrameOutput> output = context.output_store().read();
 	TEST_EXPECT(tests, output.has_value());
+	if (!output)
+	{
+		return;
+	}
 	TEST_EXPECT_NEAR(tests, output->simulation_time_s, 0.0, 0.0);
 	const std::string log = TestFiles::read_text_while_open(root.path() / "log" / "fck1c_efm.log");
 	TEST_EXPECT(tests, log.find(kRepeatedStartWarning) == std::string::npos);

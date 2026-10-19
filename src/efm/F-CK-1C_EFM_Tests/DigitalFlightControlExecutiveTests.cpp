@@ -100,6 +100,11 @@ void test_startup_handoff(Tests::Context& context)
 	Recorder recorder{ "startup", calls };
 	ExecutiveTables tables;
 	Executive executive(tables, { { "startup_test.step", TaskFrequency(64), recorder, &Recorder::step } });
+	TEST_EXPECT(context, tables.tasks().size() == 1);
+	if (tables.tasks().size() != 1)
+	{
+		return;
+	}
 	StartupAndRestart startup(executive);
 
 	TEST_EXPECT(context, !tables.scheduler_state().started);
@@ -141,6 +146,11 @@ void test_task_row_and_first_tick(Tests::Context& context)
 	Recorder recorder{ "first", calls };
 	ExecutiveTables tables;
 	Executive executive(tables, { { "first.step", TaskFrequency(64), recorder, &Recorder::step } });
+	TEST_EXPECT(context, tables.tasks().size() == 1);
+	if (tables.tasks().size() != 1)
+	{
+		return;
+	}
 	const ExecutiveTask& task = tables.tasks().front();
 	TEST_EXPECT(context, task.definition.id == "first.step");
 	TEST_EXPECT(context, task.definition.frequency.numerator() == 64);
@@ -284,6 +294,11 @@ void test_no_accumulated_rounding(Tests::Context& context)
 	Recorder recorder{ "thirds", calls };
 	ExecutiveTables tables;
 	Executive executive(tables, { { "thirds", TaskFrequency(3), recorder, &Recorder::step } });
+	TEST_EXPECT(context, tables.tasks().size() == 1);
+	if (tables.tasks().size() != 1)
+	{
+		return;
+	}
 	executive.start();
 	executive.step(hours(1) - nanoseconds(1));
 	TEST_EXPECT(context, calls.size() == 10'799);
@@ -384,6 +399,11 @@ void test_definition_validation_and_initialization(Tests::Context& context)
 	executive.start();
 	executive.step(seconds(1));
 	TEST_EXPECT(context, calls.size() == 4);
+	TEST_EXPECT(context, tables.tasks().size() == 1);
+	if (tables.tasks().size() != 1)
+	{
+		return;
+	}
 	TEST_EXPECT(context, tables.tasks().front().state.completed_ticks == 4);
 
 	ExecutiveTables empty;

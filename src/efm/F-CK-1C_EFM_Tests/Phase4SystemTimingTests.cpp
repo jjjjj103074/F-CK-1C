@@ -55,6 +55,10 @@ void test_first_tick_starts_after_one_full_period(Tests::Context& context)
 	                 kTolerance);
 	(void)step_pipeline_to(pipeline, frame, observation, kTestUpdatePeriod);
 	TEST_EXPECT(context, calls->size() == 1);
+	if (calls->size() != 1)
+	{
+		return;
+	}
 	TEST_EXPECT(context, calls->front().scheduled_time == kTestUpdatePeriod);
 	TEST_EXPECT_NEAR(context, calls->front().dt_s, 1.0 / static_cast<double>(kTestUpdateRateHz), kTolerance);
 }
@@ -67,6 +71,10 @@ void test_large_host_interval_runs_every_due_tick(Tests::Context& context)
 	const AircraftObservation observation;
 	(void)step_pipeline_to(pipeline, frame, observation, kOneSecond);
 	TEST_EXPECT(context, calls->size() == kExpectedOneSecondTicks);
+	if (calls->size() != kExpectedOneSecondTicks)
+	{
+		return;
+	}
 	TEST_EXPECT(context, calls->back().scheduled_time == kOneSecond);
 }
 
@@ -84,6 +92,10 @@ void test_duration_declaration_supplies_its_period(Tests::Context& context)
 	const AircraftObservation observation;
 	(void)step_pipeline_to(pipeline, frame, observation, kDurationDeclaredPeriod);
 	TEST_EXPECT(context, calls->size() == 1);
+	if (calls->size() != 1)
+	{
+		return;
+	}
 	TEST_EXPECT_NEAR(context,
 	                 calls->front().dt_s,
 	                 std::chrono::duration<double>(kDurationDeclaredPeriod).count(),
@@ -100,6 +112,10 @@ void test_long_run_keeps_exact_tick_count(Tests::Context& context)
 	const AircraftObservation observation;
 	(void)step_pipeline_to(pipeline, frame, observation, kLongRunDuration);
 	TEST_EXPECT(context, calls->size() == kExpectedLongRunTicks);
+	if (calls->size() != kExpectedLongRunTicks)
+	{
+		return;
+	}
 	TEST_EXPECT(context, calls->back().scheduled_time == kLongRunDuration);
 }
 

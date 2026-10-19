@@ -47,6 +47,10 @@ void test_contract_supports_all_value_types(Tests::Context& context)
 	text.publish(4ns, std::string("alpha,beta\n\"quoted\""));
 	TEST_EXPECT(context, telemetry.channels().size() == 4);
 	TEST_EXPECT(context, telemetry.updates().size() == 4);
+	if (telemetry.updates().size() != 4)
+	{
+		return;
+	}
 	TEST_EXPECT(context, std::get<std::string>(telemetry.updates()[3].value) == "alpha,beta\n\"quoted\"");
 }
 
@@ -62,6 +66,10 @@ void test_publication_is_not_commit_bound(Tests::Context& context)
 		                throw std::runtime_error("failed");
 	                }));
 	TEST_EXPECT(context, telemetry.updates().size() == 1);
+	if (telemetry.updates().size() != 1)
+	{
+		return;
+	}
 	TEST_EXPECT(context, std::get<double>(telemetry.updates()[0].value) == 4.0);
 	Core::DebugTelemetryChannel<double> undeclared;
 	TEST_EXPECT(context,
@@ -85,6 +93,18 @@ void test_latest_values_and_64_hz_resampling(Tests::Context& context)
 	number.publish(20ms, 3.0);
 	const auto samples = hub.sample_through(40ms);
 	TEST_EXPECT(context, samples.size() == 3);
+	if (samples.size() != 3)
+	{
+		return;
+	}
+	for (const auto& sample : samples)
+	{
+		TEST_EXPECT(context, sample.values.size() == 2 && sample.values[0].has_value());
+		if (sample.values.size() != 2 || !sample.values[0])
+		{
+			return;
+		}
+	}
 	TEST_EXPECT(context, samples[0].simulation_time == 0ns);
 	TEST_EXPECT(context, samples[1].simulation_time == 15'625'000ns);
 	TEST_EXPECT(context, samples[2].simulation_time == 31'250'000ns);
@@ -92,6 +112,11 @@ void test_latest_values_and_64_hz_resampling(Tests::Context& context)
 	TEST_EXPECT(context, std::get<double>(*samples[1].values[0]) == 2.0);
 	TEST_EXPECT(context, std::get<double>(*samples[2].values[0]) == 3.0);
 	const auto latest = hub.latest_snapshot();
+	TEST_EXPECT(context, latest.values.size() == 2 && latest.values[0] && latest.values[1]);
+	if (latest.values.size() != 2 || !latest.values[0] || !latest.values[1])
+	{
+		return;
+	}
 	TEST_EXPECT(context, std::get<double>(*latest.values[0]) == 3.0);
 	TEST_EXPECT(context, std::get<std::string>(*latest.values[1]) == "initial");
 }
@@ -183,13 +208,30 @@ void test_flight_reset_restarts_sampling_sequence(Tests::Context& context)
 	auto first = hub.declare_channel<double>(channel("value"));
 	first.publish(0ns, 1.0);
 	hub.seal_schema();
-	TEST_EXPECT(context, hub.sample_through(0ns)[0].sequence == 0);
+	const auto first_samples = hub.sample_through(0ns);
+	TEST_EXPECT(context, first_samples.size() == 1);
+	if (first_samples.size() != 1)
+	{
+		return;
+	}
+	TEST_EXPECT(context, first_samples[0].sequence == 0);
 	hub.release_flight();
 	hub.begin_flight();
 	auto second = hub.declare_channel<double>(channel("value"));
 	second.publish(0ns, 2.0);
 	hub.seal_schema();
-	const auto sample = hub.sample_through(0ns)[0];
+	const auto second_samples = hub.sample_through(0ns);
+	TEST_EXPECT(context, second_samples.size() == 1);
+	if (second_samples.size() != 1)
+	{
+		return;
+	}
+	const auto& sample = second_samples[0];
+	TEST_EXPECT(context, sample.values.size() == 1 && sample.values[0].has_value());
+	if (sample.values.size() != 1 || !sample.values[0])
+	{
+		return;
+	}
 	TEST_EXPECT(context, sample.sequence == 0);
 	TEST_EXPECT(context, std::get<double>(*sample.values[0]) == 2.0);
 }
@@ -229,6 +271,10 @@ void test_concurrent_latest_snapshot_is_complete(Tests::Context& context)
 	TEST_EXPECT(context, !invalid_snapshot.load());
 	TEST_EXPECT(context, snapshot.channels.size() == 1);
 	TEST_EXPECT(context, snapshot.values.size() == 1);
+	if (snapshot.values.size() != 1)
+	{
+		return;
+	}
 	TEST_EXPECT(context, snapshot.values[0].has_value());
 }
 

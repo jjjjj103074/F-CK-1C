@@ -35,13 +35,22 @@ void test_missing_parameter_reports_once_then_recovers(Tests::Context& context)
 	snapshot.status = { true, 3 };
 	DcsBridge::Internal::CockpitParameterEvents events = exporter.export_snapshot(snapshot);
 	TEST_EXPECT(context, events.count == 1);
+	if (events.count != 1)
+	{
+		return;
+	}
 	TEST_EXPECT(context,
-	            std::strcmp(events.items[0].parameter_name, DcsIds::CockpitParams::CockpitSnapshotRevision) == 0);
+	            events.items[0].parameter_name != nullptr &&
+	                std::strcmp(events.items[0].parameter_name, DcsIds::CockpitParams::CockpitSnapshotRevision) == 0);
 	TEST_EXPECT(context, events.items[0].type == DcsBridge::Internal::CockpitParameterEventType::Error);
 	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 0);
 	cockpit.set_available(DcsIds::CockpitParams::CockpitSnapshotRevision, true);
 	events = exporter.export_snapshot(snapshot);
 	TEST_EXPECT(context, events.count == 1);
+	if (events.count != 1)
+	{
+		return;
+	}
 	TEST_EXPECT(context, events.items[0].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
 }
 

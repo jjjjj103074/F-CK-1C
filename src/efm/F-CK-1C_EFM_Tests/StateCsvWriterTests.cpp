@@ -129,6 +129,11 @@ void test_schema_and_complete_row(Tests::Context& context)
 	const DcsBridge::Internal::TelemetryRecord record = { 1, 1, 7, numbered_output() };
 	const auto row = DcsBridge::Internal::format_state_csv_row(record);
 	TEST_EXPECT(context, row.valid);
+	TEST_EXPECT(context, row.size > 0 && row.size <= row.data.size());
+	if (!row.valid || row.size == 0 || row.size > row.data.size())
+	{
+		return;
+	}
 	std::string text(row.data.data(), row.size - 1);
 	const std::vector<std::string> cells = split(text, ',');
 	TEST_EXPECT(context, cells == expected_numbered_row());
@@ -141,7 +146,17 @@ void test_unavailable_fields_and_round_trip(Tests::Context& context)
 	output.simulation_time_s = 0.10000000000000002;
 	const auto formatted = DcsBridge::Internal::format_state_csv_row({ 1, 1, 0, output });
 	TEST_EXPECT(context, formatted.valid);
+	TEST_EXPECT(context, formatted.size > 0 && formatted.size <= formatted.data.size());
+	if (!formatted.valid || formatted.size == 0 || formatted.size > formatted.data.size())
+	{
+		return;
+	}
 	const std::vector<std::string> cells = split(std::string(formatted.data.data(), formatted.size - 1), ',');
+	TEST_EXPECT(context, cells.size() == kExpectedColumnCount);
+	if (cells.size() != kExpectedColumnCount)
+	{
+		return;
+	}
 	TEST_EXPECT(context, std::strtod(cells[1].c_str(), nullptr) == output.simulation_time_s);
 	for (std::size_t index = 2; index <= 17; ++index)
 	{
@@ -172,15 +187,29 @@ void test_latest_only_mailbox(Tests::Context& context)
 	second.simulation_time_s = 2.0;
 	mailbox.publish(1, 1, first);
 	mailbox.publish(1, 2, second);
-	const auto read = mailbox.wait_until((std::chrono::steady_clock::time_point::max)());
+	const auto read = mailbox.wait_until(std::chrono::steady_clock::now() + kWriterTimeout);
 	const auto& latest = read.record;
 	TEST_EXPECT(context, !read.stopping);
 	TEST_EXPECT(context, latest && latest->publish_version == 2);
 	TEST_EXPECT(context, latest && latest->sequence == 2);
 	TEST_EXPECT(context, latest && latest->output.simulation_time_s == 2.0);
-	const auto row =
-	    latest ? DcsBridge::Internal::format_state_csv_row(*latest) : DcsBridge::Internal::FormattedStateCsvRow{};
-	TEST_EXPECT(context, row.valid && split(std::string(row.data.data(), row.size - 1), ',')[0] == "2");
+	if (!latest)
+	{
+		return;
+	}
+	const auto row = DcsBridge::Internal::format_state_csv_row(*latest);
+	TEST_EXPECT(context, row.valid && row.size > 0 && row.size <= row.data.size());
+	if (!row.valid || row.size == 0 || row.size > row.data.size())
+	{
+		return;
+	}
+	const auto cells = split(std::string(row.data.data(), row.size - 1), ',');
+	TEST_EXPECT(context, !cells.empty());
+	if (cells.empty())
+	{
+		return;
+	}
+	TEST_EXPECT(context, cells[0] == "2");
 	TEST_EXPECT(context, !mailbox.take_latest().has_value());
 	mailbox.publish(2, 0, first);
 	const auto next_flight = mailbox.take_latest();
@@ -220,10 +249,21 @@ void test_file_lifecycle_and_sequences(Tests::Context& context)
 	}
 	const std::vector<std::string> lines = split(TestFiles::read_text_while_open(active), '\n');
 	TEST_EXPECT(context, lines.size() == 5);
-	TEST_EXPECT(context, split(lines[1], ',')[0] == "0");
-	TEST_EXPECT(context, split(lines[2], ',')[0] == "1");
-	TEST_EXPECT(context, split(lines[3], ',')[0] == "2");
-	TEST_EXPECT(context, split(lines[4], ',')[0] == "0");
+	if (lines.size() != 5)
+	{
+		return;
+	}
+	const char* expected_sequences[] = { "0", "1", "2", "0" };
+	for (std::size_t index = 0; index < 4; ++index)
+	{
+		const auto cells = split(lines[index + 1], ',');
+		TEST_EXPECT(context, !cells.empty());
+		if (cells.empty())
+		{
+			return;
+		}
+		TEST_EXPECT(context, cells[0] == expected_sequences[index]);
+	}
 	TEST_EXPECT(context, TestFiles::read_text_while_open(old) == "previous active\n");
 }
 

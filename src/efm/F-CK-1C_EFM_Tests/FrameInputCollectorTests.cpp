@@ -3,6 +3,7 @@
 #include "DcsBridge/Internal/FrameInputCollector.h"
 
 #include <atomic>
+#include <chrono>
 #include <thread>
 
 namespace
@@ -10,6 +11,7 @@ namespace
 constexpr double kTolerance = 1e-9;
 constexpr int kRaceIterations = 20000;
 constexpr int kConcurrentParticipants = 2;
+constexpr std::chrono::seconds kRaceTimeout(10);
 constexpr int kAlternatingSamplePeriod = 2;
 constexpr int kTestSurfaceType = 4;
 constexpr double kSnapshotDtSeconds = 0.01;
@@ -343,13 +345,18 @@ bool same_atmosphere(const Core::AtmosphereInput& left, const Core::AtmosphereIn
 	       left.pressure_pa == right.pressure_pa && same_vec(left.wind_world_mps, right.wind_world_mps);
 }
 
-void arrive_and_wait(std::atomic<int>& arrivals, int expected_arrivals)
+bool arrive_and_wait(std::atomic<int>& arrivals, int expected_arrivals, std::chrono::steady_clock::time_point deadline)
 {
 	arrivals.fetch_add(1, std::memory_order_acq_rel);
 	while (arrivals.load(std::memory_order_acquire) < expected_arrivals)
 	{
+		if (std::chrono::steady_clock::now() >= deadline)
+		{
+			return false;
+		}
 		std::this_thread::yield();
 	}
+	return true;
 }
 
 void test_concurrent_publish_and_snapshot(Tests::Context& context)
@@ -361,15 +368,25 @@ void test_concurrent_publish_and_snapshot(Tests::Context& context)
 	std::atomic<int> ready_count(0);
 	std::atomic<int> complete_count(0);
 	std::atomic<bool> complete_samples_only(true);
+	std::atomic<bool> waits_completed(true);
+	const auto deadline = std::chrono::steady_clock::now() + kRaceTimeout;
 	std::thread writer(
 	    [&]()
 	    {
 		    for (int index = 0; index < kRaceIterations; ++index)
 		    {
 			    const int expected_arrivals = (index + 1) * kConcurrentParticipants;
-			    arrive_and_wait(ready_count, expected_arrivals);
+			    if (!arrive_and_wait(ready_count, expected_arrivals, deadline))
+			    {
+				    waits_completed.store(false, std::memory_order_relaxed);
+				    return;
+			    }
 			    collector.publish_atmosphere(index % kAlternatingSamplePeriod == 0 ? old_sample : new_sample);
-			    arrive_and_wait(complete_count, expected_arrivals);
+			    if (!arrive_and_wait(complete_count, expected_arrivals, deadline))
+			    {
+				    waits_completed.store(false, std::memory_order_relaxed);
+				    return;
+			    }
 		    }
 	    });
 	std::thread reader(
@@ -378,17 +395,34 @@ void test_concurrent_publish_and_snapshot(Tests::Context& context)
 		    for (int index = 0; index < kRaceIterations; ++index)
 		    {
 			    const int expected_arrivals = (index + 1) * kConcurrentParticipants;
-			    arrive_and_wait(ready_count, expected_arrivals);
+			    if (!arrive_and_wait(ready_count, expected_arrivals, deadline))
+			    {
+				    waits_completed.store(false, std::memory_order_relaxed);
+				    return;
+			    }
 			    const Core::AtmosphereInput sample = collector.snapshot(kSnapshotDtSeconds).atmosphere;
 			    if (!same_atmosphere(sample, old_sample) && !same_atmosphere(sample, new_sample))
 			    {
 				    complete_samples_only.store(false, std::memory_order_relaxed);
 			    }
-			    arrive_and_wait(complete_count, expected_arrivals);
+			    if (!arrive_and_wait(complete_count, expected_arrivals, deadline))
+			    {
+				    waits_completed.store(false, std::memory_order_relaxed);
+				    return;
+			    }
 		    }
 	    });
 	writer.join();
 	reader.join();
+	if (!waits_completed.load(std::memory_order_relaxed))
+	{
+		std::printf("frame input synchronization timed out: ready=%d complete=%d expected=%d timeout_s=%lld\n",
+		            ready_count.load(),
+		            complete_count.load(),
+		            kRaceIterations * kConcurrentParticipants,
+		            static_cast<long long>(kRaceTimeout.count()));
+	}
+	TEST_EXPECT(context, waits_completed.load(std::memory_order_relaxed));
 	TEST_EXPECT(context, complete_samples_only.load(std::memory_order_relaxed));
 }
 }
