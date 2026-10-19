@@ -1,0 +1,95 @@
+#include "SystemPipelineTestFixture.h"
+
+#include "Core/Systems/Engine/Engine.h"
+#include "Core/Systems/Engine/EngineModel.h"
+#include "Core/Systems/Engine/EngineConfig.h"
+
+namespace
+{
+constexpr double kTolerance = 1e-9;
+
+void test_engine_switches_and_throttle(Tests::Context& context)
+{
+	Systems::EngineSystemState engines;
+	Systems::set_both_engine_switches(engines, true);
+	TEST_EXPECT(context, engines.left.switch_on);
+	TEST_EXPECT(context, engines.right.switch_on);
+
+	Systems::apply_engine_throttle_commands(engines, -1.0, 2.0);
+	TEST_EXPECT_NEAR(context, engines.left.throttle_input_normalized, 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, engines.right.throttle_input_normalized, 1.0, kTolerance);
+}
+
+void test_engine_first_order(Tests::Context& context)
+{
+	TEST_EXPECT_NEAR(context, Systems::engine_first_order(0.0, { 1.0, 1.0, 1.0 }), 0.5, kTolerance);
+	TEST_EXPECT_NEAR(context, Systems::engine_first_order(0.0, { 1.0, 0.0, 1.0 }), 1.0, kTolerance);
+}
+
+void test_afterburner_ignition(Tests::Context& context)
+{
+	Systems::EngineSystemState engines;
+	engines.left.switch_on = true;
+	engines.left.throttle_input_normalized = 1.0;
+	engines.left.throttle_output_normalized = 0.9;
+	Systems::AfterburnerConfig afterburner;
+	Systems::update_afterburner(engines.left, afterburner, 1.0);
+	TEST_EXPECT(context, engines.left.afterburner_lit);
+	TEST_EXPECT_NEAR(context, engines.left.afterburner_ratio_0_1, 1.0 / 3.0, kTolerance);
+}
+
+void test_digital_control_commands_are_separate_from_plant(Tests::Context& context)
+{
+	const auto& config = Core::Systems::fck1c_engine_config();
+	const auto dry = Systems::command_dry_engine(0.5, 0.0, config);
+	TEST_EXPECT(context, dry.throttle_output_target_normalized > 0.0);
+	TEST_EXPECT_NEAR(context, dry.spool_time_constant_s, config.spool_up_tau_s, kTolerance);
+	const auto afterburner = Systems::command_afterburner({ 1.0, 1.0, 0.0, true }, false, config.afterburner);
+	TEST_EXPECT(context, afterburner.lit);
+	TEST_EXPECT(context, afterburner.ratio_target_0_1 > 0.0);
+	const auto fuel = Systems::command_fuel_flow({ 0.5, 0.5, 0.0, 0.0 }, config);
+	TEST_EXPECT_NEAR(context, fuel.flow_rate_kg_s, config.fuel_consumption_rate_kg_s * (2.0 / 3.0), kTolerance);
+}
+
+/// @brief 驗證 Engine 可獨立於 DFLCC 讀取左右油門桿初值及後續變化。
+void test_engine_reads_throttle_levers_without_dflcc(Tests::Context& context)
+{
+	using namespace Core;
+	using namespace Core::Systems;
+	using namespace SystemPipelineTest;
+	ThrottleLeverSignal levers{ 0.2, 0.7 };
+	const SystemDefinition inputs{ "engine_test_inputs",
+		                           [&levers](SystemSetup& setup)
+		                           {
+		                               setup.publish(AircraftDataKeys::kThrottleLeverSignal, levers);
+		                               setup.publish(AircraftDataKeys::kFuelData, FuelData{ 100.0 });
+		                           },
+		                           [&levers](const AircraftDataView&, SystemResult& result)
+		                           {
+		                               result.publish(AircraftDataKeys::kThrottleLeverSignal, levers);
+		                           } };
+	SystemPipeline pipeline(flight_setup(), { entry(inputs), make_engine_system_entry(fck1c_engine_config()) });
+	const auto initial = step_pipeline(pipeline);
+	const auto& initial_engines = initial.read(AircraftDataKeys::kEngineData);
+	TEST_EXPECT_NEAR(context, initial_engines.left.throttle_input_normalized, 0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, initial_engines.right.throttle_input_normalized, 0.7, kTolerance);
+
+	levers = { 0.8, 0.4 };
+	// 同時到期的 System 共用輸入快照，下一批才讀到本批發布的油門桿變化。
+	step_pipeline(pipeline);
+	const auto changed = step_pipeline(pipeline);
+	const auto& changed_engines = changed.read(AircraftDataKeys::kEngineData);
+	TEST_EXPECT_NEAR(context, changed_engines.left.throttle_input_normalized, 0.8, kTolerance);
+	TEST_EXPECT_NEAR(context, changed_engines.right.throttle_input_normalized, 0.4, kTolerance);
+}
+
+}
+
+void run_engine_system_tests(Tests::Context& context)
+{
+	test_engine_switches_and_throttle(context);
+	test_engine_first_order(context);
+	test_afterburner_ignition(context);
+	test_digital_control_commands_are_separate_from_plant(context);
+	test_engine_reads_throttle_levers_without_dflcc(context);
+}

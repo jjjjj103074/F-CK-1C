@@ -1,18 +1,25 @@
 # F-CK-1C / EFM 專案 .gitignore
 
+# Node.js（開發工具用，不進 git）
+node_modules/
+npm-debug.log*
+
 # Windows / Editor
 Thumbs.db
 Desktop.ini
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .codex/
 .claude/
+/.codex-remote-attachments/
 
 # Visual Studio（IDE 暫存）
 .vs/
 *.suo
 *.wsuo
 *.user
-*.vcxproj.user
+*.vcxproj.users
 *.VC.db
 *.VC.opendb
 
@@ -33,20 +40,27 @@ Desktop.ini
 **/*.lastbuildstate
 **/*.log
 
-# Template 專案內的建置複製輸出
-DCS-Basic-EFM-Template-main/bin/
+# EFM source 專案內的建置複製輸出
+src/efm/bin/
 
 # 暫存 / 備份檔
 *.tmp
 *.bak
+*.old
+*.original.*
+*.pretrim*
 temp/
+# 本機測試與研究輸出；專案文件位於 docs/，研究來源位於 research/
+/.tmp/
+/tmp/
+/output/
 cache/
 backup/
 Sounds/_backup_normalized_*/
 TODO/
 generated_audio/
-tools/
-docs/
+local_tools/
+local_docs/
 
 # 本地備份資料夾（如需提交請註解掉）
 baseline_original/
@@ -63,11 +77,11 @@ dist/
 # Liveries
 
 # ----------------------------
-# EFM 需求：DCS 執行時需要 bin/BasicEFM_template.dll
+# EFM 需求：DCS 執行時需要 bin/F-CK-1C_EFM.dll
 # 因此保留此檔案追蹤，其餘 bin 內容忽略
 # ----------------------------
 bin/*
-!bin/BasicEFM_template.dll
+!bin/F-CK-1C_EFM.dll
 
 # Ignore temporary trash for Shapes cleaning
 Shapes/trash/

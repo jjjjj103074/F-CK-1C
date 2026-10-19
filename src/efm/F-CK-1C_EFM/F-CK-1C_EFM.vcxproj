@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{30A7F19A-ED9B-4E78-99E7-C40FB579973A}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>F_CK_1C_EFM</RootNamespace>
+    <ProjectName>F-CK-1C_EFM</ProjectName>
+  </PropertyGroup>
+  <Import Project="..\EfmBuild.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>$(EfmPlatformToolset)</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(ProjectDir)..\x64\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\x64\$(Configuration)\$(ProjectName)\</IntDir>
+    <TargetName>F-CK-1C_EFM</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;F_CK_1C_EFM_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <Import Project="..\EfmCore.props" />
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+    <None Include="DcsBridge\README.md" />
+    <None Include="DcsIds\CommandIds.json" />
+    <None Include="DcsIds\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Common\Actuator.h" />
+    <ClInclude Include="Common\Clamp.h" />
+    <ClInclude Include="Common\CommandValue.h" />
+    <ClInclude Include="Common\ConfigValidation.h" />
+    <ClInclude Include="Common\Interpolation.h" />
+    <ClInclude Include="Common\PathUtils.h" />
+    <ClInclude Include="Common\Table.h" />
+    <ClInclude Include="Common\Units.h" />
+    <ClInclude Include="Common\Vec3.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsCommandRouter.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsDamageMapper.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsKinematicsAdapter.h" />
+	<ClInclude Include="DcsBridge\Internal\DcsSuspensionAdapter.h" />
+	<ClInclude Include="DcsBridge\Internal\DrawArgs.h" />
+	<ClInclude Include="DcsBridge\Internal\AbiBoundary.h" />
+	<ClInclude Include="DcsBridge\Internal\BoundaryValidator.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugCsvWriter.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryHub.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryStatus.h" />
+	<ClInclude Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryValueFormat.h" />
+	<ClInclude Include="DcsBridge\Internal\EfmEventReporter.h" />
+	<ClInclude Include="DcsBridge\Internal\EventLog.h" />
+	<ClInclude Include="DcsBridge\Internal\LogFileLifecycle.h" />
+	<ClInclude Include="DcsBridge\Internal\LegacyDebugInfoAdapter.h" />
+    <ClInclude Include="DcsBridge\Internal\BridgeContext.h" />
+    <ClInclude Include="DcsBridge\Internal\CarrierBridge.h" />
+    <ClInclude Include="DcsBridge\Internal\CockpitBridge.h" />
+    <ClInclude Include="DcsBridge\Internal\CockpitParameterEvents.h" />
+    <ClInclude Include="DcsBridge\Internal\CockpitParameterEndpoint.h" />
+    <ClInclude Include="DcsBridge\Internal\CockpitSnapshotExporter.h" />
+    <ClInclude Include="DcsBridge\Internal\FrameInputCollector.h" />
+    <ClInclude Include="DcsBridge\Internal\OutputStore.h" />
+    <ClInclude Include="DcsBridge\Internal\StateCsvWriter.h" />
+	<ClInclude Include="DcsBridge\Internal\ModulePaths.h" />
+	<ClInclude Include="DcsBridge\Internal\ParamExport.h" />
+	<ClInclude Include="DcsBridge\Internal\ParamExporter.h" />
+	<ClInclude Include="DcsBridge\Internal\ProcessBridgeContext.h" />
+	<ClInclude Include="DcsBridge\Internal\RuntimeDiagnostics.h" />
+    <ClInclude Include="DcsIds\CockpitParams.g.h" />
+    <ClInclude Include="DcsIds\Commands.h" />
+    <ClInclude Include="DcsIds\CustomCommands.g.h" />
+    <ClInclude Include="DcsIds\DamageIds.h" />
+    <ClInclude Include="DcsIds\DrawArgs.h" />
+    <ClInclude Include="DcsIds\ParamIds.h" />
+    <ClInclude Include="F-CK-1C_EFM.h" />
+    <ClInclude Include="F-CK-1C_EFM_API.h" />
+    <ClInclude Include="include\Cockpit\ccParametersAPI.h" />
+    <ClInclude Include="include\Cockpit\CockpitAPI_Declare.h" />
+    <ClInclude Include="include\FM\wHumanCustomPhysicsAPI.h" />
+    <ClInclude Include="include\FM\wHumanCustomPhysicsAPI_ImplementationDeclare.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</CompileAsManaged>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </PrecompiledHeader>
+    </ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DcsCommandRouter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DcsDamageMapper.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+	<ClCompile Include="DcsBridge\Internal\AbiBoundary.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+	<ClCompile Include="DcsBridge\Internal\BoundaryValidator.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugCsvWriter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\DebugTelemetry\DebugTelemetryHub.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\EfmEventReporter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\EventLog.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\LogFileLifecycle.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\ParamExporter.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="DcsBridge\Internal\ProcessBridgeContext.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+    <ClCompile Include="DcsBridge\Internal\BridgeContext.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\Internal\CarrierBridge.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\Internal\CockpitBridge.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\Internal\CockpitSnapshotExporter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\Internal\FrameInputCollector.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\Internal\OutputStore.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="DcsBridge\Internal\StateCsvWriter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+	<ClCompile Include="DcsBridge\EfmExports.cpp">
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+	</ClCompile>
+    <ClCompile Include="include\FM\API_Declare.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="..\EfmBuild.targets" />
+  <Import Project="..\EfmCore.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

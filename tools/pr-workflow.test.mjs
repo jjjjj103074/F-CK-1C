@@ -1,0 +1,267 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
+
+const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+function readWorkflow(filename) {
+    return fs.existsSync(path.join(repository, filename))
+        ? fs.readFileSync(path.join(repository, filename), 'utf8')
+        : git(repository, ['show', `HEAD:${filename}`]);
+}
+
+function git(root, args, input) {
+    const result = spawnSync('git', args, { cwd: root, input, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+    return result.stdout;
+}
+
+function gitShell() {
+    return process.platform === 'win32'
+        ? path.resolve(git(repository, ['--exec-path']).trim(), '../../../bin/bash.exe') : 'bash';
+}
+
+function workflowJob(workflow, id) {
+    const marker = `\n  ${id}:\n`;
+    const text = workflow.replaceAll('\r\n', '\n');
+    assert.ok(text.includes(marker), `Missing job: ${id}`);
+    const block = text.split(marker)[1].split(/\n  (?=\S)/)[0];
+    return {
+        name: block.match(/^    name: (.+)$/m)?.[1],
+        condition: block.match(/^    if: (.+)$/m)?.[1],
+        needs: block.match(/^    needs: (.+)$/m)?.[1],
+        uses: block.match(/^    uses: (.+)$/m)?.[1],
+    };
+}
+
+function evaluateEvent(expression, event) {
+    // The tested expressions use only the shared JS/Actions boolean operators.
+    // Actions resolves a missing changes object as null rather than throwing.
+    return vm.runInNewContext(expression, {
+        github: {run_id: 1234, event: {changes: {}, pull_request: {number: 29}, ...event}},
+        format: (template, value) => template.replace('{0}', value),
+    });
+}
+
+function eventText(template, event) {
+    return template.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => evaluateEvent(expression, event));
+}
+
+test('metadata edits preserve native check results and do not cancel validation or rule notices', () => {
+    const router = readWorkflow('.github/workflows/pr-native.yml');
+    const entry = workflowJob(router, 'validation');
+    const native = readWorkflow('.github/workflows/pr-native-checks.yml');
+    const notice = readWorkflow('.github/workflows/pr-rule-notice.yml');
+    const normal = {action: 'synchronize'};
+    assert.doesNotMatch(router, /concurrency:/);
+    assert.equal(entry.uses, './.github/workflows/pr-native-checks.yml');
+    assert.match(router, /pull-requests: read/);
+    assert.match(native, /on:\r?\n  workflow_call:/);
+    for (const event of [
+        {action: 'edited', changes: {body: {from: 'old'}}},
+        {action: 'edited', changes: {title: {from: 'old'}}},
+        {action: 'edited', changes: {title: {from: 'old'}, body: {from: 'old'}}},
+        {action: 'edited'},
+    ]) {
+        assert.equal(entry.condition, undefined, 'Every PR event must register the three required jobs.');
+        const nativeGroup = native.match(/^  group: (.+)$/m)?.[1];
+        assert.notEqual(eventText(nativeGroup, event), eventText(nativeGroup, normal), 'Metadata must not cancel active native validation.');
+        assert.ok(!evaluateEvent(workflowJob(notice, 'rule-notice').condition, event));
+        const group = notice.match(/^  group: (.+)$/m)?.[1];
+        assert.ok(group);
+        assert.notEqual(eventText(group, event), eventText(group, normal), 'Metadata must not cancel active or pending rule notices.');
+        for (const id of ['pr-submission', 'merge-compatibility', 'validation-summary']) {
+            const name = workflowJob(native, id).name;
+            assert.ok(!name.includes('${{'), 'Check names must remain readable when skipped.');
+            assert.notEqual(entry.name, name, 'A skipped caller must not replace required results.');
+        }
+    }
+    assert.equal(workflowJob(native, 'pr-submission').needs, 'validation-plan');
+    assert.equal(workflowJob(native, 'merge-compatibility').needs, '[validation-plan, pr-submission]');
+    assert.equal(workflowJob(native, 'validation-summary').needs, '[validation-plan, pr-submission, merge-compatibility]');
+    assert.match(native, /runs-on: .*mode == 'reuse' && 'ubuntu-latest'/);
+    assert.match(native, /node --test .*tools\/pr-results.test.mjs/);
+    assert.match(router, /actions: read/);
+    assert.doesNotMatch(router + native, /(?:actions|checks|statuses|contents): write|pull_request_target/);
+});
+
+test('code updates and PR retargeting retain validation, cancellation and the final version guard', () => {
+    const router = readWorkflow('.github/workflows/pr-native.yml');
+    const native = readWorkflow('.github/workflows/pr-native-checks.yml');
+    const notice = readWorkflow('.github/workflows/pr-rule-notice.yml');
+    assert.match(native, /cancel-in-progress: true/);
+    for (const workflow of [router, notice]) assert.match(workflow, /types: \[opened, synchronize, reopened, edited\]/);
+    for (const event of [
+        {action: 'opened'}, {action: 'synchronize'}, {action: 'reopened'},
+        {action: 'edited', changes: {base: {ref: {from: 'main'}}}},
+        {action: 'edited', changes: {base: {sha: {from: 'a'.repeat(40)}}, body: {from: 'old'}}},
+    ]) {
+        assert.equal(workflowJob(router, 'validation').condition, undefined);
+        assert.ok(evaluateEvent(workflowJob(notice, 'rule-notice').condition, event));
+        for (const workflow of [native, notice]) {
+            const group = workflow.match(/^  group: (.+)$/m)?.[1];
+            assert.ok(group);
+            assert.equal(eventText(group, event), eventText(group, {action: 'synchronize'}));
+            assert.match(workflow, /cancel-in-progress: true/);
+        }
+        assert.equal(eventText(workflowJob(native, 'pr-submission').name, event), '提交檢查');
+        assert.equal(eventText(workflowJob(native, 'merge-compatibility').name, event), '合併檢查');
+        assert.equal(eventText(workflowJob(native, 'validation-summary').name, event), '檢查結果');
+    }
+    assert.equal(workflowJob(native, 'pr-submission').condition, undefined);
+    assert.equal(workflowJob(native, 'validation-summary').condition, 'always()');
+});
+
+test('title edits still validate titles while description edits preserve the previous title result', () => {
+    const job = workflowJob(readWorkflow('.github/workflows/pr-title.yml'), 'title');
+    const title = readWorkflow('.github/workflows/pr-title-checks.yml');
+    const check = workflowJob(title, 'commitlint');
+    assert.equal(job.uses, './.github/workflows/pr-title-checks.yml');
+    assert.match(title, /on:\r?\n  workflow_call:/);
+    assert.equal(check.name, '標題格式');
+    assert.notEqual(job.name, check.name);
+    assert.ok(!job.name.includes('${{'));
+    for (const [event, expected] of [
+        [{action: 'opened'}, true], [{action: 'synchronize'}, true], [{action: 'reopened'}, true],
+        [{action: 'edited', changes: {title: {from: 'old'}}}, true],
+        [{action: 'edited', changes: {title: {from: 'old'}, body: {from: 'old'}}}, true],
+        [{action: 'edited', changes: {base: {ref: {from: 'main'}}}}, true],
+        [{action: 'edited', changes: {body: {from: 'old'}}}, false],
+        [{action: 'edited'}, false],
+    ]) {
+        assert.equal(Boolean(evaluateEvent(job.condition, event)), expected);
+    }
+});
+
+test('Git shell can invoke DLL hashing in Windows PowerShell', { skip: process.platform !== 'win32' }, () => {
+    const result = spawnSync(gitShell(), ['--noprofile', '--norc', '-c',
+        `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '. "./tools/efm-build-common.ps1"; Get-EfmSha256 "./bin/F-CK-1C_EFM.dll"'`],
+    { cwd: repository, env: process.env, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+    const expected = createHash('sha256').update(fs.readFileSync(path.join(repository, 'bin/F-CK-1C_EFM.dll'))).digest('hex');
+    assert.equal(result.stdout.trim().toLowerCase(), expected);
+});
+
+test('the real sparse checkouts retain native-test configuration and cockpit validation inputs', { timeout: 90000 }, context => {
+    const workflowPath = '.github/workflows/pr-native-checks.yml';
+    const workflow = readWorkflow(workflowPath);
+    const sections = workflow.split('\n  merge-compatibility:');
+    const checkoutPatterns = section => {
+        const block = section.match(/sparse-checkout: \|\r?\n((?: {12}\/[^\r\n]+\r?\n)+)/);
+        assert.ok(block, 'Sparse checkout patterns were not found.');
+        return block[1].split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    };
+    const patterns = checkoutPatterns(sections[0]);
+    const mergePatterns = checkoutPatterns(sections[1]);
+    const prefix = path.join(os.tmpdir(), 'fck1c-pr-checkout-');
+    const root = fs.mkdtempSync(prefix);
+    context.after(() => {
+        assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));
+        assert.ok(path.resolve(root).startsWith(prefix));
+        fs.rmSync(root, { recursive: true, force: true });
+    });
+    // CI uses a shallow partial clone. Copy only materialized generator inputs
+    // into an independent fixture instead of cloning incomplete object storage.
+    git(root, ['init', '--quiet']);
+    git(root, ['config', 'core.hooksPath', '.no-hooks']);
+    const inputs = git(repository, ['ls-files', '-z', '--', '.gitattributes', 'commitlint.config.js',
+        'Cockpit', 'Input', 'FM', 'src/efm/F-CK-1C_EFM',
+        'tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1',
+        'tools/generate_cockpit_inventory.ps1', 'tools/check_cockpit_architecture.ps1',
+        'tools/test_cockpit_architecture_checker.ps1']).split('\0').filter(Boolean);
+    for (const relative of inputs) {
+        const source = path.join(repository, relative);
+        assert.ok(fs.existsSync(source), `Missing checked-out generator input: ${relative}`);
+        const target = path.join(root, relative);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.copyFileSync(source, target);
+    }
+    git(root, ['add', '.']);
+    git(root, ['-c', 'user.name=PRCheckoutTests', '-c', 'user.email=pr-checkout-tests@example.invalid',
+        'commit', '--quiet', '-m', 'fixture generator inputs']);
+    git(root, ['sparse-checkout', 'init', '--no-cone']);
+    git(root, ['sparse-checkout', 'set', '--no-cone', '--stdin'], patterns.join('\n') + '\n');
+    git(root, ['checkout', '--quiet', '--detach', git(root, ['rev-parse', 'HEAD']).trim()]);
+    assert.ok(fs.existsSync(path.join(root, 'commitlint.config.js')), 'PR title rules must be present.');
+    for (const file of ['Cockpit/Scripts/command_defs.lua', 'Cockpit/Scripts/generated/CockpitParams.g.lua']) {
+        assert.ok(fs.existsSync(path.join(root, file)), `Missing generator output: ${file}`);
+    }
+    assert.ok(fs.existsSync(path.join(root, 'Input')), 'Input command-reference coverage must be present.');
+    const configurationFiles = inputs.filter(file => file.startsWith('FM/') && file.endsWith('.jsonc'));
+    assert.ok(configurationFiles.length, 'Native-test configuration inputs were not found.');
+    const assertConfiguration = () => {
+        for (const file of configurationFiles) {
+            assert.ok(fs.existsSync(path.join(root, file)), `Missing native-test configuration: ${file}`);
+        }
+    };
+    assertConfiguration();
+    if (process.platform === 'win32') {
+        for (const [script, message] of [['test_dcs_id_generator.ps1', /DCS ID generator fixtures passed/],
+            ['check_cockpit_architecture.ps1', /Cockpit architecture check passed/],
+            ['test_cockpit_architecture_checker.ps1', /Cockpit architecture checker fixtures passed/]]) {
+            const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                '-File', path.join(root, 'tools', script), '-RepoRoot', root],
+            { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+            assert.equal(result.status, 0, result.stderr || result.error?.message);
+            assert.match(result.stdout, message);
+        }
+    }
+    git(root, ['sparse-checkout', 'set', '--no-cone', '--stdin'], mergePatterns.join('\n') + '\n');
+    assertConfiguration();
+});
+
+test('notice checks the actual target before checking out its renderer', async () => {
+    const workflow = readWorkflow('.github/workflows/pr-rule-notice.yml');
+    const block = workflow.match(/ {10}script: \|\r?\n((?: {12}[^\r\n]*\r?\n)+)/);
+    assert.ok(block, 'Target guard not found.');
+    assert.ok(block.index < workflow.indexOf('uses: actions/checkout@'));
+    const script = block[1].split(/\r?\n/).map(line => line.replace(/^ {12}/, '')).join('\n');
+    for (const current of ['a'.repeat(40), 'b'.repeat(40)]) {
+        const failures = [];
+        await vm.runInNewContext(`(async () => {${script}\n})()`, {
+            context: {payload: {pull_request: {base: {ref: 'release/candidate', sha: 'a'.repeat(40)}}}, repo: {owner: 'owner', repo: 'repo'}},
+            github: {rest: {git: {getRef: async ({ref}) => {
+                assert.equal(ref, 'heads/release/candidate');
+                return {data: {object: {sha: current}}};
+            }}}},
+            core: {setFailed: message => failures.push(message)},
+        });
+        assert.equal(failures.length === 0, current === 'a'.repeat(40));
+    }
+});
+
+test('summary and planner execute the tested result controller and publish receipts only for real validation', () => {
+    const workflow = readWorkflow('.github/workflows/pr-native-checks.yml');
+    assert.match(workflow, /await finishValidation\(\{github, context, core\}\)/);
+    assert.match(workflow, /await planValidation\(\{github, context, core\}\)/);
+    assert.match(workflow, /if: success\(\) && needs.validation-plan.outputs.mode == 'full'/);
+    assert.match(workflow, /retention-days: 7/);
+    assert.match(workflow, /SOURCE_RUN: \$\{\{ needs.validation-plan.outputs.sourceRun \}\}/);
+});
+
+test('PR title input preserves shell characters and commitlint still validates format', () => {
+    const workflow = readWorkflow('.github/workflows/pr-title-checks.yml');
+    const run = workflow.match(/ {8}run: (.*commitlint.*)/)?.[1];
+    assert.ok(run, 'Title command not found.');
+    assert.match(workflow, /PR_TITLE: \$\{\{ github\.event\.pull_request\.title \}\}/);
+    assert.ok(!run.includes('${{'));
+    const shell = gitShell();
+    for (const title of ['chore(tooling): 保留 "引號"', 'chore(tooling): $(printf EXECUTED)', 'chore(tooling): `printf EXECUTED`; $PATH']) {
+        const result = spawnSync(shell, ['--noprofile', '--norc', '-c', run.replace('./node_modules/.bin/commitlint --no-color', 'cat')],
+            {cwd: repository, env: {...process.env, PR_TITLE: title}, encoding: 'utf8', windowsHide: true, timeout: 10000});
+        assert.equal(result.status, 0, result.stderr || result.error?.message);
+        assert.equal(result.stdout.replaceAll('\r\n', '\n'), title + '\n');
+    }
+    const cli = path.join(repository, 'node_modules/@commitlint/cli/cli.js');
+    for (const [title, valid] of [['chore(tooling): 檢查文案', true], ['chore: missing scope', false]]) {
+        const result = spawnSync(process.execPath, [cli, '--no-color'],
+            {cwd: repository, input: title + '\n', encoding: 'utf8', windowsHide: true, timeout: 10000});
+        assert.equal(result.status === 0, valid, result.stdout + result.stderr);
+    }
+});

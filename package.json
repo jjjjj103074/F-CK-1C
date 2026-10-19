@@ -1,0 +1,49 @@
+{
+  "name": "f-ck-1c",
+  "description": "F-CK-1C DCS World mod — dev tooling config (commitlint, husky, czg)",
+  "private": true,
+  "scripts": {
+    "prepare": "husky && node tools/cpp-format.mjs --setup",
+    "setup:cpp-format": "node tools/cpp-format.mjs --setup",
+    "format:cpp": "node tools/cpp-format.mjs --write",
+    "format:cpp:all": "node tools/cpp-format.mjs --write --all",
+    "check:cpp-format": "node tools/cpp-format.mjs --check",
+    "check:cpp-format:staged": "node tools/cpp-format.mjs --check --staged",
+    "test:cpp-format": "node --test tools/cpp-format.test.mjs",
+    "build:efm": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build_dll.ps1",
+    "check:efm-toolchain": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/check_efm_toolchain.ps1",
+    "check:efm-dll": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/check_efm_dll.ps1",
+    "validate:efm": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/validate_efm.ps1",
+    "test:pr-rules": "node --test tools/pr-rule-changes.test.mjs",
+    "test:pr-workflow": "node --test tools/pr-workflow.test.mjs",
+    "preview:pr-rules": "node tools/pr-rule-changes.mjs --preview",
+    "generate:cockpit-inventory": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/generate_cockpit_inventory.ps1",
+    "test:dcs-id-generator": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_dcs_id_generator.ps1",
+    "test:cockpit-architecture": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/check_cockpit_architecture.ps1 && powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_cockpit_architecture_checker.ps1",
+    "test:cockpit": "npm run test:dcs-id-generator && npm run test:cockpit-architecture",
+    "commit": "czg --config ./cz.config.js"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/czg"
+    }
+  },
+  "cppFormat": {
+    "roots": [
+      "src/efm/F-CK-1C_EFM",
+      "src/efm/F-CK-1C_EFM_Tests"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jjjjj103074/F-CK-1C.git"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@polycam/clang-tools": "22.1.8",
+    "czg": "^1.13.1",
+    "husky": "^9.1.7"
+  }
+}

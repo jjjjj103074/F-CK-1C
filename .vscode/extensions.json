@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "ms-vscode.cpptools",
+        "JohnnyMorganz.stylua",
+        "sumneko.lua",
+        "vivaxy.vscode-conventional-commits"
+    ]
+}

@@ -1,1 +1,1 @@
-return _('F-CK-1C')
+return _("F-CK-1C")

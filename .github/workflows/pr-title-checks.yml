@@ -1,0 +1,34 @@
+name: PR 標題檢查
+
+# Squash merges use the PR title as the commit message.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    name: 標題格式
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 取出程式碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 準備 Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝工具
+        run: npm ci --ignore-scripts
+
+      - name: 檢查標題
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | ./node_modules/.bin/commitlint --no-color

@@ -3,14 +3,16 @@ local dev = GetSelf()
 local update_rate = 0.05
 make_default_activity(update_rate)
 
+dofile(LockOn_Options.script_path .. "command_defs.lua")
+dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
+
 local AIM9_TONE_OFF = 0
 local AIM9_TONE_SEEK = 1
 local AIM9_TONE_ACQUIRE = 2
 local AIM9_TONE_LOCK = 3
-local SOUND_TEST_CYCLE_CMD = 3052
+local SOUND_TEST_CYCLE_CMD = device_commands.SoundTestCycle
 
-local tone_state = get_param_handle("AIM9_TONE_STATE")
-local aim9_weapon_active = get_param_handle("AIM9_WEAPON_ACTIVE")
+local tone_state = get_param_handle(cockpit_params.Aim9ToneState)
 
 local sound_host = nil
 local seek_sound = nil
@@ -49,25 +51,17 @@ local test_playlist = {
 }
 
 local function dlog(msg)
-    if log ~= nil and log.info ~= nil then
-        log.info("FCK1C AAM AUDIO: " .. tostring(msg))
-    end
+    if log ~= nil and log.info ~= nil then log.info("FCK1C AAM AUDIO: " .. tostring(msg)) end
 end
 
 local function stop_sound(sound_obj)
-    if sound_obj ~= nil and sound_obj.is_playing ~= nil and sound_obj:is_playing() then
-        sound_obj:stop()
-    end
+    if sound_obj ~= nil and sound_obj.is_playing ~= nil and sound_obj:is_playing() then sound_obj:stop() end
 end
 
 local function update_playing_sound(sound_obj)
-    if sound_obj == nil then
-        return
-    end
+    if sound_obj == nil then return end
 
-    if sound_obj.update ~= nil then
-        sound_obj:update(nil, active_gain, nil)
-    end
+    if sound_obj.update ~= nil then sound_obj:update(nil, active_gain, nil) end
 end
 
 local function start_sound(sound_obj, label, prefer_continue)
@@ -76,9 +70,7 @@ local function start_sound(sound_obj, label, prefer_continue)
         return
     end
 
-    if sound_obj.update ~= nil then
-        sound_obj:update(nil, active_gain, nil)
-    end
+    if sound_obj.update ~= nil then sound_obj:update(nil, active_gain, nil) end
 
     if prefer_continue and sound_obj.play_continue ~= nil then
         sound_obj:play_continue()
@@ -90,9 +82,7 @@ local function start_sound(sound_obj, label, prefer_continue)
 end
 
 local function sustain_sound(sound_obj, label)
-    if sound_obj == nil then
-        return
-    end
+    if sound_obj == nil then return end
 
     update_playing_sound(sound_obj)
 
@@ -103,9 +93,7 @@ local function sustain_sound(sound_obj, label)
 end
 
 local function stop_test_sound()
-    if test_sound ~= nil then
-        stop_sound(test_sound)
-    end
+    if test_sound ~= nil then stop_sound(test_sound) end
     test_sound = nil
     test_sound_name = nil
 end
@@ -124,9 +112,7 @@ local function play_test_sound(entry)
         return
     end
 
-    if next_sound.update ~= nil then
-        next_sound:update(nil, test_gain, nil)
-    end
+    if next_sound.update ~= nil then next_sound:update(nil, test_gain, nil) end
 
     if next_sound.play_once ~= nil then
         next_sound:play_once()
@@ -140,9 +126,7 @@ local function play_test_sound(entry)
 end
 
 local function set_active_tone(next_tone)
-    if active_tone == next_tone then
-        return
-    end
+    if active_tone == next_tone then return end
 
     stop_sound(seek_sound)
     stop_sound(acquire_sound)
@@ -161,9 +145,6 @@ local function set_active_tone(next_tone)
 end
 
 function post_initialize()
-    tone_state:set(AIM9_TONE_OFF)
-    aim9_weapon_active:set(0)
-
     if create_sound_host == nil then
         dlog("create_sound_host unavailable")
         return
@@ -172,9 +153,7 @@ function post_initialize()
     sound_host = create_sound_host("COCKPIT_RADAR_WARN", "HEADPHONES", 0, 0, 0)
     if sound_host == nil then
         sound_host = create_sound_host("COCKPIT", "HEADPHONES", 0, 0, 0)
-        if sound_host ~= nil then
-            dlog("fallback host -> COCKPIT/HEADPHONES")
-        end
+        if sound_host ~= nil then dlog("fallback host -> COCKPIT/HEADPHONES") end
     else
         dlog("host -> COCKPIT_RADAR_WARN/HEADPHONES")
     end
@@ -202,9 +181,7 @@ function SetCommand(command, value)
         end
 
         test_index = test_index + 1
-        if test_index > #test_playlist then
-            test_index = 1
-        end
+        if test_index > #test_playlist then test_index = 1 end
 
         play_test_sound(test_playlist[test_index])
     end
@@ -212,9 +189,7 @@ end
 
 function update()
     local requested_tone = math.floor((tone_state:get() or 0) + 0.5)
-    if requested_tone < AIM9_TONE_OFF or requested_tone > AIM9_TONE_LOCK then
-        requested_tone = AIM9_TONE_OFF
-    end
+    if requested_tone < AIM9_TONE_OFF or requested_tone > AIM9_TONE_LOCK then requested_tone = AIM9_TONE_OFF end
 
     set_active_tone(requested_tone)
 
@@ -226,9 +201,7 @@ function update()
         sustain_sound(lock_sound, "tone_hi")
     end
 
-    if test_sound ~= nil then
-        update_playing_sound(test_sound)
-    end
+    if test_sound ~= nil then update_playing_sound(test_sound) end
 end
 
 need_to_be_closed = false

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{B1F63F37-9C89-4E0E-A929-0CF55EA37E2E}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>F_CK_1C_EFM_Tests</RootNamespace>
+    <ProjectName>F-CK-1C_EFM_Tests</ProjectName>
+  </PropertyGroup>
+  <Import Project="..\EfmBuild.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>$(EfmPlatformToolset)</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(ProjectDir)..\x64\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\x64\$(Configuration)\$(ProjectName)\</IntDir>
+    <TargetName>F-CK-1C_EFM_Tests</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\F-CK-1C_EFM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="..\EfmCore.props" />
+  <ItemGroup>
+    <ClInclude Include="TestHarness.h" />
+    <ClInclude Include="TestFileUtils.h" />
+    <ClInclude Include="FakeCockpitParameters.h" />
+    <ClInclude Include="Fck1cEfmTestFixture.h" />
+    <ClInclude Include="DebugTelemetryTestSupport.h" />
+    <ClInclude Include="SystemPipelineTestFixture.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AerodynamicsPhysicsTests.cpp" />
+    <ClCompile Include="AirframeDeviceSystemTests.cpp" />
+    <ClCompile Include="AbiBoundaryTests.cpp" />
+    <ClCompile Include="BridgeContextTests.cpp" />
+	<ClCompile Include="BoundaryValidatorTests.cpp" />
+    <ClCompile Include="CommonTests.cpp" />
+    <ClCompile Include="CarrierBridgeTests.cpp" />
+    <ClCompile Include="CockpitBridgeTests.cpp" />
+    <ClCompile Include="CockpitSnapshotExporterTests.cpp" />
+    <ClCompile Include="DcsCommandRouterTests.cpp" />
+	<ClCompile Include="DcsKinematicsAdapterTests.cpp" />
+    <ClCompile Include="DcsDamageMapperTests.cpp" />
+    <ClCompile Include="DebugCsvWriterTests.cpp" />
+	<ClCompile Include="DebugIndicatorExporterTests.cpp" />
+    <ClCompile Include="DebugTelemetryHubTests.cpp" />
+    <ClCompile Include="OutputAdapterTests.cpp" />
+    <ClCompile Include="EngineSystemTests.cpp" />
+	<ClCompile Include="EventLogTests.cpp" />
+	<ClCompile Include="StateCsvWriterTests.cpp" />
+		<ClCompile Include="FrameInputCollectorTests.cpp" />
+		<ClCompile Include="FlightControlActuationSystemTests.cpp" />
+    <ClCompile Include="DigitalFlightControlExecutiveTests.cpp" />
+    <ClCompile Include="ConfigurationOwnershipTests.cpp" />
+    <ClCompile Include="ConfigurationLoaderTests.cpp" />
+    <ClCompile Include="ControlLawsTests.cpp" />
+    <ClCompile Include="InputSystemTests.cpp" />
+    <ClCompile Include="LandingGearSystemTests.cpp" />
+    <ClCompile Include="MassDeltaTests.cpp" />
+    <ClCompile Include="OutputStoreTests.cpp" />
+    <ClCompile Include="ParamExportTests.cpp" />
+    <ClCompile Include="PropulsionDiagnosticsTests.cpp" />
+    <ClCompile Include="Phase4SystemTimingTests.cpp" />
+    <ClCompile Include="SimulationModelTests.cpp" />
+    <ClCompile Include="SuspensionFeedbackTests.cpp" />
+    <ClCompile Include="SystemPipelineDataTests.cpp" />
+    <ClCompile Include="SystemPipelineHandlerTests.cpp" />
+    <ClCompile Include="TestMain.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DcsCommandRouter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DcsDamageMapper.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\AbiBoundary.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\BoundaryValidator.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugCsvWriter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugTelemetryHub.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EfmEventReporter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\EventLog.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\LogFileLifecycle.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\ParamExporter.cpp" />
+	<ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\ProcessBridgeContext.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\BridgeContext.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CarrierBridge.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\OutputStore.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\StateCsvWriter.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="..\EfmBuild.targets" />
+  <Import Project="..\EfmCore.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

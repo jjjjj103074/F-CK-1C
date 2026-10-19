@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <EfmModuleRoot>$(MSBuildThisFileDirectory)F-CK-1C_EFM\</EfmModuleRoot>
+    <EfmCoreRoot>$(EfmModuleRoot)Core\</EfmCoreRoot>
+    <EfmSystemRoot>$(EfmCoreRoot)Systems</EfmSystemRoot>
+    <EfmGeneratedSystemCatalog>$(IntDir)Generated\SystemCatalog.g.cpp</EfmGeneratedSystemCatalog>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(EfmModuleRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="$(EfmCoreRoot)README.md" />
+    <None Include="$(EfmSystemRoot)\README.md" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\AircraftData.h" />
+    <ClInclude Include="$(EfmModuleRoot)Common\Configuration\Configuration.h" />
+    <ClInclude Include="$(EfmModuleRoot)Common\Configuration\LoadResult.h" />
+    <ClInclude Include="$(EfmModuleRoot)Common\Configuration\ConfigurationTools.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\CockpitContracts.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetry.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetryTypes.h" />
+    <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionContext.h" />
+    <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionError.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\Events.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\FrameContracts.h" />
+    <ClInclude Include="$(EfmCoreRoot)Fck1cEfm.h" />
+    <ClInclude Include="$(EfmCoreRoot)Simulation\*.h" />
+    <ClInclude Include="$(EfmCoreRoot)Simulation\Models\*.h" />
+    <ClInclude Include="$(EfmCoreRoot)Simulation\Models\*\*.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\System.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\SystemExecutionContext.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\SystemPipeline.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\SystemPipelineDataAccess.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\SystemSchedule.h" />
+    <ClInclude Include="$(EfmCoreRoot)Systems\SystemUpdateRates.h" />
+    <ClInclude
+      Include="$(EfmSystemRoot)\**\*.h"
+      Exclude="$(EfmSystemRoot)\*.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(EfmModuleRoot)Common\Configuration\Configuration.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmModuleRoot)Common\Configuration\ConfigurationTools.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Fck1cEfm.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Simulation\AircraftSimulation.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Simulation\AircraftSimulationFrameOutput.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Simulation\SimulationPipeline.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Simulation\Models\*\*.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ObjectFileName>$(IntDir)SimulationModels\$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('%(FullPath)')))).%(Filename).obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Systems\SystemPipeline.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Systems\SystemPipelineData.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmCoreRoot)Systems\SystemSchedule.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <EfmSystemSource
+      Include="$(EfmSystemRoot)\**\*.cpp"
+      Exclude="$(EfmSystemRoot)\*.cpp;$(EfmSystemRoot)\*\Entry.cpp">
+      <ObjectFileName>$(IntDir)SystemSources\%(RecursiveDir)%(Filename).obj</ObjectFileName>
+    </EfmSystemSource>
+    <ClCompile Include="@(EfmSystemSource)">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <EfmSystemEntry Include="$(EfmSystemRoot)\*\Entry.cpp">
+      <ObjectFileName>$(IntDir)SystemEntries\$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('%(FullPath)')))).obj</ObjectFileName>
+    </EfmSystemEntry>
+    <ClCompile Include="@(EfmSystemEntry)">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(EfmGeneratedSystemCatalog)">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+</Project>
