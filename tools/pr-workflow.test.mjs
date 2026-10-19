@@ -44,7 +44,8 @@ function evaluateEvent(expression, event) {
     // The tested expressions use only the shared JS/Actions boolean operators.
     // Actions resolves a missing changes object as null rather than throwing.
     return vm.runInNewContext(expression, {
-        github: {event: {changes: {}, pull_request: {number: 29}, ...event}},
+        github: {run_id: 1234, event: {changes: {}, pull_request: {number: 29}, ...event}},
+        format: (template, value) => template.replace('{0}', value),
     });
 }
 
@@ -68,7 +69,9 @@ test('metadata edits preserve native check results and do not cancel validation 
         {action: 'edited', changes: {title: {from: 'old'}, body: {from: 'old'}}},
         {action: 'edited'},
     ]) {
-        assert.ok(!evaluateEvent(entry.condition, event), 'Metadata must not enter native validation or its cancellation group.');
+        assert.equal(entry.condition, undefined, 'Every PR event must register the three required jobs.');
+        const nativeGroup = native.match(/^  group: (.+)$/m)?.[1];
+        assert.notEqual(eventText(nativeGroup, event), eventText(nativeGroup, normal), 'Metadata must not cancel active native validation.');
         assert.ok(!evaluateEvent(workflowJob(notice, 'rule-notice').condition, event));
         const group = notice.match(/^  group: (.+)$/m)?.[1];
         assert.ok(group);
@@ -79,7 +82,13 @@ test('metadata edits preserve native check results and do not cancel validation 
             assert.notEqual(entry.name, name, 'A skipped caller must not replace required results.');
         }
     }
-    assert.equal(workflowJob(native, 'merge-compatibility').needs, 'pr-submission');
+    assert.equal(workflowJob(native, 'pr-submission').needs, 'validation-plan');
+    assert.equal(workflowJob(native, 'merge-compatibility').needs, '[validation-plan, pr-submission]');
+    assert.equal(workflowJob(native, 'validation-summary').needs, '[validation-plan, pr-submission, merge-compatibility]');
+    assert.match(native, /runs-on: .*mode == 'reuse' && 'ubuntu-latest'/);
+    assert.match(native, /node --test .*tools\/pr-results.test.mjs/);
+    assert.match(router, /actions: read/);
+    assert.doesNotMatch(router + native, /(?:actions|checks|statuses|contents): write|pull_request_target/);
 });
 
 test('code updates and PR retargeting retain validation, cancellation and the final version guard', () => {
@@ -93,7 +102,7 @@ test('code updates and PR retargeting retain validation, cancellation and the fi
         {action: 'edited', changes: {base: {ref: {from: 'main'}}}},
         {action: 'edited', changes: {base: {sha: {from: 'a'.repeat(40)}}, body: {from: 'old'}}},
     ]) {
-        assert.ok(evaluateEvent(workflowJob(router, 'validation').condition, event));
+        assert.equal(workflowJob(router, 'validation').condition, undefined);
         assert.ok(evaluateEvent(workflowJob(notice, 'rule-notice').condition, event));
         for (const workflow of [native, notice]) {
             const group = workflow.match(/^  group: (.+)$/m)?.[1];
@@ -227,45 +236,13 @@ test('notice checks the actual target before checking out its renderer', async (
     }
 });
 
-test('summary requires successful checks and current open PR revisions', async () => {
+test('summary and planner execute the tested result controller and publish receipts only for real validation', () => {
     const workflow = readWorkflow('.github/workflows/pr-native-checks.yml');
-    const block = workflow.match(/ {10}script: \|\r?\n([\s\S]+)$/);
-    assert.ok(block, 'Summary script not found.');
-    const script = block[1].split(/\r?\n/).map(line => line.replace(/^ {12}/, '')).join('\n');
-    const expected = {number: 7, head: {sha: 'a'.repeat(40)}, base: {sha: 'b'.repeat(40), ref: 'main'}};
-    const fresh = {...expected, state: 'open'};
-    for (const [submission, merge, current, passes, targetSha = current.base.sha] of [
-        ['success', 'success', fresh, true],
-        ['failure', 'skipped', fresh, false],
-        ['cancelled', 'cancelled', fresh, false],
-        ['success', 'unknown', fresh, false],
-        ['success', 'success', {...fresh, head: {sha: 'c'.repeat(40)}}, false],
-        ['success', 'success', {...fresh, base: {sha: 'c'.repeat(40)}}, false],
-        ['success', 'success', {...fresh, base: {...fresh.base, ref: 'dev'}}, false],
-        ['success', 'success', fresh, false, 'c'.repeat(40)],
-        ['success', 'success', {...fresh, state: 'closed'}, false],
-    ]) {
-        const failures = [], rows = [], details = [];
-        const summary = {
-            addHeading() { return this; },
-            addTable(value) { rows.push(...value); return this; },
-            addDetails(...value) { details.push(value); return this; },
-            async write() {},
-        };
-        await vm.runInNewContext(`(async () => {${script}\n})()`, {
-            context: {payload: {pull_request: expected}, repo: {owner: 'owner', repo: 'repo'}},
-            github: {rest: {pulls: {get: async () => ({data: current})}, git: {getRef: async ({ref}) => {
-                assert.equal(ref, `heads/${current.base.ref}`);
-                return {data: {object: {sha: targetSha}}};
-            }}}},
-            core: {summary, setFailed: message => failures.push(message)},
-            process: {env: {SUBMISSION_RESULT: submission, MERGE_RESULT: merge}},
-        });
-        assert.equal(failures.length === 0, passes, `${submission}/${merge}/${current.state}`);
-        assert.equal(rows.length, 4);
-        assert.ok(details[0][1].includes(expected.head.sha));
-        assert.ok(details[0][1].includes(expected.base.sha));
-    }
+    assert.match(workflow, /await finishValidation\(\{github, context, core\}\)/);
+    assert.match(workflow, /await planValidation\(\{github, context, core\}\)/);
+    assert.match(workflow, /if: success\(\) && needs.validation-plan.outputs.mode == 'full'/);
+    assert.match(workflow, /retention-days: 7/);
+    assert.match(workflow, /SOURCE_RUN: \$\{\{ needs.validation-plan.outputs.sourceRun \}\}/);
 });
 
 test('PR title input preserves shell characters and commitlint still validates format', () => {

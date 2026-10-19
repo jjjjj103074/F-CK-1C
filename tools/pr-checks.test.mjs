@@ -32,7 +32,7 @@ test('test and FM-only changes run native tests without rebuilding/loading the D
 
 test('checks own their scripts, fixtures, configuration and dependency gates', () => {
     for (const [file, key] of [['.clang-format', 'format'], ['package-lock.json', 'format'],
-        ['tools/cpp-format.test.mjs', 'tools'], ['tools/pr-checks.test.mjs', 'tools'],
+        ['tools/cpp-format.test.mjs', 'tools'], ['tools/pr-checks.test.mjs', 'tools'], ['tools/pr-results.test.mjs', 'tools'],
         ['.github/workflows/pr-title.yml', 'tools'], ['.github/workflows/pr-title-checks.yml', 'tools'],
         ['tools/test_efm_architecture_checker.ps1', 'architecture'],
         ['tools/test_system_catalog_generator.ps1', 'catalog'], ['Input/F-CK-1C/joystick/default.lua', 'dcs'],
@@ -43,7 +43,7 @@ test('checks own their scripts, fixtures, configuration and dependency gates', (
         assert.equal(selectChecks([file])[key], true, file);
     }
     assert.equal(selectChecks(['tools/check_efm_dll.ps1']).dll, true, 'Loading validators require a rebuilt/hash-verified DLL.');
-    for (const file of ['tools/pr-checks.mjs', 'tools/validate_efm.ps1', '.github/workflows/pr-native.yml', '.github/workflows/pr-native-checks.yml']) {
+    for (const file of ['tools/pr-checks.mjs', 'tools/pr-results.mjs', 'tools/validate_efm.ps1', '.github/workflows/pr-native.yml', '.github/workflows/pr-native-checks.yml']) {
         assert.ok(Object.values(selectChecks([file])).every(Boolean), file);
     }
     assert.ok(Object.values(selectChecks(['docs/PR_VALIDATION.md', runtime + 'README.md'])).every(value => !value));

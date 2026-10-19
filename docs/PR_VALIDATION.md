@@ -28,8 +28,21 @@ npm run validate:efm
 | 變更提醒 | 規則檔案與差異，供人工審查 |
 
 main/dev 的 PR 包含 Draft。建立、重開、push 或切換目標分支會執行檢查並取消舊工作。
-只改說明會略過；只改標題僅驗證標題，兩者均保留已有的原生檢查與提醒結果。
+只改標題或說明時，三項必要檢查查證既有結果；標題變更另驗證標題格式。
+這類編輯不取消原生驗證或規則提醒。
 main/dev push 另有 C++ 排版檢查。
+
+### 沿用結果
+
+僅標題／說明編輯可沿用同一 PR、workflow、來源 commit、目標分支及目標 commit
+的完整驗證結果。原始執行的最新 attempt 與三項檢查須全部成功，且七天內的版本憑證仍有效。
+較新的實際驗證失敗時不採用舊成功結果；沿用結果不產生新憑證或延長期限。
+
+原生驗證仍在執行時最多等待四十分鐘。無有效憑證、等待逾時或 API 無法查證時，
+依檢查範圍重新驗證。首次執行須產生憑證；較舊且沒有憑證的結果不適用。
+選擇 **Re-run all jobs** 會重新驗證。
+沿用時三項檢查回報成功，摘要連到原始執行，並註明未重新建置。
+最終摘要再次查證憑證與目前版本；途中失效則檢查失敗，須選擇 **Re-run all jobs**。
 
 ### 檢查範圍
 
@@ -109,8 +122,17 @@ Markdown does not trigger native builds, but System/DcsIds paths still select
 generator checks. Non-Markdown files under the EFM runtime directory, including
 ReadMe.txt, select runtime checks.
 
-Description edits preserve results; title edits validate the title only.
-Code updates and retargeting cancel older validation.
+Title/body-only edits verify and reuse successful native validation for the same
+PR, workflow, head commit, base branch and base commit. All three required jobs
+report success with a link to the original run; title changes also run title lint.
+The original latest attempt and required jobs must have passed, with a valid receipt
+less than seven days old. A newer real failure blocks reuse; reuse never renews a receipt.
+Metadata edits do not cancel native checks or notices. They wait up to forty minutes
+for active validation, then validate normally if evidence is unavailable or unverifiable.
+Runs without receipts require validation; **Re-run all jobs** also validates normally.
+The final summary rechecks evidence and current revisions; invalidated evidence fails
+the check and requires **Re-run all jobs**.
+Code updates and retargeting execute normal validation and cancel older native runs.
 Failure reports are retained for three days.
 Record [DCS verification](DCS_TESTING.md) separately.
 
