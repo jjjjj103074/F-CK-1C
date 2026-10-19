@@ -139,7 +139,7 @@ test('Git shell can invoke DLL hashing in Windows PowerShell', { skip: process.p
     assert.equal(result.stdout.trim().toLowerCase(), expected);
 });
 
-test('the real sparse checkouts retain native-test configuration and DCS generator fixtures', { timeout: 90000 }, context => {
+test('the real sparse checkouts retain native-test configuration and cockpit validation inputs', { timeout: 90000 }, context => {
     const workflowPath = '.github/workflows/pr-native-checks.yml';
     const workflow = readWorkflow(workflowPath);
     const sections = workflow.split('\n  merge-compatibility:');
@@ -162,8 +162,10 @@ test('the real sparse checkouts retain native-test configuration and DCS generat
     git(root, ['init', '--quiet']);
     git(root, ['config', 'core.hooksPath', '.no-hooks']);
     const inputs = git(repository, ['ls-files', '-z', '--', '.gitattributes', 'commitlint.config.js',
-        'Cockpit', 'Input', 'FM', 'src/efm/F-CK-1C_EFM/DcsIds',
-        'tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1']).split('\0').filter(Boolean);
+        'Cockpit', 'Input', 'FM', 'src/efm/F-CK-1C_EFM',
+        'tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1',
+        'tools/generate_cockpit_inventory.ps1', 'tools/check_cockpit_architecture.ps1',
+        'tools/test_cockpit_architecture_checker.ps1']).split('\0').filter(Boolean);
     for (const relative of inputs) {
         const source = path.join(repository, relative);
         assert.ok(fs.existsSync(source), `Missing checked-out generator input: ${relative}`);
@@ -191,11 +193,15 @@ test('the real sparse checkouts retain native-test configuration and DCS generat
     };
     assertConfiguration();
     if (process.platform === 'win32') {
-        const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
-            '-File', path.join(root, 'tools/test_dcs_id_generator.ps1'), '-RepoRoot', root],
-        { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 30000 });
-        assert.equal(result.status, 0, result.stderr || result.error?.message);
-        assert.match(result.stdout, /DCS ID generator fixtures passed/);
+        for (const [script, message] of [['test_dcs_id_generator.ps1', /DCS ID generator fixtures passed/],
+            ['check_cockpit_architecture.ps1', /Cockpit architecture check passed/],
+            ['test_cockpit_architecture_checker.ps1', /Cockpit architecture checker fixtures passed/]]) {
+            const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                '-File', path.join(root, 'tools', script), '-RepoRoot', root],
+            { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+            assert.equal(result.status, 0, result.stderr || result.error?.message);
+            assert.match(result.stdout, message);
+        }
     }
     git(root, ['sparse-checkout', 'set', '--no-cone', '--stdin'], mergePatterns.join('\n') + '\n');
     assertConfiguration();

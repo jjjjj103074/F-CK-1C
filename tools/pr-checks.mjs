@@ -29,6 +29,8 @@ export function selectChecks(files, phase = 'Submission') {
     const native = build || runtimeChanged || testChanged
         || changed(/^FM\/.*\.jsonc$/i);
     if (phase === 'Merge') return {dll, native, analysis};
+    const dcs = control || changed(/^(Cockpit|Input)\/.*\.lua$/i) || changed(/^src\/efm\/F-CK-1C_EFM\/DcsIds\//)
+        || has('tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1');
     return {
         format: control || packages || changed(/(^|\/)\.?_?clang-format(?:-ignore)?$/)
             || has('.gitattributes', '.editorconfig', 'tools/cpp-format.mjs', 'tools/cpp-format.test.mjs')
@@ -40,8 +42,9 @@ export function selectChecks(files, phase = 'Submission') {
         architecture: control || runtimeChanged || has('tools/check_efm_architecture.ps1', 'tools/test_efm_architecture_checker.ps1'),
         catalog: control || changed(/^src\/efm\/F-CK-1C_EFM\/Core\/Systems\//)
             || has('tools/generate_system_catalog.ps1', 'tools/test_system_catalog_generator.ps1'),
-        dcs: control || changed(/^(Cockpit|Input)\/.*\.lua$/i) || changed(/^src\/efm\/F-CK-1C_EFM\/DcsIds\//)
-            || has('tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1'),
+        dcs,
+        cockpit: dcs || runtimeChanged || has('tools/check_cockpit_architecture.ps1',
+            'tools/test_cockpit_architecture_checker.ps1', 'tools/generate_cockpit_inventory.ps1'),
         validation,
     };
 }
@@ -67,7 +70,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const [head, base, phase = 'Submission'] = process.argv.slice(2);
     const checks = planChecks(process.cwd(), head, base, phase);
     const labels = {format: 'C++ 排版', tools: '工具測試', dll: 'DLL 一致性與接口', native: '原生測試',
-        analysis: 'C++ 靜態分析', architecture: '架構測試', catalog: '系統目錄產生器', dcs: 'DCS ID 產生器', validation: '驗證工具'};
+        analysis: 'C++ 靜態分析', architecture: '架構測試', catalog: '系統目錄產生器', dcs: 'DCS ID 產生器',
+        cockpit: '座艙架構', validation: '驗證工具'};
     const summary = ['### 檢查範圍', '', '| 檢查 | 執行 |', '|---|---|',
         ...Object.entries(checks).map(([key, run]) => `| ${labels[key]} | ${run ? '需要' : '不適用'} |`), ''].join('\n');
     process.stdout.write(summary);

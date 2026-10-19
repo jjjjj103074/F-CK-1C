@@ -27,7 +27,7 @@ npm run test:cockpit
 
 架構檢查每次直接掃描目前來源，在記憶體中建立參數清冊，
 驗證單一 writer、宣告的 writer 與實際來源，以及參數引用和 adapter 責任。
-執行檢查前不必產生 CSV。`validate:efm` 不包含這組座艙檢查。
+執行檢查前不必產生 CSV。`validate:efm` 與適用的 PR 提交檢查也會執行這組檢查。
 
 清冊記錄來源內容與引用關係，不證明遊戲內行為正確。
 現行責任見[座艙指南](../COCKPIT.md)，

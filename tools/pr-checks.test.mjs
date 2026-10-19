@@ -50,6 +50,29 @@ test('checks own their scripts, fixtures, configuration and dependency gates', (
     assert.equal(selectChecks([runtime.toUpperCase() + 'A.CPP']).dll, true, 'Windows build paths are case-insensitive.');
 });
 
+test('cockpit checks cover source and tool inputs without requiring a native build', () => {
+    for (const file of ['Cockpit/Scripts/Systems/weapon_system.lua', 'Input/F-CK-1C/keyboard/default.lua',
+        runtime + 'DcsIds/CommandIds.json', runtime + 'DcsIds/CockpitParams.g.h',
+        runtime + 'DcsBridge/Internal/CockpitBridge.cpp', runtime + 'DcsBridge/Internal/CockpitParameterEndpoint.h',
+        'tools/generate_dcs_ids.ps1', 'tools/test_dcs_id_generator.ps1']) {
+        assert.equal(selectChecks([file]).cockpit, true, file);
+    }
+    for (const file of ['tools/check_cockpit_architecture.ps1', 'tools/test_cockpit_architecture_checker.ps1',
+        'tools/generate_cockpit_inventory.ps1', 'Cockpit/Scripts/device_init.lua']) {
+        const checks = selectChecks([file]);
+        assert.equal(checks.cockpit, true, file);
+        for (const key of ['dll', 'native', 'analysis', 'format', 'tools']) {
+            assert.equal(checks[key], false, `${file}: ${key}`);
+        }
+    }
+    assert.equal(selectChecks(['TOOLS/CHECK_COCKPIT_ARCHITECTURE.PS1']).cockpit, true);
+    assert.equal(selectChecks(['docs/cockpit-inventory/README.md']).cockpit, false);
+    assert.equal(selectChecks([runtime + 'DcsBridge/README.md']).cockpit, false);
+    assert.equal(selectChecks(['FM/config.jsonc']).cockpit, false);
+    assert.equal(selectChecks(['Cockpit/Scripts/device_init.lua'], 'Merge').cockpit, undefined,
+        'Source-rule checks run in submission, alongside architecture and generator checks.');
+});
+
 function fixture(context) {
     const prefix = path.join(os.tmpdir(), 'fck1c-pr-gates-');
     const root = fs.mkdtempSync(prefix);
@@ -107,6 +130,52 @@ test('merge gates include target-only source changes and reject missing/wrong re
     assert.throws(() => planChecks(root, head, '0'.repeat(40), 'Submission'));
     assert.throws(() => selectChecks([], 'Typo'), /Unknown validation phase/);
 });
+
+test('cockpit gates export through the existing workflow check list and summary', context => {
+    const {root, write, commit} = fixture(context);
+    write('README.md', 'fixture');
+    const base = commit();
+    write('Cockpit/Scripts/device_init.lua', '-- fixture cockpit change');
+    const head = commit();
+    const output = path.join(root, 'workflow-output.txt');
+    const result = spawnSync(process.execPath, [path.join(repository, 'tools/pr-checks.mjs'), head, base],
+        {cwd: root, env: {...process.env, GITHUB_OUTPUT: output}, encoding: 'utf8', windowsHide: true, timeout: 30000});
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+    const fields = Object.fromEntries(fs.readFileSync(output, 'utf8').trim().split('\n').map(line => line.split('=')));
+    assert.equal(fields.cockpit, 'true');
+    assert.deepEqual(fields.checks.split(',').sort(), ['cockpit', 'dcs']);
+    assert.match(result.stdout, /座艙架構 \| 需要/);
+});
+
+for (const [failure, expectedSteps] of [
+    [null, [['座艙架構', 'passed'], ['座艙架構測試', 'passed'], ['來源完整性', 'passed']]],
+    ['座艙架構', [['座艙架構', 'failed']]],
+    ['座艙架構測試', [['座艙架構', 'passed'], ['座艙架構測試', 'failed']]],
+]) {
+    test(`cockpit-only validation ${failure ? `propagates ${failure} failures` : 'runs without a toolchain or DLL'}`,
+        {skip: process.platform !== 'win32'}, context => {
+            const {root, write} = fixture(context);
+            write('tools/validate_efm.ps1', fs.readFileSync(path.join(repository, 'tools/validate_efm.ps1')));
+            write('tools/efm-build-common.ps1', "function Get-EfmSourceFingerprint { 'fixture sources' }");
+            for (const [script, name] of [['check_cockpit_architecture.ps1', '座艙架構'],
+                ['test_cockpit_architecture_checker.ps1', '座艙架構測試']]) {
+                write(`tools/${script}`, failure === name ? "throw 'Injected cockpit failure.'" : '# successful fixture');
+            }
+            const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                '-File', path.join(root, 'tools/validate_efm.ps1'), '-Checks', 'cockpit',
+                '-ReportDirectory', path.join(root, 'report')], {encoding: 'utf8', windowsHide: true, timeout: 30000});
+            assert.equal(result.status, failure ? 1 : 0, result.stdout + result.stderr);
+            const report = JSON.parse(fs.readFileSync(path.join(root, 'report/report.json'), 'utf8'));
+            const steps = report.steps.filter(step => step.status !== 'skipped');
+            assert.equal(report.status, failure ? 'failed' : 'passed');
+            assert.deepEqual(steps.map(step => [step.name, step.status]), expectedSteps);
+            assert.deepEqual(report.hashes, {});
+            if (failure) {
+                assert.match(report.error, /cockpit_architecture.*失敗/);
+                assert.match(result.stdout + result.stderr, /Injected cockpit failure/);
+            }
+        });
+}
 
 test('selected source-only DLL check stops at hash mismatch before any DLL execution',
     {skip: process.platform !== 'win32'}, context => {

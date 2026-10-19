@@ -17,7 +17,7 @@ $report = [ordered]@{ phase = $Phase; status = 'running'; dcs = 'not_run'; steps
 $failure = $null
 $run = @{}
 $selected = $Checks -split ','
-$names = @('dll', 'native', 'analysis', 'architecture', 'catalog', 'dcs', 'validation')
+$names = @('dll', 'native', 'analysis', 'architecture', 'catalog', 'dcs', 'cockpit', 'validation')
 if (@($selected | Where-Object { $_ -notin ($names + @('all', 'none')) }).Count) { throw '未知的檢查項目。' }
 foreach ($name in $names) { $run[$name] = 'all' -in $selected -or $name -in $selected }
 if ($run.validation) { $run.dll = $true }
@@ -100,7 +100,9 @@ try {
         foreach ($fixture in @(
             @('架構測試', 'architecture', 'test_efm_architecture_checker.ps1'),
             @('系統目錄產生器', 'catalog', 'test_system_catalog_generator.ps1'),
-            @('DCS ID 產生器', 'dcs', 'test_dcs_id_generator.ps1'))) {
+            @('DCS ID 產生器', 'dcs', 'test_dcs_id_generator.ps1'),
+            @('座艙架構', 'cockpit', 'check_cockpit_architecture.ps1'),
+            @('座艙架構測試', 'cockpit', 'test_cockpit_architecture_checker.ps1'))) {
             $scriptName = $fixture[2]
             Invoke-ValidationStep $fixture[0] {
                 & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $scriptName)

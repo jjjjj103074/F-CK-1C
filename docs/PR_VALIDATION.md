@@ -22,7 +22,7 @@ npm run validate:efm
 | 檢查 | 內容 |
 |---|---|
 | 標題格式 | Conventional Commit 格式 |
-| 提交檢查 | 適用的排版、工具測試、工具鏈、分析、DLL、接口、載入及原生測試 |
+| 提交檢查 | 適用的排版、工具測試、架構、工具鏈、分析、DLL、接口、載入及原生測試 |
 | 合併檢查 | 模擬合併、DLL 比對與原生測試 |
 | 檢查結果 | 提交／合併結果與最新 PR／目標版本 |
 | 變更提醒 | 規則檔案與差異，供人工審查 |
@@ -43,6 +43,7 @@ main/dev push 另有 C++ 排版檢查。
 | 測試來源／專案 | 原生測試與分析 |
 | FM JSONC | 原生測試 |
 | 架構、System catalog、DCS ID 工具與對應輸入 | 對應產生器／規則測試 |
+| 座艙／Input Lua、DCS ID、EFM 執行期輸入與座艙工具 | 座艙架構檢查與檢查器 fixtures |
 | DLL 驗證工具、工具鏈或分析規則 | DLL 比對及驗證工具測試 |
 | 主控制流程／門檻 | 全部檢查 |
 | Markdown 文件 | 不觸發原生建置；位於 System 或 DcsIds 目錄時仍觸發對應產生器測試 |
@@ -50,7 +51,8 @@ main/dev push 另有 C++ 排版檢查。
 未觸發項目顯示不適用；差異讀取失敗則檢查失敗。
 執行期輸入變更會重建比對，即使提交 DLL 沒有變動。
 合併階段只在目標分支帶入分析輸入時補做分析，其餘沿用提交結果。
-本機 `validate:efm` 執行完整原生驗證，不依 PR 門檻篩選。
+架構、產生器與座艙檢查於提交階段執行。
+本機 `validate:efm` 執行完整原生與來源規則驗證，不依 PR 門檻篩選。
 
 門檻依路徑與副檔名判斷；EFM 執行期目錄中除 `.md` 外的檔案，
 包含 `ReadMe.txt`，均視為執行期輸入，觸發建置、分析與原生測試。
@@ -101,6 +103,8 @@ Selection uses the cumulative diff; deleted and renamed inputs remain covered.
 Runtime inputs trigger DLL rebuild/hash/export/load checks. Test-only inputs run
 native tests and analysis; FM JSONC runs native tests.
 Controller changes select all checks. Local validation runs the full native suite.
+Submission also runs cockpit architecture checks for Lua, DCS ID, runtime and
+cockpit-tool changes; local full validation includes these checks.
 Markdown does not trigger native builds, but System/DcsIds paths still select
 generator checks. Non-Markdown files under the EFM runtime directory, including
 ReadMe.txt, select runtime checks.
