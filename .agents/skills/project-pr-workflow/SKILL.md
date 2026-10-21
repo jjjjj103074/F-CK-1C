@@ -36,11 +36,37 @@ loading this skill does not grant that authorization.
 - Check for an existing PR for the same work before creating one. Update it
   rather than creating a duplicate.
 - Always create new PRs as Draft when acting as AI, even when the work is complete.
-- Drafts may be opened before completion; explicitly identify unfinished work.
+- Drafts may be opened before completion. Every PR description must include
+  a `Remaining work and Draft status` section using the rules below.
 - Follow the project title convention. Describe the problem and expected
   outcome, actual changes, validation results, and known issues or unfinished work.
-- Update the PR when later changes affect its description or validation results.
+- Update the PR when later changes affect its plan, description or validation results.
   Never claim that tests passed when they were not run.
+
+## Branch plan and remaining work
+
+- Derive the branch plan from confirmed user instructions, accepted plans and
+  subsequent scope decisions, as well as the actual diff. Remaining work includes
+  planned work that has not started, work still being designed, partial
+  implementation and outstanding validation. It is not limited to changes
+  already present in files.
+- Include confirmed work planned for this branch even when its design is still
+  under discussion. Distinguish undecided proposals from accepted deliverables;
+  do not silently promote every suggested idea into a commitment.
+- Do not remove planned work from scope or move it to another branch merely
+  because the current files are complete. Record explicit scope changes and
+  any agreed destination or deferral.
+- In `Remaining work and Draft status`, list remaining planned work with its
+  status, validation gaps, pending human review actions, and the reason for
+  remaining Draft, when applicable. Explicitly state `None` for categories with
+  no outstanding items. Separate implementation completion from validation
+  completion and pending human actions.
+- Keep Draft while confirmed work planned for this branch remains incomplete.
+  Do not infer branch completion solely from passing CI or the current diff.
+- After creating or updating a PR, read back its actual remote description,
+  refs and Draft/Ready state. Check them against the confirmed branch plan,
+  validation evidence and requested state; correct omissions before reporting
+  the PR as prepared.
 
 ## Automated validation
 
@@ -63,6 +89,8 @@ when all of the following hold:
 - The work is ready for review and the PR description matches the actual changes.
 - Applicable automated validation and required CI have passed, and their results
   apply to the current revisions.
+- All confirmed deliverables planned for this branch are complete, including
+  work that was initially unstarted or under design; any scope changes are explicit.
 - No known blocking defects remain to be fixed, and unfinished work is not hidden.
 
 Otherwise, keep the PR as Draft and explain what remains outstanding.
