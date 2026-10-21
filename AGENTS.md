@@ -18,13 +18,13 @@ into separate branches. Do not accumulate unrelated changes under a broad
 system name or reuse a completed branch for another task.
 
 Follow [CONTRIBUTING.md](CONTRIBUTING.md#branch-naming-and-scope) for the type
-definitions and examples. The repository skill
-[project-branch-workflow](.agents/skills/project-branch-workflow/SKILL.md)
+definitions and examples. The shared workflow
+[project-branch-workflow](docs/ai/branch-workflow.md)
 applies when choosing, creating or reusing a work branch.
 
 ## PR review and merge
 
-Follow [project-pr-workflow](.agents/skills/project-pr-workflow/SKILL.md) when
+Follow [project-pr-workflow](docs/ai/pr-workflow.md) when
 creating, updating, validating or preparing a PR for review.
 AI must create new PRs as Draft. It may automatically mark them Ready for
 review when the skill's readiness conditions are met; Ready is not human approval.
@@ -37,6 +37,16 @@ direct target-branch pushes, protection changes or weakened required checks.
 Commit frequency and collaboration within a branch remain task-specific;
 authorization to commit, push or create a PR comes from the current task.
 See [CONTRIBUTING.md](CONTRIBUTING.md#pr-review-and-merge) for the shared policy.
+
+## Project skill entry points
+
+The project skills are `project-branch-workflow` and `project-pr-workflow`.
+Codex entry points are
+in `.agents/skills/<name>/SKILL.md`; Claude Code entry points with the same
+names are in `.claude/skills/<name>/SKILL.md`. Each pair reads one shared
+procedure under `docs/ai/`; maintain workflow rules in that shared file.
+Other agents should read those procedures explicitly when performing these tasks;
+do not assume that every tool automatically discovers either skill directory.
 
 ## C++ formatting
 

@@ -12,6 +12,17 @@ Desktop.ini
 !.vscode/extensions.json
 .codex/
 .claude/
+# Share only the selected Claude skill entry points; keep local settings ignored.
+!/.claude/
+/.claude/*
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/project-branch-workflow/
+!/.claude/skills/project-pr-workflow/
+/.claude/skills/project-branch-workflow/*
+!/.claude/skills/project-branch-workflow/SKILL.md
+/.claude/skills/project-pr-workflow/*
+!/.claude/skills/project-pr-workflow/SKILL.md
 /.codex-remote-attachments/
 
 # Visual Studio（IDE 暫存）

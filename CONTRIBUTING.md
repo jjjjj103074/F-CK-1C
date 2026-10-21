@@ -97,7 +97,7 @@ AI must not merge through any mechanism, enable auto-merge, enqueue automatic
 merging, or bypass PR review through direct target-branch pushes, protection
 changes or weakened checks. Commit frequency and branch collaboration remain
 task-specific; this policy does not itself authorize commits, pushes or PR creation.
-Follow the [PR skill](.agents/skills/project-pr-workflow/SKILL.md) and existing
+Follow the [shared PR workflow](docs/ai/pr-workflow.md) and existing
 [validation policy](docs/PR_VALIDATION.md). These instructions do not prove
 that equivalent GitHub protection settings are enabled.
 
@@ -211,7 +211,7 @@ AI 可在任務授權內修正、驗證及回覆證據，但不得代替人工�
 AI 不得透過任何方式合併、啟用 auto-merge 或加入自動合併佇列，
 也不得透過直接推送目標分支、修改保護設定或降低檢查標準來繞過 PR 審查。
 Commit 頻率及分支內協作方式依任務決定；本規範本身不授權 commit、push 或建立 PR。
-操作依 [PR skill](.agents/skills/project-pr-workflow/SKILL.md) 與既有
+操作依[共用 PR 流程](docs/ai/pr-workflow.md)與既有
 [驗證規範](docs/PR_VALIDATION.md)；文件規則不代表 GitHub 已啟用對應保護設定。
 
 ### Commit 與 PR 標題
