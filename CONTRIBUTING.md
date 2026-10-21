@@ -79,6 +79,28 @@ and assets together. Separate independently reviewable objectives; naming a
 system does not permit unrelated work. Do not reuse a completed branch for
 another task. `feature/` maps to commit type `feat`; `bugfix/` maps to `fix`.
 
+### PR review and merge
+
+AI creates new PRs as Draft and may automatically mark them Ready for review
+when the work is reviewable, its description matches the changes, applicable
+automated validation and required CI pass for the current revisions, and no
+known blocking defects or hidden unfinished work remain. Otherwise keep Draft
+and report outstanding items. Ready does not mean human approval.
+
+Every PR must receive human review and be merged by a human. Solo maintainers
+may personally review and merge; no second reviewer or formal Approve is required.
+Only humans may close or resolve human review comments and threads. AI may
+revise, validate and reply with evidence within task authorization, but must not
+approve on a human's behalf or treat CI or AI review as completed human review.
+
+AI must not merge through any mechanism, enable auto-merge, enqueue automatic
+merging, or bypass PR review through direct target-branch pushes, protection
+changes or weakened checks. Commit frequency and branch collaboration remain
+task-specific; this policy does not itself authorize commits, pushes or PR creation.
+Follow the [PR skill](.agents/skills/project-pr-workflow/SKILL.md) and existing
+[validation policy](docs/PR_VALIDATION.md). These instructions do not prove
+that equivalent GitHub protection settings are enabled.
+
 ### Commit and PR titles
 
 Commits and PR titles use `<type>(<scope>): <description>`.
@@ -174,6 +196,23 @@ CI 規則見 [PR 驗證](docs/PR_VALIDATION.md)；
 能獨立審查的不同目標應拆成不同分支。不得以系統名稱籠統收納無關修改，
 也不得將已完成的分支繼續用於其他任務。
 分支前綴 `feature/` 對應 commit type `feat`，`bugfix/` 對應 `fix`。
+
+### PR 審查與合併
+
+AI 建立新 PR 一律先為 Draft。工作可供審查、說明符合實際差異、適用的
+自動化驗證與必要 CI 對目前版本通過，且沒有已知阻擋問題或隱藏未完成事項時，
+可自動轉為 Ready for review；否則維持 Draft 並回報待辦。Ready 不代表人工核准。
+
+每個 PR 都須人工審核並由人工合併。單人維護者可親自審核並合併，
+不強制第二人或正式 Approve。人工審查留言與討論串只能由人工關閉或 Resolve。
+AI 可在任務授權內修正、驗證及回覆證據，但不得代替人工核准，
+也不得將 CI 通過或 AI 審查視為人工已審核。
+
+AI 不得透過任何方式合併、啟用 auto-merge 或加入自動合併佇列，
+也不得透過直接推送目標分支、修改保護設定或降低檢查標準來繞過 PR 審查。
+Commit 頻率及分支內協作方式依任務決定；本規範本身不授權 commit、push 或建立 PR。
+操作依 [PR skill](.agents/skills/project-pr-workflow/SKILL.md) 與既有
+[驗證規範](docs/PR_VALIDATION.md)；文件規則不代表 GitHub 已啟用對應保護設定。
 
 ### Commit 與 PR 標題
 

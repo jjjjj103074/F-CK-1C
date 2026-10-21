@@ -22,6 +22,22 @@ definitions and examples. The repository skill
 [project-branch-workflow](.agents/skills/project-branch-workflow/SKILL.md)
 applies when choosing, creating or reusing a work branch.
 
+## PR review and merge
+
+Follow [project-pr-workflow](.agents/skills/project-pr-workflow/SKILL.md) when
+creating, updating, validating or preparing a PR for review.
+AI must create new PRs as Draft. It may automatically mark them Ready for
+review when the skill's readiness conditions are met; Ready is not human approval.
+Every PR requires human review and a human-performed merge. Solo maintainers
+may personally review and merge; a second reviewer or formal Approve is not required.
+Only humans may close or resolve human review comments and threads.
+AI must not submit approval on a human's behalf, merge by any mechanism,
+enable auto-merge, or enqueue automatic merging. Do not bypass PR review through
+direct target-branch pushes, protection changes or weakened required checks.
+Commit frequency and collaboration within a branch remain task-specific;
+authorization to commit, push or create a PR comes from the current task.
+See [CONTRIBUTING.md](CONTRIBUTING.md#pr-review-and-merge) for the shared policy.
+
 ## C++ formatting
 
 When editing C++, read [the formatting guide](docs/CPP_FORMATTING.md).
