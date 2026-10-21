@@ -56,6 +56,31 @@ flight lifecycle and runtime loading.
 Branch daily work from `dev` and submit a PR back to `dev`.
 Release PRs go from `dev` to `main`; use Squash merge.
 
+### Branch naming and scope
+
+New work branches use `<type>/<module>-<task>` with a lowercase English,
+hyphen-separated description. An issue number may precede the module,
+for example `bugfix/123-efm-engine-start`.
+
+| Prefix | Purpose | Example |
+|---|---|---|
+| `feature/` | New functionality | `feature/cockpit-hud-brightness` |
+| `bugfix/` | Bug fixes | `bugfix/efm-engine-start` |
+| `refactor/` | Code restructuring | `refactor/efm-engine-model` |
+| `docs/` | Documentation | `docs/tooling-build-guide` |
+| `chore/` | Tools, configuration or asset maintenance | `chore/assets-texture-cleanup` |
+
+Do not use `codex/`, `claud/`, `claude/`, or other agent-name prefixes.
+Existing branches retain their names; `dev` and `main` retain their roles.
+
+One branch represents one coherent objective: a feature, a system change,
+a bug fix, or an issue. Include its directly required code, tests, documentation
+and assets together. Separate independently reviewable objectives; naming a
+system does not permit unrelated work. Do not reuse a completed branch for
+another task. `feature/` maps to commit type `feat`; `bugfix/` maps to `fix`.
+
+### Commit and PR titles
+
 Commits and PR titles use `<type>(<scope>): <description>`.
 Types are `feat`, `fix`, `refactor`, `docs`, and `chore`.
 Type and scope are lowercase; descriptions may use English or Traditional Chinese.
@@ -127,6 +152,30 @@ CI 規則見 [PR 驗證](docs/PR_VALIDATION.md)；
 `dev` 是整合分支，`main` 用於 Release。
 日常工作由 `dev` 分支，PR 回 `dev`；Release 由 `dev` PR 至 `main`，
 合併方式使用 Squash。
+
+### 分支命名與工作範圍
+
+新工作分支使用 `類型/模組-工作描述`；描述使用英文小寫與連字號。
+有對應 issue 時，可在模組前加編號，例如 `bugfix/123-efm-engine-start`。
+
+| 前綴 | 用途 | 範例 |
+|---|---|---|
+| `feature/` | 新增功能 | `feature/cockpit-hud-brightness` |
+| `bugfix/` | 修正錯誤 | `bugfix/efm-engine-start` |
+| `refactor/` | 整理程式結構 | `refactor/efm-engine-model` |
+| `docs/` | 修改文件 | `docs/tooling-build-guide` |
+| `chore/` | 工具、設定或素材維護 | `chore/assets-texture-cleanup` |
+
+新分支禁止使用 `codex/`、`claud/`、`claude/` 或其他代理名稱作為前綴。
+既有分支不改名、不因本規範刪除；`dev` 與 `main` 維持原有用途。
+
+一個分支只代表一件完整的工作：一個功能、一個系統變更、一項錯誤修正，
+或一個 issue。直接相關的程式、測試、文件與素材可以放在同一分支；
+能獨立審查的不同目標應拆成不同分支。不得以系統名稱籠統收納無關修改，
+也不得將已完成的分支繼續用於其他任務。
+分支前綴 `feature/` 對應 commit type `feat`，`bugfix/` 對應 `fix`。
+
+### Commit 與 PR 標題
 
 Commit 與 PR 標題使用 `<type>(<scope>): <描述>`。
 Type 為 `feat`、`fix`、`refactor`、`docs` 或 `chore`；
