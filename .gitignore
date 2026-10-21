@@ -17,8 +17,14 @@ Desktop.ini
 /.claude/*
 !/.claude/skills/
 /.claude/skills/*
+!/.claude/skills/project-review/
+!/.claude/skills/project-development-validation/
 !/.claude/skills/project-branch-workflow/
 !/.claude/skills/project-pr-workflow/
+/.claude/skills/project-review/*
+!/.claude/skills/project-review/SKILL.md
+/.claude/skills/project-development-validation/*
+!/.claude/skills/project-development-validation/SKILL.md
 /.claude/skills/project-branch-workflow/*
 !/.claude/skills/project-branch-workflow/SKILL.md
 /.claude/skills/project-pr-workflow/*

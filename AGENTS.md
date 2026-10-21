@@ -38,10 +38,19 @@ Commit frequency and collaboration within a branch remain task-specific;
 authorization to commit, push or create a PR comes from the current task.
 See [CONTRIBUTING.md](CONTRIBUTING.md#pr-review-and-merge) for the shared policy.
 
+## Development validation and change review
+
+For change-focused validation, follow the shared
+[development validation procedure](docs/ai/development-validation.md).
+It accepts uncommitted work, a commit or a selected range; it does not replace
+the PR workflow's branch-plan and cumulative integration checks.
+For change review, follow the shared
+[Standards/Spec procedure](docs/ai/change-review.md).
+
 ## Project skill entry points
 
-The project skills are `project-branch-workflow` and `project-pr-workflow`.
-Codex entry points are
+The four project skills are `project-branch-workflow`, `project-pr-workflow`,
+`project-development-validation` and `project-review`. Codex entry points are
 in `.agents/skills/<name>/SKILL.md`; Claude Code entry points with the same
 names are in `.claude/skills/<name>/SKILL.md`. Each pair reads one shared
 procedure under `docs/ai/`; maintain workflow rules in that shared file.
