@@ -120,7 +120,9 @@ function Find-EfmBuildTools {
 
     $vswherePath = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
     if (-not (Test-Path -LiteralPath $vswherePath)) { throw '缺少 Visual Studio Installer，請依 docs/BUILD_DLL.md 安裝。' }
-    $instances = @((& $vswherePath -all -products '*' -requires Microsoft.Component.MSBuild -format json) | ConvertFrom-Json)
+    # PowerShell 5.1 emits a JSON array as one pipeline object. Assign it directly
+    # so multiple VS installations remain separate candidates, not nested paths.
+    $instances = (& $vswherePath -all -products '*' -requires Microsoft.Component.MSBuild -format json) | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw '無法讀取 Visual Studio 安裝清單。' }
     return Select-EfmBuildTools -RepoRoot $RepoRoot -Instances $instances -MsBuildPath $MsBuildPath -SdkRoot $SdkRoot
 }
