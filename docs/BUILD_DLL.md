@@ -6,6 +6,8 @@
 ## Requirements
 
 安裝 Visual Studio Build Tools，匯入 [`.vsconfig`](../.vsconfig)。
+保留 v142 元件群組及指定版本的編譯器元件；群組同時安裝靜態分析規則集，
+只安裝獨立編譯器元件不足以執行完整驗證。
 
 | 工具 | 版本 |
 |---|---|
