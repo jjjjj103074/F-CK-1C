@@ -13,10 +13,14 @@
     <ClCompile>
       <EnablePREfast>true</EnablePREfast>
       <PREfastAdditionalPlugins>$(VCToolsInstallDir)bin\Hostx64\x64\EspXEngine.dll;%(PREfastAdditionalPlugins)</PREfastAdditionalPlugins>
+      <!-- v142 needs the selected rule set on the compiler command line, too. -->
+      <AdditionalOptions>/analyze:ruleset"$(VSInstallDir)Team Tools\Static Analysis Tools\Rule Sets\$(CodeAnalysisRuleSet)" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <Target Name="ConfigureEfmAnalysis" BeforeTargets="ClCompile"
           Condition="'$(RunCodeAnalysis)' == 'true' Or '$(RunCodeAnalysisOnce)' == 'true'">
+    <Error Condition="!Exists('$(VSInstallDir)Team Tools\Static Analysis Tools\Rule Sets\$(CodeAnalysisRuleSet)')"
+           Text="找不到配方指定的 C++ 分析規則集：$(CodeAnalysisRuleSet)。" />
     <SetEnv Name="Esp.Extensions" Value="CppCoreCheck.dll" Prefix="false" />
   </Target>
   <Target Name="ValidateEfmBuildProfile" BeforeTargets="PrepareForBuild">

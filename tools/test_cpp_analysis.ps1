@@ -48,6 +48,8 @@ inline int external_callback(int unused) { return 1; }
     [IO.File]::WriteAllText((Join-Path $projectRoot 'include\probe.h'), 'struct SdkState { int value; SdkState() {} };')
     $cases = @(
         @{ Name = 'external'; Analyze = $true; Code = ''; Source = '#include <probe.h>' + "`n" + 'extern "C" __declspec(dllexport) int fixture() { ExternalState value; return external_callback(0); }' },
+        # C26440 (can be noexcept) belongs to broader Core Check policy, not Native Recommended.
+        @{ Name = 'recommended'; Analyze = $true; Code = ''; Source = 'extern "C" __declspec(dllexport) int fixture(int value) { return value; }' },
         @{ Name = 'compiler'; Analyze = $false; Code = 'C4100'; Source = 'extern "C" __declspec(dllexport) int fixture(int unused) { return 1; }' },
         @{ Name = 'analysis'; Analyze = $true; Code = 'C26495'; Source = 'struct OwnState { int value; OwnState() {} }; extern "C" __declspec(dllexport) int fixture() { OwnState value; return 1; }' },
         @{ Name = 'sdk'; Analyze = $true; Code = 'C26495'; Source = '#include "include/probe.h"' + "`n" + 'extern "C" __declspec(dllexport) int fixture() { SdkState value; return 1; }' }
@@ -73,7 +75,7 @@ inline int external_callback(int unused) { return 1; }
             throw "External headers were not excluded.`n$($output -join "`n")"
         }
     }
-    Write-Output 'C++ analysis fixtures passed: 4 checks.'
+    Write-Output 'C++ analysis fixtures passed: 5 checks.'
 }
 finally {
     $resolved = [IO.Path]::GetFullPath($fixtureRoot)
