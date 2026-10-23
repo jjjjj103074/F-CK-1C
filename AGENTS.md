@@ -1,5 +1,62 @@
 # Project instructions
 
+## Branch naming and scope
+
+New work branches must use one of `feature/`, `bugfix/`, `refactor/`, `docs/`,
+or `chore/`, followed by a lowercase English, hyphen-separated module and task
+description: `<type>/<module>-<task>`. An issue number may precede the module,
+for example `bugfix/123-efm-engine-start`.
+
+Do not use `codex/`, `claud/`, `claude/`, or other agent-name prefixes for new
+branches. Preserve existing branch names; do not rename or delete them as part
+of adopting this convention. Keep the established `dev` and `main` branches.
+
+Each branch represents one coherent unit of work: one feature, one system
+change, one bug fix, or one issue. Include directly required code, tests,
+documentation and assets together; split independently reviewable objectives
+into separate branches. Do not accumulate unrelated changes under a broad
+system name or reuse a completed branch for another task.
+
+Follow [CONTRIBUTING.md](CONTRIBUTING.md#branch-naming-and-scope) for the type
+definitions and examples. The shared workflow
+[project-branch-workflow](docs/ai/branch-workflow.md)
+applies when choosing, creating or reusing a work branch.
+
+## PR review and merge
+
+Follow [project-pr-workflow](docs/ai/pr-workflow.md) when
+creating, updating, validating or preparing a PR for review.
+AI must create new PRs as Draft. It may automatically mark them Ready for
+review when the skill's readiness conditions are met; Ready is not human approval.
+Every PR requires human review and a human-performed merge. Solo maintainers
+may personally review and merge; a second reviewer or formal Approve is not required.
+Only humans may close or resolve human review comments and threads.
+AI must not submit approval on a human's behalf, merge by any mechanism,
+enable auto-merge, or enqueue automatic merging. Do not bypass PR review through
+direct target-branch pushes, protection changes or weakened required checks.
+Commit frequency and collaboration within a branch remain task-specific;
+authorization to commit, push or create a PR comes from the current task.
+See [CONTRIBUTING.md](CONTRIBUTING.md#pr-review-and-merge) for the shared policy.
+
+## Development validation and change review
+
+For change-focused validation, follow the shared
+[development validation procedure](docs/ai/development-validation.md).
+It accepts uncommitted work, a commit or a selected range; it does not replace
+the PR workflow's branch-plan and cumulative integration checks.
+For change review, follow the shared
+[Standards/Spec procedure](docs/ai/change-review.md).
+
+## Project skill entry points
+
+The four project skills are `project-branch-workflow`, `project-pr-workflow`,
+`project-development-validation` and `project-review`. Codex entry points are
+in `.agents/skills/<name>/SKILL.md`; Claude Code entry points with the same
+names are in `.claude/skills/<name>/SKILL.md`. Each pair reads one shared
+procedure under `docs/ai/`; maintain workflow rules in that shared file.
+Other agents should read those procedures explicitly when performing these tasks;
+do not assume that every tool automatically discovers either skill directory.
+
 ## C++ formatting
 
 When editing C++, read [the formatting guide](docs/CPP_FORMATTING.md).
