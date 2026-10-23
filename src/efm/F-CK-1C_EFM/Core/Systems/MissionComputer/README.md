@@ -126,3 +126,20 @@ DFLCC 是否也採用狀態分區的窄參照，留待其監控與故障邏輯�
 [MC 架構測試](../../../../F-CK-1C_EFM_Tests/MissionComputerTests.cpp)
 涵蓋啟動交接、排程順序、多頻率補跑及透過 Entry 接入 Pipeline。
 正式 Windows 建置與原生測試指令見 [DLL 指南](../../../../../../docs/BUILD_DLL.md)。
+
+## 分段遷移與 Windows 驗證
+
+Lua 的 MC 決策依模式與 HOTAS、掛載與武器操作、感測器協調與尋標／顯示狀態
+分段遷移。DCS 觀測、操作介面、繪圖與音效播放仍保留在 Lua／DcsBridge。
+反制程序的發射排程屬於反制系統；本次不將其視為 MC 管理邏輯搬入。
+不增加冷啟動、電源模擬或故障備援。
+
+每段先做 Standards／Spec code review 與本機可執行測試，再提交、推送至
+`mission-computer`，由 [Windows 工作流程](../../../../../../.github/workflows/mc-windows-validation.yml)
+使用既有固定工具鏈建置，並執行完整 `validate_efm.ps1`。
+使用獨立的 SubmittedDllPath 驗證新產物，工作樹內提交的 DLL 不會被改寫；
+原有 PR 的提交 DLL 比對與合併檢查維持不變。
+
+只取用成功 run 的 DLL，核對 manifest 的來源 commit、tree 與 DLL SHA256，
+再將產物作為獨立 commit 納入。完整 Windows 驗證通過後才進下一遷移段落。
+CI 不會代為推送、建立 PR 或合併；遊戲內 DCS 行為仍須另行驗證。
