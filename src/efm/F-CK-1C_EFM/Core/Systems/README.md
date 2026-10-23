@@ -10,6 +10,7 @@ fixed-rate scheduling and completed `AircraftData` snapshots.
 |---|---:|---|
 | `PilotControls` | 64 Hz | Pilot axes, trim inputs and independent throttle-lever signals |
 | `DigitalFlightControlComputer` | 64 Hz | Configurable three-axis direct mapping |
+| `MissionComputer` | 64 Hz | Top-level computer and internal scheduling scaffold; no mission functions yet |
 | `FlightControlActuationSystem` | 256 Hz | Primary-surface dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Flaps, slats and airbrake |
 | `LandingGear` | 64 Hz | Gear, brakes, NWS, wheels and suspension |
@@ -110,6 +111,12 @@ Its Executive owns internal task order and timing. Feedback control, trim
 application, modes, monitoring and automatic throttle remain unimplemented.
 Both flight-control status snapshots remain unavailable.
 See the [DFLCC guide](DigitalFlightControlComputer/README.md).
+
+MissionComputer follows the DFLCC's assembly pattern with four internal
+components and three typed databases. Its 64 Hz is the project fallback;
+monitoring, failure handling and mission functions remain unimplemented.
+It declares no AircraftData reads, publications or handlers yet.
+See the [MC guide](MissionComputer/README.md).
 
 Fuel owns preparation handlers and the sole FuelData publication.
 Its consumed mass accumulates across all Fuel ticks in one host frame.
