@@ -30,6 +30,24 @@ jobs:
           cache: npm
       - name: Install validation tools
         run: npm ci --ignore-scripts
+      - name: Install the pinned Build Tools release
+        shell: powershell
+        timeout-minutes: 15
+        run: |
+          # Fixed 18.10.3 bootstrapper from Microsoft's Visual Studio release history.
+          $bootstrapper = Join-Path $env:RUNNER_TEMP 'vs_BuildTools.exe'
+          $uri = 'https://download.visualstudio.microsoft.com/download/pr/e5f740e0-92f9-49d7-ab3b-5d17b84108fd/283d526008bf3ac56ec2c6aeb3102b8ca68b9af75643c8f5d0ee58060a1886bb/vs_BuildTools.exe'
+          Invoke-WebRequest -Uri $uri -OutFile $bootstrapper -UseBasicParsing
+          $expected = '283d526008bf3ac56ec2c6aeb3102b8ca68b9af75643c8f5d0ee58060a1886bb'
+          if ((Get-FileHash -LiteralPath $bootstrapper -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Build Tools bootstrapper SHA256 mismatch.'
+          }
+          $installation = Join-Path $env:RUNNER_TEMP 'efm-buildtools'
+          $config = Join-Path $env:GITHUB_WORKSPACE '.vsconfig'
+          $arguments = @('--quiet', '--wait', '--norestart', '--nocache', '--installPath', $installation, '--config', $config)
+          $process = Start-Process -FilePath $bootstrapper -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) { throw "Build Tools installation failed: $($process.ExitCode)" }
+          ./tools/check_efm_toolchain.ps1
       - name: Check formatting and tooling
         shell: powershell
         run: |
