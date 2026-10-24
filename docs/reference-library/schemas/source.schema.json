@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:f-ck-1c:reference-library:source:1",
+  "title": "Reference library source record",
+  "description": "Validate parsed source.yaml. Resolve all URN references from a local registry; no network retrieval is required.",
+  "$comment": "Schemas check structure, not legality, accuracy, reference existence, path containment after resolution, actual file hashes, or cross-field page/time ordering.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "source_id", "title", "original_title", "authors", "publisher",
+    "official_record_url", "official_record_status", "official_record_note",
+    "links_checked_at", "review", "versions"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "source_id": {"$ref": "#/$defs/source_id"},
+    "title": {"$ref": "#/$defs/text"},
+    "original_title": {"$ref": "#/$defs/nullable_text"},
+    "authors": {"type": "array", "items": {"$ref": "#/$defs/text"}},
+    "publisher": {"$ref": "#/$defs/nullable_text"},
+    "official_record_url": {"$ref": "#/$defs/nullable_url"},
+    "official_record_status": {"$ref": "#/$defs/link_status"},
+    "official_record_note": {"$ref": "#/$defs/nullable_text"},
+    "links_checked_at": {"$ref": "#/$defs/nullable_date"},
+    "review": {"$ref": "#/$defs/review"},
+    "publication": {"$ref": "#/$defs/publication"},
+    "official_record_history": {"type": "array", "items": {"$ref": "#/$defs/link"}},
+    "versions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/version"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"official_record_status": {"const": "available"}}},
+      "then": {"properties": {"official_record_url": {"$ref": "#/$defs/url"}}},
+      "else": {"properties": {"official_record_note": {"$ref": "#/$defs/text"}}}
+    }
+  ],
+  "$defs": {
+    "text": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "nullable_text": {"anyOf": [{"$ref": "#/$defs/text"}, {"type": "null"}]},
+    "date": {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "nullable_date": {"anyOf": [{"$ref": "#/$defs/date"}, {"type": "null"}]},
+    "url": {"type": "string", "format": "uri", "pattern": "^https?://[^\\s]+$"},
+    "nullable_url": {"anyOf": [{"$ref": "#/$defs/url"}, {"type": "null"}]},
+    "source_id": {"type": "string", "pattern": "^SRC-[0-9]+$"},
+    "version_id": {"type": "string", "pattern": "^v[0-9]+$"},
+    "asset_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9]*-[0-9]+$"},
+    "relation_id": {"type": "string", "pattern": "^REL-[0-9]+$"},
+    "knowledge_id": {"type": "string", "pattern": "^KNO-[0-9]+$"},
+    "section_id": {"type": "string", "pattern": "^SEC-[0-9]+$"},
+    "topic_id": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*:)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*\\/$)[^\\u0000-\\u001f]+$",
+      "description": "Forward-slash path relative to the source package; no absolute path, backslash, colon, empty segment, or dot traversal. Tools must also check resolved containment and symbolic links."
+    },
+    "link_status": {"enum": ["available", "unavailable", "not_provided", "not_found", "unverified"]},
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "status", "note", "checked_at"],
+      "properties": {
+        "url": {"$ref": "#/$defs/nullable_url"},
+        "status": {"$ref": "#/$defs/link_status"},
+        "note": {"$ref": "#/$defs/nullable_text"},
+        "checked_at": {"$ref": "#/$defs/nullable_date"}
+      },
+      "allOf": [{
+        "if": {"properties": {"status": {"const": "available"}}},
+        "then": {"properties": {"url": {"$ref": "#/$defs/url"}}},
+        "else": {"properties": {"note": {"$ref": "#/$defs/text"}}}
+      }]
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "scope", "method", "checked_by", "checked_at"],
+      "properties": {
+        "state": {"enum": ["agent_added", "cross_checked", "human_reviewed"]},
+        "scope": {"$ref": "#/$defs/text"},
+        "method": {"$ref": "#/$defs/nullable_text"},
+        "checked_by": {"$ref": "#/$defs/nullable_text"},
+        "checked_at": {"$ref": "#/$defs/nullable_date"},
+        "evidence": {"$ref": "#/$defs/nullable_text"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"enum": ["cross_checked", "human_reviewed"]}}},
+          "then": {"properties": {
+            "method": {"$ref": "#/$defs/text"},
+            "checked_by": {"$ref": "#/$defs/text"},
+            "checked_at": {"$ref": "#/$defs/date"}
+          }}
+        },
+        {
+          "if": {"properties": {"state": {"const": "human_reviewed"}}},
+          "then": {"required": ["evidence"], "properties": {"evidence": {"$ref": "#/$defs/text"}}}
+        }
+      ]
+    },
+    "basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref", "url", "scope"],
+      "properties": {
+        "kind": {"enum": ["license", "public_domain", "permission", "statutory", "terms"]},
+        "ref": {"$ref": "#/$defs/text"},
+        "url": {"$ref": "#/$defs/nullable_url"},
+        "scope": {"$ref": "#/$defs/text"}
+      },
+      "description": "Document the basis for the enclosing action, including the relevant use and material. No AI-specific license category is required."
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "basis", "conditions", "reason", "assessed_by", "assessed_at"],
+      "properties": {
+        "status": {"enum": ["allowed", "prohibited", "unverified"]},
+        "basis": {"type": "array", "items": {"$ref": "#/$defs/basis"}},
+        "conditions": {"type": "array", "items": {"$ref": "#/$defs/text"}},
+        "reason": {"$ref": "#/$defs/text"},
+        "assessed_by": {"$ref": "#/$defs/nullable_text"},
+        "assessed_at": {"$ref": "#/$defs/nullable_date"}
+      },
+      "allOf": [{
+        "if": {"properties": {"status": {"const": "allowed"}}},
+        "then": {"properties": {
+          "basis": {"type": "array", "minItems": 1},
+          "assessed_by": {"$ref": "#/$defs/text"},
+          "assessed_at": {"$ref": "#/$defs/date"}
+        }}
+      }]
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["download", "git_storage", "ai_processing"],
+      "properties": {
+        "download": {"$ref": "#/$defs/permission"},
+        "git_storage": {"$ref": "#/$defs/permission"},
+        "ai_processing": {"$ref": "#/$defs/permission"}
+      }
+    },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git_storage", "ai_processing"],
+      "properties": {
+        "git_storage": {"$ref": "#/$defs/permission"},
+        "ai_processing": {"$ref": "#/$defs/permission"}
+      },
+      "description": "Separate action assessments for authored metadata, guide, or knowledge content. Actual file placement is a cross-file check."
+    },
+    "locator": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "asset_id", "page_start", "page_end"],
+          "properties": {
+            "type": {"const": "pdf"},
+            "asset_id": {"$ref": "#/$defs/asset_id"},
+            "page_start": {"type": "integer", "minimum": 1},
+            "page_end": {"type": "integer", "minimum": 1},
+            "section": {"$ref": "#/$defs/nullable_text"},
+            "figure": {"$ref": "#/$defs/nullable_text"},
+            "table": {"$ref": "#/$defs/nullable_text"}
+          },
+          "description": "Inclusive one-based PDF pages, including covers. Tools check end >= start and actual asset page count."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "url"],
+          "properties": {
+            "type": {"const": "web"},
+            "url": {"$ref": "#/$defs/url"},
+            "heading": {"$ref": "#/$defs/text"},
+            "post_id": {"$ref": "#/$defs/text"}
+          },
+          "anyOf": [
+            {"required": ["heading"], "properties": {"heading": {"$ref": "#/$defs/text"}}},
+            {"required": ["post_id"], "properties": {"post_id": {"$ref": "#/$defs/text"}}}
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "url", "start_seconds", "end_seconds"],
+          "properties": {
+            "type": {"const": "video"},
+            "url": {"$ref": "#/$defs/url"},
+            "start_seconds": {"type": "number", "minimum": 0},
+            "end_seconds": {"type": "number", "minimum": 0}
+          },
+          "description": "Tools check end_seconds >= start_seconds and the actual media duration."
+        }
+      ]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grade", "reason", "assessed_by", "assessed_at"],
+      "properties": {
+        "grade": {"enum": ["A", "B", "C", "D", "U"]},
+        "reason": {"$ref": "#/$defs/text"},
+        "scope": {"$ref": "#/$defs/text"},
+        "assessed_by": {"$ref": "#/$defs/nullable_text"},
+        "assessed_at": {"$ref": "#/$defs/nullable_date"}
+      },
+      "if": {"properties": {"grade": {"not": {"const": "U"}}}},
+      "then": {"properties": {
+        "assessed_by": {"$ref": "#/$defs/text"},
+        "assessed_at": {"$ref": "#/$defs/date"}
+      }}
+    },
+    "directness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grade", "reason"],
+      "properties": {
+        "grade": {"enum": ["E1", "E2", "E3", "E4", "EU"]},
+        "reason": {"$ref": "#/$defs/text"}
+      }
+    },
+    "relevance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grade", "reason"],
+      "properties": {
+        "grade": {"enum": ["R1", "R2", "R3", "R4", "RU"]},
+        "reason": {"$ref": "#/$defs/text"}
+      }
+    },
+    "applies_to": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aircraft", "configuration", "period", "conditions", "limitations"],
+      "properties": {
+        "aircraft": {"$ref": "#/$defs/nullable_text"},
+        "configuration": {"$ref": "#/$defs/nullable_text"},
+        "period": {"$ref": "#/$defs/nullable_text"},
+        "conditions": {"$ref": "#/$defs/nullable_text"},
+        "limitations": {"type": ["array", "null"], "items": {"$ref": "#/$defs/text"}}
+      }
+    },
+    "topic_relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relation_id", "topic_id", "scope", "locator", "applies_to",
+        "directness", "relevance", "assessed_by", "assessed_at"
+      ],
+      "properties": {
+        "relation_id": {"$ref": "#/$defs/relation_id"},
+        "topic_id": {"$ref": "#/$defs/topic_id"},
+        "scope": {"$ref": "#/$defs/text"},
+        "locator": {"anyOf": [{"$ref": "#/$defs/locator"}, {"type": "null"}]},
+        "applies_to": {"$ref": "#/$defs/applies_to"},
+        "directness": {"$ref": "#/$defs/directness"},
+        "relevance": {"$ref": "#/$defs/relevance"},
+        "assessed_by": {"$ref": "#/$defs/nullable_text"},
+        "assessed_at": {"$ref": "#/$defs/nullable_date"}
+      },
+      "if": {"anyOf": [
+        {"properties": {"directness": {"type": "object", "properties": {"grade": {"not": {"const": "EU"}}}}}},
+        {"properties": {"relevance": {"type": "object", "properties": {"grade": {"not": {"const": "RU"}}}}}}
+      ]},
+      "then": {"properties": {
+        "assessed_by": {"$ref": "#/$defs/text"},
+        "assessed_at": {"$ref": "#/$defs/date"}
+      }}
+    },
+    "asset_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "version_id", "asset_id"],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/source_id"},
+        "version_id": {"$ref": "#/$defs/version_id"},
+        "asset_id": {"$ref": "#/$defs/asset_id"}
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id", "kind", "path", "availability", "sha256", "acquired_at",
+        "rights", "derived_from"
+      ],
+      "properties": {
+        "asset_id": {"$ref": "#/$defs/asset_id"},
+        "kind": {"enum": ["pdf", "image", "guide", "corrected_text", "web_snapshot", "video", "audio", "other"]},
+        "path": {"anyOf": [{"$ref": "#/$defs/path"}, {"type": "null"}]},
+        "availability": {"enum": ["present", "not_acquired", "missing"]},
+        "sha256": {"type": ["string", "null"], "pattern": "^[a-fA-F0-9]{64}$"},
+        "acquired_at": {"$ref": "#/$defs/nullable_date"},
+        "rights": {"$ref": "#/$defs/rights"},
+        "derived_from": {"type": "array", "items": {"$ref": "#/$defs/asset_reference"}},
+        "locator": {"anyOf": [{"$ref": "#/$defs/locator"}, {"type": "null"}]},
+        "figure_label": {"$ref": "#/$defs/nullable_text"},
+        "caption": {"$ref": "#/$defs/nullable_text"},
+        "related_entries": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/knowledge_id"}},
+        "note": {"$ref": "#/$defs/nullable_text"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"availability": {"const": "present"}}},
+          "then": {"properties": {
+            "path": {"$ref": "#/$defs/path"},
+            "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"}
+          }}
+        },
+        {
+          "if": {"properties": {
+            "availability": {"const": "present"},
+            "path": {"type": "string", "not": {"pattern": "^local/"}}
+          }},
+          "then": {"properties": {"rights": {"type": "object", "properties": {
+            "git_storage": {"type": "object", "properties": {"status": {"const": "allowed"}}}
+          }}}}
+        }
+      ]
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version_id", "publisher_revision", "published_at", "download_url",
+        "download_status", "download_note", "links_checked_at", "authority",
+        "assets", "topic_relations"
+      ],
+      "properties": {
+        "version_id": {"$ref": "#/$defs/version_id"},
+        "publisher_revision": {"$ref": "#/$defs/nullable_text"},
+        "published_at": {"$ref": "#/$defs/nullable_date"},
+        "download_url": {"$ref": "#/$defs/nullable_url"},
+        "download_status": {"$ref": "#/$defs/link_status"},
+        "download_note": {"$ref": "#/$defs/nullable_text"},
+        "links_checked_at": {"$ref": "#/$defs/nullable_date"},
+        "acquisition_links": {"type": "array", "items": {"$ref": "#/$defs/link"}},
+        "authority": {"$ref": "#/$defs/authority"},
+        "assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}},
+        "topic_relations": {"type": "array", "items": {"$ref": "#/$defs/topic_relation"}},
+        "superseded_by": {"anyOf": [{"$ref": "#/$defs/version_id"}, {"type": "null"}]},
+        "guide_note": {"$ref": "#/$defs/nullable_text"}
+      },
+      "allOf": [{
+        "if": {"properties": {"download_status": {"const": "available"}}},
+        "then": {"properties": {"download_url": {"$ref": "#/$defs/url"}}},
+        "else": {"properties": {"download_note": {"$ref": "#/$defs/text"}}}
+      }]
+    },
+    "guide_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "record_type", "source_id", "version_id", "original_asset_id",
+        "review", "publication", "coverage", "sections"
+      ],
+      "properties": {
+        "schema_version": {"const": 1},
+        "record_type": {"const": "guide"},
+        "source_id": {"$ref": "#/$defs/source_id"},
+        "version_id": {"$ref": "#/$defs/version_id"},
+        "original_asset_id": {"$ref": "#/$defs/asset_id"},
+        "review": {"$ref": "#/$defs/review"},
+        "publication": {"$ref": "#/$defs/publication"},
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outline_complete", "summary_scope", "summarized_sections", "reviewed_sections"],
+          "properties": {
+            "outline_complete": {"type": "boolean"},
+            "summary_scope": {"$ref": "#/$defs/text"},
+            "summarized_sections": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/section_id"}},
+            "reviewed_sections": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/section_id"}}
+          }
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["section_id", "title", "locator", "relation_ids"],
+            "properties": {
+              "section_id": {"$ref": "#/$defs/section_id"},
+              "title": {"$ref": "#/$defs/text"},
+              "locator": {"$ref": "#/$defs/locator"},
+              "relation_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/relation_id"}}
+            }
+          }
+        }
+      }
+    }
+  }
+}

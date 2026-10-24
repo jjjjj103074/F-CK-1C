@@ -1,0 +1,144 @@
+schema_version: 1
+
+axes:
+  authority:
+    scope: source_version
+    assessed_grade_order: [A, B, C, D]
+    unassessed_grade: U
+    grades:
+      A:
+        label: Authoritative
+        criterion: >-
+          Verified first-party government or regulator, original manufacturer,
+          or formal issuing institution speaking within its responsibility.
+      B:
+        label: Professional
+        criterion: >-
+          Accountable scholarly or professional publication, technical book,
+          or identifiable qualified technical author.
+      C:
+        label: Traceable non-official
+        criterion: >-
+          Identifiable, attributable non-official publication or original
+          contribution with inspectable provenance.
+      D:
+        label: Informal or unverified
+        criterion: >-
+          Anonymous or informal assertions, weak attribution, or insufficiently
+          established authority of the author or publisher after assessment.
+      U:
+        label: Unassessed
+        criterion: >-
+          Authority has not been evaluated or cannot yet be determined.
+
+  directness:
+    scope: source_to_topic_relation
+    assessed_grade_order: [E1, E2, E3, E4]
+    unassessed_grade: EU
+    grades:
+      E1:
+        label: Primary evidence
+        criterion: >-
+          Original measurements, analysis, tests, directly observable imagery,
+          or first-party design or operating documentation for the stated point.
+      E2:
+        label: Traceable technical synthesis
+        criterion: >-
+          Technical analysis or synthesis with identifiable underlying primary
+          evidence for the stated point.
+      E3:
+        label: Interpretation or recollection
+        criterion: >-
+          Commentary, interpretation, interview recollection, or a secondary
+          account without directly inspectable support for the stated point.
+      E4:
+        label: Unsupported assertion
+        criterion: >-
+          A claim with insufficient supporting provenance or evidence for the
+          stated point.
+      EU:
+        label: Unassessed
+        criterion: >-
+          The evidence type or its directness has not been determined.
+
+  relevance:
+    scope: source_to_topic_relation
+    assessed_grade_order: [R1, R2, R3, R4]
+    unassessed_grade: RU
+    grades:
+      R1:
+        label: Direct
+        criterion: >-
+          Addresses the target F-CK-1C configuration and the topic directly.
+      R2:
+        label: Strongly related
+        criterion: >-
+          A documented series or subsystem relationship, or a strong engineering
+          analogue with relevant architecture, conditions, and differences
+          explained.
+      R3:
+        label: Comparative
+        criterion: >-
+          A different platform or context addressing a comparable engineering
+          problem, with material transfer limitations.
+      R4:
+        label: Background
+        criterion: >-
+          General theory or a more distant context useful for foundational
+          understanding.
+      RU:
+        label: Unassessed
+        criterion: >-
+          Applicability to the target engineering question has not been evaluated.
+
+assessment_rules:
+  - >-
+    Assess the three axes independently. Never assign percentage grades, convert
+    grades into numeric scores, or combine them into a total or weighted score.
+  - >-
+    Within each axis, assessed_grade_order lists the defined grades from greater
+    authority, directness, or relevance to lesser. The unassessed grade is outside
+    this order; unknown does not mean low, false, or unusable.
+  - >-
+    Every assessment records its scope, rationale, assessor, and date. For an
+    unassessed axis, state that assessment has not occurred or why it remains
+    undetermined; never invent an assessor, date, or completed check.
+  - >-
+    Assess authority for the identifiable publication and responsible author or
+    publisher in the recorded source version. A hosting domain, institutional
+    affiliation, peer-review label, or citation to a famous body is not sufficient
+    by itself to establish the grade or the accuracy of every statement.
+  - >-
+    Store authority on the source version. Store directness and relevance on an
+    independently scoped source-to-topic relation with its actual content scope
+    and locator when available. Knowledge entries reference these assessments
+    rather than maintaining duplicate grade values.
+  - >-
+    Different chapters or evidence in one source may have different directness
+    and relevance assessments for different topics. Create a separately scoped
+    relation when a different claim, condition, or engineering question requires
+    a different assessment; do not overwrite another relation's meaning.
+  - >-
+    Preserve the actual aircraft, configuration, operating or test conditions,
+    dates, and material limitations. Similar dates alone do not establish R2.
+  - >-
+    Explain the engineering relationship and meaningful differences when using
+    analogue research. R2 does not establish that the F-CK-1C uses the same
+    control law, parameters, hardware, or performance as another aircraft.
+  - >-
+    Assess directness for the stated point. Unofficial imagery can be primary
+    evidence for a directly visible feature even if source authority is low;
+    a first-party specification establishes what is specified, not automatically
+    what was measured in operational service.
+  - >-
+    Grade A does not mean infallible, applicable to another aircraft, or legally
+    unrestricted. Copyright permissions, Git storage, processing restrictions,
+    review status, and assessment grades remain separate decisions.
+  - >-
+    Grades assist discovery and judgment. Do not automatically exclude content,
+    impose hidden grade cutoffs, or treat an unassessed relation as irrelevant.
+    Apply grade filters only when the query explicitly requests them.
+  - >-
+    Retain contradictory evidence with its own provenance, conditions, and
+    assessment. A high grade does not erase disagreement or justify fabricating
+    a consensus.
