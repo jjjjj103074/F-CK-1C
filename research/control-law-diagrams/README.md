@@ -1,9 +1,17 @@
 # F-16 longitudinal control model
 
 `ControlLawDiagrams.F16Block25.LongitudinalControl` transcribes
-[ADA189675 Figure 3.1](../references/ADA189675.pdf).
+[ADA189675 Figure 3.1](../../docs/reference-library/sources/SRC-000001/document-v001.pdf).
 Figure 3.2 supplies gain schedules. The Modelica package is an executable
 research model, separate from the C++ EFM.
+
+The unchanged source scan is now cataloged as `SRC-000001`. Consult its
+[guide and provenance](../../docs/reference-library/sources/SRC-000001/README.md)
+and [source record](../../docs/reference-library/sources/SRC-000001/source.yaml).
+Figure 3.1 spans PDF pp. 40-41; Figure 3.2 spans PDF pp. 42-43. The thesis's
+simplified Figures 3.6-3.7 are different artifacts, not replacements for those
+reference diagrams. This migration does not alter the research model or validate
+its transcription.
 
 ## Model boundary
 

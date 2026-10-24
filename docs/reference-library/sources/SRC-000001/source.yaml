@@ -1,0 +1,472 @@
+schema_version: 1
+source_id: SRC-000001
+title: F-16 Simulator for Man-in-the-Loop Testing of Aircraft Control Systems (SIMTACS)
+original_title: null
+authors: [Mark W. Kassan]
+publisher: School of Engineering, Air Force Institute of Technology, Air University
+official_record_url: https://apps.dtic.mil/sti/citations/ADA189675
+official_record_status: unavailable
+official_record_note: >-
+  DTIC accession AD-A189675; catalog endpoint returned HTTP 403 on this check.
+  Identity is supported by the original PDF and the alternate NASA bibliography
+  listed below, not by a newly retrieved DTIC record.
+links_checked_at: '2026-10-24'
+official_record_history:
+  - url: https://ntrs.nasa.gov/citations/19880017779
+    status: available
+    note: >-
+      Alternate official bibliographic witness: NASA-SP-7037(229), entry
+      N88-21178 on printed p. 445. This is a bibliography containing the thesis
+      listing, not a NASA-authored thesis or its original PDF download.
+    checked_at: '2026-10-24'
+review:
+  state: cross_checked
+  scope: >-
+    Bibliography, scan identity, asset inventory, scoped relationship assessments,
+    public-release notices, and recorded link accessibility. Not an independent
+    validation of aircraft data, every diagram label, or a human/legal approval.
+  method: >-
+    Compared PDF title/degree/report pages, metadata, contents and bibliography
+    with NASA's bibliographic listing; inspected key page renders, computed
+    SHA-256 hashes, and checked the recorded official endpoints.
+  checked_by: Codex
+  checked_at: '2026-10-24'
+versions:
+  - version_id: v001
+    publisher_revision: AFIT/GE/ENG/87D-30 (December 1987; publication day not stated)
+    published_at: null
+    download_url: https://apps.dtic.mil/sti/pdfs/ADA189675.pdf
+    download_status: unavailable
+    download_note: >-
+      Endpoint returned HTTP 403. The existing repository scan was imported
+      unchanged; its original acquisition URL/date and a remote byte match are
+      unknown. NASA's bibliography PDF is not a replacement thesis download.
+    links_checked_at: '2026-10-24'
+    acquisition_links:
+      - url: https://apps.dtic.mil/sti/tr/pdf/ADA189675.pdf
+        status: unavailable
+        note: Legacy official DTIC PDF endpoint; HTTP 403 on this check.
+        checked_at: '2026-10-24'
+    authority:
+      grade: B
+      scope: Accountable AFIT graduate research and the reported SIMTACS work.
+      reason: >-
+        Identifiable, supervised MS thesis with named author, issuing institution,
+        report identifier, and references. It is research, not an authoritative
+        F-16/F-CK-1C configuration specification. NASA indexes the work but did
+        not author it; institutional hosting alone does not establish accuracy.
+      assessed_by: Codex
+      assessed_at: '2026-10-24'
+    assets:
+      - asset_id: PDF-001
+        kind: pdf
+        path: document-v001.pdf
+        availability: present
+        sha256: 4f6b9076a4be6296c838b4469f2cfcda1d0599b6eb9813d1de92f25b92f2017e
+        acquired_at: null
+        derived_from: []
+        note: >-
+          186 PDF pages, imported without byte changes on 2026-10-24 from
+          research/references/ADA189675.pdf. Original acquisition date unknown.
+          Catalog extent 176 and report-form extent 175 are not PDF page counts.
+          Source-specific notices in README.md override repository asset-license
+          defaults; no unrestricted license for every embedded item is claimed.
+        rights:
+          download:
+            status: allowed
+            basis: &report_basis
+              - kind: public_domain
+                ref: 17 USC sections 101/105; PDF pp. 5 and 184 author/institution record
+                url: https://www.copyright.gov/title17/92chap1.html#105
+                scope: >-
+                  Documented federal-work determination for this USAF officer's
+                  AFIT research report; preserve the complete original and notices
+                  for research. Not a blanket determination about third-party
+                  diagrams or all jurisdictions and uses.
+              - kind: terms
+                ref: Public-release and unlimited-distribution statements, PDF pp. 4-5 and 184
+                url: null
+                scope: >-
+                  Public release supports access and intact report preservation;
+                  distribution status alone is not a copyright license.
+              - kind: terms
+                ref: AFIT institutional repository government-work policy
+                url: https://scholar.afit.edu/etd/policies.html
+                scope: >-
+                  Supports the distinction between government works and other
+                  protected material; not a work-specific worldwide grant.
+            conditions: &report_conditions
+              - Retain the original bytes, source attribution, and notices.
+              - Do not apply repository MIT or CC BY defaults to the original.
+              - Do not claim NASA authorship, endorsement, or unrestricted third-party reuse.
+              - Reassess a materially different use or contrary source-specific notice.
+            reason: >-
+              Public military AFIT thesis with officer/institution identification,
+              explicit release statements and no observed contrary notice;
+              assessed for the documented research-preservation use.
+            assessed_by: Codex
+            assessed_at: '2026-10-24'
+          git_storage:
+            status: allowed
+            basis: *report_basis
+            conditions: *report_conditions
+            reason: >-
+              Intact preservation of the existing publicly released government
+              research report, on the documented federal-work assessment;
+              not permission to relicense every contained work.
+            assessed_by: Codex
+            assessed_at: '2026-10-24'
+          ai_processing:
+            status: allowed
+            basis: *report_basis
+            conditions: *report_conditions
+            reason: >-
+              Research reading, extraction and explanation of this public report;
+              no source-specific prohibition on this use was identified. This is
+              not an assessment of training or unrelated commercial reuse.
+            assessed_by: Codex
+            assessed_at: '2026-10-24'
+      - asset_id: GUIDE-001
+        kind: guide
+        path: guide-v001.md
+        availability: present
+        sha256: 78c90192cbadf255985bf313a626738efa3589878d0e2be9a39b50a2a04f7a09
+        acquired_at: '2026-10-24'
+        derived_from: &pdf_origin
+          - source_id: SRC-000001
+            version_id: v001
+            asset_id: PDF-001
+        rights:
+          download: &authored_use
+            status: allowed
+            basis:
+              - kind: license
+                ref: Project LICENSE, independently authored documentation under MIT
+                url: null
+                scope: New explanatory prose only, not the original report or images.
+              - kind: statutory
+                ref: Taiwan Copyright Act article 10-1
+                url: https://law.moj.gov.tw/LawClass/LawAll.aspx?PCode=J0070017
+                scope: Independently expressed facts, ideas and methods with attribution.
+            conditions:
+              - Keep source attribution and the original-versus-authored distinction.
+              - Retain the project license for independently authored prose.
+              - Assess embedded source images separately; do not relicense them.
+            reason: Original factual condensation and explanations in new wording.
+            assessed_by: Codex
+            assessed_at: '2026-10-24'
+          git_storage: *authored_use
+          ai_processing: *authored_use
+      - asset_id: FIG-001
+        kind: image
+        path: figures/v001/figure-3-1-p040.png
+        availability: present
+        sha256: 16f9a0d8d1d0579a1b78e4ec8a2270f41c4415c0d7ac607d7fb7f03d0d675d18
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 40, page_end: 40, figure: '3.1'}
+        figure_label: Figure 3.1 (first scan half)
+        caption: Fuller longitudinal DFCS reference; read with FIG-002, PDF p. 41.
+        related_entries: [KNO-000001]
+        note: &render_note Full-page Poppler render at 180 dpi; original scan legibility is unchanged.
+        rights: &quoted_image_rights
+          download: &quoted_image_use
+            status: allowed
+            basis:
+              - kind: statutory
+                ref: Taiwan Copyright Act articles 52, 64 and 65; research quotation assessment
+                url: https://law.moj.gov.tw/LawClass/LawAll.aspx?PCode=J0070017
+                scope: >-
+                  Limited necessary diagram/table quotation, distinguishable from
+                  accompanying original research commentary in this library.
+                  Complete scan halves are necessary to preserve connections,
+                  labels, conditions and attribution; this is not a replacement
+                  for the complete thesis or a standalone artwork collection.
+            conditions:
+              - Use with the source-specific guide or knowledge commentary and precise citation.
+              - Preserve original labels and notices; identify the page rendering as a derivative.
+              - No repository MIT/CC BY relicensing, endorsement, or unrelated standalone reuse.
+              - Reassess if purpose, amount, jurisdiction, or source notices materially change.
+            reason: >-
+              Necessary attributed research reference for explanation and comparison
+              of the reported controllers or validation conditions; third-party
+              public-domain status is not assumed.
+            assessed_by: Codex
+            assessed_at: '2026-10-24'
+          git_storage: *quoted_image_use
+          ai_processing: *quoted_image_use
+      - asset_id: FIG-002
+        kind: image
+        path: figures/v001/figure-3-1-p041.png
+        availability: present
+        sha256: 111224d0e36d8f93aa66439bd5a3d2c1d29d1d9ee8e3d169a4c56ddac4e9eafc
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 41, page_end: 41, figure: '3.1'}
+        figure_label: Figure 3.1 (second scan half)
+        caption: Fuller longitudinal DFCS reference; read with FIG-001, PDF p. 40.
+        related_entries: [KNO-000001]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-003
+        kind: image
+        path: figures/v001/figure-3-2-p042.png
+        availability: present
+        sha256: 6e934656f8bb95d4ed7030c49194948c6eaf7ad62a68123a7b939748c560f5f8
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 42, page_end: 42, figure: '3.2'}
+        figure_label: Figure 3.2 (first scan half)
+        caption: Fuller longitudinal gain schedules; read with FIG-004, PDF p. 43.
+        related_entries: [KNO-000001, KNO-000003]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-004
+        kind: image
+        path: figures/v001/figure-3-2-p043.png
+        availability: present
+        sha256: 0803c35212f4a0e52ef9650078c18f212a5f9c1e73881bf2cf703fc048d3b8e1
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 43, page_end: 43, figure: '3.2'}
+        figure_label: Figure 3.2 (second scan half)
+        caption: Fuller longitudinal gain schedules; read with FIG-003, PDF p. 42.
+        related_entries: [KNO-000001, KNO-000003]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-005
+        kind: image
+        path: figures/v001/table-1-p050.png
+        availability: present
+        sha256: 288fcf93b75f59d22a941d3f29608424c60ec726afa3b0da6ec6e2b1ce96842a
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 50, page_end: 50, table: I}
+        figure_label: Table I
+        caption: Fixed gains for the thesis simplification at Mach 0.9 and 20000 ft.
+        related_entries: [KNO-000002, KNO-000003]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-006
+        kind: image
+        path: figures/v001/figure-3-6-p051.png
+        availability: present
+        sha256: 5498780431b97359fa748c8e25cbbd1439250100dd68db6c0176cd473fb65ce3
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 51, page_end: 51, figure: '3.6'}
+        figure_label: Figure 3.6
+        caption: Thesis's simplified longitudinal controller, not the fuller Figure 3.1.
+        related_entries: [KNO-000001, KNO-000002]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-007
+        kind: image
+        path: figures/v001/figure-3-7-p052.png
+        availability: present
+        sha256: 5f99dfe63424ebf7848dc05e7a65d79b499990458386442df1520e176fecd37b
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 52, page_end: 52, figure: '3.7'}
+        figure_label: Figure 3.7
+        caption: Thesis's simplified lateral-directional controller.
+        related_entries: [KNO-000002]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-008
+        kind: image
+        path: figures/v001/table-3-p094.png
+        availability: present
+        sha256: 1ccfd024e692dedaf92337c55d4110e3f3e44cadcff498f58e5b161aca4c5805
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 94, page_end: 94, table: III}
+        figure_label: Table III
+        caption: F-16A mass properties and initial conditions of the reported response plots.
+        related_entries: [KNO-000004]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-009
+        kind: image
+        path: figures/v001/figure-3-3-p044.png
+        availability: present
+        sha256: 9d5b0dd9160558e85151e30f52fe00a6bf4e9dd92838fbd66dfbe297568165a8
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 44, page_end: 44, figure: '3.3'}
+        figure_label: Figure 3.3 (first scan half)
+        caption: Fuller lateral-directional DFCS reference; read with FIG-010, PDF p. 45.
+        related_entries: [KNO-000001]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-010
+        kind: image
+        path: figures/v001/figure-3-3-p045.png
+        availability: present
+        sha256: 56d8ea85bb9bc40392bf9176aac34bf5ef5d24e989e7b37b49c585ac5d3085b8
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 45, page_end: 45, figure: '3.3'}
+        figure_label: Figure 3.3 (second scan half)
+        caption: Fuller lateral-directional DFCS reference; read with FIG-009, PDF p. 44.
+        related_entries: [KNO-000001]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-011
+        kind: image
+        path: figures/v001/figure-3-4-p046.png
+        availability: present
+        sha256: 6f425ebe2ce961ef00c7372c24e1c1ac9d8e8dca60e5c9fcaa4bd6dec05837fd
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 46, page_end: 46, figure: '3.4'}
+        figure_label: Figure 3.4 (first scan half)
+        caption: Fuller lateral-directional gain schedules; read with FIG-012, PDF p. 47.
+        related_entries: [KNO-000001]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-012
+        kind: image
+        path: figures/v001/figure-3-4-p047.png
+        availability: present
+        sha256: 67d23190bfcdfc8680a79666c44b7a5fc31eec2d34c78aa3e063500605376c82
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 47, page_end: 47, figure: '3.4'}
+        figure_label: Figure 3.4 (second scan half)
+        caption: Fuller lateral-directional gain schedules; read with FIG-011, PDF p. 46.
+        related_entries: [KNO-000001]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-013
+        kind: image
+        path: figures/v001/figure-3-5-p048.png
+        availability: present
+        sha256: 76f4b66553137814866ae0957ebd241a1f6287753535266381b574839d85ee11
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 48, page_end: 48, figure: '3.5'}
+        figure_label: Figure 3.5 (first scan half)
+        caption: Fuller DFCS control-surface mixer; read with FIG-014, PDF p. 49.
+        related_entries: [KNO-000001]
+        note: *render_note
+        rights: *quoted_image_rights
+      - asset_id: FIG-014
+        kind: image
+        path: figures/v001/figure-3-5-p049.png
+        availability: present
+        sha256: cf65736c928876cf9697ec0012edea9bc050668e748dd89cf1c16a24f4b54c59
+        acquired_at: '2026-10-24'
+        derived_from: *pdf_origin
+        locator: {type: pdf, asset_id: PDF-001, page_start: 49, page_end: 49, figure: '3.5'}
+        figure_label: Figure 3.5 (second scan half)
+        caption: Fuller DFCS control-surface mixer; read with FIG-013, PDF p. 48.
+        related_entries: [KNO-000001]
+        note: *render_note
+        rights: *quoted_image_rights
+    topic_relations:
+      - relation_id: REL-001
+        topic_id: control-law-design
+        scope: Fuller Block 25 DFCS reference structure reproduced and described by the thesis.
+        locator: {type: pdf, asset_id: PDF-001, page_start: 37, page_end: 49, section: III}
+        applies_to:
+          aircraft: F-16 reference, not F-CK-1C
+          configuration: Block 25 DFCS reference paired with an F-16A OHT simulation context.
+          period: December 1987 thesis; underlying reference 22 date not stated.
+          conditions: Distinguish the fuller diagrams from the subsequently simplified controller.
+          limitations:
+            - Original reference 22 was not independently retrieved or validated.
+            - Foldouts are split across scan pages; several labels remain unclear.
+            - No F-CK-1C architecture or parameters are established.
+        directness:
+          grade: E2
+          reason: Traceable secondary presentation of F-16 SPO-supplied reference 22, not independent access to that original.
+        relevance:
+          grade: R3
+          reason: A comparable fighter flight-control problem on another aircraft; common era alone does not establish transferability.
+        assessed_by: Codex
+        assessed_at: '2026-10-24'
+      - relation_id: REL-002
+        topic_id: control-law-design
+        scope: The thesis author's fixed-condition controller simplifications, gains, and stated assumptions.
+        locator: {type: pdf, asset_id: PDF-001, page_start: 50, page_end: 55, section: III}
+        applies_to:
+          aircraft: F-16A simulation, not F-CK-1C
+          configuration: OHT clean aerodynamic context, wingtip AIM-9; simplified Block 25 DFCS.
+          period: December 1987 thesis.
+          conditions: Mach 0.9, altitude 20000 ft; no landing/refueling/high-rate configuration claims.
+          limitations:
+            - Fixed gains and omitted limiters/filters are simulation assumptions, not full aircraft behavior.
+            - The thesis holds leading-edge flap deflection at zero.
+            - No basis to adopt these coefficients or simplifications as F-CK-1C settings.
+        directness:
+          grade: E1
+          reason: Primary account of the author's own simplification, not primary evidence of an operational aircraft's complete controller.
+        relevance:
+          grade: R3
+          reason: Useful comparative control-model design with explicit differences and a narrow nominal condition.
+        assessed_by: Codex
+        assessed_at: '2026-10-24'
+      - relation_id: REL-003
+        topic_id: flight-simulation-validation
+        scope: Reported closed-loop response tests, initial conditions, and validation limitations.
+        locator: {type: pdf, asset_id: PDF-001, page_start: 89, page_end: 129, section: VI}
+        applies_to:
+          aircraft: F-16A OHT simulation with AFTI/F-16 comparison material.
+          configuration: Coupled and inertially uncoupled models with the simplified DFCS.
+          period: December 1987 thesis.
+          conditions: Mach 0.9, 20000 ft, one-g wings-level nonaccelerating nominal condition.
+          limitations:
+            - External reference 19 and raw comparison responses were not independently verified here.
+            - Closed-loop response examples do not establish full-envelope or human-pilot validation.
+            - The source reports rudder-pedal plot polarity errors.
+        directness:
+          grade: E1
+          reason: Primary evidence of the author's test method and reported results, not independently verified flight-test ground truth.
+        relevance:
+          grade: R3
+          reason: A useful simulation-validation comparison on a different aircraft and historical platform.
+        assessed_by: Codex
+        assessed_at: '2026-10-24'
+      - relation_id: REL-004
+        topic_id: flight-simulation-validation
+        scope: Original real-time objectives and reported computation/display limitations.
+        locator: {type: pdf, asset_id: PDF-001, page_start: 26, page_end: 36, section: II}
+        applies_to:
+          aircraft: F-16A research simulator.
+          configuration: Two EAI SIMSTAR hybrid computers and a provisional cockpit.
+          period: December 1987 hardware/software configuration.
+          conditions: Reported desired cycle around 15 ms versus slower lookup/control routines.
+          limitations:
+            - Historical hardware timing is not an aircraft DFCS frequency specification.
+            - Real-time man-in-the-loop performance was not achieved in the thesis.
+        directness:
+          grade: E1
+          reason: Author's primary account of implemented hardware limitations and unmet objectives.
+        relevance:
+          grade: R3
+          reason: Comparable end-to-end simulation-timing concern, but hardware and implementation differ materially.
+        assessed_by: Codex
+        assessed_at: '2026-10-24'
+      - relation_id: REL-005
+        topic_id: flight-simulation-validation
+        scope: Bibliographic provenance and availability/validity limits of the comparison responses, external code, and aerodynamic data.
+        locator: {type: pdf, asset_id: PDF-001, page_start: 178, page_end: 182, section: Appendix E and bibliography}
+        applies_to:
+          aircraft: F-16A OHT SIMTACS reproduction.
+          configuration: External SIMSTAR program listings and F-16A OHT clean aerodynamic tape.
+          period: December 1987 references.
+          conditions: Source code and full aerodynamic tables are not supplied by this PDF.
+          limitations:
+            - Reference 19 is a personal interview, not a reproduced flight-test dataset.
+            - Program inventory is not the complete source listings.
+            - The cited aerodynamic package is representative only; its validity is not guaranteed by ASD/ENFTC.
+            - Missing referenced materials are not inferred or fabricated.
+        directness:
+          grade: E1
+          reason: Explicit statements within the thesis about what it includes and the limitations of its references.
+        relevance:
+          grade: R3
+          reason: Concrete comparative reproducibility warnings, not evidence of F-CK-1C data availability or behavior.
+        assessed_by: Codex
+        assessed_at: '2026-10-24'
