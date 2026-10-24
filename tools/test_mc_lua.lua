@@ -276,4 +276,119 @@ expect(
         and #select_calls == 3,
     "clearing the last-request belief uses no invented SDK deselect call"
 )
+-- Radar/HMCS adapters must preserve MC-owned state while publishing native observations.
+values = fixture(function() return true end)
+local mission_values = {
+    [cockpit_params.Aim9ToneState] = 3,
+    [cockpit_params.Aim9SeekerState] = 3,
+    [cockpit_params.Aim9SeekerContact] = 1,
+    [cockpit_params.Aim9SeekerLock] = 1,
+    [cockpit_params.Aim9WeaponActive] = 1,
+    [cockpit_params.Aim9SeekerAzimuth] = 0.1,
+    [cockpit_params.Aim9SeekerElevation] = -0.2,
+    [cockpit_params.Aim9LockRange] = 1200,
+    [cockpit_params.HmcsWeaponClass] = 1,
+    [cockpit_params.HmcsWeaponQuantity] = 4,
+}
+for name, value in pairs(mission_values) do
+    values[name] = value
+end
+make_default_activity = function(rate) expect(rate == 0.02, "radar adapter retains its update period") end
+dofile("Cockpit/Scripts/Systems/radar_state_system.lua")
+post_initialize()
+update()
+expect(
+    values[cockpit_params.RadarState] == 1 and values[cockpit_params.RadarPowerState] == 1,
+    "preserve the constant-on DCS radar adapter"
+)
+local native_sensors = {
+    getIndicatedAirSpeed = function() return 100 end,
+    getBarometricAltitude = function() return 1000 end,
+    getMagneticHeading = function() return -0.1 end,
+}
+get_base_data = function() return native_sensors end
+GetSelf = function()
+    return { listen_command = function() error("HMCS must not register MC command listeners") end }
+end
+get_aircraft_draw_argument_value = function(argument) return argument == 510 and 1 or 0 end
+make_default_activity = function(rate) expect(rate == 1 / 64, "HMCS native observation remains 64 Hz") end
+dofile("Cockpit/Scripts/Systems/hmcs_system.lua")
+post_initialize()
+update()
+expect(
+    values[cockpit_params.PressureAltitudeAvailable] == 1 and values[cockpit_params.PressureAltitudeM] == 1000,
+    "publish raw barometric altitude"
+)
+expect(
+    values[cockpit_params.MagneticHeadingAvailable] == 1
+        and math.abs(values[cockpit_params.MagneticHeadingRad] - (2 * math.pi - 0.1)) < 1e-12,
+    "publish normalized magnetic heading"
+)
+expect(math.abs(values[cockpit_params.HmcsIasKts] - 194.3844) < 1e-8, "retain IAS presentation conversion")
+expect(math.abs(values[cockpit_params.HmcsAltitudeFt] - 3280.84) < 1e-8, "retain altitude presentation conversion")
+expect(
+    values[cockpit_params.HmcsEnabled] == 1 and values[cockpit_params.HmcsDisplayMode] == 1,
+    "retain helmet presentation draw arguments"
+)
+native_sensors.getBarometricAltitude = nil
+native_sensors.getMagneticHeading = nil
+update()
+expect(
+    values[cockpit_params.PressureAltitudeAvailable] == 0 and values[cockpit_params.MagneticHeadingAvailable] == 0,
+    "missing native observations remain unavailable"
+)
+for name, value in pairs(mission_values) do
+    expect(values[name] == value, "native presentation adapters must not overwrite MC state: " .. name)
+end
+
+-- Execute both real DCS input profiles: every MC/HOTAS binding reaches EFM with both edges.
+external_profile = function() return { keyCommands = {}, axisCommands = {} } end
+defaultDeviceAssignmentFor = function() return {} end
+_ = function(text) return text end
+join = function(destination, entries)
+    for _, entry in ipairs(entries) do
+        destination[#destination + 1] = entry
+    end
+end
+local mission_commands = {
+    "TriggerFirstStage",
+    "TriggerSecondStage",
+    "MasterArmOn",
+    "MasterArmOff",
+    "MasterArmSim",
+    "NavMode",
+    "DogfightSwitch",
+    "MissileOverride",
+    "MissileUncage",
+    "WeaponRelease",
+    "TMSUp",
+    "TMSDown",
+    "TMSLeft",
+    "TMSRight",
+    "CMSForward",
+    "CMSAft",
+    "CMSLeft",
+    "CMSRight",
+    "CMSPress",
+}
+for _, profile in ipairs({ "keyboard", "joystick" }) do
+    folder = "Input/F-CK-1C/" .. profile .. "/"
+    local bindings = dofile(folder .. "default.lua")
+    for _, name in ipairs(mission_commands) do
+        local matches = 0
+        for _, binding in ipairs(bindings.keyCommands) do
+            if binding.down == device_commands[name] then
+                matches = matches + 1
+                expect(
+                    binding.cockpit_device_id == nil
+                        and binding.up == binding.down
+                        and binding.value_down == 1
+                        and binding.value_up == 0,
+                    profile .. ": MC command must reach EFM with press/release: " .. name
+                )
+            end
+        end
+        expect(matches == 1, profile .. ": expected exactly one MC command binding: " .. name)
+    end
+end
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))

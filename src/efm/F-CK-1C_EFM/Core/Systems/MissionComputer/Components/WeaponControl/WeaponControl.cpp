@@ -35,7 +35,8 @@ void WeaponControl::handle(const Command& command)
 		else if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On &&
 		         mode_.fire_control == FireControlMode::Dogfight && !sensor_.uncage_held)
 		{
-			gun_.begin(actions_.append(MissionActionKind::GunOn));
+			weapon_.gun_start_sequence = actions_.append(MissionActionKind::GunOn);
+			gun_.begin(weapon_.gun_start_sequence);
 			weapon_.gun_requested = true;
 		}
 		return;
@@ -62,6 +63,7 @@ void WeaponControl::finish_gun()
 	actions_.append(MissionActionKind::GunOff);
 	gun_.clear();
 	weapon_.gun_requested = false;
+	weapon_.gun_start_sequence = 0;
 }
 
 void WeaponControl::finish_pickle(bool consume)

@@ -3,11 +3,20 @@
 #include <algorithm>
 #include <stdexcept>
 
+namespace
+{
+constexpr double kFallbackGunRoundsPerSecond = 100.0;
+}
+
 namespace Core::Systems::Mc
 {
-StoresManagement::StoresManagement(const MissionInputs& input, const ModeData& mode, StoresData& stores)
+StoresManagement::StoresManagement(const MissionInputs& input,
+                                   const ModeData& mode,
+                                   const WeaponControlData& weapon,
+                                   StoresData& stores)
     : input_(input),
       mode_(mode),
+      weapon_(weapon),
       stores_(stores)
 {
 }
@@ -32,8 +41,26 @@ void StoresManagement::request_station(std::optional<int> station, bool force)
 	++stores_.selection_request_revision;
 }
 
-void StoresManagement::step(std::chrono::nanoseconds, double)
+void StoresManagement::update_gun_quantity(std::chrono::nanoseconds time)
 {
+	time = (std::max)(time, input_.observed_at);
+	const auto& adapter = input_.cockpit.mission_adapter;
+	if (adapter.gun_count_available)
+		stores_.gun_count = adapter.gun_count;
+	else if (weapon_.gun_requested && gun_quantity_sequence_ != 0 &&
+	         gun_quantity_sequence_ == weapon_.gun_start_sequence)
+	{
+		const double elapsed_s = std::chrono::duration<double>(time - gun_quantity_time_).count();
+		stores_.gun_count = (std::max)(0.0, stores_.gun_count - kFallbackGunRoundsPerSecond * elapsed_s);
+	}
+	// New commands belong to the current input time, including during scheduler catch-up.
+	gun_quantity_time_ = time;
+	gun_quantity_sequence_ = weapon_.gun_requested ? weapon_.gun_start_sequence : 0;
+}
+
+void StoresManagement::step(std::chrono::nanoseconds time, double)
+{
+	update_gun_quantity(time);
 	const auto& inventory = input_.cockpit.weapon_stations;
 	const auto& adapter = input_.cockpit.mission_adapter;
 	std::optional<int> first_loaded;

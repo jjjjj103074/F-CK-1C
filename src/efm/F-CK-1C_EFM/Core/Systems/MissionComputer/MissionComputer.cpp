@@ -8,7 +8,7 @@ namespace Core::Systems
 MissionComputer::MissionComputer()
     : system_monitor_(input_output_data_, system_status_tables_.health),
       failure_manager_(system_status_tables_.health, system_status_tables_.failure_response),
-      stores_management_(input_output_data_.input, mode_data_, stores_data_),
+      stores_management_(input_output_data_.input, mode_data_, weapon_data_, stores_data_),
       sensor_coordination_(input_output_data_.input, mode_data_, stores_data_, sensor_data_, external_actions_),
       weapon_control_(input_output_data_.input,
                       mode_data_,
@@ -18,6 +18,8 @@ MissionComputer::MissionComputer()
                       sensor_coordination_,
                       stores_management_),
       mode_management_(mode_data_, sensor_coordination_, weapon_control_, external_actions_),
+      aim9_seeker_processing_(input_output_data_.input, mode_data_, stores_data_, sensor_data_, aim9_data_),
+      display_management_(mode_data_, sensor_data_, stores_data_, weapon_data_, aim9_data_, weapon_display_data_),
       executive_(executive_tables_,
                  { { "stores_management.step",
                      Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
@@ -31,6 +33,14 @@ MissionComputer::MissionComputer()
                      Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
                      sensor_coordination_,
                      &Mc::SensorCoordination::step },
+                   { "aim9_seeker_processing.step",
+                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     aim9_seeker_processing_,
+                     &Mc::Aim9SeekerProcessing::step },
+                   { "display_management.step",
+                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     display_management_,
+                     &Mc::DisplayManagement::step },
                    { "system_monitor.step",
                      Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
                      system_monitor_,
@@ -138,13 +148,26 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.pickle_requested = weapon_data_.pickle_requested;
 	output.stores.status = output.status;
 	output.stores.aim9_count = stores_data_.missile_count;
+	output.stores.gun_count = stores_data_.gun_count;
 	output.stores.count_source = stores_data_.count_source;
 	output.stores.selected_station = stores_data_.selected_station;
 	output.stores.requested_station = stores_data_.requested_station;
 	output.stores.selection_request_revision = stores_data_.selection_request_revision;
 	output.aim9.uncage_held = sensor_data_.uncage_held;
 	output.aim9.target_designated = sensor_data_.target_designated;
-	output.aim9.readiness = sensor_data_.readiness;
+	output.aim9.status = output.status;
+	output.aim9.readiness = aim9_data_.readiness;
+	output.aim9.active = aim9_data_.active;
+	output.aim9.contact = aim9_data_.contact;
+	output.aim9.locked = aim9_data_.locked;
+	output.aim9.seeker_state = aim9_data_.seeker_state;
+	output.aim9.requested_tone = aim9_data_.requested_tone;
+	output.aim9.seeker_azimuth_rad = aim9_data_.seeker_azimuth_rad;
+	output.aim9.seeker_elevation_rad = aim9_data_.seeker_elevation_rad;
+	output.aim9.lock_range_m = aim9_data_.lock_range_m;
+	output.weapon_display.status = output.status;
+	output.weapon_display.weapon_class = weapon_display_data_.weapon_class;
+	output.weapon_display.quantity = weapon_display_data_.quantity;
 	output.external_actions.status = output.status;
 	output.external_actions.batch = external_actions_.batch();
 	result.publish(AircraftDataKeys::kMissionComputerSnapshot, output);
@@ -168,6 +191,7 @@ void MissionComputer::consume_commands()
 			weapon_control_.handle(intent.command);
 			break;
 		}
+		display_management_.observe(intent.command);
 		pending.pop_front();
 	}
 }

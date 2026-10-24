@@ -33,6 +33,16 @@ private:
 		MissileCount,
 		RequestedStation,
 		SelectionRequestRevision,
+		SeekerState,
+		Tone,
+		Contact,
+		Lock,
+		Active,
+		Azimuth,
+		Elevation,
+		LockRange,
+		WeaponClass,
+		WeaponQuantity,
 		Count
 	};
 	bool write(Parameter parameter, double value, CockpitParameterEvents& events);

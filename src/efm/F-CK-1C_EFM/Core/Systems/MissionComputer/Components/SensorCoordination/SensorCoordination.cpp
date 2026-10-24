@@ -201,9 +201,5 @@ void SensorCoordination::step(std::chrono::nanoseconds time, double)
 	{
 		next_auto_lock_ = time + std::chrono::seconds(1);
 	}
-	sensor_.readiness = !mode_.air_to_air() || stores_.missile_count <= 0  ? Aim9Readiness::Off
-	                    : sensor_.uncage_held && sensor_.target_designated ? Aim9Readiness::Track
-	                    : sensor_.uncage_held                              ? Aim9Readiness::Ready
-	                                                                       : Aim9Readiness::Cool;
 }
 }

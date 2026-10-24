@@ -1,7 +1,6 @@
-local dev = GetSelf()
+-- DCS observations and HMCS presentation only; MC owns modes and weapon display decisions.
 local sensor_data = get_base_data()
 
-dofile(LockOn_Options.script_path .. "command_defs.lua")
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 -- Project-defined 64 Hz: no confirmed F-CK-1C heading-reference sampling
@@ -11,34 +10,6 @@ local HEADING_OBSERVATION_RATE_HZ = 64
 local update_rate = 1.0 / HEADING_OBSERVATION_RATE_HZ
 make_default_activity(update_rate)
 
-local CMD_MASTER_ARM_ON = device_commands.MasterArmOn
-local CMD_MASTER_ARM_OFF = device_commands.MasterArmOff
-local CMD_MASTER_ARM_SIM = device_commands.MasterArmSim
-local CMD_DOGFIGHT_SWITCH = device_commands.DogfightSwitch
-local CMD_NAV_MODE = device_commands.NavMode
-local CMD_MISSILE_OVERRIDE = device_commands.MissileOverride
-local CMD_TRIGGER_SECOND_STAGE = device_commands.TriggerSecondStage
-local CMD_MISSILE_UNCAGE = device_commands.MissileUncage
-local CMD_WEAPON_RELEASE = device_commands.WeaponRelease
-
-local MASTER_OFF = 0
-local MASTER_SIM = 1
-local MASTER_ON = 2
-
-local WEAPON_AAM = 1
-local WEAPON_AG = 2
-local WEAPON_BOMB = 3
-local WEAPON_RKT = 4
-local WEAPON_GUN = 5
-
-local GUN_DEFAULT_QUANTITY = 523
-local AAM_DEFAULT_QUANTITY = 1
-
-local master_mode = MASTER_ON
-local weapon_class = WEAPON_GUN
-local weapon_quantity = GUN_DEFAULT_QUANTITY
-local submode_dogfight = 0
-
 local hmcs_ias_kts = get_param_handle("HMCS_IAS_KTS")
 local hmcs_alt_ft = get_param_handle("HMCS_ALT_FT")
 local pressure_altitude_available = get_param_handle(cockpit_params.PressureAltitudeAvailable)
@@ -47,24 +18,11 @@ local hmcs_hdg_deg = get_param_handle("HMCS_HDG_DEG")
 local magnetic_heading_available = get_param_handle(cockpit_params.MagneticHeadingAvailable)
 local magnetic_heading_rad = get_param_handle(cockpit_params.MagneticHeadingRad)
 local hmcs_hdg_minor_offset = get_param_handle("HMCS_HDG_MINOR_OFFSET")
-local hmcs_master_mode = get_param_handle("HMCS_MASTER_MODE")
-local hmcs_weapon_class = get_param_handle("HMCS_WEAPON_CLASS")
-local hmcs_weapon_qty = get_param_handle("HMCS_WEAPON_QTY")
-local hmcs_fc_mode = get_param_handle("HMCS_FC_MODE")
-local hmcs_gun_firing = get_param_handle("HMCS_GUN_FIRING")
 local hmcs_enabled = get_param_handle("HMCS_ENABLED")
 local hmcs_display_mode = get_param_handle("HMCS_DISPLAY_MODE")
-local aim9_uncage_state = get_param_handle("AIM9_UNCAGE_HELD")
-local aim9_contact_state = get_param_handle("AIM9_SEEKER_CONTACT")
-local aim9_lock_state = get_param_handle("AIM9_SEEKER_LOCK")
-local aim9_missile_status = get_param_handle("AIM9_MISSILE_STATUS")
-local aim9_missile_count = get_param_handle("AIM9_MISSILE_COUNT")
 
 local hmcs_slot_count = 13
 local hmcs_slot_spacing = 0.048
-local hmcs_gun_rounds_per_second = 100.0
-local hmcs_trigger_down = false
-local hmcs_gun_qty_sim = GUN_DEFAULT_QUANTITY
 local hmcs_heading_bias_deg = 0.0
 local hmcs_heading_slot_tick = {}
 local hmcs_heading_slot_label = {}
@@ -74,19 +32,6 @@ local HMCS_ARG_DISPLAY_MODE = 510
 for i = 1, hmcs_slot_count do
     hmcs_heading_slot_tick[i] = get_param_handle("HMCS_HDG_SLOT_TICK_" .. tostring(i))
     hmcs_heading_slot_label[i] = get_param_handle("HMCS_HDG_SLOT_LABEL_" .. tostring(i))
-end
-
-local function shared_master_mode()
-    local value = hmcs_master_mode:get()
-    if value >= MASTER_OFF - 0.1 and value <= MASTER_ON + 0.1 then return value end
-    return master_mode
-end
-
-local function shared_fc_mode()
-    local value = hmcs_fc_mode:get()
-    if value >= -0.1 and value <= 2.1 then return math.floor(value + 0.5) end
-    if submode_dogfight > 0 then return 1 end
-    return 0
 end
 
 local function safe_sensor_call(method_name, default_value)
@@ -148,9 +93,7 @@ local function read_magnetic_heading()
     magnetic_heading_available:set(available and 1 or 0)
     if not available then return nil end
 
-    local normalized = normalize_heading_rad(
-        heading_rad + math.rad(hmcs_heading_bias_deg)
-    )
+    local normalized = normalize_heading_rad(heading_rad + math.rad(hmcs_heading_bias_deg))
     magnetic_heading_rad:set(normalized)
     return normalized
 end
@@ -203,63 +146,10 @@ local function update_heading_slots(current_heading_deg)
     end
 end
 
-local function safe_gun_quantity()
-    local candidates = {
-        "getGunAmmoCount",
-        "getCannonsAmmoCount",
-        "getAmmoCount",
-    }
-
-    for _, method_name in ipairs(candidates) do
-        local value = safe_sensor_call(method_name, -1.0)
-        if value >= 0.0 then return value end
-    end
-
-    return -1.0
-end
-
-local function resolve_weapon_display(display_master_mode, display_fc_mode)
-    local gun_quantity_live = safe_gun_quantity()
-    local gun_firing = hmcs_gun_firing:get() > 0.5 or hmcs_trigger_down
-    local display_weapon_class = weapon_class
-    local display_weapon_quantity = weapon_quantity
-    local aim9_uncage_active = aim9_uncage_state:get() > 0.5
-    local aim9_contact_active = aim9_contact_state:get() > 0.5
-    local aim9_lock_active = aim9_lock_state:get() > 0.5
-    local aim9_status = math.floor((aim9_missile_status:get() or 0) + 0.5)
-    local aim9_quantity = math.max(0, math.floor((aim9_missile_count:get() or 0) + 0.5))
-
-    if gun_quantity_live >= 0.0 then
-        hmcs_gun_qty_sim = gun_quantity_live
-    elseif gun_firing and display_master_mode >= MASTER_ON - 0.1 and hmcs_gun_qty_sim > 0.0 then
-        hmcs_gun_qty_sim = math.max(0.0, hmcs_gun_qty_sim - hmcs_gun_rounds_per_second * update_rate)
-    end
-
-    if display_fc_mode == 1 or display_fc_mode == 2 or aim9_uncage_active or aim9_contact_active or aim9_lock_active or aim9_status > 0 then
-        display_weapon_class = WEAPON_AAM
-        if aim9_quantity >= 0 then
-            display_weapon_quantity = aim9_quantity
-        elseif display_weapon_quantity < 1 then
-            display_weapon_quantity = AAM_DEFAULT_QUANTITY
-        end
-    elseif gun_firing or display_weapon_class == WEAPON_GUN then
-        display_weapon_class = WEAPON_GUN
-        display_weapon_quantity = hmcs_gun_qty_sim
-    end
-
-    if display_weapon_class == WEAPON_GUN then
-        return display_weapon_class, hmcs_gun_qty_sim
-    end
-    return display_weapon_class, display_weapon_quantity
-end
-
 local function push_params()
     local ias_mps = safe_sensor_call("getIndicatedAirSpeed", 0.0)
     local baro_alt_m = read_pressure_altitude()
     local heading_rad = read_magnetic_heading()
-    local display_master_mode = shared_master_mode()
-    local display_fc_mode = shared_fc_mode()
-    local display_weapon_class, display_weapon_quantity = resolve_weapon_display(display_master_mode, display_fc_mode)
 
     update_display_mode_params()
     hmcs_ias_kts:set(math.max(0.0, ias_mps * 1.943844))
@@ -267,95 +157,11 @@ local function push_params()
         hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084))
     end
     if heading_rad ~= nil then hmcs_hdg_deg:set(math.deg(heading_rad)) end
-    hmcs_weapon_class:set(display_weapon_class)
-    hmcs_weapon_qty:set(display_weapon_quantity)
     if heading_rad ~= nil then update_heading_slots(math.deg(heading_rad)) end
 end
 
-dev:listen_command(CMD_MASTER_ARM_ON)
-dev:listen_command(CMD_MASTER_ARM_OFF)
-dev:listen_command(CMD_MASTER_ARM_SIM)
-dev:listen_command(CMD_NAV_MODE)
-dev:listen_command(CMD_DOGFIGHT_SWITCH)
-dev:listen_command(CMD_MISSILE_OVERRIDE)
-dev:listen_command(CMD_TRIGGER_SECOND_STAGE)
-dev:listen_command(CMD_MISSILE_UNCAGE)
-dev:listen_command(CMD_WEAPON_RELEASE)
-
 function post_initialize()
     push_params()
-end
-
-function SetCommand(command, value)
-    if command == CMD_TRIGGER_SECOND_STAGE then
-        hmcs_trigger_down = value > 0.5
-        push_params()
-        return
-    end
-
-    if value <= 0.5 then return end
-
-    if command == CMD_MASTER_ARM_ON then
-        master_mode = MASTER_ON
-        weapon_class = WEAPON_GUN
-        weapon_quantity = GUN_DEFAULT_QUANTITY
-        submode_dogfight = 0
-        push_params()
-        return
-    end
-
-    if command == CMD_MASTER_ARM_OFF then
-        master_mode = MASTER_OFF
-        weapon_class = WEAPON_GUN
-        weapon_quantity = GUN_DEFAULT_QUANTITY
-        submode_dogfight = 0
-        push_params()
-        return
-    end
-
-    if command == CMD_MASTER_ARM_SIM then
-        master_mode = MASTER_SIM
-        weapon_class = WEAPON_GUN
-        weapon_quantity = GUN_DEFAULT_QUANTITY
-        submode_dogfight = 0
-        push_params()
-        return
-    end
-
-    if command == CMD_NAV_MODE then
-        weapon_class = WEAPON_GUN
-        weapon_quantity = GUN_DEFAULT_QUANTITY
-        submode_dogfight = 0
-        push_params()
-        return
-    end
-
-    if command == CMD_DOGFIGHT_SWITCH then
-        master_mode = MASTER_ON
-        weapon_class = WEAPON_AAM
-        weapon_quantity = AAM_DEFAULT_QUANTITY
-        submode_dogfight = 1
-        push_params()
-        return
-    end
-
-    if command == CMD_MISSILE_OVERRIDE then
-        master_mode = MASTER_ON
-        weapon_class = WEAPON_AAM
-        weapon_quantity = AAM_DEFAULT_QUANTITY
-        submode_dogfight = 0
-        push_params()
-        return
-    end
-
-    if command == CMD_MISSILE_UNCAGE or command == CMD_WEAPON_RELEASE then
-        if value > 0.5 then
-            weapon_class = WEAPON_AAM
-            weapon_quantity = AAM_DEFAULT_QUANTITY
-        end
-        push_params()
-        return
-    end
 end
 
 function update()

@@ -357,6 +357,156 @@ void test_inventory_authority_selection_and_rearm(Tests::Context& context)
 	TEST_EXPECT(context, output.stores.selection_request_revision == revision + 2);
 }
 
+void test_seeker_observation_precedence_and_availability(Tests::Context& context)
+{
+	MissionInputs input;
+	ModeData mode;
+	StoresData stores;
+	SensorData sensor;
+	Aim9Data aim9;
+	mode.fire_control = FireControlMode::MissileOverride;
+	auto& ir = input.cockpit.ir_seeker;
+	auto& radar = input.cockpit.radar;
+	ir.status.available = true;
+	radar.status.available = true;
+	Aim9SeekerProcessing processor(input, mode, stores, sensor, aim9);
+	ir.locked = true;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, aim9.active && aim9.contact && aim9.locked);
+	TEST_EXPECT(context, aim9.readiness == Aim9Readiness::Cool);
+	TEST_EXPECT(context, aim9.seeker_state == Aim9SeekerState::Track);
+	TEST_EXPECT(context, aim9.requested_tone == Aim9Tone::Lock);
+	ir.locked = false;
+	ir.target_azimuth_rad = 0.01;
+	radar.stt_range_m = 2000.0;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, aim9.contact && !aim9.locked); // Direct IR signal wins over STT range.
+	ir.target_azimuth_rad = 0.0;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, !aim9.contact && !aim9.locked); // Caged radar telemetry cannot lock.
+	sensor.uncage_held = true;
+	ir.desired_azimuth_rad = 0.1;
+	ir.desired_elevation_rad = -0.2;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, aim9.contact && aim9.locked);
+	TEST_EXPECT_NEAR(context, aim9.seeker_azimuth_rad, 0.1, 1e-12);
+	TEST_EXPECT_NEAR(context, aim9.seeker_elevation_rad, -0.2, 1e-12);
+	TEST_EXPECT_NEAR(context, aim9.lock_range_m, 2000.0, 1e-12);
+	ir.desired_azimuth_rad = 0.0;
+	ir.desired_elevation_rad = 0.0;
+	radar.stt_range_m = 0.0;
+	sensor.target_designated = true;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, aim9.contact && aim9.locked); // Valid all-zero prototype fallback.
+	radar.tdc_azimuth_rad = 0.1;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, !aim9.contact && !aim9.locked); // Real telemetry suppresses that fallback.
+	radar.tdc_azimuth_rad = 0.0;
+	radar.status.available = false;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, !aim9.contact && !aim9.locked);
+	TEST_EXPECT(context, aim9.readiness == Aim9Readiness::Track); // Command readiness is distinct from observation.
+	ir.locked = true;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, aim9.locked); // Direct valid IR does not require radar availability.
+	ir.status.available = false;
+	radar.status.available = true;
+	radar.stt_range_m = 2000.0;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, !aim9.contact && !aim9.locked);
+	stores.missile_count = 0;
+	processor.step({}, 0.015625);
+	TEST_EXPECT(context, !aim9.active && aim9.readiness == Aim9Readiness::Off);
+	TEST_EXPECT(context, aim9.seeker_state == Aim9SeekerState::Off && aim9.requested_tone == Aim9Tone::Off);
+}
+
+void test_weapon_display_preferences_use_authoritative_quantities(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.frame.cockpit.mission_adapter.missile_count_available = true;
+	fixture.frame.cockpit.mission_adapter.missile_count = 4;
+	auto output = fixture.step(milliseconds(16));
+	TEST_EXPECT(context, output.weapon_display.status.available);
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
+	TEST_EXPECT_NEAR(context, output.weapon_display.quantity, 523.0, 1e-12);
+	fixture.send(CommandId::SetMissileUncage);
+	fixture.send(CommandId::SetMissileUncage, 0.0);
+	output = fixture.step(milliseconds(32));
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
+	TEST_EXPECT_NEAR(context, output.weapon_display.quantity, 4.0, 1e-12);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	output = fixture.step(milliseconds(48));
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
+	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
+	output = fixture.step(milliseconds(64));
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
+	fixture.send(CommandId::SetMasterArmOn);
+	fixture.send(CommandId::SetMissileUncage);
+	fixture.send(CommandId::SetMissileUncage, 0.0);
+	output = fixture.step(milliseconds(80));
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
+	fixture.send(CommandId::SetMissileUncage);
+	fixture.send(CommandId::SetMissileUncage, 0.0);
+	fixture.send(CommandId::SetMasterArmOn);
+	output = fixture.step(milliseconds(96));
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
+	fixture.frame.cockpit.ir_seeker.status.available = true;
+	fixture.frame.cockpit.ir_seeker.locked = true;
+	fixture.send(CommandId::SelectMissileOverride);
+	output = fixture.step(milliseconds(112));
+	TEST_EXPECT(context, output.aim9.status.available && output.aim9.locked);
+	TEST_EXPECT(context, output.aim9.requested_tone == Aim9Tone::Lock);
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
+}
+
+void test_gun_quantity_observations_and_catch_up(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.step(milliseconds(16));
+	fixture.send(CommandId::SetMasterArmOff);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	auto output = fixture.step(seconds(4));
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12);
+	fixture.send(CommandId::SetMasterArmOn);
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	output = fixture.step(seconds(8));
+	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12); // Do not backdate a new press by 4 seconds.
+	output = fixture.step(milliseconds(8100));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 513.0, 1e-10);
+	fixture.frame.cockpit.mission_adapter.gun_count_available = true;
+	fixture.frame.cockpit.mission_adapter.gun_count = 0.0;
+	output = fixture.step(milliseconds(8116));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 0.0, 1e-12);
+	fixture.frame.cockpit.mission_adapter.gun_count_available = false;
+	output = fixture.step(milliseconds(8132));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 0.0, 1e-12);
+	fixture.send(CommandId::SetMasterArmOff);
+	output = fixture.step(milliseconds(8200));
+	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
+	TEST_EXPECT_NEAR(context, output.weapon_display.quantity, 0.0, 1e-12);
+}
+
+void test_gun_restart_in_one_fifo_does_not_backdate_quantity(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.step(milliseconds(16));
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	auto output = fixture.step(milliseconds(32));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12);
+	fixture.send(CommandId::SetMasterArmOff);
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	output = fixture.step(seconds(4));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12);
+	output = fixture.step(milliseconds(4100));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 513.0, 1e-10);
+}
+
 }
 
 void run_mission_computer_tests(Tests::Context& context)
@@ -371,4 +521,8 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
 	test_pickle_and_sensor_modes(context);
 	test_inventory_authority_selection_and_rearm(context);
+	test_seeker_observation_precedence_and_availability(context);
+	test_weapon_display_preferences_use_authoritative_quantities(context);
+	test_gun_quantity_observations_and_catch_up(context);
+	test_gun_restart_in_one_fifo_does_not_backdate_quantity(context);
 }

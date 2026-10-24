@@ -161,6 +161,12 @@ enum class Aim9Readiness
 	Track = 3
 };
 
+enum class WeaponClass
+{
+	AirToAirMissile = 1,
+	Gun = 5
+};
+
 enum class HmcsDisplayMode
 {
 	Screen = 0,
@@ -397,6 +403,7 @@ struct StoresSnapshot
 	std::optional<int> selected_station;
 	int aim9_count = 0;
 	StoresCountSource count_source = StoresCountSource::Estimate;
+	double gun_count = 0.0;
 	std::optional<int> requested_station;
 	std::uint64_t selection_request_revision = 0;
 };
@@ -412,6 +419,16 @@ struct Aim9Snapshot
 	Aim9Readiness readiness = Aim9Readiness::Off;
 	Aim9SeekerState seeker_state = Aim9SeekerState::Off;
 	Aim9Tone requested_tone = Aim9Tone::Off;
+	double seeker_azimuth_rad = 0.0;
+	double seeker_elevation_rad = 0.0;
+	double lock_range_m = 0.0;
+};
+
+struct WeaponDisplaySnapshot
+{
+	SnapshotStatus status;
+	WeaponClass weapon_class = WeaponClass::Gun;
+	double quantity = 0.0;
 };
 
 struct CountermeasureSnapshot
@@ -435,6 +452,7 @@ struct CombatAvionicsSnapshot
 	RadarSnapshot radar;
 	StoresSnapshot stores;
 	Aim9Snapshot aim9;
+	WeaponDisplaySnapshot weapon_display;
 	CountermeasureSnapshot countermeasures;
 	ExternalActionIntentSnapshot external_actions;
 };

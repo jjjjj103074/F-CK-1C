@@ -75,6 +75,16 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.status = { true, 1 };
 	mc.fire_control.master_arm_mode = Core::MasterArmMode::On;
 	mc.fire_control.fire_control_mode = Core::FireControlMode::Dogfight;
+	mc.aim9.requested_tone = Core::Aim9Tone::Lock;
+	mc.aim9.locked = true;
+	mc.aim9.contact = true;
+	mc.aim9.active = true;
+	mc.aim9.seeker_state = Core::Aim9SeekerState::Track;
+	mc.aim9.seeker_azimuth_rad = 0.1;
+	mc.aim9.seeker_elevation_rad = -0.2;
+	mc.aim9.lock_range_m = 1200.0;
+	mc.weapon_display.weapon_class = Core::WeaponClass::AirToAirMissile;
+	mc.weapon_display.quantity = 2.0;
 	mc.stores.requested_station = 3;
 	mc.stores.selection_request_revision = 4;
 	mc.external_actions.batch.first_sequence = 7;
@@ -89,6 +99,16 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionFirstSequence), 7.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionCount), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponRequestedStation), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9ToneState), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerState), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerContact), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerLock), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9WeaponActive), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerAzimuth), 0.1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerElevation), -0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9LockRange), 1200.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponClass), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponQuantity), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 4.0, kTolerance);
 	TEST_EXPECT_NEAR(context,
 	                 cockpit.value(DcsIds::CockpitParams::McAction01),

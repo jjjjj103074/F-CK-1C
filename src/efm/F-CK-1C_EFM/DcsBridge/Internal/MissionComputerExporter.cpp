@@ -22,7 +22,17 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileStatus),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileCount),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponRequestedStation),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionRequestRevision) } }),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionRequestRevision),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerState),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9ToneState),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerContact),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerLock),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9WeaponActive),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerAzimuth),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerElevation),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9LockRange),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::HmcsWeaponClass),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::HmcsWeaponQuantity) } }),
       action_slots_({ { cockpit_parameter_writer(DcsIds::CockpitParams::McAction01),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction02),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction03),
@@ -91,6 +101,16 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(MissileCount, static_cast<double>(snapshot.stores.aim9_count));
 	WRITE_MC(RequestedStation, static_cast<double>(snapshot.stores.requested_station.value_or(-1)));
 	WRITE_MC(SelectionRequestRevision, static_cast<double>(snapshot.stores.selection_request_revision));
+	WRITE_MC(SeekerState, static_cast<double>(snapshot.aim9.seeker_state));
+	WRITE_MC(Tone, static_cast<double>(snapshot.aim9.requested_tone));
+	WRITE_MC(Contact, snapshot.aim9.contact ? 1.0 : 0.0);
+	WRITE_MC(Lock, snapshot.aim9.locked ? 1.0 : 0.0);
+	WRITE_MC(Active, snapshot.aim9.active ? 1.0 : 0.0);
+	WRITE_MC(Azimuth, snapshot.aim9.seeker_azimuth_rad);
+	WRITE_MC(Elevation, snapshot.aim9.seeker_elevation_rad);
+	WRITE_MC(LockRange, snapshot.aim9.lock_range_m);
+	WRITE_MC(WeaponClass, static_cast<double>(snapshot.weapon_display.weapon_class));
+	WRITE_MC(WeaponQuantity, snapshot.weapon_display.quantity);
 #undef WRITE_MC
 	for (std::size_t i = 0; i < action_slots_.size(); ++i)
 	{
