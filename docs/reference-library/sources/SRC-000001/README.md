@@ -6,8 +6,7 @@ Systems (SIMTACS)*, MS thesis, Air Force Institute of Technology (AFIT), Decembe
 
 - [Source record](source.yaml): bibliography, links, assessments, assets, rights.
 - [Document guide](guide-v001.md): substantive chapter/appendix condensation.
-- [Original PDF](document-v001.pdf): the unchanged, 186-page scan formerly at
-  `research/references/ADA189675.pdf`.
+- [Original PDF](document-v001.pdf): the unchanged, 186-page scan.
 - [Control-law knowledge](../../knowledge/control-law-design.md): fuller reference
   diagrams versus the thesis's deliberately simplified controller.
 - [Simulation-validation knowledge](../../knowledge/flight-simulation-validation.md):
@@ -26,8 +25,8 @@ The [DTIC catalog](https://apps.dtic.mil/sti/citations/ADA189675) and
 [DTIC PDF endpoint](https://apps.dtic.mil/sti/pdfs/ADA189675.pdf) returned HTTP 403
 on 2026-10-24. Their known URLs remain in the source record. No fresh download
 or byte-for-byte comparison with a NASA/DTIC copy is claimed. The existing
-repository PDF was moved without changing its bytes; its original acquisition
-date and download location are not established.
+repository scan was imported without changing its bytes on 2026-10-24; its
+original acquisition date and download location are not established.
 
 Publication is known to the month, December 1987 (PDF p. 5). `published_at` is
 null because the current contract requires a complete date; the actual month

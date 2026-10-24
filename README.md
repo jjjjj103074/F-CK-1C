@@ -46,9 +46,6 @@ English-language source, knowledge, grading and rights workflow. Use its source
 records and topic files to discover material; the library guide describes the
 available retrieval tools.
 
-[Control-law models](research/control-law-diagrams/README.md) contain independent
-F-16 Modelica research and verification tools.
-
 ## License
 
 Code, tooling, documentation and generated runtime binaries use MIT.

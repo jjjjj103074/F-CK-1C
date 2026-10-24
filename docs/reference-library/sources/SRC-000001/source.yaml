@@ -66,8 +66,8 @@ versions:
         acquired_at: null
         derived_from: []
         note: >-
-          186 PDF pages, imported without byte changes on 2026-10-24 from
-          research/references/ADA189675.pdf. Original acquisition date unknown.
+          186 PDF pages, imported from the existing repository scan without byte
+          changes on 2026-10-24. Original acquisition URL and date are unknown.
           Catalog extent 176 and report-form extent 175 are not PDF page counts.
           Source-specific notices in README.md override repository asset-license
           defaults; no unrestricted license for every embedded item is claimed.

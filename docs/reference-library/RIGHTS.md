@@ -108,7 +108,8 @@ Future checks must inspect the actual staged records and content; neither ignore
 rules nor future checks can promise to prevent deliberate bypass or decide law
 from a file hash.
 
-Before migrating material from `research/references/`, audit its rights and
-citations, preserve the original bytes and provenance, and update consuming links.
-Record the assessment in the destination source package. Report restricted
-material already in history and propose remediation; do not silently rewrite history.
+Before importing existing repository material, audit its rights and citations,
+preserve the original bytes and provenance, and update consuming links when
+moving permitted assets. Record the assessment in the destination source package.
+Report restricted material already in history and propose remediation; do not
+silently rewrite history.

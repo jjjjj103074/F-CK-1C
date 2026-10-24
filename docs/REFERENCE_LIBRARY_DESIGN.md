@@ -458,8 +458,9 @@ implemented in the foundation.
 Check current tracked files as well: `.gitignore` does not untrack them or erase
 history, as documented by [Git](https://git-scm.com/docs/gitignore).
 
-Existing `research/references/` material requires a rights and citation audit
-before migration. Update consuming links when moving permitted assets. If
+Before importing existing repository material, audit its rights and citations,
+preserve original bytes and provenance, and update consuming links when moving
+permitted assets. Record the assessment in the destination source package. If
 restricted material is already in history, report it and propose remediation;
 do not silently rewrite history. Workflow checks reduce accidental publication;
 they cannot promise to prevent deliberate bypass or determine the law by hash.

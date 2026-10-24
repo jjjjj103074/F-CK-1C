@@ -67,7 +67,7 @@ src/efm/bin/
 *.original.*
 *.pretrim*
 temp/
-# 本機測試與研究輸出；專案文件位於 docs/，研究來源位於 research/
+# 本機測試與研究輸出；專案文件與航空研究來源位於 docs/
 /.tmp/
 /tmp/
 /output/
