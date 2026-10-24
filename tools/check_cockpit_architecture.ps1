@@ -464,13 +464,13 @@ function Test-WeaponStationFailureContract {
     $path = Join-Path $Root 'Cockpit\Scripts\Systems\weapon_system.lua'
     $text = [IO.File]::ReadAllText($path)
     $requirements = @(
-        'if\s+not\s+ok\s+or\s+info\s*==\s*nil\s+then',
-        'publish_station_observation\s*\(\s*false\s*,\s*0\s*,\s*NO_STATION\s*\)'
+        'if\s+not\s+ok\s+then',
+        'publish_station_observation\s*\(\s*\{\s*\}\s*,\s*OBS_INVALID_STATION_API_ERROR\s*\)'
     )
     foreach ($requirement in $requirements) {
         if ($text -notmatch $requirement) {
             Write-Output (
-                'Selected-station API failure must publish an unavailable ' +
+                'Station API failure must publish an unavailable ' +
                 'weapon observation.')
             return
         }

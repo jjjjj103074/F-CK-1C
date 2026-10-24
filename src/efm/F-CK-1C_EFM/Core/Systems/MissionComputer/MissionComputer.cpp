@@ -8,7 +8,7 @@ namespace Core::Systems
 MissionComputer::MissionComputer()
     : system_monitor_(input_output_data_, system_status_tables_.health),
       failure_manager_(system_status_tables_.health, system_status_tables_.failure_response),
-      stores_management_(input_output_data_.input, stores_data_),
+      stores_management_(input_output_data_.input, mode_data_, stores_data_),
       sensor_coordination_(input_output_data_.input, mode_data_, stores_data_, sensor_data_, external_actions_),
       weapon_control_(input_output_data_.input,
                       mode_data_,
@@ -138,6 +138,10 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.pickle_requested = weapon_data_.pickle_requested;
 	output.stores.status = output.status;
 	output.stores.aim9_count = stores_data_.missile_count;
+	output.stores.count_source = stores_data_.count_source;
+	output.stores.selected_station = stores_data_.selected_station;
+	output.stores.requested_station = stores_data_.requested_station;
+	output.stores.selection_request_revision = stores_data_.selection_request_revision;
 	output.aim9.uncage_held = sensor_data_.uncage_held;
 	output.aim9.target_designated = sensor_data_.target_designated;
 	output.aim9.readiness = sensor_data_.readiness;

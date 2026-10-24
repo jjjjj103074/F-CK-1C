@@ -63,9 +63,10 @@ private:
 		WeaponObservationAvailable,
 		WeaponObservationRevision,
 		WeaponObservationInvalidReason,
-		WeaponObservationAim9Count,
 		WeaponObservationSelectedStation,
 		WeaponObservationScannedStationCount,
+		WeaponSelectionAckRevision,
+		WeaponRearmRevision,
 		McAdapterAvailable,
 		McAcknowledgedSequence,
 		RadarPowerOn,
@@ -74,18 +75,6 @@ private:
 		McGunCountAvailable,
 		McGunCount,
 		Count
-	};
-
-	struct WeaponStationValues
-	{
-		bool readable = false;
-		bool invalid_numeric = false;
-		double available = 0.0;
-		double revision = 0.0;
-		double invalid_reason = 0.0;
-		double aim9_count = 0.0;
-		double selected_station = 0.0;
-		double scanned_station_count = 0.0;
 	};
 
 	using ParameterSlots = std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)>;
@@ -108,12 +97,10 @@ private:
 	CockpitValueResult<Core::IrSeekerObservation> read_ir_seeker();
 	CockpitValueResult<Core::WeaponStationObservation> read_weapon_stations();
 	CockpitValueResult<Core::MissionAdapterObservation> read_mission_adapter();
-	CockpitValueResult<WeaponStationValues> read_weapon_station_values();
-	static Core::ObservationStatus validate_weapon_station_status(const WeaponStationValues& values);
-	static Core::WeaponStationObservation build_weapon_station_observation(const WeaponStationValues& values);
 
 	const cockpit_param_api api_;
 	ParameterSlots slots_;
+	std::array<CockpitParameterEndpoint, Core::kWeaponStationCount> station_slots_;
 	std::uint64_t radar_revision_ = 0;
 	std::uint64_t pressure_altitude_revision_ = 0;
 	std::uint64_t magnetic_heading_revision_ = 0;

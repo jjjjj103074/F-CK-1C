@@ -26,7 +26,10 @@ struct SensorData
 struct StoresData
 {
 	int missile_count = 1;
-	bool live_missile_count = false;
+	StoresCountSource count_source = StoresCountSource::Estimate;
+	std::optional<int> selected_station;
+	std::optional<int> requested_station;
+	std::uint64_t selection_request_revision = 0;
 };
 
 struct WeaponControlData

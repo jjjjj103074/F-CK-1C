@@ -209,22 +209,69 @@ void test_unknown_radar_mode_is_invalid(Tests::Context& context)
 	TEST_EXPECT(context, observation.status.invalid_reason == Core::ObservationInvalidReason::InvalidNumeric);
 }
 
+void set_station_inventory(Tests::FakeCockpitParameters& cockpit)
+{
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 8.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationInvalidReason, 0.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationSelectedStation, 3.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationScannedStationCount, 7.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponSelectionAckRevision, 2.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponRearmRevision, 4.0);
+	const char* names[] = { DcsIds::CockpitParams::WeaponStation01, DcsIds::CockpitParams::WeaponStation02,
+		                    DcsIds::CockpitParams::WeaponStation03, DcsIds::CockpitParams::WeaponStation04,
+		                    DcsIds::CockpitParams::WeaponStation05, DcsIds::CockpitParams::WeaponStation06,
+		                    DcsIds::CockpitParams::WeaponStation07 };
+	for (const char* name : names)
+		cockpit.set_text(name, "0;0;0;0;");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, "1;2;4;7;{AIM-9;literal}");
+}
+
 void test_weapon_station_observation_contract(Tests::Context& context)
 {
 	Tests::FakeCockpitParameters cockpit;
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationAvailable, 1.0);
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 7.0);
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationInvalidReason, 0.0);
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationAim9Count, 2.0);
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationSelectedStation, 3.0);
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationScannedStationCount, 7.0);
+	set_station_inventory(cockpit);
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
-	const Core::WeaponStationObservation observation = bridge.read_step_input().cockpit.weapon_stations;
+	const auto observation = bridge.read_step_input().cockpit.weapon_stations;
 	TEST_EXPECT(context, observation.status.available);
-	TEST_EXPECT(context, observation.status.revision == 7);
-	TEST_EXPECT(context, observation.aim9_count == 2);
+	TEST_EXPECT(context, observation.status.revision == 8);
+	TEST_EXPECT(context, observation.stations[3].count == 2);
+	TEST_EXPECT(context, observation.stations[3].category == Core::WeaponCategory::Missile);
+	TEST_EXPECT(context, observation.stations[3].role == Core::WeaponRole::AirToAir);
+	TEST_EXPECT(context, observation.stations[3].weapon_identifier == "{AIM-9;literal}");
+	TEST_EXPECT(context, !observation.stations[0].present);
 	TEST_EXPECT(context, observation.selected_station == 3);
-	TEST_EXPECT(context, observation.scanned_station_count == 7);
+	TEST_EXPECT(context, observation.selection_ack_revision == 2);
+	TEST_EXPECT(context, observation.rearm_revision == 4);
+}
+
+void test_station_payload_rejection_and_torn_scan(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	set_station_inventory(cockpit);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const char* bad_records[] = { "1;2;4;",        "1;-1;4;7;AIM-9",  "1;10000;4;7;AIM-9",
+		                          "0;2;4;7;AIM-9", "1;1.5;4;7;AIM-9", "1;2;2147483648;7;AIM-9" };
+	for (const char* record : bad_records)
+	{
+		cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, record);
+		const auto status = bridge.read_step_input().cockpit.weapon_stations.status;
+		TEST_EXPECT(context, !status.available);
+		TEST_EXPECT(context, status.invalid_reason == Core::ObservationInvalidReason::InvalidPayload);
+	}
+	set_station_inventory(cockpit);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 9.0);
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.weapon_stations.status.available);
+	set_station_inventory(cockpit);
+	cockpit.after_string_read = [&cockpit]
+	{
+		cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 10.0);
+	};
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.weapon_stations.status.available);
+	cockpit.after_string_read = {};
+	set_station_inventory(cockpit);
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, std::string(512, 'x'));
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.weapon_stations.status.available);
 }
 
 void test_weapon_station_invalid_revision_is_explicit(Tests::Context& context)
@@ -241,13 +288,13 @@ void test_weapon_station_invalid_revision_is_explicit(Tests::Context& context)
 void test_weapon_station_unavailable_reason_is_preserved(Tests::Context& context)
 {
 	Tests::FakeCockpitParameters cockpit;
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 9.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 10.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponObservationInvalidReason,
 	            static_cast<double>(Core::ObservationInvalidReason::StationApiError));
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
 	const Core::WeaponStationObservation observation = bridge.read_step_input().cockpit.weapon_stations;
 	TEST_EXPECT(context, !observation.status.available);
-	TEST_EXPECT(context, observation.status.revision == 9);
+	TEST_EXPECT(context, observation.status.revision == 10);
 	TEST_EXPECT(context, observation.status.invalid_reason == Core::ObservationInvalidReason::StationApiError);
 }
 
@@ -301,6 +348,7 @@ void run_cockpit_bridge_tests(Tests::Context& context)
 	test_non_finite_radar_and_ir_values_are_rejected(context);
 	test_unknown_radar_mode_is_invalid(context);
 	test_weapon_station_observation_contract(context);
+	test_station_payload_rejection_and_torn_scan(context);
 	test_weapon_station_invalid_revision_is_explicit(context);
 	test_weapon_station_unavailable_reason_is_preserved(context);
 	test_non_finite_weapon_station_value_is_rejected(context);

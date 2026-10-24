@@ -2,8 +2,8 @@
 
 MC 是單一 `System`，直接持有同層功能元件與具型別記憶體資料庫。
 組裝方式沿用 DFLCC；這是專案設計，並非實機 F-CK-1C MC 的架構復刻。
-目前完成第一段 Lua 遷移：模式、HOTAS、武器操作決策與感測器協調。
-掛點分類／選擇、完整尋標狀態與武器顯示決策將在後續段落移入。
+目前完成模式、HOTAS、武器操作、感測器協調與掛點管理的 Lua 遷移。
+完整尋標狀態與武器顯示決策將在後續段落移入。
 
 ## 組裝與責任
 
@@ -34,7 +34,7 @@ StartupAndRestart 只啟用 Executive，監控與故障處置仍為空入口。
 | 元件 | 責任 | 寫入資料 |
 |---|---|---|
 | ModeManagement | Master ON/OFF/SIM、NAV/DGFT/MSL、模式切換協調與反制啟停命令 | ModeData |
-| StoresManagement | 同步 Lua 原始數量；無有效來源時扣除暫定飛彈數量 | StoresData |
+| StoresManagement | 掛點分類、數量來源權威、選站／重新裝填決策及無觀測時的數量估計 | StoresData |
 | WeaponControl | 扳機／投放資格、最短保持及 Master OFF/SIM 立即停止 | WeaponControlData、內部操作計時 |
 | SensorCoordination | TMS、uncage、子模式、目標指定與 DGFT 自動鎖定要求 | SensorData、內部鎖定計時 |
 | Executive | 固定任務表、順序與時間推進 | ExecutiveTables |
@@ -102,9 +102,29 @@ Lua 回呼失敗後可能重試，DCS 本身沒有交易／恰好一次執行的
 雷達開啟是狀態要求；MC 避免對同份關閉觀測重複要求，Lua 在映射為 DCS toggle 前
 再確認目前狀態，避免延後傳遞反而關閉已開啟的雷達。
 
-數量來源暫保留原 Lua 的 API 候選及飛彈預設 1 枚，實際掛點資料的權威與型別分類
-將在下一段處理。HMCS 的繪圖、單位轉換及 DCS 觀測，音效播放與 DCS 感測器模型
-仍屬於 Lua／DcsBridge；尋標狀態與武器顯示決策尚待後續遷移。
+`weapon_system.lua` 以 20 Hz 讀取七個掛點，發布原始觀測並執行 MC 的選站要求。
+DcsBridge 將 DCS wsType 數值轉為具語意的 WeaponCategory／WeaponRole；
+Core 接收 present、count、分類與不透明武器識別字串，不接觸 SDK。
+每筆邊界記錄格式為 `present;count;level2;level3;identifier`；只切前四個分號，
+識別字串內的分號保持原樣。數量限 0–9999，字串須完整且短於 511 bytes。
+整份觀測使用奇／偶 revision，七筆讀取前後的 revision 必須相同且為正偶數。
+任一 API 失敗或資料不合法時，整份清單不可用，不將殘留數量當成新觀測。
+API 回傳 nil 表示該掛點不存在；七站皆成功讀取的空清單是有效的零枚觀測。
+
+StoresManagement 的來源優先序為有效掛點清單 → get_base_data 數量 API → 估計。
+零枚是有效資料；估計從原有預設 1 枚或最後有效數量延續，僅在沒有有效數量來源時
+依已完成的投放操作遞減。StoresCountSource 隨快照保留來源。
+分類沿用舊 Lua：Missile + AirToAir，或識別字串包含 AIM-9／AIM_9／CATM-9。
+這仍是原型的廣泛分類，尚未引入精確武器定義資料庫。
+
+AAM 模式選擇第一個仍有彈的合格掛點；模式切換、掛點耗盡與重新裝填可發出新要求。
+要求的 station／revision 與最後成功要求的 station／ACK 分開保存；Lua 只確認成功呼叫，
+失敗保留要求並重試，MC 拒絕超前或與要求不符的確認。重新裝填只由 Lua 發布事件序號，
+重新選站由 MC 決定。NAV 的空要求清除 Lua 的最後選站紀錄；SDK 在此沒有取消選站 API，
+因此不宣稱已讀取或取消 DCS 的實際物理選站。掛點資料不可用時不自行猜測新選站。
+
+HMCS 的繪圖、單位轉換及 DCS 觀測，音效播放與 DCS 感測器模型仍屬於 Lua／DcsBridge；
+尋標狀態與武器顯示決策尚待後續遷移。
 
 ## 生命週期與 DFLCC 對齊
 
@@ -121,7 +141,8 @@ MC 功能元件依責任拆開，不引入 DFLCC 飛控專屬元件，也不跨�
 [MC 原生測試](../../../../F-CK-1C_EFM_Tests/MissionComputerTests.cpp) 涵蓋排程、
 Pipeline、操作序列、延後確認、補跑時鐘、短按與立即中止。
 [Lua 5.1 測試](../../../../../../tools/test_mc_lua.lua) 涵蓋操作視窗、重試與實際 CMS 對應。
-DcsBridge 測試涵蓋無效確認／數量及不完整參數輸出。
+DcsBridge 測試涵蓋無效確認／數量、不完整參數輸出、原始掛點記錄與讀取中變更。
+掛點測試另外覆蓋來源優先序、零枚、分類、選站確認、耗盡、重新裝填與 API 失敗。
 
 每段先做 Standards／Spec code review 與本機可執行測試，再 commit／push。
 [CI](../../../../../../.github/workflows/mc-windows-validation.yml) 先執行固定 Lua 5.1

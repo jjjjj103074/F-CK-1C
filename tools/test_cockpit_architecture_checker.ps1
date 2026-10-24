@@ -123,13 +123,13 @@ try {
     $originalWeaponSystem = [IO.File]::ReadAllText($weaponSystem)
     Assert-Rejected {
         $withoutFailurePublish = $originalWeaponSystem.Replace(
-            'publish_station_observation(false, 0, NO_STATION)',
+            'publish_station_observation({}, OBS_INVALID_STATION_API_ERROR)',
             '-- unavailable observation removed')
         [IO.File]::WriteAllText(
             $weaponSystem,
             $withoutFailurePublish,
             $utf8NoBom)
-    } 'Selected-station API failure must publish' $temporaryRoot
+    } 'Station API failure must publish' $temporaryRoot
     [IO.File]::WriteAllText(
         $weaponSystem,
         $originalWeaponSystem,

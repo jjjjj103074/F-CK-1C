@@ -87,9 +87,17 @@ static const char* const RadarPowerState = "RADARPOWER_STATE";
 static const char* const WeaponObservationAvailable = "OBS_WEAPON_STATIONS_AVAILABLE";
 static const char* const WeaponObservationRevision = "OBS_WEAPON_STATIONS_REVISION";
 static const char* const WeaponObservationInvalidReason = "OBS_WEAPON_STATIONS_INVALID_REASON";
-static const char* const WeaponObservationAim9Count = "OBS_WEAPON_STATIONS_AIM9_COUNT";
 static const char* const WeaponObservationSelectedStation = "OBS_WEAPON_STATIONS_SELECTED";
 static const char* const WeaponObservationScannedStationCount = "OBS_WEAPON_STATIONS_SCANNED";
+static const char* const WeaponSelectionAckRevision = "OBS_WEAPON_SELECTION_ACK";
+static const char* const WeaponRearmRevision = "OBS_WEAPON_REARM_REVISION";
+static const char* const WeaponStation01 = "OBS_WEAPON_STATION_01";
+static const char* const WeaponStation02 = "OBS_WEAPON_STATION_02";
+static const char* const WeaponStation03 = "OBS_WEAPON_STATION_03";
+static const char* const WeaponStation04 = "OBS_WEAPON_STATION_04";
+static const char* const WeaponStation05 = "OBS_WEAPON_STATION_05";
+static const char* const WeaponStation06 = "OBS_WEAPON_STATION_06";
+static const char* const WeaponStation07 = "OBS_WEAPON_STATION_07";
 static const char* const CockpitSnapshotAvailable = "CPP_COCKPIT_SNAPSHOT_AVAILABLE";
 static const char* const CockpitSnapshotRevision = "CPP_COCKPIT_SNAPSHOT_REVISION";
 static const char* const CockpitSnapshotTimeS = "CPP_COCKPIT_SNAPSHOT_TIME_S";
@@ -104,6 +112,7 @@ static const char* const DebugIndicatorStatus = "DEBUG_INDICATOR_STATUS";
 static const char* const RadarRequestedPower = "CPP_RADAR_REQUESTED_POWER";
 static const char* const Aim9RequestedTone = "CPP_AIM9_REQUESTED_TONE";
 static const char* const WeaponRequestedStation = "CPP_WEAPON_REQUESTED_STATION";
+static const char* const WeaponSelectionRequestRevision = "CPP_WEAPON_SELECTION_REQUEST_REVISION";
 static const char* const ActionGunFireRequested = "CPP_ACTION_GUN_FIRE_REQUESTED";
 static const char* const ActionPickleRequested = "CPP_ACTION_PICKLE_REQUESTED";
 static const char* const ActionSensorMode = "CPP_ACTION_SENSOR_MODE";
@@ -206,9 +215,17 @@ static constexpr Entry Catalog[] = {
     { WeaponObservationAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponObservationRevision, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponObservationInvalidReason, "lua_to_cpp", "enum", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { WeaponObservationAim9Count, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponObservationSelectedStation, "lua_to_cpp", "station_index", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponObservationScannedStationCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponSelectionAckRevision, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponRearmRevision, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation01, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation02, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation03, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation04, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation05, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation06, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation07, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { CockpitSnapshotAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotTimeS, "cpp_to_lua", "seconds", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
@@ -222,7 +239,8 @@ static constexpr Entry Catalog[] = {
     { DebugIndicatorStatus, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
     { RadarRequestedPower, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
     { Aim9RequestedTone, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },
-    { WeaponRequestedStation, "cpp_to_lua", "station_index", nullptr, "CombatAvionics", nullptr },
+    { WeaponRequestedStation, "cpp_to_lua", "station_index", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
+    { WeaponSelectionRequestRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
     { ActionGunFireRequested, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
     { ActionPickleRequested, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
     { ActionSensorMode, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },

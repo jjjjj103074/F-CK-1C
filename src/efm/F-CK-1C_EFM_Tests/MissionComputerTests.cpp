@@ -291,6 +291,72 @@ void test_pickle_and_sensor_modes(Tests::Context& context)
 	TEST_EXPECT(context, output.stores.aim9_count == 0);
 	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::PickleOff));
 }
+void test_inventory_authority_selection_and_rearm(Tests::Context& context)
+{
+	MissionFixture fixture;
+	auto& inventory = fixture.frame.cockpit.weapon_stations;
+	inventory.status = { true, 2, ObservationInvalidReason::None };
+	inventory.stations[0] = { true, 4, WeaponCategory::Other, WeaponRole::Other, "bomb" };
+	inventory.stations[2] = { true, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "opaque-id" };
+	inventory.stations[5] = { true, 1, WeaponCategory::Other, WeaponRole::Other, "{CATM-9}" };
+	fixture.frame.cockpit.mission_adapter.missile_count_available = true;
+	fixture.frame.cockpit.mission_adapter.missile_count = 9;
+	auto output = fixture.step(milliseconds(16));
+	TEST_EXPECT(context, output.stores.aim9_count == 3);
+	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::StationInventory);
+	TEST_EXPECT(context, !output.stores.requested_station);
+	fixture.send(CommandId::SelectMissileOverride);
+	output = fixture.step(milliseconds(32));
+	TEST_EXPECT(context, output.stores.requested_station == 2);
+	TEST_EXPECT(context, output.stores.selection_request_revision == 1);
+	TEST_EXPECT(context, !output.stores.selected_station);
+	inventory.selected_station = 2;
+	inventory.selection_ack_revision = 20; // A future ACK is not confirmation.
+	output = fixture.step(milliseconds(48));
+	TEST_EXPECT(context, !output.stores.selected_station);
+	inventory.selection_ack_revision = 1;
+	output = fixture.step(milliseconds(64));
+	TEST_EXPECT(context, output.stores.selected_station == 2);
+	TEST_EXPECT(context, output.stores.selection_request_revision == 1);
+	inventory.rearm_revision = 1;
+	output = fixture.step(milliseconds(80));
+	TEST_EXPECT(context, output.stores.selection_request_revision == 2);
+	output = fixture.step(milliseconds(96));
+	TEST_EXPECT(context, output.stores.selection_request_revision == 2);
+	inventory.stations[2].count = 0;
+	output = fixture.step(milliseconds(112));
+	TEST_EXPECT(context, output.stores.aim9_count == 1);
+	TEST_EXPECT(context, output.stores.requested_station == 5);
+	TEST_EXPECT(context, output.stores.selection_request_revision == 3);
+	inventory.status.available = false;
+	output = fixture.step(milliseconds(128));
+	TEST_EXPECT(context, output.stores.aim9_count == 9);
+	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::BaseDataApi);
+	TEST_EXPECT(context, output.stores.requested_station == 5);
+	fixture.frame.cockpit.mission_adapter.missile_count_available = false;
+	output = fixture.step(milliseconds(144));
+	TEST_EXPECT(context, output.stores.aim9_count == 9);
+	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::Estimate);
+	inventory.status.available = true;
+	inventory.stations[5].count = 0;
+	output = fixture.step(milliseconds(160));
+	TEST_EXPECT(context, output.stores.aim9_count == 0);
+	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::StationInventory);
+	TEST_EXPECT(context, !output.stores.requested_station);
+	inventory.stations[2].count = 1;
+	fixture.send(CommandId::SelectDogfightMode);
+	output = fixture.step(milliseconds(176));
+	TEST_EXPECT(context, output.stores.requested_station == 2);
+	const auto revision = output.stores.selection_request_revision;
+	fixture.send(CommandId::SelectMissileOverride);
+	output = fixture.step(milliseconds(192));
+	TEST_EXPECT(context, output.stores.selection_request_revision == revision + 1);
+	fixture.send(CommandId::SelectNavigationMode);
+	output = fixture.step(milliseconds(208));
+	TEST_EXPECT(context, !output.stores.requested_station);
+	TEST_EXPECT(context, output.stores.selection_request_revision == revision + 2);
+}
+
 }
 
 void run_mission_computer_tests(Tests::Context& context)
@@ -304,4 +370,5 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_commands_wait_for_current_observation_and_retain_order(context);
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
 	test_pickle_and_sensor_modes(context);
+	test_inventory_authority_selection_and_rearm(context);
 }

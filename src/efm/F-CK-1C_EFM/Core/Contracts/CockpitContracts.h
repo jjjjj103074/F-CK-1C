@@ -2,8 +2,11 @@
 
 #include "MissionActions.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace Core
 {
@@ -14,7 +17,8 @@ enum class ObservationInvalidReason
 	ParameterUnavailable = 2,
 	InvalidNumeric = 3,
 	InvalidRevision = 4,
-	StationApiError = 5
+	StationApiError = 5,
+	InvalidPayload = 6
 };
 
 enum class RadarMode
@@ -209,12 +213,42 @@ struct IrSeekerObservation
 	double target_range_m = 0.0;
 };
 
+inline constexpr std::size_t kWeaponStationCount = 7;
+
+enum class WeaponCategory
+{
+	Other,
+	Missile
+};
+enum class WeaponRole
+{
+	Other,
+	AirToAir
+};
+enum class StoresCountSource
+{
+	Estimate,
+	BaseDataApi,
+	StationInventory
+};
+
+struct WeaponStationSample
+{
+	bool present = false;
+	int count = 0;
+	WeaponCategory category = WeaponCategory::Other;
+	WeaponRole role = WeaponRole::Other;
+	std::string weapon_identifier;
+};
+
 struct WeaponStationObservation
 {
 	ObservationStatus status;
-	int aim9_count = 0;
+	std::array<WeaponStationSample, kWeaponStationCount> stations{};
+	// Last successful adapter request; DCS does not expose physical selection confirmation here.
 	std::optional<int> selected_station;
-	int scanned_station_count = 0;
+	std::uint64_t selection_ack_revision = 0;
+	std::uint64_t rearm_revision = 0;
 };
 
 struct CockpitObservation
@@ -362,6 +396,9 @@ struct StoresSnapshot
 	SnapshotStatus status;
 	std::optional<int> selected_station;
 	int aim9_count = 0;
+	StoresCountSource count_source = StoresCountSource::Estimate;
+	std::optional<int> requested_station;
+	std::uint64_t selection_request_revision = 0;
 };
 
 struct Aim9Snapshot

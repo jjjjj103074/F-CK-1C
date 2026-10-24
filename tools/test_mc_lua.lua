@@ -162,4 +162,118 @@ expect(
     values[cockpit_params.McAcknowledgedSequence] == 21 and #native == 17,
     "an ON request must not toggle an already ON radar"
 )
+-- The real station adapter publishes raw samples and executes only MC selection requests.
+values = fixture(function() return true end)
+local stations = {
+    [2] = { count = 2, weapon = { level2 = 4, level3 = 7 }, CLSID = "{AIM-9;literal}" },
+    [4] = { count = 3, weapon = { level2 = 1, level3 = 2 }, CLSID = "bomb" },
+}
+local select_calls = {}
+local selection_fails = true
+local failed_station = nil
+local station_device = {
+    listen_event = function() end,
+    get_station_info = function(_, station)
+        if station == failed_station then error("station API failed") end
+        return stations[station]
+    end,
+    select_station = function(_, station)
+        select_calls[#select_calls + 1] = station
+        if selection_fails then error("select failed") end
+    end,
+}
+GetSelf = function() return station_device end
+make_default_activity = function(rate) expect(rate == 0.05, "station adapter retains 20 Hz API sampling") end
+dofile("Cockpit/Scripts/Systems/weapon_system.lua")
+post_initialize()
+expect(values[cockpit_params.WeaponObservationAvailable] == 0, "unobserved inventory must not be available")
+update()
+expect(values[cockpit_params.WeaponObservationAvailable] == 1, "a complete raw scan is available")
+expect(values[cockpit_params.WeaponObservationRevision] % 2 == 0, "scan commits an even revision")
+expect(
+    values[cockpit_params.WeaponStation03] == "1;2;4;7;{AIM-9;literal}",
+    "publish raw native type fields and literal identifier"
+)
+expect(values[cockpit_params.WeaponStation05] == "1;3;1;2;bomb", "adapter must not classify or filter non-missiles")
+expect(values[cockpit_params.WeaponStation01] == "0;0;0;0;", "nil mount is an absent station sample")
+values[cockpit_params.McGeneration] = 2
+values[cockpit_params.McAvailable] = 1
+values[cockpit_params.WeaponRequestedStation] = 2
+values[cockpit_params.WeaponSelectionRequestRevision] = 1
+update()
+expect(values[cockpit_params.WeaponSelectionAckRevision] == 0, "failed selection must remain unacknowledged")
+selection_fails = false
+update()
+expect(
+    values[cockpit_params.WeaponSelectionAckRevision] == 1
+        and values[cockpit_params.WeaponObservationSelectedStation] == 2,
+    "successful retry acknowledges the actual request"
+)
+update()
+expect(#select_calls == 2, "a repeated request must not repeat successful selection")
+values[cockpit_params.McGeneration] = 3
+values[cockpit_params.WeaponSelectionRequestRevision] = 2
+update()
+expect(#select_calls == 2, "odd MC generation must not select")
+values[cockpit_params.McGeneration] = 4
+values[cockpit_params.WeaponRequestedStation] = function()
+    values[cockpit_params.McGeneration] = 6
+    return 4
+end
+update()
+expect(#select_calls == 2, "torn MC selection request must not select")
+values[cockpit_params.WeaponRequestedStation] = 4
+update()
+expect(
+    #select_calls == 3 and select_calls[3] == 4,
+    "the adapter must execute the station MC requests without reclassification"
+)
+CockpitEvent("WeaponRearmComplete")
+update()
+expect(
+    #select_calls == 3 and values[cockpit_params.WeaponRearmRevision] == 1,
+    "rearm publishes an event revision; MC decides reselection"
+)
+failed_station = 2
+update()
+expect(
+    values[cockpit_params.WeaponObservationAvailable] == 0
+        and values[cockpit_params.WeaponObservationInvalidReason] == 5,
+    "station API failure invalidates the entire inventory"
+)
+expect(values[cockpit_params.WeaponStation03] == "0;0;0;0;", "failed scans cannot publish old inventory as current")
+failed_station = nil
+stations[2].count = 1.5
+update()
+expect(
+    values[cockpit_params.WeaponObservationAvailable] == 0
+        and values[cockpit_params.WeaponObservationInvalidReason] == 6,
+    "invalid native record must be unavailable"
+)
+local invalid_records = {
+    { count = false, weapon = { level2 = 4, level3 = 7 }, CLSID = "AIM-9" },
+    { count = 1, weapon = { level2 = false, level3 = 7 }, CLSID = "AIM-9" },
+    { count = 1, weapon = { level2 = 4, level3 = false }, CLSID = "AIM-9" },
+    { count = 1, weapon = false, CLSID = "AIM-9" },
+    { count = 1, weapon = { level2 = 4, level3 = 7 }, CLSID = false },
+}
+for _, record in ipairs(invalid_records) do
+    stations[2] = record
+    update()
+    expect(
+        values[cockpit_params.WeaponObservationAvailable] == 0
+            and values[cockpit_params.WeaponObservationInvalidReason] == 6,
+        "false must not become a valid empty inventory field"
+    )
+end
+stations[2] = { count = 0, weapon = { level2 = 4, level3 = 7 }, CLSID = "AIM-9" }
+values[cockpit_params.WeaponRequestedStation] = -1
+values[cockpit_params.WeaponSelectionRequestRevision] = 3
+update()
+expect(
+    values[cockpit_params.WeaponSelectionAckRevision] == 3
+        and values[cockpit_params.WeaponObservationSelectedStation] == -1
+        and #select_calls == 3,
+    "clearing the last-request belief uses no invented SDK deselect call"
+)
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))

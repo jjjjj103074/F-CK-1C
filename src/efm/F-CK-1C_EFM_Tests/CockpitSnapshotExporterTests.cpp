@@ -75,6 +75,8 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.status = { true, 1 };
 	mc.fire_control.master_arm_mode = Core::MasterArmMode::On;
 	mc.fire_control.fire_control_mode = Core::FireControlMode::Dogfight;
+	mc.stores.requested_station = 3;
+	mc.stores.selection_request_revision = 4;
 	mc.external_actions.batch.first_sequence = 7;
 	mc.external_actions.batch.count = 2;
 	mc.external_actions.batch.actions[0] = Core::MissionActionKind::GunOn;
@@ -86,6 +88,8 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 4.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionFirstSequence), 7.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionCount), 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponRequestedStation), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 4.0, kTolerance);
 	TEST_EXPECT_NEAR(context,
 	                 cockpit.value(DcsIds::CockpitParams::McAction01),
 	                 static_cast<double>(Core::MissionActionKind::GunOn),

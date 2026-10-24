@@ -31,6 +31,8 @@ private:
 		Designated,
 		MissileStatus,
 		MissileCount,
+		RequestedStation,
+		SelectionRequestRevision,
 		Count
 	};
 	bool write(Parameter parameter, double value, CockpitParameterEvents& events);

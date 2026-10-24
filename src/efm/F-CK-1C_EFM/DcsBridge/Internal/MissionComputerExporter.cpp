@@ -20,7 +20,9 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9UncageHeld),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9TargetDesignated),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileStatus),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileCount) } }),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::WeaponRequestedStation),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionRequestRevision) } }),
       action_slots_({ { cockpit_parameter_writer(DcsIds::CockpitParams::McAction01),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction02),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction03),
@@ -87,6 +89,8 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Designated, snapshot.aim9.target_designated ? 1.0 : 0.0);
 	WRITE_MC(MissileStatus, static_cast<double>(snapshot.aim9.readiness));
 	WRITE_MC(MissileCount, static_cast<double>(snapshot.stores.aim9_count));
+	WRITE_MC(RequestedStation, static_cast<double>(snapshot.stores.requested_station.value_or(-1)));
+	WRITE_MC(SelectionRequestRevision, static_cast<double>(snapshot.stores.selection_request_revision));
 #undef WRITE_MC
 	for (std::size_t i = 0; i < action_slots_.size(); ++i)
 	{

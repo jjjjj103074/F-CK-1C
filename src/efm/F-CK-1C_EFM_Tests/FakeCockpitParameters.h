@@ -4,8 +4,10 @@
 #include "include/Cockpit/ccParametersAPI.h"
 
 #include <cstring>
+#include <functional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace Tests
@@ -52,6 +54,13 @@ public:
 		find(name)->value = value;
 	}
 
+	void set_text(const char* name, std::string text)
+	{
+		find(name)->text = std::move(text);
+	}
+
+	std::function<void()> after_string_read;
+
 	void set_available(const char* name, bool available)
 	{
 		find(name)->available = available;
@@ -85,6 +94,7 @@ public:
 		result.pfn_ed_cockpit_update_parameter_with_string = update_string;
 		result.pfn_ed_cockpit_update_parameter_with_number = update_number;
 		result.pfn_ed_cockpit_parameter_value_to_number = read_number;
+		result.pfn_ed_cockpit_parameter_value_to_string = read_string;
 		return result;
 	}
 
@@ -116,6 +126,17 @@ private:
 	{
 		(void)interpolated;
 		result = static_cast<const FakeCockpitParameter*>(handle)->value;
+		return true;
+	}
+
+	static bool read_string(const void* handle, char* buffer, unsigned size)
+	{
+		const auto& text = static_cast<const FakeCockpitParameter*>(handle)->text;
+		if (text.size() >= size)
+			return false;
+		std::memcpy(buffer, text.c_str(), text.size() + 1);
+		if (active_fixture()->after_string_read)
+			active_fixture()->after_string_read();
 		return true;
 	}
 

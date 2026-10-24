@@ -4,7 +4,9 @@
 #include "../../Common/Units.h"
 #include "../../DcsIds/CockpitParams.g.h"
 
+#include <charconv>
 #include <cmath>
+#include <string_view>
 #include <initializer_list>
 #include <limits>
 #include <optional>
@@ -53,13 +55,40 @@ std::optional<Core::RadarMode> to_radar_mode(double value)
 
 Core::ObservationInvalidReason to_invalid_reason(double value)
 {
-	const int maximum = static_cast<int>(Core::ObservationInvalidReason::StationApiError);
+	const int maximum = static_cast<int>(Core::ObservationInvalidReason::InvalidPayload);
 	const std::optional<int> reason = to_integer(value, 0);
 	if (!reason.has_value() || *reason > maximum)
 	{
 		return Core::ObservationInvalidReason::InvalidNumeric;
 	}
 	return static_cast<Core::ObservationInvalidReason>(*reason);
+}
+
+std::optional<Core::WeaponStationSample> parse_station_record(std::string_view text)
+{
+	std::array<int, 4> fields{};
+	for (int& field : fields)
+	{
+		const auto delimiter = text.find(';');
+		if (delimiter == std::string_view::npos)
+			return std::nullopt;
+		const auto token = text.substr(0, delimiter);
+		const auto parsed = std::from_chars(token.data(), token.data() + token.size(), field);
+		if (parsed.ec != std::errc{} || parsed.ptr != token.data() + token.size() || field < 0)
+			return std::nullopt;
+		text.remove_prefix(delimiter + 1);
+	}
+	if (fields[0] > 1 || fields[1] > 9999)
+		return std::nullopt;
+	if (fields[0] == 0 && (fields[1] != 0 || fields[2] != 0 || fields[3] != 0 || !text.empty()))
+		return std::nullopt;
+	Core::WeaponStationSample sample;
+	sample.present = fields[0] == 1;
+	sample.count = fields[1];
+	sample.category = fields[2] == 4 ? Core::WeaponCategory::Missile : Core::WeaponCategory::Other;
+	sample.role = fields[3] == 7 ? Core::WeaponRole::AirToAir : Core::WeaponRole::Other;
+	sample.weapon_identifier = std::string(text);
+	return sample;
 }
 
 DcsBridge::Internal::CockpitParameterEvents with_endpoint_event(
@@ -151,9 +180,10 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationAvailable),
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationRevision),
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationInvalidReason),
-		       cockpit_parameter_reader(CockpitParams::WeaponObservationAim9Count),
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationSelectedStation),
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationScannedStationCount),
+		       cockpit_parameter_reader(CockpitParams::WeaponSelectionAckRevision),
+		       cockpit_parameter_reader(CockpitParams::WeaponRearmRevision),
 		       cockpit_parameter_reader(CockpitParams::McAdapterAvailable),
 		       cockpit_parameter_reader(CockpitParams::McAcknowledgedSequence),
 		       cockpit_parameter_reader(CockpitParams::RadarState),
@@ -165,7 +195,14 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 
 CockpitBridge::CockpitBridge(cockpit_param_api api)
     : api_(api),
-      slots_(make_parameter_slots())
+      slots_(make_parameter_slots()),
+      station_slots_({ { cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation01),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation02),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation03),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation04),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation05),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation06),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation07) } })
 {
 }
 
@@ -338,83 +375,75 @@ CockpitValueResult<Core::IrSeekerObservation> CockpitBridge::read_ir_seeker()
 
 CockpitValueResult<Core::WeaponStationObservation> CockpitBridge::read_weapon_stations()
 {
-	const CockpitValueResult<WeaponStationValues> read = read_weapon_station_values();
-	return { build_weapon_station_observation(read.value), read.events };
-}
-
-Core::ObservationStatus CockpitBridge::validate_weapon_station_status(const WeaponStationValues& values)
-{
-	Core::ObservationStatus status;
-	if (values.invalid_numeric)
-	{
-		status.invalid_reason = Core::ObservationInvalidReason::InvalidNumeric;
-		return status;
-	}
-	if (!values.readable)
-	{
-		status.invalid_reason = Core::ObservationInvalidReason::ParameterUnavailable;
-		return status;
-	}
-	const std::optional<std::uint64_t> revision = to_revision(values.revision);
-	if (!revision.has_value())
-	{
-		status.invalid_reason = Core::ObservationInvalidReason::InvalidRevision;
-		return status;
-	}
-	status.revision = *revision;
-	const Core::ObservationInvalidReason invalid_reason = to_invalid_reason(values.invalid_reason);
-	if (invalid_reason != Core::ObservationInvalidReason::None)
-	{
-		status.invalid_reason = invalid_reason;
-		return status;
-	}
-	if (!is_enabled(values.available))
-	{
-		status.invalid_reason = Core::ObservationInvalidReason::NotProvided;
-		return status;
-	}
-	status.available = true;
-	status.invalid_reason = Core::ObservationInvalidReason::None;
-	return status;
-}
-
-Core::WeaponStationObservation CockpitBridge::build_weapon_station_observation(const WeaponStationValues& values)
-{
-	Core::WeaponStationObservation result;
-	result.status = validate_weapon_station_status(values);
-	if (!result.status.available)
-	{
-		return result;
-	}
-	const std::optional<int> aim9_count = to_integer(values.aim9_count, 0);
-	const std::optional<int> station = to_integer(values.selected_station, kNoWeaponStation);
-	const std::optional<int> scanned = to_integer(values.scanned_station_count, 0);
-	if (!aim9_count.has_value() || !station.has_value() || !scanned.has_value())
-	{
-		result.status.invalid_reason = Core::ObservationInvalidReason::InvalidNumeric;
-		result.status.available = false;
-		return result;
-	}
-	result.aim9_count = *aim9_count;
-	result.selected_station = *station == kNoWeaponStation ? std::nullopt : std::optional<int>(*station);
-	result.scanned_station_count = *scanned;
-	return result;
-}
-
-CockpitValueResult<CockpitBridge::WeaponStationValues> CockpitBridge::read_weapon_station_values()
-{
+	CockpitValueResult<Core::WeaponStationObservation> result;
+	auto& observation = result.value;
+	const auto before = read_parameter(Parameter::WeaponObservationRevision);
 	const auto available = read_parameter(Parameter::WeaponObservationAvailable);
-	const auto revision = read_parameter(Parameter::WeaponObservationRevision);
 	const auto reason = read_parameter(Parameter::WeaponObservationInvalidReason);
-	const auto count = read_parameter(Parameter::WeaponObservationAim9Count);
 	const auto station = read_parameter(Parameter::WeaponObservationSelectedStation);
 	const auto scanned = read_parameter(Parameter::WeaponObservationScannedStationCount);
-	const auto reads = { available, revision, reason, count, station, scanned };
-	const WeaponStationValues values = { all_success(reads), any_invalid_numeric(reads),
-		                                 available.value,    revision.value,
-		                                 reason.value,       count.value,
-		                                 station.value,      scanned.value };
-	return { values, events_from(reads) };
+	const auto ack = read_parameter(Parameter::WeaponSelectionAckRevision);
+	const auto rearm = read_parameter(Parameter::WeaponRearmRevision);
+	const auto reads = { before, available, reason, station, scanned, ack, rearm };
+	result.events = events_from(reads);
+	if (const auto failure = read_failure_reason(reads))
+	{
+		observation.status.invalid_reason = *failure;
+		return result;
+	}
+	const auto revision = to_revision(before.value);
+	if (!revision || *revision == 0 || *revision % 2 != 0)
+	{
+		observation.status.invalid_reason = Core::ObservationInvalidReason::InvalidRevision;
+		return result;
+	}
+	observation.status.revision = *revision;
+	observation.status.invalid_reason = to_invalid_reason(reason.value);
+	if (observation.status.invalid_reason != Core::ObservationInvalidReason::None)
+		return result;
+	if (!is_enabled(available.value))
+	{
+		observation.status.invalid_reason = Core::ObservationInvalidReason::NotProvided;
+		return result;
+	}
+	const auto selected = to_integer(station.value, kNoWeaponStation);
+	const auto acknowledged = to_revision(ack.value);
+	const auto rearmed = to_revision(rearm.value);
+	if (!selected || *selected >= static_cast<int>(Core::kWeaponStationCount) || !acknowledged || !rearmed ||
+	    scanned.value != static_cast<double>(Core::kWeaponStationCount))
+	{
+		observation.status.invalid_reason = Core::ObservationInvalidReason::InvalidNumeric;
+		return result;
+	}
+	for (std::size_t i = 0; i < station_slots_.size(); ++i)
+	{
+		const auto read = station_slots_[i].read_string(api_);
+		result.events = with_endpoint_event(result.events, read.event);
+		if (!read.success)
+		{
+			observation.status.invalid_reason = Core::ObservationInvalidReason::ParameterUnavailable;
+			return result;
+		}
+		const auto sample = parse_station_record(read.value);
+		if (!sample)
+		{
+			observation.status.invalid_reason = Core::ObservationInvalidReason::InvalidPayload;
+			return result;
+		}
+		observation.stations[i] = *sample;
+	}
+	const auto after = read_parameter(Parameter::WeaponObservationRevision);
+	result.events = with_endpoint_event(result.events, after.event);
+	if (!after.success || after.value != before.value)
+	{
+		observation.status.invalid_reason = Core::ObservationInvalidReason::InvalidRevision;
+		return result;
+	}
+	observation.selected_station = *selected == kNoWeaponStation ? std::nullopt : selected;
+	observation.selection_ack_revision = *acknowledged;
+	observation.rearm_revision = *rearmed;
+	observation.status.available = true;
+	return result;
 }
 }
 }

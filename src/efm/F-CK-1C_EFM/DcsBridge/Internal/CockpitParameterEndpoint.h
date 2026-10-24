@@ -3,6 +3,8 @@
 #include "CockpitParameterEvents.h"
 #include "../../include/Cockpit/ccParametersAPI.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <optional>
@@ -24,6 +26,13 @@ struct CockpitParameterReadResult
 	double value = 0.0;
 	std::optional<CockpitParameterEvent> event;
 	bool invalid_numeric = false;
+};
+
+struct CockpitParameterTextReadResult
+{
+	bool success = false;
+	std::string value;
+	std::optional<CockpitParameterEvent> event;
 };
 
 struct CockpitParameterWriteResult
@@ -71,6 +80,25 @@ public:
 			return { false, 0.0, record_failure({ "invalid_numeric", value, true }), true };
 		}
 		return { true, value, record_available() };
+	}
+
+	CockpitParameterTextReadResult read_string(const cockpit_param_api& api)
+	{
+		if (access_ != CockpitParameterAccess::Read)
+			return { false, {}, record_failure({ "wrong_access" }) };
+		if (!ensure_handle(api))
+			return { false, {}, record_failure({ "missing_handle" }) };
+		if (api.pfn_ed_cockpit_parameter_value_to_string == nullptr)
+			return { false, {}, record_failure({ "api_unavailable" }) };
+		std::array<char, 512> buffer;
+		buffer.fill('\1');
+		if (!api.pfn_ed_cockpit_parameter_value_to_string(handle_, buffer.data(), static_cast<unsigned>(buffer.size())))
+			return { false, {}, record_failure({ "unreadable_value" }) };
+		const auto end = std::find(buffer.begin(), buffer.end(), '\0');
+		// A full buffer may have been truncated by the SDK; never accept a partial station record.
+		if (end >= buffer.end() - 1)
+			return { false, {}, record_failure({ "invalid_text" }) };
+		return { true, std::string(buffer.begin(), end), record_available() };
 	}
 
 	CockpitParameterWriteResult write_number(const cockpit_param_api& api, double value)
