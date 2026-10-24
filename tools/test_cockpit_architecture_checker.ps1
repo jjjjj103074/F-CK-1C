@@ -36,6 +36,7 @@ function Copy-CheckerFixture {
     $writerSources = @(
         'CockpitBridge.cpp',
         'CockpitSnapshotExporter.cpp',
+        'MissionComputerExporter.cpp',
         'DebugTelemetry\DebugIndicatorExporter.cpp'
     )
     foreach ($name in $writerSources) {
