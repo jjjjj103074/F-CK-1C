@@ -34,13 +34,15 @@ CockpitSnapshotExporter::CockpitSnapshotExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApEngageRejectionReason),
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApDisengageReason),
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleEngageRejectionReason),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleDisengageReason) } })
+                 cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleDisengageReason) } }),
+      mission_computer_(api)
 {
 }
 
 void CockpitSnapshotExporter::reset()
 {
 	std::lock_guard<std::mutex> lock(mutex_);
+	mission_computer_.reset();
 	for (CockpitParameterEndpoint& slot : slots_)
 	{
 		slot.reset();
@@ -57,6 +59,7 @@ CockpitParameterEvents CockpitSnapshotExporter::export_snapshot(const Core::Cock
 	events = events.merged(
 	    write_parameter(Parameter::MaxPowerSwitch, snapshot.propulsion_test_thrust_cut_requested ? 0.0 : 1.0));
 	events = events.merged(export_automatic_flight_control(snapshot.automatic_flight_control));
+	events = events.merged(mission_computer_.export_snapshot(snapshot.combat_avionics));
 	return events;
 }
 

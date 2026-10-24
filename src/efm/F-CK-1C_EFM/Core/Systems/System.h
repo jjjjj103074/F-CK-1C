@@ -26,6 +26,8 @@ struct SystemStepContext
 {
 	SystemScheduledTime scheduled_time = {};
 	double dt_s = 0.0;
+	// The current host frame's input time; catch-up ticks must not backdate new observations.
+	SystemScheduledTime input_time = {};
 };
 
 struct SystemActionContext

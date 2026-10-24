@@ -6,6 +6,32 @@ namespace DcsIds
 {
 namespace CockpitParams
 {
+static const char* const McGeneration = "CPP_MC_GENERATION";
+static const char* const McAvailable = "CPP_MC_AVAILABLE";
+static const char* const McActionFirstSequence = "CPP_MC_ACTION_FIRST_SEQUENCE";
+static const char* const McActionCount = "CPP_MC_ACTION_COUNT";
+static const char* const McAction01 = "CPP_MC_ACTION_01";
+static const char* const McAction02 = "CPP_MC_ACTION_02";
+static const char* const McAction03 = "CPP_MC_ACTION_03";
+static const char* const McAction04 = "CPP_MC_ACTION_04";
+static const char* const McAction05 = "CPP_MC_ACTION_05";
+static const char* const McAction06 = "CPP_MC_ACTION_06";
+static const char* const McAction07 = "CPP_MC_ACTION_07";
+static const char* const McAction08 = "CPP_MC_ACTION_08";
+static const char* const McAction09 = "CPP_MC_ACTION_09";
+static const char* const McAction10 = "CPP_MC_ACTION_10";
+static const char* const McAction11 = "CPP_MC_ACTION_11";
+static const char* const McAction12 = "CPP_MC_ACTION_12";
+static const char* const McAction13 = "CPP_MC_ACTION_13";
+static const char* const McAction14 = "CPP_MC_ACTION_14";
+static const char* const McAction15 = "CPP_MC_ACTION_15";
+static const char* const McAction16 = "CPP_MC_ACTION_16";
+static const char* const McAdapterAvailable = "OBS_MC_ADAPTER_AVAILABLE";
+static const char* const McAcknowledgedSequence = "OBS_MC_ACKNOWLEDGED_SEQUENCE";
+static const char* const McMissileCountAvailable = "OBS_MC_MISSILE_COUNT_AVAILABLE";
+static const char* const McMissileCount = "OBS_MC_MISSILE_COUNT";
+static const char* const McGunCountAvailable = "OBS_MC_GUN_COUNT_AVAILABLE";
+static const char* const McGunCount = "OBS_MC_GUN_COUNT";
 static const char* const TemperatureC = "FM_TEMPERATURE_C";
 static const char* const PressureAltitudeAvailable = "OBS_PRESSURE_ALTITUDE_AVAILABLE";
 static const char* const PressureAltitudeM = "OBS_PRESSURE_ALTITUDE_M";
@@ -99,6 +125,32 @@ struct Entry
 };
 
 static constexpr Entry Catalog[] = {
+    { McGeneration, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McActionFirstSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McActionCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction01, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction02, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction03, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction04, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction05, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction06, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction07, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction08, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction09, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction10, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction11, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction12, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction13, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction14, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction15, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAction16, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McAdapterAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McAcknowledgedSequence, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/mc_io.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McMissileCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McMissileCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McGunCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McGunCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { TemperatureC, "cpp_to_lua", "celsius", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
     { PressureAltitudeAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { PressureAltitudeM, "lua_to_cpp", "meters", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
@@ -128,28 +180,28 @@ static constexpr Entry Catalog[] = {
     { HmcsHeadingMinorOffset, "lua_internal", "normalized", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
     { HmcsHeadingSlotTickPrefix, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
     { HmcsHeadingSlotLabelPrefix, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
-    { HmcsMasterMode, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { HmcsMasterMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsWeaponClass, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "CombatAvionics", nullptr },
     { HmcsWeaponQuantity, "lua_internal", "count", "Cockpit/Scripts/Systems/hmcs_system.lua", "CombatAvionics", nullptr },
-    { HmcsDogfightMode, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
-    { HmcsFireControlMode, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
-    { HmcsAamSubmode, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
-    { HmcsGunFiring, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { HmcsDogfightMode, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { HmcsFireControlMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { HmcsAamSubmode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { HmcsGunFiring, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsEnabled, "lua_internal", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
     { HmcsDisplayMode, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
-    { Aim9UncageHeld, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { Aim9UncageHeld, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9ToneState, "lua_internal", "enum", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
     { Aim9SeekerState, "lua_internal", "enum", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
     { Aim9SeekerContact, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
     { Aim9SeekerLock, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
-    { Aim9TargetDesignated, "lua_internal", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { Aim9TargetDesignated, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9WeaponActive, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
-    { Aim9MissileStatus, "lua_internal", "enum", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
-    { Aim9MissileCount, "lua_internal", "count", "Cockpit/Scripts/Systems/cms_system.lua", "CombatAvionics", nullptr },
+    { Aim9MissileStatus, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { Aim9MissileCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9SeekerAzimuth, "lua_internal", "radians", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
     { Aim9SeekerElevation, "lua_internal", "radians", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
     { Aim9LockRange, "lua_internal", "meters", "Cockpit/Scripts/Systems/radar_state_system.lua", "CombatAvionics", nullptr },
-    { RadarState, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", nullptr },
+    { RadarState, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { RadarPowerState, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", nullptr },
     { WeaponObservationAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponObservationRevision, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

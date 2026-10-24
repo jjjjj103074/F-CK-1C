@@ -223,6 +223,7 @@ enum class AircraftDataId
 	DigitalFlightControlComputerSnapshot,
 	AutomaticFlightControlSnapshot,
 	PropulsionTestIntent,
+	MissionComputerSnapshot,
 	Count
 };
 
@@ -289,6 +290,11 @@ inline constexpr AircraftDataKey<AutomaticFlightControlSnapshot> kAutomaticFligh
 
 inline constexpr AircraftDataKey<PropulsionTestIntent> kPropulsionTestIntent = { AircraftDataId::PropulsionTestIntent,
 	                                                                             "propulsion_test_intent" };
+
+inline constexpr AircraftDataKey<CombatAvionicsSnapshot> kMissionComputerSnapshot = {
+	AircraftDataId::MissionComputerSnapshot,
+	"mission_computer_snapshot"
+};
 }
 
 using AircraftDataValue = std::variant<FrameInput,
@@ -306,7 +312,8 @@ using AircraftDataValue = std::variant<FrameInput,
                                        AirframeIntegrity,
                                        DigitalFlightControlComputerSnapshot,
                                        AutomaticFlightControlSnapshot,
-                                       PropulsionTestIntent>;
+                                       PropulsionTestIntent,
+                                       CombatAvionicsSnapshot>;
 
 inline constexpr std::size_t kAircraftDataSlotCount = static_cast<std::size_t>(AircraftDataId::Count);
 }

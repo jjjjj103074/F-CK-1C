@@ -66,6 +66,13 @@ private:
 		WeaponObservationAim9Count,
 		WeaponObservationSelectedStation,
 		WeaponObservationScannedStationCount,
+		McAdapterAvailable,
+		McAcknowledgedSequence,
+		RadarPowerOn,
+		McMissileCountAvailable,
+		McMissileCount,
+		McGunCountAvailable,
+		McGunCount,
 		Count
 	};
 
@@ -90,6 +97,7 @@ private:
 	CockpitValueResult<Core::RadarObservation> read_radar();
 	CockpitValueResult<Core::IrSeekerObservation> read_ir_seeker();
 	CockpitValueResult<Core::WeaponStationObservation> read_weapon_stations();
+	CockpitValueResult<Core::MissionAdapterObservation> read_mission_adapter();
 	CockpitValueResult<WeaponStationValues> read_weapon_station_values();
 	static Core::ObservationStatus validate_weapon_station_status(const WeaponStationValues& values);
 	static Core::WeaponStationObservation build_weapon_station_observation(const WeaponStationValues& values);

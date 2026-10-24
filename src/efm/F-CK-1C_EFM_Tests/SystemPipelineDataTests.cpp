@@ -414,6 +414,7 @@ void test_each_system_data_type_can_be_published(Tests::Context& context)
 	expect_optional_publication(context, AircraftDataKeys::kDigitalFlightControlComputerSnapshot);
 	expect_optional_publication(context, AircraftDataKeys::kAutomaticFlightControlSnapshot);
 	expect_optional_publication(context, AircraftDataKeys::kPropulsionTestIntent);
+	expect_optional_publication(context, AircraftDataKeys::kMissionComputerSnapshot);
 }
 
 void test_snapshot_copies_retain_values_after_commit(Tests::Context& context)

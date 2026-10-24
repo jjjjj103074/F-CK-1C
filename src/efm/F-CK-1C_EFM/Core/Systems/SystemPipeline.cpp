@@ -75,7 +75,7 @@ struct SystemPipeline::Implementation
 	AircraftDataSnapshot make_snapshot() const;
 	AircraftDataSnapshot make_snapshot(const Storage& storage) const;
 	AircraftDataSnapshot step(const SystemFrameInput& input);
-	void run_batch(const ScheduledSystemBatch& batch, Storage& next);
+	void run_batch(const ScheduledSystemBatch& batch, Storage& next, SystemScheduledTime input_time);
 	void create_systems(const FlightSetupContext& context, std::vector<SystemEntry> catalog);
 	void collect_declarations();
 	void validate_and_commit_setup();
@@ -444,7 +444,7 @@ AircraftDataSnapshot SystemPipeline::Implementation::step(const SystemFrameInput
 	while (next_schedule.has_due(input.target_time))
 	{
 		const ScheduledSystemBatch batch = next_schedule.next_due();
-		run_batch(batch, next);
+		run_batch(batch, next, input.target_time);
 		next_schedule.complete_next_due();
 	}
 	committed = std::move(next);
@@ -453,7 +453,9 @@ AircraftDataSnapshot SystemPipeline::Implementation::step(const SystemFrameInput
 	return make_snapshot();
 }
 
-void SystemPipeline::Implementation::run_batch(const ScheduledSystemBatch& batch, Storage& next)
+void SystemPipeline::Implementation::run_batch(const ScheduledSystemBatch& batch,
+                                               Storage& next,
+                                               SystemScheduledTime input_time)
 {
 	const AircraftDataSnapshot input = make_snapshot(next);
 	pending_result.clear();
@@ -462,7 +464,7 @@ void SystemPipeline::Implementation::run_batch(const ScheduledSystemBatch& batch
 		RuntimeSystem& runtime = systems[index];
 		const AircraftDataView aircraft(input, runtime.reads);
 		pending_result.activate_publications(runtime.publications);
-		const SystemStepContext context = { batch.scheduled_time, runtime.update_dt_s };
+		const SystemStepContext context = { batch.scheduled_time, runtime.update_dt_s, input_time };
 		Detail::invoke_system_action(runtime.setup.system_id,
 		                             Detail::kSystemStepOperation,
 		                             [&runtime, &context, &aircraft, this]()

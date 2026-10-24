@@ -64,6 +64,37 @@ void test_reset_restarts_error_reporting(Tests::Context& context)
 	exporter.reset();
 	TEST_EXPECT(context, exporter.export_snapshot({}).count == 1);
 }
+
+void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set_available(DcsIds::CockpitParams::McAction02, false);
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	auto& mc = snapshot.combat_avionics;
+	mc.status = { true, 1 };
+	mc.fire_control.master_arm_mode = Core::MasterArmMode::On;
+	mc.fire_control.fire_control_mode = Core::FireControlMode::Dogfight;
+	mc.external_actions.batch.first_sequence = 7;
+	mc.external_actions.batch.count = 2;
+	mc.external_actions.batch.actions[0] = Core::MissionActionKind::GunOn;
+	mc.external_actions.batch.actions[1] = Core::MissionActionKind::GunOff;
+	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 1);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
+	cockpit.set_available(DcsIds::CockpitParams::McAction02, true);
+	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 1);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 4.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionFirstSequence), 7.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionCount), 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 cockpit.value(DcsIds::CockpitParams::McAction01),
+	                 static_cast<double>(Core::MissionActionKind::GunOn),
+	                 kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 cockpit.value(DcsIds::CockpitParams::McAction02),
+	                 static_cast<double>(Core::MissionActionKind::GunOff),
+	                 kTolerance);
+}
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
@@ -71,4 +102,5 @@ void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 	test_snapshot_envelope_is_exported(context);
 	test_missing_parameter_reports_once_then_recovers(context);
 	test_reset_restarts_error_reporting(context);
+	test_mc_window_commits_only_when_all_parameters_are_written(context);
 }

@@ -10,7 +10,7 @@ fixed-rate scheduling and completed `AircraftData` snapshots.
 |---|---:|---|
 | `PilotControls` | 64 Hz | Pilot axes, trim inputs and independent throttle-lever signals |
 | `DigitalFlightControlComputer` | 64 Hz | Configurable three-axis direct mapping |
-| `MissionComputer` | 64 Hz | Top-level computer and internal scheduling scaffold; no mission functions yet |
+| `MissionComputer` | 64 Hz | Master-arm/mode management, HOTAS, stores fallback and ordered DCS operation requests |
 | `FlightControlActuationSystem` | 256 Hz | Primary-surface dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Flaps, slats and airbrake |
 | `LandingGear` | 64 Hz | Gear, brakes, NWS, wheels and suspension |
@@ -30,6 +30,11 @@ Every System implements:
 
 - `setup()`: declare one fixed rate/period, AircraftData reads/publications and handlers.
 - `step()`: advance one device tick using `SystemStepContext` time and `dt_s`.
+
+`SystemStepContext.input_time` is the current host frame's input observation time.
+It can be later than `scheduled_time` during catch-up. An acknowledgement newly
+observed in that frame must not be treated as having arrived at a historical tick.
+Existing Systems continue to use their scheduled time and fixed `dt_s`.
 
 Setup first gathers declarations, then validates providers, types, required
 initial values, single writers and handler ownership before committing state.

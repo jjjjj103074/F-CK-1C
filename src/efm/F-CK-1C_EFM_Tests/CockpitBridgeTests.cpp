@@ -259,6 +259,29 @@ void test_non_finite_weapon_station_value_is_rejected(Tests::Context& context)
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
 	expect_invalid_numeric(context, bridge.read_step_input().cockpit.weapon_stations.status);
 }
+
+void test_mission_adapter_rejects_invalid_ack_and_counts(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::CockpitParams::McAdapterAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::McAcknowledgedSequence, 7.0);
+	cockpit.set(DcsIds::CockpitParams::RadarState, 1.0);
+	cockpit.set(DcsIds::CockpitParams::McMissileCountAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::McMissileCount, 2.0);
+	cockpit.set(DcsIds::CockpitParams::McGunCountAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::McGunCount, 523.0);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	auto observation = bridge.read_step_input().cockpit.mission_adapter;
+	TEST_EXPECT(context, observation.available && observation.acknowledged_sequence == 7);
+	TEST_EXPECT(context, observation.radar_power_on);
+	TEST_EXPECT(context, observation.missile_count_available && observation.missile_count == 2);
+	TEST_EXPECT(context, observation.gun_count_available);
+	cockpit.set(DcsIds::CockpitParams::McAcknowledgedSequence, 7.5);
+	cockpit.set(DcsIds::CockpitParams::McMissileCount, -1.0);
+	observation = bridge.read_step_input().cockpit.mission_adapter;
+	TEST_EXPECT(context, !observation.available);
+	TEST_EXPECT(context, !observation.missile_count_available);
+}
 }
 
 void run_cockpit_bridge_tests(Tests::Context& context)
@@ -281,4 +304,5 @@ void run_cockpit_bridge_tests(Tests::Context& context)
 	test_weapon_station_invalid_revision_is_explicit(context);
 	test_weapon_station_unavailable_reason_is_preserved(context);
 	test_non_finite_weapon_station_value_is_rejected(context);
+	test_mission_adapter_rejects_invalid_ack_and_counts(context);
 }

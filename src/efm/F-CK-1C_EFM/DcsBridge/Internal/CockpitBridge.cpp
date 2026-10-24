@@ -153,7 +153,14 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationInvalidReason),
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationAim9Count),
 		       cockpit_parameter_reader(CockpitParams::WeaponObservationSelectedStation),
-		       cockpit_parameter_reader(CockpitParams::WeaponObservationScannedStationCount) } };
+		       cockpit_parameter_reader(CockpitParams::WeaponObservationScannedStationCount),
+		       cockpit_parameter_reader(CockpitParams::McAdapterAvailable),
+		       cockpit_parameter_reader(CockpitParams::McAcknowledgedSequence),
+		       cockpit_parameter_reader(CockpitParams::RadarState),
+		       cockpit_parameter_reader(CockpitParams::McMissileCountAvailable),
+		       cockpit_parameter_reader(CockpitParams::McMissileCount),
+		       cockpit_parameter_reader(CockpitParams::McGunCountAvailable),
+		       cockpit_parameter_reader(CockpitParams::McGunCount) } };
 }
 
 CockpitBridge::CockpitBridge(cockpit_param_api api)
@@ -170,10 +177,38 @@ CockpitStepInput CockpitBridge::read_step_input()
 	const CockpitValueResult<Core::RadarObservation> radar = read_radar();
 	const CockpitValueResult<Core::IrSeekerObservation> ir = read_ir_seeker();
 	const CockpitValueResult<Core::WeaponStationObservation> weapon = read_weapon_stations();
+	const auto mission = read_mission_adapter();
 	CockpitStepInput result;
 	result.cockpit = { heading.value, radar.value, ir.value, weapon.value, altitude.value };
+	result.cockpit.mission_adapter = mission.value;
 	result.events = altitude.events.merged(heading.events).merged(radar.events).merged(ir.events).merged(weapon.events);
+	result.events = result.events.merged(mission.events);
 	return result;
+}
+
+CockpitValueResult<Core::MissionAdapterObservation> CockpitBridge::read_mission_adapter()
+{
+	const auto available = read_parameter(Parameter::McAdapterAvailable);
+	const auto acknowledged = read_parameter(Parameter::McAcknowledgedSequence);
+	const auto radar = read_parameter(Parameter::RadarPowerOn);
+	const auto missile_available = read_parameter(Parameter::McMissileCountAvailable);
+	const auto missiles = read_parameter(Parameter::McMissileCount);
+	const auto gun_available = read_parameter(Parameter::McGunCountAvailable);
+	const auto gun = read_parameter(Parameter::McGunCount);
+	Core::MissionAdapterObservation result;
+	const auto revision = acknowledged.success ? to_revision(acknowledged.value) : std::nullopt;
+	result.available =
+	    all_success({ available, acknowledged, radar }) && is_enabled(available.value) && revision.has_value();
+	result.acknowledged_sequence = revision.value_or(0);
+	result.radar_power_on = radar.success && is_enabled(radar.value);
+	const auto count = missiles.success ? to_integer(missiles.value, 0) : std::nullopt;
+	result.missile_count_available =
+	    missile_available.success && is_enabled(missile_available.value) && count && *count <= 12;
+	result.missile_count = result.missile_count_available ? *count : 0;
+	result.gun_count_available = all_success({ gun_available, gun }) && is_enabled(gun_available.value) &&
+	                             gun.value >= 0.0 && gun.value <= 9999.0;
+	result.gun_count = result.gun_count_available ? gun.value : 0.0;
+	return { result, events_from({ available, acknowledged, radar, missile_available, missiles, gun_available, gun }) };
 }
 
 CockpitValueResult<Core::PressureAltitudeObservation> CockpitBridge::read_pressure_altitude()

@@ -3,16 +3,19 @@
 #include "../System.h"
 #include "Components/Executive/Executive.h"
 #include "Components/FailureManager/FailureManager.h"
+#include "Components/ModeManagement/ModeManagement.h"
 #include "Components/StartupAndRestart/StartupAndRestart.h"
 #include "Components/SystemMonitor/SystemMonitor.h"
 #include "Database/ExecutiveTables.h"
 #include "Database/InputOutputData.h"
 #include "Database/SystemStatusTables.h"
+#include "Database/ExternalActionQueue.h"
+#include "Database/MissionData.h"
 
 namespace Core::Systems
 {
-/// @brief 一台 MC 的組裝與 Pipeline 介面；直接持有四個元件及三個資料庫。
-/// 目前只有排程與組裝骨架，尚未實作任務功能、監控、故障處置或完整啟動程序。
+/// @brief 一台 MC 的組裝與 Pipeline 介面；直接持有功能元件與具型別資料庫。
+/// 模式、掛載、武器操作與感測器協調共用一個 Executive，DCS 操作由 Lua 介面執行。
 class MissionComputer final : public System
 {
 public:
@@ -27,14 +30,15 @@ public:
 	void set_powered(bool powered) noexcept;
 	bool powered() const noexcept;
 
-	/// @brief 宣告專案暫定頻率；本階段不宣告 AircraftData 輸入輸出或操作處理器。
+	/// @brief 宣告 MC 輸入輸出、命令處理器與專案暫定頻率。
 	void setup(SystemSetup& setup) override;
-	/// @brief 有電時讀取輸入、推進內部排程，再發布輸出；輸入輸出目前為空骨架。
+	/// @brief 讀取當前觀測、確認已執行操作、推進內部排程並發布具型別快照。
 	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
 private:
-	void read_inputs(const AircraftDataView& aircraft);
-	void publish_outputs(SystemResult& result) const;
+	void read_inputs(const SystemStepContext& context, const AircraftDataView& aircraft);
+	void consume_commands();
+	void publish_outputs(SystemResult& result);
 
 	bool powered_ = true; ///< 暫定預設有電；尚未連接電源系統。
 
@@ -42,9 +46,18 @@ private:
 	Mc::ExecutiveTables executive_tables_;
 	Mc::InputOutputData input_output_data_;
 	Mc::SystemStatusTables system_status_tables_;
+	Mc::ModeData mode_data_;
+	Mc::SensorData sensor_data_;
+	Mc::StoresData stores_data_;
+	Mc::WeaponControlData weapon_data_;
+	Mc::ExternalActionQueue external_actions_;
 
 	Mc::SystemMonitor system_monitor_;
 	Mc::FailureManager failure_manager_;
+	Mc::StoresManagement stores_management_;
+	Mc::SensorCoordination sensor_coordination_;
+	Mc::WeaponControl weapon_control_;
+	Mc::ModeManagement mode_management_;
 	Mc::Executive executive_;
 	Mc::StartupAndRestart startup_and_restart_;
 };

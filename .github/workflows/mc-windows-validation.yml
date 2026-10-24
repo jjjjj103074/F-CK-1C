@@ -13,10 +13,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lua-adapters:
+    name: Check MC Lua 5.1 adapters
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the fixed Lua interpreter and test the adapters
+        shell: bash
+        run: |
+          lua_root="$RUNNER_TEMP/mc-lua"
+          mkdir -p "$lua_root"
+          curl --fail --silent --show-error --location https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$lua_root/lua.tar.gz"
+          # Published at https://www.lua.org/ftp/.
+          printf '%s  %s\n' 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333 "$lua_root/lua.tar.gz" | sha256sum --check
+          tar -xzf "$lua_root/lua.tar.gz" -C "$lua_root"
+          make -C "$lua_root/lua-5.1.5" generic
+          "$lua_root/lua-5.1.5/src/luac" -p Cockpit/Scripts/Systems/cms_system.lua Cockpit/Scripts/Systems/mc_io.lua
+          "$lua_root/lua-5.1.5/src/lua" tools/test_mc_lua.lua
   build-validation:
     name: Build and validate MC migration
     runs-on: windows-2025-vs2026
     timeout-minutes: 30
+    needs: lua-adapters
     steps:
       - name: Check out the source revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

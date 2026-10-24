@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CockpitParameterEndpoint.h"
+#include "MissionComputerExporter.h"
 #include "../../Core/Contracts/CockpitContracts.h"
 #include "../../include/Cockpit/ccParametersAPI.h"
 
@@ -54,6 +55,7 @@ private:
 	CockpitParameterEvents write_parameter(Parameter parameter, double value);
 	const cockpit_param_api api_;
 	std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)> slots_;
+	MissionComputerExporter mission_computer_;
 	std::mutex mutex_;
 };
 }

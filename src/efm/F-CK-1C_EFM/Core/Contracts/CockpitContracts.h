@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MissionActions.h"
+
 #include <cstdint>
 #include <optional>
 
@@ -147,9 +149,12 @@ enum class Aim9Tone
 	Lock = 3
 };
 
-enum class ExternalSensorMode
+enum class Aim9Readiness
 {
-	None = 0
+	Off = 0,
+	Cool = 1,
+	Ready = 2,
+	Track = 3
 };
 
 enum class HmcsDisplayMode
@@ -219,6 +224,7 @@ struct CockpitObservation
 	IrSeekerObservation ir_seeker;
 	WeaponStationObservation weapon_stations;
 	PressureAltitudeObservation pressure_altitude;
+	MissionAdapterObservation mission_adapter;
 };
 
 struct SnapshotStatus
@@ -340,6 +346,7 @@ struct FireControlSnapshot
 	AirToAirSubmode air_to_air_submode = AirToAirSubmode::None;
 	bool dogfight_mode = false;
 	bool gun_fire_requested = false;
+	bool gun_firing_indication = false;
 	bool pickle_requested = false;
 };
 
@@ -364,6 +371,8 @@ struct Aim9Snapshot
 	bool contact = false;
 	bool locked = false;
 	bool uncage_held = false;
+	bool target_designated = false;
+	Aim9Readiness readiness = Aim9Readiness::Off;
 	Aim9SeekerState seeker_state = Aim9SeekerState::Off;
 	Aim9Tone requested_tone = Aim9Tone::Off;
 };
@@ -379,10 +388,7 @@ struct CountermeasureSnapshot
 struct ExternalActionIntentSnapshot
 {
 	SnapshotStatus status;
-	ExternalSensorMode sensor_mode = ExternalSensorMode::None;
-	std::uint64_t lock_start_count = 0;
-	std::uint64_t lock_finish_count = 0;
-	std::uint64_t weapon_change_count = 0;
+	MissionActionBatch batch;
 };
 
 struct CombatAvionicsSnapshot
