@@ -37,6 +37,9 @@ install.bat "D:\Saved Games\DCS"
 
 ## 研究
 
+[航空參考資料庫](docs/reference-library/README.md) 提供英文的來源、知識、評級與版權規範。
+從來源紀錄與主題文件查找資料；可用的查閱工具見資料庫指引。
+
 [控制律模型](research/control-law-diagrams/README.md) 提供獨立的
 F-16 Modelica 研究模型與驗證工具。
 

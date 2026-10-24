@@ -71,6 +71,9 @@ temp/
 /.tmp/
 /tmp/
 /output/
+# Aviation reference library: local-only assets and rebuildable search data.
+/docs/reference-library/**/local/
+/docs/reference-library/generated/
 cache/
 backup/
 Sounds/_backup_normalized_*/
