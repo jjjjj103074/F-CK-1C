@@ -1,19 +1,19 @@
 # Aviation Reference Library Design
 
-Status: Foundation implemented for inspection; runtime tooling deferred.
+Status: File-based contracts and manual workflow; runtime tooling deferred.
 Updated: 2026-10-24.
 
 This document consolidates the accepted requirements for an English-language
 aviation reference library under `docs/reference-library/`. It also specifies
-concrete data contracts. The initial structure and instructions are implemented
-in [reference-library/](reference-library/README.md). This phase does not
-implement runtime tools, download sources, change Git hooks, or authorize
-publication. [FORMATS.md](reference-library/FORMATS.md) and the schemas are the
-exact serialization contract; this document explains the design and later work.
+concrete data contracts. The structure and instructions are implemented in
+[reference-library/](reference-library/README.md); its guide describes available
+capabilities, not a collection inventory. This design does not itself authorize
+downloads, publication, Git operations, or changes to Git hooks.
+[FORMATS.md](reference-library/FORMATS.md) and the schemas are the exact
+serialization contract; this document explains the design and later work.
 
 - **Accepted baseline:** decisions explicitly accepted during the discussion.
-- **Foundation contract:** fields, codes, and serialization implemented under
-  the user's instruction to build the structure and guidance, pending inspection.
+- **Foundation contract:** implemented fields, codes, and serialization.
 - **Open implementation choice:** a choice identified in section 12, with a
   recommended starting point rather than an implied prior decision.
 
@@ -53,7 +53,7 @@ F-CK-1C/
 │     │  ├─ source.schema.json             # Source record contract
 │     │  └─ knowledge.schema.json          # Topic and knowledge record contract
 │     ├─ sources/
-│     │  └─ SRC-000001/
+│     │  └─ SRC-900001/
 │     │     ├─ source.yaml                 # Bibliography, versions, assets, rights
 │     │     ├─ document-v001.pdf            # Only when Git storage is permitted
 │     │     ├─ guide-v001.md               # Substantive document condensation
@@ -86,6 +86,13 @@ sources. Create optional directories only when they hold actual content.
 | `ratings.yaml`, `schemas/`, `RIGHTS.md` | Define shared rules and contracts | Yes |
 | `generated/` | Build searchable views of the authoritative inputs | No |
 
+Ordinary ingestion updates the affected source packages and topic records, plus
+consuming links if an asset moves. Refresh affected derived indexes when
+implemented tooling supports them. Shared READMEs, rules, and this design are
+not a hand-maintained catalog: do not change them to record source counts,
+first-source milestones, or whether the collection is empty. Update them when
+responsibilities, contracts, procedures, or actual capabilities change.
+
 The planned database is rebuildable. Agents currently edit the authoritative
 files manually; future tools will register them, not independent database rows.
 There is no second manual
@@ -99,7 +106,7 @@ files, and locators. **Foundation contract:** use the following identifiers.
 
 | Entity | Example | Meaning |
 |---|---|---|
-| Source | `SRC-000001` | One identifiable publication or original contribution |
+| Source | `SRC-900001` | One identifiable publication or original contribution |
 | Recorded version | `v001` | A recorded edition/state; not a publisher's revision label |
 | Asset | `PDF-001`, `FIG-001` | One exact PDF, image, guide, or corrected text asset |
 | Topic | `automatic-flight-control` | One defined concept, using a stable English name |
@@ -174,14 +181,14 @@ a successful acquisition. See FORMATS for the complete implemented contract:
 
 ```yaml
 schema_version: 1
-source_id: SRC-000001
+source_id: SRC-900001
 title: Illustrative source record
 original_title: null
 authors: []
 publisher: null
 official_record_url: null
 official_record_status: unverified
-official_record_note: Format example only; no publication has been registered.
+official_record_note: Format example only; this is not a registered publication.
 links_checked_at: null
 review:
   state: agent_added
@@ -567,29 +574,32 @@ These are planned acceptance cases, not tests already executed:
 | A developer reuses a checked finding | Useful content and provenance are returned without an obligatory full-document reread |
 | A rights restriction affects images/OCR | The derivative follows its actual restrictions; no leakage through guides or generated search output |
 
-## 11. Delivery boundaries
+## 11. Implementation boundaries
 
-This phase delivers library and directory guides, agent instructions, rights
-handling, grading definitions, concrete record contracts and examples, root
-discovery links, ignore rules, and a reserved tooling README. It includes no
-registered publications, topic knowledge, PDFs, migration, executable library
-tooling, Git hooks, commit, push, or PR. Existing research sources and citations
-remain unchanged.
+The file-based foundation defines library and directory guides, agent
+instructions, rights handling, grading definitions, concrete record contracts
+and examples, root discovery links, ignore rules, and tooling ownership.
+Collection contents are established by source packages and topic records, not
+by this design. Each collection or migration task has its own authorization and
+rights review; moving an asset also requires updating its consuming citations.
+Neither this design nor ordinary ingestion authorizes a commit, push, PR, or
+Git-hook change.
 
-Later implementation will provide parsing/cross-record validation, rights-aware
-registration and staging checks, extraction with page fidelity, and indexing /
-search. Review behavior with permitted documents and link-only/local-only cases
-before enlarging the catalog. Verification is not legal assessment or human review.
+Planned runtime implementation covers parsing/cross-record validation,
+rights-aware registration and staging checks, extraction with page fidelity,
+and indexing / search. Review behavior with permitted documents and
+link-only/local-only cases when validating those capabilities. Verification is
+not legal assessment or human review.
 
 ## 12. Review points and remaining choices
 
-No unresolved decision blocks inspection of this foundation. The exact grading
-definitions and Markdown contracts are now implemented for that inspection.
-Before building runtime tools, select the programming language, PDF extractor,
-OCR engine, search tokenizer, and cross-language query behavior using actual
-permitted documents. A local CLI returning structured results is the recommended
-initial interface; an MCP adapter can reuse its operations if needed. No such
-runtime/package choice or executable tool is delivered in this phase.
+The grading definitions and Markdown contracts support the manual workflow
+independently of collection contents. Before building runtime tools, select the
+programming language, PDF extractor, OCR engine, search tokenizer, and
+cross-language query behavior using actual permitted documents. A local CLI
+returning structured results is the recommended initial interface; an MCP adapter
+can reuse its operations if needed. No such runtime/package choice or executable
+tool is supplied by the file-based contracts.
 
 No extra approval is requested for already accepted English content, topic-based
 knowledge, substantive source guides, proactive figures, PDF page numbering,

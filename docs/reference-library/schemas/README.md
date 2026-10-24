@@ -1,8 +1,8 @@
 # Record contracts
 
 These JSON Schemas describe structured library records. They do not download,
-register, read, or legally approve a source. This phase provides contracts and
-instructions; the library parser and cross-record validator are not implemented.
+register, read, or legally approve a source. They provide structural contracts;
+the library parser and cross-record validator are not implemented.
 
 See [FORMATS.md](../FORMATS.md) for serialization, locators, identifiers, and
 the checks that JSON Schema cannot establish on its own.
@@ -22,7 +22,7 @@ Enable the `date`, `date-time`, and `uri` format assertions in the validator.
 
 Read the actual `$defs` names and `$id` values in the files rather than treating
 this table as a second schema. A general validator can evaluate these contracts;
-there is no project-specific validation command in this foundation.
+there is no project-specific validation command.
 
 ## Additional verification
 

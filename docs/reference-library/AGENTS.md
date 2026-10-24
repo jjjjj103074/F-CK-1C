@@ -46,14 +46,17 @@ conversation. Figure display helps understanding and does not require a separate
 confirmation step.
 
 Preserve axes, labels, units, legends, captions, and connections. Use original
-extractions or page renders rather than AI recreations. State what is unclear;
-mark transcriptions or interpreted connections with their actual review status.
+extractions or page renders rather than AI recreations. A selected figure that
+continues across pages must retain every part in original page order; identify
+the pages as complementary parts of one figure, not duplicate images. State
+what is unclear; mark transcriptions or interpreted connections with their
+actual review status.
 If a source-specific restriction affects display, explain it and provide the
 permitted locator instead of silently omitting the figure.
 
 ## Register valuable material before completing work
 
-Registration is a manual workflow in this phase. No library CLI, automatic ID
+Registration currently uses a manual workflow. No library CLI, automatic ID
 allocator, validator, extractor, indexer, or staged-rights hook exists yet.
 
 1. Register a new external source before completing the task when it materially
@@ -92,6 +95,13 @@ allocator, validator, extractor, indexer, or staged-rights hook exists yet.
    and rights. Report unresolved or failed actions. Future tools will automate
    these checks and index refresh; do not claim those capabilities exist now.
 
+Keep ordinary ingestion changes in the affected source packages and canonical
+topic files or local supplements. Update consuming links when an asset moves;
+refresh affected derived indexes only through implemented tooling. Do not add
+per-source listings, collection counts, or empty/populated status to shared
+READMEs or rules. Change shared documents only for a real change to the design,
+contracts, procedures, or available tooling, not to announce another source.
+
 ## Review honestly
 
 An agent may inspect the actual source and mark its declared scope
@@ -115,7 +125,7 @@ AI-specific-license gate.
 Before any authorized staging or commit, inspect the actual staged library
 content and its staged rights records, including force-added or already tracked
 local-only files. The ignore rules do not enforce rights, untrack files, or erase
-history. Automated staged-rights enforcement is not implemented in this phase.
+history. Automated staged-rights enforcement is not implemented.
 Report existing restricted history for remediation; do not rewrite it silently.
 
 Use English for authored library content. Retain original material faithfully

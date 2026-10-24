@@ -1,7 +1,7 @@
 # Topic Knowledge
 
 This directory organizes directly reusable, source-grounded information by
-canonical topic. No topic records or knowledge entries have been registered.
+canonical topic. Topic files define their own scopes and evidence-backed entries.
 This README is a directory guide and does not define a research topic.
 
 ## Canonical topics

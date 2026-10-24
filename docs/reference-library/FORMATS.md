@@ -22,7 +22,7 @@ links before accessing an untrusted path; a schema pattern alone is insufficient
 
 | Identifier | Scope and format |
 |---|---|
-| `source_id` | Library-wide `SRC-` plus digits; e.g. `SRC-000001` |
+| `source_id` | Library-wide `SRC-` plus digits; e.g. `SRC-900001` |
 | `version_id` | Within a source: `v` plus digits; e.g. `v001` |
 | `asset_id` | Within a source/version: uppercase prefix plus digits; e.g. `PDF-001`, `FIG-001`, `GUIDE-001` |
 | `relation_id` | Within a source/version: `REL-` plus digits |
@@ -93,14 +93,14 @@ This complete structural example has no acquired content (schema: `source`):
 
 ```yaml
 schema_version: 1
-source_id: SRC-000001
+source_id: SRC-900001
 title: Illustrative source record
 original_title: null
 authors: []
 publisher: null
 official_record_url: null
 official_record_status: unverified
-official_record_note: Syntax example; no publication has been registered.
+official_record_note: Syntax example; this is not a registered publication.
 links_checked_at: null
 review:
   state: agent_added
@@ -301,7 +301,7 @@ publication:
     assessed_by: null
     assessed_at: null
 evidence:
-  - source_id: SRC-000001
+  - source_id: SRC-900001
     version_id: v001
     relation_id: REL-001
 ```

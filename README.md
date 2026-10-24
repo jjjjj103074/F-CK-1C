@@ -42,8 +42,9 @@ Report reproducible problems or feature requests in [Issues](https://github.com/
 ## Research
 
 [Aviation reference library](docs/reference-library/README.md) defines the
-English-language source, knowledge, grading and rights workflow. Its foundation
-is in place; source collection and automated search are not yet implemented.
+English-language source, knowledge, grading and rights workflow. Use its source
+records and topic files to discover material; the library guide describes the
+available retrieval tools.
 
 [Control-law models](research/control-law-diagrams/README.md) contain independent
 F-16 Modelica research and verification tools.

@@ -11,10 +11,11 @@ decisions belong in their existing project documents.
 
 ## Current capabilities
 
-This first phase provides structure, record contracts, grading definitions, and
-operating instructions. No sources, topic records, PDFs, or knowledge findings
-have been registered. The directory READMEs describe how to add real material;
-they are not source or topic records.
+This library provides structure, record contracts, grading definitions, and
+operating instructions. Discover publications through
+`sources/<source-id>/source.yaml` and topics through `knowledge/<topic-id>.md`.
+The directory READMEs explain how to use and add material; they are not source
+or topic catalogs and do not track collection counts or ingestion milestones.
 
 Manual cataloging, reading, and repository text search can use these contracts.
 Library-specific registration, validation, PDF extraction, OCR, SQLite search,
@@ -70,6 +71,13 @@ types, assess actual rights, and preserve a PDF when permitted. Add a useful
 basic guide for content actually read and valuable topic knowledge as needed.
 Follow the detailed manual workflow in [AGENTS.md](AGENTS.md); automated checks
 remain future work.
+
+Ordinary ingestion changes the affected source packages and topic records, not
+these shared instructions or a hand-maintained publication list. Update consuming
+links if assets move, and refresh affected derived indexes when implemented
+tooling supports them. Change shared documentation only when responsibilities,
+contracts, procedures, or actual tool capabilities change, not when the collection
+becomes empty or gains another source.
 
 All authored library content uses English. Preserve original publications,
 titles, names, images, and quotations in their original form, and identify

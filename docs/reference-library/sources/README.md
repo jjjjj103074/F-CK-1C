@@ -1,7 +1,7 @@
 # Source Packages
 
-This directory holds original publications and their source records. There are
-no registered sources yet. This README is a directory guide, not a source record.
+This directory holds original publications and their source records in
+`SRC-*` packages. This README is a directory guide, not a source record.
 
 ## One package per identifiable publication
 
@@ -78,9 +78,13 @@ topic entries reference them instead of maintaining competing grades.
 
 Selected source figures retain labels, axes, units, legends, captions, and exact
 source/version/asset provenance. Preserve the original extraction or page render;
-do not replace unclear evidence with an AI recreation. Automatically reproducible
-renders and extraction belong in `generated/`; curated figures and corrected OCR
-are retained assets in their permitted tracked or local-only location.
+do not replace unclear evidence with an AI recreation. When a figure spans
+multiple pages, retain all parts in original page order, including continuation
+labels and cross-page connections. Identify those pages as complementary parts
+of the same figure so a single page is not mistaken for the complete diagram.
+Automatically reproducible renders and extraction belong in `generated/`;
+curated figures and corrected OCR are retained assets in their permitted tracked
+or local-only location.
 
 PDF locators always count from page 1 of the actual PDF, including covers and
 unnumbered pages. Ranges are inclusive. Use section names, figure/table labels,

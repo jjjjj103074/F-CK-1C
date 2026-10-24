@@ -103,11 +103,12 @@ or unresolved Git-storage permission or known local-only content, including
 derivatives. Inspect the staged bytes and records, not only a more permissive
 unstaged description. Check already tracked paths as well as new ones.
 
-This phase implements no staged-rights hook or automated rights validator.
+No staged-rights hook or automated rights validator is implemented.
 Future checks must inspect the actual staged records and content; neither ignore
 rules nor future checks can promise to prevent deliberate bypass or decide law
 from a file hash.
 
-Existing material in `research/references/` requires a rights and citation audit
-before migration; this phase migrates none of it. Report restricted material
-already in history and propose remediation. Do not silently rewrite history.
+Before migrating material from `research/references/`, audit its rights and
+citations, preserve the original bytes and provenance, and update consuming links.
+Record the assessment in the destination source package. Report restricted
+material already in history and propose remediation; do not silently rewrite history.
