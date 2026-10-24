@@ -91,6 +91,16 @@ private:
 	using ParameterSlots = std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)>;
 
 	static ParameterSlots make_parameter_slots();
+	// Keep one diagnostic buffer alive per read instead of retaining every observation's buffer on the stack.
+	template <typename TValue>
+	void read_into(CockpitValueResult<TValue> (CockpitBridge::*reader)(),
+	               TValue& destination,
+	               CockpitParameterEvents& events)
+	{
+		const auto result = (this->*reader)();
+		destination = result.value;
+		events = events.merged(result.events);
+	}
 	CockpitParameterReadResult read_parameter(Parameter parameter);
 	CockpitValueResult<Core::PressureAltitudeObservation> read_pressure_altitude();
 	CockpitValueResult<Core::MagneticHeadingObservation> read_magnetic_heading();

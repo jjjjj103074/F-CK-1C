@@ -172,17 +172,13 @@ CockpitBridge::CockpitBridge(cockpit_param_api api)
 CockpitStepInput CockpitBridge::read_step_input()
 {
 	std::lock_guard<std::mutex> lock(mutex_);
-	const CockpitValueResult<Core::PressureAltitudeObservation> altitude = read_pressure_altitude();
-	const CockpitValueResult<Core::MagneticHeadingObservation> heading = read_magnetic_heading();
-	const CockpitValueResult<Core::RadarObservation> radar = read_radar();
-	const CockpitValueResult<Core::IrSeekerObservation> ir = read_ir_seeker();
-	const CockpitValueResult<Core::WeaponStationObservation> weapon = read_weapon_stations();
-	const auto mission = read_mission_adapter();
 	CockpitStepInput result;
-	result.cockpit = { heading.value, radar.value, ir.value, weapon.value, altitude.value };
-	result.cockpit.mission_adapter = mission.value;
-	result.events = altitude.events.merged(heading.events).merged(radar.events).merged(ir.events).merged(weapon.events);
-	result.events = result.events.merged(mission.events);
+	read_into(&CockpitBridge::read_pressure_altitude, result.cockpit.pressure_altitude, result.events);
+	read_into(&CockpitBridge::read_magnetic_heading, result.cockpit.magnetic_heading, result.events);
+	read_into(&CockpitBridge::read_radar, result.cockpit.radar, result.events);
+	read_into(&CockpitBridge::read_ir_seeker, result.cockpit.ir_seeker, result.events);
+	read_into(&CockpitBridge::read_weapon_stations, result.cockpit.weapon_stations, result.events);
+	read_into(&CockpitBridge::read_mission_adapter, result.cockpit.mission_adapter, result.events);
 	return result;
 }
 
