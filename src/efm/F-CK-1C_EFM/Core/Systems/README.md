@@ -10,7 +10,7 @@ fixed-rate scheduling and completed `AircraftData` snapshots.
 |---|---:|---|
 | `PilotControls` | 64 Hz | Pilot axes, trim inputs and independent throttle-lever signals |
 | `DigitalFlightControlComputer` | 64 Hz | Configurable three-axis direct mapping |
-| `MissionComputer` | 64 Hz | Modes, HOTAS, inventory/selection, seeker state, weapon display and ordered DCS operation requests |
+| `MissionComputer` | 32 Hz | Modes, HOTAS, inventory/selection, seeker state, weapon display and ordered DCS operation requests |
 | `FlightControlActuationSystem` | 256 Hz | Primary-surface dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Flaps, slats and airbrake |
 | `LandingGear` | 64 Hz | Gear, brakes, NWS, wheels and suspension |
@@ -117,10 +117,11 @@ application, modes, monitoring and automatic throttle remain unimplemented.
 Both flight-control status snapshots remain unavailable.
 See the [DFLCC guide](DigitalFlightControlComputer/README.md).
 
-MissionComputer follows the DFLCC's assembly pattern with four internal
-components and three typed databases. Its 64 Hz is the project fallback;
-monitoring, failure handling and mission functions remain unimplemented.
-It declares no AircraftData reads, publications or handlers yet.
+MissionComputer follows the DFLCC's assembly pattern with grouped typed state
+and one Executive. Its outer System and periodic mission tasks run at the
+project-selected 32 Hz. It reads FrameInput, handles MC/HOTAS commands and
+publishes the typed mission snapshot; monitoring and failure handling remain
+unimplemented.
 See the [MC guide](MissionComputer/README.md).
 
 Fuel owns preparation handlers and the sole FuelData publication.

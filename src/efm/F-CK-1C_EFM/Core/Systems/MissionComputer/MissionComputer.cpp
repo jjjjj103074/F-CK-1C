@@ -22,31 +22,31 @@ MissionComputer::MissionComputer()
       display_management_(mode_data_, sensor_data_, stores_data_, weapon_data_, aim9_data_, weapon_display_data_),
       executive_(executive_tables_,
                  { { "stores_management.step",
-                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
                      stores_management_,
                      &Mc::StoresManagement::step },
                    { "weapon_control.step",
-                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
                      weapon_control_,
                      &Mc::WeaponControl::step },
                    { "sensor_coordination.step",
-                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
                      sensor_coordination_,
                      &Mc::SensorCoordination::step },
                    { "aim9_seeker_processing.step",
-                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
                      aim9_seeker_processing_,
                      &Mc::Aim9SeekerProcessing::step },
                    { "display_management.step",
-                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
                      display_management_,
                      &Mc::DisplayManagement::step },
                    { "system_monitor.step",
-                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
                      system_monitor_,
                      &Mc::SystemMonitor::step },
                    { "failure_manager.step",
-                     Mc::TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                     Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
                      failure_manager_,
                      &Mc::FailureManager::step } }),
       startup_and_restart_(executive_, system_status_tables_.lifecycle)
@@ -66,8 +66,8 @@ bool MissionComputer::powered() const noexcept
 
 void MissionComputer::setup(SystemSetup& setup)
 {
-	// 暫用專案 fallback；不借用 F-16XL 飛控參考值作為 MC 實機依據。
-	setup.update_rate_hz(kProjectDefinedFallbackUpdateRateHz);
+	// 專案選用 32 Hz；不借用 F-16XL 飛控參考值作為 MC 實機依據。
+	setup.update_rate_hz(kMissionComputerProjectUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
 	setup.publish(AircraftDataKeys::kMissionComputerSnapshot, input_output_data_.output.combat_avionics);
 	const CommandId mode_commands[] = { CommandId::SetMasterArmOn,     CommandId::SetMasterArmOff,

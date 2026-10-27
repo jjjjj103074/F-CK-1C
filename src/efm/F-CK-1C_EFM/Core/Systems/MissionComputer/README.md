@@ -75,7 +75,10 @@ AircraftSimulation 的座艙快照送往 DcsBridge。
 
 ## 時間與命令
 
-外層與所有週期入口暫用專案 64 Hz，並非實機 MC 的已知頻率。
+外層與所有週期入口採專案選用的 32 Hz（31.25 ms）。參考
+[SEI 的傳統任務航電架構範例（PDF 第 20 頁）](https://www.sei.cmu.edu/documents/3306/2012_017_001_24084.pdf#page=20)
+所列的約 20–40 Hz 範圍；這不是實機 F-16 MMC／F-CK-1C 的已知頻率。
+MC 使用獨立的頻率設定，DFLCC 維持原有 64 Hz。
 同時到期順序是 StoresManagement → WeaponControl → SensorCoordination →
 Aim9SeekerProcessing → DisplayManagement → SystemMonitor → FailureManager。ModeManagement 是事件入口，不另建空週期工作。
 Executive 保留與 DFLCC 相同的整數分數頻率、依到期時間補跑、同時到期依表列順序、
@@ -87,7 +90,7 @@ MC 命令先依收到順序保存在具型別佇列；下一個 tick 讀取最�
 
 外層流程為 read_inputs → consume_commands → Executive::step → publish_outputs。
 扳機、投放與鎖定脈衝的最短保持沿用原 Lua 的 80 ms，從 Lua 確認執行起計；
-64 Hz 量化與 Lua 更新可能延長保持。Master OFF/SIM 立即追加停止操作。
+32 Hz 量化與 Lua 更新可能延長保持。Master OFF/SIM 立即追加停止操作。
 `SystemStepContext.input_time` 記錄本次主機幀的觀測時間，避免補跑把新確認倒填到
 歷史任務時間。DFLCC 的既有時間與行為不變，不需要修改其元件。
 

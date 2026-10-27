@@ -13,11 +13,11 @@ Executive::Executive(ExecutiveTables& tables, SystemMonitor& system_monitor, Fai
     : Executive(tables,
                 { // 專案骨架頻率，並非實機 MC 規格；監控先於故障處置。
                   { "system_monitor.step",
-                    TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                    TaskFrequency(kMissionComputerProjectUpdateRateHz),
                     system_monitor,
                     &SystemMonitor::step },
                   { "failure_manager.step",
-                    TaskFrequency(kProjectDefinedFallbackUpdateRateHz),
+                    TaskFrequency(kMissionComputerProjectUpdateRateHz),
                     failure_manager,
                     &FailureManager::step } })
 {
