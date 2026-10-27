@@ -74,9 +74,9 @@ join(res.keyCommands, {
     { combos = { { key = "Insert", reformers = { "RAlt" } } }, down = device_commands.CMSLeft, up = device_commands.CMSLeft, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Left (2x Flare + Chaff)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
     { combos = { { key = "End", reformers = { "RAlt" } } }, down = device_commands.CMSRight, up = device_commands.CMSRight, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Right (Abort Program)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
     { combos = { { key = "PgDn", reformers = { "RAlt" } } }, down = device_commands.CMSPress, up = device_commands.CMSPress, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Press (Reserved)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
-    { down = iCommandPlaneFire, up = iCommandPlaneFireOff, name = _("Gun Fire - Direct (Fallback)"), category = { _("Weapons") } },
+    { down = iCommandPlaneFire, up = iCommandPlaneFireOff, name = _("Gun Fire (MC)"), category = { _("Weapons") } },
     { combos = defaultDeviceAssignmentFor("weapon_release_button"), down = iCommandPlanePickleOn, up = iCommandPlanePickleOff, name = _("Weapon Release"), category = { _("Weapons") } },
-    { combos = { { key = "Space", reformers = { "RAlt" } } }, down = iCommandPlanePickleOn, up = iCommandPlanePickleOff, name = _("Weapon Release - Direct (Pickle Fallback)"), category = { _("Weapons") } },
+    { combos = { { key = "Space", reformers = { "RAlt" } } }, down = iCommandPlanePickleOn, up = iCommandPlanePickleOff, name = _("Weapon Release (MC)"), category = { _("Weapons") } },
     { down = iCommandPlaneLaunchPermissionOverride, name = _("Launch Permission Override - Direct"), category = { _("Weapons") } },
     { down = iCommandPlaneDropSnarOnce, up = iCommandPlaneDropSnarOnceOff, name = _("Countermeasures Release - Direct (Standard)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
     { down = iCommandPlaneDropFlareOnce, name = _("Flare Release - Direct (Fallback)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
@@ -112,5 +112,7 @@ join(res.keyCommands, {
     { down = device_commands.EngineThrustCutTestEnable, up = device_commands.EngineThrustCutTestEnable, value_down = 1.0, value_up = 0.0, name = _("Engine Thrust Cut Test - Enable (Thrust = 0)"), category = { _("Flight Test") } },
     { down = device_commands.EngineThrustCutTestDisable, up = device_commands.EngineThrustCutTestDisable, value_down = 1.0, value_up = 0.0, name = _("Engine Thrust Cut Test - Disable (Restore Thrust)"), category = { _("Flight Test") } },
 })
+
+dofile(folder .. "../mission_weapon_input.lua")(res.keyCommands, device_commands, dcs_commands)
 
 return res

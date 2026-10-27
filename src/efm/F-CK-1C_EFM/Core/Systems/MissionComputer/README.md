@@ -86,7 +86,11 @@ Executive 保留與 DFLCC 相同的整數分數頻率、依到期時間補跑、
 
 MC 命令先依收到順序保存在具型別佇列；下一個 tick 讀取最新觀測後，再依序交給
 對應元件更新狀態與追加外部操作。不把同一個 tick 中的多次模式切換折成最後狀態。鍵盤與搖桿的自訂 MC/HOTAS 命令經 EFM 路由。
-原有直接 DCS 測試／備用按鍵仍是 DCS 自有介面。
+鍵盤與搖桿的原生開火／投放別名（含繼承自 DCS 共用設定的入口）在輸入設定載入時，
+由 `Input/F-CK-1C/mission_weapon_input.lua` 轉為 MC 的扳機／投放命令；保留原有按鍵組合，
+按下／放開分別傳送 1／0，連續按住型入口轉為一次按下與放開；同一動作的別名合併到
+既有 MC 項目並合併按鍵組合，避免重複的指令項目。這些入口不直接送原生開火／投放 ID。
+實際原生操作仍由 MC 核准後交給 Lua 執行；其他既有模式、感測器與反制測試入口沿用原設定。
 
 外層流程為 read_inputs → consume_commands → Executive::step → publish_outputs。
 扳機、投放與鎖定脈衝的最短保持沿用原 Lua 的 80 ms，從 Lua 確認執行起計；
@@ -101,6 +105,10 @@ NAV 切換沒有新增強制停止已開始操作的規則；保留既有行為�
 ## Lua 與 DCS 邊界
 
 `cms_system.lua` 保留 DCS dispatch、get_base_data 的原始數量探測與反制程序排程。
+完整外掛清單由 `avSimpleWeaponSystem:get_station_info()` 讀取，再經座艙參數與
+DcsBridge 的 CockpitBridge 送入 C++；目前附帶的 EFM C++ SDK 沒有對等的完整掛點查詢入口。
+`get_base_data` 的候補總數函式採能力探測，不是 SDK 保證；其實際可用性仍待 DCS 遊戲內驗證。
+外掛清單與機內機炮彈量是不同資料來源；本段未修改既有數量估算規則。
 反制 Forward／Left／Aft 的原有次數與間隔未改，MC 發出啟動或中止命令。
 關閉後立即再開啟 Master 仍會保留中間的中止操作。
 `mc_io.lua` 只負責數值參數傳遞，不做任務判斷。

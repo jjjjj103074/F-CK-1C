@@ -342,8 +342,45 @@ for name, value in pairs(mission_values) do
 end
 
 -- Execute both real DCS input profiles: every MC/HOTAS binding reaches EFM with both edges.
-external_profile = function() return { keyCommands = {}, axisCommands = {} } end
-defaultDeviceAssignmentFor = function() return {} end
+for name, value in pairs(dcs_commands) do
+    _G[name] = value
+end
+external_profile = function()
+    return {
+        keyCommands = {
+            {
+                down = iCommandPlaneFire,
+                up = iCommandPlaneFireOff,
+                combos = { { key = "Space" } },
+                name = "Inherited Gun",
+            },
+            {
+                down = iCommandPlanePickleOn,
+                up = iCommandPlanePickleOff,
+                combos = { { key = "InheritedRelease" } },
+                name = "Inherited Release",
+            },
+            {
+                pressed = iCommandPlaneFire,
+                up = iCommandPlaneFireOff,
+                combos = { { key = "HeldGun" } },
+                name = "Inherited Held Gun",
+            },
+            {
+                down = 999001,
+                up = 999002,
+                value_down = 0.7,
+                value_up = 0.2,
+                cockpit_device_id = 777,
+                name = "Unrelated",
+            },
+        },
+        axisCommands = {},
+    }
+end
+defaultDeviceAssignmentFor = function(role)
+    return role == "weapon_release_button" and { { key = "DeviceRelease" } } or {}
+end
 _ = function(text) return text end
 join = function(destination, entries)
     for _, entry in ipairs(entries) do
@@ -388,7 +425,96 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
                 )
             end
         end
-        expect(matches == 1, profile .. ": expected exactly one MC command binding: " .. name)
+        expect(matches == 1, profile .. ": expected one MC command after merging aliases: " .. name)
+    end
+    local forbidden = {
+        [dcs_commands.iCommandPlaneFire] = true,
+        [dcs_commands.iCommandPlaneFireOff] = true,
+        [dcs_commands.iCommandPlanePickleOn] = true,
+        [dcs_commands.iCommandPlanePickleOff] = true,
+    }
+    local inherited_release, held_gun, unrelated, space_gun = 0, 0, 0, 0
+    local joystick_gun, joystick_release, keyboard_release, device_release = 0, 0, 0, 0
+    for _, binding in ipairs(bindings.keyCommands) do
+        for _, edge in ipairs({ "down", "up", "pressed" }) do
+            expect(not forbidden[binding[edge]], profile .. ": firing/release input must not bypass MC: " .. edge)
+        end
+        if binding.name == "Unrelated" then
+            unrelated = unrelated + 1
+            expect(
+                binding.down == 999001
+                    and binding.up == 999002
+                    and binding.value_down == 0.7
+                    and binding.value_up == 0.2
+                    and binding.cockpit_device_id == 777,
+                profile .. ": unrelated bindings remain unchanged"
+            )
+        end
+        for _, combo in ipairs(binding.combos or {}) do
+            if combo.key == "DeviceRelease" then
+                device_release = device_release + 1
+                expect(binding.down == device_commands.WeaponRelease, "device-assigned release combo reaches MC")
+            elseif combo.key == "InheritedRelease" then
+                inherited_release = inherited_release + 1
+                expect(binding.down == device_commands.WeaponRelease, "inherited release combo reaches MC")
+            elseif combo.key == "HeldGun" then
+                held_gun = held_gun + 1
+                expect(
+                    binding.down == device_commands.TriggerSecondStage and binding.pressed == nil,
+                    "inherited held fire becomes one MC press and release"
+                )
+            elseif
+                combo.key == "Space"
+                and not combo.reformers
+                and binding.down == device_commands.TriggerSecondStage
+            then
+                space_gun = space_gun + 1
+            end
+            if profile == "joystick" and combo.key == "JOY_BTN1" then
+                joystick_gun = joystick_gun + 1
+                expect(binding.down == device_commands.TriggerSecondStage, "JOY_BTN1 must reach MC gun control")
+            elseif profile == "joystick" and combo.key == "JOY_BTN2" then
+                joystick_release = joystick_release + 1
+                expect(binding.down == device_commands.WeaponRelease, "JOY_BTN2 must reach MC weapon release")
+            elseif
+                profile == "keyboard"
+                and combo.key == "Space"
+                and combo.reformers
+                and #combo.reformers == 1
+                and combo.reformers[1] == "RAlt"
+            then
+                keyboard_release = keyboard_release + 1
+                expect(binding.down == device_commands.WeaponRelease, "RAlt+Space must reach MC weapon release")
+            end
+        end
+    end
+    expect(
+        inherited_release == 1 and held_gun == 1 and unrelated == 1,
+        profile .. ": preserve inherited keys and unrelated bindings while merging aliases"
+    )
+    expect(space_gun == 1, profile .. ": merge duplicate plain Space combos into one gun action")
+    if profile == "joystick" then
+        expect(joystick_gun == 1 and joystick_release == 1, "preserve default joystick gun/release buttons")
+    else
+        expect(keyboard_release == 1 and device_release == 1, "preserve keyboard and device-assigned release combos")
     end
 end
+-- Explicit release-only inputs retain their zero-valued MC edge.
+local release_only = {
+    { down = dcs_commands.iCommandPlaneFireOff, cockpit_device_id = 999 },
+    { down = dcs_commands.iCommandPlanePickleOff, cockpit_device_id = 999 },
+}
+dofile("Input/F-CK-1C/mission_weapon_input.lua")(release_only, device_commands, dcs_commands)
+expect(
+    release_only[1].down == device_commands.TriggerSecondStage and release_only[1].value_down == 0,
+    "a native gun stop must remain a release request"
+)
+expect(
+    release_only[2].down == device_commands.WeaponRelease and release_only[2].value_down == 0,
+    "a native pickle stop must remain a release request"
+)
+expect(
+    release_only[1].cockpit_device_id == nil and release_only[2].cockpit_device_id == nil,
+    "release-only input must reach EFM"
+)
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))
