@@ -57,6 +57,17 @@ procedure under `docs/ai/`; maintain workflow rules in that shared file.
 Other agents should read those procedures explicitly when performing these tasks;
 do not assume that every tool automatically discovers either skill directory.
 
+## Aviation reference library
+
+For aviation research, aircraft-system design, or implementation that relies on
+external technical information, read
+[the reference-library rules](docs/reference-library/AGENTS.md) first.
+Consult existing topic knowledge and source guides before external research.
+Register valuable sources actually used, preserve their scope and rights, and
+proactively show relevant figures as required by that guide.
+The current foundation uses a manual workflow; do not assume search or ingestion
+commands, a database, or automated rights checks already exist.
+
 ## C++ formatting
 
 When editing C++, read [the formatting guide](docs/CPP_FORMATTING.md).
