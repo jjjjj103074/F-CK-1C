@@ -25,8 +25,10 @@ then validate it. Reports are written to `tmp/pr-validation/`.
 - `Core/` owns aircraft simulation. Systems exchange typed `AircraftData`;
   physical models run through `SimulationPipeline`.
 - `DcsIds/` owns DCS boundary identifiers and generated C++/Lua tables.
-- Cockpit Lua owns the currently implemented CMS, weapon, radar, HMCS and audio
-  paths described in the [cockpit guide](docs/COCKPIT.md).
+- `Core/Systems/MissionComputer/` owns mission modes, stores policy, weapon
+  authorization, sensor coordination, seeker processing and weapon display decisions.
+- Cockpit Lua adapts DCS observations and actions, runs CM programs, and renders
+  displays/audio as described in the [cockpit guide](docs/COCKPIT.md).
 
 Start with the [EFM overview](src/efm/README.md).
 Concrete Systems do not include or call one another. Core remains independent
@@ -99,7 +101,9 @@ npm run validate:efm
 - `Core/`：飛機模擬；System 以 typed `AircraftData` 交換狀態，
   物理模型由 `SimulationPipeline` 執行。
 - `DcsIds/`：DCS 邊界 ID 與生成的 C++／Lua 表格。
-- Cockpit Lua：目前的 CMS、武器、雷達、HMCS 與音效路徑，
+- `Core/Systems/MissionComputer/`：任務模式、掛載策略、武器資格、感測器協調、
+  尋標處理與武器顯示決策。
+- Cockpit Lua：DCS 觀測與操作介面、反制程序、顯示及播放，
   詳見[座艙指南](docs/COCKPIT.md)。
 
 由 [EFM 總覽](src/efm/README.md) 進入各模組指南。

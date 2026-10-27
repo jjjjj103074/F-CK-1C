@@ -34,6 +34,7 @@ install.bat "D:\Saved Games\DCS"
 - [Contributing](CONTRIBUTING.md): setup, workflow and submission rules.
 - [EFM](src/efm/README.md): architecture and module guides.
 - [Cockpit](docs/COCKPIT.md): Lua devices, input routing and parameters.
+- [Mission computer](docs/MC_MIGRATION_REPORT.md): migration, components, databases and data/command flows.
 - [Build and verification](docs/BUILD_DLL.md): toolchain and local commands.
 - [DCS testing](docs/DCS_TESTING.md): scenarios and checks.
 

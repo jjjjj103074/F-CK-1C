@@ -4,6 +4,7 @@ MC 是單一 `System`，直接持有同層功能元件與具型別記憶體資�
 組裝方式沿用 DFLCC；這是專案設計，並非實機 F-CK-1C MC 的架構復刻。
 原有 Lua 中的模式、HOTAS、武器操作、感測器協調、掛點管理、尋標狀態、
 音調要求與武器顯示決策已移入 MC。Lua 保留 DCS 介面、呈現、播放與反制程序。
+完整遷移、架構、資料流與指令流見 [MC 變更報告](../../../../../../docs/MC_MIGRATION_REPORT.md)。
 
 ## 組裝與責任
 
@@ -93,8 +94,9 @@ MC 命令先依收到順序保存在具型別佇列；下一個 tick 讀取最�
 實際原生操作仍由 MC 核准後交給 Lua 執行；其他既有模式、感測器與反制測試入口沿用原設定。
 
 外層流程為 read_inputs → consume_commands → Executive::step → publish_outputs。
-扳機、投放與鎖定脈衝的最短保持沿用原 Lua 的 80 ms，從 Lua 確認執行起計；
-32 Hz 量化與 Lua 更新可能延長保持。Master OFF/SIM 立即追加停止操作。
+扳機、投放與鎖定脈衝的最短保持沿用原 Lua 的 80 ms，從 MC 觀測到 Lua 已確認執行
+的當前時間起計；32 Hz 量化與 Lua 更新可能延長保持。Master OFF/SIM 在命令被消費時
+立即追加停止操作，不等待最短保持；實際 DCS 停止仍經後續 Lua 傳遞。
 `SystemStepContext.input_time` 記錄本次主機幀的觀測時間，避免補跑把新確認倒填到
 歷史任務時間。DFLCC 的既有時間與行為不變，不需要修改其元件。
 
@@ -107,7 +109,8 @@ NAV 切換沒有新增強制停止已開始操作的規則；保留既有行為�
 `cms_system.lua` 保留 DCS dispatch、get_base_data 的原始數量探測與反制程序排程。
 完整外掛清單由 `avSimpleWeaponSystem:get_station_info()` 讀取，再經座艙參數與
 DcsBridge 的 CockpitBridge 送入 C++；目前附帶的 EFM C++ SDK 沒有對等的完整掛點查詢入口。
-`get_base_data` 的候補總數函式採能力探測，不是 SDK 保證；其實際可用性仍待 DCS 遊戲內驗證。
+`get_base_data` 的候補總數函式沿用既有名稱、順序與能力檢查。依使用者先前正常運作
+的經驗保留此路徑；本次沒有證據判定函數不存在，各名稱與回傳語意待 DCS 遊戲內確認。
 外掛清單與機內機炮彈量是不同資料來源；本段未修改既有數量估算規則。
 反制 Forward／Left／Aft 的原有次數與間隔未改，MC 發出啟動或中止命令。
 關閉後立即再開啟 Master 仍會保留中間的中止操作。
@@ -193,6 +196,8 @@ DcsBridge 測試涵蓋無效確認／數量、不完整參數輸出、原始掛�
 尋標測試涵蓋訊號優先序、可用性與原有全零回退；遷移時另以實際舊 Lua 的 252 組情境
 逐項核對 C++ 結果。顯示／機炮測試涵蓋偏好順序、權威數量、有效零值與補跑時的新按鍵。
 Lua 測試執行實際原始觀測介面與兩份輸入設定，確認呈現介面不再覆寫 MC 參數。
+彈量測試以 fixture 覆蓋每個既有候選 API 的成功路徑、零值優先序、失敗後續讀與無效值；
+fixture 只驗證轉接契約，不宣稱已確認 DCS 提供這些函數。
 
 每段先做 Standards／Spec code review 與本機可執行測試，再 commit／push。
 [CI](../../../../../../.github/workflows/mc-windows-validation.yml) 先執行固定 Lua 5.1

@@ -102,7 +102,8 @@ local native = {}
 values = fixture(function() return true end)
 LockOn_Options = { script_path = "Cockpit/Scripts/" }
 GetSelf = function() return {} end
-get_base_data = function() return {} end
+local count_sensors = {}
+get_base_data = function() return count_sensors end
 make_default_activity = function(rate) expect(rate == 0.02, "CMS retains its adapter/CM update period") end
 dispatch_action = function(_, command) native[#native + 1] = command end
 dofile("Cockpit/Scripts/Systems/cms_system.lua")
@@ -161,6 +162,93 @@ update()
 expect(
     values[cockpit_params.McAcknowledgedSequence] == 21 and #native == 17,
     "an ON request must not toggle an already ON radar"
+)
+-- Exercise the existing count API success path without claiming DCS exposes the fixtures.
+local function clear_count_sensors()
+    for name in pairs(count_sensors) do
+        count_sensors[name] = nil
+    end
+end
+expect(values[cockpit_params.McGunCountAvailable] == 0, "absent gun methods remain unavailable")
+expect(values[cockpit_params.McMissileCountAvailable] == 0, "absent missile methods remain unavailable")
+for _, name in ipairs({ "getGunAmmoCount", "getCannonsAmmoCount", "getAmmoCount" }) do
+    clear_count_sensors()
+    count_sensors[name] = function(self)
+        expect(self == count_sensors, "gun count methods receive the sensor object")
+        return 240
+    end
+    update()
+    expect(
+        values[cockpit_params.McGunCountAvailable] == 1 and values[cockpit_params.McGunCount] == 240,
+        "preserve existing gun count API: " .. name
+    )
+end
+for _, name in ipairs({
+    "getAAMMissileCount",
+    "getAAMCount",
+    "getAirMissileCount",
+    "getAirToAirMissileCount",
+    "getMissileCount",
+    "getMissilesCount",
+    "getWeaponCount",
+    "getSelectedWeaponCount",
+    "getAmmoCount",
+}) do
+    clear_count_sensors()
+    count_sensors[name] = function(self)
+        expect(self == count_sensors, "missile count methods receive the sensor object")
+        return 4
+    end
+    update()
+    expect(
+        values[cockpit_params.McMissileCountAvailable] == 1 and values[cockpit_params.McMissileCount] == 4,
+        "preserve existing missile count API: " .. name
+    )
+end
+clear_count_sensors()
+local secondary_count_called = false
+count_sensors.getGunAmmoCount = function() return 0 end
+count_sensors.getAAMMissileCount = function() return 0 end
+count_sensors.getAmmoCount = function()
+    secondary_count_called = true
+    return 5
+end
+update()
+expect(
+    values[cockpit_params.McGunCountAvailable] == 1 and values[cockpit_params.McGunCount] == 0,
+    "zero gun count is valid"
+)
+expect(
+    values[cockpit_params.McMissileCountAvailable] == 1 and values[cockpit_params.McMissileCount] == 0,
+    "zero missile count is valid"
+)
+expect(not secondary_count_called, "valid primary zero counts retain precedence over secondary APIs")
+clear_count_sensors()
+count_sensors.getGunAmmoCount = function() error("count API fixture failure") end
+count_sensors.getCannonsAmmoCount = function() return false end
+count_sensors.getAmmoCount = function() return 37 end
+count_sensors.getAAMMissileCount = function() return 13 end
+count_sensors.getAAMCount = function() return 4 end
+update()
+expect(
+    values[cockpit_params.McGunCountAvailable] == 1 and values[cockpit_params.McGunCount] == 37,
+    "failed gun APIs try the next existing name"
+)
+expect(
+    values[cockpit_params.McMissileCountAvailable] == 1 and values[cockpit_params.McMissileCount] == 4,
+    "invalid missile counts try the next existing name"
+)
+clear_count_sensors()
+count_sensors.getGunAmmoCount = function() return -1 end
+count_sensors.getAAMMissileCount = function() return 13 end
+update()
+expect(
+    values[cockpit_params.McGunCountAvailable] == 0 and values[cockpit_params.McGunCount] == 0,
+    "invalid gun data clears availability and stale count"
+)
+expect(
+    values[cockpit_params.McMissileCountAvailable] == 0 and values[cockpit_params.McMissileCount] == 0,
+    "invalid missile data clears availability and stale count"
 )
 -- The real station adapter publishes raw samples and executes only MC selection requests.
 values = fixture(function() return true end)

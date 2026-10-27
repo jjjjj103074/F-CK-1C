@@ -30,6 +30,7 @@ install.bat "D:\Saved Games\DCS"
 - [貢獻指南](CONTRIBUTING.md)：環境、流程與提交規則。
 - [EFM](src/efm/README.md)：架構與各模組指南。
 - [座艙](docs/COCKPIT.md)：Lua device、輸入路由與參數。
+- [任務電腦](docs/MC_MIGRATION_REPORT.md)：遷移、元件、資料庫及資料／指令流。
 - [建置與驗證](docs/BUILD_DLL.md)：工具鏈與本機指令。
 - [DCS 測試](docs/DCS_TESTING.md)：驗證情境與觀察項目。
 

@@ -41,6 +41,7 @@ local function cms_release_allowed()
     return dispatch_action ~= nil and master_mode:get() > 1.5
 end
 
+-- Preserve the existing API names and precedence; confirm them in DCS before changing this path.
 local function read_count(candidates, maximum)
     for _, name in ipairs(candidates) do
         local method = sensor_data and sensor_data[name]
