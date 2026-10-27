@@ -37,6 +37,8 @@
 主要功能提交：`329eadc`（骨架）、`4c307d0`（模式／HOTAS）、`784281d`（掛載）、
 `6a11d88`（尋標／顯示）、`a3bfa77`（32 Hz）、`8136459`（原生射擊／投放入口）。
 中間的工具修正及產物收據保留在分支歷史中。
+截至補完提交 `1727382`，相對起點共 89 個變更檔案；本次補完涉及 10 個。
+完整檔案與逐行差異見 [遷移比較](https://github.com/jjjjj103074/F-CK-1C/compare/8fda92dc545b207dcb78de8181e80a6aa1b41e12...17273821b305bcdc4f661ba42518320cbfc950fd)。
 
 ## 目前架構
 
@@ -256,6 +258,27 @@ DLL SHA256 及重建結果，再另作產物／收據 commit。
 
 DCS 遊戲內驗證尚未執行，依 [DCS MC 驗收表](DCS_TESTING.md#mc-遷移驗證尚待-dcs-執行)
 核對函數、掛載、gate、輸入、延遲、選站、音效及任務重入。
+
+### 本次完成驗證
+
+來源 `17273821b305bcdc4f661ba42518320cbfc950fd`，tree `d8b971ed7b2110d36f65418297fe4f21e82f36db`，
+[CI 40470921818](https://github.com/jjjjj103074/F-CK-1C/actions/runs/40470921818) 的兩個工作均成功。
+
+| 檢查 | 結果 |
+|---|---|
+| Standards／Spec 審查 | 各 0 個未解決問題；已修正空掛站與機炮零值的驗收文字 |
+| Lua 5.1.5 | 695 checks，0 failures |
+| Windows Node 工具測試 | 89 tests，89 passed，0 failed，0 skipped |
+| C++ 格式 | 272 檔，0 需排版 |
+| 完整 validate_efm.ps1 | 16 項全部 passed |
+| C++ 原生測試 | 3,591 checks，0 failures |
+| DLL 接口／載入 | 37 exports，載入／卸載 passed |
+| 產物核對 | ZIP digest、來源 commit／tree、提交中的 DLL 與乾淨重建結果均一致 |
+| DCS 遊戲內 | not_run，尚待實測 |
+
+DLL 為 920,576 bytes，SHA256 為
+`ef38a6a559d7bf50687ca90ed7c247bf51bf7c68a0f7f19986f3c6aab379e20e`。
+本次未改 C++ 執行期來源，因此 DLL 與前一版相同；另提交驗證收據及這份結果紀錄。
 
 ## 主要閱讀入口
 
