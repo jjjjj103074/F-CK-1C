@@ -23,7 +23,8 @@ struct CockpitParameterEvent
 	bool has_value = false;
 };
 
-inline constexpr std::size_t kCockpitParameterEventCapacity = 64;
+// One export can report 67 failures/recoveries across the envelope, AP and MC fields.
+inline constexpr std::size_t kCockpitParameterEventCapacity = 128;
 
 struct CockpitParameterEvents
 {

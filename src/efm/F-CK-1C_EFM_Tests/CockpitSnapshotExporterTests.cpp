@@ -152,6 +152,29 @@ void test_missing_control_fact_blocks_mc_commit(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 4.0, kTolerance);
 }
 
+void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	for (const auto& entry : DcsIds::CockpitParams::Catalog)
+		cockpit.set_available(entry.name, false);
+	// A writable generation lets the exporter attempt every MC field.
+	cockpit.set_available(DcsIds::CockpitParams::McGeneration, true);
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	snapshot.combat_avionics.status = { true, 1 };
+	auto events = exporter.export_snapshot(snapshot);
+	TEST_EXPECT(context, events.count == 67);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
+	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 0); // Repeated failures remain suppressed.
+	for (const auto& entry : DcsIds::CockpitParams::Catalog)
+		cockpit.set_available(entry.name, true);
+	events = exporter.export_snapshot(snapshot);
+	TEST_EXPECT(context, events.count == 67);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
+	for (std::size_t i = 0; i < events.count; ++i)
+		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
+}
+
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
@@ -161,4 +184,5 @@ void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 	test_reset_restarts_error_reporting(context);
 	test_mc_window_commits_only_when_all_parameters_are_written(context);
 	test_missing_control_fact_blocks_mc_commit(context);
+	test_exporter_reports_all_missing_fields_and_recoveries(context);
 }

@@ -97,6 +97,8 @@ HMCS 仍為 64 Hz，MC 為 32 Hz；這是讀取資料快照，未新增同步 RP
 | MC C++17 範圍回歸 | 172 checks，0 failures |
 | Lua 5.1 實際介面與輸入設定 | 6,169 checks，0 failures |
 | 顯示規則參考重播 | 8,192 輸入幀，跳過中間 HMCS 更新；所有讀取時的類別與數量一致 |
+| 實際重構前後 MC→HMCS 回歸 | 4,096 幀，任務／掛載／尋標／動作與最終顯示類別／數量一致 |
+| Exporter 暫存可攜 fixture | 119 checks，0 failures；不代替 Windows 驗證 |
 | DCS ID 產生器及 fixtures | passed |
 | Node.js 22 工具回歸 | 84 passed，0 failed；5 項 Windows／環境限定測試跳過 |
 | 固定 clang-format 22.1.8 | 272 檔，0 需排版 |
@@ -140,6 +142,18 @@ Spec：0 項發現。已依本文件驗收準則 1–12，審查完整凍結差�
 審查後只在本文件補上驗證與審查結果，程式內容未變。
 
 Standards：0 findings，無最嚴重項目；Spec：0 findings，無最嚴重項目。
+
+## 補充：輸出診斷容量
+
+來源提交後的額外邊界檢查發現：當 generation 可寫、其他輸出欄位大量缺失時，
+新增的 MC 資料使一次匯出的錯誤／恢復回報上限達 67 筆，超過原有 64 筆容量。
+原先可重現 `Cockpit parameter event capacity exceeded`；容量調整為 128，
+並加入全部缺失、重複錯誤抑制、完整恢復及 generation 提交的回歸測試。
+此修正維持既有失敗／恢復回報與完整快照要求，不新增任務功能。
+補充三檔差異已另行獨立審查：Standards 0 findings、Spec 0 findings，無最嚴重項目。
+凍結補充 patch SHA256 為 `232ce3b1ac2446ad7fd3d24b37060ce8639854ec2cf7fffd161adf80d151a11d`。
+可攜 fixture 只在 /tmp 對既有 MSVC 特定生成常數語法與 Windows 載入入口做適配，
+專案生成器及 SDK 未修改；修正後通過 119 checks，並重新執行固定 Windows CI。
 
 ## Windows CI 與產物
 
