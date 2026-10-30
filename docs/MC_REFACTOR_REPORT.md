@@ -102,7 +102,7 @@ HMCS 仍為 64 Hz，MC 為 32 Hz；這是讀取資料快照，未新增同步 RP
 | DCS ID 產生器及 fixtures | passed |
 | Node.js 22 工具回歸 | 84 passed，0 failed；5 項 Windows／環境限定測試跳過 |
 | 固定 clang-format 22.1.8 | 272 檔，0 需排版 |
-| Exporter、完整架構規則及 MSVC 驗證 | 由後續 Windows CI 執行 |
+| 固定 Windows 工具鏈完整驗證 | passed；全專案 3,696 checks，0 failures；DLL 雜湊／接口／載入／分析及來源規則均通過 |
 | DCS 遊戲內 | 未執行 |
 
 Linux 的 MC 範圍測試使用 g++ C++17、Wall/Wextra/Werror/pedantic；
@@ -139,7 +139,7 @@ Spec：0 項發現。已依本文件驗收準則 1–12，審查完整凍結差�
 
 兩項審查皆針對完整凍結差異（含新增檔案），SHA256：
 `f3194c6df8a2d5db10890a7464de848128a89f3124ed2a328f10e72d350f5d35`。
-審查後只在本文件補上驗證與審查結果，程式內容未變。
+初次審查完成至 db73b19 提交之間，只在本文件補上驗證與審查結果，程式內容未變；後續診斷修正見下節。
 
 Standards：0 findings，無最嚴重項目；Spec：0 findings，無最嚴重項目。
 
@@ -157,10 +157,11 @@ Standards：0 findings，無最嚴重項目；Spec：0 findings，無最嚴重�
 
 ## Windows CI 與產物
 
-來源提交後，由 mission-computer 分支既有 MC Windows workflow 重建 DLL 並完整驗證。
-取回產物時核對 source_commit、source_tree、run_id、validation 與 DLL SHA256，
-再更新 bin/F-CK-1C_EFM.dll 及 bin/F-CK-1C_EFM.validation.json，另作產物提交。
-結果與可下載來源將在任務完成簡報及驗證憑證中記錄。
+最終來源 `29d53000ea56f01a6e116168955c6ff1f597af60` 已完成
+[Windows CI](https://github.com/jjjjj103074/F-CK-1C/actions/runs/41025667883)。
+完整 16 項驗證通過，全專案原生測試為 3,696 checks、0 failures。
+已核對產物來源、tree、run_id、validation、ZIP 及 DLL SHA256，再更新 bin 的 DLL 與憑證。
+完整工具鏈、檢查明細、來源／產物識別與 DCS 狀態見 [MC 重構驗證紀錄](MC_REFACTOR_VALIDATION.md)。
 
 ## DCS 人工驗證
 
