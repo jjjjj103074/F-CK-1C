@@ -11,8 +11,7 @@ namespace Core::Systems::Mc
 enum class MissionCommandTarget
 {
 	Mode,
-	Sensor,
-	Weapon
+	FireControl
 };
 
 struct PendingMissionCommand
@@ -27,6 +26,8 @@ struct MissionInputs
 	CockpitObservation cockpit;
 	std::chrono::nanoseconds observed_at = {};
 	std::deque<PendingMissionCommand> pending_commands;
+	std::uint64_t command_sequence = 0;
+	MissionControlInputsSnapshot control_inputs;
 };
 
 /// @brief MC 根據各元件資料分區組裝的對外快照。

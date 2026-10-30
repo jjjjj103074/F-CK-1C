@@ -1,20 +1,19 @@
 #pragma once
 
-#include "../WeaponControl/WeaponControl.h"
+#include "../FireControl/FireControl.h"
 
 namespace Core::Systems::Mc
 {
-/// @brief Owns master-arm/mode transitions and coordinates their effects on peer components.
+/// @brief 保存任務模式與 Master Arm，通知火控處理影響；CMS 資格暫留原行為。
 class ModeManagement final
 {
 public:
-	ModeManagement(ModeData& mode, SensorCoordination& sensors, WeaponControl& weapons, ExternalActionQueue& actions);
+	ModeManagement(ModeData& mode, FireControl& fire_control, ExternalActionQueue& actions);
 	void handle(const Command& command);
 
 private:
 	ModeData& mode_;
-	SensorCoordination& sensors_;
-	WeaponControl& weapons_;
+	FireControl& fire_control_;
 	ExternalActionQueue& actions_;
 };
 }

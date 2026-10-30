@@ -2,9 +2,9 @@
 
 #include "../System.h"
 #include "Components/Executive/Executive.h"
-#include "Components/Aim9SeekerProcessing/Aim9SeekerProcessing.h"
-#include "Components/DisplayManagement/DisplayManagement.h"
 #include "Components/FailureManager/FailureManager.h"
+#include "Components/FireControl/FireControl.h"
+#include "Components/StoresManagement/StoresManagement.h"
 #include "Components/ModeManagement/ModeManagement.h"
 #include "Components/StartupAndRestart/StartupAndRestart.h"
 #include "Components/SystemMonitor/SystemMonitor.h"
@@ -17,7 +17,7 @@
 namespace Core::Systems
 {
 /// @brief 一台 MC 的組裝與 Pipeline 介面；直接持有功能元件與具型別資料庫。
-/// 模式、掛載、武器操作與感測器協調共用一個 Executive，DCS 操作由 Lua 介面執行。
+/// 模式、掛載與火控共用一個 Executive，DCS 操作由 Lua 介面執行。
 class MissionComputer final : public System
 {
 public:
@@ -40,6 +40,7 @@ public:
 private:
 	void read_inputs(const SystemStepContext& context, const AircraftDataView& aircraft);
 	void consume_commands();
+	void record_control_input(const Command& command);
 	void publish_outputs(SystemResult& result);
 
 	bool powered_ = true; ///< 暫定預設有電；尚未連接電源系統。
@@ -49,21 +50,15 @@ private:
 	Mc::InputOutputData input_output_data_;
 	Mc::SystemStatusTables system_status_tables_;
 	Mc::ModeData mode_data_;
-	Mc::SensorData sensor_data_;
 	Mc::StoresData stores_data_;
-	Mc::WeaponControlData weapon_data_;
-	Mc::Aim9Data aim9_data_;
-	Mc::WeaponDisplayData weapon_display_data_;
+	Mc::FireControlData fire_control_data_;
 	Mc::ExternalActionQueue external_actions_;
 
 	Mc::SystemMonitor system_monitor_;
 	Mc::FailureManager failure_manager_;
 	Mc::StoresManagement stores_management_;
-	Mc::SensorCoordination sensor_coordination_;
-	Mc::WeaponControl weapon_control_;
+	Mc::FireControl fire_control_;
 	Mc::ModeManagement mode_management_;
-	Mc::Aim9SeekerProcessing aim9_seeker_processing_;
-	Mc::DisplayManagement display_management_;
 	Mc::Executive executive_;
 	Mc::StartupAndRestart startup_and_restart_;
 };

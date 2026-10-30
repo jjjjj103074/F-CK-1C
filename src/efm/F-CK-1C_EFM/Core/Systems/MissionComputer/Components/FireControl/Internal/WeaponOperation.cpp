@@ -1,29 +1,29 @@
-#include "WeaponControl.h"
+#include "WeaponOperation.h"
 
 #include "Common/CommandValue.h"
 
 #include <algorithm>
 
-namespace Core::Systems::Mc
+namespace Core::Systems::Mc::Internal
 {
-WeaponControl::WeaponControl(const MissionInputs& input,
-                             const ModeData& mode,
-                             const SensorData& sensor,
-                             WeaponControlData& weapon,
-                             ExternalActionQueue& actions,
-                             SensorCoordination& sensors,
-                             StoresManagement& stores)
+WeaponOperation::WeaponOperation(const MissionInputs& input,
+                                 const ModeData& mode,
+                                 const TargetingData& targeting,
+                                 WeaponOperationData& weapon,
+                                 ExternalActionQueue& actions,
+                                 Targeting& targeting_control,
+                                 StoresManagement& stores)
     : input_(input),
       mode_(mode),
-      sensor_(sensor),
+      targeting_(targeting),
       weapon_(weapon),
       actions_(actions),
-      sensors_(sensors),
+      targeting_control_(targeting_control),
       stores_(stores)
 {
 }
 
-void WeaponControl::handle(const Command& command)
+void WeaponOperation::handle(const Command& command)
 {
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
 	if (command.id == CommandId::SetTriggerSecondStage)
@@ -33,7 +33,7 @@ void WeaponControl::handle(const Command& command)
 			gun_.request_release();
 		}
 		else if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On &&
-		         mode_.fire_control == FireControlMode::Dogfight && !sensor_.uncage_held)
+		         mode_.fire_control == FireControlMode::Dogfight && !targeting_.uncage_held)
 		{
 			weapon_.gun_start_sequence = actions_.append(MissionActionKind::GunOn);
 			gun_.begin(weapon_.gun_start_sequence);
@@ -48,9 +48,9 @@ void WeaponControl::handle(const Command& command)
 		pickle_.request_release();
 		return;
 	}
-	sensors_.prepare_release();
+	targeting_control_.prepare_release();
 	if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On && mode_.air_to_air() &&
-	    sensor_.uncage_held)
+	    targeting_.uncage_held)
 	{
 		actions_.append(MissionActionKind::LaunchPermissionOverride);
 		pickle_.begin(actions_.append(MissionActionKind::PickleOn));
@@ -58,7 +58,7 @@ void WeaponControl::handle(const Command& command)
 	}
 }
 
-void WeaponControl::finish_gun()
+void WeaponOperation::finish_gun()
 {
 	actions_.append(MissionActionKind::GunOff);
 	gun_.clear();
@@ -66,7 +66,7 @@ void WeaponControl::finish_gun()
 	weapon_.gun_start_sequence = 0;
 }
 
-void WeaponControl::finish_pickle(bool consume)
+void WeaponOperation::finish_pickle(bool consume)
 {
 	actions_.append(MissionActionKind::PickleOff);
 	pickle_.clear();
@@ -74,11 +74,11 @@ void WeaponControl::finish_pickle(bool consume)
 	if (consume)
 	{
 		stores_.record_missile_release();
-		sensors_.unlock();
+		targeting_control_.unlock();
 	}
 }
 
-void WeaponControl::stop()
+void WeaponOperation::stop()
 {
 	// Master OFF/SIM cancels immediately, including a leading edge not yet acknowledged by Lua.
 	if (gun_.active())
@@ -87,7 +87,7 @@ void WeaponControl::stop()
 		finish_pickle(false);
 }
 
-void WeaponControl::step(std::chrono::nanoseconds time, double)
+void WeaponOperation::step(std::chrono::nanoseconds time, double)
 {
 	time = (std::max)(time, input_.observed_at);
 	if (gun_.release_due(time, actions_))

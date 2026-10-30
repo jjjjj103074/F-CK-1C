@@ -1,25 +1,27 @@
-#include "SensorCoordination.h"
+#include "Targeting.h"
 
 #include "Common/CommandValue.h"
 
 #include <algorithm>
 
-namespace Core::Systems::Mc
+namespace Core::Systems::Mc::Internal
 {
-SensorCoordination::SensorCoordination(const MissionInputs& input,
-                                       const ModeData& mode,
-                                       const StoresData& stores,
-                                       SensorData& sensor,
-                                       ExternalActionQueue& actions)
+Targeting::Targeting(const MissionInputs& input,
+                     const ModeData& mode,
+                     const StoresData& stores,
+                     TargetingData& targeting,
+                     ExternalActionQueue& actions,
+                     StoresManagement& stores_management)
     : input_(input),
       mode_(mode),
       stores_(stores),
-      sensor_(sensor),
-      actions_(actions)
+      targeting_(targeting),
+      actions_(actions),
+      stores_management_(stores_management)
 {
 }
 
-void SensorCoordination::ensure_radar_on()
+void Targeting::ensure_radar_on()
 {
 	if (input_.cockpit.mission_adapter.radar_power_on)
 	{
@@ -32,9 +34,9 @@ void SensorCoordination::ensure_radar_on()
 	}
 }
 
-void SensorCoordination::apply_submode(AirToAirSubmode mode)
+void Targeting::apply_submode(AirToAirSubmode mode)
 {
-	sensor_.submode = mode;
+	targeting_.submode = mode;
 	switch (mode)
 	{
 	case AirToAirSubmode::Helmet:
@@ -52,7 +54,7 @@ void SensorCoordination::apply_submode(AirToAirSubmode mode)
 	}
 }
 
-void SensorCoordination::begin_lock(bool pulse)
+void Targeting::begin_lock(bool pulse)
 {
 	if (!input_.cockpit.mission_adapter.available)
 	{
@@ -65,17 +67,17 @@ void SensorCoordination::begin_lock(bool pulse)
 	{
 		lock_.request_release();
 	}
-	sensor_.target_designated = true;
+	targeting_.designation_requested = true;
 }
 
-void SensorCoordination::finish_lock()
+void Targeting::finish_lock()
 {
 	actions_.append(MissionActionKind::LockFinish);
 	actions_.append(MissionActionKind::ChangeLockUp);
 	lock_.clear();
 }
 
-void SensorCoordination::unlock()
+void Targeting::unlock()
 {
 	if (lock_.active())
 	{
@@ -85,23 +87,23 @@ void SensorCoordination::unlock()
 	{
 		finish_lock();
 	}
-	sensor_.target_designated = false;
+	targeting_.designation_requested = false;
 }
 
-void SensorCoordination::prepare_release()
+void Targeting::prepare_release()
 {
 	if (mode_.air_to_air())
 	{
-		apply_submode(sensor_.submode);
+		apply_submode(targeting_.submode);
 	}
 }
 
-void SensorCoordination::select_mode(bool cycle_weapon)
+void Targeting::select_mode(bool cycle_weapon)
 {
 	next_auto_lock_ = {};
 	if (mode_.fire_control == FireControlMode::Navigation)
 	{
-		sensor_.submode = AirToAirSubmode::None;
+		targeting_.submode = AirToAirSubmode::None;
 		unlock();
 		actions_.append(MissionActionKind::ModeCannon);
 		return;
@@ -114,7 +116,7 @@ void SensorCoordination::select_mode(bool cycle_weapon)
 	ensure_radar_on();
 	if (cycle_weapon)
 	{
-		actions_.append(MissionActionKind::CycleWeapon);
+		stores_management_.request_weapon_cycle();
 	}
 	apply_submode(dogfight ? AirToAirSubmode::Helmet : AirToAirSubmode::BeyondVisualRange);
 	if (dogfight)
@@ -123,13 +125,13 @@ void SensorCoordination::select_mode(bool cycle_weapon)
 	}
 }
 
-void SensorCoordination::handle(const Command& command)
+void Targeting::handle(const Command& command)
 {
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
 	const bool dogfight = mode_.fire_control == FireControlMode::Dogfight;
 	if (command.id == CommandId::SetMissileUncage)
 	{
-		sensor_.uncage_held = pressed;
+		targeting_.uncage_held = pressed;
 		if (pressed && mode_.air_to_air())
 		{
 			ensure_radar_on();
@@ -174,12 +176,12 @@ void SensorCoordination::handle(const Command& command)
 		else if (mode_.fire_control == FireControlMode::MissileOverride)
 		{
 			actions_.append(MissionActionKind::ChangeLock);
-			sensor_.target_designated = true;
+			targeting_.designation_requested = true;
 		}
 	}
 }
 
-void SensorCoordination::step(std::chrono::nanoseconds time, double)
+void Targeting::step(std::chrono::nanoseconds time, double)
 {
 	time = (std::max)(time, input_.observed_at);
 	if (input_.cockpit.mission_adapter.radar_power_on)
@@ -189,7 +191,7 @@ void SensorCoordination::step(std::chrono::nanoseconds time, double)
 		finish_lock();
 	}
 	if (mode_.fire_control == FireControlMode::Dogfight && mode_.master_arm == MasterArmMode::On &&
-	    sensor_.uncage_held && stores_.missile_count > 0)
+	    targeting_.uncage_held && stores_.missile_count > 0)
 	{
 		if (time >= next_auto_lock_)
 		{

@@ -6,6 +6,14 @@ namespace DcsIds
 {
 namespace CockpitParams
 {
+static const char* const McStoresGunCount = "CPP_MC_STORES_GUN_COUNT";
+static const char* const McTriggerSecondStageHeld = "CPP_MC_TRIGGER_SECOND_STAGE_HELD";
+static const char* const McMasterArmPressSequence = "CPP_MC_MASTER_ARM_PRESS_SEQUENCE";
+static const char* const McNavigationPressSequence = "CPP_MC_NAVIGATION_PRESS_SEQUENCE";
+static const char* const McDogfightPressSequence = "CPP_MC_DOGFIGHT_PRESS_SEQUENCE";
+static const char* const McMissileOverridePressSequence = "CPP_MC_MISSILE_OVERRIDE_PRESS_SEQUENCE";
+static const char* const McMissileUncagePressSequence = "CPP_MC_MISSILE_UNCAGE_PRESS_SEQUENCE";
+static const char* const McWeaponReleasePressSequence = "CPP_MC_WEAPON_RELEASE_PRESS_SEQUENCE";
 static const char* const McGeneration = "CPP_MC_GENERATION";
 static const char* const McAvailable = "CPP_MC_AVAILABLE";
 static const char* const McActionFirstSequence = "CPP_MC_ACTION_FIRST_SEQUENCE";
@@ -134,6 +142,14 @@ struct Entry
 };
 
 static constexpr Entry Catalog[] = {
+    { McStoresGunCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McTriggerSecondStageHeld, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McMasterArmPressSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McNavigationPressSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McDogfightPressSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McMissileOverridePressSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McMissileUncagePressSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McWeaponReleasePressSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McGeneration, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McActionFirstSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
@@ -190,8 +206,8 @@ static constexpr Entry Catalog[] = {
     { HmcsHeadingSlotTickPrefix, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
     { HmcsHeadingSlotLabelPrefix, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
     { HmcsMasterMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { HmcsWeaponClass, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { HmcsWeaponQuantity, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { HmcsWeaponClass, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HMCS", nullptr },
+    { HmcsWeaponQuantity, "lua_internal", "count", "Cockpit/Scripts/Systems/hmcs_system.lua", "HMCS", nullptr },
     { HmcsDogfightMode, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsFireControlMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsAamSubmode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },

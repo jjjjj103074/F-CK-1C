@@ -137,7 +137,7 @@ enum class AirToAirSubmode
 	BeyondVisualRange = 4
 };
 
-enum class Aim9SeekerState
+enum class InfraredSeekerState
 {
 	Off = 0,
 	SearchCaged = 1,
@@ -145,7 +145,7 @@ enum class Aim9SeekerState
 	Track = 3
 };
 
-enum class Aim9Tone
+enum class InfraredSeekerTone
 {
 	Off = 0,
 	Seek = 1,
@@ -153,18 +153,12 @@ enum class Aim9Tone
 	Lock = 3
 };
 
-enum class Aim9Readiness
+enum class InfraredMissileReadiness
 {
 	Off = 0,
 	Cool = 1,
 	Ready = 2,
 	Track = 3
-};
-
-enum class WeaponClass
-{
-	AirToAirMissile = 1,
-	Gun = 5
 };
 
 enum class HmcsDisplayMode
@@ -401,14 +395,14 @@ struct StoresSnapshot
 {
 	SnapshotStatus status;
 	std::optional<int> selected_station;
-	int aim9_count = 0;
+	int air_to_air_missile_count = 0;
 	StoresCountSource count_source = StoresCountSource::Estimate;
 	double gun_count = 0.0;
 	std::optional<int> requested_station;
 	std::uint64_t selection_request_revision = 0;
 };
 
-struct Aim9Snapshot
+struct InfraredMissileSnapshot
 {
 	SnapshotStatus status;
 	bool active = false;
@@ -416,19 +410,25 @@ struct Aim9Snapshot
 	bool locked = false;
 	bool uncage_held = false;
 	bool target_designated = false;
-	Aim9Readiness readiness = Aim9Readiness::Off;
-	Aim9SeekerState seeker_state = Aim9SeekerState::Off;
-	Aim9Tone requested_tone = Aim9Tone::Off;
+	InfraredMissileReadiness readiness = InfraredMissileReadiness::Off;
+	InfraredSeekerState seeker_state = InfraredSeekerState::Off;
+	InfraredSeekerTone requested_tone = InfraredSeekerTone::Off;
 	double seeker_azimuth_rad = 0.0;
 	double seeker_elevation_rad = 0.0;
 	double lock_range_m = 0.0;
 };
 
-struct WeaponDisplaySnapshot
+/// @brief Raw cockpit control observations in MC FIFO order, including rejected operation requests.
+/// Press sequences retain short pulses across skipped consumer frames; zero means never pressed.
+struct MissionControlInputsSnapshot
 {
-	SnapshotStatus status;
-	WeaponClass weapon_class = WeaponClass::Gun;
-	double quantity = 0.0;
+	bool trigger_second_stage_held = false;
+	std::uint64_t master_arm_press_sequence = 0;
+	std::uint64_t navigation_press_sequence = 0;
+	std::uint64_t dogfight_press_sequence = 0;
+	std::uint64_t missile_override_press_sequence = 0;
+	std::uint64_t missile_uncage_press_sequence = 0;
+	std::uint64_t weapon_release_press_sequence = 0;
 };
 
 struct CountermeasureSnapshot
@@ -451,8 +451,8 @@ struct CombatAvionicsSnapshot
 	FireControlSnapshot fire_control;
 	RadarSnapshot radar;
 	StoresSnapshot stores;
-	Aim9Snapshot aim9;
-	WeaponDisplaySnapshot weapon_display;
+	InfraredMissileSnapshot infrared_missile;
+	MissionControlInputsSnapshot control_inputs;
 	CountermeasureSnapshot countermeasures;
 	ExternalActionIntentSnapshot external_actions;
 };

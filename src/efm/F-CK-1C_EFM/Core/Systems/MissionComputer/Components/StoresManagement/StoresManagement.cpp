@@ -12,12 +12,14 @@ namespace Core::Systems::Mc
 {
 StoresManagement::StoresManagement(const MissionInputs& input,
                                    const ModeData& mode,
-                                   const WeaponControlData& weapon,
-                                   StoresData& stores)
+                                   const WeaponOperationData& weapon,
+                                   StoresData& stores,
+                                   ExternalActionQueue& actions)
     : input_(input),
       mode_(mode),
       weapon_(weapon),
-      stores_(stores)
+      stores_(stores),
+      actions_(actions)
 {
 }
 
@@ -102,6 +104,11 @@ void StoresManagement::step(std::chrono::nanoseconds time, double)
 		selection_mode_ = mode_.fire_control;
 		rearm_revision_ = inventory.rearm_revision;
 	}
+}
+
+void StoresManagement::request_weapon_cycle()
+{
+	actions_.append(MissionActionKind::CycleWeapon);
 }
 
 void StoresManagement::record_missile_release()

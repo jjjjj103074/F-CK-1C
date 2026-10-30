@@ -10,7 +10,7 @@ fixed-rate scheduling and completed `AircraftData` snapshots.
 |---|---:|---|
 | `PilotControls` | 64 Hz | Pilot axes, trim inputs and independent throttle-lever signals |
 | `DigitalFlightControlComputer` | 64 Hz | Configurable three-axis direct mapping |
-| `MissionComputer` | 32 Hz | Modes, HOTAS, inventory/selection, seeker state, weapon display and ordered DCS operation requests |
+| `MissionComputer` | 32 Hz | Modes, HOTAS, inventory/selection, infrared support and ordered DCS operation requests; HUD/HMCS presents the state |
 | `FlightControlActuationSystem` | 256 Hz | Primary-surface dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Flaps, slats and airbrake |
 | `LandingGear` | 64 Hz | Gear, brakes, NWS, wheels and suspension |

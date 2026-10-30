@@ -1,5 +1,9 @@
 # MC 遷移變更報告
 
+本文件記錄 `d7dcccb` 完成 Lua 遷移時的架構與驗證；後續火控職責重構見
+[MC 重構報告](MC_REFACTOR_REPORT.md) 及 [MC README](../src/efm/F-CK-1C_EFM/Core/Systems/MissionComputer/README.md)。
+此處歷史 CI 結果不代表後續未提交來源已完成 Windows／DCS 驗證。
+
 本報告描述 `mission-computer` 分支的實作，以及此次確認的四項結論。
 遷移比較起點為 `8fda92d`（模組化 EFM 基礎），不把該起點之前的 DFLCC 功能算成本次 MC 變更。
 這是 DCS 專案架構，不宣稱復刻實機 F-CK-1C、F-16 MMC 或 F-35 的完整內部設計。
@@ -40,7 +44,7 @@
 截至補完提交 `1727382`，相對起點共 89 個變更檔案；本次補完涉及 10 個。
 完整檔案與逐行差異見 [遷移比較](https://github.com/jjjjj103074/F-CK-1C/compare/8fda92dc545b207dcb78de8181e80a6aa1b41e12...17273821b305bcdc4f661ba42518320cbfc950fd)。
 
-## 目前架構
+## 遷移完成時架構（重構前）
 
 MC 有 **6 個任務功能元件 + 4 個基礎元件，共 10 個同層元件**。
 它們不是 10 個 System 或執行緒，而是單一 `MissionComputer : System` 直接持有的物件。

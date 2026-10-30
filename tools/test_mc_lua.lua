@@ -364,7 +364,7 @@ expect(
         and #select_calls == 3,
     "clearing the last-request belief uses no invented SDK deselect call"
 )
--- Radar/HMCS adapters must preserve MC-owned state while publishing native observations.
+-- Radar/HMCS preserve MC mission state while publishing observations and presentation.
 values = fixture(function() return true end)
 local mission_values = {
     [cockpit_params.Aim9ToneState] = 3,
@@ -375,8 +375,6 @@ local mission_values = {
     [cockpit_params.Aim9SeekerAzimuth] = 0.1,
     [cockpit_params.Aim9SeekerElevation] = -0.2,
     [cockpit_params.Aim9LockRange] = 1200,
-    [cockpit_params.HmcsWeaponClass] = 1,
-    [cockpit_params.HmcsWeaponQuantity] = 4,
 }
 for name, value in pairs(mission_values) do
     values[name] = value
@@ -427,6 +425,131 @@ expect(
 )
 for name, value in pairs(mission_values) do
     expect(values[name] == value, "native presentation adapters must not overwrite MC state: " .. name)
+end
+
+-- Exercise real HMCS presentation against committed MC facts, without command listeners.
+values = fixture(function() error("presentation must not execute weapon actions") end)
+dofile("Cockpit/Scripts/Systems/hmcs_system.lua")
+values[cockpit_params.HmcsWeaponClass] = 5
+values[cockpit_params.HmcsWeaponQuantity] = 77
+post_initialize()
+expect(values[cockpit_params.HmcsWeaponQuantity] == 77, "unavailable MC must not invent a display quantity")
+values[cockpit_params.McGeneration] = 2
+values[cockpit_params.McAvailable] = 1
+values[cockpit_params.McStoresGunCount] = 523
+values[cockpit_params.Aim9MissileCount] = 4
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 5 and values[cockpit_params.HmcsWeaponQuantity] == 523,
+    "initial NAV presentation uses authoritative MC gun quantity")
+values[cockpit_params.McNavigationPressSequence] = 1
+values[cockpit_params.McMissileUncagePressSequence] = 2
+-- Both uncage edges have already been consumed by MC; the last press is retained.
+values[cockpit_params.Aim9UncageHeld] = 0
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 1 and values[cockpit_params.HmcsWeaponQuantity] == 4,
+    "a completed short NAV uncage pulse retains the old AAM preference")
+values[cockpit_params.McTriggerSecondStageHeld] = 1
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 5, "a rejected raw trigger still affects presentation")
+values[cockpit_params.McTriggerSecondStageHeld] = 0
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 1, "trigger release restores the retained AAM preference")
+values[cockpit_params.McNavigationPressSequence] = 3
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 5, "a later NAV press restores gun preference")
+values[cockpit_params.McWeaponReleasePressSequence] = 4
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 1, "a rejected release press retains its old display effect")
+values[cockpit_params.McMasterArmPressSequence] = 5
+values[cockpit_params.HmcsFireControlMode] = 1
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 1, "AA mode has precedence over gun preference")
+values[cockpit_params.HmcsFireControlMode] = 0
+values[cockpit_params.McStoresGunCount] = 0
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 5 and values[cockpit_params.HmcsWeaponQuantity] == 0,
+    "valid zero gun quantity must not fall back to an estimate")
+values[cockpit_params.Aim9SeekerLock] = 1
+values[cockpit_params.Aim9MissileCount] = 0
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 1 and values[cockpit_params.HmcsWeaponQuantity] == 0,
+    "lock indication has precedence while zero missile quantity remains authoritative")
+values[cockpit_params.Aim9SeekerLock] = 0
+values[cockpit_params.HmcsWeaponClass] = 1
+values[cockpit_params.HmcsWeaponQuantity] = 77
+values[cockpit_params.McGeneration] = 3
+update()
+expect(values[cockpit_params.HmcsWeaponQuantity] == 77, "an odd MC generation must not change presentation")
+values[cockpit_params.McGeneration] = 4
+values[cockpit_params.McStoresGunCount] = function()
+    values[cockpit_params.McGeneration] = 6
+    return 2
+end
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 1 and values[cockpit_params.HmcsWeaponQuantity] == 77,
+    "a generation changed during reading must not publish mixed presentation")
+values[cockpit_params.McStoresGunCount] = 523
+values[cockpit_params.McAvailable] = 0
+update()
+expect(values[cockpit_params.HmcsWeaponQuantity] == 77, "unavailable MC retains the last complete presentation")
+values[cockpit_params.McAvailable] = 1
+
+-- Replay the pre-refactor DisplayManagement rules as a reference, with consumer
+-- frames deliberately skipped. Inputs cover raw rejected presses and FIFO pulses.
+local legacy_preferred, legacy_trigger = 5, false
+local input_sequence = 0
+local seed = 314159
+local function random(maximum)
+    seed = (seed * 48271) % 2147483647
+    return seed % maximum
+end
+local presses = {
+    cockpit_params.McMasterArmPressSequence, cockpit_params.McNavigationPressSequence,
+    cockpit_params.McDogfightPressSequence, cockpit_params.McMissileOverridePressSequence,
+    cockpit_params.McMissileUncagePressSequence, cockpit_params.McWeaponReleasePressSequence,
+}
+for _, parameter in ipairs(presses) do values[parameter] = 0 end
+for frame = 1, 8192 do
+    for _ = 1, random(7) do
+        input_sequence = input_sequence + 1
+        local command, pressed = random(9) + 1, random(2) == 1
+        if command == 7 then
+            legacy_trigger = pressed
+        elseif command <= 6 and pressed then
+            values[presses[command]] = input_sequence
+            legacy_preferred = command <= 2 and 5 or 1
+        end
+    end
+    local mode = random(3)
+    local uncage, contact, locked = random(5) == 0, random(7) == 0, random(7) == 0
+    local readiness = random(5) == 0 and 1 or 0
+    local firing = random(7) == 0
+    local gun, missiles = random(524), random(7)
+    values[cockpit_params.McGeneration] = frame * 2 + 6
+    values[cockpit_params.HmcsFireControlMode] = mode
+    values[cockpit_params.Aim9UncageHeld] = uncage and 1 or 0
+    values[cockpit_params.Aim9SeekerContact] = contact and 1 or 0
+    values[cockpit_params.Aim9SeekerLock] = locked and 1 or 0
+    values[cockpit_params.Aim9MissileStatus] = readiness
+    values[cockpit_params.HmcsGunFiring] = firing and 1 or 0
+    values[cockpit_params.McTriggerSecondStageHeld] = legacy_trigger and 1 or 0
+    values[cockpit_params.McStoresGunCount] = gun
+    values[cockpit_params.Aim9MissileCount] = missiles
+    local expected_class
+    if mode ~= 0 or uncage or contact or locked or readiness ~= 0 then
+        expected_class = 1
+    elseif firing or legacy_trigger or legacy_preferred == 5 then
+        expected_class = 5
+    else
+        expected_class = legacy_preferred
+    end
+    if frame % 3 == 0 or frame == 8192 then
+        update()
+        expect(values[cockpit_params.HmcsWeaponClass] == expected_class,
+            "legacy display class replay frame " .. frame)
+        expect(values[cockpit_params.HmcsWeaponQuantity] == (expected_class == 5 and gun or missiles),
+            "legacy display quantity replay frame " .. frame)
+    end
 end
 
 -- Execute both real DCS input profiles: every MC/HOTAS binding reaches EFM with both edges.

@@ -41,8 +41,14 @@ private:
 		Azimuth,
 		Elevation,
 		LockRange,
-		WeaponClass,
-		WeaponQuantity,
+		GunCount,
+		TriggerHeld,
+		MasterArmPressSequence,
+		NavigationPressSequence,
+		DogfightPressSequence,
+		MissileOverridePressSequence,
+		MissileUncagePressSequence,
+		WeaponReleasePressSequence,
 		Count
 	};
 	bool write(Parameter parameter, double value, CockpitParameterEvents& events);

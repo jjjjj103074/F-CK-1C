@@ -30,6 +30,10 @@ static_assert(!std::is_copy_constructible<MissionComputer>::value,
               "MC must preserve database and task target addresses.");
 static_assert(!std::is_move_constructible<MissionComputer>::value,
               "Moving MC would invalidate constructor-bound references.");
+static_assert(!std::is_copy_constructible<FireControl>::value,
+              "FireControl owns a weapon operation bound to its internal targeting module.");
+static_assert(!std::is_move_constructible<FireControl>::value,
+              "Moving FireControl would invalidate its internal targeting reference.");
 
 struct Call
 {
@@ -260,6 +264,41 @@ void test_commands_wait_for_current_observation_and_retain_order(Tests::Context&
 	}
 }
 
+void test_master_cancel_keeps_action_order_and_legacy_mode_coupling(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	auto output = fixture.step(kMissionPeriod);
+	fixture.frame.cockpit.mission_adapter.acknowledged_sequence =
+	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
+	fixture.step(kMissionPeriod * 2);
+	output = fixture.step(kMissionPeriod * 5); // Complete the acknowledged targeting pulse first.
+	fixture.frame.cockpit.mission_adapter.acknowledged_sequence =
+	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
+	fixture.step(kMissionPeriod * 6);
+	fixture.send(CommandId::SetMasterArmOff);
+	fixture.send(CommandId::SetMasterArmOn);
+	output = fixture.step(kMissionPeriod * 7);
+	const MissionActionKind expected[] = { MissionActionKind::GunOff,       MissionActionKind::AbortCms,
+		                                   MissionActionKind::LockFinish,   MissionActionKind::ChangeLockUp,
+		                                   MissionActionKind::ModeCannon,   MissionActionKind::LockFinish,
+		                                   MissionActionKind::ChangeLockUp, MissionActionKind::ModeCannon };
+	TEST_EXPECT(context, output.external_actions.batch.count == std::size(expected));
+	if (output.external_actions.batch.count == std::size(expected))
+	{
+		for (std::size_t i = 0; i < std::size(expected); ++i)
+			TEST_EXPECT(context, output.external_actions.batch.actions[i] == expected[i]);
+	}
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::Navigation);
+	fixture.send(CommandId::SetMasterArmOff);
+	fixture.send(CommandId::SelectMissileOverride);
+	output = fixture.step(kMissionPeriod * 8);
+	TEST_EXPECT(context, output.fire_control.master_arm_mode == MasterArmMode::On);
+	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::MissileOverride);
+}
+
 void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& context)
 {
 	MissionFixture fixture;
@@ -275,7 +314,7 @@ void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& c
 	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::MissileOverride);
 }
 
-void test_pickle_and_sensor_modes(Tests::Context& context)
+void test_pickle_and_targeting_modes(Tests::Context& context)
 {
 	MissionFixture fixture;
 	fixture.step(kMissionPeriod);
@@ -295,7 +334,7 @@ void test_pickle_and_sensor_modes(Tests::Context& context)
 	fixture.step(kMissionPeriod * 4);
 	output = fixture.step(kMissionPeriod * 10);
 	TEST_EXPECT(context, !output.fire_control.pickle_requested);
-	TEST_EXPECT(context, output.stores.aim9_count == 0);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 0);
 	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::PickleOff));
 }
 void test_inventory_authority_selection_and_rearm(Tests::Context& context)
@@ -309,7 +348,7 @@ void test_inventory_authority_selection_and_rearm(Tests::Context& context)
 	fixture.frame.cockpit.mission_adapter.missile_count_available = true;
 	fixture.frame.cockpit.mission_adapter.missile_count = 9;
 	auto output = fixture.step(kMissionPeriod);
-	TEST_EXPECT(context, output.stores.aim9_count == 3);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 3);
 	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::StationInventory);
 	TEST_EXPECT(context, !output.stores.requested_station);
 	fixture.send(CommandId::SelectMissileOverride);
@@ -332,22 +371,22 @@ void test_inventory_authority_selection_and_rearm(Tests::Context& context)
 	TEST_EXPECT(context, output.stores.selection_request_revision == 2);
 	inventory.stations[2].count = 0;
 	output = fixture.step(kMissionPeriod * 7);
-	TEST_EXPECT(context, output.stores.aim9_count == 1);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 1);
 	TEST_EXPECT(context, output.stores.requested_station == 5);
 	TEST_EXPECT(context, output.stores.selection_request_revision == 3);
 	inventory.status.available = false;
 	output = fixture.step(kMissionPeriod * 8);
-	TEST_EXPECT(context, output.stores.aim9_count == 9);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 9);
 	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::BaseDataApi);
 	TEST_EXPECT(context, output.stores.requested_station == 5);
 	fixture.frame.cockpit.mission_adapter.missile_count_available = false;
 	output = fixture.step(kMissionPeriod * 9);
-	TEST_EXPECT(context, output.stores.aim9_count == 9);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 9);
 	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::Estimate);
 	inventory.status.available = true;
 	inventory.stations[5].count = 0;
 	output = fixture.step(kMissionPeriod * 10);
-	TEST_EXPECT(context, output.stores.aim9_count == 0);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 0);
 	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::StationInventory);
 	TEST_EXPECT(context, !output.stores.requested_station);
 	inventory.stations[2].count = 1;
@@ -369,20 +408,20 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	MissionInputs input;
 	ModeData mode;
 	StoresData stores;
-	SensorData sensor;
-	Aim9Data aim9;
+	TargetingData targeting;
+	InfraredMissileData aim9;
 	mode.fire_control = FireControlMode::MissileOverride;
 	auto& ir = input.cockpit.ir_seeker;
 	auto& radar = input.cockpit.radar;
 	ir.status.available = true;
 	radar.status.available = true;
-	Aim9SeekerProcessing processor(input, mode, stores, sensor, aim9);
+	Internal::InfraredMissileSupport processor(input, mode, stores, targeting, aim9);
 	ir.locked = true;
 	processor.step({}, 0.015625);
 	TEST_EXPECT(context, aim9.active && aim9.contact && aim9.locked);
-	TEST_EXPECT(context, aim9.readiness == Aim9Readiness::Cool);
-	TEST_EXPECT(context, aim9.seeker_state == Aim9SeekerState::Track);
-	TEST_EXPECT(context, aim9.requested_tone == Aim9Tone::Lock);
+	TEST_EXPECT(context, aim9.readiness == InfraredMissileReadiness::Cool);
+	TEST_EXPECT(context, aim9.seeker_state == InfraredSeekerState::Track);
+	TEST_EXPECT(context, aim9.requested_tone == InfraredSeekerTone::Lock);
 	ir.locked = false;
 	ir.target_azimuth_rad = 0.01;
 	radar.stt_range_m = 2000.0;
@@ -391,7 +430,7 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	ir.target_azimuth_rad = 0.0;
 	processor.step({}, 0.015625);
 	TEST_EXPECT(context, !aim9.contact && !aim9.locked); // Caged radar telemetry cannot lock.
-	sensor.uncage_held = true;
+	targeting.uncage_held = true;
 	ir.desired_azimuth_rad = 0.1;
 	ir.desired_elevation_rad = -0.2;
 	processor.step({}, 0.015625);
@@ -402,7 +441,7 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	ir.desired_azimuth_rad = 0.0;
 	ir.desired_elevation_rad = 0.0;
 	radar.stt_range_m = 0.0;
-	sensor.target_designated = true;
+	targeting.designation_requested = true;
 	processor.step({}, 0.015625);
 	TEST_EXPECT(context, aim9.contact && aim9.locked); // Valid all-zero prototype fallback.
 	radar.tdc_azimuth_rad = 0.1;
@@ -412,7 +451,8 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	radar.status.available = false;
 	processor.step({}, 0.015625);
 	TEST_EXPECT(context, !aim9.contact && !aim9.locked);
-	TEST_EXPECT(context, aim9.readiness == Aim9Readiness::Track); // Command readiness is distinct from observation.
+	TEST_EXPECT(context,
+	            aim9.readiness == InfraredMissileReadiness::Track); // Command readiness is distinct from observation.
 	ir.locked = true;
 	processor.step({}, 0.015625);
 	TEST_EXPECT(context, aim9.locked); // Direct valid IR does not require radar availability.
@@ -423,48 +463,63 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	TEST_EXPECT(context, !aim9.contact && !aim9.locked);
 	stores.missile_count = 0;
 	processor.step({}, 0.015625);
-	TEST_EXPECT(context, !aim9.active && aim9.readiness == Aim9Readiness::Off);
-	TEST_EXPECT(context, aim9.seeker_state == Aim9SeekerState::Off && aim9.requested_tone == Aim9Tone::Off);
+	TEST_EXPECT(context, !aim9.active && aim9.readiness == InfraredMissileReadiness::Off);
+	TEST_EXPECT(context,
+	            aim9.seeker_state == InfraredSeekerState::Off && aim9.requested_tone == InfraredSeekerTone::Off);
 }
 
-void test_weapon_display_preferences_use_authoritative_quantities(Tests::Context& context)
+void test_control_observations_preserve_fifo_pulses_and_rejected_requests(Tests::Context& context)
 {
 	MissionFixture fixture;
-	fixture.frame.cockpit.mission_adapter.missile_count_available = true;
-	fixture.frame.cockpit.mission_adapter.missile_count = 4;
 	auto output = fixture.step(kMissionPeriod);
-	TEST_EXPECT(context, output.weapon_display.status.available);
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
-	TEST_EXPECT_NEAR(context, output.weapon_display.quantity, 523.0, 1e-12);
+	TEST_EXPECT(context, output.control_inputs.navigation_press_sequence == 0);
+	TEST_EXPECT(context, !output.control_inputs.trigger_second_stage_held);
+	fixture.send(CommandId::SelectNavigationMode);
 	fixture.send(CommandId::SetMissileUncage);
 	fixture.send(CommandId::SetMissileUncage, 0.0);
-	output = fixture.step(kMissionPeriod * 2);
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
-	TEST_EXPECT_NEAR(context, output.weapon_display.quantity, 4.0, 1e-12);
+	fixture.send(CommandId::SetWeaponRelease); // Rejected in NAV, still an observed press.
+	fixture.send(CommandId::SetWeaponRelease, 0.0);
 	fixture.send(CommandId::SetTriggerSecondStage);
-	output = fixture.step(kMissionPeriod * 3);
-	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
+	output = fixture.step(kMissionPeriod * 2);
+	TEST_EXPECT(context, output.control_inputs.navigation_press_sequence == 1);
+	TEST_EXPECT(context, output.control_inputs.missile_uncage_press_sequence == 2);
+	TEST_EXPECT(context, output.control_inputs.weapon_release_press_sequence == 4);
+	TEST_EXPECT(context, output.control_inputs.trigger_second_stage_held);
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested && !output.fire_control.pickle_requested);
+	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::Navigation);
 	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
+	fixture.send(CommandId::SetMasterArmOff);
+	fixture.send(CommandId::SelectMissileOverride);
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SelectNavigationMode);
+	output = fixture.step(kMissionPeriod * 3);
+	TEST_EXPECT(context, !output.control_inputs.trigger_second_stage_held);
+	TEST_EXPECT(context, output.control_inputs.master_arm_press_sequence == 8);
+	TEST_EXPECT(context, output.control_inputs.missile_override_press_sequence == 9);
+	TEST_EXPECT(context, output.control_inputs.dogfight_press_sequence == 10);
+	TEST_EXPECT(context, output.control_inputs.navigation_press_sequence == 11);
+	fixture.send(CommandId::SelectNavigationMode, 0.0);
 	output = fixture.step(kMissionPeriod * 4);
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
-	fixture.send(CommandId::SetMasterArmOn);
-	fixture.send(CommandId::SetMissileUncage);
-	fixture.send(CommandId::SetMissileUncage, 0.0);
+	TEST_EXPECT(context, output.control_inputs.navigation_press_sequence == 11);
+	TEST_EXPECT(context, output.control_inputs.missile_uncage_press_sequence == 2);
 	output = fixture.step(kMissionPeriod * 5);
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
-	fixture.send(CommandId::SetMissileUncage);
-	fixture.send(CommandId::SetMissileUncage, 0.0);
-	fixture.send(CommandId::SetMasterArmOn);
-	output = fixture.step(kMissionPeriod * 6);
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
+	TEST_EXPECT(context, output.control_inputs.weapon_release_press_sequence == 4);
+}
+
+void test_fire_control_publishes_infrared_support_in_the_same_tick(Tests::Context& context)
+{
+	MissionFixture fixture;
 	fixture.frame.cockpit.ir_seeker.status.available = true;
 	fixture.frame.cockpit.ir_seeker.locked = true;
 	fixture.send(CommandId::SelectMissileOverride);
-	output = fixture.step(kMissionPeriod * 7);
-	TEST_EXPECT(context, output.aim9.status.available && output.aim9.locked);
-	TEST_EXPECT(context, output.aim9.requested_tone == Aim9Tone::Lock);
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::AirToAirMissile);
+	auto output = fixture.step(kMissionPeriod);
+	TEST_EXPECT(context, output.infrared_missile.status.available);
+	TEST_EXPECT(context, output.infrared_missile.active && output.infrared_missile.locked);
+	TEST_EXPECT(context, output.infrared_missile.requested_tone == InfraredSeekerTone::Lock);
+	fixture.send(CommandId::SelectNavigationMode);
+	output = fixture.step(kMissionPeriod * 2);
+	TEST_EXPECT(context, !output.infrared_missile.active && !output.infrared_missile.locked);
+	TEST_EXPECT(context, output.infrared_missile.requested_tone == InfraredSeekerTone::Off);
 }
 
 void test_gun_quantity_observations_and_catch_up(Tests::Context& context)
@@ -493,8 +548,7 @@ void test_gun_quantity_observations_and_catch_up(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, output.stores.gun_count, 0.0, 1e-12);
 	fixture.send(CommandId::SetMasterArmOff);
 	output = fixture.step(milliseconds(8200));
-	TEST_EXPECT(context, output.weapon_display.weapon_class == WeaponClass::Gun);
-	TEST_EXPECT_NEAR(context, output.weapon_display.quantity, 0.0, 1e-12);
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 0.0, 1e-12);
 }
 
 void test_gun_restart_in_one_fifo_does_not_backdate_quantity(Tests::Context& context)
@@ -525,11 +579,13 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_short_trigger_waits_for_execution_and_does_not_backdate_ack(context);
 	test_modes_and_immediate_master_cancel(context);
 	test_commands_wait_for_current_observation_and_retain_order(context);
+	test_master_cancel_keeps_action_order_and_legacy_mode_coupling(context);
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
-	test_pickle_and_sensor_modes(context);
+	test_pickle_and_targeting_modes(context);
 	test_inventory_authority_selection_and_rearm(context);
 	test_seeker_observation_precedence_and_availability(context);
-	test_weapon_display_preferences_use_authoritative_quantities(context);
+	test_control_observations_preserve_fifo_pulses_and_rejected_requests(context);
+	test_fire_control_publishes_infrared_support_in_the_same_tick(context);
 	test_gun_quantity_observations_and_catch_up(context);
 	test_gun_restart_in_one_fifo_does_not_backdate_quantity(context);
 }

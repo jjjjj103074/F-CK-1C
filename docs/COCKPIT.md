@@ -1,9 +1,9 @@
 # 座艙
 
 座艙入口為 `Cockpit/Scripts/device_init.lua`。
-C++ MC 負責任務模式、掛載策略、武器資格、感測器協調、尋標及武器顯示決策；
-Lua 負責 DCS 觀測／操作介面、反制程序、繪圖與播放。
-完整元件、資料庫及遷移範圍見 [MC 變更報告](MC_MIGRATION_REPORT.md)。
+C++ MC 負責任務模式、掛載策略、武器資格、目標操作及紅外線飛彈支援；
+Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、繪圖與播放。
+完整元件、資料庫及遷移範圍見 [MC 重構報告](MC_REFACTOR_REPORT.md)。
 
 ## Device 與狀態
 
@@ -13,7 +13,7 @@ Lua 負責 DCS 觀測／操作介面、反制程序、繪圖與播放。
 | WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始七站觀測、執行 MC 選站要求及確認 |
 | RADAR | avSimpleRadar / RADAR/FCK1C_Radar.lua | DCS 雷達設定與原始 DCS 觀測來源 |
 | RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原有雷達開啟參數介面 |
-| HMCS | avLuaDevice / hmcs_system.lua | 64 Hz 原始飛行資料取樣、單位呈現、航向刻度與繪圖參數 |
+| HMCS | avLuaDevice / hmcs_system.lua | 64 Hz 原始飛行資料取樣、武器顯示規則、單位呈現、航向刻度與繪圖參數 |
 | AAM_AUDIO | avLuaDevice / aam_audio_system.lua | 20 Hz 依 MC tone 要求選資源、播放及 Sound Test |
 
 MC 外層與內部週期工作為 32 Hz；介面的取樣／播放頻率各自保留。
@@ -45,6 +45,19 @@ DCS 自有 radar／weapon 參數另有白名單。
 HMCS 取得磁航向與氣壓高度，發布 availability 及原始 rad／m。
 CockpitBridge 將其轉為 Core 的 degree／ft 觀測；缺失值保持不可用。
 單位與正負號見[單位規範](EFM_UNIT_CONVENTIONS.md)。
+
+## MC 與 HUD／HMCS 資料流
+
+MC 以 32 Hz 發布任務、掛載及火控狀態，另保留必要操作的最近按下序號與扳機按住狀態。
+這些是原始輸入觀測，包含被拒絕的武器操作，不代表發射許可或實際選站。
+MissionComputerExporter 在既有奇／偶 generation 內轉出全部資料。
+HMCS 只接受讀取前後 generation 相同的正偶數版本，再決定武器顯示類別及數量。
+
+`HMCS_WEAPON_CLASS` 與 `HMCS_WEAPON_QTY` 的唯一 writer 改為 hmcs_system.lua；
+原名稱及數值不變。數量始終來自 MC 的 StoresManagement，沒有 HMCS 獨立彈量估算。
+顯示偏好由最近的相關按下序號推導，因此短按、快速切換與 HMCS 漏讀中間幀不會遺失偏好。
+HMCS 不監聽或執行武器命令；MC 未提供完整快照時保留上一份完整呈現。
+目前只有既有 HMCS 接線，未新增另一套 HUD 或同步 Lua→C++ RPC。
 
 ## 掛載與彈量
 

@@ -75,16 +75,25 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.status = { true, 1 };
 	mc.fire_control.master_arm_mode = Core::MasterArmMode::On;
 	mc.fire_control.fire_control_mode = Core::FireControlMode::Dogfight;
-	mc.aim9.requested_tone = Core::Aim9Tone::Lock;
-	mc.aim9.locked = true;
-	mc.aim9.contact = true;
-	mc.aim9.active = true;
-	mc.aim9.seeker_state = Core::Aim9SeekerState::Track;
-	mc.aim9.seeker_azimuth_rad = 0.1;
-	mc.aim9.seeker_elevation_rad = -0.2;
-	mc.aim9.lock_range_m = 1200.0;
-	mc.weapon_display.weapon_class = Core::WeaponClass::AirToAirMissile;
-	mc.weapon_display.quantity = 2.0;
+	mc.infrared_missile.requested_tone = Core::InfraredSeekerTone::Lock;
+	mc.infrared_missile.locked = true;
+	mc.infrared_missile.contact = true;
+	mc.infrared_missile.active = true;
+	mc.infrared_missile.seeker_state = Core::InfraredSeekerState::Track;
+	mc.infrared_missile.seeker_azimuth_rad = 0.1;
+	mc.infrared_missile.seeker_elevation_rad = -0.2;
+	mc.infrared_missile.lock_range_m = 1200.0;
+	mc.stores.air_to_air_missile_count = 2;
+	mc.stores.gun_count = 240.0;
+	mc.control_inputs.trigger_second_stage_held = true;
+	mc.control_inputs.master_arm_press_sequence = 3;
+	mc.control_inputs.navigation_press_sequence = 5;
+	mc.control_inputs.dogfight_press_sequence = 6;
+	mc.control_inputs.missile_override_press_sequence = 8;
+	mc.control_inputs.missile_uncage_press_sequence = 9;
+	mc.control_inputs.weapon_release_press_sequence = 12;
+	cockpit.set(DcsIds::CockpitParams::HmcsWeaponClass, 5.0);
+	cockpit.set(DcsIds::CockpitParams::HmcsWeaponQuantity, 99.0);
 	mc.stores.requested_station = 3;
 	mc.stores.selection_request_revision = 4;
 	mc.external_actions.batch.first_sequence = 7;
@@ -107,9 +116,18 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerAzimuth), 0.1, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerElevation), -0.2, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9LockRange), 1200.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponClass), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponQuantity), 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponClass), 5.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponQuantity), 99.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 4.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9MissileCount), 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCount), 240.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McTriggerSecondStageHeld), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMasterArmPressSequence), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McNavigationPressSequence), 5.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McDogfightPressSequence), 6.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMissileOverridePressSequence), 8.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMissileUncagePressSequence), 9.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McWeaponReleasePressSequence), 12.0, kTolerance);
 	TEST_EXPECT_NEAR(context,
 	                 cockpit.value(DcsIds::CockpitParams::McAction01),
 	                 static_cast<double>(Core::MissionActionKind::GunOn),
@@ -119,6 +137,21 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	                 static_cast<double>(Core::MissionActionKind::GunOff),
 	                 kTolerance);
 }
+
+void test_missing_control_fact_blocks_mc_commit(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set_available(DcsIds::CockpitParams::McMissileUncagePressSequence, false);
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	snapshot.combat_avionics.status = { true, 1 };
+	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 1);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
+	cockpit.set_available(DcsIds::CockpitParams::McMissileUncagePressSequence, true);
+	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 1);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 4.0, kTolerance);
+}
+
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
@@ -127,4 +160,5 @@ void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 	test_missing_parameter_reports_once_then_recovers(context);
 	test_reset_restarts_error_reporting(context);
 	test_mc_window_commits_only_when_all_parameters_are_written(context);
+	test_missing_control_fact_blocks_mc_commit(context);
 }

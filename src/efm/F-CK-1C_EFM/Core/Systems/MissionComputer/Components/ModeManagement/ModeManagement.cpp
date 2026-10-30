@@ -4,13 +4,9 @@
 
 namespace Core::Systems::Mc
 {
-ModeManagement::ModeManagement(ModeData& mode,
-                               SensorCoordination& sensors,
-                               WeaponControl& weapons,
-                               ExternalActionQueue& actions)
+ModeManagement::ModeManagement(ModeData& mode, FireControl& fire_control, ExternalActionQueue& actions)
     : mode_(mode),
-      sensors_(sensors),
-      weapons_(weapons),
+      fire_control_(fire_control),
       actions_(actions)
 {
 }
@@ -25,7 +21,7 @@ void ModeManagement::handle(const Command& command)
 	case CommandId::SetMasterArmOff:
 	case CommandId::SetMasterArmSim:
 		mode_.master_arm = command.id == CommandId::SetMasterArmOff ? MasterArmMode::Off : MasterArmMode::Simulation;
-		weapons_.stop();
+		fire_control_.on_master_arm_changed();
 		actions_.append(MissionActionKind::AbortCms);
 		mode_.fire_control = FireControlMode::Navigation;
 		break;
@@ -58,9 +54,9 @@ void ModeManagement::handle(const Command& command)
 	case CommandId::StartCmsRight:
 		actions_.append(MissionActionKind::AbortCms);
 		return;
-	default: // Trigger first stage and CMS press remain reserved.
+	default: // CMS press remains reserved.
 		return;
 	}
-	sensors_.select_mode(cycle_weapon);
+	fire_control_.on_mode_selected(cycle_weapon);
 }
 }
