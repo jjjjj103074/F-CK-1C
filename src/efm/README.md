@@ -31,6 +31,14 @@ DFLCC currently implements configurable three-axis direct mapping.
 Feedback, trim application, autopilot and automatic throttle are unimplemented;
 see the [DFLCC guide](F-CK-1C_EFM/Core/Systems/DigitalFlightControlComputer/README.md).
 
+## Shared third-party libraries
+
+`F-CK-1C_EFM/ThirdParty/` holds pinned upstream code. The shared build rules make
+these headers available to all EFM C++ sources and native tests. See
+[sigslot usage and version](F-CK-1C_EFM/ThirdParty/sigslot/README.md) for synchronous
+single-thread notifications. Each owning system defines its own event types and
+channel instances; sharing the library does not introduce a global event bus.
+
 ## Build and verification
 
 ```powershell

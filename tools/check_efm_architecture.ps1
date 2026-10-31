@@ -15,7 +15,7 @@ function Get-RelativeSourcePath {
         [string]$Path
     )
 
-    return $Path.Substring($Root.Length + 1)
+    return $Path.Substring($Root.Length + 1).Replace('/', '\')
 }
 
 function Resolve-LocalInclude {
@@ -209,7 +209,8 @@ function Test-FileSizes {
     foreach ($source in $Sources) {
         $relativePath = Get-RelativeSourcePath $Root $source.FullName
         if ($relativePath -like 'include\*' -or
-            $relativePath -eq 'ThirdParty\nlohmann\json.hpp') {
+            $relativePath -eq 'ThirdParty\nlohmann\json.hpp' -or
+            $relativePath -eq 'ThirdParty\sigslot\signal.hpp') {
             continue
         }
         $lineCount = @(Get-Content -LiteralPath $source.FullName).Count

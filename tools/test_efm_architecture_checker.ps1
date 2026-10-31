@@ -198,6 +198,16 @@ try {
         "#include `"Simulation/Models/Lift/Lift.h`"`r`n" `
         'Core facade boundary violation'
 
+    # Only pinned upstream headers are exempt from authored source-size limits.
+    Write-Fixture 'ThirdParty\sigslot\signal.hpp' ("// upstream`r`n" * 701)
+    Invoke-Checker
+    Assert-Rejected {
+        Write-Fixture 'Common\Oversized.h' ("// authored`r`n" * 701)
+    } 'Source exceeds 700 lines' 'Common\Oversized.h'
+    Assert-Rejected {
+        Write-Fixture 'ThirdParty\sigslot\Authored.h' ("// authored`r`n" * 701)
+    } 'Source exceeds 700 lines' 'ThirdParty\sigslot\Authored.h'
+
     Write-Output 'EFM architecture checker fixtures passed.'
 }
 finally {
