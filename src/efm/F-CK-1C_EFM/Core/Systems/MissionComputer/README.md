@@ -3,8 +3,9 @@
 MC 是單一 `System`，以專案選用的 32 Hz 運作；組裝沿用 DFLCC 的資料庫先建立、固定參照
 與單一 Executive。這是專案設計，並非實機 F-CK-1C MC 的架構復刻。
 本次保留既有操作、計時、尋標推導與畫面行為，只調整職責及資料介面。
-需求、驗證與限制見[重構報告](../../../../../../docs/MC_REFACTOR_REPORT.md)，
-先前遷移經過見[歷史遷移報告](../../../../../../docs/MC_MIGRATION_REPORT.md)。
+目前模式事件、反制職責與驗證限制見[模式事件重構](../../../../../../docs/MC_MODE_EVENTS.md)。
+先前元件整併見[重構報告](../../../../../../docs/MC_REFACTOR_REPORT.md)，
+遷移經過見[歷史遷移報告](../../../../../../docs/MC_MIGRATION_REPORT.md)。
 
 ## 組裝
 
@@ -17,8 +18,10 @@ MissionComputer : System [32 Hz]
 │   ├── MissionData (ModeData / StoresData / FireControlData)
 │   │   └── FireControlData.targeting / weapon / infrared_missile
 │   └── ExternalActionQueue
+├── ModeEvents（MC 專用同步事件通道）
 └── Components/
     ├── ModeManagement
+    ├── CountermeasureControl
     ├── StoresManagement
     ├── FireControl
     │   └── Internal/
@@ -31,13 +34,14 @@ MissionComputer : System [32 Hz]
     └── FailureManager
 ```
 
-三個任務元件與四個基礎元件，共七個同層元件。
+四個任務元件與四個基礎元件，共八個同層元件。
 FireControl 內部模組不是獨立 System、執行緒或 Executive 工作。
 MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持固定參照。
 
 | 元件 | 職責 |
 |---|---|
-| ModeManagement | 保留 Master ON/OFF/SIM、NAV/DGFT/MSL、模式通知與反制啟停資格 |
+| ModeManagement | 唯一寫入 Master ON/OFF/SIM、NAV/DGFT/MSL，發布具型別選擇事件 |
+| CountermeasureControl | 讀取模式判斷 CMS 啟動資格，接收 Master Arm 事件處理中止 |
 | StoresManagement | 原有掛載分類、彈量來源、選站／確認、再裝填與武器循環要求 |
 | FireControl | 統一目標操作、武器資格／使用程序及紅外線飛彈支援 |
 | Executive | 四個週期工作的固定順序、頻率及時間推進 |
@@ -47,7 +51,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 
 FireControl 內的 Targeting 保存解籠、指定意圖、捕獲子模式與捕獲計時；
 WeaponOperation 保留扳機／投放資格、保持與停止程序；InfraredMissileSupport
-整理尋標接觸、鎖定、狀態與音調要求。模式及武裝變更透過 FireControl 公開入口通知。
+整理尋標接觸、鎖定、狀態與音調要求。模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
 武器循環、選站與數量更新歸 StoresManagement；雷達模型、DCS API 及操作映射留在外部。
 
 ## 資料所有權
@@ -57,7 +61,7 @@ WeaponOperation 保留扳機／投放資格、保持與停止程序；InfraredMi
 | InputOutputData.input | MC 輸入入口及外殼 | 掛載、火控、輸出投影 |
 | InputOutputData.input.control_inputs | MC 依命令 FIFO 記錄原始操作 | 輸出投影；HUD/HMCS 的唯讀觀測 |
 | InputOutputData.output | MC publish_outputs | Pipeline、Bridge |
-| ModeData | ModeManagement | 火控、掛載及輸出投影 |
+| ModeData | ModeManagement | 火控、掛載、反制及輸出投影（唯讀） |
 | StoresData | StoresManagement | 火控及輸出投影 |
 | FireControlData.targeting | Targeting | 武器操作、紅外線支援及輸出投影 |
 | FireControlData.weapon | WeaponOperation | 掛載數量估算及輸出投影 |
@@ -116,7 +120,28 @@ readiness 是簡化命令狀態；designation 是操作意圖；contact／locked
 掛載分類仍沿用廣泛 AAM 判斷，尚未精確區分紅外線與其他空對空飛彈。
 未來優先以武器能力／參數資料共用流程，必要時才增加特殊操作；此部分只留待辦註解。
 完整掛載查詢仍由 Lua SDK 入口提供；數量來源保持掛載 → 原有數量 API → 原有估計。
-反制程序仍在 Lua，MC 保留啟動資格與中止要求。
+反制程序仍在 Lua，CountermeasureControl 管理啟動資格與中止要求。
+
+## 模式狀態與事件
+
+`ModeData.operating_mode` 使用 `OperatingMode`，不再以 fire_control 命名。
+對外 `CombatAvionicsSnapshot.mode` 獨立發布 `ModeSnapshot`；FireControlSnapshot
+只保留火控資料。Bridge 仍輸出原有座艙參數名稱與數值，Lua/HMCS 操作不變。
+
+MC 持有自己的 `ModeEvents`，由 ModeManagement 同步發布
+`MasterArmSelected`／`OperatingModeSelected`，組裝時集中登記訂閱。
+事件含當次選擇前後的 ModeData 副本；重複選擇也通知，不因數值相同而省略。
+ModeManagement 不再依賴 FireControl 或 ExternalActionQueue。
+
+Master OFF/SIM 先同步通知火控停止，再通知反制中止，接著選 NAV 並通知火控。
+火控與反制使用不同 sigslot group 保證順序；同 group 的順序不作假設。
+同一 FIFO 命令的通知全部結束，才處理下一筆，保留同 tick OFF→ON 的停止效果。
+監聽者不得遞迴消費命令；訂閱在組裝時建立，不在週期計算中反覆建立。
+
+ModeEvents 先於使用者建立；scoped_connection 最後宣告，先於接收者銷毀。
+每一台 MC 有獨立通道，不使用全域事件中心。sigslot 放在共用 ThirdParty，
+其他 C++ 系統與測試可直接使用，但不因此改變現有跨 System 資料契約。
+導入、範圍及驗證見[模式事件重構](../../../../../../docs/MC_MODE_EVENTS.md)。
 
 ## 與 DFLCC 對齊
 

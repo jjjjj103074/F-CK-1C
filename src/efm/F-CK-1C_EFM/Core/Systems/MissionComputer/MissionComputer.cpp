@@ -6,6 +6,13 @@
 
 #include <stdexcept>
 
+namespace
+{
+// 依 group 順序先停止火控，再中止 CMS。
+constexpr sigslot::group_id kFireControlArmOrder = 0;
+constexpr sigslot::group_id kCountermeasureArmOrder = 1;
+}
+
 namespace Core::Systems
 {
 MissionComputer::MissionComputer()
@@ -22,7 +29,8 @@ MissionComputer::MissionComputer()
                     fire_control_data_,
                     external_actions_,
                     stores_management_),
-      mode_management_(mode_data_, fire_control_, external_actions_),
+      mode_management_(mode_data_, mode_events_),
+      countermeasure_control_(mode_data_, external_actions_),
       executive_(executive_tables_,
                  { { "stores_management.step",
                      Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
@@ -42,6 +50,24 @@ MissionComputer::MissionComputer()
                      &Mc::FailureManager::step } }),
       startup_and_restart_(executive_, system_status_tables_.lifecycle)
 {
+	// 組裝本台 MC 的主保險與模式事件訂閱。
+	fire_control_arm_connection_ = mode_events_.master_arm_selected.connect(
+	    [this](const Mc::MasterArmSelected& event)
+	    {
+		    fire_control_.on_master_arm_selected(event);
+	    },
+	    kFireControlArmOrder);
+	countermeasure_arm_connection_ = mode_events_.master_arm_selected.connect(
+	    [this](const Mc::MasterArmSelected& event)
+	    {
+		    countermeasure_control_.on_master_arm_selected(event);
+	    },
+	    kCountermeasureArmOrder);
+	fire_control_mode_connection_ = mode_events_.operating_mode_selected.connect(
+	    [this](const Mc::OperatingModeSelected& event)
+	    {
+		    fire_control_.on_operating_mode_selected(event);
+	    });
 	startup_and_restart_.start();
 }
 
@@ -57,21 +83,14 @@ bool MissionComputer::powered() const noexcept
 
 void MissionComputer::setup(SystemSetup& setup)
 {
-	// 專案選用 32 Hz；不借用 F-16XL 飛控參考值作為 MC 實機依據。
+	// MC 以 32 Hz 更新。
 	setup.update_rate_hz(kMissionComputerProjectUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
 	setup.publish(AircraftDataKeys::kMissionComputerSnapshot, input_output_data_.output.combat_avionics);
-	const CommandId mode_commands[] = { CommandId::SetMasterArmOn,
-		                                CommandId::SetMasterArmOff,
-		                                CommandId::SetMasterArmSim,
-		                                CommandId::SelectNavigationMode,
-		                                CommandId::SelectDogfightMode,
-		                                CommandId::SelectMissileOverride,
-		                                CommandId::StartCmsForward,
-		                                CommandId::StartCmsAft,
-		                                CommandId::StartCmsLeft,
-		                                CommandId::StartCmsRight,
-		                                CommandId::PressCms };
+	// 各類指令先進入同一 FIFO，待本 tick 讀取觀測後才執行，保留跨元件的操作順序。
+	const CommandId mode_commands[] = { CommandId::SetMasterArmOn,     CommandId::SetMasterArmOff,
+		                                CommandId::SetMasterArmSim,    CommandId::SelectNavigationMode,
+		                                CommandId::SelectDogfightMode, CommandId::SelectMissileOverride };
 	for (CommandId id : mode_commands)
 	{
 		setup.register_command_handler(id,
@@ -79,6 +98,20 @@ void MissionComputer::setup(SystemSetup& setup)
 		                               {
 			                               input_output_data_.input.pending_commands.push_back(
 			                                   { Mc::MissionCommandTarget::Mode, command });
+		                               });
+	}
+	const CommandId countermeasure_commands[] = { CommandId::StartCmsForward,
+		                                          CommandId::StartCmsAft,
+		                                          CommandId::StartCmsLeft,
+		                                          CommandId::StartCmsRight,
+		                                          CommandId::PressCms };
+	for (CommandId id : countermeasure_commands)
+	{
+		setup.register_command_handler(id,
+		                               [this](const SystemActionContext&, const Command& command)
+		                               {
+			                               input_output_data_.input.pending_commands.push_back(
+			                                   { Mc::MissionCommandTarget::Countermeasure, command });
 		                               });
 	}
 	const CommandId fire_control_commands[] = { CommandId::SetTriggerFirstStage,
@@ -128,11 +161,13 @@ void MissionComputer::publish_outputs(SystemResult& result)
 {
 	CombatAvionicsSnapshot& output = input_output_data_.output.combat_avionics;
 	output.status = { true, output.status.revision + 1 };
+	// 模式由獨立快照對外發布；Bridge 仍映射到原有座艙參數名稱與數值。
+	output.mode.status = output.status;
 	output.fire_control.status = output.status;
-	output.fire_control.master_arm_mode = mode_data_.master_arm;
-	output.fire_control.fire_control_mode = mode_data_.fire_control;
+	output.mode.master_arm_mode = mode_data_.master_arm;
+	output.mode.operating_mode = mode_data_.operating_mode;
 	output.fire_control.air_to_air_submode = fire_control_data_.targeting.submode;
-	output.fire_control.dogfight_mode = mode_data_.fire_control == FireControlMode::Dogfight;
+	output.mode.dogfight_mode = mode_data_.operating_mode == OperatingMode::Dogfight;
 	output.fire_control.gun_fire_requested = fire_control_data_.weapon.gun_requested;
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
@@ -173,10 +208,14 @@ void MissionComputer::consume_commands()
 		case Mc::MissionCommandTarget::Mode:
 			mode_management_.handle(intent.command);
 			break;
+		case Mc::MissionCommandTarget::Countermeasure:
+			countermeasure_control_.handle(intent.command);
+			break;
 		case Mc::MissionCommandTarget::FireControl:
 			fire_control_.handle(intent.command);
 			break;
 		}
+		// sigslot 的同步回呼已全部返回，這時才結束本筆指令並移往下一筆。
 		pending.pop_front();
 	}
 }

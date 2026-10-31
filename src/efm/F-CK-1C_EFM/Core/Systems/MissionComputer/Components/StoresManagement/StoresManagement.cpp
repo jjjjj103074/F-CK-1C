@@ -25,7 +25,7 @@ StoresManagement::StoresManagement(const MissionInputs& input,
 
 bool StoresManagement::is_air_to_air_missile(const WeaponStationSample& sample)
 {
-	// Preserve the prototype Lua classification until a weapon definition database replaces it.
+	// 依空對空類別與 AIM-9／CATM-9 識別字串分類掛載。
 	return sample.present && sample.count > 0 &&
 	       ((sample.category == WeaponCategory::Missile && sample.role == WeaponRole::AirToAir) ||
 	        sample.weapon_identifier.find("AIM-9") != std::string::npos ||
@@ -95,13 +95,13 @@ void StoresManagement::step(std::chrono::nanoseconds time, double)
 	if (!mode_.air_to_air())
 	{
 		request_station(std::nullopt, false);
-		selection_mode_ = mode_.fire_control;
+		selection_mode_ = mode_.operating_mode;
 	}
 	else if (inventory.status.available)
 	{
 		request_station(first_loaded,
-		                selection_mode_ != mode_.fire_control || rearm_revision_ != inventory.rearm_revision);
-		selection_mode_ = mode_.fire_control;
+		                selection_mode_ != mode_.operating_mode || rearm_revision_ != inventory.rearm_revision);
+		selection_mode_ = mode_.operating_mode;
 		rearm_revision_ = inventory.rearm_revision;
 	}
 }

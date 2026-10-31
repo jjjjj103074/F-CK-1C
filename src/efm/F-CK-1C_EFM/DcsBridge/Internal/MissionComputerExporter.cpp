@@ -96,9 +96,10 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Available, 1.0);
 	WRITE_MC(FirstSequence, static_cast<double>(batch.first_sequence));
 	WRITE_MC(ActionCount, static_cast<double>(batch.count));
-	WRITE_MC(MasterArm, static_cast<double>(snapshot.fire_control.master_arm_mode));
-	WRITE_MC(Dogfight, snapshot.fire_control.dogfight_mode ? 1.0 : 0.0);
-	WRITE_MC(FireControlMode, static_cast<double>(snapshot.fire_control.fire_control_mode));
+	// 將 ModeSnapshot 映射至 Lua/HMCS 座艙參數。
+	WRITE_MC(MasterArm, static_cast<double>(snapshot.mode.master_arm_mode));
+	WRITE_MC(Dogfight, snapshot.mode.dogfight_mode ? 1.0 : 0.0);
+	WRITE_MC(OperatingMode, static_cast<double>(snapshot.mode.operating_mode));
 	WRITE_MC(Submode, static_cast<double>(snapshot.fire_control.air_to_air_submode));
 	WRITE_MC(GunFiring, snapshot.fire_control.gun_firing_indication ? 1.0 : 0.0);
 	WRITE_MC(Uncage, snapshot.infrared_missile.uncage_held ? 1.0 : 0.0);

@@ -24,7 +24,7 @@ private:
 		ActionCount,
 		MasterArm,
 		Dogfight,
-		FireControlMode,
+		OperatingMode,
 		Submode,
 		GunFiring,
 		Uncage,

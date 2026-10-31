@@ -30,7 +30,7 @@ private:
 	const WeaponOperationData& weapon_;
 	StoresData& stores_;
 	ExternalActionQueue& actions_;
-	FireControlMode selection_mode_ = FireControlMode::Navigation;
+	OperatingMode selection_mode_ = OperatingMode::Navigation;
 	std::uint64_t rearm_revision_ = 0;
 	std::chrono::nanoseconds gun_quantity_time_{};
 	std::uint64_t gun_quantity_sequence_ = 0;

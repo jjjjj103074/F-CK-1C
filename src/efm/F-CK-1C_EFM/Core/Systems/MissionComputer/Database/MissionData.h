@@ -4,15 +4,16 @@
 
 namespace Core::Systems::Mc
 {
+/// @brief MC 持有的共用模式分區；ModeManagement 唯一寫入，其他元件取得唯讀參照。
 struct ModeData
 {
-	MasterArmMode master_arm = MasterArmMode::On;
-	// 保留原有三態與 Master Arm 耦合。後續再設計 NAV／A-A／A-G、超控與恢復。
-	FireControlMode fire_control = FireControlMode::Navigation;
+	MasterArmMode master_arm = MasterArmMode::On; ///< 軟體主保險狀態。
+	OperatingMode operating_mode = OperatingMode::Navigation;
 
+	/// @brief 判斷目前模式是否為 DGFT/MSL。
 	bool air_to_air() const noexcept
 	{
-		return fire_control != FireControlMode::Navigation;
+		return operating_mode != OperatingMode::Navigation;
 	}
 };
 
@@ -20,7 +21,7 @@ struct TargetingData
 {
 	AirToAirSubmode submode = AirToAirSubmode::None;
 	bool uncage_held = false;
-	bool designation_requested = false; // 操作意圖，不代表雷達／飛彈已實際鎖定。
+	bool designation_requested = false; // 目標指定的操作意圖。
 };
 
 struct InfraredMissileData

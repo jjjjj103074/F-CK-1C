@@ -33,7 +33,7 @@ void WeaponOperation::handle(const Command& command)
 			gun_.request_release();
 		}
 		else if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On &&
-		         mode_.fire_control == FireControlMode::Dogfight && !targeting_.uncage_held)
+		         mode_.operating_mode == OperatingMode::Dogfight && !targeting_.uncage_held)
 		{
 			weapon_.gun_start_sequence = actions_.append(MissionActionKind::GunOn);
 			gun_.begin(weapon_.gun_start_sequence);
@@ -80,7 +80,7 @@ void WeaponOperation::finish_pickle(bool consume)
 
 void WeaponOperation::stop()
 {
-	// Master OFF/SIM cancels immediately, including a leading edge not yet acknowledged by Lua.
+	// 主保險 OFF/SIM 時立即取消程序，涵蓋等待 Lua 確認的動作。
 	if (gun_.active())
 		finish_gun();
 	if (pickle_.active())
@@ -95,6 +95,6 @@ void WeaponOperation::step(std::chrono::nanoseconds time, double)
 	if (pickle_.release_due(time, actions_))
 		finish_pickle(true);
 	weapon_.gun_firing_indication = weapon_.gun_requested && mode_.master_arm == MasterArmMode::On &&
-	                                mode_.fire_control == FireControlMode::Dogfight;
+	                                mode_.operating_mode == OperatingMode::Dogfight;
 }
 }

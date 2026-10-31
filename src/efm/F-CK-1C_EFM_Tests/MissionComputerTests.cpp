@@ -230,8 +230,8 @@ void test_modes_and_immediate_master_cancel(Tests::Context& context)
 {
 	MissionFixture fixture;
 	CombatAvionicsSnapshot output = fixture.step(kMissionPeriod);
-	TEST_EXPECT(context, output.fire_control.master_arm_mode == MasterArmMode::On);
-	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::Navigation);
+	TEST_EXPECT(context, output.mode.master_arm_mode == MasterArmMode::On);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::Navigation);
 	fixture.send(CommandId::SetTriggerSecondStage);
 	TEST_EXPECT(context, !fixture.step(kMissionPeriod * 2).fire_control.gun_fire_requested);
 	fixture.send(CommandId::SelectDogfightMode);
@@ -239,8 +239,8 @@ void test_modes_and_immediate_master_cancel(Tests::Context& context)
 	fixture.send(CommandId::SetMasterArmSim);
 	fixture.send(CommandId::SetMasterArmOn);
 	output = fixture.step(kMissionPeriod * 3);
-	TEST_EXPECT(context, output.fire_control.master_arm_mode == MasterArmMode::On);
-	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::Navigation);
+	TEST_EXPECT(context, output.mode.master_arm_mode == MasterArmMode::On);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::Navigation);
 	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
 	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::GunOff));
 	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::AbortCms));
@@ -291,12 +291,12 @@ void test_master_cancel_keeps_action_order_and_legacy_mode_coupling(Tests::Conte
 			TEST_EXPECT(context, output.external_actions.batch.actions[i] == expected[i]);
 	}
 	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
-	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::Navigation);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::Navigation);
 	fixture.send(CommandId::SetMasterArmOff);
 	fixture.send(CommandId::SelectMissileOverride);
 	output = fixture.step(kMissionPeriod * 8);
-	TEST_EXPECT(context, output.fire_control.master_arm_mode == MasterArmMode::On);
-	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::MissileOverride);
+	TEST_EXPECT(context, output.mode.master_arm_mode == MasterArmMode::On);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
 }
 
 void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& context)
@@ -311,7 +311,7 @@ void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& c
 	const auto count =
 	    std::count(batch.actions.begin(), batch.actions.begin() + batch.count, MissionActionKind::EnsureRadarOn);
 	TEST_EXPECT(context, count == 1);
-	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::MissileOverride);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
 }
 
 void test_pickle_and_targeting_modes(Tests::Context& context)
@@ -410,7 +410,7 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	StoresData stores;
 	TargetingData targeting;
 	InfraredMissileData aim9;
-	mode.fire_control = FireControlMode::MissileOverride;
+	mode.operating_mode = OperatingMode::MissileOverride;
 	auto& ir = input.cockpit.ir_seeker;
 	auto& radar = input.cockpit.radar;
 	ir.status.available = true;
@@ -486,7 +486,7 @@ void test_control_observations_preserve_fifo_pulses_and_rejected_requests(Tests:
 	TEST_EXPECT(context, output.control_inputs.weapon_release_press_sequence == 4);
 	TEST_EXPECT(context, output.control_inputs.trigger_second_stage_held);
 	TEST_EXPECT(context, !output.fire_control.gun_fire_requested && !output.fire_control.pickle_requested);
-	TEST_EXPECT(context, output.fire_control.fire_control_mode == FireControlMode::Navigation);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::Navigation);
 	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
 	fixture.send(CommandId::SetMasterArmOff);
 	fixture.send(CommandId::SelectMissileOverride);
@@ -568,6 +568,68 @@ void test_gun_restart_in_one_fifo_does_not_backdate_quantity(Tests::Context& con
 	TEST_EXPECT_NEAR(context, output.stores.gun_count, 513.0, 1e-10);
 }
 
+void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.send(CommandId::StartCmsForward);
+	fixture.send(CommandId::SetMasterArmOff);
+	fixture.send(CommandId::StartCmsAft); // OFF rejects start.
+	fixture.send(CommandId::SetMasterArmSim);
+	fixture.send(CommandId::StartCmsLeft); // SIM rejects start.
+	fixture.send(CommandId::StartCmsRight); // Abort is always allowed.
+	fixture.send(CommandId::SetMasterArmOn);
+	fixture.send(CommandId::StartCmsAft);
+	fixture.send(CommandId::StartCmsLeft);
+	fixture.send(CommandId::StartCmsForward, 0.0); // Releases do not start a program.
+	fixture.send(CommandId::PressCms); // Reserved.
+	const auto output = fixture.step(kMissionPeriod);
+	std::vector<MissionActionKind> cms;
+	for (std::size_t i = 0; i < output.external_actions.batch.count; ++i)
+	{
+		const auto action = output.external_actions.batch.actions[i];
+		if (action == MissionActionKind::AbortCms || action == MissionActionKind::StartCmsForward ||
+		    action == MissionActionKind::StartCmsAft || action == MissionActionKind::StartCmsLeft)
+			cms.push_back(action);
+	}
+	const std::vector<MissionActionKind> expected = {
+		MissionActionKind::StartCmsForward, MissionActionKind::AbortCms,    MissionActionKind::AbortCms,
+		MissionActionKind::AbortCms,        MissionActionKind::StartCmsAft, MissionActionKind::StartCmsLeft
+	};
+	TEST_EXPECT(context, cms == expected);
+	TEST_EXPECT(context, output.mode.master_arm_mode == MasterArmMode::On);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::Navigation);
+	TEST_EXPECT(context, output.mode.status.available);
+	TEST_EXPECT(context, output.mode.status.revision == output.status.revision);
+}
+
+void test_repeat_mode_selection_still_cycles_weapon(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.send(CommandId::SelectMissileOverride);
+	fixture.send(CommandId::SelectMissileOverride);
+	const auto output = fixture.step(kMissionPeriod);
+	const auto& batch = output.external_actions.batch;
+	TEST_EXPECT(
+	    context,
+	    std::count(batch.actions.begin(), batch.actions.begin() + batch.count, MissionActionKind::CycleWeapon) == 2);
+	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
+}
+
+void test_mc_subscriptions_are_isolated_between_instances(Tests::Context& context)
+{
+	MissionFixture first;
+	MissionFixture second;
+	first.send(CommandId::SelectDogfightMode);
+	first.send(CommandId::SetTriggerSecondStage);
+	const auto armed = first.step(kMissionPeriod);
+	second.send(CommandId::SetMasterArmOff);
+	const auto safe = second.step(kMissionPeriod);
+	TEST_EXPECT(context, armed.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, safe.mode.master_arm_mode == MasterArmMode::Off);
+	TEST_EXPECT(context, !safe.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, first.step(kMissionPeriod * 2).fire_control.gun_fire_requested);
+}
+
 }
 
 void run_mission_computer_tests(Tests::Context& context)
@@ -588,4 +650,7 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_fire_control_publishes_infrared_support_in_the_same_tick(context);
 	test_gun_quantity_observations_and_catch_up(context);
 	test_gun_restart_in_one_fifo_does_not_backdate_quantity(context);
+	test_cms_commands_share_fifo_with_mode_commands(context);
+	test_repeat_mode_selection_still_cycles_weapon(context);
+	test_mc_subscriptions_are_isolated_between_instances(context);
 }

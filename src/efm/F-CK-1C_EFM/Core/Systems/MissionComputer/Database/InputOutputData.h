@@ -8,9 +8,11 @@
 
 namespace Core::Systems::Mc
 {
+/// @brief 指定共用 FIFO 中每筆指令的接收元件。
 enum class MissionCommandTarget
 {
 	Mode,
+	Countermeasure,
 	FireControl
 };
 

@@ -121,7 +121,8 @@ enum class MasterArmMode
 	On = 2
 };
 
-enum class FireControlMode
+/// @brief MC 操作模式，數值對應座艙參數。
+enum class OperatingMode
 {
 	Navigation = 0,
 	Dogfight = 1,
@@ -245,7 +246,7 @@ struct WeaponStationObservation
 {
 	ObservationStatus status;
 	std::array<WeaponStationSample, kWeaponStationCount> stations{};
-	// Last successful adapter request; DCS does not expose physical selection confirmation here.
+	// 最近一次成功執行的轉接器選站要求。
 	std::optional<int> selected_station;
 	std::uint64_t selection_ack_revision = 0;
 	std::uint64_t rearm_revision = 0;
@@ -372,13 +373,20 @@ struct AutomaticFlightControlSnapshot
 	AutomaticFlightControlReason auto_throttle_disengage_reason = AutomaticFlightControlReason::None;
 };
 
-struct FireControlSnapshot
+/// @brief MC 對外發布的主保險與操作模式。
+struct ModeSnapshot
 {
 	SnapshotStatus status;
 	MasterArmMode master_arm_mode = MasterArmMode::Off;
-	FireControlMode fire_control_mode = FireControlMode::Navigation;
-	AirToAirSubmode air_to_air_submode = AirToAirSubmode::None;
+	OperatingMode operating_mode = OperatingMode::Navigation;
 	bool dogfight_mode = false;
+};
+
+/// @brief 火控的目標子模式與武器操作狀態。
+struct FireControlSnapshot
+{
+	SnapshotStatus status;
+	AirToAirSubmode air_to_air_submode = AirToAirSubmode::None;
 	bool gun_fire_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
@@ -448,6 +456,7 @@ struct ExternalActionIntentSnapshot
 struct CombatAvionicsSnapshot
 {
 	SnapshotStatus status;
+	ModeSnapshot mode;
 	FireControlSnapshot fire_control;
 	RadarSnapshot radar;
 	StoresSnapshot stores;

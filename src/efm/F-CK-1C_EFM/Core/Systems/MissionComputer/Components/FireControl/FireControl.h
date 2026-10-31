@@ -1,12 +1,13 @@
 #pragma once
 
+#include "../../ModeEvents.h"
 #include "Internal/Targeting.h"
 #include "Internal/WeaponOperation.h"
 #include "Internal/InfraredMissileSupport.h"
 
 namespace Core::Systems::Mc
 {
-/// @brief MC 的火控入口，統一目標操作與武器使用程序；不包含雷達處理或顯示繪製。
+/// @brief MC 火控入口，處理目標操作與武器使用程序。
 class FireControl final
 {
 public:
@@ -21,14 +22,13 @@ public:
 	FireControl(FireControl&&) = delete;
 	FireControl& operator=(FireControl&&) = delete;
 	void handle(const Command& command);
-	void on_mode_selected(bool cycle_weapon);
-	void on_master_arm_changed();
+	/// @brief 在 ModeData 更新後處理目標操作模式，保留重選時的武器循環意圖。
+	void on_operating_mode_selected(const OperatingModeSelected& event);
+	/// @brief 主保險選擇為 OFF/SIM 時停止武器程序。
+	void on_master_arm_selected(const MasterArmSelected& event);
 	void step(std::chrono::nanoseconds time, double dt_s);
 
-	// 待後續設計：武器能力資料、特殊操作與瞄準／投放解算；本次不增加演算法或發射條件。
-
 private:
-	const ModeData& mode_;
 	Internal::Targeting targeting_;
 	Internal::WeaponOperation weapon_operation_;
 	Internal::InfraredMissileSupport infrared_missile_support_;

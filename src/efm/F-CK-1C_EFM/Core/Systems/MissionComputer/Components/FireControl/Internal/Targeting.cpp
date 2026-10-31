@@ -49,7 +49,7 @@ void Targeting::apply_submode(AirToAirSubmode mode)
 		actions_.append(MissionActionKind::ModeBeyondVisualRange);
 		actions_.append(MissionActionKind::ModeFi0);
 		break;
-	default: // HUD scan and IFF remain reserved, as in the Lua implementation.
+	default:
 		break;
 	}
 }
@@ -101,14 +101,14 @@ void Targeting::prepare_release()
 void Targeting::select_mode(bool cycle_weapon)
 {
 	next_auto_lock_ = {};
-	if (mode_.fire_control == FireControlMode::Navigation)
+	if (mode_.operating_mode == OperatingMode::Navigation)
 	{
 		targeting_.submode = AirToAirSubmode::None;
 		unlock();
 		actions_.append(MissionActionKind::ModeCannon);
 		return;
 	}
-	const bool dogfight = mode_.fire_control == FireControlMode::Dogfight;
+	const bool dogfight = mode_.operating_mode == OperatingMode::Dogfight;
 	if (!dogfight)
 	{
 		unlock();
@@ -128,7 +128,7 @@ void Targeting::select_mode(bool cycle_weapon)
 void Targeting::handle(const Command& command)
 {
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
-	const bool dogfight = mode_.fire_control == FireControlMode::Dogfight;
+	const bool dogfight = mode_.operating_mode == OperatingMode::Dogfight;
 	if (command.id == CommandId::SetMissileUncage)
 	{
 		targeting_.uncage_held = pressed;
@@ -173,7 +173,7 @@ void Targeting::handle(const Command& command)
 	{
 		if (dogfight)
 			apply_submode(AirToAirSubmode::Hud);
-		else if (mode_.fire_control == FireControlMode::MissileOverride)
+		else if (mode_.operating_mode == OperatingMode::MissileOverride)
 		{
 			actions_.append(MissionActionKind::ChangeLock);
 			targeting_.designation_requested = true;
@@ -190,7 +190,7 @@ void Targeting::step(std::chrono::nanoseconds time, double)
 	{
 		finish_lock();
 	}
-	if (mode_.fire_control == FireControlMode::Dogfight && mode_.master_arm == MasterArmMode::On &&
+	if (mode_.operating_mode == OperatingMode::Dogfight && mode_.master_arm == MasterArmMode::On &&
 	    targeting_.uncage_held && stores_.missile_count > 0)
 	{
 		if (time >= next_auto_lock_)

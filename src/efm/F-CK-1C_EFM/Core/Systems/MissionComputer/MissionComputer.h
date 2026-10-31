@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../System.h"
+#include "Components/CountermeasureControl/CountermeasureControl.h"
 #include "Components/Executive/Executive.h"
 #include "Components/FailureManager/FailureManager.h"
 #include "Components/FireControl/FireControl.h"
@@ -28,7 +29,7 @@ public:
 	MissionComputer(MissionComputer&&) = delete;
 	MissionComputer& operator=(MissionComputer&&) = delete;
 
-	/// @brief 與 DFLCC 相同的供電入口；目前只控制 step，不執行斷電或重啟程序。
+	/// @brief 設定供電狀態，控制 MC 是否執行 step。
 	void set_powered(bool powered) noexcept;
 	bool powered() const noexcept;
 
@@ -39,11 +40,12 @@ public:
 
 private:
 	void read_inputs(const SystemStepContext& context, const AircraftDataView& aircraft);
+	/// @brief 依共用 FIFO 處理模式、反制及火控指令，每筆指令的同步通知完成後才前進。
 	void consume_commands();
 	void record_control_input(const Command& command);
 	void publish_outputs(SystemResult& result);
 
-	bool powered_ = true; ///< 暫定預設有電；尚未連接電源系統。
+	bool powered_ = true; ///< 控制 step 執行的供電狀態，預設為有電。
 
 	// 資料庫先於所有使用者建立，並在它們之後銷毀；與 DFLCC 的組裝順序一致。
 	Mc::ExecutiveTables executive_tables_;
@@ -54,12 +56,20 @@ private:
 	Mc::FireControlData fire_control_data_;
 	Mc::ExternalActionQueue external_actions_;
 
+	Mc::ModeEvents mode_events_; ///< 通道先於使用者建立，並在所有使用者銷毀後才銷毀。
+
 	Mc::SystemMonitor system_monitor_;
 	Mc::FailureManager failure_manager_;
 	Mc::StoresManagement stores_management_;
 	Mc::FireControl fire_control_;
 	Mc::ModeManagement mode_management_;
+	Mc::CountermeasureControl countermeasure_control_;
 	Mc::Executive executive_;
 	Mc::StartupAndRestart startup_and_restart_;
+
+	// 成員依宣告反序銷毀；連線最後宣告，確保先解除訂閱，再銷毀接收者與通道。
+	sigslot::scoped_connection fire_control_arm_connection_;
+	sigslot::scoped_connection countermeasure_arm_connection_;
+	sigslot::scoped_connection fire_control_mode_connection_;
 };
 }
