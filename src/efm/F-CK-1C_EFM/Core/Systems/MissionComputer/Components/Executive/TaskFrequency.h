@@ -5,7 +5,7 @@
 
 namespace Core::Systems::Mc
 {
-/// @brief 以正整數分數表示的 Hz；不依賴外層系統的呼叫頻率。
+/// @brief 以正整數分數表示任務頻率，單位為 Hz。
 class TaskFrequency final
 {
 public:
@@ -21,10 +21,10 @@ public:
 	/// @brief 取得約分後的頻率分母。
 	std::uint32_t denominator() const noexcept;
 
-	/// @brief 取得提供給演算法的固定週期，單位為秒；不供排程判斷使用。
+	/// @brief 取得提供給演算法的固定週期，單位為秒。
 	double period_s() const noexcept;
 
-	/// @brief 由整數週期次數計算絕對到期時間，不累加捨入後的週期。
+	/// @brief 由整數週期次數計算絕對到期時間。
 	/// @param tick 從零時刻起的週期次數；第一次呼叫使用 1。
 	/// @return 向下取整至奈秒的預定模擬時間。
 	/// @throws std::overflow_error 到期時間超出 std::chrono::nanoseconds 的範圍。

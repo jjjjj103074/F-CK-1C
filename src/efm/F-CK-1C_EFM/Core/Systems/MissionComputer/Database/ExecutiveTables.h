@@ -20,11 +20,11 @@ struct TaskDefinition
 	std::string id; ///< 全 MC 唯一的任務名稱。
 	TaskFrequency frequency; ///< 以正整數分數表示的 Hz。
 
-	/// @brief 將任務入口綁定至既有元件；不擁有或複製元件。
+	/// @brief 將任務入口綁定至元件參照。
 	/// @tparam Component 具有指定 step 成員函式的元件型別。
 	/// @param id 全 MC 唯一的任務名稱。
 	/// @param frequency 此任務自身的精確頻率。
-	/// @param component 在排程表使用期間持續存在且地址不變的元件。
+	/// @param component 以固定地址供排程表呼叫的元件。
 	/// @param method 接收預定模擬時間與固定週期的成員函式。
 	/// @throws std::invalid_argument 名稱為空或成員函式指標為空。
 	template <typename Component>
@@ -62,10 +62,10 @@ struct TaskRuntimeState
 /// @brief 同一個任務的固定設定與目前狀態；表格列順序即同時到期的執行順序。
 struct ExecutiveTask
 {
-	const TaskDefinition definition; ///< 建立後不可變的任務設定。
+	const TaskDefinition definition; ///< 固定任務設定。
 	TaskRuntimeState state; ///< 與此設定放在同一列的執行狀態。
 
-	/// @brief 建立設定及首次到期時間；零時刻不執行任務。
+	/// @brief 建立任務設定，首次到期時間為一個完整週期。
 	explicit ExecutiveTask(const TaskDefinition& definition);
 
 	/// @brief 查詢距離下次預定執行的模擬時間；負值表示已到期但尚未處理。
@@ -77,13 +77,13 @@ struct ExecutiveTask
 /// @brief 整份排程表的執行狀態。
 struct ExecutiveSchedulerState
 {
-	bool started = false; ///< 排程是否已由啟動入口啟用；不代表完整任務功能可用。
+	bool started = false; ///< 排程是否已由啟動入口啟用。
 	std::chrono::nanoseconds advanced_through = {}; ///< 最近一次成功完成的外層目標模擬時間。
 };
 
 /// @brief 一台 MC 的排程資料分區；每列同時保存任務設定與執行狀態。
 /// Executive 一次建立任務表並更新狀態；其他使用者只能取得唯讀參照。
-/// 任務綁定不擁有元件；元件必須比使用此表的 Executive 更晚銷毀。
+/// 綁定元件的生命週期涵蓋使用此表的 Executive。
 class ExecutiveTables final
 {
 public:
@@ -100,14 +100,14 @@ public:
 	const ExecutiveSchedulerState& scheduler_state() const noexcept;
 
 private:
-	/// @brief 由 Executive 一次建立所有任務列；不提供新增、排序或重新設定介面。
+	/// @brief 由 Executive 一次建立所有任務列。
 	/// @throws std::logic_error 此分區已被 Executive 初始化。
 	/// @throws std::invalid_argument 名稱為空、入口無效或任務名稱重複。
 	void initialize(std::initializer_list<TaskDefinition> definitions);
 
 	std::vector<ExecutiveTask> tasks_; ///< 固定列順序；每列的 definition 為 const。
 	ExecutiveSchedulerState scheduler_state_; ///< 排程器整體進度的唯一儲存位置。
-	bool initialized_ = false; ///< 防止同一分區被再次初始化，包含空任務表。
+	bool initialized_ = false; ///< 記錄分區初始化狀態，包含空任務表。
 
 	friend class Executive;
 };

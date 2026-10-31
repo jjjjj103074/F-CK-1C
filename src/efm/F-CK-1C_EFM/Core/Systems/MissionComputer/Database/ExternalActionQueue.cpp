@@ -17,7 +17,7 @@ std::uint64_t ExternalActionQueue::append(MissionActionKind action)
 
 void ExternalActionQueue::acknowledge(std::uint64_t sequence)
 {
-	// A future or stale adapter value must not discard undelivered operations.
+	// 依已發布視窗確認序號，並移除已執行動作。
 	if (sequence <= acknowledged_sequence_ || sequence > published_through_)
 	{
 		return;

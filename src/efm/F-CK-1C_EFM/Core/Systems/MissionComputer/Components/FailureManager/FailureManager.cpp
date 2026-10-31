@@ -10,7 +10,6 @@ FailureManager::FailureManager(const HealthStatus& health, FailureResponse& resp
 
 void FailureManager::step(std::chrono::nanoseconds scheduled_time, double dt_s)
 {
-	// 尚未實作：依監控結果選擇故障處置。
 	(void)scheduled_time;
 	(void)dt_s;
 }

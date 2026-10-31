@@ -12,7 +12,6 @@ StartupAndRestart::StartupAndRestart(Executive& executive, LifecycleStatus& life
 
 void StartupAndRestart::start()
 {
-	// 尚未實作完整啟動程序；排程啟用不代表任務功能已就緒。
 	executive_.start();
 }
 }

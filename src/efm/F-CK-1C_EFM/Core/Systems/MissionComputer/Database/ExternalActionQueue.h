@@ -6,7 +6,7 @@
 
 namespace Core::Systems::Mc
 {
-/// @brief Ordered MC-to-Lua delivery state; this queue never replaces edges with a latest-value flag.
+/// @brief 依序保存 MC 傳往 Lua 的動作，並以確認序號推進傳送視窗。
 class ExternalActionQueue final
 {
 public:

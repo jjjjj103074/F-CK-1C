@@ -50,7 +50,7 @@ std::chrono::nanoseconds TaskFrequency::tick_time(std::uint64_t tick) const
 		throw std::overflow_error("MC task schedule exceeded its time range.");
 	}
 
-	// 分解商與餘數，避免直接計算 tick * period_numerator 的中間乘法溢位。
+	// 以商與餘數分解計算到期時間。
 	// 餘數相乘的兩個運算元均小於 32 位元分子，因此乘積可由 uint64_t 表示。
 	const std::uint64_t whole = tick * whole_period;
 	const std::uint64_t fraction = (tick / numerator_) * remainder + ((tick % numerator_) * remainder) / numerator_;

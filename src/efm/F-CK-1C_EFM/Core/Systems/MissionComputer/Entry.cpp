@@ -2,7 +2,7 @@
 
 namespace Core::Systems::Catalog::MissionComputer
 {
-/// @brief 登記單一 MC；內部元件不加入 System catalog。
+/// @brief 將 MC 登記至 System catalog。
 SystemEntry create_entry()
 {
 	SystemEntry entry;

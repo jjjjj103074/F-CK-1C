@@ -7,7 +7,7 @@
 
 namespace Core::Systems::Mc
 {
-/// @brief A minimum hold starts when Lua has executed the leading edge, not when MC queued it.
+/// @brief 從 Lua 確認執行動作起算最短保持時間。
 class TimedAction final
 {
 public:
