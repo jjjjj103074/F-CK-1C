@@ -78,9 +78,10 @@ scoped_connection 解除、不同實例隔離、CMS 與模式的 FIFO、既有 O
 不延伸到自有檔案。Windows Release 與 DCS 的實際驗證結果須另行記錄，不能以 Linux
 測試推定已完成 Windows DLL 或遊戲內驗證。
 
-## 本次工作目錄驗證紀錄
+## 本次驗證紀錄
 
-基準為 `9eb8ff319e822f11aa0f747a4c6aeb282b7149ef`；本次來源尚未提交，未更新 bin DLL。
+基準為 `9eb8ff319e822f11aa0f747a4c6aeb282b7149ef`，最終來源為 `5ca3675a5b31aee58340d77edea7cde19f4085eb`。
+Windows 完整驗證與 DLL 憑證見[驗證紀錄](MC_MODE_EVENTS_VALIDATION.md)。
 
 | 項目 | 結果 |
 |---|---|
@@ -93,7 +94,7 @@ scoped_connection 解除、不同實例隔離、CMS 與模式的 FIFO、既有 O
 | 架構檢查器回歸 | 通過，包含上游標頭例外與自有檔案長度拒絕 |
 | code-review：Standards | 0 findings |
 | code-review：Spec | 0 findings |
-| 固定工具鏈 Windows Release／DLL 完整驗證 | 尚未執行 |
+| 固定工具鏈 Windows Release／DLL 完整驗證 | 通過；全專案 3,746 checks，0 failures |
 | DCS 遊戲內驗證 | 尚未執行 |
 
 Linux MC 使用 g++ C++17、O2、LTO、Wall/Wextra/Werror/pedantic，僅停用既有
@@ -105,5 +106,5 @@ Linux 匯出測試使用原始 exporter 程式與實際測試，Windows 模組�
 Windows 編譯、ABI、最佳化與 DLL 載入驗證。
 
 Node 22.14.0、clang-format 22.1.8 與 Lua 5.1.5 均在暫存目錄取得並核對完整性；
-架構檢查與 fixture 使用 PowerShell 7.4.6。Windows CI 需取得已提交的來源才可驗證此變更；
-現有 CI 流程與本次未提交來源無關，不應將舊 DLL 視為這次重構的測試產物。
+架構檢查與 fixture 使用 PowerShell 7.4.6。Windows CI 已對上述來源完成完整驗證，
+對應的 DLL 與來源憑證已放入 bin；DCS 遊戲內驗證另行記錄。
