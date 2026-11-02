@@ -75,9 +75,11 @@ void test_inventory_diagnostics_follow_real_mc_steps(Tests::Context& context)
 	TEST_EXPECT(context, f.value<std::string>("station_09_identity") == "TYPE=4.4.8.99;CLSID=opaque;\"id\"");
 	TEST_EXPECT(context, f.value<std::string>("station_09_input").find("CLSID=opaque;\"id\"") != std::string::npos);
 	TEST_EXPECT(context, f.value<bool>("gun_api_available"));
-	TEST_EXPECT(context, f.value<std::int64_t>("gun_api_count") == 0);
+	TEST_EXPECT(context, f.value<double>("gun_api_count") == 0.0);
 	TEST_EXPECT_NEAR(context, f.value<double>("gun_count"), 0.0, 1.0e-12);
+	f.frame.cockpit.mission_adapter.gun_count = 17.5;
 	f.step(kPeriod * 2);
+	TEST_EXPECT_NEAR(context, f.value<double>("gun_api_count"), 17.5, 1.0e-12);
 	TEST_EXPECT(context, f.value<std::string>("observation_revision") == "2");
 	TEST_EXPECT_NEAR(context, f.value<double>("observation_age_s"), 0.03125, 1.0e-12);
 	source.status = { false, 4, ObservationInvalidReason::StationApiError };

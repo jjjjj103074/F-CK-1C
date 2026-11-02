@@ -80,7 +80,7 @@ void StoresTelemetry::setup(SystemSetup& setup)
 	aa_summary_count_ = declare<std::int64_t>(setup, "aa_summary_count", "AA DISPLAY COUNT");
 	aa_summary_source_ = declare<std::int64_t>(setup, "aa_summary_source", "AA DISPLAY SOURCE");
 	gun_api_available_ = declare<bool>(setup, "gun_api_available", "GUN API OK");
-	gun_api_count_ = declare<std::int64_t>(setup, "gun_api_count", "GUN API COUNT");
+	gun_api_count_ = declare<double>(setup, "gun_api_count", "GUN API COUNT");
 	gun_count_ = declare<double>(setup, "gun_count", "GUN MC COUNT");
 	gun_requested_ = declare<bool>(setup, "gun_requested", "GUN REQUESTED");
 	for (std::size_t i = 0; i < stations_.size(); ++i)

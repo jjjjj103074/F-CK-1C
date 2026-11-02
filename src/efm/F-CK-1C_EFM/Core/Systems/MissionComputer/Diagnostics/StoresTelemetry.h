@@ -46,7 +46,7 @@ private:
 	DebugTelemetryChannel<std::int64_t> aa_summary_count_;
 	DebugTelemetryChannel<std::int64_t> aa_summary_source_;
 	DebugTelemetryChannel<bool> gun_api_available_;
-	DebugTelemetryChannel<std::int64_t> gun_api_count_;
+	DebugTelemetryChannel<double> gun_api_count_;
 	DebugTelemetryChannel<double> gun_count_;
 	DebugTelemetryChannel<bool> gun_requested_;
 };
