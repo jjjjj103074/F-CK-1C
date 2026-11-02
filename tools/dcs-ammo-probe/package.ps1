@@ -16,6 +16,7 @@ $baseTree = (& git -C $repoRoot rev-parse 'HEAD:src/efm').Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Unable to read baseline EFM source.' }
 $overlayTree = (& git -C $overlay rev-parse 'HEAD:src/efm').Trim()
 if ($LASTEXITCODE -ne 0 -or $overlayTree -ne $baseTree) { throw 'Diagnostic overlay changes the validated EFM source.' }
+& (Join-Path $overlay 'tools/check_cockpit_architecture.ps1') -RepoRoot $overlay
 $version = 'ammo-probe-r1-' + $OverlayCommit.Substring(0, 8)
 & (Join-Path $overlay 'tools/package_mc_stores_test.ps1') -RepositoryRoot $repoRoot -Version $version -ArtifactDirectory $ArtifactDirectory -SourceCommit $baseline
 $bundle = Join-Path $repoRoot "dist/$version"
