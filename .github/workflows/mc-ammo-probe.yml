@@ -1,0 +1,74 @@
+name: DCS ammunition diagnostic package
+on:
+  push:
+    branches: ['test/mc-ammo-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  lua:
+    name: Check ammunition observers and MC adapters
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build pinned Lua 5.1 and replay diagnostic paths
+        shell: bash
+        run: |
+          lua_root="$RUNNER_TEMP/ammo-lua"
+          mkdir -p "$lua_root"
+          curl --fail --silent --show-error --location https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$lua_root/lua.tar.gz"
+          printf '%s  %s\n' 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333 "$lua_root/lua.tar.gz" | sha256sum --check
+          tar -xzf "$lua_root/lua.tar.gz" -C "$lua_root"
+          make -C "$lua_root/lua-5.1.5" generic
+          "$lua_root/lua-5.1.5/src/luac" -p Cockpit/Scripts/Stores/AmmoProbe.lua Cockpit/Scripts/Systems/cms_system.lua Cockpit/Scripts/Systems/weapon_system.lua tools/dcs-ammo-probe/runtime/*.lua
+          "$lua_root/lua-5.1.5/src/lua" tools/test_mc_lua.lua
+          "$lua_root/lua-5.1.5/src/lua" tools/test_dcs_ammo_probe.lua "$RUNNER_TEMP/ammo-fixtures.jsonl"
+          python3 - "$RUNNER_TEMP/ammo-fixtures.jsonl" <<'PY'
+          import json,sys
+          rows=[json.loads(line) for line in open(sys.argv[1],encoding='utf-8')]
+          for row in rows:
+              if row['source']=='mission.Unit.getAmmo' and row['result'].get('response'):
+                  json.loads(row['result']['response'])
+          print(f'{len(rows)} JSON records decoded')
+          PY
+  package:
+    name: Package observers with the validated Windows DLL
+    needs: lua
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 10
+    steps:
+      - name: Check out the validated aircraft
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 32db27850f4e503e980aacd280782fa25d2a3f4b
+          path: aircraft
+          persist-credentials: false
+      - name: Check out the diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: overlay
+          persist-credentials: false
+      - name: Download the validated DLL and provenance
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41432448395 --repo $env:GITHUB_REPOSITORY -n mc-validated-32db27850f4e503e980aacd280782fa25d2a3f4b -D "$env:RUNNER_TEMP/ammo-artifact"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify source, test installation and package
+        shell: powershell
+        run: |
+          ./overlay/tools/dcs-ammo-probe/package.ps1 -RepositoryRoot "$env:GITHUB_WORKSPACE/aircraft" -OverlayRoot "$env:GITHUB_WORKSPACE/overlay" -ArtifactDirectory "$env:RUNNER_TEMP/ammo-artifact" -OverlayCommit $env:GITHUB_SHA
+      - name: Upload downloadable module
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mc-ammo-probe-${{ github.sha }}
+          path: |
+            aircraft/dist/F-CK-1C-ammo-probe-r1-*.zip
+            aircraft/dist/F-CK-1C-ammo-probe-r1-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 30

@@ -2,6 +2,7 @@
 local WeaponSystem = GetSelf()
 make_default_activity(0.05)
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
+local ammo_probe = dofile(LockOn_Options.script_path .. "Stores/AmmoProbe.lua").cockpit("weapon", WeaponSystem)
 
 local station_definitions = dofile(LockOn_Options.script_path .. "Stores/StationDefinitions.lua")
 local diagnose = dofile(LockOn_Options.script_path .. "Stores/ObservationDiagnostics.lua").new("STORES")
@@ -150,5 +151,6 @@ end
 function update()
     apply_selection_request()
     scan_stations()
+    ammo_probe.update(0.05)
 end
 need_to_be_closed = false

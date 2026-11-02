@@ -15,6 +15,12 @@ local gun_count = get_param_handle(cockpit_params.McGunCount)
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
 local diagnose = dofile(LockOn_Options.script_path .. "Stores/ObservationDiagnostics.lua").new("STORES_COUNT")
+local ammo_probe = dofile(LockOn_Options.script_path .. "Stores/AmmoProbe.lua").cockpit("cms", dev, sensor_data, {
+    native_available = cockpit_params.McGunCountAvailable,
+    native_count = cockpit_params.McGunCount,
+    mc_count = cockpit_params.McStoresGunCount,
+    trigger_held = cockpit_params.McTriggerSecondStageHeld,
+}, { global_payload = false })
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -257,6 +263,7 @@ end
 
 function update()
     publish_counts()
+    ammo_probe.update(update_rate)
     payload_probe_elapsed = payload_probe_elapsed + update_rate
     if payload_probe_elapsed >= 1.0 then
         payload_probe_elapsed = payload_probe_elapsed - 1.0
