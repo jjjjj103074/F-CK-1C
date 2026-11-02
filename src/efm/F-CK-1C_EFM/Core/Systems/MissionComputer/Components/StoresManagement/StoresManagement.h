@@ -3,35 +3,43 @@
 #include "../../Database/InputOutputData.h"
 #include "../../Database/ExternalActionQueue.h"
 #include "../../Database/MissionData.h"
-
-#include <chrono>
+#include "../../StoresEvents.h"
 
 namespace Core::Systems::Mc
 {
+/// @brief 管理全部固定掛點的觀測庫存、彈量與選站要求，並發布掛載變化。
 class StoresManagement final
 {
 public:
+	/// @brief 綁定 MC 持有的觀測、射擊狀態、掛載分區、動作佇列與通知通道。
 	StoresManagement(const MissionInputs& input,
-	                 const ModeData& mode,
 	                 const WeaponOperationData& weapon,
 	                 StoresData& stores,
-	                 ExternalActionQueue& actions);
+	                 ExternalActionQueue& actions,
+	                 StoresEvents& events);
+	/// @brief 更新掛點庫存、機砲彈量及選站確認，再通知已完成的資料變化。
 	void step(std::chrono::nanoseconds time, double dt_s);
+	/// @brief 記錄目標掛點並遞增要求編號，供 Lua 執行及回報確認。
+	/// @param station 目標掛點；空值表示清除選站要求。
+	/// @param force 同一掛點也建立新要求。
+	void request_station(std::optional<int> station, bool force = false);
+	/// @brief 接收火控釋放通知，在既有彈量估算中扣除一枚空對空導彈。
 	void record_missile_release();
-	/// @brief 保留舊模式切換的武器循環要求；選站與確認仍由本元件管理。
+	/// @brief 追加交由 Lua 執行的循環武器動作。
 	void request_weapon_cycle();
 
 private:
+	/// @brief 更新來源批次與各掛點狀態，整理本次內容及有效性變化。
+	InventoryChanged update_inventory(std::chrono::nanoseconds time);
+	/// @brief 優先採用回報彈量，並以持續射擊時間估算機砲彈量。
 	void update_gun_quantity(std::chrono::nanoseconds time);
-	static bool is_air_to_air_missile(const WeaponStationSample& sample);
-	void request_station(std::optional<int> station, bool force);
-	const MissionInputs& input_;
-	const ModeData& mode_;
-	const WeaponOperationData& weapon_;
-	StoresData& stores_;
+	/// @brief 維持既有空對空總數來源優先序，並接收相符的選站確認。
+	void update_legacy_summary();
+	const MissionInputs& input_; ///< 原始掛載、API 彈量與選站確認。
+	const WeaponOperationData& weapon_; ///< 機砲彈量估算使用的唯讀射擊狀態。
+	StoresData& stores_; ///< 本元件負責寫入的掛載分區。
 	ExternalActionQueue& actions_;
-	OperatingMode selection_mode_ = OperatingMode::Navigation;
-	std::uint64_t rearm_revision_ = 0;
+	StoresEvents& events_;
 	std::chrono::nanoseconds gun_quantity_time_{};
 	std::uint64_t gun_quantity_sequence_ = 0;
 };

@@ -84,6 +84,8 @@
     <ClCompile Include="DigitalFlightControlExecutiveTests.cpp" />
     <ClCompile Include="MissionComputerTests.cpp" />
     <ClCompile Include="ModeManagementTests.cpp" />
+    <ClCompile Include="StoresManagementTests.cpp" />
+    <ClCompile Include="StoresTelemetryTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
     <ClCompile Include="ConfigurationLoaderTests.cpp" />
     <ClCompile Include="ControlLawsTests.cpp" />

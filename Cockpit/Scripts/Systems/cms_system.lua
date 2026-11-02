@@ -14,6 +14,7 @@ local gun_available = get_param_handle(cockpit_params.McGunCountAvailable)
 local gun_count = get_param_handle(cockpit_params.McGunCount)
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
+local diagnose = dofile(LockOn_Options.script_path .. "Stores/ObservationDiagnostics.lua").new("STORES_COUNT")
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -42,21 +43,29 @@ local function cms_release_allowed()
 end
 
 -- Preserve the existing API names and precedence; confirm them in DCS before changing this path.
-local function read_count(candidates, maximum)
+local function read_count(candidates, maximum, purpose)
     for _, name in ipairs(candidates) do
         local method = sensor_data and sensor_data[name]
         if type(method) == "function" then
             local ok, value = pcall(method, sensor_data)
-            if ok and type(value) == "number" and value >= 0 and value <= maximum then
-                return true, math.floor(value + 0.5)
-            end
+            local accepted = ok and type(value) == "number" and value >= 0 and value <= maximum
+            diagnose(purpose .. " api=" .. name, {
+                callable = true,
+                call_ok = ok,
+                result_type = type(value),
+                result = value,
+                accepted = accepted,
+            })
+            if accepted then return true, math.floor(value + 0.5) end
+        else
+            diagnose(purpose .. " api=" .. name, { callable = false, member_type = type(method) })
         end
     end
     return false, 0
 end
 
 local function publish_counts()
-    local has_gun, guns = read_count({ "getGunAmmoCount", "getCannonsAmmoCount", "getAmmoCount" }, 9999)
+    local has_gun, guns = read_count({ "getGunAmmoCount", "getCannonsAmmoCount", "getAmmoCount" }, 9999, "gun")
     local has_missiles, missiles = read_count({
         "getAAMMissileCount",
         "getAAMCount",
@@ -67,12 +76,29 @@ local function publish_counts()
         "getWeaponCount",
         "getSelectedWeaponCount",
         "getAmmoCount",
-    }, 12)
+    }, 12, "missile")
     gun_available:set(has_gun and 1 or 0)
     gun_count:set(guns)
     missile_available:set(has_missiles and 1 or 0)
     missile_count:set(missiles)
     adapter_available:set(dispatch_action ~= nil and 1 or 0)
+end
+
+-- 每秒記錄可見的 payload API 回傳，供比對機砲與掛載來源。
+local payload_probe_elapsed = 0.0
+local function probe_payload()
+    local method = _G.LoGetPayloadInfo
+    if type(method) ~= "function" then
+        diagnose("payload api=LoGetPayloadInfo", { callable = false, member_type = type(method) })
+        return
+    end
+    local ok, value = pcall(method)
+    diagnose("payload api=LoGetPayloadInfo", {
+        callable = true,
+        call_ok = ok,
+        result_type = type(value),
+        result = value,
+    })
 end
 
 local function flare_once()
@@ -99,9 +125,7 @@ local function pair_release_off()
 end
 
 local function clear_pair_release_queue(reason_tag)
-    if cms_pair_release_latched or cms_pair_release_pending > 0 then
-        dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending))
-    end
+    if cms_pair_release_latched or cms_pair_release_pending > 0 then dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending)) end
 
     pair_release_off()
     cms_pair_release_pending = 0
@@ -228,10 +252,16 @@ local mc_io = dofile(LockOn_Options.script_path .. "Systems/mc_io.lua").new(exec
 
 function post_initialize()
     publish_counts()
+    probe_payload()
 end
 
 function update()
     publish_counts()
+    payload_probe_elapsed = payload_probe_elapsed + update_rate
+    if payload_probe_elapsed >= 1.0 then
+        payload_probe_elapsed = payload_probe_elapsed - 1.0
+        probe_payload()
+    end
     mc_io.update()
     if cms_pair_release_latched then
         cms_pair_release_hold_timer = cms_pair_release_hold_timer - update_rate

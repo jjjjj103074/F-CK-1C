@@ -42,7 +42,7 @@ MC CI 的 `dcs_runtime = not_run` 在人工驗證完成前保持不變。
 | 情境 | 操作與預期觀察 |
 |---|---|
 | 數量 API | 以 Lua debugger 或暫時的介面診斷，記錄 cms_system.lua 各既有候選函數是否可呼叫及回傳值；確認總數、單站、選定武器及機炮數量的實際語意 |
-| 有彈／零彈 | 比對七站清單、MC 數量及 HMCS：有效空清單表示飛彈零枚；機炮 API 有效零值表示零發；機炮來源不可用時仍保留原有估計，不能由空掛站推定機炮零發 |
+| 有彈／零彈 | 比對九站清單、MC 數量及 HMCS：有效空清單表示飛彈零枚；機炮 API 有效零值表示零發；機炮來源不可用時仍保留原有估計，不能由空掛站推定機炮零發 |
 | 模式與武器 gate | 驗證 NAV／DGFT／MSL、Master ON／OFF／SIM、uncage；維持遷移前行為，含 DGFT／MSL 使 Master ON 的原有耦合 |
 | 輸入入口 | 分別測試鍵盤 Space、RAlt+Space、搖桿扳機／投放及共用設定別名；應走 MC，不因合併重複項而遺失預設組合 |
 | 短按與停止 | 測試短按、長按與放開；MC 最短保持為觀測到執行 ACK 後 80 ms；Master OFF／SIM 命令消費時不等待保持期就追加停止 |
@@ -54,6 +54,13 @@ MC CI 的 `dcs_runtime = not_run` 在人工驗證完成前保持不變。
 函數在既有版本曾正常使用，是保留現有呼叫的依據；本次未將「不存在」列為已確認問題。
 Lua fixture 通過只證明介面如何處理回傳值，不能代替上述 DCS 實測。
 32 Hz 是 MC 更新頻率，掛點介面仍為 20 Hz；介面延遲與 DCS 自身 gate 也會影響實際動作時間。
+
+## 掛載觀測專用流程
+
+[MC 掛載觀測：必要 DCS 測試](MC_STORES_DCS_TEST.zh-TW.md) 將人工驗證聚焦於
+原生回傳欄位、九掛點映射、重新掛彈及機砲彈量來源。
+MC 透過 StoresTelemetry 將輸入及庫存發布到現有 Debug Indicator／debug.csv；
+Lua 的原始回傳與 API 呼叫結果在內容變化時寫入 dcs.log。
 
 ## 診斷
 

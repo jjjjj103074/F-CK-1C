@@ -66,7 +66,7 @@ Core::ObservationInvalidReason to_invalid_reason(double value)
 
 std::optional<Core::WeaponStationSample> parse_station_record(std::string_view text)
 {
-	std::array<int, 4> fields{};
+	std::array<int, 6> fields{};
 	for (int& field : fields)
 	{
 		const auto delimiter = text.find(';');
@@ -78,16 +78,31 @@ std::optional<Core::WeaponStationSample> parse_station_record(std::string_view t
 			return std::nullopt;
 		text.remove_prefix(delimiter + 1);
 	}
-	if (fields[0] > 1 || fields[1] > 9999)
+	const auto delimiter = text.find(';');
+	if (delimiter == std::string_view::npos)
 		return std::nullopt;
-	if (fields[0] == 0 && (fields[1] != 0 || fields[2] != 0 || fields[3] != 0 || !text.empty()))
+	const auto station_name = text.substr(0, delimiter);
+	text.remove_prefix(delimiter + 1);
+	if (fields[0] > 1 || fields[1] > 9999 || station_name.empty() || station_name.size() > 16)
+		return std::nullopt;
+	if (fields[0] == 0 &&
+	    (fields[1] != 0 || fields[2] != 0 || fields[3] != 0 || fields[4] != 0 || fields[5] != 0 || !text.empty()))
 		return std::nullopt;
 	Core::WeaponStationSample sample;
 	sample.present = fields[0] == 1;
 	sample.count = fields[1];
-	sample.category = fields[2] == 4 ? Core::WeaponCategory::Missile : Core::WeaponCategory::Other;
-	sample.role = fields[3] == 7 ? Core::WeaponRole::AirToAir : Core::WeaponRole::Other;
+	sample.category = fields[3] == 4   ? Core::WeaponCategory::Missile
+	                  : fields[3] == 0 ? Core::WeaponCategory::Unknown
+	                                   : Core::WeaponCategory::Other;
+	sample.role = fields[4] == 7   ? Core::WeaponRole::AirToAir
+	              : fields[4] == 0 ? Core::WeaponRole::Unknown
+	                               : Core::WeaponRole::Other;
 	sample.weapon_identifier = std::string(text);
+	// 完整原生類型以不透明識別送入 Core；分類數值在 Bridge 轉譯。
+	if (sample.present)
+		sample.weapon_type_identifier = std::to_string(fields[2]) + "." + std::to_string(fields[3]) + "." +
+		                                std::to_string(fields[4]) + "." + std::to_string(fields[5]);
+	sample.station_name = std::string(station_name);
 	return sample;
 }
 
@@ -202,7 +217,9 @@ CockpitBridge::CockpitBridge(cockpit_param_api api)
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation04),
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation05),
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation06),
-                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation07) } })
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation07),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation08),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation09) } })
 {
 }
 

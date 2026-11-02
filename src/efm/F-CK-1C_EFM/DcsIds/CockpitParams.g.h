@@ -106,6 +106,8 @@ static const char* const WeaponStation04 = "OBS_WEAPON_STATION_04";
 static const char* const WeaponStation05 = "OBS_WEAPON_STATION_05";
 static const char* const WeaponStation06 = "OBS_WEAPON_STATION_06";
 static const char* const WeaponStation07 = "OBS_WEAPON_STATION_07";
+static const char* const WeaponStation08 = "OBS_WEAPON_STATION_08";
+static const char* const WeaponStation09 = "OBS_WEAPON_STATION_09";
 static const char* const CockpitSnapshotAvailable = "CPP_COCKPIT_SNAPSHOT_AVAILABLE";
 static const char* const CockpitSnapshotRevision = "CPP_COCKPIT_SNAPSHOT_REVISION";
 static const char* const CockpitSnapshotTimeS = "CPP_COCKPIT_SNAPSHOT_TIME_S";
@@ -242,6 +244,8 @@ static constexpr Entry Catalog[] = {
     { WeaponStation05, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponStation06, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponStation07, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation08, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation09, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { CockpitSnapshotAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotTimeS, "cpp_to_lua", "seconds", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },

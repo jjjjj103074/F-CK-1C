@@ -344,11 +344,14 @@ void test_inventory_authority_selection_and_rearm(Tests::Context& context)
 	inventory.status = { true, 2, ObservationInvalidReason::None };
 	inventory.stations[0] = { true, 4, WeaponCategory::Other, WeaponRole::Other, "bomb" };
 	inventory.stations[2] = { true, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "opaque-id" };
-	inventory.stations[5] = { true, 1, WeaponCategory::Other, WeaponRole::Other, "{CATM-9}" };
+	inventory.stations[5] = { true, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{CATM-9}" };
 	fixture.frame.cockpit.mission_adapter.missile_count_available = true;
 	fixture.frame.cockpit.mission_adapter.missile_count = 9;
 	auto output = fixture.step(kMissionPeriod);
 	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 3);
+	TEST_EXPECT(context, output.stores.inventory.stations.size() == 9);
+	TEST_EXPECT(context, output.stores.inventory.stations[2].count == 2);
+	TEST_EXPECT(context, output.stores.inventory.stations[2].weapon_identifier == "opaque-id");
 	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::StationInventory);
 	TEST_EXPECT(context, !output.stores.requested_station);
 	fixture.send(CommandId::SelectMissileOverride);

@@ -14,6 +14,7 @@
 #include "Database/SystemStatusTables.h"
 #include "Database/ExternalActionQueue.h"
 #include "Database/MissionData.h"
+#include "Diagnostics/StoresTelemetry.h"
 
 namespace Core::Systems
 {
@@ -55,7 +56,9 @@ private:
 	Mc::StoresData stores_data_;
 	Mc::FireControlData fire_control_data_;
 	Mc::ExternalActionQueue external_actions_;
+	Mc::StoresTelemetry stores_telemetry_; ///< 共用畫面與 CSV 的掛載診斷發布器。
 
+	Mc::StoresEvents stores_events_; ///< 掛載通道先於使用者建立，並在使用者之後銷毀。
 	Mc::ModeEvents mode_events_; ///< 通道先於使用者建立，並在所有使用者銷毀後才銷毀。
 
 	Mc::SystemMonitor system_monitor_;

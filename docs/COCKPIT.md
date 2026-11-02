@@ -10,7 +10,7 @@ Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、
 | Device | DCS class / 腳本 | 目前責任 |
 |---|---|---|
 | CMS | avLuaDevice / cms_system.lua | 50 Hz 數量 API 觀測、有序 DCS action 執行、反制程序及執行互鎖 |
-| WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始七站觀測、執行 MC 選站要求及確認 |
+| WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始九站觀測、執行 MC 選站要求及確認 |
 | RADAR | avSimpleRadar / RADAR/FCK1C_Radar.lua | DCS 雷達設定與原始 DCS 觀測來源 |
 | RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原有雷達開啟參數介面 |
 | HMCS | avLuaDevice / hmcs_system.lua | 64 Hz 原始飛行資料取樣、武器顯示規則、單位呈現、航向刻度與繪圖參數 |
@@ -61,9 +61,11 @@ HMCS 不監聽或執行武器命令；MC 未提供完整快照時保留上一份
 
 ## 掛載與彈量
 
-外掛清單由 `avSimpleWeaponSystem:get_station_info(0..6)` 取得。
+外掛清單由 `avSimpleWeaponSystem:get_station_info(0..8)` 取得。
 Lua 發布原始紀錄；CockpitBridge 驗證整份 revision 後，轉為具型別觀測送入 MC。
-分類、數量來源優先序及重新選站屬於 StoresManagement。
+掛點庫存、數量來源優先序及選站要求／確認屬於 StoresManagement；選站決策由 FireControl 處理。
+九掛點名稱與機型註冊共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`。
+原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
 
 `cms_system.lua` 的 `get_base_data()` 彈量函數沿用既有候選名稱與探測順序。

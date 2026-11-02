@@ -3,6 +3,7 @@
 #include "MissionActions.h"
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -214,17 +215,19 @@ struct IrSeekerObservation
 	double target_range_m = 0.0;
 };
 
-inline constexpr std::size_t kWeaponStationCount = 7;
+inline constexpr std::size_t kWeaponStationCount = 9;
 
 enum class WeaponCategory
 {
 	Other,
-	Missile
+	Missile,
+	Unknown
 };
 enum class WeaponRole
 {
 	Other,
-	AirToAir
+	AirToAir,
+	Unknown
 };
 enum class StoresCountSource
 {
@@ -240,6 +243,8 @@ struct WeaponStationSample
 	WeaponCategory category = WeaponCategory::Other;
 	WeaponRole role = WeaponRole::Other;
 	std::string weapon_identifier;
+	std::string weapon_type_identifier; ///< 來源類型的完整不透明識別，供掛載比對。
+	std::string station_name; ///< 機型定義提供的固定掛點名稱。
 };
 
 struct WeaponStationObservation
@@ -249,6 +254,39 @@ struct WeaponStationObservation
 	// 最近一次成功執行的轉接器選站要求。
 	std::optional<int> selected_station;
 	std::uint64_t selection_ack_revision = 0;
+	std::uint64_t rearm_revision = 0;
+};
+
+/// @brief 固定掛點的最近觀測；有效性與最後一次有效資料分別保存。
+struct StoreStationState
+{
+	int station_index = 0;
+	std::string station_name;
+	bool present = false;
+	int count = 0;
+	WeaponCategory category = WeaponCategory::Unknown;
+	WeaponRole role = WeaponRole::Unknown;
+	std::string weapon_identifier;
+	std::string weapon_type_identifier;
+	std::uint64_t load_revision = 0; ///< 掛載更換或重新掛彈時遞增。
+	ObservationStatus observation;
+	std::optional<std::chrono::nanoseconds> last_observed_at;
+};
+
+/// @brief 全部固定掛點、觀測批次及內容變更版本。
+struct StoresInventorySnapshot
+{
+	StoresInventorySnapshot()
+	{
+		for (std::size_t i = 0; i < stations.size(); ++i)
+			stations[i].station_index = static_cast<int>(i);
+	}
+
+	std::array<StoreStationState, kWeaponStationCount> stations{};
+	ObservationStatus observation;
+	std::optional<std::chrono::nanoseconds> last_observed_at;
+	std::uint64_t last_observed_revision = 0; ///< 最近一次有效來源批次。
+	std::uint64_t revision = 0; ///< 掛載內容或觀測有效性改變時遞增。
 	std::uint64_t rearm_revision = 0;
 };
 
@@ -402,6 +440,7 @@ struct RadarSnapshot
 struct StoresSnapshot
 {
 	SnapshotStatus status;
+	StoresInventorySnapshot inventory;
 	std::optional<int> selected_station;
 	int air_to_air_missile_count = 0;
 	StoresCountSource count_source = StoresCountSource::Estimate;

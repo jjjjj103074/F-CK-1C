@@ -19,10 +19,10 @@ MissionComputer::MissionComputer()
     : system_monitor_(input_output_data_, system_status_tables_.health),
       failure_manager_(system_status_tables_.health, system_status_tables_.failure_response),
       stores_management_(input_output_data_.input,
-                         mode_data_,
                          fire_control_data_.weapon,
                          stores_data_,
-                         external_actions_),
+                         external_actions_,
+                         stores_events_),
       fire_control_(input_output_data_.input,
                     mode_data_,
                     stores_data_,
@@ -83,6 +83,7 @@ bool MissionComputer::powered() const noexcept
 
 void MissionComputer::setup(SystemSetup& setup)
 {
+	stores_telemetry_.setup(setup);
 	// MC 以 32 Hz 更新。
 	setup.update_rate_hz(kMissionComputerProjectUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
@@ -144,6 +145,10 @@ void MissionComputer::step(const SystemStepContext& context, const AircraftDataV
 	consume_commands();
 	executive_.step(context.scheduled_time);
 	publish_outputs(result);
+	stores_telemetry_.publish(context.scheduled_time,
+	                          input_output_data_.input,
+	                          stores_data_,
+	                          fire_control_data_.weapon);
 }
 
 void MissionComputer::read_inputs(const SystemStepContext& context, const AircraftDataView& aircraft)
@@ -172,6 +177,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
 	output.stores.status = output.status;
+	output.stores.inventory = stores_data_.inventory;
 	output.stores.air_to_air_missile_count = stores_data_.missile_count;
 	output.stores.gun_count = stores_data_.gun_count;
 	output.stores.count_source = stores_data_.count_source;

@@ -215,16 +215,18 @@ void set_station_inventory(Tests::FakeCockpitParameters& cockpit)
 	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 8.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponObservationInvalidReason, 0.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponObservationSelectedStation, 3.0);
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationScannedStationCount, 7.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationScannedStationCount, 9.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponSelectionAckRevision, 2.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponRearmRevision, 4.0);
 	const char* names[] = { DcsIds::CockpitParams::WeaponStation01, DcsIds::CockpitParams::WeaponStation02,
 		                    DcsIds::CockpitParams::WeaponStation03, DcsIds::CockpitParams::WeaponStation04,
 		                    DcsIds::CockpitParams::WeaponStation05, DcsIds::CockpitParams::WeaponStation06,
-		                    DcsIds::CockpitParams::WeaponStation07 };
+		                    DcsIds::CockpitParams::WeaponStation07, DcsIds::CockpitParams::WeaponStation08,
+		                    DcsIds::CockpitParams::WeaponStation09 };
 	for (const char* name : names)
-		cockpit.set_text(name, "0;0;0;0;");
-	cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, "1;2;4;7;{AIM-9;literal}");
+		cockpit.set_text(name, "0;0;0;0;0;0;MM;");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, "1;2;4;4;7;42;MM;{AIM-9;literal}");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation09, "1;1;4;4;8;99;LT;opaque-guid");
 }
 
 void test_weapon_station_observation_contract(Tests::Context& context)
@@ -239,6 +241,13 @@ void test_weapon_station_observation_contract(Tests::Context& context)
 	TEST_EXPECT(context, observation.stations[3].category == Core::WeaponCategory::Missile);
 	TEST_EXPECT(context, observation.stations[3].role == Core::WeaponRole::AirToAir);
 	TEST_EXPECT(context, observation.stations[3].weapon_identifier == "{AIM-9;literal}");
+	TEST_EXPECT(context, observation.stations[3].weapon_type_identifier == "4.4.7.42");
+	TEST_EXPECT(context, observation.stations[3].station_name == "MM");
+	TEST_EXPECT(context, observation.stations.size() == 9);
+	TEST_EXPECT(context, observation.stations[8].category == Core::WeaponCategory::Missile);
+	TEST_EXPECT(context, observation.stations[8].role == Core::WeaponRole::Other);
+	TEST_EXPECT(context, observation.stations[8].weapon_identifier == "opaque-guid");
+	TEST_EXPECT(context, observation.stations[8].station_name == "LT");
 	TEST_EXPECT(context, !observation.stations[0].present);
 	TEST_EXPECT(context, observation.selected_station == 3);
 	TEST_EXPECT(context, observation.selection_ack_revision == 2);
@@ -250,8 +259,13 @@ void test_station_payload_rejection_and_torn_scan(Tests::Context& context)
 	Tests::FakeCockpitParameters cockpit;
 	set_station_inventory(cockpit);
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
-	const char* bad_records[] = { "1;2;4;",        "1;-1;4;7;AIM-9",  "1;10000;4;7;AIM-9",
-		                          "0;2;4;7;AIM-9", "1;1.5;4;7;AIM-9", "1;2;2147483648;7;AIM-9" };
+	const char* bad_records[] = { "1;2;4;",
+		                          "1;-1;4;4;7;42;MM;AIM-9",
+		                          "1;10000;4;4;7;42;MM;AIM-9",
+		                          "0;2;4;4;7;42;MM;AIM-9",
+		                          "1;1.5;4;4;7;42;MM;AIM-9",
+		                          "1;2;2147483648;4;7;42;MM;AIM-9",
+		                          "1;2;4;4;7;42;;AIM-9" };
 	for (const char* record : bad_records)
 	{
 		cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, record);

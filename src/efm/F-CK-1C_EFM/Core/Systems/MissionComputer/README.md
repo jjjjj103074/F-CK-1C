@@ -15,14 +15,16 @@ MissionComputer : System [32 Hz]
 │   ├── ExecutiveTables
 │   ├── InputOutputData
 │   ├── SystemStatusTables
-│   ├── MissionData (ModeData / StoresData / FireControlData)
+│   ├── MissionData (ModeData / FireControlData)
 │   │   └── FireControlData.targeting / weapon / infrared_missile
+│   ├── StoresData（逐掛點庫存、彈量與選站紀錄）
 │   └── ExternalActionQueue
-├── ModeEvents（MC 專用同步事件通道）
+├── ModeEvents / StoresEvents（MC 專用同步事件通道）
 └── Components/
     ├── ModeManagement
     ├── CountermeasureControl
     ├── StoresManagement
+    │   └── Internal/InventoryProcessing
     ├── FireControl
     │   └── Internal/
     │       ├── Targeting
@@ -42,8 +44,8 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 |---|---|
 | ModeManagement | 唯一寫入 Master ON/OFF/SIM、NAV/DGFT/MSL，發布具型別選擇事件 |
 | CountermeasureControl | 讀取模式判斷 CMS 啟動資格，接收 Master Arm 事件處理中止 |
-| StoresManagement | 原有掛載分類、彈量來源、選站／確認、再裝填與武器循環要求 |
-| FireControl | 統一目標操作、武器資格／使用程序及紅外線飛彈支援 |
+| StoresManagement | 全部固定掛點庫存、彈量來源、選站要求／確認與掛載變化通知 |
+| FireControl | 目標操作、既有選站策略、武器資格／使用程序及紅外線飛彈支援 |
 | Executive | 四個週期工作的固定順序、頻率及時間推進 |
 | StartupAndRestart | 原有建構時啟用排程 |
 | SystemMonitor | 健康監控預留入口，目前無功能 |
@@ -52,7 +54,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 FireControl 內的 Targeting 保存解籠、指定意圖、捕獲子模式與捕獲計時；
 WeaponOperation 保留扳機／投放資格、保持與停止程序；InfraredMissileSupport
 整理尋標接觸、鎖定、狀態與音調要求。模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
-武器循環、選站與數量更新歸 StoresManagement；雷達模型、DCS API 及操作映射留在外部。
+選站決策由 FireControl 負責；武器循環及選站要求、數量更新歸 StoresManagement；雷達模型、DCS API 及操作映射留在外部。
 
 ## 資料所有權
 
@@ -61,7 +63,7 @@ WeaponOperation 保留扳機／投放資格、保持與停止程序；InfraredMi
 | InputOutputData.input | MC 輸入入口及外殼 | 掛載、火控、輸出投影 |
 | InputOutputData.input.control_inputs | MC 依命令 FIFO 記錄原始操作 | 輸出投影；HUD/HMCS 的唯讀觀測 |
 | InputOutputData.output | MC publish_outputs | Pipeline、Bridge |
-| ModeData | ModeManagement | 火控、掛載、反制及輸出投影（唯讀） |
+| ModeData | ModeManagement | 火控、反制及輸出投影（唯讀） |
 | StoresData | StoresManagement | 火控及輸出投影 |
 | FireControlData.targeting | Targeting | 武器操作、紅外線支援及輸出投影 |
 | FireControlData.weapon | WeaponOperation | 掛載數量估算及輸出投影 |
@@ -121,6 +123,13 @@ readiness 是簡化命令狀態；designation 是操作意圖；contact／locked
 未來優先以武器能力／參數資料共用流程，必要時才增加特殊操作；此部分只留待辦註解。
 完整掛載查詢仍由 Lua SDK 入口提供；數量來源保持掛載 → 原有數量 API → 原有估計。
 反制程序仍在 Lua，CountermeasureControl 管理啟動資格與中止要求。
+
+## 逐掛點庫存
+
+九掛點共用機型 Lua 定義；StoresManagement 保存各站的識別、數量、有效性、觀測時間與掛載版本。
+庫存快照隨 CombatAvionicsSnapshot.stores.inventory 發布；共用查詢直接讀取唯讀快照。
+掛載明細與原有 HUD 空對空總數／估算分開保存。
+資料與函式分工見[掛載管理說明](Components/StoresManagement/README.md)。
 
 ## 模式狀態與事件
 
