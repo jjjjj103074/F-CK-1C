@@ -2,7 +2,7 @@ name: MC Windows build validation
 
 on:
   push:
-    branches: [mission-computer]
+    branches: [mission-computer, 'test/mc-stores-*']
   workflow_dispatch:
 
 permissions:
@@ -111,6 +111,21 @@ jobs:
           path: ${{ runner.temp }}/mc-artifact/
           if-no-files-found: error
           retention-days: 7
+      - name: Package the validated stores test module
+        if: startsWith(github.ref, 'refs/heads/test/mc-stores-')
+        shell: powershell
+        run: |
+          ./tools/package_mc_stores_test.ps1 -Version "mc-stores-test-$($env:GITHUB_SHA.Substring(0, 8))" -ArtifactDirectory "$env:RUNNER_TEMP/mc-artifact" -SourceCommit $env:GITHUB_SHA
+      - name: Upload the stores test package
+        if: startsWith(github.ref, 'refs/heads/test/mc-stores-')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mc-stores-test-${{ github.sha }}
+          path: |
+            dist/F-CK-1C-mc-stores-test-*.zip
+            dist/F-CK-1C-mc-stores-test-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

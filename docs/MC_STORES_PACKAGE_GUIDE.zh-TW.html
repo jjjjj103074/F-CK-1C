@@ -1,0 +1,190 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MC 掛載觀測測試包</title><style>
+:root{color-scheme:light dark;font:17px/1.75 system-ui,"Noto Sans CJK TC",sans-serif;background:#f3f5f7;color:#172a37}body{margin:0}main{max-width:1060px;margin:32px auto;padding:32px 44px;background:white;border:1px solid #d5dfe7;border-radius:10px}h1{font-size:1.8rem;line-height:1.35}h2{font-size:1.3rem;border-bottom:2px solid #557a90;margin-top:36px;padding-bottom:8px}table{border-collapse:collapse;width:100%;font-size:.94rem}td,th{border:1px solid #cbd6df;padding:9px 12px;text-align:left;vertical-align:top}th{background:#e7eef3}code{font-size:.94em;overflow-wrap:anywhere;background:#edf2f5;padding:2px 4px;border-radius:3px}a{color:#0766a2}strong{font-weight:750}li{margin:8px 0}@media(max-width:750px){main{margin:0;padding:20px 16px;border:0;border-radius:0}table{font-size:14px}td,th{padding:6px}}@media(prefers-color-scheme:dark){:root{background:#111b24;color:#e8eef4}main{background:#192833;border-color:#385263}th,code{background:#263d4d}td,th{border-color:#486274}a{color:#82cfff}}@media print{:root{font-size:12px;background:white;color:black}main{max-width:none;margin:0;padding:0;border:0}h2{break-after:avoid}tr{break-inside:avoid}a{color:inherit}}
+</style><main><h1>MC 掛載觀測測試包</h1>
+<p>本包包含同一份來源建置的新版 DLL、Lua 與掛載記錄功能。Windows 建置及自動驗證已通過，DCS 實測由本輪完成。</p>
+<p>來源：<code>@@SOURCE_COMMIT@@</code><br />
+DLL SHA256：<code>@@DLL_SHA256@@</code></p>
+<h2>安裝</h2>
+<ol>
+<li>關閉 DCS；將原本的 <code>Saved Games\DCS\Mods\aircraft\F-CK-1C</code> 移到其他地方備份。</li>
+<li>解壓 ZIP，把裡面的整個 <code>F-CK-1C</code> 放入 <code>Saved Games\DCS\Mods\aircraft\</code>。使用 DCS.openbeta 時，改放到該目錄。</li>
+<li>確認模組內有 <code>bin/F-CK-1C_EFM.dll</code>。開啟 DCS，建立 F-CK-1C 地面熱機任務，無限彈藥關閉。</li>
+</ol>
+<h2>要測試什麼</h2>
+<p>你可以自行安排任務和掛載，依進入任務的順序回報配置。各配置穩定後保持 5 秒；不必發射導彈。</p>
+<table>
+<thead>
+<tr>
+<th>必要項目</th>
+<th>怎麼測</th>
+<th>正常結果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全空</td>
+<td>九掛點全空，進任務後保持 5 秒</td>
+<td>MC 九站無掛載、數量 0，飛彈總數 0</td>
+</tr>
+<tr>
+<td>混合掛載</td>
+<td>分別放入可選的飛彈、炸彈／多聯掛架、副油箱、莢艙，保持 5 秒</td>
+<td>每一站型號及數量與任務掛載一致；非飛彈也有各站資料</td>
+</tr>
+<tr>
+<td>涵蓋九站</td>
+<td>用多個任務或地勤換掛，讓每一個掛點至少出現一次有掛載</td>
+<td>每一站的位置對應正確；MM 與 MF／MB 用不同配置測</td>
+</tr>
+<tr>
+<td>地勤換掛</td>
+<td>按 <strong>反斜線 <code>\</code> → F8（地勤）→ F1（重新裝填與加油）</strong>，更換型號、清空部分站位並補滿機砲；地勤完成後保持 5 秒</td>
+<td>MC 跟隨新掛載，清空站位不留舊型號，重新掛彈版本前進</td>
+</tr>
+<tr>
+<td>機砲彈量</td>
+<td>機鼻朝空曠處。按 <strong>右 Ctrl＋D</strong> 進入 DGFT；按住 <strong>Space 約 1 秒</strong>後放開，保持 5 秒；按 <strong>1</strong> 回 NAV、按 <strong>右 Shift＋M</strong> 關閉主保險</td>
+<td>觀察槍口火光／射擊聲；原生彈量若有效，應隨射擊下降、停射後保持。估算與原生來源由日誌判定</td>
+</tr>
+</tbody>
+</table>
+<p>多聯掛架請回報實際掛幾枚；記錄將用來確認 DCS 的 count 是武器數量還是掛架組數。
+機砲只需回報「出彈／未出彈」，無須數彈數。</p>
+<h2>看哪裡</h2>
+<p>資料會自動寫入模組的 <code>log/debug.csv</code>，不用開啟偵錯畫面。
+如果已有 <code>[Developer] EFM Debug Indicator - Toggle</code> 綁定，可打開它；此項原本沒有預設快捷鍵，不用為此修改按鍵。</p>
+<table>
+<thead>
+<tr>
+<th>顯示文字</th>
+<th>看什麼</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>STORES OBS OK</code>、<code>STORES OBS REASON</code></td>
+<td>正常為 True、0</td>
+</tr>
+<tr>
+<td><code>STORES SOURCE BATCH</code></td>
+<td>任務持續運行時增加</td>
+</tr>
+<tr>
+<td><code>MC 01</code>～<code>MC 09</code></td>
+<td>P=有掛載、Q=數量、MSL=飛彈、AA=空對空、L=掛載版本、OK=觀測有效</td>
+</tr>
+<tr>
+<td><code>ID 01</code>～<code>ID 09</code></td>
+<td>MC 的型別及 CLSID</td>
+</tr>
+<tr>
+<td><code>IN 01</code>～<code>IN 09</code></td>
+<td>送入 MC 前的型別、數量及 CLSID</td>
+</tr>
+<tr>
+<td><code>ALL MISSILES</code>、<code>AA MISSILES</code></td>
+<td>全部／空對空飛彈數量；炸彈、油箱及莢艙不算飛彈</td>
+</tr>
+<tr>
+<td><code>ALL COUNT COMPLETE</code>、<code>AA COUNT COMPLETE</code></td>
+<td>對應數量的分類資料完整性</td>
+</tr>
+<tr>
+<td><code>GUN API OK</code>、<code>GUN API COUNT</code>、<code>GUN MC COUNT</code></td>
+<td>機砲原生來源可用性、回傳值及 MC 彈量</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>站號</th>
+<th>位置</th>
+<th>站號</th>
+<th>位置</th>
+<th>站號</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>01 RT</td>
+<td>右翼尖</td>
+<td>02 RO</td>
+<td>右外翼</td>
+<td>03 RI</td>
+<td>右內翼</td>
+</tr>
+<tr>
+<td>04 MM</td>
+<td>機腹中央</td>
+<td>05 MF</td>
+<td>機腹前</td>
+<td>06 MB</td>
+<td>機腹後</td>
+</tr>
+<tr>
+<td>07 LI</td>
+<td>左內翼</td>
+<td>08 LO</td>
+<td>左外翼</td>
+<td>09 LT</td>
+<td>左翼尖</td>
+</tr>
+</tbody>
+</table>
+<h2>測完回傳</h2>
+<p>按 <strong>Esc</strong> 結束最後任務後，先收集檔案，再重新啟動 DCS。</p>
+<ol>
+<li>模組內 <code>log/debug.csv</code>，涵蓋整輪測試。</li>
+<li><code>Saved Games/DCS/Logs/dcs.log</code>（或 DCS.openbeta 對應目錄）。這份含 DCS 原始掛載欄位與彈量 API 的實際結果，供核對 CSV。</li>
+<li>任務執行順序與每一站的掛載；有地勤換掛時，列出換掛前後。可附 <code>.miz</code>，或直接貼下表。</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>順序／任務名稱</th>
+<th>RT</th>
+<th>RO</th>
+<th>RI</th>
+<th>MM</th>
+<th>MF</th>
+<th>MB</th>
+<th>LI</th>
+<th>LO</th>
+<th>LT</th>
+<th>操作或異常</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>同一次 DCS 執行中切換任務時，CSV 持續記錄；各任務的模擬時間重新開始，可依執行順序對照。
+若中途重新啟動 DCS，或模組被重新載入，請先保存當次檔案；若檔案已輪替，也一併提供 <code>debug.csv.old</code>、<code>dcs.log.old</code>。</p>
+<p>分析會核對：原始 DCS 資料 → IN → MC，逐站確認位置、識別、數量、分類、換掛與機砲來源。</p></main></html>
