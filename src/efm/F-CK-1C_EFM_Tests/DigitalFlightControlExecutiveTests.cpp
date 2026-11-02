@@ -445,16 +445,18 @@ void test_dflcc_power_gate(Tests::Context& context)
 	TEST_EXPECT(context, dflcc->powered());
 	dflcc->set_powered(false);
 	TEST_EXPECT(context, !dflcc->powered());
-	const auto initial_off = step_pipeline(pipeline);
+	const auto initial_off =
+	    std::unique_ptr<const AircraftDataSnapshot>{ new const AircraftDataSnapshot(step_pipeline(pipeline)) };
 	TEST_EXPECT_NEAR(
 	    context,
-	    initial_off.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    initial_off->read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 	    0.0,
 	    kTolerance);
 
 	dflcc->set_powered(true);
-	const auto powered_snapshot = step_pipeline(pipeline);
-	const auto& held_command = powered_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	const auto powered_snapshot =
+	    std::unique_ptr<const AircraftDataSnapshot>{ new const AircraftDataSnapshot(step_pipeline(pipeline)) };
+	const auto& held_command = powered_snapshot->read(AircraftDataKeys::kFlightControlActuatorCommand);
 	TEST_EXPECT_NEAR(context, held_command.symmetric_stabilator_demand_normalized, 0.5, kTolerance);
 	TEST_EXPECT_NEAR(context, held_command.differential_flaperon_demand_normalized, -0.25, kTolerance);
 	TEST_EXPECT_NEAR(context, held_command.rudder_demand_normalized, 0.75, kTolerance);
@@ -462,8 +464,9 @@ void test_dflcc_power_gate(Tests::Context& context)
 	dflcc->set_powered(false);
 	pilot = { -0.5, 0.25, -0.75 };
 	step_pipeline(pipeline);
-	const auto off_snapshot = step_pipeline(pipeline);
-	const auto& off_command = off_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	const auto off_snapshot =
+	    std::unique_ptr<const AircraftDataSnapshot>{ new const AircraftDataSnapshot(step_pipeline(pipeline)) };
+	const auto& off_command = off_snapshot->read(AircraftDataKeys::kFlightControlActuatorCommand);
 	TEST_EXPECT_NEAR(context,
 	                 off_command.symmetric_stabilator_demand_normalized,
 	                 held_command.symmetric_stabilator_demand_normalized,
@@ -475,8 +478,9 @@ void test_dflcc_power_gate(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, off_command.rudder_demand_normalized, held_command.rudder_demand_normalized, kTolerance);
 
 	dflcc->set_powered(true);
-	const auto restored_snapshot = step_pipeline(pipeline);
-	const auto& restored_command = restored_snapshot.read(AircraftDataKeys::kFlightControlActuatorCommand);
+	const auto restored_snapshot =
+	    std::unique_ptr<const AircraftDataSnapshot>{ new const AircraftDataSnapshot(step_pipeline(pipeline)) };
+	const auto& restored_command = restored_snapshot->read(AircraftDataKeys::kFlightControlActuatorCommand);
 	TEST_EXPECT(context, dflcc->powered());
 	TEST_EXPECT_NEAR(context, restored_command.symmetric_stabilator_demand_normalized, -0.5, kTolerance);
 	TEST_EXPECT_NEAR(context, restored_command.differential_flaperon_demand_normalized, 0.25, kTolerance);

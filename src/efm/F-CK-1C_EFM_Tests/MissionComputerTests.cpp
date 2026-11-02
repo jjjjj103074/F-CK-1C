@@ -134,17 +134,20 @@ void test_entry_in_pipeline(Tests::Context& context)
 	TEST_EXPECT(context, entry.id == "mission_computer");
 	SystemPipeline pipeline(SystemPipelineTest::flight_setup(), { entry });
 	TEST_EXPECT(context, pipeline.system_count() == 1);
-	const auto before = SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod - nanoseconds(1));
-	TEST_EXPECT(context, !before.read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
-	const auto first = SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod);
-	TEST_EXPECT(context, first.read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 1);
-	const AircraftDataSnapshot snapshot = SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, seconds(1));
-	TEST_EXPECT(context, snapshot.read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 32);
+	const auto before = std::make_unique<const AircraftDataSnapshot>(
+	    SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod - nanoseconds(1)));
+	TEST_EXPECT(context, !before->read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
+	const auto first =
+	    std::make_unique<AircraftDataSnapshot>(SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod));
+	TEST_EXPECT(context, first->read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 1);
+	const auto snapshot =
+	    std::make_unique<AircraftDataSnapshot>(SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, seconds(1)));
+	TEST_EXPECT(context, snapshot->read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 32);
 	TEST_EXPECT(context, pipeline.advanced_through() == seconds(1));
-	TEST_EXPECT(context, !snapshot.has(AircraftDataKeys::kPilotControlSignal));
-	TEST_EXPECT(context, !snapshot.has(AircraftDataKeys::kFuelData));
-	TEST_EXPECT(context, snapshot.has(AircraftDataKeys::kMissionComputerSnapshot));
-	TEST_EXPECT(context, snapshot.read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
+	TEST_EXPECT(context, !snapshot->has(AircraftDataKeys::kPilotControlSignal));
+	TEST_EXPECT(context, !snapshot->has(AircraftDataKeys::kFuelData));
+	TEST_EXPECT(context, snapshot->has(AircraftDataKeys::kMissionComputerSnapshot));
+	TEST_EXPECT(context, snapshot->read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
 }
 
 struct MissionFixture

@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <memory>
 #include <thread>
 
 namespace
@@ -79,42 +80,42 @@ bool is_complete_output(const Core::FrameOutput& output)
 
 void test_lifecycle_and_immutable_copy(Tests::Context& context)
 {
-	DcsBridge::Internal::OutputStore store;
-	TEST_EXPECT(context, !store.read());
-	TEST_EXPECT(context, !store.is_released());
+	auto store = std::make_unique<DcsBridge::Internal::OutputStore>();
+	TEST_EXPECT(context, !store->read());
+	TEST_EXPECT(context, !store->is_released());
 	Core::FrameOutput start = make_output(kFirstMarker);
-	store.publish(start);
+	store->publish(start);
 	start.fuel.total_fuel_kg = -1.0;
-	const auto first = store.read();
-	TEST_EXPECT(context, first.has_value());
-	if (!first)
+	const auto first = std::make_unique<const std::optional<Core::FrameOutput>>(store->read());
+	TEST_EXPECT(context, first->has_value());
+	if (!*first)
 	{
 		return;
 	}
-	TEST_EXPECT(context, is_complete_output(*first));
+	TEST_EXPECT(context, is_complete_output(**first));
 	const Core::FrameOutput next = make_output(kSecondMarker);
-	TEST_EXPECT(context, first->simulation_time_s == kFirstMarker);
-	store.publish(next);
-	const auto second = store.read();
-	TEST_EXPECT(context, second.has_value());
-	if (!second)
+	TEST_EXPECT(context, (*first)->simulation_time_s == kFirstMarker);
+	store->publish(next);
+	const auto second = std::make_unique<const std::optional<Core::FrameOutput>>(store->read());
+	TEST_EXPECT(context, second->has_value());
+	if (!*second)
 	{
 		return;
 	}
-	TEST_EXPECT(context, is_complete_output(*second));
-	TEST_EXPECT(context, second->simulation_time_s == kSecondMarker);
-	store.mark_released();
-	TEST_EXPECT(context, !store.read());
-	TEST_EXPECT(context, store.is_released());
-	store.publish(make_output(kFirstMarker));
-	const auto restarted = store.read();
-	TEST_EXPECT(context, restarted.has_value());
-	if (!restarted)
+	TEST_EXPECT(context, is_complete_output(**second));
+	TEST_EXPECT(context, (*second)->simulation_time_s == kSecondMarker);
+	store->mark_released();
+	TEST_EXPECT(context, !store->read());
+	TEST_EXPECT(context, store->is_released());
+	store->publish(make_output(kFirstMarker));
+	const auto restarted = std::make_unique<const std::optional<Core::FrameOutput>>(store->read());
+	TEST_EXPECT(context, restarted->has_value());
+	if (!*restarted)
 	{
 		return;
 	}
-	TEST_EXPECT(context, is_complete_output(*restarted));
-	TEST_EXPECT(context, !store.is_released());
+	TEST_EXPECT(context, is_complete_output(**restarted));
+	TEST_EXPECT(context, !store->is_released());
 }
 
 void test_concurrent_publish_and_read(Tests::Context& context)
