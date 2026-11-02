@@ -1,0 +1,44 @@
+name: MC stores test package
+on:
+  push:
+    branches: ['package/mc-stores-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    name: Package the validated MC stores snapshot
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 5
+    steps:
+      - name: Check out the validated aircraft source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 32db27850f4e503e980aacd280782fa25d2a3f4b
+          persist-credentials: false
+      - name: Check out the packaging tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: packaging-tools
+          persist-credentials: false
+      - name: Download the exact validated DLL and manifest
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41432448395 --repo $env:GITHUB_REPOSITORY -n mc-validated-32db27850f4e503e980aacd280782fa25d2a3f4b -D "$env:RUNNER_TEMP/mc-artifact"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package and verify the complete test module
+        shell: powershell
+        run: |
+          ./packaging-tools/tools/package_mc_stores_test.ps1 -RepositoryRoot $env:GITHUB_WORKSPACE -Version mc-stores-test-32db2785 -ArtifactDirectory "$env:RUNNER_TEMP/mc-artifact" -SourceCommit 32db27850f4e503e980aacd280782fa25d2a3f4b
+      - name: Upload the downloadable test module
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mc-stores-test-32db27850f4e503e980aacd280782fa25d2a3f4b
+          path: |
+            dist/F-CK-1C-mc-stores-test-*.zip
+            dist/F-CK-1C-mc-stores-test-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
