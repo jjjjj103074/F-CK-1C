@@ -34,13 +34,17 @@ end
 -- 取得目前玩家機型與識別，讓紀錄只在 F-CK-1C 座艙使用期間取樣。
 function M.identity()
     local export = Core.member(_G, "Export")
-    local owner = type(Core.member(_G, "LoGetSelfData")) == "function" and _G or export
-    local result = Core.call(owner, "LoGetSelfData", "dot")
-    local value = result.status == "returned" and result.value or nil
-    if type(value) ~= "table" or value.Name ~= "F-CK-1C" then return nil, result end
-    local id = Core.call(owner, "LoGetPlayerPlaneId", "dot")
-    local pilot = Core.call(owner, "LoGetPilotName", "dot")
-    return { aircraft = value.Name, object_id = id.value, player_name = pilot.value, self_data = value }, result
+    local result
+    for _, owner in ipairs({ _G, export or {} }) do
+        result = Core.call(owner, "LoGetSelfData", "dot")
+        local value = result.status == "returned" and result.value or nil
+        if type(value) == "table" and value.Name == "F-CK-1C" then
+            local id = Core.call(owner, "LoGetPlayerPlaneId", "dot")
+            local pilot = Core.call(owner, "LoGetPilotName", "dot")
+            return { aircraft = value.Name, object_id = id.value, player_name = pilot.value, self_data = value }, result
+        end
+    end
+    return nil, result
 end
 
 return M

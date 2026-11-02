@@ -182,6 +182,24 @@ for _, line in ipairs(env.lines) do
     records[#records + 1] = line
 end
 
+env = fixture()
+env.LoGetSelfData = function()
+    return nil
+end
+env.Export = {
+    LoGetSelfData = function()
+        return { Name = "F-CK-1C" }
+    end,
+    LoGetPlayerPlaneId = function()
+        return 101
+    end,
+    LoGetPilotName = function()
+        return "Local Pilot"
+    end,
+}
+local identity = load_in(runtime .. "host.lua", env).identity()
+expect(identity and identity.object_id == 101, "namespaced identity remains available when the global returns nil")
+
 -- 任務來源在 Export 缺少時仍獨立執行，並鎖定本機玩家。
 env = fixture()
 env.LoGetSelfData, env.LoGetPayloadInfo, env.GetDevice = false, false, false
@@ -214,6 +232,7 @@ end
 local self, other = unit(101, "Local Pilot"), unit(202, "Other Pilot")
 mission.coalition = {
     getPlayers = function(side)
+        if side == 0 then error("neutral player scan unavailable") end
         return side == 2 and { other, self } or {}
     end,
 }

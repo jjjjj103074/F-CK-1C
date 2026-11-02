@@ -2,8 +2,11 @@
 return function(request)
     local unit, matched_by
     local candidates = {}
+    local scan_errors = {}
     for _, side in ipairs({ 0, 1, 2 }) do
-        local players = coalition.getPlayers(side) or {}
+        local ok, players = pcall(coalition.getPlayers, side)
+        if not ok then scan_errors[tostring(side)] = tostring(players) end
+        if type(players) ~= "table" then players = {} end
         for _, player in pairs(players) do
             if player:getTypeName() == "F-CK-1C" then candidates[#candidates + 1] = player end
         end
@@ -32,7 +35,7 @@ return function(request)
             unit, matched_by = player, "world.getPlayer"
         end
     end
-    if not unit then return { status = "ownship_unmatched", candidates = #candidates } end
+    if not unit then return { status = "ownship_unmatched", candidates = #candidates, scan_errors = scan_errors } end
     local result = {
         status = "matched",
         matched_by = matched_by,
@@ -41,6 +44,7 @@ return function(request)
         aircraft = unit:getTypeName(),
         player_name = unit:getPlayerName(),
         time = timer.getTime(),
+        scan_errors = scan_errors,
     }
     -- 保存本機在任務中的初始配置，對照機砲裝填比例與掛點選項。
     if env and env.mission and env.mission.coalition then

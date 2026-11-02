@@ -71,6 +71,9 @@ if ($Action -eq 'Install') {
     if (Get-Process -Name DCS -ErrorAction SilentlyContinue) { throw 'Close DCS before installing the test package.' }
     $moduleSource = Join-Path $PackageRoot 'F-CK-1C'
     $runtimeSource = Join-Path $PSScriptRoot 'runtime'
+    if ([System.IO.Path]::GetFullPath($moduleSource).TrimEnd('\', '/') -eq [System.IO.Path]::GetFullPath($modRoot).TrimEnd('\', '/')) {
+        throw 'Extract this test package outside Mods/aircraft, then run Install.cmd again. Existing module preserved.'
+    }
     foreach ($file in @('entry.lua', 'bin/F-CK-1C_EFM.dll', 'Cockpit/Scripts/Stores/AmmoProbe.lua', 'Cockpit/Scripts/Stores/AmmoProbeEnabled.lua')) {
         if (-not (Test-Path -LiteralPath (Join-Path $moduleSource $file) -PathType Leaf)) { throw "Incomplete module: $file" }
     }

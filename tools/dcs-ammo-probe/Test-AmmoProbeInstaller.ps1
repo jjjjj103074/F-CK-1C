@@ -31,6 +31,13 @@ try {
     $backups = @(Get-ChildItem -LiteralPath (Join-Path $dcsRoot 'FCK1C-ammo-backups') -Filter previous-module.txt -File -Recurse)
     Assert-Condition ($backups.Count -eq 1) 'Previous module was not backed up.'
     Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $dcsRoot 'Mods/aircraft/F-CK-1C/previous-module.txt'))) 'Old module leaked into the test module.'
+    $entry = Join-Path $dcsRoot 'Mods/aircraft/F-CK-1C/entry.lua'
+    $entryHash = (Get-FileHash -LiteralPath $entry).Hash
+    $inPlaceRejected = $false
+    try { & $script -Action Install -SavedGamesRoot $dcsRoot -PackageRoot (Join-Path $dcsRoot 'Mods/aircraft') }
+    catch { $inPlaceRejected = $true }
+    Assert-Condition $inPlaceRejected 'In-place source installation was not stopped.'
+    Assert-Condition ((Get-FileHash -LiteralPath $entry).Hash -eq $entryHash) 'Rejected in-place install moved the module.'
     & $script -Action Install -SavedGamesRoot $dcsRoot -PackageRoot $PackageRoot
     Assert-Condition (Same-Bytes $first ([System.IO.File]::ReadAllBytes($exportPath))) 'Repeated install duplicated the Export block.'
     $addition = $utf8.GetBytes("`r`n-- later user customization`r`n")
