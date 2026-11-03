@@ -42,10 +42,11 @@ try {
     $zip = Get-ChildItem -LiteralPath $package -Filter 'FCK1C-NATIVE-GUN-RESULTS-*.zip' | Select-Object -Last 1
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zip.FullName)
     try {
-        Assert-Check ($null -ne $archive.GetEntry('CockpitBase.dll')) 'Failed native read omitted the binary.'
-        Assert-Check ($null -ne $archive.GetEntry('native-gun-records.json')) 'Parsed records are missing.'
-        Assert-Check ($null -ne $archive.GetEntry('Module-Logs/debug.csv')) 'MC CSV is missing.'
-        Assert-Check ($null -ne $archive.GetEntry('Build/NATIVE-GUN-BUILD.json')) 'Build provenance is missing.'
+        $names = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+        Assert-Check ($names -contains 'CockpitBase.dll') 'Failed native read omitted the binary.'
+        Assert-Check ($names -contains 'native-gun-records.json') 'Parsed records are missing.'
+        Assert-Check ($names -contains 'Module-Logs/debug.csv') 'MC CSV is missing.'
+        Assert-Check ($names -contains 'Build/NATIVE-GUN-BUILD.json') 'Build provenance is missing.'
     }
     finally { $archive.Dispose() }
     $sample = @{ event = 'sample'; status = 'available'; raw_available = $true; raw_count = 0 } | ConvertTo-Json -Compress

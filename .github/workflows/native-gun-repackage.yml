@@ -1,0 +1,89 @@
+name: Package validated native gun diagnostic
+
+on:
+  push:
+    branches: [codex/native-gun-ammo-20261103]
+    paths:
+      - .github/workflows/native-gun-repackage.yml
+      - tools/native-gun-probe/Test-Installer.ps1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  package:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 10
+    env:
+      VALIDATED_SOURCE: c92ad9ae76e64d2412d85bea552fc5f6cef60c12
+      VALIDATED_RUN: '41598623318'
+    steps:
+      - name: Check out the validated runtime source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: c92ad9ae76e64d2412d85bea552fc5f6cef60c12
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the corrected installer test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: kit-tools
+          sparse-checkout: tools/native-gun-probe
+          persist-credentials: false
+      - name: Verify the immutable DLL and validation evidence
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $changed = @(& git diff --name-only $env:VALIDATED_SOURCE $env:GITHUB_SHA)
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot compare the validated source.' }
+          foreach ($path in $changed) {
+            if ($path -notin @('.github/workflows/native-gun-repackage.yml', 'tools/native-gun-probe/Test-Installer.ps1')) { throw "Runtime source differs from the validated revision: $path" }
+          }
+          & gh run download $env:VALIDATED_RUN --repo $env:GITHUB_REPOSITORY --name "mc-validated-$env:VALIDATED_SOURCE" --dir "$env:RUNNER_TEMP/mc-artifact"
+          if ($LASTEXITCODE -ne 0) { throw 'Validated DLL download failed.' }
+          & gh run download $env:VALIDATED_RUN --repo $env:GITHUB_REPOSITORY --name "mc-validation-evidence-$env:VALIDATED_SOURCE" --dir "$env:RUNNER_TEMP/evidence"
+          if ($LASTEXITCODE -ne 0) { throw 'Validation evidence download failed.' }
+          $manifest = Get-Content "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Raw | ConvertFrom-Json
+          $report = Get-Content "$env:RUNNER_TEMP/evidence/mc-validation/report.json" -Raw | ConvertFrom-Json
+          $hash = (Get-FileHash "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $tree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read the runtime source tree.' }
+          if ($manifest.source_commit -ne $env:VALIDATED_SOURCE -or $manifest.source_tree -ne $tree -or $manifest.run_id -ne $env:VALIDATED_RUN -or $manifest.validation -ne 'passed' -or $manifest.dll_sha256 -ne $hash) { throw 'DLL provenance mismatch.' }
+          if ($report.head -ne $env:VALIDATED_SOURCE -or $report.status -ne 'passed' -or $report.hashes.uploaded.ToLowerInvariant() -ne $hash -or $report.hashes.rebuilt.ToLowerInvariant() -ne $hash) { throw 'Complete validation evidence mismatch.' }
+      - name: Check install, collect and restore with Windows PowerShell 5.1
+        shell: powershell
+        run: ./kit-tools/tools/native-gun-probe/Test-Installer.ps1
+      - name: Create native gun diagnostic package
+        shell: powershell
+        run: |
+          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -Destination 'bin/F-CK-1C_EFM.dll' -Force
+          New-Item -ItemType File -Path 'FM/native-gun-probe.enabled' -Force | Out-Null
+          $version = 'native-gun-r1-' + $env:VALIDATED_SOURCE.Substring(0, 8)
+          ./tools/package_release.ps1 -Version $version -AllowDirty
+          $kit = Join-Path $env:RUNNER_TEMP 'native-gun-kit'
+          New-Item -ItemType Directory -Path "$kit/NATIVE-TEST" -Force | Out-Null
+          Copy-Item -LiteralPath 'dist/F-CK-1C' -Destination "$kit/F-CK-1C" -Recurse
+          New-Item -ItemType Directory -Path "$kit/F-CK-1C/TESTING" -Force | Out-Null
+          $build = Get-Content -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Raw | ConvertFrom-Json
+          $build | Add-Member -NotePropertyName probe -NotePropertyValue 'native-gun-r1'
+          $build | Add-Member -NotePropertyName kit_tools_commit -NotePropertyValue $env:GITHUB_SHA
+          $build.dcs_runtime = 'awaiting_user_capture'
+          $build | ConvertTo-Json | Set-Content -LiteralPath "$kit/F-CK-1C/TESTING/NATIVE-GUN-BUILD.json" -Encoding UTF8
+          Copy-Item -LiteralPath 'tools/native-gun-probe/Manage.ps1' -Destination "$kit/NATIVE-TEST/Manage.ps1"
+          foreach ($name in @('Install', 'Collect', 'Restore')) { Copy-Item -LiteralPath "tools/native-gun-probe/$name.cmd" -Destination "$kit/$name.cmd" }
+          Copy-Item -LiteralPath 'tools/native-gun-probe/README.zh-TW.md' -Destination "$kit/START-HERE.zh-TW.md"
+          $zip = Join-Path $env:RUNNER_TEMP "F-CK-1C-$version.zip"
+          Compress-Archive -Path "$kit/*" -DestinationPath $zip -CompressionLevel Optimal
+          (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content "$zip.sha256" -Encoding ASCII
+      - name: Upload native gun diagnostic kit
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-gun-kit-c92ad9ae76e64d2412d85bea552fc5f6cef60c12
+          path: |
+            ${{ runner.temp }}/F-CK-1C-native-gun-r1-*.zip
+            ${{ runner.temp }}/F-CK-1C-native-gun-r1-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
