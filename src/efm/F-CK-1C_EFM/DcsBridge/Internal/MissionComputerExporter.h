@@ -42,6 +42,7 @@ private:
 		Elevation,
 		LockRange,
 		GunCount,
+		GunCountAvailable,
 		TriggerHeld,
 		MasterArmPressSequence,
 		NavigationPressSequence,

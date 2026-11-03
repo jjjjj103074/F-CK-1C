@@ -421,41 +421,43 @@ void test_snapshot_copies_retain_values_after_commit(Tests::Context& context)
 {
 	const SystemDefinition publisher = demand_publisher({ "publisher", kInitialDemand, kNextDemand });
 	SystemPipeline pipeline(flight_setup(), { entry(publisher) });
-	const AircraftDataSnapshot before = pipeline.snapshot();
-	AircraftDataSnapshot copied = before;
-	const AircraftDataSnapshot moved = std::move(copied);
+	const auto before = std::make_unique<const AircraftDataSnapshot>(pipeline.snapshot());
+	auto copied = std::make_unique<AircraftDataSnapshot>(*before);
+	const auto moved = std::make_unique<const AircraftDataSnapshot>(std::move(*copied));
 	FrameInput frame;
 	frame.world_kinematics.velocity_world_mps.x = kNextDemand;
 	AircraftObservation observation;
 	observation.true_airspeed_mps = kPendingDemand;
-	const AircraftDataSnapshot after = step_pipeline(pipeline, frame, observation);
-	TEST_EXPECT_NEAR(context,
-	                 after.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
-	                 kNextDemand,
-	                 kTolerance);
+	const auto after = std::make_unique<const AircraftDataSnapshot>(step_pipeline(pipeline, frame, observation));
 	TEST_EXPECT_NEAR(
 	    context,
-	    before.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    after->read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    kNextDemand,
+	    kTolerance);
+	TEST_EXPECT_NEAR(
+	    context,
+	    before->read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
+	    kInitialDemand,
+	    kTolerance);
+	TEST_EXPECT_NEAR(
+	    context,
+	    moved->read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
 	    kInitialDemand,
 	    kTolerance);
 	TEST_EXPECT_NEAR(context,
-	                 moved.read(AircraftDataKeys::kFlightControlActuatorCommand).symmetric_stabilator_demand_normalized,
-	                 kInitialDemand,
-	                 kTolerance);
-	TEST_EXPECT_NEAR(context,
-	                 before.read(AircraftDataKeys::kFrameInput).world_kinematics.velocity_world_mps.x,
+	                 before->read(AircraftDataKeys::kFrameInput).world_kinematics.velocity_world_mps.x,
 	                 kNeutralValue,
 	                 kTolerance);
 	TEST_EXPECT_NEAR(context,
-	                 after.read(AircraftDataKeys::kFrameInput).world_kinematics.velocity_world_mps.x,
+	                 after->read(AircraftDataKeys::kFrameInput).world_kinematics.velocity_world_mps.x,
 	                 kNextDemand,
 	                 kTolerance);
 	TEST_EXPECT_NEAR(context,
-	                 before.read(AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
+	                 before->read(AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
 	                 kNeutralValue,
 	                 kTolerance);
 	TEST_EXPECT_NEAR(context,
-	                 after.read(AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
+	                 after->read(AircraftDataKeys::kAircraftObservation).true_airspeed_mps,
 	                 kPendingDemand,
 	                 kTolerance);
 }

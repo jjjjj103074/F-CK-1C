@@ -86,6 +86,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.infrared_missile.lock_range_m = 1200.0;
 	mc.stores.air_to_air_missile_count = 2;
 	mc.stores.gun_count = 240.0;
+	mc.stores.gun_ammunition.observation.available = true;
 	mc.control_inputs.trigger_second_stage_held = true;
 	mc.control_inputs.master_arm_press_sequence = 3;
 	mc.control_inputs.navigation_press_sequence = 5;
@@ -125,6 +126,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 4.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9MissileCount), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCount), 240.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCountAvailable), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McTriggerSecondStageHeld), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMasterArmPressSequence), 3.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McNavigationPressSequence), 5.0, kTolerance);
@@ -167,22 +169,40 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::CockpitSnapshot snapshot;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot);
-	TEST_EXPECT(context, events.count == 67);
+	TEST_EXPECT(context, events.count == 68);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot);
-	TEST_EXPECT(context, events.count == 67);
+	TEST_EXPECT(context, events.count == 68);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
+}
+
+void test_gun_count_availability_is_exported_separately(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	snapshot.combat_avionics.status = { true, 1 };
+	snapshot.combat_avionics.stores.gun_count = 216;
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCount), 216.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCountAvailable), 0.0, kTolerance);
+	snapshot.combat_avionics.stores.gun_count = 0;
+	snapshot.combat_avionics.stores.gun_ammunition.observation.available = true;
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCount), 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCountAvailable), 1.0, kTolerance);
 }
 
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
+	test_gun_count_availability_is_exported_separately(context);
 	test_snapshot_envelope_is_exported(context);
 	test_missing_parameter_reports_once_then_recovers(context);
 	test_reset_restarts_error_reporting(context);

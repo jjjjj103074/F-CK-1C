@@ -33,7 +33,9 @@ jobs:
           tar -xzf "$lua_root/lua.tar.gz" -C "$lua_root"
           make -C "$lua_root/lua-5.1.5" generic
           "$lua_root/lua-5.1.5/src/luac" -p Cockpit/Scripts/Systems/cms_system.lua Cockpit/Scripts/Systems/mc_io.lua Cockpit/Scripts/Systems/weapon_system.lua Cockpit/Scripts/Systems/radar_state_system.lua Cockpit/Scripts/Systems/hmcs_system.lua
+          "$lua_root/lua-5.1.5/src/luac" -p Export/StoresExport.lua Cockpit/Scripts/Stores/GunAmmunition.lua
           "$lua_root/lua-5.1.5/src/lua" tools/test_mc_lua.lua
+          "$lua_root/lua-5.1.5/src/lua" tools/test_stores_export.lua
   build-validation:
     name: Build and validate MC migration
     runs-on: windows-2025-vs2026
@@ -77,6 +79,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs tools/pr-checks.test.mjs tools/pr-results.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check the stores Export installer
+        shell: powershell
+        run: ./tools/test_stores_export_installer.ps1
       - name: Build the pinned Windows DLL
         shell: powershell
         run: |
