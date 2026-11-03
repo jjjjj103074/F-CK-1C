@@ -1,6 +1,9 @@
 #pragma once
 
 #include "../../Core/Contracts/CockpitContracts.h"
+#include "NativeGunAccess.h"
+
+#include <functional>
 
 #include <memory>
 #include <string>
@@ -13,7 +16,8 @@ class EventLog;
 class NativeGunProbe final
 {
 public:
-	NativeGunProbe(const std::string& module_root, EventLog& log);
+	using Reader = std::function<NativeGunResult()>;
+	NativeGunProbe(const std::string& module_root, EventLog& log, Reader reader = {});
 	~NativeGunProbe();
 	NativeGunProbe(const NativeGunProbe&) = delete;
 	NativeGunProbe& operator=(const NativeGunProbe&) = delete;

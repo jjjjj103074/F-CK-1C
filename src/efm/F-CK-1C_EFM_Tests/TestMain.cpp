@@ -28,6 +28,7 @@ void run_mission_computer_tests(Tests::Context& context);
 void run_mode_management_tests(Tests::Context& context);
 void run_stores_management_tests(Tests::Context& context);
 void run_native_gun_access_tests(Tests::Context& context);
+void run_native_gun_probe_tests(Tests::Context& context);
 void run_stores_telemetry_tests(Tests::Context& context);
 void run_configuration_ownership_tests(Tests::Context& context);
 void run_configuration_loader_tests(Tests::Context& context);
@@ -102,6 +103,7 @@ int main()
 	run_mode_management_tests(context);
 	run_stores_management_tests(context);
 	run_native_gun_access_tests(context);
+	run_native_gun_probe_tests(context);
 	run_stores_telemetry_tests(context);
 	run_configuration_ownership_tests(context);
 	run_system_pipeline_data_tests(context);

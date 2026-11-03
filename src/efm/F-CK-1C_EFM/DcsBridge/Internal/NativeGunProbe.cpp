@@ -2,12 +2,12 @@
 
 #include "NativeGunAccess.h"
 #include "EventLog.h"
-#include "../../ThirdParty/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 #include <windows.h>
 #include <array>
 #include <filesystem>
-#include <limits>
+#include <utility>
 
 namespace
 {
@@ -103,16 +103,20 @@ struct NativeGunProbe::Implementation
 	bool resolved = false;
 	bool pending = false;
 	bool call_failed = false;
-	double next_read = 0;
+	bool flight_announced = false;
+	unsigned flight = 0;
+	NativeGunProbe::Reader reader;
+	double next_read_s = 0;
 	NativeGunHost host;
 	CallContext calls;
 	NativeGunResult result;
 	Core::GunAmmunitionObservation observation;
 	std::string module_path;
 
-	Implementation(const std::string& root, EventLog& event_log)
+	Implementation(const std::string& root, EventLog& event_log, NativeGunProbe::Reader read)
 	    : log(event_log),
-	      enabled(false)
+	      enabled(false),
+	      reader(std::move(read))
 	{
 		std::error_code error;
 		enabled = std::filesystem::is_regular_file(std::filesystem::path(root) / "FM/native-gun-probe.enabled", error);
@@ -121,6 +125,7 @@ struct NativeGunProbe::Implementation
 	void write(double time, nlohmann::json record)
 	{
 		record["probe"] = "native-gun-r1";
+		record["flight"] = flight;
 		const std::string text = "native_gun_probe " + record.dump();
 		(void)log.write({ EventLevel::Info, time, text.c_str() });
 	}
@@ -193,8 +198,8 @@ struct NativeGunProbe::Implementation
 	}
 };
 
-NativeGunProbe::NativeGunProbe(const std::string& module_root, EventLog& log)
-    : implementation_(std::make_unique<Implementation>(module_root, log))
+NativeGunProbe::NativeGunProbe(const std::string& module_root, EventLog& log, Reader reader)
+    : implementation_(std::make_unique<Implementation>(module_root, log, std::move(reader)))
 {
 }
 NativeGunProbe::~NativeGunProbe() = default;
@@ -207,7 +212,9 @@ bool NativeGunProbe::enabled() const noexcept
 void NativeGunProbe::reset_flight()
 {
 	auto& state = *implementation_;
-	state.next_read = 0;
+	state.next_read_s = 0;
+	state.flight_announced = false;
+	++state.flight;
 	state.pending = false;
 	state.call_failed = false;
 	state.calls = {};
@@ -221,16 +228,29 @@ Core::GunAmmunitionObservation NativeGunProbe::observe(double time_s)
 try
 {
 	auto& state = *implementation_;
-	if (!state.enabled || time_s < state.next_read)
+	if (!state.enabled || time_s < state.next_read_s)
 		return state.observation;
-	state.next_read = time_s + 0.1;
+	state.next_read_s = time_s + 0.1;
 	state.pending = true;
-	if (!state.resolved)
-		state.resolve(time_s);
-	if (state.resolved && !state.call_failed)
+	if (!state.flight_announced)
 	{
-		const NativeGunAccess access{ &state.calls, read_process, call_payload, call_mount, call_count };
-		state.result = read_native_gun(state.host, access);
+		state.write(time_s, { { "event", "flight_start" } });
+		state.flight_announced = true;
+	}
+	if (!state.call_failed)
+	{
+		if (state.reader)
+			state.result = state.reader();
+		else
+		{
+			if (!state.resolved)
+				state.resolve(time_s);
+			if (state.resolved)
+			{
+				const NativeGunAccess access{ &state.calls, read_process, call_payload, call_mount, call_count };
+				state.result = read_native_gun(state.host, access);
+			}
+		}
 		state.call_failed = state.result.status == NativeGunStatus::CallFailed;
 	}
 	state.observation.status = { state.result.status == NativeGunStatus::Available,

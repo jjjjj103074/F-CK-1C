@@ -33,7 +33,9 @@ try {
     Set-Content -LiteralPath $binary 'native fixture binary' -Encoding ASCII
     $hostRecord = @{ event = 'host'; module_path = $binary; matched = $false } | ConvertTo-Json -Compress
     $sample = @{ event = 'sample'; status = 'unsupported_build'; raw_available = $false; raw_count = $null } | ConvertTo-Json -Compress
-    Set-Content "$module/log/fck1c_efm.log" @("native_gun_probe $hostRecord", "native_gun_probe $sample") -Encoding UTF8
+    $earlierSuccess = '{"event":"sample","raw_available":true,"raw_count":523}'
+    $flightStart = '{"event":"flight_start","flight":2}'
+    Set-Content "$module/log/fck1c_efm.log" @("native_gun_probe $earlierSuccess", "native_gun_probe $flightStart", "native_gun_probe $hostRecord", "native_gun_probe $sample") -Encoding UTF8
     Set-Content "$module/log/debug.csv" 'sequence,mc_stores_gun_count' -Encoding ASCII
     Set-Content "$dcs/Logs/dcs.log" 'fixture game log' -Encoding ASCII
     & $manager -Action Collect -SavedGamesRoot $dcs -PackageRoot $package
@@ -56,6 +58,12 @@ try {
     & $manager -Action Restore -SavedGamesRoot $dcs -PackageRoot $package
     Assert-Check (Test-Path "$module/old.cfg") 'Previous module was not restored.'
     Assert-Check (-not (Test-Path "$module/FM/native-gun-probe.enabled")) 'Restored module still contains the probe flag.'
+    Remove-Item -LiteralPath $module -Recurse -Force
+    & $manager -Action Install -SavedGamesRoot $dcs -PackageRoot $package
+    Assert-Check (Test-Path "$module/entry.lua") 'First installation failed.'
+    & $manager -Action Restore -SavedGamesRoot $dcs -PackageRoot $package
+    Assert-Check (-not (Test-Path -LiteralPath $module)) 'Restore did not recover the original absence of a module.'
+    Assert-Check (-not (Test-Path "$dcs/FCK1C-native-gun-test/state.json")) 'Restore retained installation state.'
     Write-Output "Native gun installer: $checks checks passed."
 }
 finally {

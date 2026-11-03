@@ -51,18 +51,19 @@ if ($Action -eq 'Install') {
     }
     $backup = Join-Path $dcs "FCK1C-native-gun-backups/$stamp"
     New-Item -ItemType Directory -Path $backup -Force | Out-Null
-    if (Test-Path -LiteralPath $module) { Move-Item -LiteralPath $module -Destination (Join-Path $backup 'F-CK-1C') }
+    $hadModule = Test-Path -LiteralPath $module
+    if ($hadModule) { Move-Item -LiteralPath $module -Destination (Join-Path $backup 'F-CK-1C') }
     try {
         New-Item -ItemType Directory -Path $module -Force | Out-Null
         Get-ChildItem -LiteralPath $source -Force | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $module -Recurse -Force }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $state) -Force | Out-Null
+        @{ backup = $backup; module = $module; had_module = $hadModule } | ConvertTo-Json | Set-Content -LiteralPath $state -Encoding UTF8
     }
     catch {
         if (Test-Path -LiteralPath $module) { Remove-Item -LiteralPath $module -Recurse -Force }
         if (Test-Path (Join-Path $backup 'F-CK-1C')) { Move-Item (Join-Path $backup 'F-CK-1C') $module }
         throw
     }
-    New-Item -ItemType Directory -Path (Split-Path -Parent $state) -Force | Out-Null
-    @{ backup = $backup; module = $module } | ConvertTo-Json | Set-Content -LiteralPath $state -Encoding UTF8
     Write-Host "Installed native gun test: $module"
     Write-Host "Previous module: $backup"
 }
@@ -88,7 +89,12 @@ elseif ($Action -eq 'Collect') {
         }
     }
     ConvertTo-Json -InputObject @($records) -Depth 8 | Set-Content (Join-Path $stage 'native-gun-records.json') -Encoding UTF8
-    $hostRecord = @($records | Where-Object { $_.event -eq 'host' } | Select-Object -Last 1)
+    $flightRecords = @()
+    foreach ($record in $records) {
+        if ($record.event -eq 'flight_start') { $flightRecords = @() }
+        $flightRecords += $record
+    }
+    $hostRecord = @($flightRecords | Where-Object { $_.event -eq 'host' } | Select-Object -Last 1)
     $binary = ''
     if ($hostRecord.Count -eq 1) { $binary = [string]$hostRecord[0].module_path }
     if (-not $binary) {
@@ -102,7 +108,7 @@ elseif ($Action -eq 'Collect') {
     if ($binary -and (Test-Path -LiteralPath $binary -PathType Leaf)) {
         @{ path = $binary; sha256 = (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash.ToLowerInvariant(); version = (Get-Item -LiteralPath $binary).VersionInfo.FileVersion } |
             ConvertTo-Json | Set-Content (Join-Path $stage 'cockpitbase-version.json') -Encoding UTF8
-        $samples = @($records | Where-Object { $_.event -eq 'sample' })
+        $samples = @($flightRecords | Where-Object { $_.event -eq 'sample' })
         if (@($samples | Where-Object { $_.raw_available }).Count -eq 0) {
             Copy-Item -LiteralPath $binary -Destination (Join-Path $stage 'CockpitBase.dll')
         }
@@ -117,12 +123,12 @@ else {
     if (-not (Test-Path -LiteralPath $state)) { throw 'Installation state not found.' }
     $previous = Get-Content -LiteralPath $state -Raw | ConvertFrom-Json
     $backupModule = Join-Path $previous.backup 'F-CK-1C'
-    if (-not (Test-Path -LiteralPath $backupModule)) { throw 'Previous module backup not found; installed module preserved.' }
+    if ($previous.had_module -and -not (Test-Path -LiteralPath $backupModule)) { throw 'Previous module backup not found; installed module preserved.' }
     if (Test-Path -LiteralPath $module) {
         $kept = Join-Path $dcs "FCK1C-native-gun-backups/test-$stamp"
         Move-Item -LiteralPath $module -Destination $kept
     }
-    Move-Item -LiteralPath $backupModule -Destination $module
+    if ($previous.had_module) { Move-Item -LiteralPath $backupModule -Destination $module }
     Remove-Item -LiteralPath $state
     Write-Host 'Previous module restored.'
 }

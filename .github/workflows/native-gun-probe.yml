@@ -2,7 +2,7 @@ name: Native gun diagnostic package
 
 on:
   push:
-    branches: [diagnostics/native-gun-ammo-20261103]
+    branches: [codex/native-gun-ammo-20261103]
   workflow_dispatch:
 
 permissions:
@@ -143,7 +143,10 @@ jobs:
           New-Item -ItemType Directory -Path "$kit/NATIVE-TEST" -Force | Out-Null
           Copy-Item -LiteralPath 'dist/F-CK-1C' -Destination "$kit/F-CK-1C" -Recurse
           New-Item -ItemType Directory -Path "$kit/F-CK-1C/TESTING" -Force | Out-Null
-          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Destination "$kit/F-CK-1C/TESTING/NATIVE-GUN-BUILD.json"
+          $build = Get-Content -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Raw | ConvertFrom-Json
+          $build | Add-Member -NotePropertyName probe -NotePropertyValue 'native-gun-r1'
+          $build.dcs_runtime = 'awaiting_user_capture'
+          $build | ConvertTo-Json | Set-Content -LiteralPath "$kit/F-CK-1C/TESTING/NATIVE-GUN-BUILD.json" -Encoding UTF8
           Copy-Item -LiteralPath 'tools/native-gun-probe/Manage.ps1' -Destination "$kit/NATIVE-TEST/Manage.ps1"
           foreach ($name in @('Install', 'Collect', 'Restore')) { Copy-Item -LiteralPath "tools/native-gun-probe/$name.cmd" -Destination "$kit/$name.cmd" }
           Copy-Item -LiteralPath 'tools/native-gun-probe/README.zh-TW.md' -Destination "$kit/START-HERE.zh-TW.md"
