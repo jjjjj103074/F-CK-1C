@@ -52,6 +52,9 @@
   </ItemDefinitionGroup>
   <Import Project="..\EfmCore.props" />
   <ItemGroup>
+    <ClCompile Include="NativeGunAccessTests.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\NativeGunAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\NativeGunProbe.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
     <ClInclude Include="FakeCockpitParameters.h" />

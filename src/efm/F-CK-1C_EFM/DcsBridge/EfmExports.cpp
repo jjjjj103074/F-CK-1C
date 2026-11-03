@@ -133,9 +133,14 @@ try
 		output_available = bridge().output_store().read().has_value();
 		if (output_available)
 		{
-			bridge().input_collector().publish_cockpit_observation(cockpit.cockpit);
+			Core::CockpitObservation observation = cockpit.cockpit;
+			if (bridge().native_gun_probe().enabled())
+				observation.gun_ammunition =
+				    bridge().native_gun_probe().observe(bridge().output_store().read()->simulation_time_s);
+			bridge().input_collector().publish_cockpit_observation(observation);
 			output = bridge().core().step(bridge().input_collector().snapshot(dt));
 			bridge().output_store().publish(output);
+			bridge().native_gun_probe().record_mc(output.simulation_time_s, output.cockpit.combat_avionics);
 			bridge().param_exporter().observe(output);
 			bridge().state_csv_writer().publish_step(output);
 			bridge().debug_csv_writer().publish_step(output.simulation_time_s);

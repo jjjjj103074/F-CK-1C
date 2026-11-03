@@ -1,0 +1,161 @@
+name: Native gun diagnostic package
+
+on:
+  push:
+    branches: [diagnostics/native-gun-ammo-20261103]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-gun-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lua-adapters:
+    name: Check MC Lua 5.1 adapters
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the fixed Lua interpreter and test the adapters
+        shell: bash
+        run: |
+          lua_root="$RUNNER_TEMP/mc-lua"
+          mkdir -p "$lua_root"
+          curl --fail --silent --show-error --location https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$lua_root/lua.tar.gz"
+          # Published at https://www.lua.org/ftp/.
+          printf '%s  %s\n' 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333 "$lua_root/lua.tar.gz" | sha256sum --check
+          tar -xzf "$lua_root/lua.tar.gz" -C "$lua_root"
+          make -C "$lua_root/lua-5.1.5" generic
+          "$lua_root/lua-5.1.5/src/luac" -p Cockpit/Scripts/Systems/cms_system.lua Cockpit/Scripts/Systems/mc_io.lua Cockpit/Scripts/Systems/weapon_system.lua Cockpit/Scripts/Systems/radar_state_system.lua Cockpit/Scripts/Systems/hmcs_system.lua
+          "$lua_root/lua-5.1.5/src/luac" -p Export/StoresExport.lua Cockpit/Scripts/Stores/GunAmmunition.lua
+          "$lua_root/lua-5.1.5/src/lua" tools/test_mc_lua.lua
+          "$lua_root/lua-5.1.5/src/lua" tools/test_stores_export.lua
+  build-validation:
+    name: Build and validate MC migration
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+    needs: lua-adapters
+    steps:
+      - name: Check out the source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install validation tools
+        run: npm ci --ignore-scripts
+      - name: Install the pinned Build Tools release
+        shell: powershell
+        timeout-minutes: 15
+        run: |
+          # Fixed 18.10.3 bootstrapper from Microsoft's Visual Studio release history.
+          $bootstrapper = Join-Path $env:RUNNER_TEMP 'vs_BuildTools.exe'
+          $uri = 'https://download.visualstudio.microsoft.com/download/pr/e5f740e0-92f9-49d7-ab3b-5d17b84108fd/283d526008bf3ac56ec2c6aeb3102b8ca68b9af75643c8f5d0ee58060a1886bb/vs_BuildTools.exe'
+          Invoke-WebRequest -Uri $uri -OutFile $bootstrapper -UseBasicParsing
+          $expected = '283d526008bf3ac56ec2c6aeb3102b8ca68b9af75643c8f5d0ee58060a1886bb'
+          if ((Get-FileHash -LiteralPath $bootstrapper -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Build Tools bootstrapper SHA256 mismatch.'
+          }
+          $installation = Join-Path $env:RUNNER_TEMP 'efm-buildtools'
+          $config = Join-Path $env:GITHUB_WORKSPACE '.vsconfig'
+          $arguments = @('--quiet', '--wait', '--norestart', '--nocache', '--installPath', $installation, '--config', $config)
+          $process = Start-Process -FilePath $bootstrapper -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) { throw "Build Tools installation failed: $($process.ExitCode)" }
+          ./tools/check_efm_toolchain.ps1
+      - name: Check formatting and tooling
+        shell: powershell
+        run: |
+          npm run check:cpp-format
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs tools/pr-checks.test.mjs tools/pr-results.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check the stores Export installer
+        shell: powershell
+        run: ./tools/test_stores_export_installer.ps1
+      - name: Build the pinned Windows DLL
+        shell: powershell
+        run: |
+          ./tools/build_efm.ps1 -Target Dll -LogDirectory "$env:RUNNER_TEMP/mc-build"
+          $artifact = Join-Path $env:RUNNER_TEMP 'mc-artifact'
+          New-Item -ItemType Directory -Path $artifact -Force | Out-Null
+          Copy-Item -LiteralPath 'src/efm/x64/Release/F-CK-1C_EFM.dll' -Destination "$artifact/F-CK-1C_EFM.dll"
+      - name: Run the complete project validation
+        shell: powershell
+        run: |
+          ./tools/validate_efm.ps1 -ExpectedHead $env:GITHUB_SHA -SubmittedDllPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -ReportDirectory "$env:RUNNER_TEMP/mc-validation"
+      - name: Record the validated source and DLL
+        shell: powershell
+        run: |
+          $tree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $dll = Join-Path $env:RUNNER_TEMP 'mc-artifact/F-CK-1C_EFM.dll'
+          $manifest = [ordered]@{
+            source_commit = $env:GITHUB_SHA
+            source_tree = $tree
+            run_id = $env:GITHUB_RUN_ID
+            run_attempt = $env:GITHUB_RUN_ATTEMPT
+            dll_sha256 = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
+            validation = 'passed'
+            dcs_runtime = 'not_run'
+          }
+          $manifest | ConvertTo-Json | Set-Content -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Encoding UTF8
+      - name: Upload the validated DLL and manifest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mc-validated-${{ github.sha }}
+          path: ${{ runner.temp }}/mc-artifact/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mc-validation-evidence-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/mc-build/*.log
+            ${{ runner.temp }}/mc-validation/*.json
+            ${{ runner.temp }}/mc-validation/*.md
+            ${{ runner.temp }}/mc-validation/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Check native gun test installer
+        shell: powershell
+        run: ./tools/native-gun-probe/Test-Installer.ps1
+      - name: Create native gun diagnostic package
+        shell: powershell
+        run: |
+          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -Destination 'bin/F-CK-1C_EFM.dll' -Force
+          New-Item -ItemType File -Path 'FM/native-gun-probe.enabled' -Force | Out-Null
+          $version = 'native-gun-r1-' + $env:GITHUB_SHA.Substring(0, 8)
+          ./tools/package_release.ps1 -Version $version -AllowDirty
+          $kit = Join-Path $env:RUNNER_TEMP 'native-gun-kit'
+          New-Item -ItemType Directory -Path "$kit/NATIVE-TEST" -Force | Out-Null
+          Copy-Item -LiteralPath 'dist/F-CK-1C' -Destination "$kit/F-CK-1C" -Recurse
+          New-Item -ItemType Directory -Path "$kit/F-CK-1C/TESTING" -Force | Out-Null
+          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Destination "$kit/F-CK-1C/TESTING/NATIVE-GUN-BUILD.json"
+          Copy-Item -LiteralPath 'tools/native-gun-probe/Manage.ps1' -Destination "$kit/NATIVE-TEST/Manage.ps1"
+          foreach ($name in @('Install', 'Collect', 'Restore')) { Copy-Item -LiteralPath "tools/native-gun-probe/$name.cmd" -Destination "$kit/$name.cmd" }
+          Copy-Item -LiteralPath 'tools/native-gun-probe/README.zh-TW.md' -Destination "$kit/START-HERE.zh-TW.md"
+          $zip = Join-Path $env:RUNNER_TEMP "F-CK-1C-$version.zip"
+          Compress-Archive -Path "$kit/*" -DestinationPath $zip -CompressionLevel Optimal
+          (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content "$zip.sha256" -Encoding ASCII
+      - name: Upload native gun diagnostic kit
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-gun-kit-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/F-CK-1C-native-gun-r1-*.zip
+            ${{ runner.temp }}/F-CK-1C-native-gun-r1-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
