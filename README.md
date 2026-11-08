@@ -6,6 +6,7 @@ A DCS World community mod of the AIDC F-CK-1C Ching-kuo.
 
 ## Status
 
+
 The release supports AI aircraft in missions. The player cockpit and EFM are
 under development; development builds are available on [dev](https://github.com/jjjjj103074/F-CK-1C/tree/dev).
 
@@ -30,6 +31,8 @@ install.bat "D:\Saved Games\DCS"
 ```
 
 ## Development
+
+- [DCS API guide](docs/DCS_API_GUIDE.zh-TW.md): runtime contexts, native gun ammunition and station contracts (Traditional Chinese).
 
 - [Contributing](CONTRIBUTING.md): setup, workflow and submission rules.
 - [EFM](src/efm/README.md): architecture and module guides.

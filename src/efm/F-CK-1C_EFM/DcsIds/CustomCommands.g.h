@@ -65,7 +65,6 @@ static constexpr int EngineThrustCutTestToggle = 3135;
 static constexpr int EngineThrustCutTestEnable = 3136;
 static constexpr int EngineThrustCutTestDisable = 3137;
 static constexpr int DebugIndicatorToggle = 3140;
-static constexpr int ReceiveGunAmmunition = 3150;
 }
 
 namespace DcsCommands
@@ -174,7 +173,6 @@ static constexpr Entry CustomCommands[] = {
     { Commands::EngineThrustCutTestEnable, Route::Efm },
     { Commands::EngineThrustCutTestDisable, Route::Efm },
     { Commands::DebugIndicatorToggle, Route::Bridge },
-    { Commands::ReceiveGunAmmunition, Route::Cockpit },
 };
 
 static constexpr int IgnoredDcsCommands[] = {

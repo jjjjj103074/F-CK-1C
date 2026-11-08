@@ -329,8 +329,6 @@ void test_mission_adapter_rejects_invalid_ack_and_counts(Tests::Context& context
 	cockpit.set(DcsIds::CockpitParams::RadarState, 1.0);
 	cockpit.set(DcsIds::CockpitParams::McMissileCountAvailable, 1.0);
 	cockpit.set(DcsIds::CockpitParams::McMissileCount, 2.0);
-	cockpit.set(DcsIds::CockpitParams::McGunCountAvailable, 1.0);
-	cockpit.set(DcsIds::CockpitParams::McGunCount, 523.0);
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
 	auto observation = bridge.read_step_input().cockpit.mission_adapter;
 	TEST_EXPECT(context, observation.available && observation.acknowledged_sequence == 7);
@@ -363,48 +361,11 @@ void test_empty_clean_and_zero_quantity_configuration(Tests::Context& context)
 	TEST_EXPECT(context, !bridge.read_step_input().cockpit.weapon_stations.status.available);
 }
 
-void test_native_gun_ammunition_contract(Tests::Context& context)
-{
-	Tests::FakeCockpitParameters cockpit;
-	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
-	TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
-	cockpit.set(DcsIds::CockpitParams::McGunCountAvailable, 1.0);
-	cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 2.0);
-	for (const double count : { 261.0, 216.0, 0.0, 523.0 })
-	{
-		cockpit.set(DcsIds::CockpitParams::McGunCount, count);
-		const auto observation = bridge.read_step_input().cockpit.gun_ammunition;
-		TEST_EXPECT(context, observation.status.available && observation.status.revision == 2);
-		TEST_EXPECT(context, observation.count == static_cast<int>(count));
-	}
-	for (const double count : { -1.0, 17.5, 10000.0, std::numeric_limits<double>::quiet_NaN() })
-	{
-		cockpit.set(DcsIds::CockpitParams::McGunCount, count);
-		TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
-	}
-	cockpit.set(DcsIds::CockpitParams::McGunCount, 216.0);
-	cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 3.0);
-	TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
-	cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 4.0);
-	cockpit.after_number_read = [&](const char* name)
-	{
-		if (std::strcmp(name, DcsIds::CockpitParams::McGunCount) == 0)
-			cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 6.0);
-	};
-	const auto torn = bridge.read_step_input().cockpit.gun_ammunition;
-	TEST_EXPECT(context, !torn.status.available);
-	TEST_EXPECT(context, torn.status.invalid_reason == Core::ObservationInvalidReason::InvalidRevision);
-	cockpit.after_number_read = {};
-	cockpit.set(DcsIds::CockpitParams::McGunCountAvailable, 0.0);
-	TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
-}
-
 }
 
 void run_cockpit_bridge_tests(Tests::Context& context)
 {
 	test_empty_clean_and_zero_quantity_configuration(context);
-	test_native_gun_ammunition_contract(context);
 	test_atmosphere_temperature_is_exported_in_celsius(context);
 	test_non_finite_temperature_preserves_last_cockpit_value(context);
 	test_pressure_altitude_observation_is_typed_in_feet(context);

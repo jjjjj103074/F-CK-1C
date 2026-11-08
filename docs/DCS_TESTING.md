@@ -33,7 +33,7 @@ AP、A/T 與回授飛控尚未實作；其狀態應維持不可用。
 - Engine Thrust Cut 啟用時觀察雙發推力為零，解除後恢復；
   intent 通道為 `propulsion_test_thrust_cut_requested`。
 
-## MC 遷移驗證（尚待 DCS 執行）
+## MC 遷移與後續驗證
 
 以下先使用熱機或空中出生；不把冷啟動、斷電恢復或故障備援列為本次 MC 驗收。
 記錄 DCS 版本、來源 commit、DLL SHA256、掛載及測試結果。
@@ -41,8 +41,8 @@ MC CI 的 `dcs_runtime = not_run` 在人工驗證完成前保持不變。
 
 | 情境 | 操作與預期觀察 |
 |---|---|
-| 數量 API | 以 Lua debugger 或暫時的介面診斷，記錄 cms_system.lua 各既有候選函數是否可呼叫及回傳值；確認總數、單站、選定武器及機炮數量的實際語意 |
-| 有彈／零彈 | 比對九站清單、MC 數量及 HMCS：有效空清單表示飛彈零枚；機炮 API 有效零值表示零發；機炮來源不可用時仍保留原有估計，不能由空掛站推定機炮零發 |
+| 數量 API | 以 Lua debugger 或暫時的介面診斷，記錄 cms_system.lua 各既有候選函數是否可呼叫及回傳值；確認總數、單站、選定武器的實際語意 |
+| 有彈／零彈 | 比對九站清單、MC 數量及 HMCS：有效空清單表示飛彈零枚；機炮 API 有效零值表示零發；機砲來源無效時保留最近有效數字及無效旗標 |
 | 模式與武器 gate | 驗證 NAV／DGFT／MSL、Master ON／OFF／SIM、uncage；維持遷移前行為，含 DGFT／MSL 使 Master ON 的原有耦合 |
 | 輸入入口 | 分別測試鍵盤 Space、RAlt+Space、搖桿扳機／投放及共用設定別名；應走 MC，不因合併重複項而遺失預設組合 |
 | 短按與停止 | 測試短按、長按與放開；MC 最短保持為觀測到執行 ACK 後 80 ms；Master OFF／SIM 命令消費時不等待保持期就追加停止 |
@@ -68,3 +68,17 @@ Lua 的原始回傳與 API 呼叫結果在內容變化時寫入 dcs.log。
 CSV sequence 缺口可能來自非同步 writer 覆蓋尚未寫入的資料，
 不能用它判定所有操作事件是否發生。
 輪替、取樣與錯誤行為見 [DcsBridge](../src/efm/F-CK-1C_EFM/DcsBridge/README.md#runtime-diagnostics)。
+
+## C++ 原生機砲來源
+
+2026-11-08 已完成診斷包的五次點射與 MC 接收驗證，318 次讀取全部成功。
+正式來源的介面、支援版本與數值依據見 [DCS API 指引](DCS_API_GUIDE.zh-TW.md)。
+後續補測以下生命週期案例：
+
+| 情境 | 操作與觀察 |
+|---|---|
+| 零發 | 熱啟動後按右 Ctrl+M、右 Ctrl+D，再按住 Space 至耗盡；觀察 gun_available=True、gun_count=0，放開後維持有效零 |
+| 地面補彈 | 完成地勤補彈後觀察原生數字與 SM 數字回升，保持有效 |
+| 換任務 | 重開不同裝填任務，觀察初始數字及來源 revision 重新建立 |
+
+以 fck1c_efm.log 的 gun_ammunition 來源狀態及 debug.csv 的機砲輸入／庫存比對。

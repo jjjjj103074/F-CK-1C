@@ -68,8 +68,7 @@ Lua 發布原始紀錄；CockpitBridge 驗證整份 revision 後，轉為具型�
 原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
 
-`cms_system.lua` 的機砲觀測改由 Export 裝置命令接收；2026-11-02 實測已確認
-原生 payload 提供 523／261 發初始值及射擊後的即時餘量。機砲 getter 探測與估算已移除。
+機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS 執行 MC 有序指令及既有反制程序。
 空對空總數的既有候選 API、來源優先序及相容估算維持原有安排。
 
 ## 驗證
@@ -85,7 +84,6 @@ Device 載入、DCS 感測、呈現、武器與音效依 [DCS 測試](DCS_TESTIN
 
 ## 原生機砲觀測
 
-機砲由 `Export/StoresExport.lua` 以 10 Hz 讀取原生 payload，透過 CMS 裝置的
-`ReceiveGunAmmunition` 命令與奇偶批次參數交給 DcsBridge；原先猜測的機砲 getter 已移除。
-SM 保存整數彈量、來源及有效性，HMCS 依有效性顯示數字或 `GUN ---`。
-Export 載入入口、資料流與驗證結果見 [SM 原生彈量](SM_NATIVE_AMMUNITION.zh-TW.md)。
+機砲由 `DcsBridge/Internal/GunAmmunition/GunAmmunitionSource` 每 0.1 秒取樣，
+以既有型別化觀測進入 MC／SM。HMCS 讀取完成快照及數量有效性。
+版本、原生呼叫契約、實機證據及遷移流程見 [DCS API 指引](DCS_API_GUIDE.zh-TW.md)。

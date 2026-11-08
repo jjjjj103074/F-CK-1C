@@ -60,6 +60,8 @@
   </ItemDefinitionGroup>
   <Import Project="..\EfmCore.props" />
   <ItemGroup>
+    <ClCompile Include="DcsBridge\Internal\GunAmmunition\NativeGunAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="DcsBridge\Internal\GunAmmunition\GunAmmunitionSource.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <None Include="ReadMe.txt" />
     <None Include="DcsBridge\README.md" />
     <None Include="DcsIds\CommandIds.json" />

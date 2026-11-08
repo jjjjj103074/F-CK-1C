@@ -60,6 +60,7 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
       debug_indicator_exporter_(cockpit_api_, debug_telemetry_hub_),
       cockpit_snapshot_exporter_(cockpit_api_),
       cockpit_bridge_(cockpit_api_),
+      gun_ammunition_source_(event_log_),
       carrier_bridge_(make_carrier_config()),
       core_(make_core(config.core_factory, debug_telemetry_hub_))
 {
@@ -139,6 +140,11 @@ CockpitBridge& BridgeContext::cockpit_bridge()
 	return cockpit_bridge_;
 }
 
+GunAmmunitionSource& BridgeContext::gun_ammunition_source()
+{
+	return gun_ammunition_source_;
+}
+
 CarrierBridge& BridgeContext::carrier_bridge()
 {
 	return carrier_bridge_;
@@ -162,6 +168,7 @@ Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
 		event_reporter_.log_repeated_start(mode);
 	}
 	// 初始化前釋放目前飛行狀態，將輸出儲存區設為 released。
+	gun_ammunition_source_.reset_flight();
 	core_->release();
 	output_store_.mark_released();
 	param_exporter_.reset();

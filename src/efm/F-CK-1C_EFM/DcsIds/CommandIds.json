@@ -60,8 +60,7 @@
     { "name": "EngineThrustCutTestToggle", "value": 3135, "route": "efm" },
     { "name": "EngineThrustCutTestEnable", "value": 3136, "route": "efm" },
     { "name": "EngineThrustCutTestDisable", "value": 3137, "route": "efm" },
-    { "name": "DebugIndicatorToggle", "value": 3140, "route": "bridge" },
-    { "name": "ReceiveGunAmmunition", "value": 3150, "route": "cockpit" }
+    { "name": "DebugIndicatorToggle", "value": 3140, "route": "bridge" }
   ],
   "efm_ignored_dcs_commands": [
     {
@@ -235,9 +234,6 @@
     { "name": "McAcknowledgedSequence", "value": "OBS_MC_ACKNOWLEDGED_SEQUENCE", "direction": "lua_to_cpp", "unit": "revision", "writer": "Cockpit/Scripts/Systems/mc_io.lua", "target_owner": "MissionAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { "name": "McMissileCountAvailable", "value": "OBS_MC_MISSILE_COUNT_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "MissionAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { "name": "McMissileCount", "value": "OBS_MC_MISSILE_COUNT", "direction": "lua_to_cpp", "unit": "count", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "MissionAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { "name": "McGunCountRevision", "value": "OBS_MC_GUN_COUNT_REVISION", "direction": "lua_to_cpp", "unit": "revision", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "MissionComputer", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { "name": "McGunCountAvailable", "value": "OBS_MC_GUN_COUNT_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "MissionComputer", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { "name": "McGunCount", "value": "OBS_MC_GUN_COUNT", "direction": "lua_to_cpp", "unit": "count", "writer": "Cockpit/Scripts/Systems/cms_system.lua", "target_owner": "MissionComputer", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { "name": "TemperatureC", "value": "FM_TEMPERATURE_C", "direction": "cpp_to_lua", "unit": "celsius", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "target_owner": "CockpitSnapshotExporter" },
     { "name": "PressureAltitudeAvailable", "value": "OBS_PRESSURE_ALTITUDE_AVAILABLE", "direction": "lua_to_cpp", "unit": "boolean", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "PressureAltitudeObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { "name": "PressureAltitudeM", "value": "OBS_PRESSURE_ALTITUDE_M", "direction": "lua_to_cpp", "unit": "meters", "writer": "Cockpit/Scripts/Systems/hmcs_system.lua", "target_owner": "PressureAltitudeObservationAdapter", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

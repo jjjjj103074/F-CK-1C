@@ -40,9 +40,6 @@ static const char* const McAdapterAvailable = "OBS_MC_ADAPTER_AVAILABLE";
 static const char* const McAcknowledgedSequence = "OBS_MC_ACKNOWLEDGED_SEQUENCE";
 static const char* const McMissileCountAvailable = "OBS_MC_MISSILE_COUNT_AVAILABLE";
 static const char* const McMissileCount = "OBS_MC_MISSILE_COUNT";
-static const char* const McGunCountRevision = "OBS_MC_GUN_COUNT_REVISION";
-static const char* const McGunCountAvailable = "OBS_MC_GUN_COUNT_AVAILABLE";
-static const char* const McGunCount = "OBS_MC_GUN_COUNT";
 static const char* const TemperatureC = "FM_TEMPERATURE_C";
 static const char* const PressureAltitudeAvailable = "OBS_PRESSURE_ALTITUDE_AVAILABLE";
 static const char* const PressureAltitudeM = "OBS_PRESSURE_ALTITUDE_M";
@@ -181,9 +178,6 @@ static constexpr Entry Catalog[] = {
     { McAcknowledgedSequence, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/mc_io.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { McMissileCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { McMissileCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { McGunCountRevision, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/cms_system.lua", "MissionComputer", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { McGunCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionComputer", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { McGunCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionComputer", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { TemperatureC, "cpp_to_lua", "celsius", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
     { PressureAltitudeAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { PressureAltitudeM, "lua_to_cpp", "meters", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

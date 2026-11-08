@@ -212,10 +212,7 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 		       cockpit_parameter_reader(CockpitParams::McAcknowledgedSequence),
 		       cockpit_parameter_reader(CockpitParams::RadarState),
 		       cockpit_parameter_reader(CockpitParams::McMissileCountAvailable),
-		       cockpit_parameter_reader(CockpitParams::McMissileCount),
-		       cockpit_parameter_reader(CockpitParams::McGunCountAvailable),
-		       cockpit_parameter_reader(CockpitParams::McGunCount),
-		       cockpit_parameter_reader(CockpitParams::McGunCountRevision) } };
+		       cockpit_parameter_reader(CockpitParams::McMissileCount) } };
 }
 
 CockpitBridge::CockpitBridge(cockpit_param_api api)
@@ -242,7 +239,6 @@ CockpitStepInput CockpitBridge::read_step_input()
 	read_into(&CockpitBridge::read_radar, result.cockpit.radar, result.events);
 	read_into(&CockpitBridge::read_ir_seeker, result.cockpit.ir_seeker, result.events);
 	read_into(&CockpitBridge::read_weapon_stations, result.cockpit.weapon_stations, result.events);
-	read_into(&CockpitBridge::read_gun_ammunition, result.cockpit.gun_ammunition, result.events);
 	read_into(&CockpitBridge::read_mission_adapter, result.cockpit.mission_adapter, result.events);
 	return result;
 }
@@ -468,44 +464,5 @@ CockpitValueResult<Core::WeaponStationObservation> CockpitBridge::read_weapon_st
 	observation.status.available = true;
 	return result;
 }
-}
-}
-
-namespace DcsBridge::Internal
-{
-CockpitValueResult<Core::GunAmmunitionObservation> CockpitBridge::read_gun_ammunition()
-{
-	CockpitValueResult<Core::GunAmmunitionObservation> result;
-	auto& observation = result.value;
-	const auto before = read_parameter(Parameter::McGunCountRevision);
-	const auto available = read_parameter(Parameter::McGunCountAvailable);
-	const auto count = read_parameter(Parameter::McGunCount);
-	const auto after = read_parameter(Parameter::McGunCountRevision);
-	const auto reads = { before, available, count, after };
-	result.events = events_from(reads);
-	if (const auto failure = read_failure_reason(reads))
-	{
-		observation.status.invalid_reason = *failure;
-		return result;
-	}
-	const auto revision = to_revision(before.value);
-	if (!revision || *revision % 2 != 0 || after.value != before.value ||
-	    (*revision == 0 && is_enabled(available.value)))
-	{
-		observation.status.invalid_reason = Core::ObservationInvalidReason::InvalidRevision;
-		return result;
-	}
-	observation.status.revision = *revision;
-	if (!is_enabled(available.value))
-		return result;
-	const auto rounds = to_integer(count.value, 0);
-	if (!rounds || *rounds > 9999)
-	{
-		observation.status.invalid_reason = Core::ObservationInvalidReason::InvalidNumeric;
-		return result;
-	}
-	observation.count = *rounds;
-	observation.status = { true, *revision, Core::ObservationInvalidReason::None };
-	return result;
 }
 }

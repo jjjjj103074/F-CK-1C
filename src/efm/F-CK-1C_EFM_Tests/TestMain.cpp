@@ -57,10 +57,15 @@ void initialize_configuration()
 }
 }
 
+void run_native_gun_access_tests(Tests::Context& context);
+void run_gun_ammunition_source_tests(Tests::Context& context);
+
 int main()
 {
 	initialize_configuration();
 	Tests::Context context;
+	run_native_gun_access_tests(context);
+	run_gun_ammunition_source_tests(context);
 	run_configuration_loader_tests(context);
 	run_control_laws_tests(context);
 	initialize_configuration();

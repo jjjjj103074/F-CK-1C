@@ -209,7 +209,6 @@ local function clear_count_sensors()
         count_sensors[name] = nil
     end
 end
-expect(values[cockpit_params.McGunCountAvailable] == 0, "gun data starts unavailable")
 expect(values[cockpit_params.McMissileCountAvailable] == 0, "absent missile methods remain unavailable")
 for _, name in ipairs({
     "getAAMMissileCount",
@@ -235,7 +234,6 @@ for _, name in ipairs({
 end
 clear_count_sensors()
 local secondary_count_called = false
-count_sensors.getGunAmmoCount = function() return 0 end
 count_sensors.getAAMMissileCount = function() return 0 end
 count_sensors.getAmmoCount = function()
     secondary_count_called = true
@@ -247,7 +245,6 @@ expect(
     "zero missile count is valid"
 )
 expect(not secondary_count_called, "valid primary zero count retains precedence over secondary APIs")
-expect(values[cockpit_params.McGunCountAvailable] == 0, "legacy sensors do not supply gun ammunition")
 
 -- The real station adapter publishes raw samples and executes only MC selection requests.
 values = fixture(function()

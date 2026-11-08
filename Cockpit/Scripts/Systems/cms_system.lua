@@ -1,6 +1,5 @@
 -- MC owns modes, HOTAS decisions, gun/pickle/lock timing and store count policy.
--- This device executes ordered DCS requests, publishes raw API counts, and runs CM programs.
-local dev = GetSelf()
+-- 執行 MC 的有序 DCS 指令、發布飛彈觀測，並運行反制程序。
 local sensor_data = get_base_data()
 local update_rate = 0.02
 make_default_activity(update_rate)
@@ -10,22 +9,9 @@ dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 local adapter_available = get_param_handle(cockpit_params.McAdapterAvailable)
 local missile_available = get_param_handle(cockpit_params.McMissileCountAvailable)
 local missile_count = get_param_handle(cockpit_params.McMissileCount)
-local gun_available = get_param_handle(cockpit_params.McGunCountAvailable)
-local gun_count = get_param_handle(cockpit_params.McGunCount)
-local gun_revision_handle = get_param_handle(cockpit_params.McGunCountRevision)
-local gun_protocol = dofile(LockOn_Options.script_path .. "Stores/GunAmmunition.lua")
-local gun_revision = 0
-local gun_received_at
-local gun_sample_valid = false
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
 local diagnose = dofile(LockOn_Options.script_path .. "Stores/ObservationDiagnostics.lua").new("STORES_COUNT")
-local ammo_probe = dofile(LockOn_Options.script_path .. "Stores/AmmoProbe.lua").cockpit("cms", dev, sensor_data, {
-    native_available = cockpit_params.McGunCountAvailable,
-    native_count = cockpit_params.McGunCount,
-    mc_count = cockpit_params.McStoresGunCount,
-    trigger_held = cockpit_params.McTriggerSecondStageHeld,
-}, { global_payload = false })
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -87,28 +73,9 @@ local function publish_counts()
         "getSelectedWeaponCount",
         "getAmmoCount",
     }, 12, "missile")
-    local now = get_model_time()
-    local current = gun_sample_valid and gun_received_at and now >= gun_received_at and now - gun_received_at <= gun_protocol.timeout_s
-    gun_available:set(current and 1 or 0)
     missile_available:set(has_missiles and 1 or 0)
     missile_count:set(missiles)
     adapter_available:set(dispatch_action ~= nil and 1 or 0)
-end
-
--- 接收 Export 的正規化數值；每次接收以完整批次發布給 C++。
-dev:listen_command(device_commands.ReceiveGunAmmunition)
-function SetCommand(command, value)
-    if command ~= device_commands.ReceiveGunAmmunition then return end
-    local count = gun_protocol.decode(value)
-    assert(gun_revision <= 9007199254740989, "gun observation revision exhausted")
-    gun_revision = gun_revision + 1
-    gun_revision_handle:set(gun_revision)
-    gun_received_at = get_model_time()
-    gun_sample_valid = count ~= nil
-    if count ~= nil then gun_count:set(count) end
-    gun_available:set(gun_sample_valid and 1 or 0)
-    gun_revision = gun_revision + 1
-    gun_revision_handle:set(gun_revision)
 end
 
 local function flare_once()
@@ -261,18 +228,11 @@ end
 local mc_io = dofile(LockOn_Options.script_path .. "Systems/mc_io.lua").new(execute_action)
 
 function post_initialize()
-    gun_revision = 0
-    gun_received_at = nil
-    gun_sample_valid = false
-    gun_revision_handle:set(0)
-    gun_available:set(0)
-    gun_count:set(0)
     publish_counts()
 end
 
 function update()
     publish_counts()
-    ammo_probe.update(update_rate)
     mc_io.update()
     if cms_pair_release_latched then
         cms_pair_release_hold_timer = cms_pair_release_hold_timer - update_rate
