@@ -27,8 +27,20 @@ C++ 本機回歸使用 GCC C++17、Wall／Wextra／Werror，保留既有測試�
 
 ## Windows 建置與 DLL
 
-來源提交將由手動觸發的獨立 CI 分支驗證；完成後記錄來源版本、執行連結與 DLL SHA256。
-目前尚未將新的 Windows 結果列為通過。
+- 驗證來源：`38def845db4fa079d1dc88badd767c9a44e0859b`。
+- 來源樹：`b64b665eb6281b147029147f78bdf269359684e8`。
+- [Windows CI 執行](https://github.com/jjjjj103074/F-CK-1C/actions/runs/42515263323)：Lua 與 Windows 兩個工作全部通過。
+- Windows 原生測試：4,131 項，0 失敗；Lua 5.1.5：6,183 項，0 失敗。
+- DLL SHA256：`7f61115e4f6e5f2294989d1e65413a549d3fe835c6f555fe7272b75cf46534b7`。
+- 工具鏈：MSVC 19.29.30159.0、link 14.29.30159.0、v142、Windows SDK 10.0.26100.0。
+
+DLL／測試編譯與靜態分析、乾淨重建雜湊、37 個接口、載入／卸載、架構、產生器、
+驗證工具及來源完整性全部通過；舊 Export 清理 11 項、格式／PR 工具 89 項通過。
+模組打包完成，可在同一執行的 `mc-module-38def845db4fa079d1dc88badd767c9a44e0859b` 下載完整套件。
+
+已核對下載 manifest、驗證報告與 DLL 的來源提交、來源樹、執行編號及 SHA256。
+`bin/F-CK-1C_EFM.dll` 使用該次 CI 產物。產物提交僅更新 DLL 與本報告，執行期來源維持上述驗證版本。
+CI 自動觸發僅保留 mission-computer；此次透過 workflow_dispatch 手動驗證來源。
 
 ## DCS 遊戲驗證
 
