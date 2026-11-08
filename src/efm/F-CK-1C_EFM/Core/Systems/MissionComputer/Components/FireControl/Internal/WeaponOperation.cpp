@@ -10,14 +10,12 @@ WeaponOperation::WeaponOperation(const MissionInputs& input,
                                  const ModeData& mode,
                                  const TargetingData& targeting,
                                  WeaponOperationData& weapon,
-                                 const ExternalActionQueue& actions,
                                  Targeting& targeting_control,
                                  StoresCommandQueue& stores_commands)
     : input_(input),
       mode_(mode),
       targeting_(targeting),
       weapon_(weapon),
-      actions_(actions),
       targeting_control_(targeting_control),
       stores_commands_(stores_commands)
 {
@@ -35,8 +33,8 @@ void WeaponOperation::handle(const Command& command)
 		else if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On &&
 		         mode_.operating_mode == OperatingMode::Dogfight && !targeting_.uncage_held)
 		{
-			weapon_.gun_start_sequence = stores_commands_.submit(StoresWeaponAction{ MissionActionKind::GunOn });
-			gun_.begin(weapon_.gun_start_sequence);
+			weapon_.gun_start_ticket = stores_commands_.submit(StoresWeaponAction{ MissionActionKind::GunOn });
+			gun_.begin(weapon_.gun_start_ticket);
 			weapon_.gun_requested = true;
 		}
 		return;
@@ -63,7 +61,7 @@ void WeaponOperation::finish_gun()
 	stores_commands_.submit(StoresWeaponAction{ MissionActionKind::GunOff });
 	gun_.clear();
 	weapon_.gun_requested = false;
-	weapon_.gun_start_sequence = 0;
+	weapon_.gun_start_ticket = 0;
 }
 
 void WeaponOperation::finish_pickle(bool unlock_target)
@@ -90,9 +88,9 @@ void WeaponOperation::stop()
 void WeaponOperation::step(std::chrono::nanoseconds time, double)
 {
 	time = (std::max)(time, input_.observed_at);
-	if (gun_.release_due(time, actions_))
+	if (gun_.release_due(time, stores_commands_))
 		finish_gun();
-	if (pickle_.release_due(time, actions_))
+	if (pickle_.release_due(time, stores_commands_))
 		finish_pickle(true);
 	weapon_.gun_firing_indication = weapon_.gun_requested && mode_.master_arm == MasterArmMode::On &&
 	                                mode_.operating_mode == OperatingMode::Dogfight;

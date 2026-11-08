@@ -9,7 +9,7 @@ FireControl::FireControl(const MissionInputs& input,
                          ExternalActionQueue& actions,
                          StoresCommandQueue& stores_commands)
     : targeting_(input, mode, stores, data.targeting, actions),
-      weapon_operation_(input, mode, data.targeting, data.weapon, actions, targeting_, stores_commands),
+      weapon_operation_(input, mode, data.targeting, data.weapon, targeting_, stores_commands),
       infrared_missile_support_(input, mode, stores, data.targeting, data.infrared_missile)
 {
 }

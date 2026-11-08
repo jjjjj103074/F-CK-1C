@@ -265,9 +265,9 @@ void test_commands_wait_for_current_observation_and_retain_order(Tests::Context&
 	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
 	const auto output = fixture.step(kMissionPeriod);
 	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
-	const MissionActionKind expected[] = { MissionActionKind::ModeHelmet,    MissionActionKind::ModeHelmet,
-		                                   MissionActionKind::LockStart,     MissionActionKind::ChangeLock,
-		                                   MissionActionKind::SelectStation, MissionActionKind::GunOn };
+	const MissionActionKind expected[] = { MissionActionKind::SelectStation, MissionActionKind::ModeHelmet,
+		                                   MissionActionKind::ModeHelmet,    MissionActionKind::LockStart,
+		                                   MissionActionKind::ChangeLock,    MissionActionKind::GunOn };
 	TEST_EXPECT(context, output.external_actions.batch.count == std::size(expected));
 	for (std::size_t i = 0; i < std::size(expected); ++i)
 	{
@@ -337,6 +337,30 @@ void test_plain_gun_stop_survives_invalid_inventory_mode_wait(Tests::Context& co
 	output = fixture.step(kMissionPeriod * 41);
 	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::SelectStation));
 	TEST_EXPECT(context, !contains(output.external_actions.batch, MissionActionKind::GunOn));
+}
+
+void test_inventory_wait_keeps_targeting_release_and_cms_executable(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.frame.cockpit.weapon_stations.status = { false, 4, ObservationInvalidReason::StationApiError };
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::StartCmsForward);
+	bool started = false, finished = false, change_released = false, cms_started = false;
+	CombatAvionicsSnapshot output;
+	for (int tick = 1; tick <= 40; ++tick)
+	{
+		output = fixture.step(kMissionPeriod * tick);
+		const auto& batch = output.external_actions.batch;
+		started = started || contains(batch, MissionActionKind::LockStart);
+		finished = finished || contains(batch, MissionActionKind::LockFinish);
+		change_released = change_released || contains(batch, MissionActionKind::ChangeLockUp);
+		cms_started = cms_started || contains(batch, MissionActionKind::StartCmsForward);
+		if (batch.count != 0)
+			fixture.frame.cockpit.mission_adapter.acknowledged_sequence = batch.first_sequence + batch.count - 1;
+	}
+	TEST_EXPECT(context, started && finished && change_released);
+	TEST_EXPECT(context, cms_started);
+	TEST_EXPECT(context, output.stores.selection.awaiting_inventory);
 }
 
 void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& context)
@@ -728,6 +752,7 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_modes_and_immediate_master_cancel(context);
 	test_commands_wait_for_current_observation_and_retain_order(context);
 	test_master_cancel_keeps_action_order_and_legacy_mode_coupling(context);
+	test_inventory_wait_keeps_targeting_release_and_cms_executable(context);
 	test_plain_gun_stop_survives_invalid_inventory_mode_wait(context);
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
 	test_pickle_and_targeting_modes(context);

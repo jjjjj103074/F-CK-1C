@@ -101,7 +101,7 @@ HMCS_WEAPON_CLASS／HMCS_WEAPON_QTY 由 hmcs_system.lua 單獨寫入，數量只
 ## 時間與原功能
 
 週期順序為 StoresManagement → FireControl → SystemMonitor → FailureManager。
-MC 在操縱命令前準備 SM 觀測，並在火控計時器後派送 SM 後續指令；指令入口為各筆要求保留既有外部動作序號。
+MC 在操縱命令前準備 SM 觀測，並在火控計時器後派送 SM 後續指令；指令入口以 SM 編號追蹤各筆要求及其外部動作確認，掛載等待保留在 SM 內。
 FireControl 內依 WeaponOperation → Targeting → InfraredMissileSupport 推進，保留原先順序。
 ModeManagement 是事件入口。外層仍為命令 FIFO、32 Hz、80 ms 最短保持、1 s 自動捕獲；
 保持時間仍從 MC 觀測到 Lua ACK 的當前輸入時間起算，補跑不回填新的操作／ACK。

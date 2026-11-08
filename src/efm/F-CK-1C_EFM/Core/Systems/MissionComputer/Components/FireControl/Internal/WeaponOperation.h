@@ -13,7 +13,6 @@ public:
 	                const ModeData& mode,
 	                const TargetingData& targeting,
 	                WeaponOperationData& weapon,
-	                const ExternalActionQueue& actions,
 	                Targeting& targeting_control,
 	                StoresCommandQueue& stores_commands);
 	void handle(const Command& command);
@@ -27,7 +26,6 @@ private:
 	const ModeData& mode_;
 	const TargetingData& targeting_;
 	WeaponOperationData& weapon_;
-	const ExternalActionQueue& actions_;
 	Targeting& targeting_control_;
 	StoresCommandQueue& stores_commands_;
 	TimedAction gun_;

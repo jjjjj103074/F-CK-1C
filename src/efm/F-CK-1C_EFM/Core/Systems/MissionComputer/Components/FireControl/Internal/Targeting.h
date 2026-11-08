@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../TimedAction.h"
+#include "../../../Database/ExternalActionQueue.h"
 #include "../../../Database/InputOutputData.h"
 #include "../../../Database/MissionData.h"
 #include "../../../Database/StoresData.h"

@@ -41,7 +41,7 @@ struct InfraredMissileData
 struct WeaponOperationData
 {
 	bool gun_requested = false;
-	std::uint64_t gun_start_sequence = 0; // Identity of the accepted GunOn edge, including same-tick restarts.
+	std::uint64_t gun_start_ticket = 0; // 已接受的機砲啟動指令編號。
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
 };

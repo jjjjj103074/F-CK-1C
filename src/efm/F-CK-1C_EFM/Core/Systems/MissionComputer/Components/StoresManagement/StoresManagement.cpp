@@ -29,6 +29,7 @@ MissionAction StoresManagement::selection_action() const
 
 void StoresManagement::prepare(std::chrono::nanoseconds time)
 {
+	commands_.retire_completed();
 	time = (std::max)(time, input_.observed_at);
 	const auto change = Internal::update_inventory(stores_.inventory, input_.cockpit.weapon_stations, time);
 	inventory_change_.revision = change.revision;
@@ -74,9 +75,11 @@ void StoresManagement::dispatch()
 			else
 				actions_.cancel_weapon_starts();
 		}
-		actions_.resolve(entry.sequence, action);
+		const auto sequence = action.kind == MissionActionKind::None ? 0 : actions_.append(action);
+		commands_.resolve(entry.ticket, sequence);
 		commands_.pending_.pop_front();
 	}
+	commands_.retire_completed();
 	selection_changed_ = selection_changed_ || previously_awaiting != stores_.selection.awaiting_inventory;
 	notify_changes();
 }

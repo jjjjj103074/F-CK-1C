@@ -12,6 +12,8 @@ namespace
 // 依 group 順序先停止火控，再中止 CMS。
 constexpr sigslot::group_id kFireControlArmOrder = 0;
 constexpr sigslot::group_id kCountermeasureArmOrder = 1;
+constexpr sigslot::group_id kStoresModeOrder = 0;
+constexpr sigslot::group_id kFireControlModeOrder = 1;
 }
 
 namespace Core::Systems
@@ -53,6 +55,7 @@ MissionComputer::MissionComputer()
 	    [this](const Mc::MasterArmSelected& event)
 	    {
 		    fire_control_.on_master_arm_selected(event);
+		    stores_management_.dispatch();
 	    },
 	    kFireControlArmOrder);
 	countermeasure_arm_connection_ = mode_events_.master_arm_selected.connect(
@@ -65,12 +68,15 @@ MissionComputer::MissionComputer()
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
 		    fire_control_.on_operating_mode_selected(event);
-	    });
+	    },
+	    kFireControlModeOrder);
 	stores_mode_connection_ = mode_events_.operating_mode_selected.connect(
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
 		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode, event.cycle_weapon });
-	    });
+		    stores_management_.dispatch();
+	    },
+	    kStoresModeOrder);
 	startup_and_restart_.start();
 }
 
@@ -226,6 +232,7 @@ void MissionComputer::consume_commands()
 			fire_control_.handle(intent.command);
 			break;
 		}
+		stores_management_.dispatch();
 		// sigslot 的同步回呼已全部返回，這時才結束本筆指令並移往下一筆。
 		pending.pop_front();
 	}

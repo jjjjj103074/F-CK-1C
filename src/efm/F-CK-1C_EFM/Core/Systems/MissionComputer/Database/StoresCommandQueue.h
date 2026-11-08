@@ -30,7 +30,7 @@ struct CancelStoresCommands
 using StoresCommand = std::variant<SelectStoresForMode, StoresWeaponAction, CancelStoresCommands>;
 class StoresManagement;
 
-/// @brief SM 的具型別指令入口，保存 FIFO 並為每筆要求保留 MC 全域執行順序。
+/// @brief SM 的具型別指令入口，保存 FIFO、指令編號及各筆要求的執行回覆。
 class StoresCommandQueue final
 {
 public:
@@ -40,22 +40,34 @@ public:
 	StoresCommandQueue(StoresCommandQueue&&) = delete;
 	StoresCommandQueue& operator=(StoresCommandQueue&&) = delete;
 
-	/// @brief 提交模式、武器操作或取消要求，回傳既有動作確認所使用的序號。
+	/// @brief 提交模式、武器操作或取消要求，回傳供呼叫端追蹤執行確認的 SM 指令編號。
 	std::uint64_t submit(const StoresCommand& command);
+	/// @brief 回報該筆要求已完成執行或取消。
+	bool acknowledged(std::uint64_t ticket) const noexcept;
 
 private:
 	friend class StoresManagement;
 	struct Entry
 	{
-		std::uint64_t sequence;
+		std::uint64_t ticket;
 		StoresCommand command;
 		bool canceled = false;
 	};
+	struct Receipt
+	{
+		bool resolved = false;
+		std::uint64_t external_sequence = 0;
+	};
+	void resolve(std::uint64_t ticket, std::uint64_t external_sequence);
+	void retire_completed();
 	std::uint64_t enqueue(const StoresCommand& command);
 	void cancel_pending();
 	bool has_pending_mode() const;
 	OperatingMode latest_mode_ = OperatingMode::Navigation;
 	ExternalActionQueue& actions_;
 	std::deque<Entry> pending_;
+	std::deque<Receipt> receipts_;
+	std::uint64_t last_ticket_ = 0;
+	std::uint64_t retired_through_ = 0;
 };
 }

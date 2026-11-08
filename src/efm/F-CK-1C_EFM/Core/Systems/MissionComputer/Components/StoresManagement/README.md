@@ -8,7 +8,7 @@ SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發�
 | 位置 | 功能 |
 |---|---|
 | `StoresManagement` | 安排觀測、消費指令入口、選站與通知的更新順序 |
-| `Database/StoresCommandQueue` | 所有 SM 傳入指令的單一具型別入口，保存 FIFO 及全域執行位置 |
+| `Database/StoresCommandQueue` | 所有 SM 傳入指令的單一具型別入口，保存 FIFO、SM 指令編號及執行回覆 |
 | `Internal/ObservationProcessing` | 接收觀測批次、維護掛載身分／數量／有效性、判斷過期 |
 | `Internal/StationSelection` | 依模式意圖與有效庫存決定掛點、保存要求與執行確認 |
 | `Database/StoresData` | 保存逐掛點庫存、機砲彈量及選站狀態 |
@@ -25,11 +25,13 @@ SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發�
 - `StoresWeaponAction`：轉送 FCC 已判定的 GunOn／GunOff、LaunchPermissionOverride、PickleOn／PickleOff。
 - `CancelStoresCommands`：取消尚待執行的選站與武器啟動要求，保留停止操作。
 
-MC 的模式事件連線將選站意圖送到入口；FCC 武器操作只取得入口及唯讀執行確認。
+MC 的模式事件連線將選站意圖送到入口；FCC 武器操作只取得此入口與唯讀掛載資料。
+入口回傳 SM 指令編號，並將該筆要求對應到 DCS 執行確認；完成回覆回收後仍可查詢結果。
 SM 是入口的唯一消費者。觀測由唯讀 MissionInputs 提供，資料查詢使用 StoresData。
 
 MC 在處理當次操縱命令前呼叫 `prepare` 更新觀測與自動掛點接續，
-Executive 的 `step` 消費已排入的要求；火控計時器更新後再由 `dispatch` 派送後續停止要求。
+在模式事件與各次指令路由後派送就緒要求；Executive 的 `step` 推進 SM，
+火控計時器更新後再由 `dispatch` 派送後續停止要求。
 這三個方法是排程介面，操作命令統一由指令入口進入。MC 頂層與 DFLCC 的元件組裝模式維持原有安排。
 
 ## 資料流
@@ -76,8 +78,8 @@ MC 的空對空顯示數量由同一庫存投影，HMCS 依完整性顯示數字
 6. 庫存無效或過期：保存最近要求與尚待處理的選擇意圖，待有效觀測更新後處理；NAV 可直接清除意圖。
 
 ```text
-模式事件／FCC → StoresCommandQueue::submit → 保留全域執行位置
-  → SM 依序消費並填入具型別動作 → ExternalActionQueue
+模式事件／FCC → StoresCommandQueue::submit → SM 指令編號
+  → SM 依序處理就緒要求 → ExternalActionQueue 的 DCS 執行序號
   → CMS 執行前綴 → 首項選站交給 weapon_system.lua
   → 選站呼叫完成 → CMS 確認屏障 → 繼續後續投放／停止命令
 ```
@@ -90,7 +92,8 @@ NAV 的空值要求會清除 Lua 保存的最近要求紀錄。
 
 每筆選站動作保存當次掛點與要求編號。Exporter 僅將執行視窗首項的選站資料發布到 Lua，
 CMS 同時核對動作序號、選站要求與完成回覆。後續選站使用自己的資料，前面的操作保持先執行。
-入口保留的位置完成前，對外視窗停在該位置；取消項目以原序號確認，維持連續性。
+SM 等待有效庫存時，要求保留於 SM 入口；雷達／目標控制與反制動作可繼續完成。
+已交給 DCS 的取消項目保留原傳輸序號並完成確認。
 NAV 與取消指令會取消先前待執行的選站及啟動項目，停止操作保留。
 
 FireControl 維持目標操作、武器資格、射擊／投放計時與解鎖流程。
@@ -107,5 +110,5 @@ Lua `Stores/ObservationDiagnostics` 保存變更時的原始掛點欄位及重�
 與 [SM 整理驗證](../../../../../../../../docs/SM_REFACTOR_VALIDATION.zh-TW.md)。
 
 停止命令遇到未完成選站時，入口撤回前面的待選站與啟動項目，先排入取消及停止，
-再依最新模式重新確認掛點。重新確認保留仍有效的選擇；停止命令的動作序號保持固定。
+再依最新模式重新確認掛點。重新確認保留仍有效的選擇；停止命令的 SM 指令編號固定，由入口追蹤其 DCS 執行確認。
 這項處理涵蓋一般 GunOff／PickleOff，以及主保險／NAV 取消，來源無效時仍可完成停止。

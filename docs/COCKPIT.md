@@ -90,7 +90,10 @@ Device 載入、DCS 感測、呈現、武器與音效依 [DCS 測試](DCS_TESTIN
 
 ## SM 有序選站
 
-SM 入口為各筆指令保留全域執行位置，處理後填入動作。每筆 SelectStation 保存自己的掛點與要求版本。
+SM 入口為各筆指令配置 SM 編號，將就緒要求對應到外部動作與 DCS 確認。每筆 SelectStation 保存自己的掛點與要求版本。
 Exporter 將執行視窗首項選站發布為 WeaponRequestedStation、WeaponSelectionRequestRevision、WeaponSelectionActionSequence。
 weapon_system 完成呼叫後回傳選站 ACK；CMS 核對全域動作序號及選站回覆，完成屏障後繼續後續投放。
 取消項目保留原序號並直接確認；停止操作照序執行。
+
+SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續完成。火控的武器保持時間
+透過 SM 入口查詢實際執行確認；目標控制使用既有外部動作確認。
