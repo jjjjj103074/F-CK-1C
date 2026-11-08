@@ -60,6 +60,8 @@ void test_sampling_and_recovery(Tests::Context& context)
 	TEST_EXPECT(context, text.find("status=waiting_for_payload") != std::string::npos);
 	TEST_EXPECT(context, text.find("status=available") != std::string::npos);
 	TEST_EXPECT(context, text.find("status=native_call_failed") != std::string::npos);
+	TEST_EXPECT(context, text.find("[ERROR] callback=GunAmmunitionSource::observe") != std::string::npos);
+	TEST_EXPECT(context, text.find("unhandled_exception=native reader failed") != std::string::npos);
 }
 
 void test_stable_status_logging(Tests::Context& context)

@@ -53,7 +53,7 @@ SM 保存最近有效數字及來源狀態；顯示端以 availability 決定數
 | gun object | mount 物件位元組位移 `8` 的指標 |
 | remaining count | gun vtable 位元組位移 `88`；以 `(gun)` 呼叫，回傳 unsigned count |
 | 多組機砲 | index 由 0 遞增；第一個空 mount 結束。第一站即空時為 no_gun_mount |
-| 讀值界線 | 最多 32 組 mount、合計 0–9999 發。有效零發保留 availability |
+| 讀值界線 | 最多探查 32 個 mount 索引；合計 0–9999 發，並在空 mount 結束。有效零發保留 availability |
 
 所有指標經 `ReadProcessMemory` 讀取；函式位址須為可執行記憶體，原生呼叫使用 SEH 記錄例外。
 物件指標在本次取樣內使用。合法位址及 SEH 是執行保護，配置相容性由版本比對與實機證據確認。

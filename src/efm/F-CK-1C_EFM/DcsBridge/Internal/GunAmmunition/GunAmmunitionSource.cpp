@@ -1,6 +1,7 @@
 #include "GunAmmunitionSource.h"
 
 #include "../EventLog.h"
+#include "../AbiBoundary.h"
 #include <cstdio>
 
 #include <windows.h>
@@ -114,10 +115,10 @@ struct GunAmmunitionSource::Implementation
 	{
 	}
 
-	void write(double time_s, const char* message) noexcept
+	void write(double time_s, const char* message, EventLevel level = EventLevel::Info) noexcept
 	try
 	{
-		(void)log.write({ EventLevel::Info, time_s, message });
+		(void)log.write({ level, time_s, message });
 	}
 	catch (...)
 	{
@@ -178,7 +179,7 @@ struct GunAmmunitionSource::Implementation
 		              "gun_ammunition event=status status=%s exception_code=0x%08lx",
 		              native_gun_status_name(result.status),
 		              static_cast<unsigned long>(calls.exception));
-		write(time_s, message);
+		write(time_s, message, result.status == NativeGunStatus::CallFailed ? EventLevel::Error : EventLevel::Info);
 	}
 };
 
@@ -228,6 +229,7 @@ Core::GunAmmunitionObservation GunAmmunitionSource::observe(double time_s)
 	}
 	catch (...)
 	{
+		report_abi_exception("GunAmmunitionSource::observe", std::current_exception(), &state.log);
 		state.call_failed = true;
 		state.result.status = NativeGunStatus::CallFailed;
 	}
