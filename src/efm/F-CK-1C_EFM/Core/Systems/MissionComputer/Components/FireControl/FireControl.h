@@ -16,13 +16,13 @@ public:
 	            const StoresData& stores,
 	            FireControlData& data,
 	            ExternalActionQueue& actions,
-	            StoresManagement& stores_management);
+	            StoresCommandQueue& stores_commands);
 	FireControl(const FireControl&) = delete;
 	FireControl& operator=(const FireControl&) = delete;
 	FireControl(FireControl&&) = delete;
 	FireControl& operator=(FireControl&&) = delete;
 	void handle(const Command& command);
-	/// @brief 在 ModeData 更新後處理目標操作模式，保留重選時的武器循環意圖。
+	/// @brief 在 ModeData 更新後套用目標操作模式。
 	void on_operating_mode_selected(const OperatingModeSelected& event);
 	/// @brief 主保險選擇為 OFF/SIM 時停止武器程序。
 	void on_master_arm_selected(const MasterArmSelected& event);

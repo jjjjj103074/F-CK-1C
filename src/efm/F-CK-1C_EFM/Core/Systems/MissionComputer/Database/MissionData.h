@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../../Contracts/CockpitContracts.h"
+#include "StoresData.h"
 
 namespace Core::Systems::Mc
 {
@@ -37,20 +38,10 @@ struct InfraredMissileData
 	double lock_range_m = 0.0;
 };
 
-struct StoresData
-{
-	int missile_count = 1;
-	double gun_count = 523.0;
-	StoresCountSource count_source = StoresCountSource::Estimate;
-	std::optional<int> selected_station;
-	std::optional<int> requested_station;
-	std::uint64_t selection_request_revision = 0;
-};
-
 struct WeaponOperationData
 {
 	bool gun_requested = false;
-	std::uint64_t gun_start_sequence = 0; // Identity of the accepted GunOn edge, including same-tick restarts.
+	std::uint64_t gun_start_ticket = 0; // 已接受的機砲啟動指令編號。
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
 };

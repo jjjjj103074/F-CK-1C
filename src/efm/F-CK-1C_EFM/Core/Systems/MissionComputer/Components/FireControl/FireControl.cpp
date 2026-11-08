@@ -7,9 +7,9 @@ FireControl::FireControl(const MissionInputs& input,
                          const StoresData& stores,
                          FireControlData& data,
                          ExternalActionQueue& actions,
-                         StoresManagement& stores_management)
-    : targeting_(input, mode, stores, data.targeting, actions, stores_management),
-      weapon_operation_(input, mode, data.targeting, data.weapon, actions, targeting_, stores_management),
+                         StoresCommandQueue& stores_commands)
+    : targeting_(input, mode, stores, data.targeting, actions),
+      weapon_operation_(input, mode, data.targeting, data.weapon, targeting_, stores_commands),
       infrared_missile_support_(input, mode, stores, data.targeting, data.infrared_missile)
 {
 }
@@ -31,9 +31,9 @@ void FireControl::handle(const Command& command)
 	}
 }
 
-void FireControl::on_operating_mode_selected(const OperatingModeSelected& event)
+void FireControl::on_operating_mode_selected(const OperatingModeSelected&)
 {
-	targeting_.select_mode(event.cycle_weapon);
+	targeting_.select_mode();
 }
 
 void FireControl::on_master_arm_selected(const MasterArmSelected& event)

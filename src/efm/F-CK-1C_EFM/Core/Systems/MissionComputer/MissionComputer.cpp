@@ -3,6 +3,7 @@
 #include "../SystemPipeline.h"
 #include "../SystemUpdateRates.h"
 #include "Common/CommandValue.h"
+#include "Common/StoresQueries.h"
 
 #include <stdexcept>
 
@@ -11,24 +12,23 @@ namespace
 // 依 group 順序先停止火控，再中止 CMS。
 constexpr sigslot::group_id kFireControlArmOrder = 0;
 constexpr sigslot::group_id kCountermeasureArmOrder = 1;
+constexpr sigslot::group_id kStoresModeOrder = 0;
+constexpr sigslot::group_id kFireControlModeOrder = 1;
 }
 
 namespace Core::Systems
 {
 MissionComputer::MissionComputer()
-    : system_monitor_(input_output_data_, system_status_tables_.health),
+    : stores_commands_(external_actions_),
+      system_monitor_(input_output_data_, system_status_tables_.health),
       failure_manager_(system_status_tables_.health, system_status_tables_.failure_response),
-      stores_management_(input_output_data_.input,
-                         mode_data_,
-                         fire_control_data_.weapon,
-                         stores_data_,
-                         external_actions_),
+      stores_management_(input_output_data_.input, stores_data_, stores_events_, stores_commands_, external_actions_),
       fire_control_(input_output_data_.input,
                     mode_data_,
                     stores_data_,
                     fire_control_data_,
                     external_actions_,
-                    stores_management_),
+                    stores_commands_),
       mode_management_(mode_data_, mode_events_),
       countermeasure_control_(mode_data_, external_actions_),
       executive_(executive_tables_,
@@ -50,11 +50,18 @@ MissionComputer::MissionComputer()
                      &Mc::FailureManager::step } }),
       startup_and_restart_(executive_, system_status_tables_.lifecycle)
 {
+	// 入口排入要求後，同步派送就緒動作，再返回呼叫端。
+	stores_commands_connection_ = stores_commands_.commands_available.connect(
+	    [this]()
+	    {
+		    stores_management_.dispatch();
+	    });
 	// 組裝本台 MC 的主保險與模式事件訂閱。
 	fire_control_arm_connection_ = mode_events_.master_arm_selected.connect(
 	    [this](const Mc::MasterArmSelected& event)
 	    {
 		    fire_control_.on_master_arm_selected(event);
+		    stores_management_.dispatch();
 	    },
 	    kFireControlArmOrder);
 	countermeasure_arm_connection_ = mode_events_.master_arm_selected.connect(
@@ -67,7 +74,15 @@ MissionComputer::MissionComputer()
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
 		    fire_control_.on_operating_mode_selected(event);
-	    });
+	    },
+	    kFireControlModeOrder);
+	stores_mode_connection_ = mode_events_.operating_mode_selected.connect(
+	    [this](const Mc::OperatingModeSelected& event)
+	    {
+		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode, event.cycle_weapon });
+		    stores_management_.dispatch();
+	    },
+	    kStoresModeOrder);
 	startup_and_restart_.start();
 }
 
@@ -141,8 +156,10 @@ void MissionComputer::step(const SystemStepContext& context, const AircraftDataV
 	}
 
 	read_inputs(context, aircraft);
+	stores_management_.prepare(context.input_time);
 	consume_commands();
 	executive_.step(context.scheduled_time);
+	stores_management_.dispatch();
 	publish_outputs(result);
 }
 
@@ -172,12 +189,13 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
 	output.stores.status = output.status;
-	output.stores.air_to_air_missile_count = stores_data_.missile_count;
-	output.stores.gun_count = stores_data_.gun_count;
-	output.stores.count_source = stores_data_.count_source;
-	output.stores.selected_station = stores_data_.selected_station;
-	output.stores.requested_station = stores_data_.requested_station;
-	output.stores.selection_request_revision = stores_data_.selection_request_revision;
+	output.stores.inventory = stores_data_.inventory;
+	const auto missiles = Mc::count_missiles(stores_data_.inventory, { WeaponRole::AirToAir, {} });
+	output.stores.air_to_air_missile_count = missiles.count;
+	output.stores.air_to_air_missile_count_complete = missiles.complete;
+	output.stores.gun_ammunition = stores_data_.gun_ammunition;
+	output.stores.gun_count = stores_data_.gun_ammunition.count.value_or(0);
+	output.stores.selection = stores_data_.selection;
 	output.infrared_missile.uncage_held = fire_control_data_.targeting.uncage_held;
 	output.infrared_missile.target_designated = fire_control_data_.targeting.designation_requested;
 	output.infrared_missile.status = output.status;
@@ -215,6 +233,7 @@ void MissionComputer::consume_commands()
 			fire_control_.handle(intent.command);
 			break;
 		}
+		stores_management_.dispatch();
 		// sigslot 的同步回呼已全部返回，這時才結束本筆指令並移往下一筆。
 		pending.pop_front();
 	}

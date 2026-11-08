@@ -1,119 +1,125 @@
 #include "StoresManagement.h"
 
-#include <algorithm>
-#include <stdexcept>
+#include "Internal/ObservationProcessing.h"
 
-namespace
-{
-constexpr double kFallbackGunRoundsPerSecond = 100.0;
-}
+#include <algorithm>
 
 namespace Core::Systems::Mc
 {
 StoresManagement::StoresManagement(const MissionInputs& input,
-                                   const ModeData& mode,
-                                   const WeaponOperationData& weapon,
                                    StoresData& stores,
+                                   StoresEvents& events,
+                                   StoresCommandQueue& commands,
                                    ExternalActionQueue& actions)
     : input_(input),
-      mode_(mode),
-      weapon_(weapon),
       stores_(stores),
-      actions_(actions)
+      events_(events),
+      commands_(commands),
+      actions_(actions),
+      selection_(stores.inventory, stores.selection)
 {
 }
 
-bool StoresManagement::is_air_to_air_missile(const WeaponStationSample& sample)
+MissionAction StoresManagement::selection_action() const
 {
-	// 依空對空類別與 AIM-9／CATM-9 識別字串分類掛載。
-	return sample.present && sample.count > 0 &&
-	       ((sample.category == WeaponCategory::Missile && sample.role == WeaponRole::AirToAir) ||
-	        sample.weapon_identifier.find("AIM-9") != std::string::npos ||
-	        sample.weapon_identifier.find("AIM_9") != std::string::npos ||
-	        sample.weapon_identifier.find("CATM-9") != std::string::npos);
+	return { MissionActionKind::SelectStation,
+		     stores_.selection.requested_station,
+		     stores_.selection.request_revision };
 }
 
-void StoresManagement::request_station(std::optional<int> station, bool force)
+void StoresManagement::prepare(std::chrono::nanoseconds time)
 {
-	if (!force && stores_.requested_station == station)
-		return;
-	if (stores_.selection_request_revision == kMaximumExactCockpitInteger)
-		throw std::overflow_error("MC station request revision exhausted its exact numeric range.");
-	stores_.requested_station = station;
-	++stores_.selection_request_revision;
-}
-
-void StoresManagement::update_gun_quantity(std::chrono::nanoseconds time)
-{
+	commands_.retire_completed();
 	time = (std::max)(time, input_.observed_at);
-	const auto& adapter = input_.cockpit.mission_adapter;
-	if (adapter.gun_count_available)
-		stores_.gun_count = adapter.gun_count;
-	else if (weapon_.gun_requested && gun_quantity_sequence_ != 0 &&
-	         gun_quantity_sequence_ == weapon_.gun_start_sequence)
+	const auto change = Internal::update_inventory(stores_.inventory, input_.cockpit.weapon_stations, time);
+	inventory_change_.revision = change.revision;
+	inventory_change_.changed_stations |= change.changed_stations;
+	inventory_change_.rearmed = inventory_change_.rearmed || change.rearmed;
+	gun_changed_ =
+	    Internal::update_gun_ammunition(stores_.gun_ammunition, input_.cockpit.gun_ammunition, time) || gun_changed_;
+	const auto previous_request = stores_.selection.request_revision;
+	const bool changed = commands_.pending_.empty() ? selection_.update(input_.cockpit.weapon_stations)
+	                                                : selection_.acknowledge(input_.cockpit.weapon_stations);
+	selection_changed_ = changed || selection_changed_;
+	if (stores_.selection.request_revision != previous_request)
+		actions_.append(selection_action());
+}
+
+void StoresManagement::dispatch()
+{
+	if (dispatching_)
+		return;
+	dispatching_ = true;
+	try
 	{
-		const double elapsed_s = std::chrono::duration<double>(time - gun_quantity_time_).count();
-		stores_.gun_count = (std::max)(0.0, stores_.gun_count - kFallbackGunRoundsPerSecond * elapsed_s);
+		drain_commands();
+		notify_changes();
 	}
-	// New commands belong to the current input time, including during scheduler catch-up.
-	gun_quantity_time_ = time;
-	gun_quantity_sequence_ = weapon_.gun_requested ? weapon_.gun_start_sequence : 0;
+	catch (...)
+	{
+		dispatching_ = false;
+		throw;
+	}
+	dispatching_ = false;
+}
+
+void StoresManagement::drain_commands()
+{
+	const bool previously_awaiting = stores_.selection.awaiting_inventory;
+	stores_.selection.awaiting_inventory = false;
+	while (!commands_.pending_.empty())
+	{
+		const auto& entry = commands_.pending_.front();
+		MissionAction action;
+		if (!entry.canceled)
+		{
+			if (const auto* mode = std::get_if<SelectStoresForMode>(&entry.command))
+			{
+				if (mode->mode != OperatingMode::Navigation && !stores_.inventory.observation.available)
+				{
+					stores_.selection.awaiting_inventory = true;
+					break;
+				}
+				if (mode->mode == OperatingMode::Navigation)
+					actions_.cancel_weapon_starts();
+				const auto previous_request = stores_.selection.request_revision;
+				selection_.select_mode(mode->mode, mode->cycle_weapon, mode->reassert_selection);
+				selection_changed_ = selection_.update(input_.cockpit.weapon_stations) || selection_changed_;
+				if (stores_.selection.request_revision != previous_request)
+					action = selection_action();
+			}
+			else if (const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command))
+				action.kind = weapon->action;
+			else
+				actions_.cancel_weapon_starts();
+		}
+		const auto sequence = action.kind == MissionActionKind::None ? 0 : actions_.append(action);
+		commands_.resolve(entry.ticket, sequence);
+		commands_.pending_.pop_front();
+	}
+	commands_.retire_completed();
+	selection_changed_ = selection_changed_ || previously_awaiting != stores_.selection.awaiting_inventory;
 }
 
 void StoresManagement::step(std::chrono::nanoseconds time, double)
 {
-	update_gun_quantity(time);
-	const auto& inventory = input_.cockpit.weapon_stations;
-	const auto& adapter = input_.cockpit.mission_adapter;
-	std::optional<int> first_loaded;
-	if (inventory.status.available)
-	{
-		int count = 0;
-		for (std::size_t i = 0; i < inventory.stations.size(); ++i)
-		{
-			if (is_air_to_air_missile(inventory.stations[i]))
-			{
-				count += inventory.stations[i].count;
-				if (!first_loaded)
-					first_loaded = static_cast<int>(i);
-			}
-		}
-		stores_.missile_count = count;
-		stores_.count_source = StoresCountSource::StationInventory;
-		if (inventory.selection_ack_revision == stores_.selection_request_revision &&
-		    inventory.selected_station == stores_.requested_station)
-			stores_.selected_station = inventory.selected_station;
-	}
-	else if (adapter.missile_count_available)
-	{
-		stores_.missile_count = (std::max)(0, adapter.missile_count);
-		stores_.count_source = StoresCountSource::BaseDataApi;
-	}
-	else
-		stores_.count_source = StoresCountSource::Estimate;
-
-	if (!mode_.air_to_air())
-	{
-		request_station(std::nullopt, false);
-		selection_mode_ = mode_.operating_mode;
-	}
-	else if (inventory.status.available)
-	{
-		request_station(first_loaded,
-		                selection_mode_ != mode_.operating_mode || rearm_revision_ != inventory.rearm_revision);
-		selection_mode_ = mode_.operating_mode;
-		rearm_revision_ = inventory.rearm_revision;
-	}
+	prepare(time);
+	dispatch();
 }
 
-void StoresManagement::request_weapon_cycle()
+void StoresManagement::notify_changes()
 {
-	actions_.append(MissionActionKind::CycleWeapon);
-}
-
-void StoresManagement::record_missile_release()
-{
-	if (stores_.count_source == StoresCountSource::Estimate)
-		stores_.missile_count = (std::max)(0, stores_.missile_count - 1);
+	// 完成資料寫入後，依序通知庫存、彈量與選站變化。
+	if (inventory_change_.changed_stations.any() || inventory_change_.rearmed)
+		events_.inventory_changed(inventory_change_);
+	if (gun_changed_)
+		events_.gun_ammunition_changed(GunAmmunitionChanged{ stores_.gun_ammunition.revision });
+	if (selection_changed_)
+		events_.selection_changed(SelectionChanged{ stores_.selection.request_revision,
+		                                            stores_.selection.acknowledged_revision,
+		                                            stores_.selection.awaiting_inventory });
+	inventory_change_ = {};
+	gun_changed_ = false;
+	selection_changed_ = false;
 }
 }

@@ -55,7 +55,9 @@ private:
 	Mc::StoresData stores_data_;
 	Mc::FireControlData fire_control_data_;
 	Mc::ExternalActionQueue external_actions_;
+	Mc::StoresCommandQueue stores_commands_;
 
+	Mc::StoresEvents stores_events_; ///< 掛載通道先於使用者建立，並在使用者之後銷毀。
 	Mc::ModeEvents mode_events_; ///< 通道先於使用者建立，並在所有使用者銷毀後才銷毀。
 
 	Mc::SystemMonitor system_monitor_;
@@ -68,8 +70,10 @@ private:
 	Mc::StartupAndRestart startup_and_restart_;
 
 	// 成員依宣告反序銷毀；連線最後宣告，確保先解除訂閱，再銷毀接收者與通道。
+	sigslot::scoped_connection stores_commands_connection_;
 	sigslot::scoped_connection fire_control_arm_connection_;
 	sigslot::scoped_connection countermeasure_arm_connection_;
 	sigslot::scoped_connection fire_control_mode_connection_;
+	sigslot::scoped_connection stores_mode_connection_;
 };
 }

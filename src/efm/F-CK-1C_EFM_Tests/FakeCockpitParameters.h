@@ -125,7 +125,8 @@ private:
 	static bool read_number(const void* handle, double& result, bool interpolated)
 	{
 		(void)interpolated;
-		result = static_cast<const FakeCockpitParameter*>(handle)->value;
+		const auto* parameter = static_cast<const FakeCockpitParameter*>(handle);
+		result = parameter->value;
 		return true;
 	}
 

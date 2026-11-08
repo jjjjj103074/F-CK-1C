@@ -7,15 +7,16 @@
 -- ===================== 常數 (Constants) =====================
 
 -- 掛架站位 ID（對應 pylon() 呼叫的站位編號）
-local STATION_RT = 1 -- Right Tip
-local STATION_RO = 2 -- Right Outer
-local STATION_RI = 3 -- Right Inner
-local STATION_MM = 4 -- Center Main
-local STATION_MF = 5 -- Center Front
-local STATION_MB = 6 -- Center Back
-local STATION_LI = 7 -- Left Inner
-local STATION_LO = 8 -- Left Outer
-local STATION_LT = 9 -- Left Tip
+local station_definitions = dofile(current_mod_path .. "/Cockpit/Scripts/Stores/StationDefinitions.lua")
+local STATION_RT = station_definitions[1].number -- Right Tip
+local STATION_RO = station_definitions[2].number -- Right Outer
+local STATION_RI = station_definitions[3].number -- Right Inner
+local STATION_MM = station_definitions[4].number -- Center Main
+local STATION_MF = station_definitions[5].number -- Center Front
+local STATION_MB = station_definitions[6].number -- Center Back
+local STATION_LI = station_definitions[7].number -- Left Inner
+local STATION_LO = station_definitions[8].number -- Left Outer
+local STATION_LT = station_definitions[9].number -- Left Tip
 
 -- 動畫 Arg 編號（對應模型骨架動畫通道）
 local ARG_PYLON_RT = 307 -- Right Tip    pylon deploy animation
@@ -498,7 +499,7 @@ local F_CK_1C = {
         pylon(STATION_RT, 0, -1.109, 0.0015, 4.6, {
             use_full_connector_position = true,
             connector = "PylonT-R",
-            DisplayName = _("RT"),
+            DisplayName = _(station_definitions[STATION_RT].name),
             arg = ARG_PYLON_RT,
             arg_value = 1,
         }, Tip, 1),
@@ -506,7 +507,7 @@ local F_CK_1C = {
         pylon(STATION_RO, 0, -0.5744, -0.465, 2.972, {
             use_full_connector_position = true,
             connector = "PylonR2",
-            DisplayName = _("RO"),
+            DisplayName = _(station_definitions[STATION_RO].name),
             arg = ARG_PYLON_RO,
             arg_value = 1,
         }, Outer, 2),
@@ -514,7 +515,7 @@ local F_CK_1C = {
         pylon(STATION_RI, 0, -0.2861, -0.48, 2.05, {
             use_full_connector_position = true,
             connector = "PylonR1",
-            DisplayName = _("RI"),
+            DisplayName = _(station_definitions[STATION_RI].name),
             arg = ARG_PYLON_RI,
             arg_value = 1,
         }, Inner, 3),
@@ -522,7 +523,7 @@ local F_CK_1C = {
         pylon(STATION_MM, 0, -0.7202, -0.8726, 0, {
             use_full_connector_position = true,
             connector = "PylonM",
-            DisplayName = _("MM"),
+            DisplayName = _(station_definitions[STATION_MM].name),
             arg = ARG_PYLON_MM,
             arg_value = -1,
         }, CenterlineM, 4),
@@ -530,7 +531,7 @@ local F_CK_1C = {
         pylon(STATION_MF, 0, 0, 0, 0, {
             use_full_connector_position = true,
             connector = "PylonF",
-            DisplayName = _("MF"),
+            DisplayName = _(station_definitions[STATION_MF].name),
             arg = ARG_PYLON_MF,
             arg_value = 0,
         }, CenterlineFB, 5),
@@ -538,7 +539,7 @@ local F_CK_1C = {
         pylon(STATION_MB, 0, 0, 0, 0, {
             use_full_connector_position = true,
             connector = "PylonB",
-            DisplayName = _("MB"),
+            DisplayName = _(station_definitions[STATION_MB].name),
             arg = ARG_PYLON_MB,
             arg_value = 0,
         }, CenterlineFB, 6),
@@ -546,7 +547,7 @@ local F_CK_1C = {
         pylon(STATION_LI, 0, -0.2861, -0.48, -2.05, {
             use_full_connector_position = true,
             connector = "PylonL1",
-            DisplayName = _("LI"),
+            DisplayName = _(station_definitions[STATION_LI].name),
             arg = ARG_PYLON_LI,
             arg_value = 1,
         }, Inner, 7),
@@ -554,7 +555,7 @@ local F_CK_1C = {
         pylon(STATION_LO, 0, -0.5744, -0.465, -2.972, {
             use_full_connector_position = true,
             connector = "PylonL2",
-            DisplayName = _("LO"),
+            DisplayName = _(station_definitions[STATION_LO].name),
             arg = ARG_PYLON_LO,
             arg_value = 1,
         }, Outer, 8),
@@ -562,7 +563,7 @@ local F_CK_1C = {
         pylon(STATION_LT, 0, -1.109, 0.0015, -4.6, {
             use_full_connector_position = true,
             connector = "PylonT-L",
-            DisplayName = _("LT"),
+            DisplayName = _(station_definitions[STATION_LT].name),
             arg = ARG_PYLON_LT,
             arg_value = 1,
         }, Tip, 9),

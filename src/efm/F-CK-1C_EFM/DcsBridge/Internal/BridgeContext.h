@@ -2,6 +2,7 @@
 
 #include "CarrierBridge.h"
 #include "CockpitBridge.h"
+#include "GunAmmunition/GunAmmunitionSource.h"
 #include "CockpitSnapshotExporter.h"
 #include "DebugTelemetry/DebugCsvWriter.h"
 #include "DebugTelemetry/DebugIndicatorExporter.h"
@@ -55,6 +56,7 @@ public:
 	ParamExporter& param_exporter();
 	CockpitSnapshotExporter& cockpit_snapshot_exporter();
 	CockpitBridge& cockpit_bridge();
+	GunAmmunitionSource& gun_ammunition_source();
 	CarrierBridge& carrier_bridge();
 	std::mutex& execution_mutex();
 	Core::Fck1cEfm& core();
@@ -115,6 +117,7 @@ private:
 	DebugIndicatorExporter debug_indicator_exporter_;
 	CockpitSnapshotExporter cockpit_snapshot_exporter_;
 	CockpitBridge cockpit_bridge_;
+	GunAmmunitionSource gun_ammunition_source_;
 	CarrierBridge carrier_bridge_;
 	std::mutex execution_mutex_;
 	std::unique_ptr<Core::Fck1cEfm> core_;

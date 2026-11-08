@@ -66,7 +66,7 @@ Core::ObservationInvalidReason to_invalid_reason(double value)
 
 std::optional<Core::WeaponStationSample> parse_station_record(std::string_view text)
 {
-	std::array<int, 4> fields{};
+	std::array<int, 6> fields{};
 	for (int& field : fields)
 	{
 		const auto delimiter = text.find(';');
@@ -78,16 +78,40 @@ std::optional<Core::WeaponStationSample> parse_station_record(std::string_view t
 			return std::nullopt;
 		text.remove_prefix(delimiter + 1);
 	}
-	if (fields[0] > 1 || fields[1] > 9999)
+	const auto delimiter = text.find(';');
+	if (delimiter == std::string_view::npos)
 		return std::nullopt;
-	if (fields[0] == 0 && (fields[1] != 0 || fields[2] != 0 || fields[3] != 0 || !text.empty()))
+	const auto station_name = text.substr(0, delimiter);
+	text.remove_prefix(delimiter + 1);
+	if (fields[0] > 1 || fields[1] > 9999 || station_name.empty() || station_name.size() > 16)
+		return std::nullopt;
+	if (fields[0] == 0 &&
+	    (fields[1] != 0 || fields[2] != 0 || fields[3] != 0 || fields[4] != 0 || fields[5] != 0 || !text.empty()))
 		return std::nullopt;
 	Core::WeaponStationSample sample;
-	sample.present = fields[0] == 1;
+	const bool has_identity = !text.empty() || fields[2] != 0 || fields[3] != 0 || fields[4] != 0 || fields[5] != 0;
+	if (text == "<CLEAN>")
+	{
+		if (fields[1] != 0 || fields[2] != 0 || fields[3] != 0 || fields[4] != 0 || fields[5] != 0)
+			return std::nullopt;
+		sample.configuration = Core::StoreConfiguration::Clean;
+	}
+	else
+		sample.configuration =
+		    fields[1] > 0 || has_identity ? Core::StoreConfiguration::Equipped : Core::StoreConfiguration::Empty;
 	sample.count = fields[1];
-	sample.category = fields[2] == 4 ? Core::WeaponCategory::Missile : Core::WeaponCategory::Other;
-	sample.role = fields[3] == 7 ? Core::WeaponRole::AirToAir : Core::WeaponRole::Other;
+	sample.category = fields[3] == 4   ? Core::WeaponCategory::Missile
+	                  : fields[3] == 0 ? Core::WeaponCategory::Unknown
+	                                   : Core::WeaponCategory::Other;
+	sample.role = fields[4] == 7   ? Core::WeaponRole::AirToAir
+	              : fields[4] == 0 ? Core::WeaponRole::Unknown
+	                               : Core::WeaponRole::Other;
 	sample.weapon_identifier = std::string(text);
+	// 完整原生類型以不透明識別送入 Core；分類數值在 Bridge 轉譯。
+	if (sample.configuration == Core::StoreConfiguration::Equipped)
+		sample.weapon_type_identifier = std::to_string(fields[2]) + "." + std::to_string(fields[3]) + "." +
+		                                std::to_string(fields[4]) + "." + std::to_string(fields[5]);
+	sample.station_name = std::string(station_name);
 	return sample;
 }
 
@@ -186,11 +210,7 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 		       cockpit_parameter_reader(CockpitParams::WeaponRearmRevision),
 		       cockpit_parameter_reader(CockpitParams::McAdapterAvailable),
 		       cockpit_parameter_reader(CockpitParams::McAcknowledgedSequence),
-		       cockpit_parameter_reader(CockpitParams::RadarState),
-		       cockpit_parameter_reader(CockpitParams::McMissileCountAvailable),
-		       cockpit_parameter_reader(CockpitParams::McMissileCount),
-		       cockpit_parameter_reader(CockpitParams::McGunCountAvailable),
-		       cockpit_parameter_reader(CockpitParams::McGunCount) } };
+		       cockpit_parameter_reader(CockpitParams::RadarState) } };
 }
 
 CockpitBridge::CockpitBridge(cockpit_param_api api)
@@ -202,7 +222,9 @@ CockpitBridge::CockpitBridge(cockpit_param_api api)
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation04),
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation05),
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation06),
-                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation07) } })
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation07),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation08),
+                         cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation09) } })
 {
 }
 
@@ -224,24 +246,13 @@ CockpitValueResult<Core::MissionAdapterObservation> CockpitBridge::read_mission_
 	const auto available = read_parameter(Parameter::McAdapterAvailable);
 	const auto acknowledged = read_parameter(Parameter::McAcknowledgedSequence);
 	const auto radar = read_parameter(Parameter::RadarPowerOn);
-	const auto missile_available = read_parameter(Parameter::McMissileCountAvailable);
-	const auto missiles = read_parameter(Parameter::McMissileCount);
-	const auto gun_available = read_parameter(Parameter::McGunCountAvailable);
-	const auto gun = read_parameter(Parameter::McGunCount);
 	Core::MissionAdapterObservation result;
 	const auto revision = acknowledged.success ? to_revision(acknowledged.value) : std::nullopt;
 	result.available =
 	    all_success({ available, acknowledged, radar }) && is_enabled(available.value) && revision.has_value();
 	result.acknowledged_sequence = revision.value_or(0);
 	result.radar_power_on = radar.success && is_enabled(radar.value);
-	const auto count = missiles.success ? to_integer(missiles.value, 0) : std::nullopt;
-	result.missile_count_available =
-	    missile_available.success && is_enabled(missile_available.value) && count && *count <= 12;
-	result.missile_count = result.missile_count_available ? *count : 0;
-	result.gun_count_available = all_success({ gun_available, gun }) && is_enabled(gun_available.value) &&
-	                             gun.value >= 0.0 && gun.value <= 9999.0;
-	result.gun_count = result.gun_count_available ? gun.value : 0.0;
-	return { result, events_from({ available, acknowledged, radar, missile_available, missiles, gun_available, gun }) };
+	return { result, events_from({ available, acknowledged, radar }) };
 }
 
 CockpitValueResult<Core::PressureAltitudeObservation> CockpitBridge::read_pressure_altitude()

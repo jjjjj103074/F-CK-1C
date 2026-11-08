@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Targeting.h"
-#include "../../StoresManagement/StoresManagement.h"
+#include "../../../Database/StoresCommandQueue.h"
 
 namespace Core::Systems::Mc::Internal
 {
@@ -13,23 +13,21 @@ public:
 	                const ModeData& mode,
 	                const TargetingData& targeting,
 	                WeaponOperationData& weapon,
-	                ExternalActionQueue& actions,
 	                Targeting& targeting_control,
-	                StoresManagement& stores);
+	                StoresCommandQueue& stores_commands);
 	void handle(const Command& command);
 	void stop();
 	void step(std::chrono::nanoseconds time, double dt_s);
 
 private:
 	void finish_gun();
-	void finish_pickle(bool consume);
+	void finish_pickle(bool unlock_target);
 	const MissionInputs& input_;
 	const ModeData& mode_;
 	const TargetingData& targeting_;
 	WeaponOperationData& weapon_;
-	ExternalActionQueue& actions_;
 	Targeting& targeting_control_;
-	StoresManagement& stores_;
+	StoresCommandQueue& stores_commands_;
 	TimedAction gun_;
 	TimedAction pickle_;
 };

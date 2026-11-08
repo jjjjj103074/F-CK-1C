@@ -21,8 +21,10 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9TargetDesignated),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileStatus),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresMissileCountAvailable),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponRequestedStation),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionRequestRevision),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionActionSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerState),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9ToneState),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerContact),
@@ -32,6 +34,7 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerElevation),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9LockRange),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McStoresGunCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresGunCountAvailable),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McTriggerSecondStageHeld),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McMasterArmPressSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McNavigationPressSequence),
@@ -106,8 +109,12 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Designated, snapshot.infrared_missile.target_designated ? 1.0 : 0.0);
 	WRITE_MC(MissileStatus, static_cast<double>(snapshot.infrared_missile.readiness));
 	WRITE_MC(MissileCount, static_cast<double>(snapshot.stores.air_to_air_missile_count));
-	WRITE_MC(RequestedStation, static_cast<double>(snapshot.stores.requested_station.value_or(-1)));
-	WRITE_MC(SelectionRequestRevision, static_cast<double>(snapshot.stores.selection_request_revision));
+	WRITE_MC(MissileCountAvailable, snapshot.stores.air_to_air_missile_count_complete ? 1.0 : 0.0);
+	// 僅發布佇列首項的選站資料，讓前一筆操作先完成。
+	const bool selecting = batch.count != 0 && batch.actions[0].kind == Core::MissionActionKind::SelectStation;
+	WRITE_MC(RequestedStation, selecting ? static_cast<double>(batch.actions[0].station.value_or(-1)) : -1.0);
+	WRITE_MC(SelectionRequestRevision, selecting ? static_cast<double>(batch.actions[0].selection_revision) : 0.0);
+	WRITE_MC(SelectionActionSequence, selecting ? static_cast<double>(batch.first_sequence) : 0.0);
 	WRITE_MC(SeekerState, static_cast<double>(snapshot.infrared_missile.seeker_state));
 	WRITE_MC(Tone, static_cast<double>(snapshot.infrared_missile.requested_tone));
 	WRITE_MC(Contact, snapshot.infrared_missile.contact ? 1.0 : 0.0);
@@ -117,6 +124,7 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Elevation, snapshot.infrared_missile.seeker_elevation_rad);
 	WRITE_MC(LockRange, snapshot.infrared_missile.lock_range_m);
 	WRITE_MC(GunCount, snapshot.stores.gun_count);
+	WRITE_MC(GunCountAvailable, snapshot.stores.gun_ammunition.observation.available ? 1.0 : 0.0);
 	WRITE_MC(TriggerHeld, snapshot.control_inputs.trigger_second_stage_held ? 1.0 : 0.0);
 	WRITE_MC(MasterArmPressSequence, static_cast<double>(snapshot.control_inputs.master_arm_press_sequence));
 	WRITE_MC(NavigationPressSequence, static_cast<double>(snapshot.control_inputs.navigation_press_sequence));
@@ -129,7 +137,7 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	for (std::size_t i = 0; i < action_slots_.size(); ++i)
 	{
 		const auto result =
-		    action_slots_[i].write_number(api_, i < batch.count ? static_cast<double>(batch.actions[i]) : 0.0);
+		    action_slots_[i].write_number(api_, i < batch.count ? static_cast<double>(batch.actions[i].kind) : 0.0);
 		if (result.event)
 			events = events.with_event(*result.event);
 		complete = result.success && complete;

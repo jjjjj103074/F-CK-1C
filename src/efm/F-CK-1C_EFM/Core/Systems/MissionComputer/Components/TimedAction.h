@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Database/ExternalActionQueue.h"
+#include <cstdint>
 
 #include <chrono>
 #include <optional>
@@ -35,7 +35,7 @@ public:
 		return start_sequence_ != 0;
 	}
 
-	bool release_due(std::chrono::nanoseconds time, const ExternalActionQueue& queue)
+	template <typename Acknowledgements> bool release_due(std::chrono::nanoseconds time, const Acknowledgements& queue)
 	{
 		if (active() && !started_at_ && queue.acknowledged(start_sequence_))
 		{

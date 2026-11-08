@@ -1,19 +1,19 @@
--- MC owns modes, HOTAS decisions, gun/pickle/lock timing and store count policy.
--- This device executes ordered DCS requests, publishes raw API counts, and runs CM programs.
-local dev = GetSelf()
-local sensor_data = get_base_data()
+-- 執行 MC 的有序 DCS 操作命令，發布介面可用性，並運行反制程序。
 local update_rate = 0.02
 make_default_activity(update_rate)
 dofile(LockOn_Options.script_path .. "command_defs.lua")
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 local adapter_available = get_param_handle(cockpit_params.McAdapterAvailable)
-local missile_available = get_param_handle(cockpit_params.McMissileCountAvailable)
-local missile_count = get_param_handle(cockpit_params.McMissileCount)
-local gun_available = get_param_handle(cockpit_params.McGunCountAvailable)
-local gun_count = get_param_handle(cockpit_params.McGunCount)
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
+local mc_generation = get_param_handle(cockpit_params.McGeneration)
+local selection_sequence = get_param_handle(cockpit_params.WeaponSelectionActionSequence)
+local selection_request = get_param_handle(cockpit_params.WeaponSelectionRequestRevision)
+local requested_station = get_param_handle(cockpit_params.WeaponRequestedStation)
+local observation_revision = get_param_handle(cockpit_params.WeaponObservationRevision)
+local selection_ack = get_param_handle(cockpit_params.WeaponSelectionAckRevision)
+local selected_station = get_param_handle(cockpit_params.WeaponObservationSelectedStation)
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -41,37 +41,7 @@ local function cms_release_allowed()
     return dispatch_action ~= nil and master_mode:get() > 1.5
 end
 
--- Preserve the existing API names and precedence; confirm them in DCS before changing this path.
-local function read_count(candidates, maximum)
-    for _, name in ipairs(candidates) do
-        local method = sensor_data and sensor_data[name]
-        if type(method) == "function" then
-            local ok, value = pcall(method, sensor_data)
-            if ok and type(value) == "number" and value >= 0 and value <= maximum then
-                return true, math.floor(value + 0.5)
-            end
-        end
-    end
-    return false, 0
-end
-
-local function publish_counts()
-    local has_gun, guns = read_count({ "getGunAmmoCount", "getCannonsAmmoCount", "getAmmoCount" }, 9999)
-    local has_missiles, missiles = read_count({
-        "getAAMMissileCount",
-        "getAAMCount",
-        "getAirMissileCount",
-        "getAirToAirMissileCount",
-        "getMissileCount",
-        "getMissilesCount",
-        "getWeaponCount",
-        "getSelectedWeaponCount",
-        "getAmmoCount",
-    }, 12)
-    gun_available:set(has_gun and 1 or 0)
-    gun_count:set(guns)
-    missile_available:set(has_missiles and 1 or 0)
-    missile_count:set(missiles)
+local function publish_adapter_availability()
     adapter_available:set(dispatch_action ~= nil and 1 or 0)
 end
 
@@ -99,9 +69,7 @@ local function pair_release_off()
 end
 
 local function clear_pair_release_queue(reason_tag)
-    if cms_pair_release_latched or cms_pair_release_pending > 0 then
-        dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending))
-    end
+    if cms_pair_release_latched or cms_pair_release_pending > 0 then dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending)) end
 
     pair_release_off()
     cms_pair_release_pending = 0
@@ -190,7 +158,6 @@ local native_actions = {
     [4] = dcs_commands.iCommandPlanePickleOn,
     [5] = dcs_commands.iCommandPlanePickleOff,
     [6] = dcs_commands.iCommandPlaneRadarOnOff,
-    [7] = dcs_commands.iCommandPlaneChangeWeapon,
     [8] = dcs_commands.iCommandPlaneModeHelmet,
     [9] = dcs_commands.iCommandPlaneModeVS,
     [10] = dcs_commands.iCommandPlaneModeBVR,
@@ -202,7 +169,27 @@ local native_actions = {
     [16] = dcs_commands.iCommandPlaneChangeLockUp,
 }
 
-local function execute_action(action)
+local function integer(value, minimum, maximum)
+    return type(value) == "number" and value >= minimum and value <= maximum and value == math.floor(value)
+end
+
+local function selection_completed(sequence, generation)
+    local before = observation_revision:get()
+    if not integer(before, 2, 9007199254740991) or before % 2 ~= 0 then return false end
+    local command_sequence = selection_sequence:get()
+    local request = selection_request:get()
+    local station = requested_station:get()
+    local acknowledged = selection_ack:get()
+    local selected = selected_station:get()
+    return observation_revision:get() == before and mc_generation:get() == generation
+        and command_sequence == sequence and integer(request, 1, 9007199254740991)
+        and integer(station, -1, 8)
+        and acknowledged == request and selected == station
+end
+
+local function execute_action(action, sequence, generation)
+    if action == 0 then return true end
+    if action == 21 then return selection_completed(sequence, generation) end
     if dispatch_action == nil then return false end
     -- MC requests the ON state; DCS exposes only a toggle. Recheck the current adapter state.
     if action == 6 and radar_power:get() > 0.5 then return true end
@@ -227,11 +214,11 @@ end
 local mc_io = dofile(LockOn_Options.script_path .. "Systems/mc_io.lua").new(execute_action)
 
 function post_initialize()
-    publish_counts()
+    publish_adapter_availability()
 end
 
 function update()
-    publish_counts()
+    publish_adapter_availability()
     mc_io.update()
     if cms_pair_release_latched then
         cms_pair_release_hold_timer = cms_pair_release_hold_timer - update_rate

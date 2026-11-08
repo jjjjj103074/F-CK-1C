@@ -134,17 +134,20 @@ void test_entry_in_pipeline(Tests::Context& context)
 	TEST_EXPECT(context, entry.id == "mission_computer");
 	SystemPipeline pipeline(SystemPipelineTest::flight_setup(), { entry });
 	TEST_EXPECT(context, pipeline.system_count() == 1);
-	const auto before = SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod - nanoseconds(1));
-	TEST_EXPECT(context, !before.read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
-	const auto first = SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod);
-	TEST_EXPECT(context, first.read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 1);
-	const AircraftDataSnapshot snapshot = SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, seconds(1));
-	TEST_EXPECT(context, snapshot.read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 32);
+	const auto before = std::make_unique<const AircraftDataSnapshot>(
+	    SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod - nanoseconds(1)));
+	TEST_EXPECT(context, !before->read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
+	const auto first =
+	    std::make_unique<AircraftDataSnapshot>(SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod));
+	TEST_EXPECT(context, first->read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 1);
+	const auto snapshot =
+	    std::make_unique<AircraftDataSnapshot>(SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, seconds(1)));
+	TEST_EXPECT(context, snapshot->read(AircraftDataKeys::kMissionComputerSnapshot).status.revision == 32);
 	TEST_EXPECT(context, pipeline.advanced_through() == seconds(1));
-	TEST_EXPECT(context, !snapshot.has(AircraftDataKeys::kPilotControlSignal));
-	TEST_EXPECT(context, !snapshot.has(AircraftDataKeys::kFuelData));
-	TEST_EXPECT(context, snapshot.has(AircraftDataKeys::kMissionComputerSnapshot));
-	TEST_EXPECT(context, snapshot.read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
+	TEST_EXPECT(context, !snapshot->has(AircraftDataKeys::kPilotControlSignal));
+	TEST_EXPECT(context, !snapshot->has(AircraftDataKeys::kFuelData));
+	TEST_EXPECT(context, snapshot->has(AircraftDataKeys::kMissionComputerSnapshot));
+	TEST_EXPECT(context, snapshot->read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
 }
 
 struct MissionFixture
@@ -156,6 +159,9 @@ struct MissionFixture
 	{
 		frame.cockpit.mission_adapter.available = true;
 		frame.cockpit.mission_adapter.radar_power_on = true;
+		frame.cockpit.weapon_stations.status = { true, 2, ObservationInvalidReason::None };
+		for (auto& station : frame.cockpit.weapon_stations.stations)
+			station.configuration = StoreConfiguration::Empty;
 	}
 
 	CombatAvionicsSnapshot step(nanoseconds target)
@@ -172,8 +178,12 @@ struct MissionFixture
 
 bool contains(const MissionActionBatch& batch, MissionActionKind action)
 {
-	return std::find(batch.actions.begin(), batch.actions.begin() + batch.count, action) !=
-	       batch.actions.begin() + batch.count;
+	return std::find_if(batch.actions.begin(),
+	                    batch.actions.begin() + batch.count,
+	                    [action](const MissionAction& entry)
+	                    {
+		                    return entry.kind == action;
+	                    }) != batch.actions.begin() + batch.count;
 }
 
 void test_action_delivery_retains_order_and_rejects_future_ack(Tests::Context& context)
@@ -196,7 +206,8 @@ void test_action_delivery_retains_order_and_rejects_future_ack(Tests::Context& c
 	TEST_EXPECT(context, batch.count == 8 && batch.first_sequence == 33);
 	for (std::size_t i = 0; i < batch.count; ++i)
 	{
-		TEST_EXPECT(context, batch.actions[i] == (i % 2 == 0 ? MissionActionKind::GunOn : MissionActionKind::GunOff));
+		TEST_EXPECT(context,
+		            batch.actions[i].kind == (i % 2 == 0 ? MissionActionKind::GunOn : MissionActionKind::GunOff));
 	}
 	queue.acknowledge(40);
 	TEST_EXPECT(context, queue.batch().count == 0);
@@ -254,13 +265,13 @@ void test_commands_wait_for_current_observation_and_retain_order(Tests::Context&
 	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
 	const auto output = fixture.step(kMissionPeriod);
 	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
-	const MissionActionKind expected[] = { MissionActionKind::CycleWeapon, MissionActionKind::ModeHelmet,
-		                                   MissionActionKind::ModeHelmet,  MissionActionKind::LockStart,
-		                                   MissionActionKind::ChangeLock,  MissionActionKind::GunOn };
+	const MissionActionKind expected[] = { MissionActionKind::SelectStation, MissionActionKind::ModeHelmet,
+		                                   MissionActionKind::ModeHelmet,    MissionActionKind::LockStart,
+		                                   MissionActionKind::ChangeLock,    MissionActionKind::GunOn };
 	TEST_EXPECT(context, output.external_actions.batch.count == std::size(expected));
 	for (std::size_t i = 0; i < std::size(expected); ++i)
 	{
-		TEST_EXPECT(context, output.external_actions.batch.actions[i] == expected[i]);
+		TEST_EXPECT(context, output.external_actions.batch.actions[i].kind == expected[i]);
 	}
 }
 
@@ -270,6 +281,7 @@ void test_master_cancel_keeps_action_order_and_legacy_mode_coupling(Tests::Conte
 	fixture.send(CommandId::SelectDogfightMode);
 	fixture.send(CommandId::SetTriggerSecondStage);
 	auto output = fixture.step(kMissionPeriod);
+	const auto selected_revision = output.stores.selection.request_revision;
 	fixture.frame.cockpit.mission_adapter.acknowledged_sequence =
 	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
 	fixture.step(kMissionPeriod * 2);
@@ -280,16 +292,26 @@ void test_master_cancel_keeps_action_order_and_legacy_mode_coupling(Tests::Conte
 	fixture.send(CommandId::SetMasterArmOff);
 	fixture.send(CommandId::SetMasterArmOn);
 	output = fixture.step(kMissionPeriod * 7);
-	const MissionActionKind expected[] = { MissionActionKind::GunOff,       MissionActionKind::AbortCms,
-		                                   MissionActionKind::LockFinish,   MissionActionKind::ChangeLockUp,
-		                                   MissionActionKind::ModeCannon,   MissionActionKind::LockFinish,
-		                                   MissionActionKind::ChangeLockUp, MissionActionKind::ModeCannon };
-	TEST_EXPECT(context, output.external_actions.batch.count == std::size(expected));
-	if (output.external_actions.batch.count == std::size(expected))
+	const MissionActionKind expected[] = { MissionActionKind::GunOff,     MissionActionKind::AbortCms,
+		                                   MissionActionKind::LockFinish, MissionActionKind::ChangeLockUp,
+		                                   MissionActionKind::ModeCannon, MissionActionKind::SelectStation,
+		                                   MissionActionKind::LockFinish, MissionActionKind::ChangeLockUp,
+		                                   MissionActionKind::ModeCannon };
+	std::vector<MissionActionKind> native_actions;
+	for (std::size_t i = 0; i < output.external_actions.batch.count; ++i)
 	{
-		for (std::size_t i = 0; i < std::size(expected); ++i)
-			TEST_EXPECT(context, output.external_actions.batch.actions[i] == expected[i]);
+		const auto& action = output.external_actions.batch.actions[i];
+		if (action.kind != MissionActionKind::None)
+			native_actions.push_back(action.kind);
+		if (action.kind == MissionActionKind::SelectStation)
+		{
+			TEST_EXPECT(context, !action.station);
+			TEST_EXPECT(context, action.selection_revision == output.stores.selection.request_revision);
+			TEST_EXPECT(context, action.selection_revision > selected_revision);
+		}
 	}
+	TEST_EXPECT(context, native_actions == std::vector<MissionActionKind>(std::begin(expected), std::end(expected)));
+	TEST_EXPECT(context, output.stores.selection.pending());
 	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
 	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::Navigation);
 	fixture.send(CommandId::SetMasterArmOff);
@@ -297,6 +319,60 @@ void test_master_cancel_keeps_action_order_and_legacy_mode_coupling(Tests::Conte
 	output = fixture.step(kMissionPeriod * 8);
 	TEST_EXPECT(context, output.mode.master_arm_mode == MasterArmMode::On);
 	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
+}
+
+void test_plain_gun_stop_survives_invalid_inventory_mode_wait(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	auto output = fixture.step(kMissionPeriod);
+	fixture.frame.cockpit.mission_adapter.acknowledged_sequence =
+	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
+	fixture.step(kMissionPeriod * 2);
+	fixture.frame.cockpit.weapon_stations.status = { false, 4, ObservationInvalidReason::StationApiError };
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
+	bool stopped = false;
+	for (int tick = 3; tick <= 40; ++tick)
+	{
+		output = fixture.step(kMissionPeriod * tick);
+		const auto& batch = output.external_actions.batch;
+		stopped = stopped || contains(batch, MissionActionKind::GunOff);
+		if (batch.count != 0)
+			fixture.frame.cockpit.mission_adapter.acknowledged_sequence = batch.first_sequence + batch.count - 1;
+	}
+	TEST_EXPECT(context, stopped);
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, output.stores.selection.awaiting_inventory);
+	fixture.frame.cockpit.weapon_stations.status = { true, 6, ObservationInvalidReason::None };
+	output = fixture.step(kMissionPeriod * 41);
+	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::SelectStation));
+	TEST_EXPECT(context, !contains(output.external_actions.batch, MissionActionKind::GunOn));
+}
+
+void test_inventory_wait_keeps_targeting_release_and_cms_executable(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.frame.cockpit.weapon_stations.status = { false, 4, ObservationInvalidReason::StationApiError };
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::StartCmsForward);
+	bool started = false, finished = false, change_released = false, cms_started = false;
+	CombatAvionicsSnapshot output;
+	for (int tick = 1; tick <= 40; ++tick)
+	{
+		output = fixture.step(kMissionPeriod * tick);
+		const auto& batch = output.external_actions.batch;
+		started = started || contains(batch, MissionActionKind::LockStart);
+		finished = finished || contains(batch, MissionActionKind::LockFinish);
+		change_released = change_released || contains(batch, MissionActionKind::ChangeLockUp);
+		cms_started = cms_started || contains(batch, MissionActionKind::StartCmsForward);
+		if (batch.count != 0)
+			fixture.frame.cockpit.mission_adapter.acknowledged_sequence = batch.first_sequence + batch.count - 1;
+	}
+	TEST_EXPECT(context, started && finished && change_released);
+	TEST_EXPECT(context, cms_started);
+	TEST_EXPECT(context, output.stores.selection.awaiting_inventory);
 }
 
 void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& context)
@@ -308,8 +384,12 @@ void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& c
 	fixture.send(CommandId::SetMissileUncage);
 	const auto output = fixture.step(kMissionPeriod);
 	const auto& batch = output.external_actions.batch;
-	const auto count =
-	    std::count(batch.actions.begin(), batch.actions.begin() + batch.count, MissionActionKind::EnsureRadarOn);
+	const auto count = std::count_if(batch.actions.begin(),
+	                                 batch.actions.begin() + batch.count,
+	                                 [](const MissionAction& action)
+	                                 {
+		                                 return action.kind == MissionActionKind::EnsureRadarOn;
+	                                 });
 	TEST_EXPECT(context, count == 1);
 	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
 }
@@ -317,6 +397,11 @@ void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& c
 void test_pickle_and_targeting_modes(Tests::Context& context)
 {
 	MissionFixture fixture;
+	auto& inventory = fixture.frame.cockpit.weapon_stations;
+	inventory.status = { true, 2, ObservationInvalidReason::None };
+	for (auto& station : inventory.stations)
+		station.configuration = StoreConfiguration::Empty;
+	inventory.stations[2] = { StoreConfiguration::Equipped, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
 	fixture.step(kMissionPeriod);
 	fixture.send(CommandId::SelectMissileOverride);
 	fixture.send(CommandId::SetWeaponRelease);
@@ -334,73 +419,94 @@ void test_pickle_and_targeting_modes(Tests::Context& context)
 	fixture.step(kMissionPeriod * 4);
 	output = fixture.step(kMissionPeriod * 10);
 	TEST_EXPECT(context, !output.fire_control.pickle_requested);
-	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 0);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 2);
 	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::PickleOff));
+	TEST_EXPECT(context, output.external_actions.batch.actions[0].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, output.external_actions.batch.actions[1].kind == MissionActionKind::LockFinish);
+	TEST_EXPECT(context, output.external_actions.batch.actions[2].kind == MissionActionKind::ChangeLockUp);
+	inventory.stations[2].count = 1;
+	inventory.status.revision = 4;
+	output = fixture.step(kMissionPeriod * 11);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 1);
 }
 void test_inventory_authority_selection_and_rearm(Tests::Context& context)
 {
 	MissionFixture fixture;
 	auto& inventory = fixture.frame.cockpit.weapon_stations;
 	inventory.status = { true, 2, ObservationInvalidReason::None };
-	inventory.stations[0] = { true, 4, WeaponCategory::Other, WeaponRole::Other, "bomb" };
-	inventory.stations[2] = { true, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "opaque-id" };
-	inventory.stations[5] = { true, 1, WeaponCategory::Other, WeaponRole::Other, "{CATM-9}" };
-	fixture.frame.cockpit.mission_adapter.missile_count_available = true;
-	fixture.frame.cockpit.mission_adapter.missile_count = 9;
+	for (auto& station : inventory.stations)
+		station.configuration = StoreConfiguration::Empty;
+	inventory.stations[0] = { StoreConfiguration::Equipped, 4, WeaponCategory::Other, WeaponRole::Other, "bomb" };
+	inventory.stations[2] = { StoreConfiguration::Equipped,
+		                      2,
+		                      WeaponCategory::Missile,
+		                      WeaponRole::AirToAir,
+		                      "opaque-id" };
+	inventory.stations[5] = { StoreConfiguration::Equipped,
+		                      1,
+		                      WeaponCategory::Missile,
+		                      WeaponRole::AirToAir,
+		                      "{CATM-9}" };
 	auto output = fixture.step(kMissionPeriod);
 	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 3);
-	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::StationInventory);
-	TEST_EXPECT(context, !output.stores.requested_station);
+	TEST_EXPECT(context, output.stores.inventory.stations.size() == 9);
+	TEST_EXPECT(context, output.stores.inventory.stations[2].count == 2);
+	TEST_EXPECT(context, output.stores.inventory.stations[2].weapon_identifier == "opaque-id");
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count_complete);
+	TEST_EXPECT(context, !output.stores.selection.requested_station);
 	fixture.send(CommandId::SelectMissileOverride);
 	output = fixture.step(kMissionPeriod * 2);
-	TEST_EXPECT(context, output.stores.requested_station == 2);
-	TEST_EXPECT(context, output.stores.selection_request_revision == 1);
-	TEST_EXPECT(context, !output.stores.selected_station);
+	TEST_EXPECT(context, output.stores.selection.requested_station == 2);
+	TEST_EXPECT(context, output.stores.selection.request_revision == 1);
+	TEST_EXPECT(context, !output.stores.selection.acknowledged_station);
 	inventory.selected_station = 2;
 	inventory.selection_ack_revision = 20; // A future ACK is not confirmation.
 	output = fixture.step(kMissionPeriod * 3);
-	TEST_EXPECT(context, !output.stores.selected_station);
+	TEST_EXPECT(context, !output.stores.selection.acknowledged_station);
 	inventory.selection_ack_revision = 1;
 	output = fixture.step(kMissionPeriod * 4);
-	TEST_EXPECT(context, output.stores.selected_station == 2);
-	TEST_EXPECT(context, output.stores.selection_request_revision == 1);
+	TEST_EXPECT(context, output.stores.selection.acknowledged_station == 2);
+	TEST_EXPECT(context, output.stores.selection.request_revision == 1);
+	inventory.status.revision = 4;
 	inventory.rearm_revision = 1;
 	output = fixture.step(kMissionPeriod * 5);
-	TEST_EXPECT(context, output.stores.selection_request_revision == 2);
+	TEST_EXPECT(context, output.stores.selection.request_revision == 2);
 	output = fixture.step(kMissionPeriod * 6);
-	TEST_EXPECT(context, output.stores.selection_request_revision == 2);
+	TEST_EXPECT(context, output.stores.selection.request_revision == 2);
+	inventory.status.revision = 6;
 	inventory.stations[2].count = 0;
 	output = fixture.step(kMissionPeriod * 7);
 	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 1);
-	TEST_EXPECT(context, output.stores.requested_station == 5);
-	TEST_EXPECT(context, output.stores.selection_request_revision == 3);
+	TEST_EXPECT(context, output.stores.selection.requested_station == 5);
+	TEST_EXPECT(context, output.stores.selection.request_revision == 3);
 	inventory.status.available = false;
 	output = fixture.step(kMissionPeriod * 8);
-	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 9);
-	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::BaseDataApi);
-	TEST_EXPECT(context, output.stores.requested_station == 5);
-	fixture.frame.cockpit.mission_adapter.missile_count_available = false;
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 0);
+	TEST_EXPECT(context, !output.stores.air_to_air_missile_count_complete);
+	TEST_EXPECT(context, output.stores.selection.requested_station == 5);
+	inventory.status.invalid_reason = ObservationInvalidReason::StationApiError;
 	output = fixture.step(kMissionPeriod * 9);
-	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 9);
-	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::Estimate);
-	inventory.status.available = true;
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 0);
+	TEST_EXPECT(context, !output.stores.air_to_air_missile_count_complete);
+	inventory.status = { true, 8, ObservationInvalidReason::None };
 	inventory.stations[5].count = 0;
 	output = fixture.step(kMissionPeriod * 10);
 	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 0);
-	TEST_EXPECT(context, output.stores.count_source == StoresCountSource::StationInventory);
-	TEST_EXPECT(context, !output.stores.requested_station);
+	TEST_EXPECT(context, output.stores.air_to_air_missile_count_complete);
+	TEST_EXPECT(context, !output.stores.selection.requested_station);
+	inventory.status.revision = 10;
 	inventory.stations[2].count = 1;
 	fixture.send(CommandId::SelectDogfightMode);
 	output = fixture.step(kMissionPeriod * 11);
-	TEST_EXPECT(context, output.stores.requested_station == 2);
-	const auto revision = output.stores.selection_request_revision;
+	TEST_EXPECT(context, output.stores.selection.requested_station == 2);
+	const auto revision = output.stores.selection.request_revision;
 	fixture.send(CommandId::SelectMissileOverride);
 	output = fixture.step(kMissionPeriod * 12);
-	TEST_EXPECT(context, output.stores.selection_request_revision == revision + 1);
+	TEST_EXPECT(context, output.stores.selection.request_revision == revision + 1);
 	fixture.send(CommandId::SelectNavigationMode);
 	output = fixture.step(kMissionPeriod * 13);
-	TEST_EXPECT(context, !output.stores.requested_station);
-	TEST_EXPECT(context, output.stores.selection_request_revision == revision + 2);
+	TEST_EXPECT(context, !output.stores.selection.requested_station);
+	TEST_EXPECT(context, output.stores.selection.request_revision == revision + 2);
 }
 
 void test_seeker_observation_precedence_and_availability(Tests::Context& context)
@@ -411,6 +517,11 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	TargetingData targeting;
 	InfraredMissileData aim9;
 	mode.operating_mode = OperatingMode::MissileOverride;
+	stores.inventory.stations[0].observation.available = true;
+	stores.inventory.stations[0].configuration = StoreConfiguration::Equipped;
+	stores.inventory.stations[0].category = WeaponCategory::Missile;
+	stores.inventory.stations[0].role = WeaponRole::AirToAir;
+	stores.inventory.stations[0].count = 1;
 	auto& ir = input.cockpit.ir_seeker;
 	auto& radar = input.cockpit.radar;
 	ir.status.available = true;
@@ -461,7 +572,7 @@ void test_seeker_observation_precedence_and_availability(Tests::Context& context
 	radar.stt_range_m = 2000.0;
 	processor.step({}, 0.015625);
 	TEST_EXPECT(context, !aim9.contact && !aim9.locked);
-	stores.missile_count = 0;
+	stores.inventory.stations[0].count = 0;
 	processor.step({}, 0.015625);
 	TEST_EXPECT(context, !aim9.active && aim9.readiness == InfraredMissileReadiness::Off);
 	TEST_EXPECT(context,
@@ -509,6 +620,9 @@ void test_control_observations_preserve_fifo_pulses_and_rejected_requests(Tests:
 void test_fire_control_publishes_infrared_support_in_the_same_tick(Tests::Context& context)
 {
 	MissionFixture fixture;
+	auto& inventory = fixture.frame.cockpit.weapon_stations;
+	inventory.status = { true, 2, ObservationInvalidReason::None };
+	inventory.stations[2] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
 	fixture.frame.cockpit.ir_seeker.status.available = true;
 	fixture.frame.cockpit.ir_seeker.locked = true;
 	fixture.send(CommandId::SelectMissileOverride);
@@ -525,47 +639,44 @@ void test_fire_control_publishes_infrared_support_in_the_same_tick(Tests::Contex
 void test_gun_quantity_observations_and_catch_up(Tests::Context& context)
 {
 	MissionFixture fixture;
-	fixture.step(kMissionPeriod);
-	fixture.send(CommandId::SetMasterArmOff);
-	fixture.send(CommandId::SetTriggerSecondStage);
-	auto output = fixture.step(seconds(4));
-	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
-	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12);
-	fixture.send(CommandId::SetMasterArmOn);
+	auto output = fixture.step(kMissionPeriod);
+	TEST_EXPECT(context, !output.stores.gun_ammunition.count);
+	TEST_EXPECT(context, !output.stores.gun_ammunition.observation.available);
+	fixture.frame.cockpit.gun_ammunition = { { true, 2, ObservationInvalidReason::None }, 261 };
 	fixture.send(CommandId::SelectDogfightMode);
 	fixture.send(CommandId::SetTriggerSecondStage);
-	output = fixture.step(seconds(8));
+	output = fixture.step(seconds(4));
 	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
-	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12); // Do not backdate a new press by 4 seconds.
-	output = fixture.step(milliseconds(8100));
-	TEST_EXPECT_NEAR(context, output.stores.gun_count, 513.0, 1e-10);
-	fixture.frame.cockpit.mission_adapter.gun_count_available = true;
-	fixture.frame.cockpit.mission_adapter.gun_count = 0.0;
-	output = fixture.step(milliseconds(8132));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 261.0, 1e-12);
+	TEST_EXPECT(context, output.stores.gun_ammunition.observation.available);
+	output = fixture.step(milliseconds(4100));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 261.0, 1e-12);
+	fixture.frame.cockpit.gun_ammunition = { { true, 4, ObservationInvalidReason::None }, 216 };
+	output = fixture.step(milliseconds(4200));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 216.0, 1e-12);
+	fixture.frame.cockpit.gun_ammunition = { { true, 6, ObservationInvalidReason::None }, 0 };
+	output = fixture.step(milliseconds(4300));
+	TEST_EXPECT(context, output.stores.gun_ammunition.observation.available);
 	TEST_EXPECT_NEAR(context, output.stores.gun_count, 0.0, 1e-12);
-	fixture.frame.cockpit.mission_adapter.gun_count_available = false;
-	output = fixture.step(milliseconds(8164));
-	TEST_EXPECT_NEAR(context, output.stores.gun_count, 0.0, 1e-12);
-	fixture.send(CommandId::SetMasterArmOff);
-	output = fixture.step(milliseconds(8200));
+	fixture.frame.cockpit.gun_ammunition.status.available = false;
+	output = fixture.step(milliseconds(4400));
+	TEST_EXPECT(context, !output.stores.gun_ammunition.observation.available);
 	TEST_EXPECT_NEAR(context, output.stores.gun_count, 0.0, 1e-12);
 }
 
 void test_gun_restart_in_one_fifo_does_not_backdate_quantity(Tests::Context& context)
 {
 	MissionFixture fixture;
-	fixture.step(kMissionPeriod);
+	fixture.frame.cockpit.gun_ammunition = { { true, 2, ObservationInvalidReason::None }, 216 };
 	fixture.send(CommandId::SelectDogfightMode);
 	fixture.send(CommandId::SetTriggerSecondStage);
-	auto output = fixture.step(kMissionPeriod * 2);
-	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12);
+	fixture.step(kMissionPeriod);
 	fixture.send(CommandId::SetMasterArmOff);
 	fixture.send(CommandId::SelectDogfightMode);
 	fixture.send(CommandId::SetTriggerSecondStage);
-	output = fixture.step(seconds(4));
-	TEST_EXPECT_NEAR(context, output.stores.gun_count, 523.0, 1e-12);
-	output = fixture.step(milliseconds(4100));
-	TEST_EXPECT_NEAR(context, output.stores.gun_count, 513.0, 1e-10);
+	const auto output = fixture.step(seconds(4));
+	TEST_EXPECT_NEAR(context, output.stores.gun_count, 216.0, 1e-12);
+	TEST_EXPECT(context, !output.stores.gun_ammunition.observation.available);
 }
 
 void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
@@ -584,12 +695,19 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 	fixture.send(CommandId::PressCms); // Reserved.
 	const auto output = fixture.step(kMissionPeriod);
 	std::vector<MissionActionKind> cms;
-	for (std::size_t i = 0; i < output.external_actions.batch.count; ++i)
+	auto window = output.external_actions.batch;
+	int tick = 2;
+	while (window.count != 0)
 	{
-		const auto action = output.external_actions.batch.actions[i];
-		if (action == MissionActionKind::AbortCms || action == MissionActionKind::StartCmsForward ||
-		    action == MissionActionKind::StartCmsAft || action == MissionActionKind::StartCmsLeft)
-			cms.push_back(action);
+		for (std::size_t i = 0; i < window.count; ++i)
+		{
+			const auto action = window.actions[i].kind;
+			if (action == MissionActionKind::AbortCms || action == MissionActionKind::StartCmsForward ||
+			    action == MissionActionKind::StartCmsAft || action == MissionActionKind::StartCmsLeft)
+				cms.push_back(action);
+		}
+		fixture.frame.cockpit.mission_adapter.acknowledged_sequence = window.first_sequence + window.count - 1;
+		window = fixture.step(kMissionPeriod * tick++).external_actions.batch;
 	}
 	const std::vector<MissionActionKind> expected = {
 		MissionActionKind::StartCmsForward, MissionActionKind::AbortCms,    MissionActionKind::AbortCms,
@@ -605,13 +723,20 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 void test_repeat_mode_selection_still_cycles_weapon(Tests::Context& context)
 {
 	MissionFixture fixture;
+	auto& inventory = fixture.frame.cockpit.weapon_stations;
+	inventory.status = { true, 2, ObservationInvalidReason::None };
+	for (auto& station : inventory.stations)
+		station.configuration = StoreConfiguration::Empty;
+	for (int i : { 2, 8 })
+		inventory.stations[i] = { StoreConfiguration::Equipped,
+			                      1,
+			                      WeaponCategory::Missile,
+			                      WeaponRole::AirToAir,
+			                      "aa" };
 	fixture.send(CommandId::SelectMissileOverride);
 	fixture.send(CommandId::SelectMissileOverride);
 	const auto output = fixture.step(kMissionPeriod);
-	const auto& batch = output.external_actions.batch;
-	TEST_EXPECT(
-	    context,
-	    std::count(batch.actions.begin(), batch.actions.begin() + batch.count, MissionActionKind::CycleWeapon) == 2);
+	TEST_EXPECT(context, output.stores.selection.requested_station == 8);
 	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
 }
 
@@ -642,6 +767,8 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_modes_and_immediate_master_cancel(context);
 	test_commands_wait_for_current_observation_and_retain_order(context);
 	test_master_cancel_keeps_action_order_and_legacy_mode_coupling(context);
+	test_inventory_wait_keeps_targeting_release_and_cms_executable(context);
+	test_plain_gun_stop_survives_invalid_inventory_mode_wait(context);
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
 	test_pickle_and_targeting_modes(context);
 	test_inventory_authority_selection_and_rearm(context);

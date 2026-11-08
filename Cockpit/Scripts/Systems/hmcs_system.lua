@@ -32,7 +32,10 @@ local mc_locked = get_param_handle(cockpit_params.Aim9SeekerLock)
 local mc_readiness = get_param_handle(cockpit_params.Aim9MissileStatus)
 local mc_gun_firing = get_param_handle(cockpit_params.HmcsGunFiring)
 local mc_gun_count = get_param_handle(cockpit_params.McStoresGunCount)
+local mc_gun_count_available = get_param_handle(cockpit_params.McStoresGunCountAvailable)
+local hmcs_weapon_quantity_available = get_param_handle(cockpit_params.HmcsWeaponQuantityAvailable)
 local mc_missile_count = get_param_handle(cockpit_params.Aim9MissileCount)
+local mc_missile_count_available = get_param_handle(cockpit_params.McStoresMissileCountAvailable)
 local mc_trigger_held = get_param_handle(cockpit_params.McTriggerSecondStageHeld)
 local mc_master_arm_press = get_param_handle(cockpit_params.McMasterArmPressSequence)
 local mc_navigation_press = get_param_handle(cockpit_params.McNavigationPressSequence)
@@ -48,8 +51,7 @@ local WEAPON_CLASS_GUN = 5
 -- raw input observations never grant firing permission or change selected stations.
 local function update_weapon_presentation()
     local before = mc_generation:get()
-    if before < 2 or before > 9007199254740991 or before ~= math.floor(before)
-        or before % 2 ~= 0 or mc_available:get() < 0.5 then return end
+    if before < 2 or before > 9007199254740991 or before ~= math.floor(before) or before % 2 ~= 0 or mc_available:get() < 0.5 then return end
 
     local mode = mc_fire_control_mode:get()
     local uncage = mc_uncage:get() >= 0.5
@@ -58,19 +60,17 @@ local function update_weapon_presentation()
     local readiness = mc_readiness:get()
     local gun_firing = mc_gun_firing:get() >= 0.5
     local gun_count = mc_gun_count:get()
+    local gun_count_available = mc_gun_count_available:get() >= 0.5
     local missile_count = mc_missile_count:get()
+    local missile_count_available = mc_missile_count_available:get() >= 0.5
     local trigger_held = mc_trigger_held:get() >= 0.5
     local gun_preference_sequence = math.max(mc_master_arm_press:get(), mc_navigation_press:get())
-    local missile_preference_sequence = math.max(
-        mc_dogfight_press:get(), mc_missile_override_press:get(),
-        mc_missile_uncage_press:get(), mc_weapon_release_press:get()
-    )
+    local missile_preference_sequence = math.max(mc_dogfight_press:get(), mc_missile_override_press:get(), mc_missile_uncage_press:get(), mc_weapon_release_press:get())
     if mc_generation:get() ~= before then return end
 
     -- Latest press sequences preserve the old sticky preference even if a pulse
     -- began and ended between HMCS updates, or its weapon operation was rejected.
-    local preferred_class = missile_preference_sequence > gun_preference_sequence
-        and WEAPON_CLASS_AAM or WEAPON_CLASS_GUN
+    local preferred_class = missile_preference_sequence > gun_preference_sequence and WEAPON_CLASS_AAM or WEAPON_CLASS_GUN
     local weapon_class
     if mode ~= 0 or uncage or contact or locked or readiness ~= 0 then
         weapon_class = WEAPON_CLASS_AAM
@@ -81,8 +81,10 @@ local function update_weapon_presentation()
     end
     hmcs_weapon_class:set(weapon_class)
     hmcs_weapon_quantity:set(weapon_class == WEAPON_CLASS_GUN and gun_count or missile_count)
+    local quantity_available = (weapon_class == WEAPON_CLASS_GUN and gun_count_available)
+        or (weapon_class == WEAPON_CLASS_AAM and missile_count_available)
+    hmcs_weapon_quantity_available:set(quantity_available and 1 or 0)
 end
-
 
 local hmcs_slot_count = 13
 local hmcs_slot_spacing = 0.048
@@ -217,9 +219,7 @@ local function push_params()
     update_display_mode_params()
     update_weapon_presentation()
     hmcs_ias_kts:set(math.max(0.0, ias_mps * 1.943844))
-    if baro_alt_m ~= nil then
-        hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084))
-    end
+    if baro_alt_m ~= nil then hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084)) end
     if heading_rad ~= nil then hmcs_hdg_deg:set(math.deg(heading_rad)) end
     if heading_rad ~= nil then update_heading_slots(math.deg(heading_rad)) end
 end
