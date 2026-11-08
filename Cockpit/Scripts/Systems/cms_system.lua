@@ -1,6 +1,5 @@
 -- MC owns modes, HOTAS decisions, gun/pickle/lock timing and store count policy.
--- This device executes ordered DCS requests, publishes raw API counts, and runs CM programs.
-local dev = GetSelf()
+-- 執行 MC 的有序 DCS 指令、發布飛彈觀測，並運行反制程序。
 local sensor_data = get_base_data()
 local update_rate = 0.02
 make_default_activity(update_rate)
@@ -10,10 +9,9 @@ dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 local adapter_available = get_param_handle(cockpit_params.McAdapterAvailable)
 local missile_available = get_param_handle(cockpit_params.McMissileCountAvailable)
 local missile_count = get_param_handle(cockpit_params.McMissileCount)
-local gun_available = get_param_handle(cockpit_params.McGunCountAvailable)
-local gun_count = get_param_handle(cockpit_params.McGunCount)
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
+local diagnose = dofile(LockOn_Options.script_path .. "Stores/ObservationDiagnostics.lua").new("STORES_COUNT")
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -42,21 +40,28 @@ local function cms_release_allowed()
 end
 
 -- Preserve the existing API names and precedence; confirm them in DCS before changing this path.
-local function read_count(candidates, maximum)
+local function read_count(candidates, maximum, purpose)
     for _, name in ipairs(candidates) do
         local method = sensor_data and sensor_data[name]
         if type(method) == "function" then
             local ok, value = pcall(method, sensor_data)
-            if ok and type(value) == "number" and value >= 0 and value <= maximum then
-                return true, math.floor(value + 0.5)
-            end
+            local accepted = ok and type(value) == "number" and value >= 0 and value <= maximum
+            diagnose(purpose .. " api=" .. name, {
+                callable = true,
+                call_ok = ok,
+                result_type = type(value),
+                result = value,
+                accepted = accepted,
+            })
+            if accepted then return true, math.floor(value + 0.5) end
+        else
+            diagnose(purpose .. " api=" .. name, { callable = false, member_type = type(method) })
         end
     end
     return false, 0
 end
 
 local function publish_counts()
-    local has_gun, guns = read_count({ "getGunAmmoCount", "getCannonsAmmoCount", "getAmmoCount" }, 9999)
     local has_missiles, missiles = read_count({
         "getAAMMissileCount",
         "getAAMCount",
@@ -67,9 +72,7 @@ local function publish_counts()
         "getWeaponCount",
         "getSelectedWeaponCount",
         "getAmmoCount",
-    }, 12)
-    gun_available:set(has_gun and 1 or 0)
-    gun_count:set(guns)
+    }, 12, "missile")
     missile_available:set(has_missiles and 1 or 0)
     missile_count:set(missiles)
     adapter_available:set(dispatch_action ~= nil and 1 or 0)
@@ -99,9 +102,7 @@ local function pair_release_off()
 end
 
 local function clear_pair_release_queue(reason_tag)
-    if cms_pair_release_latched or cms_pair_release_pending > 0 then
-        dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending))
-    end
+    if cms_pair_release_latched or cms_pair_release_pending > 0 then dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending)) end
 
     pair_release_off()
     cms_pair_release_pending = 0

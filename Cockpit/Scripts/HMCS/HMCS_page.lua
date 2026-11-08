@@ -90,18 +90,7 @@ local function add_available_numeric_text(name, pos, format_string, param_name, 
         { "text_using_parameter", 0, 0 },
         { "parameter_in_range", 1, 0.9, 1.1 },
     }
-    return add_text(
-        name,
-        "000",
-        pos,
-        "CenterCenter",
-        "font_hmcs",
-        size,
-        nil,
-        parameters,
-        controllers,
-        { format_string }
-    )
+    return add_text(name, "000", pos, "CenterCenter", "font_hmcs", size, nil, parameters, controllers, { format_string })
 end
 
 local function add_numeric_text_range(name, pos, alignment, format_string, param_name, gate_param_name, min_value, max_value, size)
@@ -187,7 +176,8 @@ add_numeric_text_range("hmcs_weapon_aam", { -0.245, -0.048 }, "LeftCenter", "AAM
 add_numeric_text_range("hmcs_weapon_ag", { -0.245, -0.048 }, "LeftCenter", "AG-%1.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 1.9, 2.1, text_size_value)
 add_numeric_text_range("hmcs_weapon_bomb", { -0.245, -0.048 }, "LeftCenter", "B%02.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 2.9, 3.1, text_size_value)
 add_numeric_text_range("hmcs_weapon_rkt", { -0.245, -0.048 }, "LeftCenter", "R%1.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 3.9, 4.1, text_size_value)
-add_numeric_text_range("hmcs_weapon_gun", { -0.245, -0.048 }, "LeftCenter", "GUN %03.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 4.9, 5.1, text_size_value)
+add_text("hmcs_weapon_gun", "000", { -0.245, -0.048 }, "LeftCenter", "font_hmcs_small", text_size_value, nil, { cockpit_params.HmcsWeaponQuantity, cockpit_params.HmcsWeaponClass, cockpit_params.HmcsWeaponQuantityAvailable }, { { "text_using_parameter", 0, 0 }, { "parameter_in_range", 1, 4.9, 5.1 }, { "parameter_in_range", 2, 0.9, 1.1 } }, { "GUN %03.0f" })
+add_text("hmcs_weapon_gun_unknown", "GUN ---", { -0.245, -0.048 }, "LeftCenter", "font_hmcs_small", text_size_value, nil, { cockpit_params.HmcsWeaponClass, cockpit_params.HmcsWeaponQuantityAvailable }, { { "parameter_in_range", 0, 4.9, 5.1 }, { "parameter_in_range", 1, -0.1, 0.1 } })
 
 add_text("hmcs_master_title", "SYS", { -0.255, -0.095 }, "RightCenter", "font_hmcs_small", text_size_title)
 add_param_text("hmcs_master_safe", "SAFE", { -0.245, -0.125 }, "LeftCenter", "HMCS_MASTER_MODE", -0.1, 0.1, text_size_value)

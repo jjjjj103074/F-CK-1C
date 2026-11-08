@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../../Contracts/CockpitContracts.h"
+#include "StoresData.h"
 
 namespace Core::Systems::Mc
 {
@@ -35,16 +36,6 @@ struct InfraredMissileData
 	double seeker_azimuth_rad = 0.0;
 	double seeker_elevation_rad = 0.0;
 	double lock_range_m = 0.0;
-};
-
-struct StoresData
-{
-	int missile_count = 1;
-	double gun_count = 523.0;
-	StoresCountSource count_source = StoresCountSource::Estimate;
-	std::optional<int> selected_station;
-	std::optional<int> requested_station;
-	std::uint64_t selection_request_revision = 0;
 };
 
 struct WeaponOperationData

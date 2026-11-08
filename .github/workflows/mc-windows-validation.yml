@@ -2,7 +2,7 @@ name: MC Windows build validation
 
 on:
   push:
-    branches: [mission-computer]
+    branches: [mission-computer, codex/native-gun-ammunition]
   workflow_dispatch:
 
 permissions:
@@ -77,6 +77,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs tools/pr-checks.test.mjs tools/pr-results.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check legacy Export cleanup
+        shell: powershell
+        run: ./tools/test_legacy_stores_export_removal.ps1
       - name: Build the pinned Windows DLL
         shell: powershell
         run: |
@@ -122,4 +125,20 @@ jobs:
             ${{ runner.temp }}/mc-validation/*.md
             ${{ runner.temp }}/mc-validation/*.log
           if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Package the validated native ammunition module
+        shell: powershell
+        run: |
+          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -Destination 'bin/F-CK-1C_EFM.dll' -Force
+          $version = 'native-ammo-' + $env:GITHUB_SHA.Substring(0, 8)
+          ./tools/package_release.ps1 -Version $version -AllowDirty
+      - name: Upload the validated module package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-ammo-module-${{ github.sha }}
+          path: |
+            dist/F-CK-1C-native-ammo-*.zip
+            dist/F-CK-1C-native-ammo-*.zip.sha256
+          if-no-files-found: error
           retention-days: 7

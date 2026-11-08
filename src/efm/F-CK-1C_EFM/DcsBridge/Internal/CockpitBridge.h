@@ -72,8 +72,6 @@ private:
 		RadarPowerOn,
 		McMissileCountAvailable,
 		McMissileCount,
-		McGunCountAvailable,
-		McGunCount,
 		Count
 	};
 

@@ -5,6 +5,45 @@ local function expect(condition, message)
     assert(condition, message)
 end
 
+-- 原始診斷保留欄位型別與內容，重複觀測沿用最近記錄。
+local diagnostic_lines = {}
+log = {
+    info = function(line)
+        diagnostic_lines[#diagnostic_lines + 1] = line
+    end,
+}
+local diagnose = dofile("Cockpit/Scripts/Stores/ObservationDiagnostics.lua").new("TEST_STORES")
+diagnose("raw", { count = 2, container = false, weapon = { level2 = 4 }, CLSID = 'a;"b"\nline' }, "batch=2")
+expect(#diagnostic_lines == 1, "first native diagnostic is recorded")
+expect(diagnostic_lines[1]:find("raw batch=2", 1, true), "diagnostic context identifies the source batch")
+expect(diagnostic_lines[1]:find("container=boolean:false", 1, true), "raw diagnostics preserve false fields")
+expect(diagnostic_lines[1]:find("level2=number:4", 1, true), "raw diagnostics preserve nested native type")
+expect(not diagnostic_lines[1]:find("level1", 1, true), "raw diagnostics preserve the original field set")
+expect(not diagnostic_lines[1]:find("\n", 1, true), "one observation stays on one log line")
+diagnose("raw", { CLSID = 'a;"b"\nline', weapon = { level2 = 4 }, container = false, count = 2 }, "batch=4")
+expect(#diagnostic_lines == 1, "table iteration order does not create repeated diagnostics")
+diagnose("raw", { count = 0 })
+expect(#diagnostic_lines == 2, "changed raw observation is recorded")
+local recursive = {}
+recursive.self = recursive
+diagnose("recursive", recursive)
+expect(diagnostic_lines[#diagnostic_lines]:find("table-depth-limit", 1, true), "recursive native data is bounded")
+log.info = function()
+    error("diagnostic sink failure")
+end
+expect(pcall(diagnose, "failure", { count = 3 }), "diagnostic failure preserves the adapter call")
+log.info = function(line)
+    diagnostic_lines[#diagnostic_lines + 1] = line
+end
+diagnose("failure", { count = 3 })
+expect(diagnostic_lines[#diagnostic_lines]:find("count=number:3", 1, true), "diagnostic recording retries after failure")
+local function has_diagnostic(fragment)
+    for _, line in ipairs(diagnostic_lines) do
+        if line:find(fragment, 1, true) then return true end
+    end
+    return false
+end
+
 local function fixture(execute)
     local values = {}
     function get_param_handle(name)
@@ -101,8 +140,9 @@ end
 local native = {}
 values = fixture(function() return true end)
 LockOn_Options = { script_path = "Cockpit/Scripts/" }
-GetSelf = function() return {} end
+GetSelf = function() return { listen_command = function() end } end
 local count_sensors = {}
+get_model_time = function() return 0 end
 get_base_data = function() return count_sensors end
 make_default_activity = function(rate) expect(rate == 0.02, "CMS retains its adapter/CM update period") end
 dispatch_action = function(_, command) native[#native + 1] = command end
@@ -169,20 +209,7 @@ local function clear_count_sensors()
         count_sensors[name] = nil
     end
 end
-expect(values[cockpit_params.McGunCountAvailable] == 0, "absent gun methods remain unavailable")
 expect(values[cockpit_params.McMissileCountAvailable] == 0, "absent missile methods remain unavailable")
-for _, name in ipairs({ "getGunAmmoCount", "getCannonsAmmoCount", "getAmmoCount" }) do
-    clear_count_sensors()
-    count_sensors[name] = function(self)
-        expect(self == count_sensors, "gun count methods receive the sensor object")
-        return 240
-    end
-    update()
-    expect(
-        values[cockpit_params.McGunCountAvailable] == 1 and values[cockpit_params.McGunCount] == 240,
-        "preserve existing gun count API: " .. name
-    )
-end
 for _, name in ipairs({
     "getAAMMissileCount",
     "getAAMCount",
@@ -207,7 +234,6 @@ for _, name in ipairs({
 end
 clear_count_sensors()
 local secondary_count_called = false
-count_sensors.getGunAmmoCount = function() return 0 end
 count_sensors.getAAMMissileCount = function() return 0 end
 count_sensors.getAmmoCount = function()
     secondary_count_called = true
@@ -215,46 +241,19 @@ count_sensors.getAmmoCount = function()
 end
 update()
 expect(
-    values[cockpit_params.McGunCountAvailable] == 1 and values[cockpit_params.McGunCount] == 0,
-    "zero gun count is valid"
-)
-expect(
     values[cockpit_params.McMissileCountAvailable] == 1 and values[cockpit_params.McMissileCount] == 0,
     "zero missile count is valid"
 )
-expect(not secondary_count_called, "valid primary zero counts retain precedence over secondary APIs")
-clear_count_sensors()
-count_sensors.getGunAmmoCount = function() error("count API fixture failure") end
-count_sensors.getCannonsAmmoCount = function() return false end
-count_sensors.getAmmoCount = function() return 37 end
-count_sensors.getAAMMissileCount = function() return 13 end
-count_sensors.getAAMCount = function() return 4 end
-update()
-expect(
-    values[cockpit_params.McGunCountAvailable] == 1 and values[cockpit_params.McGunCount] == 37,
-    "failed gun APIs try the next existing name"
-)
-expect(
-    values[cockpit_params.McMissileCountAvailable] == 1 and values[cockpit_params.McMissileCount] == 4,
-    "invalid missile counts try the next existing name"
-)
-clear_count_sensors()
-count_sensors.getGunAmmoCount = function() return -1 end
-count_sensors.getAAMMissileCount = function() return 13 end
-update()
-expect(
-    values[cockpit_params.McGunCountAvailable] == 0 and values[cockpit_params.McGunCount] == 0,
-    "invalid gun data clears availability and stale count"
-)
-expect(
-    values[cockpit_params.McMissileCountAvailable] == 0 and values[cockpit_params.McMissileCount] == 0,
-    "invalid missile data clears availability and stale count"
-)
+expect(not secondary_count_called, "valid primary zero count retains precedence over secondary APIs")
+
 -- The real station adapter publishes raw samples and executes only MC selection requests.
-values = fixture(function() return true end)
+values = fixture(function()
+    return true
+end)
 local stations = {
     [2] = { count = 2, weapon = { level2 = 4, level3 = 7 }, CLSID = "{AIM-9;literal}" },
     [4] = { count = 3, weapon = { level2 = 1, level3 = 2 }, CLSID = "bomb" },
+    [8] = { count = 1, weapon = { level1 = 4, level2 = 4, level3 = 8, level4 = 99 }, CLSID = "opaque-guid" },
 }
 local select_calls = {}
 local selection_fails = true
@@ -270,20 +269,38 @@ local station_device = {
         if selection_fails then error("select failed") end
     end,
 }
-GetSelf = function() return station_device end
-make_default_activity = function(rate) expect(rate == 0.05, "station adapter retains 20 Hz API sampling") end
+GetSelf = function()
+    return station_device
+end
+make_default_activity = function(rate)
+    expect(rate == 0.05, "station adapter retains 20 Hz API sampling")
+end
 dofile("Cockpit/Scripts/Systems/weapon_system.lua")
 post_initialize()
 expect(values[cockpit_params.WeaponObservationAvailable] == 0, "unobserved inventory must not be available")
 update()
 expect(values[cockpit_params.WeaponObservationAvailable] == 1, "a complete raw scan is available")
 expect(values[cockpit_params.WeaponObservationRevision] % 2 == 0, "scan commits an even revision")
-expect(
-    values[cockpit_params.WeaponStation03] == "1;2;4;7;{AIM-9;literal}",
-    "publish raw native type fields and literal identifier"
-)
-expect(values[cockpit_params.WeaponStation05] == "1;3;1;2;bomb", "adapter must not classify or filter non-missiles")
-expect(values[cockpit_params.WeaponStation01] == "0;0;0;0;", "nil mount is an absent station sample")
+expect(values[cockpit_params.WeaponStation03] == "1;2;0;4;7;0;RI;{AIM-9;literal}", "publish raw native type fields and literal identifier")
+expect(values[cockpit_params.WeaponStation05] == "1;3;0;1;2;0;MF;bomb", "adapter must not classify or filter non-missiles")
+expect(values[cockpit_params.WeaponStation01] == "0;0;0;0;0;0;RT;", "nil mount is an absent station sample")
+expect(values[cockpit_params.WeaponObservationScannedStationCount] == 9, "scan all fixed aircraft stations")
+expect(values[cockpit_params.WeaponStation09] == "1;1;4;4;8;99;LT;opaque-guid", "last station preserves full native type")
+expect(has_diagnostic("FCK1C STORES station=8 name=LT"), "raw diagnostics cover the last fixed station")
+expect(has_diagnostic('result_type="nil"'), "raw diagnostics distinguish nil station results")
+local station_definitions = dofile("Cockpit/Scripts/Stores/StationDefinitions.lua")
+local station_contract_file = assert(io.open("src/efm/F-CK-1C_EFM/Core/Contracts/CockpitContracts.h", "r"))
+local station_contract = station_contract_file:read("*a")
+station_contract_file:close()
+expect(tonumber(station_contract:match("kWeaponStationCount%s*=%s*(%d+)")) == #station_definitions, "C++ capacity matches the shared aircraft station definition")
+local aircraft_file = assert(io.open("F-CK-1C.lua", "r"))
+local aircraft_source = aircraft_file:read("*a")
+aircraft_file:close()
+for i, definition in ipairs(station_definitions) do
+    expect(definition.number == i, "shared pylon definitions remain consecutive in cockpit scan order")
+    expect(aircraft_source:find("local STATION_" .. definition.name .. " = station_definitions[" .. i .. "].number", 1, true), "aircraft registration reads the shared station definition")
+    expect(aircraft_source:find("DisplayName = _(station_definitions[STATION_" .. definition.name .. "].name)", 1, true), "aircraft labels read the shared station definition")
+end
 values[cockpit_params.McGeneration] = 2
 values[cockpit_params.McAvailable] = 1
 values[cockpit_params.WeaponRequestedStation] = 2
@@ -292,11 +309,7 @@ update()
 expect(values[cockpit_params.WeaponSelectionAckRevision] == 0, "failed selection must remain unacknowledged")
 selection_fails = false
 update()
-expect(
-    values[cockpit_params.WeaponSelectionAckRevision] == 1
-        and values[cockpit_params.WeaponObservationSelectedStation] == 2,
-    "successful retry acknowledges the actual request"
-)
+expect(values[cockpit_params.WeaponSelectionAckRevision] == 1 and values[cockpit_params.WeaponObservationSelectedStation] == 2, "successful retry acknowledges the actual request")
 update()
 expect(#select_calls == 2, "a repeated request must not repeat successful selection")
 values[cockpit_params.McGeneration] = 3
@@ -312,58 +325,45 @@ update()
 expect(#select_calls == 2, "torn MC selection request must not select")
 values[cockpit_params.WeaponRequestedStation] = 4
 update()
-expect(
-    #select_calls == 3 and select_calls[3] == 4,
-    "the adapter must execute the station MC requests without reclassification"
-)
+expect(#select_calls == 3 and select_calls[3] == 4, "the adapter must execute the station MC requests without reclassification")
 CockpitEvent("WeaponRearmComplete")
 update()
-expect(
-    #select_calls == 3 and values[cockpit_params.WeaponRearmRevision] == 1,
-    "rearm publishes an event revision; MC decides reselection"
-)
+expect(#select_calls == 3 and values[cockpit_params.WeaponRearmRevision] == 1, "rearm publishes an event revision; MC decides reselection")
 failed_station = 2
 update()
-expect(
-    values[cockpit_params.WeaponObservationAvailable] == 0
-        and values[cockpit_params.WeaponObservationInvalidReason] == 5,
-    "station API failure invalidates the entire inventory"
-)
-expect(values[cockpit_params.WeaponStation03] == "0;0;0;0;", "failed scans cannot publish old inventory as current")
+expect(values[cockpit_params.WeaponObservationAvailable] == 0 and values[cockpit_params.WeaponObservationInvalidReason] == 5, "station API failure invalidates the entire inventory")
+expect(values[cockpit_params.WeaponStation03] == "0;0;0;0;0;0;RI;", "failed scans cannot publish old inventory as current")
 failed_station = nil
 stations[2].count = 1.5
 update()
-expect(
-    values[cockpit_params.WeaponObservationAvailable] == 0
-        and values[cockpit_params.WeaponObservationInvalidReason] == 6,
-    "invalid native record must be unavailable"
-)
+expect(values[cockpit_params.WeaponObservationAvailable] == 0 and values[cockpit_params.WeaponObservationInvalidReason] == 6, "invalid native record must be unavailable")
 local invalid_records = {
     { count = false, weapon = { level2 = 4, level3 = 7 }, CLSID = "AIM-9" },
     { count = 1, weapon = { level2 = false, level3 = 7 }, CLSID = "AIM-9" },
     { count = 1, weapon = { level2 = 4, level3 = false }, CLSID = "AIM-9" },
+    { count = 1, weapon = { level1 = false, level2 = 4, level3 = 7 }, CLSID = "AIM-9" },
+    { count = 1, weapon = { level2 = 4, level3 = 7, level4 = false }, CLSID = "AIM-9" },
     { count = 1, weapon = false, CLSID = "AIM-9" },
     { count = 1, weapon = { level2 = 4, level3 = 7 }, CLSID = false },
 }
 for _, record in ipairs(invalid_records) do
     stations[2] = record
     update()
-    expect(
-        values[cockpit_params.WeaponObservationAvailable] == 0
-            and values[cockpit_params.WeaponObservationInvalidReason] == 6,
-        "false must not become a valid empty inventory field"
-    )
+    expect(values[cockpit_params.WeaponObservationAvailable] == 0 and values[cockpit_params.WeaponObservationInvalidReason] == 6, "false must not become a valid empty inventory field")
 end
 stations[2] = { count = 0, weapon = { level2 = 4, level3 = 7 }, CLSID = "AIM-9" }
 values[cockpit_params.WeaponRequestedStation] = -1
 values[cockpit_params.WeaponSelectionRequestRevision] = 3
 update()
-expect(
-    values[cockpit_params.WeaponSelectionAckRevision] == 3
-        and values[cockpit_params.WeaponObservationSelectedStation] == -1
-        and #select_calls == 3,
-    "clearing the last-request belief uses no invented SDK deselect call"
-)
+expect(values[cockpit_params.WeaponSelectionAckRevision] == 3 and values[cockpit_params.WeaponObservationSelectedStation] == -1 and #select_calls == 3, "clearing the last-request belief uses no invented SDK deselect call")
+values[cockpit_params.WeaponRequestedStation] = 8
+values[cockpit_params.WeaponSelectionRequestRevision] = 4
+update()
+expect(#select_calls == 4 and select_calls[4] == 8 and values[cockpit_params.WeaponSelectionAckRevision] == 4, "the final aircraft station accepts a selection request")
+values[cockpit_params.WeaponRequestedStation] = 9
+values[cockpit_params.WeaponSelectionRequestRevision] = 5
+update()
+expect(#select_calls == 4 and values[cockpit_params.WeaponSelectionAckRevision] == 4, "selection outside the fixed aircraft stations remains unacknowledged")
 -- Radar/HMCS preserve MC mission state while publishing observations and presentation.
 values = fixture(function() return true end)
 local mission_values = {

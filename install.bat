@@ -17,7 +17,10 @@ set DST=%TARGET_ROOT%\Mods\aircraft\%MOD_NAME%
 
 if not exist "%TARGET_ROOT%\Mods\aircraft" mkdir "%TARGET_ROOT%\Mods\aircraft"
 
-rem Remove existing installation (if any) to ensure a clean full replace
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SRC%\InstallSupport\RemoveLegacyStoresExport.ps1" -SavedGamesRoot "%TARGET_ROOT%"
+if errorlevel 1 goto copy_failed
+
+rem Replace the runtime module with the selected package.
 if exist "%DST%" (
   echo Removing existing installation at "%DST%" ...
   rmdir /S /Q "%DST%"

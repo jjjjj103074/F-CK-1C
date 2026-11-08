@@ -57,6 +57,7 @@ void release_active_flight()
 	const std::optional<double> final_simulation_time = current_simulation_time();
 	bridge().event_reporter().log_cockpit_parameter_events(bridge().debug_indicator_exporter().release_flight());
 	bridge().debug_csv_writer().release_flight(final_simulation_time.value_or(0.0));
+	bridge().gun_ammunition_source().reset_flight();
 	bridge().core().release();
 	bridge().debug_telemetry_hub().release_flight();
 	bridge().input_collector().reset();
@@ -133,7 +134,10 @@ try
 		output_available = bridge().output_store().read().has_value();
 		if (output_available)
 		{
-			bridge().input_collector().publish_cockpit_observation(cockpit.cockpit);
+			Core::CockpitObservation observation = cockpit.cockpit;
+			observation.gun_ammunition =
+			    bridge().gun_ammunition_source().observe(bridge().output_store().read()->simulation_time_s);
+			bridge().input_collector().publish_cockpit_observation(observation);
 			output = bridge().core().step(bridge().input_collector().snapshot(dt));
 			bridge().output_store().publish(output);
 			bridge().param_exporter().observe(output);

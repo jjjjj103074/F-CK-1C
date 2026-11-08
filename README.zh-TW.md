@@ -27,6 +27,8 @@ install.bat "D:\Saved Games\DCS"
 
 ## 開發
 
+- [DCS API 指引](docs/DCS_API_GUIDE.zh-TW.md)：執行環境、原生機砲、掛點介面與實測契約。
+
 - [貢獻指南](CONTRIBUTING.md)：環境、流程與提交規則。
 - [EFM](src/efm/README.md)：架構與各模組指南。
 - [座艙](docs/COCKPIT.md)：Lua device、輸入路由與參數。

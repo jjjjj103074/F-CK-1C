@@ -26,6 +26,8 @@ void run_flight_control_actuation_system_tests(Tests::Context& context);
 void run_digital_flight_control_executive_tests(Tests::Context& context);
 void run_mission_computer_tests(Tests::Context& context);
 void run_mode_management_tests(Tests::Context& context);
+void run_stores_management_tests(Tests::Context& context);
+void run_stores_telemetry_tests(Tests::Context& context);
 void run_configuration_ownership_tests(Tests::Context& context);
 void run_configuration_loader_tests(Tests::Context& context);
 void run_control_laws_tests(Tests::Context& context);
@@ -55,10 +57,15 @@ void initialize_configuration()
 }
 }
 
+void run_native_gun_access_tests(Tests::Context& context);
+void run_gun_ammunition_source_tests(Tests::Context& context);
+
 int main()
 {
 	initialize_configuration();
 	Tests::Context context;
+	run_native_gun_access_tests(context);
+	run_gun_ammunition_source_tests(context);
 	run_configuration_loader_tests(context);
 	run_control_laws_tests(context);
 	initialize_configuration();
@@ -97,6 +104,8 @@ int main()
 	run_digital_flight_control_executive_tests(context);
 	run_mission_computer_tests(context);
 	run_mode_management_tests(context);
+	run_stores_management_tests(context);
+	run_stores_telemetry_tests(context);
 	run_configuration_ownership_tests(context);
 	run_system_pipeline_data_tests(context);
 	run_system_pipeline_handler_tests(context);

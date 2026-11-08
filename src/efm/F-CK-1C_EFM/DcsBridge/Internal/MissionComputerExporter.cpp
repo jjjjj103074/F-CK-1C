@@ -32,6 +32,7 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerElevation),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9LockRange),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McStoresGunCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresGunCountAvailable),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McTriggerSecondStageHeld),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McMasterArmPressSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McNavigationPressSequence),
@@ -117,6 +118,7 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Elevation, snapshot.infrared_missile.seeker_elevation_rad);
 	WRITE_MC(LockRange, snapshot.infrared_missile.lock_range_m);
 	WRITE_MC(GunCount, snapshot.stores.gun_count);
+	WRITE_MC(GunCountAvailable, snapshot.stores.gun_ammunition.observation.available ? 1.0 : 0.0);
 	WRITE_MC(TriggerHeld, snapshot.control_inputs.trigger_second_stage_held ? 1.0 : 0.0);
 	WRITE_MC(MasterArmPressSequence, static_cast<double>(snapshot.control_inputs.master_arm_press_sequence));
 	WRITE_MC(NavigationPressSequence, static_cast<double>(snapshot.control_inputs.navigation_press_sequence));
