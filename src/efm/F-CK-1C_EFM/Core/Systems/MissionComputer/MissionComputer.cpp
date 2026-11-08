@@ -50,6 +50,12 @@ MissionComputer::MissionComputer()
                      &Mc::FailureManager::step } }),
       startup_and_restart_(executive_, system_status_tables_.lifecycle)
 {
+	// 入口排入要求後，同步派送就緒動作，再返回呼叫端。
+	stores_commands_connection_ = stores_commands_.commands_available.connect(
+	    [this]()
+	    {
+		    stores_management_.dispatch();
+	    });
 	// 組裝本台 MC 的主保險與模式事件訂閱。
 	fire_control_arm_connection_ = mode_events_.master_arm_selected.connect(
 	    [this](const Mc::MasterArmSelected& event)

@@ -5,6 +5,7 @@
 
 #include <deque>
 #include <variant>
+#include <sigslot/signal.hpp>
 
 namespace Core::Systems::Mc
 {
@@ -44,6 +45,8 @@ public:
 	std::uint64_t submit(const StoresCommand& command);
 	/// @brief 回報該筆要求已完成執行或取消。
 	bool acknowledged(std::uint64_t ticket) const noexcept;
+	/// @brief 一批要求排入後，通知 MC 派送目前就緒的 SM 指令。
+	sigslot::signal_st<> commands_available;
 
 private:
 	friend class StoresManagement;

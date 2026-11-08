@@ -82,8 +82,11 @@ std::uint64_t StoresCommandQueue::submit(const StoresCommand& command)
 		enqueue(CancelStoresCommands{});
 		const auto ticket = enqueue(command);
 		enqueue(SelectStoresForMode{ latest_mode_, false, true });
+		commands_available();
 		return ticket;
 	}
-	return enqueue(command);
+	const auto ticket = enqueue(command);
+	commands_available();
+	return ticket;
 }
 }

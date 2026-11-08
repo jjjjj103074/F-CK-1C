@@ -32,6 +32,7 @@ public:
 
 private:
 	MissionAction selection_action() const;
+	void drain_commands();
 	void notify_changes();
 	const MissionInputs& input_;
 	StoresData& stores_;
@@ -42,5 +43,6 @@ private:
 	InventoryChanged inventory_change_;
 	bool gun_changed_ = false;
 	bool selection_changed_ = false;
+	bool dispatching_ = false;
 };
 }

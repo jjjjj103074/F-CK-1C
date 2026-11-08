@@ -689,10 +689,32 @@ void test_store_receipts_track_execution_and_survive_retirement(Tests::Context& 
 	TEST_EXPECT(context, !f.commands.acknowledged(ticket + 1));
 }
 
+void test_submission_notification_keeps_stop_before_following_control_release(Tests::Context& context)
+{
+	Fixture f;
+	sigslot::scoped_connection connection = f.commands.commands_available.connect(
+	    [&]()
+	    {
+		    f.manager.dispatch();
+	    });
+	const auto stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
+	f.actions.append(MissionActionKind::LockFinish);
+	f.actions.append(MissionActionKind::ChangeLockUp);
+	const auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 3);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::LockFinish);
+	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::ChangeLockUp);
+	TEST_EXPECT(context, !f.commands.acknowledged(stop));
+	f.actions.acknowledge(batch.first_sequence);
+	TEST_EXPECT(context, f.commands.acknowledged(stop));
+}
+
 }
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_submission_notification_keeps_stop_before_following_control_release(context);
 	test_store_receipts_track_execution_and_survive_retirement(context);
 	test_plain_stop_precedes_selection_retry(context);
 	test_stop_cancels_published_selection_before_reasserting_it(context);

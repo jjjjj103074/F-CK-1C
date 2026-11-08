@@ -47,6 +47,24 @@ void StoresManagement::prepare(std::chrono::nanoseconds time)
 
 void StoresManagement::dispatch()
 {
+	if (dispatching_)
+		return;
+	dispatching_ = true;
+	try
+	{
+		drain_commands();
+		notify_changes();
+	}
+	catch (...)
+	{
+		dispatching_ = false;
+		throw;
+	}
+	dispatching_ = false;
+}
+
+void StoresManagement::drain_commands()
+{
 	const bool previously_awaiting = stores_.selection.awaiting_inventory;
 	stores_.selection.awaiting_inventory = false;
 	while (!commands_.pending_.empty())
@@ -81,7 +99,6 @@ void StoresManagement::dispatch()
 	}
 	commands_.retire_completed();
 	selection_changed_ = selection_changed_ || previously_awaiting != stores_.selection.awaiting_inventory;
-	notify_changes();
 }
 
 void StoresManagement::step(std::chrono::nanoseconds time, double)

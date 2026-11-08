@@ -409,6 +409,9 @@ void test_pickle_and_targeting_modes(Tests::Context& context)
 	TEST_EXPECT(context, !output.fire_control.pickle_requested);
 	TEST_EXPECT(context, output.stores.air_to_air_missile_count == 2);
 	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::PickleOff));
+	TEST_EXPECT(context, output.external_actions.batch.actions[0].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, output.external_actions.batch.actions[1].kind == MissionActionKind::LockFinish);
+	TEST_EXPECT(context, output.external_actions.batch.actions[2].kind == MissionActionKind::ChangeLockUp);
 	inventory.stations[2].count = 1;
 	inventory.status.revision = 4;
 	output = fixture.step(kMissionPeriod * 11);
