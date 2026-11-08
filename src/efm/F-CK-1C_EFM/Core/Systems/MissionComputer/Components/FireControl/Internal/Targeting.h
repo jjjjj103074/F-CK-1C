@@ -3,7 +3,7 @@
 #include "../../TimedAction.h"
 #include "../../../Database/InputOutputData.h"
 #include "../../../Database/MissionData.h"
-#include "../../StoresManagement/StoresManagement.h"
+#include "../../../Database/StoresData.h"
 
 namespace Core::Systems::Mc::Internal
 {
@@ -15,10 +15,9 @@ public:
 	          const ModeData& mode,
 	          const StoresData& stores,
 	          TargetingData& targeting,
-	          ExternalActionQueue& actions,
-	          StoresManagement& stores_management);
+	          ExternalActionQueue& actions);
 	void handle(const Command& command);
-	void select_mode(bool cycle_weapon);
+	void select_mode();
 	void prepare_release();
 	void unlock();
 	void step(std::chrono::nanoseconds time, double dt_s);
@@ -33,7 +32,6 @@ private:
 	const StoresData& stores_;
 	TargetingData& targeting_;
 	ExternalActionQueue& actions_;
-	StoresManagement& stores_management_;
 	TimedAction lock_;
 	bool radar_on_requested_ = false;
 	std::chrono::nanoseconds next_auto_lock_ = {};

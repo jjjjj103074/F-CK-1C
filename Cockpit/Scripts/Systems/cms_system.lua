@@ -1,17 +1,12 @@
--- MC owns modes, HOTAS decisions, gun/pickle/lock timing and store count policy.
--- 執行 MC 的有序 DCS 指令、發布飛彈觀測，並運行反制程序。
-local sensor_data = get_base_data()
+-- 執行 MC 的有序 DCS 操作命令，發布介面可用性，並運行反制程序。
 local update_rate = 0.02
 make_default_activity(update_rate)
 dofile(LockOn_Options.script_path .. "command_defs.lua")
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 local adapter_available = get_param_handle(cockpit_params.McAdapterAvailable)
-local missile_available = get_param_handle(cockpit_params.McMissileCountAvailable)
-local missile_count = get_param_handle(cockpit_params.McMissileCount)
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
-local diagnose = dofile(LockOn_Options.script_path .. "Stores/ObservationDiagnostics.lua").new("STORES_COUNT")
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -39,42 +34,7 @@ local function cms_release_allowed()
     return dispatch_action ~= nil and master_mode:get() > 1.5
 end
 
--- Preserve the existing API names and precedence; confirm them in DCS before changing this path.
-local function read_count(candidates, maximum, purpose)
-    for _, name in ipairs(candidates) do
-        local method = sensor_data and sensor_data[name]
-        if type(method) == "function" then
-            local ok, value = pcall(method, sensor_data)
-            local accepted = ok and type(value) == "number" and value >= 0 and value <= maximum
-            diagnose(purpose .. " api=" .. name, {
-                callable = true,
-                call_ok = ok,
-                result_type = type(value),
-                result = value,
-                accepted = accepted,
-            })
-            if accepted then return true, math.floor(value + 0.5) end
-        else
-            diagnose(purpose .. " api=" .. name, { callable = false, member_type = type(method) })
-        end
-    end
-    return false, 0
-end
-
-local function publish_counts()
-    local has_missiles, missiles = read_count({
-        "getAAMMissileCount",
-        "getAAMCount",
-        "getAirMissileCount",
-        "getAirToAirMissileCount",
-        "getMissileCount",
-        "getMissilesCount",
-        "getWeaponCount",
-        "getSelectedWeaponCount",
-        "getAmmoCount",
-    }, 12, "missile")
-    missile_available:set(has_missiles and 1 or 0)
-    missile_count:set(missiles)
+local function publish_adapter_availability()
     adapter_available:set(dispatch_action ~= nil and 1 or 0)
 end
 
@@ -191,7 +151,6 @@ local native_actions = {
     [4] = dcs_commands.iCommandPlanePickleOn,
     [5] = dcs_commands.iCommandPlanePickleOff,
     [6] = dcs_commands.iCommandPlaneRadarOnOff,
-    [7] = dcs_commands.iCommandPlaneChangeWeapon,
     [8] = dcs_commands.iCommandPlaneModeHelmet,
     [9] = dcs_commands.iCommandPlaneModeVS,
     [10] = dcs_commands.iCommandPlaneModeBVR,
@@ -228,11 +187,11 @@ end
 local mc_io = dofile(LockOn_Options.script_path .. "Systems/mc_io.lua").new(execute_action)
 
 function post_initialize()
-    publish_counts()
+    publish_adapter_availability()
 end
 
 function update()
-    publish_counts()
+    publish_adapter_availability()
     mc_io.update()
     if cms_pair_release_latched then
         cms_pair_release_hold_timer = cms_pair_release_hold_timer - update_rate

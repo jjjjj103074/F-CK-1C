@@ -15,27 +15,19 @@ public:
 	            const ModeData& mode,
 	            const StoresData& stores,
 	            FireControlData& data,
-	            ExternalActionQueue& actions,
-	            StoresManagement& stores_management);
+	            ExternalActionQueue& actions);
 	FireControl(const FireControl&) = delete;
 	FireControl& operator=(const FireControl&) = delete;
 	FireControl(FireControl&&) = delete;
 	FireControl& operator=(FireControl&&) = delete;
 	void handle(const Command& command);
-	/// @brief 在 ModeData 更新後處理目標操作模式，保留重選時的武器循環意圖。
+	/// @brief 在 ModeData 更新後套用目標操作模式。
 	void on_operating_mode_selected(const OperatingModeSelected& event);
 	/// @brief 主保險選擇為 OFF/SIM 時停止武器程序。
 	void on_master_arm_selected(const MasterArmSelected& event);
 	void step(std::chrono::nanoseconds time, double dt_s);
 
 private:
-	/// @brief 依既有模式規則，透過掛載查詢挑選空對空掛點並提出選站要求。
-	void update_station_selection();
-	const ModeData& mode_;
-	const StoresData& stores_;
-	StoresManagement& stores_management_;
-	OperatingMode selection_mode_ = OperatingMode::Navigation;
-	std::uint64_t rearm_revision_ = 0;
 	Internal::Targeting targeting_;
 	Internal::WeaponOperation weapon_operation_;
 	Internal::InfraredMissileSupport infrared_missile_support_;

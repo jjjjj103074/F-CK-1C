@@ -70,8 +70,6 @@ private:
 		McAdapterAvailable,
 		McAcknowledgedSequence,
 		RadarPowerOn,
-		McMissileCountAvailable,
-		McMissileCount,
 		Count
 	};
 

@@ -85,6 +85,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.infrared_missile.seeker_elevation_rad = -0.2;
 	mc.infrared_missile.lock_range_m = 1200.0;
 	mc.stores.air_to_air_missile_count = 2;
+	mc.stores.air_to_air_missile_count_complete = true;
 	mc.stores.gun_count = 240.0;
 	mc.stores.gun_ammunition.observation.available = true;
 	mc.control_inputs.trigger_second_stage_held = true;
@@ -96,8 +97,8 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.control_inputs.weapon_release_press_sequence = 12;
 	cockpit.set(DcsIds::CockpitParams::HmcsWeaponClass, 5.0);
 	cockpit.set(DcsIds::CockpitParams::HmcsWeaponQuantity, 99.0);
-	mc.stores.requested_station = 3;
-	mc.stores.selection_request_revision = 4;
+	mc.stores.selection.requested_station = 3;
+	mc.stores.selection.request_revision = 4;
 	mc.external_actions.batch.first_sequence = 7;
 	mc.external_actions.batch.count = 2;
 	mc.external_actions.batch.actions[0] = Core::MissionActionKind::GunOn;
@@ -125,6 +126,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponQuantity), 99.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 4.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9MissileCount), 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresMissileCountAvailable), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCount), 240.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCountAvailable), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McTriggerSecondStageHeld), 1.0, kTolerance);

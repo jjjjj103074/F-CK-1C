@@ -16,7 +16,6 @@ enum class MissionActionKind
 	PickleOn = 4,
 	PickleOff = 5,
 	EnsureRadarOn = 6,
-	CycleWeapon = 7,
 	ModeHelmet = 8,
 	ModeVerticalScan = 9,
 	ModeBeyondVisualRange = 10,
@@ -48,7 +47,5 @@ struct MissionAdapterObservation
 	bool available = false;
 	bool radar_power_on = false;
 	std::uint64_t acknowledged_sequence = 0;
-	bool missile_count_available = false;
-	int missile_count = 0;
 };
 }

@@ -24,7 +24,7 @@ MissionComputer : System [32 Hz]
     ├── ModeManagement
     ├── CountermeasureControl
     ├── StoresManagement
-    │   └── Internal/InventoryProcessing
+    │   └── Internal/（ObservationProcessing、StationSelection）
     ├── FireControl
     │   └── Internal/
     │       ├── Targeting
@@ -54,7 +54,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 FireControl 內的 Targeting 保存解籠、指定意圖、捕獲子模式與捕獲計時；
 WeaponOperation 保留扳機／投放資格、保持與停止程序；InfraredMissileSupport
 整理尋標接觸、鎖定、狀態與音調要求。模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
-選站決策由 FireControl 負責；武器循環及選站要求、數量更新歸 StoresManagement；雷達模型、DCS API 及操作映射留在外部。
+StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認；FireControl 讀取唯讀掛載資料處理目標與武器操作。雷達模型、DCS API 及操作映射由外部介面提供。
 
 ## 資料所有權
 
@@ -128,7 +128,7 @@ readiness 是簡化命令狀態；designation 是操作意圖；contact／locked
 
 九掛點共用機型 Lua 定義；StoresManagement 保存各站的識別、數量、有效性、觀測時間與掛載版本。
 庫存快照隨 CombatAvionicsSnapshot.stores.inventory 發布；共用查詢直接讀取唯讀快照。
-掛載明細與原有 HUD 空對空總數／估算分開保存。
+空對空顯示數量由同一庫存查詢產生，另提供完整性；掛點與機砲觀測超過 0.5 秒時保存最後讀值並標為過期。
 資料與函式分工見[掛載管理說明](Components/StoresManagement/README.md)。
 
 ## 模式狀態與事件

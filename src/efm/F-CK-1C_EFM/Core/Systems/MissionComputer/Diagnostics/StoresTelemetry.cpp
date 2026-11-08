@@ -94,8 +94,12 @@ void StoresTelemetry::setup(SystemSetup& setup)
 	missile_count_complete_ = declare<bool>(setup, "missile_count_complete", "ALL COUNT COMPLETE");
 	aa_count_ = declare<std::int64_t>(setup, "aa_count", "AA MISSILES");
 	aa_count_complete_ = declare<bool>(setup, "aa_count_complete", "AA COUNT COMPLETE");
-	aa_summary_count_ = declare<std::int64_t>(setup, "aa_summary_count", "AA DISPLAY COUNT");
-	aa_summary_source_ = declare<std::int64_t>(setup, "aa_summary_source", "AA DISPLAY SOURCE");
+	selection_requested_ = declare<std::int64_t>(setup, "selection_requested", "STATION REQUESTED");
+	selection_acknowledged_ = declare<std::int64_t>(setup, "selection_acknowledged", "STATION ACKNOWLEDGED");
+	selection_pending_ = declare<bool>(setup, "selection_pending", "STATION REQUEST PENDING");
+	selection_request_revision_ = declare<std::string>(setup, "selection_request_revision", "STATION REQUEST REV");
+	selection_acknowledged_revision_ =
+	    declare<std::string>(setup, "selection_acknowledged_revision", "STATION ACK REV");
 	gun_api_available_ = declare<bool>(setup, "gun_api_available", "GUN API OK");
 	gun_api_count_ = declare<double>(setup, "gun_api_count", "GUN API COUNT");
 	gun_count_ = declare<double>(setup, "gun_count", "GUN MC COUNT");
@@ -127,8 +131,8 @@ void StoresTelemetry::publish(DebugSimulationTime time,
 	    inventory.last_observed_at
 	        ? std::chrono::duration<double>((std::max)(time, input.observed_at) - *inventory.last_observed_at).count()
 	        : -1.0;
-	observation_available_.publish(time, source.status.available);
-	observation_reason_.publish(time, static_cast<std::int64_t>(source.status.invalid_reason));
+	observation_available_.publish(time, inventory.observation.available);
+	observation_reason_.publish(time, static_cast<std::int64_t>(inventory.observation.invalid_reason));
 	observation_revision_.publish(time, std::to_string(source.status.revision));
 	inventory_revision_.publish(time, std::to_string(inventory.revision));
 	rearm_revision_.publish(time, std::to_string(inventory.rearm_revision));
@@ -137,8 +141,11 @@ void StoresTelemetry::publish(DebugSimulationTime time,
 	missile_count_complete_.publish(time, all.complete);
 	aa_count_.publish(time, aa.count);
 	aa_count_complete_.publish(time, aa.complete);
-	aa_summary_count_.publish(time, stores.missile_count);
-	aa_summary_source_.publish(time, static_cast<std::int64_t>(stores.count_source));
+	selection_requested_.publish(time, stores.selection.requested_station.value_or(-1));
+	selection_acknowledged_.publish(time, stores.selection.acknowledged_station.value_or(-1));
+	selection_pending_.publish(time, stores.selection.pending());
+	selection_request_revision_.publish(time, std::to_string(stores.selection.request_revision));
+	selection_acknowledged_revision_.publish(time, std::to_string(stores.selection.acknowledged_revision));
 	gun_api_available_.publish(time, input.cockpit.gun_ammunition.status.available);
 	gun_api_count_.publish(time, input.cockpit.gun_ammunition.count);
 	const auto& gun = stores.gun_ammunition;

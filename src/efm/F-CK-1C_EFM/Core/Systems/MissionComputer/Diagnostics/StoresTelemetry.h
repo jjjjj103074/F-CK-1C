@@ -43,8 +43,11 @@ private:
 	DebugTelemetryChannel<bool> missile_count_complete_;
 	DebugTelemetryChannel<std::int64_t> aa_count_;
 	DebugTelemetryChannel<bool> aa_count_complete_;
-	DebugTelemetryChannel<std::int64_t> aa_summary_count_;
-	DebugTelemetryChannel<std::int64_t> aa_summary_source_;
+	DebugTelemetryChannel<std::int64_t> selection_requested_;
+	DebugTelemetryChannel<std::int64_t> selection_acknowledged_;
+	DebugTelemetryChannel<bool> selection_pending_;
+	DebugTelemetryChannel<std::string> selection_request_revision_;
+	DebugTelemetryChannel<std::string> selection_acknowledged_revision_;
 	DebugTelemetryChannel<bool> gun_api_available_;
 	DebugTelemetryChannel<double> gun_api_count_;
 	DebugTelemetryChannel<double> gun_count_;

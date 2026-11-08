@@ -132,10 +132,37 @@ void test_unknown_classification_is_visible(Tests::Context& context)
 	TEST_EXPECT(context, f.value<std::string>("station_05").find("UNKNOWN/UNKNOWN") != std::string::npos);
 	TEST_EXPECT(context, f.value<std::string>("station_05_identity").find("unclassified") != std::string::npos);
 }
+void test_selection_and_stale_inventory_are_visible(Tests::Context& context)
+{
+	Fixture f;
+	auto& source = f.frame.cockpit.weapon_stations;
+	source.status = { true, 2, ObservationInvalidReason::None };
+	source.stations[2] = { StoreConfiguration::Equipped, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+	f.pipeline->send({ CommandId::SelectDogfightMode, 1.0 });
+	f.step(kPeriod);
+	TEST_EXPECT(context, f.value<std::int64_t>("selection_requested") == 2);
+	TEST_EXPECT(context, f.value<std::int64_t>("selection_acknowledged") == -1);
+	TEST_EXPECT(context, f.value<std::string>("selection_request_revision") == "1");
+	TEST_EXPECT(context, f.value<bool>("selection_pending"));
+	source.selected_station = 2;
+	source.selection_ack_revision = 1;
+	source.status.revision = 4;
+	f.step(kPeriod * 2);
+	TEST_EXPECT(context, f.value<std::int64_t>("selection_acknowledged") == 2);
+	TEST_EXPECT(context, f.value<std::string>("selection_acknowledged_revision") == "1");
+	TEST_EXPECT(context, !f.value<bool>("selection_pending"));
+	f.step(kPeriod * 20);
+	TEST_EXPECT(context, !f.value<bool>("observation_available"));
+	TEST_EXPECT(context, f.value<std::int64_t>("observation_reason") == 7);
+	TEST_EXPECT(context, !f.value<bool>("aa_count_complete"));
+	TEST_EXPECT(context, f.value<std::string>("station_03").find("Q=2 MSL/AA L=1 OK=0") != std::string::npos);
+}
+
 }
 
 void run_stores_telemetry_tests(Tests::Context& context)
 {
 	test_inventory_diagnostics_follow_real_mc_steps(context);
 	test_unknown_classification_is_visible(context);
+	test_selection_and_stale_inventory_are_visible(context);
 }

@@ -21,6 +21,7 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9TargetDesignated),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileStatus),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresMissileCountAvailable),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponRequestedStation),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionRequestRevision),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerState),
@@ -107,8 +108,9 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Designated, snapshot.infrared_missile.target_designated ? 1.0 : 0.0);
 	WRITE_MC(MissileStatus, static_cast<double>(snapshot.infrared_missile.readiness));
 	WRITE_MC(MissileCount, static_cast<double>(snapshot.stores.air_to_air_missile_count));
-	WRITE_MC(RequestedStation, static_cast<double>(snapshot.stores.requested_station.value_or(-1)));
-	WRITE_MC(SelectionRequestRevision, static_cast<double>(snapshot.stores.selection_request_revision));
+	WRITE_MC(MissileCountAvailable, snapshot.stores.air_to_air_missile_count_complete ? 1.0 : 0.0);
+	WRITE_MC(RequestedStation, static_cast<double>(snapshot.stores.selection.requested_station.value_or(-1)));
+	WRITE_MC(SelectionRequestRevision, static_cast<double>(snapshot.stores.selection.request_revision));
 	WRITE_MC(SeekerState, static_cast<double>(snapshot.infrared_missile.seeker_state));
 	WRITE_MC(Tone, static_cast<double>(snapshot.infrared_missile.requested_tone));
 	WRITE_MC(Contact, snapshot.infrared_missile.contact ? 1.0 : 0.0);

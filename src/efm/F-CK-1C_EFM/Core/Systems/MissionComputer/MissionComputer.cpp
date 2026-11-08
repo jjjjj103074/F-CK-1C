@@ -3,6 +3,7 @@
 #include "../SystemPipeline.h"
 #include "../SystemUpdateRates.h"
 #include "Common/CommandValue.h"
+#include "Common/StoresQueries.h"
 
 #include <stdexcept>
 
@@ -18,13 +19,8 @@ namespace Core::Systems
 MissionComputer::MissionComputer()
     : system_monitor_(input_output_data_, system_status_tables_.health),
       failure_manager_(system_status_tables_.health, system_status_tables_.failure_response),
-      stores_management_(input_output_data_.input, stores_data_, external_actions_, stores_events_),
-      fire_control_(input_output_data_.input,
-                    mode_data_,
-                    stores_data_,
-                    fire_control_data_,
-                    external_actions_,
-                    stores_management_),
+      stores_management_(input_output_data_.input, stores_data_, stores_events_),
+      fire_control_(input_output_data_.input, mode_data_, stores_data_, fire_control_data_, external_actions_),
       mode_management_(mode_data_, mode_events_),
       countermeasure_control_(mode_data_, external_actions_),
       executive_(executive_tables_,
@@ -63,6 +59,11 @@ MissionComputer::MissionComputer()
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
 		    fire_control_.on_operating_mode_selected(event);
+	    });
+	stores_mode_connection_ = mode_events_.operating_mode_selected.connect(
+	    [this](const Mc::OperatingModeSelected& event)
+	    {
+		    stores_management_.on_operating_mode_selected(event);
 	    });
 	startup_and_restart_.start();
 }
@@ -174,13 +175,12 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
 	output.stores.status = output.status;
 	output.stores.inventory = stores_data_.inventory;
-	output.stores.air_to_air_missile_count = stores_data_.missile_count;
+	const auto missiles = Mc::count_missiles(stores_data_.inventory, { WeaponRole::AirToAir, {} });
+	output.stores.air_to_air_missile_count = missiles.count;
+	output.stores.air_to_air_missile_count_complete = missiles.complete;
 	output.stores.gun_ammunition = stores_data_.gun_ammunition;
 	output.stores.gun_count = stores_data_.gun_ammunition.count.value_or(0);
-	output.stores.count_source = stores_data_.count_source;
-	output.stores.selected_station = stores_data_.selected_station;
-	output.stores.requested_station = stores_data_.requested_station;
-	output.stores.selection_request_revision = stores_data_.selection_request_revision;
+	output.stores.selection = stores_data_.selection;
 	output.infrared_missile.uncage_held = fire_control_data_.targeting.uncage_held;
 	output.infrared_missile.target_designated = fire_control_data_.targeting.designation_requested;
 	output.infrared_missile.status = output.status;

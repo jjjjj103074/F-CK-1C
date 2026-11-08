@@ -31,6 +31,7 @@ private:
 		Designated,
 		MissileStatus,
 		MissileCount,
+		MissileCountAvailable,
 		RequestedStation,
 		SelectionRequestRevision,
 		SeekerState,

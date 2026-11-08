@@ -1,88 +1,93 @@
-# StoresManagement
+# StoresManagement 掛載管理
 
-StoresManagement 管理固定掛點的觀測庫存、既有彈量與選站要求；FireControl 決定選站及武器使用程序。
-MC 以 32 Hz 更新；Lua 以 20 Hz 讀取 DCS 掛點。相同觀測可以重複處理，收到新批次時更新觀測時間，
-內容或有效性改變時才發布通知。
+SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發布唯讀資料及同步變更通知。
+本元件是 MC 的掛載與數量權威；DCS 提供模擬世界的原始觀測。
 
-## 固定掛點與來源
+## 分工與檔案
 
-`Cockpit/Scripts/Stores/StationDefinitions.lua` 是機型註冊與座艙轉接層共用的九掛點定義：
-RT、RO、RI、MM、MF、MB、LI、LO、LT。機型掛點編號為 1–9，座艙依既有零起算介面掃描 0–8。
-Lua 回歸核對共用定義、C++ 容量與最後一站傳遞；實際 DCS 掛點映射仍需遊戲內驗證。
-
-Lua 每站發布 `present;count;level1;level2;level3;level4;station_name;CLSID`。
-CLSID 是最後一欄，原樣保留其中的分號。Bridge 驗證整批資料，將原生類型轉成 Core 分類，
-並將四層類型組成不透明識別。Core 以識別比對掛載；型號未知的飛彈仍可依分類盤點。
-本次直接使用 DCS 觀測與既有掛點定義，未增加獨立的武器型號資料庫。
-
-## 資料與 Interface
-
-- `Database/StoresData.h`：MC 持有，StoresManagement 唯一寫入。
-- `StoresData.inventory`：九個固定掛點的識別、種類、數量、來源有效性、最後有效觀測時間及掛載版本。
-- `Common/StoresQueries.h`：唯讀 `find_missile_stations`、`count_missiles`，接受庫存快照及查詢條件。
-- `StoresEvents`：每台 MC 的同步 `InventoryChanged` 通道；資料與舊介面摘要寫入後通知。
-- `CombatAvionicsSnapshot.stores.inventory`：對外發布完整逐掛點庫存。
-
-首次有效掛載、更換掛載或重新掛彈會更新掛載版本；同一次掛載的數量變化保留該版本。
-有掛載但數量為零，與空掛點分別保存。觀測暫時無效時，保留最後一次有效內容及時間，
-並標記目前有效性。查詢回傳有效資料中的候選站與數量，數量結果另帶資料完整性。
-
-## 函式分工
-
-| 位置／函式 | 功能 |
+| 位置 | 功能 |
 |---|---|
-| `StoresManagement::step` | 更新庫存、機砲彈量及相符的選站確認，最後發布變化 |
-| `update_inventory` | 記錄來源批次，逐站處理觀測並整理內容變更版本 |
-| `Internal::update_station` | 比對掛載身份、數量與有效性，更新單站狀態及掛載版本 |
-| `update_legacy_summary` | 維持既有空對空總數來源優先序與選站確認 |
-| `request_station` | 接受指定站位要求、驗證索引並遞增要求編號 |
-| `find_missile_stations` | 依分類、用途或識別碼回傳有彈的有效候選站 |
-| `count_missiles` | 計算符合條件的數量，回報資料是否完整 |
+| `StoresManagement` | 安排觀測、選站與通知的更新順序 |
+| `Internal/ObservationProcessing` | 接收觀測批次、維護掛載身分／數量／有效性、判斷過期 |
+| `Internal/StationSelection` | 依模式意圖與有效庫存決定掛點、保存要求與執行確認 |
+| `Database/StoresData` | 保存逐掛點庫存、機砲彈量及選站狀態 |
+| `Common/StoresQueries` | 提供唯讀飛彈候選查詢與數量加總 |
+| `StoresEvents` | 發布庫存、機砲彈量及選站變化 |
 
-辨識直接使用 Bridge 提供的分類與識別；不另以 AIM-9 名稱判斷。
-內部資料處理位於 `Internal/InventoryProcessing`；查詢只依賴共用快照型別。
+這兩個 Internal 檔案組是 SM 的內部實作。MC 頂層仍保有原本八個元件，DFLCC 維持原有架構。
 
-## 火控與相容行為
+## 對外介面
 
-FireControl 在週期更新開始時，依原 NAV／DGFT／MSL 規則選站，透過管理器提出要求。
-掛載管理器不讀取 ModeData。選站確認仍比對要求編號與掛點，代表 Lua 選站呼叫已執行。
-本次維持原發射資格、80 ms 保持、停止、解鎖與 Lua 命令執行流程。
+- 建構時綁定唯讀 `MissionInputs`、可寫 `StoresData` 與本台 MC 的 `StoresEvents`。
+- `on_operating_mode_selected` 保存模式與循環意圖，於週期更新時使用最新庫存處理。
+- `step` 依序更新庫存、機砲彈量與選站；全部資料寫入後，再依相同順序發布變更通知。
 
-既有 HMCS 空對空總數仍使用掛點 → API → 估算的來源順序，空對空相容摘要的原估算初值保留；機砲改用下述原生觀測。
-這份相容摘要與逐掛點觀測庫存分開；火控通知估算扣彈時不改寫已觀測的掛點數量。
-全用途飛彈盤點不代表已新增各型飛彈的導引或使用程序。
+ModeManagement 寫入 ModeData 並發出事件；MC 組裝處將事件分別連接到 SM 與 FCC。
+FCC 讀取 StoresData，使用共用查詢取得已知有效的空對空飛彈數量。
 
-## 觀測診斷
+## 資料流
 
-`Diagnostics/StoresTelemetry` 由 MC 在 setup 宣告 43 個共用通道，並於每次 MC step 完成後發布。
-每站提供庫存摘要、完整識別及 Bridge 解析後的輸入；全域欄位提供觀測批次、有效性、
-重新掛彈版本、查詢完整性與機砲來源。它使用既有 DebugTelemetrySink，畫面與 debug.csv 共用資料。
+```text
+DCS get_station_info (20 Hz) → weapon_system.lua → DcsBridge
+                                                  ↓
+DCS 原生機砲存量 (10 Hz) → GunAmmunitionSource → MissionInputs
+                                                  ↓
+                            SM (32 Hz) → StoresData → MC 快照
+                                                  ↓
+                             MissionComputerExporter → HMCS / debug.csv
+```
 
-Lua 的 `Stores/ObservationDiagnostics.lua` 記錄原始 table 的欄位與型別，內容變化時寫入 dcs.log。
-掛點記錄附帶即將發布的批次；CMS 記錄實際嘗試的數量 API，並每秒觀測可見的 LoGetPayloadInfo。
-原始診斷保留轉接前的缺欄位、容器與轉接架資訊；數量來源優先序及武器程序維持既有行為。
+九掛點定義共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`，座艙索引 0–8 依序為
+RT、RO、RI、MM、MF、MB、LI、LO、LT。
 
-人工驗證步驟見[必要 DCS 測試](../../../../../../../../docs/MC_STORES_DCS_TEST.zh-TW.md)。
+Bridge 轉譯 DCS 類型、完整 CLSID、數量與配置。SM 保存所有固定掛點；
+飛彈查詢使用分類、用途或識別碼條件，掛載識別以來源內容為準。
+空對地飛彈、炸彈、油箱與其他掛載也保留在逐掛點庫存。
 
-## 驗證狀態
+## 庫存與有效性
 
-來源保持未提交。Windows DLL 尚未由本次來源重建，隨附 bin 仍對應先前的模式事件版本；
-本次變更需完成 Windows 完整驗證與 DLL 更新後，再進行 DCS 遊戲內驗證。
-本機測試結果與暫存相容措施見[驗證紀錄](../../../../../../../../docs/MC_STORES_VALIDATION.md)。
+每站分別保存配置、數量、識別、掛載版本與最後有效觀測時間。
+配置分為 Unknown、Empty、Clean、Equipped；有掛載而數量為零時，保存 Equipped 與其身分。
+新掛載、身分替換及重新掛彈更新掛載版本；同次掛載的數量變化保留版本。
 
-## 原生機砲彈量與配置狀態（2026-11-02）
+新來源批次更新資料與時間；重複批次沿用已接受的內容與時間。
+掛點與機砲共用 0.5 秒新鮮度門檻，超時保存最後讀值並標為 Stale；
+收到新有效批次後更新資料及有效性。來源錯誤保留其原因，與有效空載分別表達。
 
-掛點配置使用 Unknown、Empty、Clean、Equipped。原生 CLSID 與類型由 DcsBridge 轉譯，
-數量與配置分開保存；來源提供掛載身分且數量為零時，庫存保存該身分。
-原生線路第一欄描述是否收到掛點 table，Bridge 將它轉成配置，診斷改以 CONFIG 顯示。
+`find_missile_stations` 回傳符合條件且有有效彈量的掛點。
+`count_missiles` 回傳已知數量及完整性；完整性同時考慮各站有效性及回答查詢所需的分類。
+MC 的空對空顯示數量由同一庫存投影，HMCS 依完整性顯示數字或 `AAM ---`。
+原生機砲彈量保存在 `GunAmmunitionState`，HMCS 依有效性顯示數字或 `GUN ---`。
 
-`StoresData.gun_ammunition` 保存原生整數彈量、來源、觀測有效性、最後有效時間及變更版本。
-SM 接收獨立的 `GunAmmunitionObservation`，從資料讀取彈量；原先對射擊狀態及固定射速的估算依賴已移除。
-相同來源批次沿用原時間，新批次更新時間；內容或有效性變更後發布 `gun_ammunition_changed`。
+## 選站規則與指令流
 
-Export 以 10 Hz 取樣原生機砲彈量，經 CMS 裝置命令與奇偶批次參數送到 Bridge。
-機砲來源超過半秒未更新時保留最後數字並標記過期；HMCS 依 MC 有效性顯示數字或 `GUN ---`。
-MC 維持 32 Hz，掛點維持 20 Hz。既有空對空相容摘要與火控操作流程維持原有安排。
+1. 進入或切換 DGFT／MSL：依固定掛點順序選第一個有效、有彈的空對空飛彈掛點。
+2. 重按同一模式：輪換到下一個候選掛點，末站後回到第一站；同次更新的多次重按累計處理。
+3. 週期更新：保留仍可用的選擇；所選掛點耗盡後，改選候選清單第一站。
+4. 重新掛彈或所選掛點更換掛載：建立新的明確選站要求。
+5. NAV：清除邏輯選站。庫存有效且沒有候選時，選擇為空值。
+6. 庫存無效或過期：保存最近要求與尚待處理的選擇意圖，待有效觀測更新後處理；NAV 可直接清除意圖。
 
-完整本輪規格、Export 位置及驗證限制見
-[SM 原生彈量](../../../../../../../../docs/SM_NATIVE_AMMUNITION.zh-TW.md)。
+```text
+模式事件 → SM 保存意圖 → 更新觀測 → StationSelection 決定掛點
+  → StoresData.selection → MC 快照 → Lua select_station
+  → 要求編號與掛點的執行回覆 → SM 更新 acknowledged 狀態
+```
+
+`StationSelectionState` 分別保存 requested 與 acknowledged 掛點及要求版本，
+`pending()` 回報最新要求是否仍等待相符回覆。回覆須同時符合要求版本與掛點。
+acknowledged 表示轉接層已完成該次呼叫；這個欄位記錄指令完成狀態。
+NAV 的空值要求會清除 Lua 保存的最近要求紀錄。
+
+FireControl 維持目標操作、武器資格、射擊／投放計時與解鎖流程。
+數量在 SM 收到 DCS 新觀測後更新，武器操作的完成通知只結束該程序。
+
+## 診斷與驗證
+
+`Diagnostics/StoresTelemetry` 將逐站輸入、庫存、完整性、資料年齡及彈量送到既有畫面與 debug.csv。
+選站另提供 requested、acknowledged 及 pending 通道，便於核對指令流。
+Lua `Stores/ObservationDiagnostics` 保存變更時的原始掛點欄位及重新掛彈事件。
+
+原生機砲來源與版本契約見 [DCS API 指引](../../../../../../../../docs/DCS_API_GUIDE.zh-TW.md)。
+本輪規格及驗證見 [SM 整理規格](../../../../../../../../docs/SM_REFACTOR_SPEC.zh-TW.md)
+與 [SM 整理驗證](../../../../../../../../docs/SM_REFACTOR_VALIDATION.zh-TW.md)。

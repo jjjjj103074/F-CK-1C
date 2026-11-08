@@ -21,10 +21,18 @@ struct GunAmmunitionChanged
 	std::uint64_t revision = 0;
 };
 
+/// @brief 已完成寫入的選站要求與執行確認版本。
+struct SelectionChanged
+{
+	std::uint64_t request_revision = 0;
+	std::uint64_t acknowledged_revision = 0;
+};
+
 /// @brief 每台 MC 持有的掛載同步通知通道。
 struct StoresEvents
 {
 	sigslot::signal_st<const InventoryChanged&> inventory_changed;
 	sigslot::signal_st<const GunAmmunitionChanged&> gun_ammunition_changed;
+	sigslot::signal_st<const SelectionChanged&> selection_changed;
 };
 }

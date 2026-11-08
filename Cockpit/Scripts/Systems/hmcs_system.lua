@@ -35,6 +35,7 @@ local mc_gun_count = get_param_handle(cockpit_params.McStoresGunCount)
 local mc_gun_count_available = get_param_handle(cockpit_params.McStoresGunCountAvailable)
 local hmcs_weapon_quantity_available = get_param_handle(cockpit_params.HmcsWeaponQuantityAvailable)
 local mc_missile_count = get_param_handle(cockpit_params.Aim9MissileCount)
+local mc_missile_count_available = get_param_handle(cockpit_params.McStoresMissileCountAvailable)
 local mc_trigger_held = get_param_handle(cockpit_params.McTriggerSecondStageHeld)
 local mc_master_arm_press = get_param_handle(cockpit_params.McMasterArmPressSequence)
 local mc_navigation_press = get_param_handle(cockpit_params.McNavigationPressSequence)
@@ -61,6 +62,7 @@ local function update_weapon_presentation()
     local gun_count = mc_gun_count:get()
     local gun_count_available = mc_gun_count_available:get() >= 0.5
     local missile_count = mc_missile_count:get()
+    local missile_count_available = mc_missile_count_available:get() >= 0.5
     local trigger_held = mc_trigger_held:get() >= 0.5
     local gun_preference_sequence = math.max(mc_master_arm_press:get(), mc_navigation_press:get())
     local missile_preference_sequence = math.max(mc_dogfight_press:get(), mc_missile_override_press:get(), mc_missile_uncage_press:get(), mc_weapon_release_press:get())
@@ -79,7 +81,9 @@ local function update_weapon_presentation()
     end
     hmcs_weapon_class:set(weapon_class)
     hmcs_weapon_quantity:set(weapon_class == WEAPON_CLASS_GUN and gun_count or missile_count)
-    hmcs_weapon_quantity_available:set((weapon_class ~= WEAPON_CLASS_GUN or gun_count_available) and 1 or 0)
+    local quantity_available = (weapon_class == WEAPON_CLASS_GUN and gun_count_available)
+        or (weapon_class == WEAPON_CLASS_AAM and missile_count_available)
+    hmcs_weapon_quantity_available:set(quantity_available and 1 or 0)
 end
 
 local hmcs_slot_count = 13

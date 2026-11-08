@@ -210,9 +210,7 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 		       cockpit_parameter_reader(CockpitParams::WeaponRearmRevision),
 		       cockpit_parameter_reader(CockpitParams::McAdapterAvailable),
 		       cockpit_parameter_reader(CockpitParams::McAcknowledgedSequence),
-		       cockpit_parameter_reader(CockpitParams::RadarState),
-		       cockpit_parameter_reader(CockpitParams::McMissileCountAvailable),
-		       cockpit_parameter_reader(CockpitParams::McMissileCount) } };
+		       cockpit_parameter_reader(CockpitParams::RadarState) } };
 }
 
 CockpitBridge::CockpitBridge(cockpit_param_api api)
@@ -248,19 +246,13 @@ CockpitValueResult<Core::MissionAdapterObservation> CockpitBridge::read_mission_
 	const auto available = read_parameter(Parameter::McAdapterAvailable);
 	const auto acknowledged = read_parameter(Parameter::McAcknowledgedSequence);
 	const auto radar = read_parameter(Parameter::RadarPowerOn);
-	const auto missile_available = read_parameter(Parameter::McMissileCountAvailable);
-	const auto missiles = read_parameter(Parameter::McMissileCount);
 	Core::MissionAdapterObservation result;
 	const auto revision = acknowledged.success ? to_revision(acknowledged.value) : std::nullopt;
 	result.available =
 	    all_success({ available, acknowledged, radar }) && is_enabled(available.value) && revision.has_value();
 	result.acknowledged_sequence = revision.value_or(0);
 	result.radar_power_on = radar.success && is_enabled(radar.value);
-	const auto count = missiles.success ? to_integer(missiles.value, 0) : std::nullopt;
-	result.missile_count_available =
-	    missile_available.success && is_enabled(missile_available.value) && count && *count <= 12;
-	result.missile_count = result.missile_count_available ? *count : 0;
-	return { result, events_from({ available, acknowledged, radar, missile_available, missiles }) };
+	return { result, events_from({ available, acknowledged, radar }) };
 }
 
 CockpitValueResult<Core::PressureAltitudeObservation> CockpitBridge::read_pressure_altitude()

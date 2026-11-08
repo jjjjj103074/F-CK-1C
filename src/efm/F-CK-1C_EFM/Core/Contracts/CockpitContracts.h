@@ -230,13 +230,6 @@ enum class WeaponRole
 	AirToAir,
 	Unknown
 };
-enum class StoresCountSource
-{
-	Estimate,
-	BaseDataApi,
-	StationInventory
-};
-
 /// @brief 固定掛點的掛載配置；數量及觀測有效性分別保存。
 enum class StoreConfiguration
 {
@@ -472,17 +465,30 @@ struct RadarSnapshot
 	RadarMode operating_mode = RadarMode::Off;
 };
 
+/// @brief SM 的選站要求與轉接層最近確認執行的要求。
+struct StationSelectionState
+{
+	std::optional<int> requested_station;
+	std::uint64_t request_revision = 0;
+	std::optional<int> acknowledged_station;
+	std::uint64_t acknowledged_revision = 0;
+
+	/// @brief 回報最新要求是否仍等待相符的執行確認。
+	bool pending() const noexcept
+	{
+		return request_revision != acknowledged_revision;
+	}
+};
+
 struct StoresSnapshot
 {
 	SnapshotStatus status;
 	StoresInventorySnapshot inventory;
-	std::optional<int> selected_station;
+	StationSelectionState selection;
 	int air_to_air_missile_count = 0;
-	StoresCountSource count_source = StoresCountSource::Estimate;
+	bool air_to_air_missile_count_complete = false;
 	double gun_count = 0.0; ///< 最近有效彈量的既有數值介面。
 	GunAmmunitionState gun_ammunition;
-	std::optional<int> requested_station;
-	std::uint64_t selection_request_revision = 0;
 };
 
 struct InfraredMissileSnapshot

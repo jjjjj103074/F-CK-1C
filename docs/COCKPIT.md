@@ -63,13 +63,13 @@ HMCS 不監聽或執行武器命令；MC 未提供完整快照時保留上一份
 
 外掛清單由 `avSimpleWeaponSystem:get_station_info(0..8)` 取得。
 Lua 發布原始紀錄；CockpitBridge 驗證整份 revision 後，轉為具型別觀測送入 MC。
-掛點庫存、數量來源優先序及選站要求／確認屬於 StoresManagement；選站決策由 FireControl 處理。
+StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與要求／執行確認；FireControl 讀取唯讀掛載資料。
 九掛點名稱與機型註冊共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`。
 原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
 
 機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS 執行 MC 有序指令及既有反制程序。
-空對空總數的既有候選 API、來源優先序及相容估算維持原有安排。
+空對空總數由 SM 庫存投影，完整性經 `McStoresMissileCountAvailable` 發布；HMCS 顯示數字或 `AAM ---`。
 
 ## 驗證
 

@@ -172,7 +172,8 @@ add_numeric_text("hmcs_altitude", { 0.29, 0.11 }, "CenterCenter", "%05.0f", "HMC
 add_available_numeric_text("hmcs_heading", { 0.0, -0.325 }, "%03.0f", "HMCS_HDG_DEG", text_size_numeric)
 
 add_text("hmcs_weapon_title", "WPN", { -0.255, -0.018 }, "RightCenter", "font_hmcs_small", text_size_title)
-add_numeric_text_range("hmcs_weapon_aam", { -0.245, -0.048 }, "LeftCenter", "AAM-%1.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 0.9, 1.1, text_size_value)
+add_text("hmcs_weapon_aam", "0", { -0.245, -0.048 }, "LeftCenter", "font_hmcs_small", text_size_value, nil, { cockpit_params.HmcsWeaponQuantity, cockpit_params.HmcsWeaponClass, cockpit_params.HmcsWeaponQuantityAvailable }, { { "text_using_parameter", 0, 0 }, { "parameter_in_range", 1, 0.9, 1.1 }, { "parameter_in_range", 2, 0.9, 1.1 } }, { "AAM-%1.0f" })
+add_text("hmcs_weapon_aam_unknown", "AAM ---", { -0.245, -0.048 }, "LeftCenter", "font_hmcs_small", text_size_value, nil, { cockpit_params.HmcsWeaponClass, cockpit_params.HmcsWeaponQuantityAvailable }, { { "parameter_in_range", 0, 0.9, 1.1 }, { "parameter_in_range", 1, -0.1, 0.1 } })
 add_numeric_text_range("hmcs_weapon_ag", { -0.245, -0.048 }, "LeftCenter", "AG-%1.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 1.9, 2.1, text_size_value)
 add_numeric_text_range("hmcs_weapon_bomb", { -0.245, -0.048 }, "LeftCenter", "B%02.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 2.9, 3.1, text_size_value)
 add_numeric_text_range("hmcs_weapon_rkt", { -0.245, -0.048 }, "LeftCenter", "R%1.0f", "HMCS_WEAPON_QTY", "HMCS_WEAPON_CLASS", 3.9, 4.1, text_size_value)

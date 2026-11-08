@@ -1,5 +1,7 @@
 #include "Targeting.h"
 
+#include "../../../Common/StoresQueries.h"
+
 #include "Common/CommandValue.h"
 
 #include <algorithm>
@@ -10,14 +12,12 @@ Targeting::Targeting(const MissionInputs& input,
                      const ModeData& mode,
                      const StoresData& stores,
                      TargetingData& targeting,
-                     ExternalActionQueue& actions,
-                     StoresManagement& stores_management)
+                     ExternalActionQueue& actions)
     : input_(input),
       mode_(mode),
       stores_(stores),
       targeting_(targeting),
-      actions_(actions),
-      stores_management_(stores_management)
+      actions_(actions)
 {
 }
 
@@ -98,7 +98,7 @@ void Targeting::prepare_release()
 	}
 }
 
-void Targeting::select_mode(bool cycle_weapon)
+void Targeting::select_mode()
 {
 	next_auto_lock_ = {};
 	if (mode_.operating_mode == OperatingMode::Navigation)
@@ -114,10 +114,6 @@ void Targeting::select_mode(bool cycle_weapon)
 		unlock();
 	}
 	ensure_radar_on();
-	if (cycle_weapon)
-	{
-		stores_management_.request_weapon_cycle();
-	}
 	apply_submode(dogfight ? AirToAirSubmode::Helmet : AirToAirSubmode::BeyondVisualRange);
 	if (dogfight)
 	{
@@ -191,7 +187,7 @@ void Targeting::step(std::chrono::nanoseconds time, double)
 		finish_lock();
 	}
 	if (mode_.operating_mode == OperatingMode::Dogfight && mode_.master_arm == MasterArmMode::On &&
-	    targeting_.uncage_held && stores_.missile_count > 0)
+	    targeting_.uncage_held && count_missiles(stores_.inventory, { WeaponRole::AirToAir, {} }).count > 0)
 	{
 		if (time >= next_auto_lock_)
 		{

@@ -38,8 +38,6 @@ static const char* const McAction15 = "CPP_MC_ACTION_15";
 static const char* const McAction16 = "CPP_MC_ACTION_16";
 static const char* const McAdapterAvailable = "OBS_MC_ADAPTER_AVAILABLE";
 static const char* const McAcknowledgedSequence = "OBS_MC_ACKNOWLEDGED_SEQUENCE";
-static const char* const McMissileCountAvailable = "OBS_MC_MISSILE_COUNT_AVAILABLE";
-static const char* const McMissileCount = "OBS_MC_MISSILE_COUNT";
 static const char* const TemperatureC = "FM_TEMPERATURE_C";
 static const char* const PressureAltitudeAvailable = "OBS_PRESSURE_ALTITUDE_AVAILABLE";
 static const char* const PressureAltitudeM = "OBS_PRESSURE_ALTITUDE_M";
@@ -87,6 +85,7 @@ static const char* const Aim9TargetDesignated = "AIM9_TARGET_DESIGNATED";
 static const char* const Aim9WeaponActive = "AIM9_WEAPON_ACTIVE";
 static const char* const Aim9MissileStatus = "AIM9_MISSILE_STATUS";
 static const char* const Aim9MissileCount = "AIM9_MISSILE_COUNT";
+static const char* const McStoresMissileCountAvailable = "CPP_MC_STORES_MISSILE_COUNT_AVAILABLE";
 static const char* const Aim9SeekerAzimuth = "AIM9_SEEKER_AZIMUTH";
 static const char* const Aim9SeekerElevation = "AIM9_SEEKER_ELEVATION";
 static const char* const Aim9LockRange = "AIM9_LOCK_RANGE";
@@ -176,8 +175,6 @@ static constexpr Entry Catalog[] = {
     { McAction16, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McAdapterAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { McAcknowledgedSequence, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/mc_io.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { McMissileCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { McMissileCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { TemperatureC, "cpp_to_lua", "celsius", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
     { PressureAltitudeAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { PressureAltitudeM, "lua_to_cpp", "meters", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
@@ -225,6 +222,7 @@ static constexpr Entry Catalog[] = {
     { Aim9WeaponActive, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9MissileStatus, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9MissileCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresMissileCountAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9SeekerAzimuth, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9SeekerElevation, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { Aim9LockRange, "cpp_to_lua", "meters", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },

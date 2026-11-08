@@ -11,15 +11,13 @@ WeaponOperation::WeaponOperation(const MissionInputs& input,
                                  const TargetingData& targeting,
                                  WeaponOperationData& weapon,
                                  ExternalActionQueue& actions,
-                                 Targeting& targeting_control,
-                                 StoresManagement& stores)
+                                 Targeting& targeting_control)
     : input_(input),
       mode_(mode),
       targeting_(targeting),
       weapon_(weapon),
       actions_(actions),
-      targeting_control_(targeting_control),
-      stores_(stores)
+      targeting_control_(targeting_control)
 {
 }
 
@@ -66,14 +64,13 @@ void WeaponOperation::finish_gun()
 	weapon_.gun_start_sequence = 0;
 }
 
-void WeaponOperation::finish_pickle(bool consume)
+void WeaponOperation::finish_pickle(bool unlock_target)
 {
 	actions_.append(MissionActionKind::PickleOff);
 	pickle_.clear();
 	weapon_.pickle_requested = false;
-	if (consume)
+	if (unlock_target)
 	{
-		stores_.record_missile_release();
 		targeting_control_.unlock();
 	}
 }

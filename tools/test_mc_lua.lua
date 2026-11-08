@@ -156,7 +156,6 @@ local mapping = {
     { "PickleOn", "iCommandPlanePickleOn" },
     { "PickleOff", "iCommandPlanePickleOff" },
     { "EnsureRadarOn", "iCommandPlaneRadarOnOff" },
-    { "CycleWeapon", "iCommandPlaneChangeWeapon" },
     { "ModeHelmet", "iCommandPlaneModeHelmet" },
     { "ModeVerticalScan", "iCommandPlaneModeVS" },
     { "ModeBeyondVisualRange", "iCommandPlaneModeBVR" },
@@ -179,72 +178,32 @@ for i, entry in ipairs(mapping) do
     expect(native[i] == dcs_commands[entry[2]], "semantic/native mapping: " .. entry[1])
 end
 update()
-expect(#native == 16, "the real CMS adapter must not replay an acknowledged window")
+expect(#native == #mapping, "the real CMS adapter must not replay an acknowledged window")
 values[cockpit_params.McGeneration] = 4
-values[cockpit_params.McActionFirstSequence] = 17
+values[cockpit_params.McActionFirstSequence] = #mapping + 1
 values[cockpit_params.McActionCount] = 4
 for i, name in ipairs({ "StartCmsForward", "StartCmsAft", "StartCmsLeft", "AbortCms" }) do
     values[cockpit_params[string.format("McAction%02d", i)]] = kinds[name]
 end
 update()
-expect(values[cockpit_params.McAcknowledgedSequence] == 20, "CM requests are handled by the Lua CM subsystem")
-expect(#native == 17 and native[17] == dcs_commands.iCommandPlaneDropChaffOnce, "abort clears queued paired releases")
+expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + 4, "CM requests are handled by the Lua CM subsystem")
+expect(#native == #mapping + 1 and native[#mapping + 1] == dcs_commands.iCommandPlaneDropChaffOnce, "abort clears queued paired releases")
 for _ = 1, 100 do
     update()
 end
-expect(#native == 17, "an aborted CM program must not release later")
+expect(#native == #mapping + 1, "an aborted CM program must not release later")
 values[cockpit_params.McGeneration] = 6
-values[cockpit_params.McActionFirstSequence] = 21
+values[cockpit_params.McActionFirstSequence] = #mapping + 5
 values[cockpit_params.McActionCount] = 1
 values[cockpit_params.McAction01] = kinds.EnsureRadarOn
 values[cockpit_params.RadarState] = 1
 update()
 expect(
-    values[cockpit_params.McAcknowledgedSequence] == 21 and #native == 17,
+    values[cockpit_params.McAcknowledgedSequence] == #mapping + 5 and #native == #mapping + 1,
     "an ON request must not toggle an already ON radar"
 )
--- Exercise the existing count API success path without claiming DCS exposes the fixtures.
-local function clear_count_sensors()
-    for name in pairs(count_sensors) do
-        count_sensors[name] = nil
-    end
-end
-expect(values[cockpit_params.McMissileCountAvailable] == 0, "absent missile methods remain unavailable")
-for _, name in ipairs({
-    "getAAMMissileCount",
-    "getAAMCount",
-    "getAirMissileCount",
-    "getAirToAirMissileCount",
-    "getMissileCount",
-    "getMissilesCount",
-    "getWeaponCount",
-    "getSelectedWeaponCount",
-    "getAmmoCount",
-}) do
-    clear_count_sensors()
-    count_sensors[name] = function(self)
-        expect(self == count_sensors, "missile count methods receive the sensor object")
-        return 4
-    end
-    update()
-    expect(
-        values[cockpit_params.McMissileCountAvailable] == 1 and values[cockpit_params.McMissileCount] == 4,
-        "preserve existing missile count API: " .. name
-    )
-end
-clear_count_sensors()
-local secondary_count_called = false
-count_sensors.getAAMMissileCount = function() return 0 end
-count_sensors.getAmmoCount = function()
-    secondary_count_called = true
-    return 5
-end
-update()
-expect(
-    values[cockpit_params.McMissileCountAvailable] == 1 and values[cockpit_params.McMissileCount] == 0,
-    "zero missile count is valid"
-)
-expect(not secondary_count_called, "valid primary zero count retains precedence over secondary APIs")
+-- CMS 執行 MC 動作；掛載數量由固定掛點觀測提供。
+expect(values[cockpit_params.McAdapterAvailable] == 1, "CMS publishes executable adapter availability")
 
 -- The real station adapter publishes raw samples and executes only MC selection requests.
 values = fixture(function()
@@ -438,6 +397,7 @@ values[cockpit_params.McGeneration] = 2
 values[cockpit_params.McAvailable] = 1
 values[cockpit_params.McStoresGunCount] = 523
 values[cockpit_params.Aim9MissileCount] = 4
+values[cockpit_params.McStoresMissileCountAvailable] = 1
 update()
 expect(values[cockpit_params.HmcsWeaponClass] == 5 and values[cockpit_params.HmcsWeaponQuantity] == 523,
     "initial NAV presentation uses authoritative MC gun quantity")
@@ -474,6 +434,13 @@ values[cockpit_params.Aim9MissileCount] = 0
 update()
 expect(values[cockpit_params.HmcsWeaponClass] == 1 and values[cockpit_params.HmcsWeaponQuantity] == 0,
     "lock indication has precedence while zero missile quantity remains authoritative")
+expect(values[cockpit_params.HmcsWeaponQuantityAvailable] == 1, "valid zero missile count is displayed as zero")
+values[cockpit_params.McStoresMissileCountAvailable] = 0
+update()
+expect(values[cockpit_params.HmcsWeaponQuantityAvailable] == 0, "incomplete missile count is displayed as unknown")
+values[cockpit_params.McStoresMissileCountAvailable] = 1
+update()
+expect(values[cockpit_params.HmcsWeaponQuantityAvailable] == 1, "fresh complete inventory restores missile count display")
 values[cockpit_params.Aim9SeekerLock] = 0
 values[cockpit_params.HmcsWeaponClass] = 1
 values[cockpit_params.HmcsWeaponQuantity] = 77

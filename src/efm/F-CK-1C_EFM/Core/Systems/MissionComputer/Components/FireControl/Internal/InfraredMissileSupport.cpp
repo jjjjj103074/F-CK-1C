@@ -1,5 +1,7 @@
 #include "InfraredMissileSupport.h"
 
+#include "../../../Common/StoresQueries.h"
+
 #include <cmath>
 
 namespace Core::Systems::Mc::Internal
@@ -61,12 +63,12 @@ void InfraredMissileSupport::resolve_tracking()
 
 void InfraredMissileSupport::step(std::chrono::nanoseconds, double)
 {
-	missile_.readiness = !mode_.air_to_air() || stores_.missile_count <= 0            ? InfraredMissileReadiness::Off
+	const int missile_count = count_missiles(stores_.inventory, { WeaponRole::AirToAir, {} }).count;
+	missile_.readiness = !mode_.air_to_air() || missile_count <= 0                    ? InfraredMissileReadiness::Off
 	                     : targeting_.uncage_held && targeting_.designation_requested ? InfraredMissileReadiness::Track
 	                     : targeting_.uncage_held                                     ? InfraredMissileReadiness::Ready
 	                                                                                  : InfraredMissileReadiness::Cool;
-	missile_.active =
-	    mode_.air_to_air() && stores_.missile_count > 0 && missile_.readiness != InfraredMissileReadiness::Off;
+	missile_.active = mode_.air_to_air() && missile_count > 0 && missile_.readiness != InfraredMissileReadiness::Off;
 	resolve_tracking();
 	missile_.seeker_state = missile_.readiness == InfraredMissileReadiness::Off ? InfraredSeekerState::Off
 	                        : missile_.readiness == InfraredMissileReadiness::Track || missile_.locked

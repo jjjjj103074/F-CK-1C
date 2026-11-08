@@ -74,5 +74,6 @@ private:
 	sigslot::scoped_connection fire_control_arm_connection_;
 	sigslot::scoped_connection countermeasure_arm_connection_;
 	sigslot::scoped_connection fire_control_mode_connection_;
+	sigslot::scoped_connection stores_mode_connection_;
 };
 }
