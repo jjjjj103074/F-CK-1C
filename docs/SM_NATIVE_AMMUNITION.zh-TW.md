@@ -42,4 +42,4 @@ SM 以來源 revision 更新觀測時間；距最近有效觀測超過 0.5 秒�
 ## 驗證
 
 診斷包在 DCS 2.9.31.29434 已完成五次點射與 MC 接收驗證，詳見 API 指引。
-正式整理版的驗證紀錄見 [驗收文件](SM_NATIVE_AMMUNITION_SPEC.zh-TW.md)。
+正式整理版的驗證紀錄見 [驗證報告](SM_NATIVE_AMMUNITION_VALIDATION.zh-TW.md)，驗收範圍見 [規格](SM_NATIVE_AMMUNITION_SPEC.zh-TW.md)。
