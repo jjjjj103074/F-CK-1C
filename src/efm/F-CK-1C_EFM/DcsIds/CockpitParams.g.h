@@ -122,6 +122,7 @@ static const char* const RadarRequestedPower = "CPP_RADAR_REQUESTED_POWER";
 static const char* const Aim9RequestedTone = "CPP_AIM9_REQUESTED_TONE";
 static const char* const WeaponRequestedStation = "CPP_WEAPON_REQUESTED_STATION";
 static const char* const WeaponSelectionRequestRevision = "CPP_WEAPON_SELECTION_REQUEST_REVISION";
+static const char* const WeaponSelectionActionSequence = "CPP_WEAPON_SELECTION_ACTION_SEQUENCE";
 static const char* const ActionGunFireRequested = "CPP_ACTION_GUN_FIRE_REQUESTED";
 static const char* const ActionPickleRequested = "CPP_ACTION_PICKLE_REQUESTED";
 static const char* const ActionSensorMode = "CPP_ACTION_SENSOR_MODE";
@@ -259,6 +260,7 @@ static constexpr Entry Catalog[] = {
     { Aim9RequestedTone, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },
     { WeaponRequestedStation, "cpp_to_lua", "station_index", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
     { WeaponSelectionRequestRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
+    { WeaponSelectionActionSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
     { ActionGunFireRequested, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
     { ActionPickleRequested, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
     { ActionSensorMode, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },

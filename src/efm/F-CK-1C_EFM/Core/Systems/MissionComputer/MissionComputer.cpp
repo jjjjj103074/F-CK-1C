@@ -17,10 +17,16 @@ constexpr sigslot::group_id kCountermeasureArmOrder = 1;
 namespace Core::Systems
 {
 MissionComputer::MissionComputer()
-    : system_monitor_(input_output_data_, system_status_tables_.health),
+    : stores_commands_(external_actions_),
+      system_monitor_(input_output_data_, system_status_tables_.health),
       failure_manager_(system_status_tables_.health, system_status_tables_.failure_response),
-      stores_management_(input_output_data_.input, stores_data_, stores_events_),
-      fire_control_(input_output_data_.input, mode_data_, stores_data_, fire_control_data_, external_actions_),
+      stores_management_(input_output_data_.input, stores_data_, stores_events_, stores_commands_, external_actions_),
+      fire_control_(input_output_data_.input,
+                    mode_data_,
+                    stores_data_,
+                    fire_control_data_,
+                    external_actions_,
+                    stores_commands_),
       mode_management_(mode_data_, mode_events_),
       countermeasure_control_(mode_data_, external_actions_),
       executive_(executive_tables_,
@@ -63,7 +69,7 @@ MissionComputer::MissionComputer()
 	stores_mode_connection_ = mode_events_.operating_mode_selected.connect(
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
-		    stores_management_.on_operating_mode_selected(event);
+		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode, event.cycle_weapon });
 	    });
 	startup_and_restart_.start();
 }
@@ -139,8 +145,10 @@ void MissionComputer::step(const SystemStepContext& context, const AircraftDataV
 	}
 
 	read_inputs(context, aircraft);
+	stores_management_.prepare(context.input_time);
 	consume_commands();
 	executive_.step(context.scheduled_time);
+	stores_management_.dispatch();
 	publish_outputs(result);
 	stores_telemetry_.publish(context.scheduled_time,
 	                          input_output_data_.input,

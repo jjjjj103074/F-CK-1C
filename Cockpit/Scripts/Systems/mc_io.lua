@@ -47,7 +47,7 @@ function M.new(execute)
         local actions = {}
         for i = 1, size do
             actions[i] = slots[i]:get()
-            if not integer(actions[i], 1, 20) then return end
+            if not integer(actions[i], 0, 21) then return end
         end
         if generation:get() ~= before then return end
 
@@ -55,7 +55,8 @@ function M.new(execute)
             local sequence = start + i - 1
             if sequence > last_sequence then
                 if sequence ~= last_sequence + 1 then return end
-                local ok, done = pcall(execute, actions[i])
+                if generation:get() ~= before then return end
+                local ok, done = pcall(execute, actions[i], sequence, before)
                 if not ok or done ~= true then return end
                 last_sequence = sequence
                 acknowledged:set(last_sequence)

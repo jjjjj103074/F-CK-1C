@@ -19,6 +19,7 @@ MissionComputer : System [32 Hz]
 │   │   └── FireControlData.targeting / weapon / infrared_missile
 │   ├── StoresData（逐掛點庫存、彈量與選站紀錄）
 │   └── ExternalActionQueue
+├── StoresCommandQueue（SM 的單一指令入口）
 ├── ModeEvents / StoresEvents（MC 專用同步事件通道）
 └── Components/
     ├── ModeManagement
@@ -44,8 +45,8 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 |---|---|
 | ModeManagement | 唯一寫入 Master ON/OFF/SIM、NAV/DGFT/MSL，發布具型別選擇事件 |
 | CountermeasureControl | 讀取模式判斷 CMS 啟動資格，接收 Master Arm 事件處理中止 |
-| StoresManagement | 全部固定掛點庫存、彈量來源、選站要求／確認與掛載變化通知 |
-| FireControl | 目標操作、既有選站策略、武器資格／使用程序及紅外線飛彈支援 |
+| StoresManagement | 全部固定掛點庫存、彈量、掛點選擇／循環、執行確認與掛載變化通知 |
+| FireControl | 目標操作、武器資格／使用程序及紅外線飛彈支援 |
 | Executive | 四個週期工作的固定順序、頻率及時間推進 |
 | StartupAndRestart | 原有建構時啟用排程 |
 | SystemMonitor | 健康監控預留入口，目前無功能 |
@@ -54,7 +55,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 FireControl 內的 Targeting 保存解籠、指定意圖、捕獲子模式與捕獲計時；
 WeaponOperation 保留扳機／投放資格、保持與停止程序；InfraredMissileSupport
 整理尋標接觸、鎖定、狀態與音調要求。模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
-StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認；FireControl 讀取唯讀掛載資料處理目標與武器操作。雷達模型、DCS API 及操作映射由外部介面提供。
+StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認；模式意圖及 FCC 武器操作皆經 StoresCommandQueue 入口。FireControl 讀取唯讀掛載資料處理目標與武器資格。雷達模型、DCS API 及操作映射由外部介面提供。
 
 ## 資料所有權
 
@@ -100,6 +101,7 @@ HMCS_WEAPON_CLASS／HMCS_WEAPON_QTY 由 hmcs_system.lua 單獨寫入，數量只
 ## 時間與原功能
 
 週期順序為 StoresManagement → FireControl → SystemMonitor → FailureManager。
+MC 在操縱命令前準備 SM 觀測，並在火控計時器後派送 SM 後續指令；指令入口為各筆要求保留既有外部動作序號。
 FireControl 內依 WeaponOperation → Targeting → InfraredMissileSupport 推進，保留原先順序。
 ModeManagement 是事件入口。外層仍為命令 FIFO、32 Hz、80 ms 最短保持、1 s 自動捕獲；
 保持時間仍從 MC 觀測到 Lua ACK 的當前輸入時間起算，補跑不回填新的操作／ACK。
@@ -121,7 +123,7 @@ readiness 是簡化命令狀態；designation 是操作意圖；contact／locked
 
 掛載分類仍沿用廣泛 AAM 判斷，尚未精確區分紅外線與其他空對空飛彈。
 未來優先以武器能力／參數資料共用流程，必要時才增加特殊操作；此部分只留待辦註解。
-完整掛載查詢仍由 Lua SDK 入口提供；數量來源保持掛載 → 原有數量 API → 原有估計。
+固定掛點由座艙 Lua 入口觀測，機砲由模組內 C++ 原生來源觀測；兩者由 SM 統整並發布。
 反制程序仍在 Lua，CountermeasureControl 管理啟動資格與中止要求。
 
 ## 逐掛點庫存

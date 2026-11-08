@@ -34,6 +34,7 @@ private:
 		MissileCountAvailable,
 		RequestedStation,
 		SelectionRequestRevision,
+		SelectionActionSequence,
 		SeekerState,
 		Tone,
 		Contact,

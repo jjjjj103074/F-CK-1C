@@ -117,8 +117,11 @@ SM 保存最近有效數字及來源狀態；顯示端以 availability 決定數
 Bridge 依 DCS 類別轉成 Core 的分類與配置，SM 管理庫存。
 `nil`、零數量空識別與 `<CLEAN>` 的轉譯契約見 [SM 指南](SM_NATIVE_AMMUNITION.zh-TW.md)。
 
-選站使用 `select_station(self, index)`。MC 發出請求後，座艙成功呼叫會回覆該請求的 ACK；
-ACK 表示介面操作完成。`WeaponRearmComplete` 及 `UnlimitedWeaponStationRestore` 事件推進重新掛載版本。
+選站使用 `select_station(self, index)`。SM 的具型別指令入口將各筆選站連接到既有外部動作佇列，
+每筆動作保存掛點與要求版本。視窗首項為選站時，Exporter 才發布該次要求與全域動作序號；
+座艙成功呼叫後回覆 ACK，CMS 完成同一序號的選站屏障，再繼續後續操作。
+ACK 表示介面操作完成。SM 分別保存要求與最近完成的回覆，依編號與掛點核對。
+掛點選擇及循環由 SM 統一決定，數量由掛點觀測更新；空對空顯示另帶完整性，供 HMCS 呈現數字或未知。`WeaponRearmComplete` 及 `UnlimitedWeaponStationRestore` 事件推進重新掛載版本。
 
 ## 指令、參數及顯示
 

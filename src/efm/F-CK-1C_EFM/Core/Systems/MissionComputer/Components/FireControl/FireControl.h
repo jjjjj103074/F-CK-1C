@@ -15,7 +15,8 @@ public:
 	            const ModeData& mode,
 	            const StoresData& stores,
 	            FireControlData& data,
-	            ExternalActionQueue& actions);
+	            ExternalActionQueue& actions,
+	            StoresCommandQueue& stores_commands);
 	FireControl(const FireControl&) = delete;
 	FireControl& operator=(const FireControl&) = delete;
 	FireControl(FireControl&&) = delete;

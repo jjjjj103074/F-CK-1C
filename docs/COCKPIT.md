@@ -63,7 +63,7 @@ HMCS 不監聽或執行武器命令；MC 未提供完整快照時保留上一份
 
 外掛清單由 `avSimpleWeaponSystem:get_station_info(0..8)` 取得。
 Lua 發布原始紀錄；CockpitBridge 驗證整份 revision 後，轉為具型別觀測送入 MC。
-StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與要求／執行確認；FireControl 讀取唯讀掛載資料。
+StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與執行確認；全部操作要求經 StoresCommandQueue 入口，FireControl 讀取唯讀掛載資料。
 九掛點名稱與機型註冊共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`。
 原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
@@ -87,3 +87,10 @@ Device 載入、DCS 感測、呈現、武器與音效依 [DCS 測試](DCS_TESTIN
 機砲由 `DcsBridge/Internal/GunAmmunition/GunAmmunitionSource` 每 0.1 秒取樣，
 以既有型別化觀測進入 MC／SM。HMCS 讀取完成快照及數量有效性。
 版本、原生呼叫契約、實機證據及遷移流程見 [DCS API 指引](DCS_API_GUIDE.zh-TW.md)。
+
+## SM 有序選站
+
+SM 入口為各筆指令保留全域執行位置，處理後填入動作。每筆 SelectStation 保存自己的掛點與要求版本。
+Exporter 將執行視窗首項選站發布為 WeaponRequestedStation、WeaponSelectionRequestRevision、WeaponSelectionActionSequence。
+weapon_system 完成呼叫後回傳選站 ACK；CMS 核對全域動作序號及選站回覆，完成屏障後繼續後續投放。
+取消項目保留原序號並直接確認；停止操作照序執行。

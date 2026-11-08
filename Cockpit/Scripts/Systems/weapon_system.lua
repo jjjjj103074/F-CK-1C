@@ -32,6 +32,7 @@ local mc_generation = get_param_handle(cockpit_params.McGeneration)
 local mc_available = get_param_handle(cockpit_params.McAvailable)
 local requested_station = get_param_handle(cockpit_params.WeaponRequestedStation)
 local request_revision = get_param_handle(cockpit_params.WeaponSelectionRequestRevision)
+local selection_sequence = get_param_handle(cockpit_params.WeaponSelectionActionSequence)
 local revision = 0
 local acknowledged_request = 0
 local selected_station = NO_STATION
@@ -46,7 +47,9 @@ local function apply_selection_request()
     if not integer(generation, 2, MAX_REVISION) or generation % 2 ~= 0 or mc_available:get() ~= 1 then return end
     local station = requested_station:get()
     local requested = request_revision:get()
+    local sequence = selection_sequence:get()
     if mc_generation:get() ~= generation then return end
+    if not integer(sequence, 1, MAX_REVISION) then return end
     if not integer(station, NO_STATION, NUM_STATIONS - 1) or not integer(requested, 0, MAX_REVISION) then return end
     if requested <= acknowledged_request then return end
     if station ~= NO_STATION then

@@ -7,6 +7,13 @@ dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 local adapter_available = get_param_handle(cockpit_params.McAdapterAvailable)
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
+local mc_generation = get_param_handle(cockpit_params.McGeneration)
+local selection_sequence = get_param_handle(cockpit_params.WeaponSelectionActionSequence)
+local selection_request = get_param_handle(cockpit_params.WeaponSelectionRequestRevision)
+local requested_station = get_param_handle(cockpit_params.WeaponRequestedStation)
+local observation_revision = get_param_handle(cockpit_params.WeaponObservationRevision)
+local selection_ack = get_param_handle(cockpit_params.WeaponSelectionAckRevision)
+local selected_station = get_param_handle(cockpit_params.WeaponObservationSelectedStation)
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -162,7 +169,27 @@ local native_actions = {
     [16] = dcs_commands.iCommandPlaneChangeLockUp,
 }
 
-local function execute_action(action)
+local function integer(value, minimum, maximum)
+    return type(value) == "number" and value >= minimum and value <= maximum and value == math.floor(value)
+end
+
+local function selection_completed(sequence, generation)
+    local before = observation_revision:get()
+    if not integer(before, 2, 9007199254740991) or before % 2 ~= 0 then return false end
+    local command_sequence = selection_sequence:get()
+    local request = selection_request:get()
+    local station = requested_station:get()
+    local acknowledged = selection_ack:get()
+    local selected = selected_station:get()
+    return observation_revision:get() == before and mc_generation:get() == generation
+        and command_sequence == sequence and integer(request, 1, 9007199254740991)
+        and integer(station, -1, 8)
+        and acknowledged == request and selected == station
+end
+
+local function execute_action(action, sequence, generation)
+    if action == 0 then return true end
+    if action == 21 then return selection_completed(sequence, generation) end
     if dispatch_action == nil then return false end
     -- MC requests the ON state; DCS exposes only a toggle. Recheck the current adapter state.
     if action == 6 and radar_power:get() > 0.5 then return true end

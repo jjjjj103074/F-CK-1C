@@ -131,8 +131,8 @@ void test_countermeasure_reactions_use_selection_payload(Tests::Context& context
 	TEST_EXPECT(context, batch.count == 2);
 	if (batch.count == 2)
 	{
-		TEST_EXPECT(context, batch.actions[0] == MissionActionKind::AbortCms);
-		TEST_EXPECT(context, batch.actions[1] == MissionActionKind::StartCmsForward);
+		TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::AbortCms);
+		TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::StartCmsForward);
 	}
 }
 }

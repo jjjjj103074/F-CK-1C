@@ -7,7 +7,8 @@ SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發�
 
 | 位置 | 功能 |
 |---|---|
-| `StoresManagement` | 安排觀測、選站與通知的更新順序 |
+| `StoresManagement` | 安排觀測、消費指令入口、選站與通知的更新順序 |
+| `Database/StoresCommandQueue` | 所有 SM 傳入指令的單一具型別入口，保存 FIFO 及全域執行位置 |
 | `Internal/ObservationProcessing` | 接收觀測批次、維護掛載身分／數量／有效性、判斷過期 |
 | `Internal/StationSelection` | 依模式意圖與有效庫存決定掛點、保存要求與執行確認 |
 | `Database/StoresData` | 保存逐掛點庫存、機砲彈量及選站狀態 |
@@ -16,14 +17,20 @@ SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發�
 
 這兩個 Internal 檔案組是 SM 的內部實作。MC 頂層仍保有原本八個元件，DFLCC 維持原有架構。
 
-## 對外介面
+## 指令入口與排程介面
 
-- 建構時綁定唯讀 `MissionInputs`、可寫 `StoresData` 與本台 MC 的 `StoresEvents`。
-- `on_operating_mode_selected` 保存模式與循環意圖，於週期更新時使用最新庫存處理。
-- `step` 依序更新庫存、機砲彈量與選站；全部資料寫入後，再依相同順序發布變更通知。
+呼叫端僅透過 `StoresCommandQueue::submit` 提交 SM 指令：
 
-ModeManagement 寫入 ModeData 並發出事件；MC 組裝處將事件分別連接到 SM 與 FCC。
-FCC 讀取 StoresData，使用共用查詢取得已知有效的空對空飛彈數量。
+- `SelectStoresForMode`：處理模式選站與同模式循環。
+- `StoresWeaponAction`：轉送 FCC 已判定的 GunOn／GunOff、LaunchPermissionOverride、PickleOn／PickleOff。
+- `CancelStoresCommands`：取消尚待執行的選站與武器啟動要求，保留停止操作。
+
+MC 的模式事件連線將選站意圖送到入口；FCC 武器操作只取得入口及唯讀執行確認。
+SM 是入口的唯一消費者。觀測由唯讀 MissionInputs 提供，資料查詢使用 StoresData。
+
+MC 在處理當次操縱命令前呼叫 `prepare` 更新觀測與自動掛點接續，
+Executive 的 `step` 消費已排入的要求；火控計時器更新後再由 `dispatch` 派送後續停止要求。
+這三個方法是排程介面，操作命令統一由指令入口進入。MC 頂層與 DFLCC 的元件組裝模式維持原有安排。
 
 ## 資料流
 
@@ -62,22 +69,29 @@ MC 的空對空顯示數量由同一庫存投影，HMCS 依完整性顯示數字
 ## 選站規則與指令流
 
 1. 進入或切換 DGFT／MSL：依固定掛點順序選第一個有效、有彈的空對空飛彈掛點。
-2. 重按同一模式：輪換到下一個候選掛點，末站後回到第一站；同次更新的多次重按累計處理。
+2. 重按同一模式：輪換到下一個候選掛點，末站後回到第一站；同次更新的多次重按依 FIFO 分別處理。
 3. 週期更新：保留仍可用的選擇；所選掛點耗盡後，改選候選清單第一站。
 4. 重新掛彈或所選掛點更換掛載：建立新的明確選站要求。
 5. NAV：清除邏輯選站。庫存有效且沒有候選時，選擇為空值。
 6. 庫存無效或過期：保存最近要求與尚待處理的選擇意圖，待有效觀測更新後處理；NAV 可直接清除意圖。
 
 ```text
-模式事件 → SM 保存意圖 → 更新觀測 → StationSelection 決定掛點
-  → StoresData.selection → MC 快照 → Lua select_station
-  → 要求編號與掛點的執行回覆 → SM 更新 acknowledged 狀態
+模式事件／FCC → StoresCommandQueue::submit → 保留全域執行位置
+  → SM 依序消費並填入具型別動作 → ExternalActionQueue
+  → CMS 執行前綴 → 首項選站交給 weapon_system.lua
+  → 選站呼叫完成 → CMS 確認屏障 → 繼續後續投放／停止命令
 ```
 
 `StationSelectionState` 分別保存 requested 與 acknowledged 掛點及要求版本，
-`pending()` 回報最新要求是否仍等待相符回覆。回覆須同時符合要求版本與掛點。
+`pending()` 回報選站是否等待有效庫存或相符回覆。回覆須符合已發出的要求版本與掛點。
+SM 保存各次要求，因此較早要求的完成回覆可在後續要求已排入後正確記錄。
 acknowledged 表示轉接層已完成該次呼叫；這個欄位記錄指令完成狀態。
 NAV 的空值要求會清除 Lua 保存的最近要求紀錄。
+
+每筆選站動作保存當次掛點與要求編號。Exporter 僅將執行視窗首項的選站資料發布到 Lua，
+CMS 同時核對動作序號、選站要求與完成回覆。後續選站使用自己的資料，前面的操作保持先執行。
+入口保留的位置完成前，對外視窗停在該位置；取消項目以原序號確認，維持連續性。
+NAV 與取消指令會取消先前待執行的選站及啟動項目，停止操作保留。
 
 FireControl 維持目標操作、武器資格、射擊／投放計時與解鎖流程。
 數量在 SM 收到 DCS 新觀測後更新，武器操作的完成通知只結束該程序。

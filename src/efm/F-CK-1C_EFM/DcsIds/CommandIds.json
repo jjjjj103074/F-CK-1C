@@ -320,6 +320,7 @@
     { "name": "Aim9RequestedTone", "value": "CPP_AIM9_REQUESTED_TONE", "direction": "cpp_to_lua", "unit": "enum", "writer": null, "target_owner": "CombatAvionics" },
     { "name": "WeaponRequestedStation", "value": "CPP_WEAPON_REQUESTED_STATION", "direction": "cpp_to_lua", "unit": "station_index", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "target_owner": "CombatAvionics" },
     {"name": "WeaponSelectionRequestRevision", "value": "CPP_WEAPON_SELECTION_REQUEST_REVISION", "direction": "cpp_to_lua", "unit": "revision", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "target_owner": "CombatAvionics"},
+    {"name": "WeaponSelectionActionSequence", "value": "CPP_WEAPON_SELECTION_ACTION_SEQUENCE", "direction": "cpp_to_lua", "unit": "revision", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "target_owner": "CombatAvionics"},
     { "name": "ActionGunFireRequested", "value": "CPP_ACTION_GUN_FIRE_REQUESTED", "direction": "cpp_to_lua", "unit": "boolean", "writer": null, "target_owner": "CombatAvionics" },
     { "name": "ActionPickleRequested", "value": "CPP_ACTION_PICKLE_REQUESTED", "direction": "cpp_to_lua", "unit": "boolean", "writer": null, "target_owner": "CombatAvionics" },
     { "name": "ActionSensorMode", "value": "CPP_ACTION_SENSOR_MODE", "direction": "cpp_to_lua", "unit": "enum", "writer": null, "target_owner": "CombatAvionics" },

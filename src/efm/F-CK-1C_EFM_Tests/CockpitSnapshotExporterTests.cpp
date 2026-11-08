@@ -101,8 +101,8 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.stores.selection.request_revision = 4;
 	mc.external_actions.batch.first_sequence = 7;
 	mc.external_actions.batch.count = 2;
-	mc.external_actions.batch.actions[0] = Core::MissionActionKind::GunOn;
-	mc.external_actions.batch.actions[1] = Core::MissionActionKind::GunOff;
+	mc.external_actions.batch.actions[0].kind = Core::MissionActionKind::GunOn;
+	mc.external_actions.batch.actions[1].kind = Core::MissionActionKind::GunOff;
 	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 1);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	cockpit.set_available(DcsIds::CockpitParams::McAction02, true);
@@ -113,7 +113,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsDogfightMode), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsFireControlMode), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionCount), 2.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponRequestedStation), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponRequestedStation), -1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9ToneState), 3.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerState), 3.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerContact), 1.0, kTolerance);
@@ -124,7 +124,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9LockRange), 1200.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponClass), 5.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponQuantity), 99.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 4.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 0.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9MissileCount), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresMissileCountAvailable), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCount), 240.0, kTolerance);
@@ -171,13 +171,13 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::CockpitSnapshot snapshot;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot);
-	TEST_EXPECT(context, events.count == 68);
+	TEST_EXPECT(context, events.count == 70);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot);
-	TEST_EXPECT(context, events.count == 68);
+	TEST_EXPECT(context, events.count == 70);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
@@ -200,10 +200,36 @@ void test_gun_count_availability_is_exported_separately(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCountAvailable), 1.0, kTolerance);
 }
 
+void test_selection_mailbox_uses_the_front_command_payload(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	auto& mc = snapshot.combat_avionics;
+	mc.status = { true, 1 };
+	mc.stores.selection.requested_station = 8;
+	mc.stores.selection.request_revision = 99;
+	auto& batch = mc.external_actions.batch;
+	batch.first_sequence = 7;
+	batch.count = 2;
+	batch.actions[0] = { Core::MissionActionKind::SelectStation, 2, 1 };
+	batch.actions[1].kind = Core::MissionActionKind::PickleOn;
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponRequestedStation), 2, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionActionSequence), 7, kTolerance);
+	batch.actions[0].kind = Core::MissionActionKind::GunOff;
+	batch.actions[1] = { Core::MissionActionKind::SelectStation, 8, 2 };
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionActionSequence), 0, kTolerance);
+}
+
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
+	test_selection_mailbox_uses_the_front_command_payload(context);
 	test_gun_count_availability_is_exported_separately(context);
 	test_snapshot_envelope_is_exported(context);
 	test_missing_parameter_reports_once_then_recovers(context);

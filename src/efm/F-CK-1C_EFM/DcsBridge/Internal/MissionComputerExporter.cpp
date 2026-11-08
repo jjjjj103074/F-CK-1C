@@ -24,6 +24,7 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::McStoresMissileCountAvailable),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponRequestedStation),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionRequestRevision),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionActionSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerState),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9ToneState),
                  cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerContact),
@@ -109,8 +110,11 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(MissileStatus, static_cast<double>(snapshot.infrared_missile.readiness));
 	WRITE_MC(MissileCount, static_cast<double>(snapshot.stores.air_to_air_missile_count));
 	WRITE_MC(MissileCountAvailable, snapshot.stores.air_to_air_missile_count_complete ? 1.0 : 0.0);
-	WRITE_MC(RequestedStation, static_cast<double>(snapshot.stores.selection.requested_station.value_or(-1)));
-	WRITE_MC(SelectionRequestRevision, static_cast<double>(snapshot.stores.selection.request_revision));
+	// 僅發布佇列首項的選站資料，讓前一筆操作先完成。
+	const bool selecting = batch.count != 0 && batch.actions[0].kind == Core::MissionActionKind::SelectStation;
+	WRITE_MC(RequestedStation, selecting ? static_cast<double>(batch.actions[0].station.value_or(-1)) : -1.0);
+	WRITE_MC(SelectionRequestRevision, selecting ? static_cast<double>(batch.actions[0].selection_revision) : 0.0);
+	WRITE_MC(SelectionActionSequence, selecting ? static_cast<double>(batch.first_sequence) : 0.0);
 	WRITE_MC(SeekerState, static_cast<double>(snapshot.infrared_missile.seeker_state));
 	WRITE_MC(Tone, static_cast<double>(snapshot.infrared_missile.requested_tone));
 	WRITE_MC(Contact, snapshot.infrared_missile.contact ? 1.0 : 0.0);
@@ -133,7 +137,7 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	for (std::size_t i = 0; i < action_slots_.size(); ++i)
 	{
 		const auto result =
-		    action_slots_[i].write_number(api_, i < batch.count ? static_cast<double>(batch.actions[i]) : 0.0);
+		    action_slots_[i].write_number(api_, i < batch.count ? static_cast<double>(batch.actions[i].kind) : 0.0);
 		if (result.event)
 			events = events.with_event(*result.event);
 		complete = result.success && complete;

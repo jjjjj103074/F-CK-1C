@@ -159,6 +159,9 @@ struct MissionFixture
 	{
 		frame.cockpit.mission_adapter.available = true;
 		frame.cockpit.mission_adapter.radar_power_on = true;
+		frame.cockpit.weapon_stations.status = { true, 2, ObservationInvalidReason::None };
+		for (auto& station : frame.cockpit.weapon_stations.stations)
+			station.configuration = StoreConfiguration::Empty;
 	}
 
 	CombatAvionicsSnapshot step(nanoseconds target)
@@ -175,8 +178,12 @@ struct MissionFixture
 
 bool contains(const MissionActionBatch& batch, MissionActionKind action)
 {
-	return std::find(batch.actions.begin(), batch.actions.begin() + batch.count, action) !=
-	       batch.actions.begin() + batch.count;
+	return std::find_if(batch.actions.begin(),
+	                    batch.actions.begin() + batch.count,
+	                    [action](const MissionAction& entry)
+	                    {
+		                    return entry.kind == action;
+	                    }) != batch.actions.begin() + batch.count;
 }
 
 void test_action_delivery_retains_order_and_rejects_future_ack(Tests::Context& context)
@@ -199,7 +206,8 @@ void test_action_delivery_retains_order_and_rejects_future_ack(Tests::Context& c
 	TEST_EXPECT(context, batch.count == 8 && batch.first_sequence == 33);
 	for (std::size_t i = 0; i < batch.count; ++i)
 	{
-		TEST_EXPECT(context, batch.actions[i] == (i % 2 == 0 ? MissionActionKind::GunOn : MissionActionKind::GunOff));
+		TEST_EXPECT(context,
+		            batch.actions[i].kind == (i % 2 == 0 ? MissionActionKind::GunOn : MissionActionKind::GunOff));
 	}
 	queue.acknowledge(40);
 	TEST_EXPECT(context, queue.batch().count == 0);
@@ -257,15 +265,13 @@ void test_commands_wait_for_current_observation_and_retain_order(Tests::Context&
 	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
 	const auto output = fixture.step(kMissionPeriod);
 	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
-	const MissionActionKind expected[] = { MissionActionKind::ModeHelmet,
-		                                   MissionActionKind::ModeHelmet,
-		                                   MissionActionKind::LockStart,
-		                                   MissionActionKind::ChangeLock,
-		                                   MissionActionKind::GunOn };
+	const MissionActionKind expected[] = { MissionActionKind::ModeHelmet,    MissionActionKind::ModeHelmet,
+		                                   MissionActionKind::LockStart,     MissionActionKind::ChangeLock,
+		                                   MissionActionKind::SelectStation, MissionActionKind::GunOn };
 	TEST_EXPECT(context, output.external_actions.batch.count == std::size(expected));
 	for (std::size_t i = 0; i < std::size(expected); ++i)
 	{
-		TEST_EXPECT(context, output.external_actions.batch.actions[i] == expected[i]);
+		TEST_EXPECT(context, output.external_actions.batch.actions[i].kind == expected[i]);
 	}
 }
 
@@ -289,12 +295,11 @@ void test_master_cancel_keeps_action_order_and_legacy_mode_coupling(Tests::Conte
 		                                   MissionActionKind::LockFinish,   MissionActionKind::ChangeLockUp,
 		                                   MissionActionKind::ModeCannon,   MissionActionKind::LockFinish,
 		                                   MissionActionKind::ChangeLockUp, MissionActionKind::ModeCannon };
-	TEST_EXPECT(context, output.external_actions.batch.count == std::size(expected));
-	if (output.external_actions.batch.count == std::size(expected))
-	{
-		for (std::size_t i = 0; i < std::size(expected); ++i)
-			TEST_EXPECT(context, output.external_actions.batch.actions[i] == expected[i]);
-	}
+	std::vector<MissionActionKind> native_actions;
+	for (std::size_t i = 0; i < output.external_actions.batch.count; ++i)
+		if (output.external_actions.batch.actions[i].kind != MissionActionKind::None)
+			native_actions.push_back(output.external_actions.batch.actions[i].kind);
+	TEST_EXPECT(context, native_actions == std::vector<MissionActionKind>(std::begin(expected), std::end(expected)));
 	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
 	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::Navigation);
 	fixture.send(CommandId::SetMasterArmOff);
@@ -313,8 +318,12 @@ void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& c
 	fixture.send(CommandId::SetMissileUncage);
 	const auto output = fixture.step(kMissionPeriod);
 	const auto& batch = output.external_actions.batch;
-	const auto count =
-	    std::count(batch.actions.begin(), batch.actions.begin() + batch.count, MissionActionKind::EnsureRadarOn);
+	const auto count = std::count_if(batch.actions.begin(),
+	                                 batch.actions.begin() + batch.count,
+	                                 [](const MissionAction& action)
+	                                 {
+		                                 return action.kind == MissionActionKind::EnsureRadarOn;
+	                                 });
 	TEST_EXPECT(context, count == 1);
 	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
 }
@@ -617,12 +626,19 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 	fixture.send(CommandId::PressCms); // Reserved.
 	const auto output = fixture.step(kMissionPeriod);
 	std::vector<MissionActionKind> cms;
-	for (std::size_t i = 0; i < output.external_actions.batch.count; ++i)
+	auto window = output.external_actions.batch;
+	int tick = 2;
+	while (window.count != 0)
 	{
-		const auto action = output.external_actions.batch.actions[i];
-		if (action == MissionActionKind::AbortCms || action == MissionActionKind::StartCmsForward ||
-		    action == MissionActionKind::StartCmsAft || action == MissionActionKind::StartCmsLeft)
-			cms.push_back(action);
+		for (std::size_t i = 0; i < window.count; ++i)
+		{
+			const auto action = window.actions[i].kind;
+			if (action == MissionActionKind::AbortCms || action == MissionActionKind::StartCmsForward ||
+			    action == MissionActionKind::StartCmsAft || action == MissionActionKind::StartCmsLeft)
+				cms.push_back(action);
+		}
+		fixture.frame.cockpit.mission_adapter.acknowledged_sequence = window.first_sequence + window.count - 1;
+		window = fixture.step(kMissionPeriod * tick++).external_actions.batch;
 	}
 	const std::vector<MissionActionKind> expected = {
 		MissionActionKind::StartCmsForward, MissionActionKind::AbortCms,    MissionActionKind::AbortCms,

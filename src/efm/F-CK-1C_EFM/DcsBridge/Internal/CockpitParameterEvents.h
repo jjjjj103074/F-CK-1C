@@ -23,7 +23,7 @@ struct CockpitParameterEvent
 	bool has_value = false;
 };
 
-// One export can report 67 failures/recoveries across the envelope, AP and MC fields.
+// 彙整單次匯出的座艙、飛控及 MC 欄位錯誤與恢復。
 inline constexpr std::size_t kCockpitParameterEventCapacity = 128;
 
 struct CockpitParameterEvents

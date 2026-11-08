@@ -19,14 +19,13 @@ struct Fixture
 	MissionInputs input;
 	StoresData stores;
 	StoresEvents events;
-	ModeData mode;
-	StoresManagement manager{ input, stores, events };
+	ExternalActionQueue actions;
+	StoresCommandQueue commands{ actions };
+	StoresManagement manager{ input, stores, events, commands, actions };
 
 	void select(OperatingMode selected)
 	{
-		const auto previous = mode;
-		mode.operating_mode = selected;
-		manager.on_operating_mode_selected({ previous, mode, selected != OperatingMode::Navigation });
+		commands.submit(SelectStoresForMode{ selected, selected != OperatingMode::Navigation });
 	}
 
 	void observe(std::uint64_t revision)
@@ -446,6 +445,13 @@ void test_selection_acknowledgements_and_completed_notifications(Tests::Context&
 	TEST_EXPECT(context, f.stores.selection.acknowledged_revision == 1);
 	TEST_EXPECT(context, f.stores.selection.pending());
 	TEST_EXPECT(context, observation.stations[8].count == 2);
+	observation.selection_ack_revision = 2;
+	f.select(OperatingMode::MissileOverride);
+	f.step(milliseconds(1450));
+	TEST_EXPECT(context, f.stores.selection.request_revision == 3);
+	TEST_EXPECT(context, f.stores.selection.acknowledged_revision == 2);
+	TEST_EXPECT(context, f.stores.selection.acknowledged_station == 8);
+	TEST_EXPECT(context, f.stores.selection.pending());
 }
 
 void test_selection_waits_for_inventory_and_reselects_replaced_loads(Tests::Context& context)
@@ -500,10 +506,124 @@ void test_selection_waits_for_inventory_and_reselects_replaced_loads(Tests::Cont
 	TEST_EXPECT(context, count_missiles(f.stores.inventory).count == 0);
 }
 
+void test_command_gateway_preserves_interleaved_order_and_payloads(Tests::Context& context)
+{
+	Fixture f;
+	f.observe(2);
+	for (int i : { 2, 8 })
+		f.input.cockpit.weapon_stations.stations[i] = { StoreConfiguration::Equipped,
+			                                            1,
+			                                            WeaponCategory::Missile,
+			                                            WeaponRole::AirToAir,
+			                                            "aa" };
+	const auto first = f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
+	const auto radar = f.actions.append(MissionActionKind::ModeHelmet);
+	const auto fire_a = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	const auto next = f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
+	const auto fire_b = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	TEST_EXPECT(context, first < radar && radar < fire_a && fire_a < next && next < fire_b);
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	f.step(seconds(1));
+	const auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 5);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[0].station == 2 && batch.actions[0].selection_revision == 1);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::ModeHelmet);
+	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::PickleOn);
+	TEST_EXPECT(context, batch.actions[3].station == 8 && batch.actions[3].selection_revision == 2);
+	TEST_EXPECT(context, batch.actions[4].kind == MissionActionKind::PickleOn);
+	TEST_EXPECT(context, f.stores.selection.requested_station == 8);
+	// 第一筆要求的確認可在後續要求已排入後抵達。
+	f.input.cockpit.weapon_stations.selected_station = 2;
+	f.input.cockpit.weapon_stations.selection_ack_revision = 1;
+	f.step(milliseconds(1100));
+	TEST_EXPECT(context, f.stores.selection.acknowledged_station == 2);
+	TEST_EXPECT(context, f.stores.selection.acknowledged_revision == 1);
+	TEST_EXPECT(context, f.stores.selection.pending());
+}
+
+void test_command_gateway_cancels_waiting_starts_and_preserves_stops(Tests::Context& context)
+{
+	Fixture f;
+	f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	f.step(seconds(1));
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
+	f.commands.submit(CancelStoresCommands{});
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
+	f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation, false });
+	f.step(milliseconds(1100));
+	const auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 5);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::None);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::None);
+	TEST_EXPECT(context, batch.actions[3].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, !f.stores.selection.awaiting_inventory);
+	TEST_EXPECT(context, !f.stores.selection.requested_station);
+	bool rejected = false;
+	try
+	{
+		f.commands.submit(StoresWeaponAction{ MissionActionKind::AbortCms });
+	}
+	catch (const std::invalid_argument&)
+	{
+		rejected = true;
+	}
+	TEST_EXPECT(context, rejected);
+}
+
+void test_command_gateway_cancels_previously_published_starts(Tests::Context& context)
+{
+	Fixture f;
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOn });
+	f.step(seconds(1));
+	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOn);
+	f.commands.submit(CancelStoresCommands{});
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOff });
+	f.step(milliseconds(1100));
+	const auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::None);
+	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::GunOff);
+	f.actions.acknowledge(batch.first_sequence + batch.count - 1);
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+}
+
+void test_waiting_mode_command_keeps_selection_revisions_in_order(Tests::Context& context)
+{
+	Fixture f;
+	f.observe(2);
+	for (int i : { 2, 8 })
+		f.input.cockpit.weapon_stations.stations[i] = { StoreConfiguration::Equipped,
+			                                            1,
+			                                            WeaponCategory::Missile,
+			                                            WeaponRole::AirToAir,
+			                                            "aa" };
+	f.select(OperatingMode::Dogfight);
+	f.step(seconds(1));
+	f.input.cockpit.weapon_stations.status = { false, 4, ObservationInvalidReason::StationApiError };
+	f.select(OperatingMode::Dogfight);
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	f.step(milliseconds(1100));
+	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
+	f.observe(6);
+	f.input.cockpit.weapon_stations.stations[2].count = 0;
+	f.step(milliseconds(1200));
+	const auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 3);
+	TEST_EXPECT(context, batch.actions[0].station == 2 && batch.actions[0].selection_revision == 1);
+	TEST_EXPECT(context, batch.actions[1].station == 8 && batch.actions[1].selection_revision == 2);
+	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::PickleOn);
+}
+
 }
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_waiting_mode_command_keeps_selection_revisions_in_order(context);
+	test_command_gateway_preserves_interleaved_order_and_payloads(context);
+	test_command_gateway_cancels_waiting_starts_and_preserves_stops(context);
+	test_command_gateway_cancels_previously_published_starts(context);
 	test_station_freshness_retains_observations_and_recovers(context);
 	test_selection_cycles_candidates_and_keeps_inventory_authority(context);
 	test_selection_acknowledgements_and_completed_notifications(context);

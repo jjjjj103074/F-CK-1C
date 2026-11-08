@@ -10,14 +10,16 @@ WeaponOperation::WeaponOperation(const MissionInputs& input,
                                  const ModeData& mode,
                                  const TargetingData& targeting,
                                  WeaponOperationData& weapon,
-                                 ExternalActionQueue& actions,
-                                 Targeting& targeting_control)
+                                 const ExternalActionQueue& actions,
+                                 Targeting& targeting_control,
+                                 StoresCommandQueue& stores_commands)
     : input_(input),
       mode_(mode),
       targeting_(targeting),
       weapon_(weapon),
       actions_(actions),
-      targeting_control_(targeting_control)
+      targeting_control_(targeting_control),
+      stores_commands_(stores_commands)
 {
 }
 
@@ -33,7 +35,7 @@ void WeaponOperation::handle(const Command& command)
 		else if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On &&
 		         mode_.operating_mode == OperatingMode::Dogfight && !targeting_.uncage_held)
 		{
-			weapon_.gun_start_sequence = actions_.append(MissionActionKind::GunOn);
+			weapon_.gun_start_sequence = stores_commands_.submit(StoresWeaponAction{ MissionActionKind::GunOn });
 			gun_.begin(weapon_.gun_start_sequence);
 			weapon_.gun_requested = true;
 		}
@@ -50,15 +52,15 @@ void WeaponOperation::handle(const Command& command)
 	if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On && mode_.air_to_air() &&
 	    targeting_.uncage_held)
 	{
-		actions_.append(MissionActionKind::LaunchPermissionOverride);
-		pickle_.begin(actions_.append(MissionActionKind::PickleOn));
+		stores_commands_.submit(StoresWeaponAction{ MissionActionKind::LaunchPermissionOverride });
+		pickle_.begin(stores_commands_.submit(StoresWeaponAction{ MissionActionKind::PickleOn }));
 		weapon_.pickle_requested = true;
 	}
 }
 
 void WeaponOperation::finish_gun()
 {
-	actions_.append(MissionActionKind::GunOff);
+	stores_commands_.submit(StoresWeaponAction{ MissionActionKind::GunOff });
 	gun_.clear();
 	weapon_.gun_requested = false;
 	weapon_.gun_start_sequence = 0;
@@ -66,7 +68,7 @@ void WeaponOperation::finish_gun()
 
 void WeaponOperation::finish_pickle(bool unlock_target)
 {
-	actions_.append(MissionActionKind::PickleOff);
+	stores_commands_.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
 	pickle_.clear();
 	weapon_.pickle_requested = false;
 	if (unlock_target)
@@ -77,6 +79,7 @@ void WeaponOperation::finish_pickle(bool unlock_target)
 
 void WeaponOperation::stop()
 {
+	stores_commands_.submit(CancelStoresCommands{});
 	// 主保險 OFF/SIM 時立即取消程序，涵蓋等待 Lua 確認的動作。
 	if (gun_.active())
 		finish_gun();

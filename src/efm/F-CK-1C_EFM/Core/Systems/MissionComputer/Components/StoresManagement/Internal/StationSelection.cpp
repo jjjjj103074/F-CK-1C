@@ -3,6 +3,7 @@
 #include "../../../Common/StoresQueries.h"
 
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 namespace Core::Systems::Mc::Internal
@@ -15,17 +16,8 @@ StationSelection::StationSelection(const StoresInventorySnapshot& inventory, Sta
 
 void StationSelection::select_mode(OperatingMode mode, bool cycle_weapon)
 {
-	if (mode != mode_ || mode == OperatingMode::Navigation)
-	{
-		reset_selection_ = true;
-		pending_cycles_ = 0;
-	}
-	else if (cycle_weapon)
-	{
-		if (pending_cycles_ == kMaximumExactCockpitInteger)
-			throw std::overflow_error("MC pending weapon cycles exhausted.");
-		++pending_cycles_;
-	}
+	reset_selection_ = mode != mode_ || mode == OperatingMode::Navigation;
+	cycle_requested_ = !reset_selection_ && cycle_weapon;
 	mode_ = mode;
 }
 
@@ -37,12 +29,37 @@ void StationSelection::request(std::optional<int> station, bool force)
 		throw std::overflow_error("MC station request revision exhausted its exact numeric range.");
 	state_.requested_station = station;
 	++state_.request_revision;
+	requests_.push_back({ state_.request_revision, station });
 	requested_load_revision_ = station ? inventory_.stations[*station].load_revision : 0;
+}
+
+bool StationSelection::acknowledge(const WeaponStationObservation& observation)
+{
+	const auto previous = state_.acknowledged_revision;
+	// 核對已發出的要求，保存轉接層最近完成的選站。
+	if (inventory_.observation.available && observation.status.available)
+	{
+		const auto found = std::find_if(requests_.begin(),
+		                                requests_.end(),
+		                                [&](const Request& request)
+		                                {
+			                                return request.revision == observation.selection_ack_revision &&
+			                                       request.station == observation.selected_station;
+		                                });
+		if (found != requests_.end())
+		{
+			state_.acknowledged_revision = found->revision;
+			state_.acknowledged_station = found->station;
+			requests_.erase(requests_.begin(), std::next(found));
+		}
+	}
+	return previous != state_.acknowledged_revision;
 }
 
 bool StationSelection::update(const WeaponStationObservation& observation)
 {
 	const auto previous = state_;
+	acknowledge(observation);
 	if (mode_ == OperatingMode::Navigation)
 	{
 		request(std::nullopt);
@@ -58,26 +75,18 @@ bool StationSelection::update(const WeaponStationObservation& observation)
 		{
 			const auto offset = static_cast<std::uint64_t>(selected - candidates.begin());
 			selected = candidates.begin() +
-			           static_cast<std::ptrdiff_t>((offset + pending_cycles_ % candidates.size()) % candidates.size());
+			           static_cast<std::ptrdiff_t>((offset + (cycle_requested_ ? 1 : 0)) % candidates.size());
 		}
 		const std::optional<int> station = selected == candidates.end() ? std::nullopt : std::optional<int>(*selected);
 		const bool rearmed = rearm_revision_ != inventory_.rearm_revision;
 		const bool replaced = station && *station == state_.requested_station &&
 		                      requested_load_revision_ != inventory_.stations[*station].load_revision;
-		request(station, reset_selection_ || pending_cycles_ != 0 || rearmed || replaced);
+		request(station, reset_selection_ || cycle_requested_ || rearmed || replaced);
 		reset_selection_ = false;
-		pending_cycles_ = 0;
+		cycle_requested_ = false;
 		rearm_revision_ = inventory_.rearm_revision;
 	}
 
-	// 執行確認與本次要求編號、掛點相符時，保存最近完成的要求。
-	if (inventory_.observation.available && observation.status.available && state_.request_revision != 0 &&
-	    observation.selection_ack_revision == state_.request_revision &&
-	    observation.selected_station == state_.requested_station)
-	{
-		state_.acknowledged_revision = observation.selection_ack_revision;
-		state_.acknowledged_station = observation.selected_station;
-	}
 	return previous.request_revision != state_.request_revision ||
 	       previous.acknowledged_revision != state_.acknowledged_revision;
 }

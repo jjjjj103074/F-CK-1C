@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace Core
 {
@@ -28,18 +29,27 @@ enum class MissionActionKind
 	StartCmsForward = 17,
 	StartCmsAft = 18,
 	StartCmsLeft = 19,
-	AbortCms = 20
+	AbortCms = 20,
+	SelectStation = 21
 };
 
 inline constexpr std::size_t kMissionActionWindowSize = 16;
 inline constexpr std::uint64_t kMaximumExactCockpitInteger = 9007199254740991ULL;
+
+/// @brief 一筆有序外部動作；選站動作保存該次掛點與要求版本。
+struct MissionAction
+{
+	MissionActionKind kind = MissionActionKind::None;
+	std::optional<int> station;
+	std::uint64_t selection_revision = 0;
+};
 
 struct MissionActionBatch
 {
 	// Consecutive sequence numbers: first_sequence + [0, count). Pending actions remain until acknowledged.
 	std::uint64_t first_sequence = 0;
 	std::size_t count = 0;
-	std::array<MissionActionKind, kMissionActionWindowSize> actions = {};
+	std::array<MissionAction, kMissionActionWindowSize> actions = {};
 };
 
 struct MissionAdapterObservation

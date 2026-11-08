@@ -117,6 +117,7 @@ cockpit_params = {
     Aim9RequestedTone = "CPP_AIM9_REQUESTED_TONE",
     WeaponRequestedStation = "CPP_WEAPON_REQUESTED_STATION",
     WeaponSelectionRequestRevision = "CPP_WEAPON_SELECTION_REQUEST_REVISION",
+    WeaponSelectionActionSequence = "CPP_WEAPON_SELECTION_ACTION_SEQUENCE",
     ActionGunFireRequested = "CPP_ACTION_GUN_FIRE_REQUESTED",
     ActionPickleRequested = "CPP_ACTION_PICKLE_REQUESTED",
     ActionSensorMode = "CPP_ACTION_SENSOR_MODE",

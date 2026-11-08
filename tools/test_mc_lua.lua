@@ -85,7 +85,7 @@ expect(#delivered == 4, "a sequence gap must not execute")
 batch(5, { 1 }, 3)
 transport.update()
 expect(#delivered == 4, "an unfinished odd generation must not execute")
-batch(5, { 21 })
+batch(5, { 22 })
 transport.update()
 expect(#delivered == 4, "unknown action values must not execute")
 batch(5, { 1 })
@@ -141,9 +141,8 @@ local native = {}
 values = fixture(function() return true end)
 LockOn_Options = { script_path = "Cockpit/Scripts/" }
 GetSelf = function() return { listen_command = function() end } end
-local count_sensors = {}
 get_model_time = function() return 0 end
-get_base_data = function() return count_sensors end
+get_base_data = function() error("CMS uses MC actions and adapter availability") end
 make_default_activity = function(rate) expect(rate == 0.02, "CMS retains its adapter/CM update period") end
 dispatch_action = function(_, command) native[#native + 1] = command end
 dofile("Cockpit/Scripts/Systems/cms_system.lua")
@@ -205,6 +204,21 @@ expect(
 -- CMS 執行 MC 動作；掛載數量由固定掛點觀測提供。
 expect(values[cockpit_params.McAdapterAvailable] == 1, "CMS publishes executable adapter availability")
 
+-- 更新中的快照可撤回尚未開始的後續項目，已完成前綴保留確認。
+do
+    local calls = 0
+    local current, gate, publish
+    current, gate, publish = fixture(function()
+        calls = calls + 1
+        current[cockpit_params.McGeneration] = 4
+        return true
+    end)
+    publish(1, { kinds.GunOn, kinds.PickleOn }, 2)
+    gate.update()
+    expect(calls == 1 and current[cockpit_params.McAcknowledgedSequence] == 1,
+        "a newer snapshot pauses the old window after its completed prefix")
+end
+
 -- The real station adapter publishes raw samples and executes only MC selection requests.
 values = fixture(function()
     return true
@@ -263,6 +277,7 @@ end
 values[cockpit_params.McGeneration] = 2
 values[cockpit_params.McAvailable] = 1
 values[cockpit_params.WeaponRequestedStation] = 2
+values[cockpit_params.WeaponSelectionActionSequence] = 1
 values[cockpit_params.WeaponSelectionRequestRevision] = 1
 update()
 expect(values[cockpit_params.WeaponSelectionAckRevision] == 0, "failed selection must remain unacknowledged")
@@ -323,6 +338,72 @@ values[cockpit_params.WeaponRequestedStation] = 9
 values[cockpit_params.WeaponSelectionRequestRevision] = 5
 update()
 expect(#select_calls == 4 and values[cockpit_params.WeaponSelectionAckRevision] == 4, "selection outside the fixed aircraft stations remains unacknowledged")
+-- 以真實的兩個 Lua 裝置交錯更新，核對選站完成屏障與各筆命令身分。
+do
+    values = fixture(function() return true end)
+    local operations = {}
+    local fail_selection = false
+    dispatch_action = function(_, command)
+        operations[#operations + 1] = command == dcs_commands.iCommandPlanePickleOn and "fire"
+            or command == dcs_commands.iCommandPlanePickleOff and "stop" or "mode"
+    end
+    GetSelf = function()
+        return {
+            listen_event = function() end,
+            get_station_info = function() return nil end,
+            select_station = function(_, station)
+                if fail_selection then return false end
+                operations[#operations + 1] = "select:" .. station
+            end,
+        }
+    end
+    make_default_activity = function() end
+    dofile("Cockpit/Scripts/Systems/cms_system.lua")
+    local run_cms = update
+    post_initialize()
+    dofile("Cockpit/Scripts/Systems/weapon_system.lua")
+    local run_station = update
+    post_initialize()
+    local function publish(generation, first, actions, sequence, station, revision)
+        values[cockpit_params.McGeneration] = generation
+        values[cockpit_params.McAvailable] = 1
+        values[cockpit_params.McActionFirstSequence] = first
+        values[cockpit_params.McActionCount] = #actions
+        values[cockpit_params.WeaponSelectionActionSequence] = sequence
+        values[cockpit_params.WeaponRequestedStation] = station
+        values[cockpit_params.WeaponSelectionRequestRevision] = revision
+        for i, kind in ipairs(actions) do values[cockpit_params[string.format("McAction%02d", i)]] = kind end
+    end
+    publish(2, 1, { kinds.ModeHelmet, kinds.SelectStation, kinds.PickleOn }, 0, -1, 0)
+    run_station()
+    expect(#operations == 0, "selection waits until preceding native commands complete")
+    run_cms()
+    expect(#operations == 1 and operations[1] == "mode", "the prefix before a selection barrier executes first")
+    expect(values[cockpit_params.McAcknowledgedSequence] == 1, "selection barrier retains its global sequence")
+    publish(4, 2, { kinds.SelectStation, kinds.PickleOn, kinds.SelectStation, kinds.PickleOn }, 2, 2, 1)
+    run_cms()
+    expect(#operations == 1, "release cannot pass a pending selection")
+    run_station()
+    run_cms()
+    expect(operations[2] == "select:2" and operations[3] == "fire", "first release follows its own selected station")
+    expect(#operations == 3 and values[cockpit_params.McAcknowledgedSequence] == 3,
+        "a second selection cannot reuse the first selection completion")
+    publish(6, 4, { kinds.SelectStation, kinds.PickleOn }, 4, 8, 2)
+    fail_selection = true
+    run_station()
+    run_cms()
+    expect(#operations == 3, "failed selection keeps the following release pending")
+    fail_selection = false
+    run_station()
+    run_cms()
+    expect(operations[4] == "select:8" and operations[5] == "fire", "second release uses its own station payload")
+    expect(values[cockpit_params.McAcknowledgedSequence] == 5, "completed commands advance the consumed prefix")
+    publish(8, 6, { kinds.None, kinds.PickleOff }, 0, -1, 0)
+    run_cms()
+    expect(#operations == 6 and operations[6] == "stop", "canceled positions preserve the following stop command")
+    expect(values[cockpit_params.McAcknowledgedSequence] == 7, "canceled positions retain sequence continuity")
+end
+
 -- Radar/HMCS preserve MC mission state while publishing observations and presentation.
 values = fixture(function() return true end)
 local mission_values = {
