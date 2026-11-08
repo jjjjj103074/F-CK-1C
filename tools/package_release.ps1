@@ -56,6 +56,7 @@ $requiredRuntimeFiles = @(
 
 $requiredDirs = @(
     'bin',
+    'InstallSupport',
     'Cockpit',
     'FM',
     'Input',
@@ -200,7 +201,10 @@ function Assert-CleanPackage {
     }
 
     $forbiddenFiles = Get-ChildItem -LiteralPath $packageRoot -Recurse -File |
-        Where-Object { $_.Name -match $forbiddenFilePattern }
+        Where-Object {
+            $_.Name -match $forbiddenFilePattern -and
+            $_.FullName -ne (Join-Path $packageRoot 'InstallSupport\RemoveLegacyStoresExport.ps1')
+        }
     if ($forbiddenFiles) {
         $names = ($forbiddenFiles | ForEach-Object { $_.FullName.Replace($packageRoot, $ModuleName) }) -join "`n"
         throw "Forbidden development file(s) found in package:`n$names"
