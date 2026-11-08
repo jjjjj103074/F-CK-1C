@@ -616,10 +616,68 @@ void test_waiting_mode_command_keeps_selection_revisions_in_order(Tests::Context
 	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::PickleOn);
 }
 
+void test_plain_stop_precedes_selection_retry(Tests::Context& context)
+{
+	Fixture f;
+	f.select(OperatingMode::MissileOverride);
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	f.step(seconds(1));
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	const auto stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
+	f.step(milliseconds(1100));
+	auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 4);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::None);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::None);
+	TEST_EXPECT(context, batch.actions[3].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, batch.first_sequence + batch.count - 1 == stop);
+	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
+	f.actions.acknowledge(stop);
+	f.observe(2);
+	f.input.cockpit.weapon_stations.stations[8] = { StoreConfiguration::Equipped,
+		                                            1,
+		                                            WeaponCategory::Missile,
+		                                            WeaponRole::AirToAir,
+		                                            "aa" };
+	f.step(milliseconds(1200));
+	batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 1 && batch.first_sequence > stop);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[0].station == 8);
+}
+
+void test_stop_cancels_published_selection_before_reasserting_it(Tests::Context& context)
+{
+	Fixture f;
+	f.observe(2);
+	for (int i : { 2, 8 })
+		f.input.cockpit.weapon_stations.stations[i] = { StoreConfiguration::Equipped,
+			                                            1,
+			                                            WeaponCategory::Missile,
+			                                            WeaponRole::AirToAir,
+			                                            "aa" };
+	f.select(OperatingMode::Dogfight);
+	f.step(seconds(1));
+	f.select(OperatingMode::Dogfight);
+	f.step(milliseconds(1100));
+	TEST_EXPECT(context, f.stores.selection.requested_station == 8);
+	const auto stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOff });
+	f.step(milliseconds(1200));
+	const auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::None);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::None);
+	const auto offset = static_cast<std::size_t>(stop - batch.first_sequence);
+	TEST_EXPECT(context, batch.actions[offset].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, batch.actions[offset + 1].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[offset + 1].station == 8);
+}
+
 }
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_plain_stop_precedes_selection_retry(context);
+	test_stop_cancels_published_selection_before_reasserting_it(context);
 	test_waiting_mode_command_keeps_selection_revisions_in_order(context);
 	test_command_gateway_preserves_interleaved_order_and_payloads(context);
 	test_command_gateway_cancels_waiting_starts_and_preserves_stops(context);

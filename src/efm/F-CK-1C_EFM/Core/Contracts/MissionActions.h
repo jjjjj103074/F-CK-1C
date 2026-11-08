@@ -33,6 +33,19 @@ enum class MissionActionKind
 	SelectStation = 21
 };
 
+/// @brief 判斷操作是否會啟動武器程序。
+constexpr bool is_weapon_start(MissionActionKind action) noexcept
+{
+	return action == MissionActionKind::GunOn || action == MissionActionKind::PickleOn ||
+	       action == MissionActionKind::LaunchPermissionOverride;
+}
+
+/// @brief 判斷操作是否結束機砲或投放程序。
+constexpr bool is_weapon_stop(MissionActionKind action) noexcept
+{
+	return action == MissionActionKind::GunOff || action == MissionActionKind::PickleOff;
+}
+
 inline constexpr std::size_t kMissionActionWindowSize = 16;
 inline constexpr std::uint64_t kMaximumExactCockpitInteger = 9007199254740991ULL;
 

@@ -26,6 +26,7 @@ struct SelectionChanged
 {
 	std::uint64_t request_revision = 0;
 	std::uint64_t acknowledged_revision = 0;
+	bool awaiting_inventory = false;
 };
 
 /// @brief 每台 MC 持有的掛載同步通知通道。

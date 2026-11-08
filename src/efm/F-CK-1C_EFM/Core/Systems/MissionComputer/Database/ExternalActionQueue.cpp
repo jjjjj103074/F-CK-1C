@@ -1,6 +1,7 @@
 #include "ExternalActionQueue.h"
 
 #include <stdexcept>
+#include <algorithm>
 
 namespace Core::Systems::Mc
 {
@@ -39,10 +40,18 @@ std::uint64_t ExternalActionQueue::append(const MissionAction& action)
 void ExternalActionQueue::cancel_weapon_starts()
 {
 	for (auto& action : pending_)
-		if (action && (action->kind == MissionActionKind::SelectStation || action->kind == MissionActionKind::GunOn ||
-		               action->kind == MissionActionKind::PickleOn ||
-		               action->kind == MissionActionKind::LaunchPermissionOverride))
+		if (action && (action->kind == MissionActionKind::SelectStation || is_weapon_start(action->kind)))
 			action = MissionAction{};
+}
+
+bool ExternalActionQueue::has_pending_selection() const noexcept
+{
+	return std::any_of(pending_.begin(),
+	                   pending_.end(),
+	                   [](const std::optional<MissionAction>& action)
+	                   {
+		                   return action && action->kind == MissionActionKind::SelectStation;
+	                   });
 }
 
 void ExternalActionQueue::acknowledge(std::uint64_t sequence)

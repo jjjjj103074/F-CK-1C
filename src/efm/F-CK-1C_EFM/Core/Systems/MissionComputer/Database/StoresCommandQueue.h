@@ -13,6 +13,7 @@ struct SelectStoresForMode
 {
 	OperatingMode mode = OperatingMode::Navigation;
 	bool cycle_weapon = false;
+	bool reassert_selection = false; ///< 重新確認目前候選，保留仍有效的掛點。
 };
 
 /// @brief 火控已判定的武器操作，由 SM 依序轉送至 DCS。
@@ -50,6 +51,10 @@ private:
 		StoresCommand command;
 		bool canceled = false;
 	};
+	std::uint64_t enqueue(const StoresCommand& command);
+	void cancel_pending();
+	bool has_pending_mode() const;
+	OperatingMode latest_mode_ = OperatingMode::Navigation;
 	ExternalActionQueue& actions_;
 	std::deque<Entry> pending_;
 };

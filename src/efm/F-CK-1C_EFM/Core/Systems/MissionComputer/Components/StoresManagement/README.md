@@ -105,3 +105,7 @@ Lua `Stores/ObservationDiagnostics` 保存變更時的原始掛點欄位及重�
 原生機砲來源與版本契約見 [DCS API 指引](../../../../../../../../docs/DCS_API_GUIDE.zh-TW.md)。
 本輪規格及驗證見 [SM 整理規格](../../../../../../../../docs/SM_REFACTOR_SPEC.zh-TW.md)
 與 [SM 整理驗證](../../../../../../../../docs/SM_REFACTOR_VALIDATION.zh-TW.md)。
+
+停止命令遇到未完成選站時，入口撤回前面的待選站與啟動項目，先排入取消及停止，
+再依最新模式重新確認掛點。重新確認保留仍有效的選擇；停止命令的動作序號保持固定。
+這項處理涵蓋一般 GunOff／PickleOff，以及主保險／NAV 取消，來源無效時仍可完成停止。

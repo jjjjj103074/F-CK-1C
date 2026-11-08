@@ -64,7 +64,7 @@ void StoresManagement::dispatch()
 				if (mode->mode == OperatingMode::Navigation)
 					actions_.cancel_weapon_starts();
 				const auto previous_request = stores_.selection.request_revision;
-				selection_.select_mode(mode->mode, mode->cycle_weapon);
+				selection_.select_mode(mode->mode, mode->cycle_weapon, mode->reassert_selection);
 				selection_changed_ = selection_.update(input_.cockpit.weapon_stations) || selection_changed_;
 				if (stores_.selection.request_revision != previous_request)
 					action = selection_action();
@@ -95,8 +95,9 @@ void StoresManagement::notify_changes()
 	if (gun_changed_)
 		events_.gun_ammunition_changed(GunAmmunitionChanged{ stores_.gun_ammunition.revision });
 	if (selection_changed_)
-		events_.selection_changed(
-		    SelectionChanged{ stores_.selection.request_revision, stores_.selection.acknowledged_revision });
+		events_.selection_changed(SelectionChanged{ stores_.selection.request_revision,
+		                                            stores_.selection.acknowledged_revision,
+		                                            stores_.selection.awaiting_inventory });
 	inventory_change_ = {};
 	gun_changed_ = false;
 	selection_changed_ = false;

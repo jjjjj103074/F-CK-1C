@@ -309,6 +309,36 @@ void test_master_cancel_keeps_action_order_and_legacy_mode_coupling(Tests::Conte
 	TEST_EXPECT(context, output.mode.operating_mode == OperatingMode::MissileOverride);
 }
 
+void test_plain_gun_stop_survives_invalid_inventory_mode_wait(Tests::Context& context)
+{
+	MissionFixture fixture;
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage);
+	auto output = fixture.step(kMissionPeriod);
+	fixture.frame.cockpit.mission_adapter.acknowledged_sequence =
+	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
+	fixture.step(kMissionPeriod * 2);
+	fixture.frame.cockpit.weapon_stations.status = { false, 4, ObservationInvalidReason::StationApiError };
+	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
+	bool stopped = false;
+	for (int tick = 3; tick <= 40; ++tick)
+	{
+		output = fixture.step(kMissionPeriod * tick);
+		const auto& batch = output.external_actions.batch;
+		stopped = stopped || contains(batch, MissionActionKind::GunOff);
+		if (batch.count != 0)
+			fixture.frame.cockpit.mission_adapter.acknowledged_sequence = batch.first_sequence + batch.count - 1;
+	}
+	TEST_EXPECT(context, stopped);
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, output.stores.selection.awaiting_inventory);
+	fixture.frame.cockpit.weapon_stations.status = { true, 6, ObservationInvalidReason::None };
+	output = fixture.step(kMissionPeriod * 41);
+	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::SelectStation));
+	TEST_EXPECT(context, !contains(output.external_actions.batch, MissionActionKind::GunOn));
+}
+
 void test_radar_on_request_is_not_repeated_for_one_observation(Tests::Context& context)
 {
 	MissionFixture fixture;
@@ -698,6 +728,7 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_modes_and_immediate_master_cancel(context);
 	test_commands_wait_for_current_observation_and_retain_order(context);
 	test_master_cancel_keeps_action_order_and_legacy_mode_coupling(context);
+	test_plain_gun_stop_survives_invalid_inventory_mode_wait(context);
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
 	test_pickle_and_targeting_modes(context);
 	test_inventory_authority_selection_and_rearm(context);
