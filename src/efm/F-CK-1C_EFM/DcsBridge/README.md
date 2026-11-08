@@ -189,3 +189,17 @@ Shared EfmCore rules discover Core sources and System Entries.
 Use the [build guide](../../../../docs/BUILD_DLL.md) for native checks and
 [DCS testing](../../../../docs/DCS_TESTING.md) for loading, callback order,
 cockpit parameter access and flight lifecycle.
+
+## Native gun ammunition
+
+`Internal/GunAmmunition/GunAmmunitionSource` supplies the native gun observation
+before the Core step. BridgeContext owns its flight lifecycle. The reader verifies
+the loaded CockpitBase.dll profile, samples at 0.1-second intervals and publishes
+availability, revision and count through the existing Core contract.
+`NativeGunAccess` holds the private ABI layout; the Windows adapter owns checked
+memory reads and SEH calls. Version matching and status transitions use EventLog;
+quantities and availability flow through the MC snapshot to HMCS.
+
+The [DCS API guide](../../../../docs/DCS_API_GUIDE.zh-TW.md) records the supported
+profile, call contract and DCS runtime evidence. Native tests cover invalid profiles,
+zero, rearm, failure isolation, flight reset and MC delivery.

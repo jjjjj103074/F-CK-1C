@@ -121,3 +121,9 @@ Use `build:efm` to update the DLL or `validate:efm` to verify the committed DLL.
 Validation includes MSVC analysis, whole-DLL hash, exports/loading, native tests
 and source integrity. Keep FM settings available.
 Reports are under tmp/pr-validation; DCS tests are separate.
+
+## 安裝支援腳本
+
+正式套件包含 `InstallSupport/RemoveLegacyStoresExport.ps1`，供 install.bat
+備份並移除舊版 F-CK-1C Export 載入區塊。套件的開發檔案檢查僅對此明確檔名
+提供安裝用途例外；其他 PowerShell 開發腳本仍保留在原始碼工具目錄。

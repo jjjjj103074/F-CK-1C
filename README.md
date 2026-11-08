@@ -31,6 +31,8 @@ install.bat "D:\Saved Games\DCS"
 
 ## Development
 
+- [DCS API guide](docs/DCS_API_GUIDE.zh-TW.md): runtime contexts, native gun ammunition and station contracts (Traditional Chinese).
+- [Stores management](src/efm/F-CK-1C_EFM/Core/Systems/MissionComputer/Components/StoresManagement/README.md): architecture, ownership and command flow (Traditional Chinese).
 - [Contributing](CONTRIBUTING.md): setup, workflow and submission rules.
 - [EFM](src/efm/README.md): architecture and module guides.
 - [Cockpit](docs/COCKPIT.md): Lua devices, input routing and parameters.

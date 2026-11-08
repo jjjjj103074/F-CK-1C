@@ -9,8 +9,8 @@ Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、
 
 | Device | DCS class / 腳本 | 目前責任 |
 |---|---|---|
-| CMS | avLuaDevice / cms_system.lua | 50 Hz 數量 API 觀測、有序 DCS action 執行、反制程序及執行互鎖 |
-| WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始七站觀測、執行 MC 選站要求及確認 |
+| CMS | avLuaDevice / cms_system.lua | 50 Hz 觀測接收與時效更新、有序 DCS action 執行、反制程序及執行互鎖 |
+| WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始九站觀測、執行 MC 選站要求及確認 |
 | RADAR | avSimpleRadar / RADAR/FCK1C_Radar.lua | DCS 雷達設定與原始 DCS 觀測來源 |
 | RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原有雷達開啟參數介面 |
 | HMCS | avLuaDevice / hmcs_system.lua | 64 Hz 原始飛行資料取樣、武器顯示規則、單位呈現、航向刻度與繪圖參數 |
@@ -61,15 +61,15 @@ HMCS 不監聽或執行武器命令；MC 未提供完整快照時保留上一份
 
 ## 掛載與彈量
 
-外掛清單由 `avSimpleWeaponSystem:get_station_info(0..6)` 取得。
+外掛清單由 `avSimpleWeaponSystem:get_station_info(0..8)` 取得。
 Lua 發布原始紀錄；CockpitBridge 驗證整份 revision 後，轉為具型別觀測送入 MC。
-分類、數量來源優先序及重新選站屬於 StoresManagement。
+StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與執行確認；全部操作要求經 StoresCommandQueue 入口，FireControl 讀取唯讀掛載資料。
+九掛點名稱與機型註冊共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`。
+原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
 
-`cms_system.lua` 的 `get_base_data()` 彈量函數沿用既有候選名稱與探測順序。
-依使用者先前正常運作的經驗保留此路徑；本次沒有證據判定這些函數不存在。
-各名稱是否由目前 DCS 物件提供、回傳單位及武器範圍，留待遊戲內驗證。
-能力檢查、有效零值及無有效來源時的原有估算保留。
+機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS 執行 MC 有序指令及既有反制程序。
+空對空總數由 SM 庫存投影，完整性經 `McStoresMissileCountAvailable` 發布；HMCS 顯示數字或 `AAM ---`。
 
 ## 驗證
 
@@ -81,3 +81,19 @@ npm run test:cockpit-architecture
 `tools/test_mc_lua.lua` 以 Lua 5.1 執行實際介面與輸入設定；測試 fixture 不代表 DCS API 已實測。
 來源清冊與參數關係見[座艙來源清冊](cockpit-inventory/README.md)。
 Device 載入、DCS 感測、呈現、武器與音效依 [DCS 測試](DCS_TESTING.md) 驗證。
+
+## 原生機砲觀測
+
+機砲由 `DcsBridge/Internal/GunAmmunition/GunAmmunitionSource` 每 0.1 秒取樣，
+以既有型別化觀測進入 MC／SM。HMCS 讀取完成快照及數量有效性。
+版本、原生呼叫契約、實機證據及遷移流程見 [DCS API 指引](DCS_API_GUIDE.zh-TW.md)。
+
+## SM 有序選站
+
+SM 入口為各筆指令配置 SM 編號，將就緒要求對應到外部動作與 DCS 確認。每筆 SelectStation 保存自己的掛點與要求版本。
+Exporter 將執行視窗首項選站發布為 WeaponRequestedStation、WeaponSelectionRequestRevision、WeaponSelectionActionSequence。
+weapon_system 完成呼叫後回傳選站 ACK；CMS 核對全域動作序號及選站回覆，完成屏障後繼續後續投放。
+取消項目保留原序號並直接確認；停止操作照序執行。
+
+SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續完成。火控的武器保持時間
+透過 SM 入口查詢實際執行確認；目標控制使用既有外部動作確認。
