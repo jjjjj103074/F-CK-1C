@@ -50,7 +50,5 @@ struct MissionAdapterObservation
 	std::uint64_t acknowledged_sequence = 0;
 	bool missile_count_available = false;
 	int missile_count = 0;
-	bool gun_count_available = false;
-	double gun_count = 0.0;
 };
 }

@@ -29,6 +29,13 @@ public:
 	void step(std::chrono::nanoseconds time, double dt_s);
 
 private:
+	/// @brief 依既有模式規則，透過掛載查詢挑選空對空掛點並提出選站要求。
+	void update_station_selection();
+	const ModeData& mode_;
+	const StoresData& stores_;
+	StoresManagement& stores_management_;
+	OperatingMode selection_mode_ = OperatingMode::Navigation;
+	std::uint64_t rearm_revision_ = 0;
 	Internal::Targeting targeting_;
 	Internal::WeaponOperation weapon_operation_;
 	Internal::InfraredMissileSupport infrared_missile_support_;

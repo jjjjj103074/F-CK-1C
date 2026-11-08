@@ -57,6 +57,7 @@ $requiredRuntimeFiles = @(
 $requiredDirs = @(
     'bin',
     'Cockpit',
+    'Export',
     'FM',
     'Input',
     'Liveries',

@@ -12,8 +12,20 @@ local missile_available = get_param_handle(cockpit_params.McMissileCountAvailabl
 local missile_count = get_param_handle(cockpit_params.McMissileCount)
 local gun_available = get_param_handle(cockpit_params.McGunCountAvailable)
 local gun_count = get_param_handle(cockpit_params.McGunCount)
+local gun_revision_handle = get_param_handle(cockpit_params.McGunCountRevision)
+local gun_protocol = dofile(LockOn_Options.script_path .. "Stores/GunAmmunition.lua")
+local gun_revision = 0
+local gun_received_at
+local gun_sample_valid = false
 local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
+local diagnose = dofile(LockOn_Options.script_path .. "Stores/ObservationDiagnostics.lua").new("STORES_COUNT")
+local ammo_probe = dofile(LockOn_Options.script_path .. "Stores/AmmoProbe.lua").cockpit("cms", dev, sensor_data, {
+    native_available = cockpit_params.McGunCountAvailable,
+    native_count = cockpit_params.McGunCount,
+    mc_count = cockpit_params.McStoresGunCount,
+    trigger_held = cockpit_params.McTriggerSecondStageHeld,
+}, { global_payload = false })
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
@@ -42,21 +54,28 @@ local function cms_release_allowed()
 end
 
 -- Preserve the existing API names and precedence; confirm them in DCS before changing this path.
-local function read_count(candidates, maximum)
+local function read_count(candidates, maximum, purpose)
     for _, name in ipairs(candidates) do
         local method = sensor_data and sensor_data[name]
         if type(method) == "function" then
             local ok, value = pcall(method, sensor_data)
-            if ok and type(value) == "number" and value >= 0 and value <= maximum then
-                return true, math.floor(value + 0.5)
-            end
+            local accepted = ok and type(value) == "number" and value >= 0 and value <= maximum
+            diagnose(purpose .. " api=" .. name, {
+                callable = true,
+                call_ok = ok,
+                result_type = type(value),
+                result = value,
+                accepted = accepted,
+            })
+            if accepted then return true, math.floor(value + 0.5) end
+        else
+            diagnose(purpose .. " api=" .. name, { callable = false, member_type = type(method) })
         end
     end
     return false, 0
 end
 
 local function publish_counts()
-    local has_gun, guns = read_count({ "getGunAmmoCount", "getCannonsAmmoCount", "getAmmoCount" }, 9999)
     local has_missiles, missiles = read_count({
         "getAAMMissileCount",
         "getAAMCount",
@@ -67,12 +86,29 @@ local function publish_counts()
         "getWeaponCount",
         "getSelectedWeaponCount",
         "getAmmoCount",
-    }, 12)
-    gun_available:set(has_gun and 1 or 0)
-    gun_count:set(guns)
+    }, 12, "missile")
+    local now = get_model_time()
+    local current = gun_sample_valid and gun_received_at and now >= gun_received_at and now - gun_received_at <= gun_protocol.timeout_s
+    gun_available:set(current and 1 or 0)
     missile_available:set(has_missiles and 1 or 0)
     missile_count:set(missiles)
     adapter_available:set(dispatch_action ~= nil and 1 or 0)
+end
+
+-- 接收 Export 的正規化數值；每次接收以完整批次發布給 C++。
+dev:listen_command(device_commands.ReceiveGunAmmunition)
+function SetCommand(command, value)
+    if command ~= device_commands.ReceiveGunAmmunition then return end
+    local count = gun_protocol.decode(value)
+    assert(gun_revision <= 9007199254740989, "gun observation revision exhausted")
+    gun_revision = gun_revision + 1
+    gun_revision_handle:set(gun_revision)
+    gun_received_at = get_model_time()
+    gun_sample_valid = count ~= nil
+    if count ~= nil then gun_count:set(count) end
+    gun_available:set(gun_sample_valid and 1 or 0)
+    gun_revision = gun_revision + 1
+    gun_revision_handle:set(gun_revision)
 end
 
 local function flare_once()
@@ -99,9 +135,7 @@ local function pair_release_off()
 end
 
 local function clear_pair_release_queue(reason_tag)
-    if cms_pair_release_latched or cms_pair_release_pending > 0 then
-        dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending))
-    end
+    if cms_pair_release_latched or cms_pair_release_pending > 0 then dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending)) end
 
     pair_release_off()
     cms_pair_release_pending = 0
@@ -227,11 +261,18 @@ end
 local mc_io = dofile(LockOn_Options.script_path .. "Systems/mc_io.lua").new(execute_action)
 
 function post_initialize()
+    gun_revision = 0
+    gun_received_at = nil
+    gun_sample_valid = false
+    gun_revision_handle:set(0)
+    gun_available:set(0)
+    gun_count:set(0)
     publish_counts()
 end
 
 function update()
     publish_counts()
+    ammo_probe.update(update_rate)
     mc_io.update()
     if cms_pair_release_latched then
         cms_pair_release_hold_timer = cms_pair_release_hold_timer - update_rate

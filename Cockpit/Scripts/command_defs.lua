@@ -60,6 +60,7 @@ device_commands = {
     EngineThrustCutTestEnable = 3136,
     EngineThrustCutTestDisable = 3137,
     DebugIndicatorToggle = 3140,
+    ReceiveGunAmmunition = 3150,
 }
 
 dcs_commands = {

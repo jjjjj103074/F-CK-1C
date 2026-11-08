@@ -215,16 +215,18 @@ void set_station_inventory(Tests::FakeCockpitParameters& cockpit)
 	cockpit.set(DcsIds::CockpitParams::WeaponObservationRevision, 8.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponObservationInvalidReason, 0.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponObservationSelectedStation, 3.0);
-	cockpit.set(DcsIds::CockpitParams::WeaponObservationScannedStationCount, 7.0);
+	cockpit.set(DcsIds::CockpitParams::WeaponObservationScannedStationCount, 9.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponSelectionAckRevision, 2.0);
 	cockpit.set(DcsIds::CockpitParams::WeaponRearmRevision, 4.0);
 	const char* names[] = { DcsIds::CockpitParams::WeaponStation01, DcsIds::CockpitParams::WeaponStation02,
 		                    DcsIds::CockpitParams::WeaponStation03, DcsIds::CockpitParams::WeaponStation04,
 		                    DcsIds::CockpitParams::WeaponStation05, DcsIds::CockpitParams::WeaponStation06,
-		                    DcsIds::CockpitParams::WeaponStation07 };
+		                    DcsIds::CockpitParams::WeaponStation07, DcsIds::CockpitParams::WeaponStation08,
+		                    DcsIds::CockpitParams::WeaponStation09 };
 	for (const char* name : names)
-		cockpit.set_text(name, "0;0;0;0;");
-	cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, "1;2;4;7;{AIM-9;literal}");
+		cockpit.set_text(name, "0;0;0;0;0;0;MM;");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, "1;2;4;4;7;42;MM;{AIM-9;literal}");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation09, "1;1;4;4;8;99;LT;opaque-guid");
 }
 
 void test_weapon_station_observation_contract(Tests::Context& context)
@@ -239,7 +241,14 @@ void test_weapon_station_observation_contract(Tests::Context& context)
 	TEST_EXPECT(context, observation.stations[3].category == Core::WeaponCategory::Missile);
 	TEST_EXPECT(context, observation.stations[3].role == Core::WeaponRole::AirToAir);
 	TEST_EXPECT(context, observation.stations[3].weapon_identifier == "{AIM-9;literal}");
-	TEST_EXPECT(context, !observation.stations[0].present);
+	TEST_EXPECT(context, observation.stations[3].weapon_type_identifier == "4.4.7.42");
+	TEST_EXPECT(context, observation.stations[3].station_name == "MM");
+	TEST_EXPECT(context, observation.stations.size() == 9);
+	TEST_EXPECT(context, observation.stations[8].category == Core::WeaponCategory::Missile);
+	TEST_EXPECT(context, observation.stations[8].role == Core::WeaponRole::Other);
+	TEST_EXPECT(context, observation.stations[8].weapon_identifier == "opaque-guid");
+	TEST_EXPECT(context, observation.stations[8].station_name == "LT");
+	TEST_EXPECT(context, observation.stations[0].configuration == Core::StoreConfiguration::Empty);
 	TEST_EXPECT(context, observation.selected_station == 3);
 	TEST_EXPECT(context, observation.selection_ack_revision == 2);
 	TEST_EXPECT(context, observation.rearm_revision == 4);
@@ -250,8 +259,13 @@ void test_station_payload_rejection_and_torn_scan(Tests::Context& context)
 	Tests::FakeCockpitParameters cockpit;
 	set_station_inventory(cockpit);
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
-	const char* bad_records[] = { "1;2;4;",        "1;-1;4;7;AIM-9",  "1;10000;4;7;AIM-9",
-		                          "0;2;4;7;AIM-9", "1;1.5;4;7;AIM-9", "1;2;2147483648;7;AIM-9" };
+	const char* bad_records[] = { "1;2;4;",
+		                          "1;-1;4;4;7;42;MM;AIM-9",
+		                          "1;10000;4;4;7;42;MM;AIM-9",
+		                          "0;2;4;4;7;42;MM;AIM-9",
+		                          "1;1.5;4;4;7;42;MM;AIM-9",
+		                          "1;2;2147483648;4;7;42;MM;AIM-9",
+		                          "1;2;4;4;7;42;;AIM-9" };
 	for (const char* record : bad_records)
 	{
 		cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, record);
@@ -322,17 +336,75 @@ void test_mission_adapter_rejects_invalid_ack_and_counts(Tests::Context& context
 	TEST_EXPECT(context, observation.available && observation.acknowledged_sequence == 7);
 	TEST_EXPECT(context, observation.radar_power_on);
 	TEST_EXPECT(context, observation.missile_count_available && observation.missile_count == 2);
-	TEST_EXPECT(context, observation.gun_count_available);
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
 	cockpit.set(DcsIds::CockpitParams::McAcknowledgedSequence, 7.5);
 	cockpit.set(DcsIds::CockpitParams::McMissileCount, -1.0);
 	observation = bridge.read_step_input().cockpit.mission_adapter;
 	TEST_EXPECT(context, !observation.available);
 	TEST_EXPECT(context, !observation.missile_count_available);
 }
+void test_empty_clean_and_zero_quantity_configuration(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	set_station_inventory(cockpit);
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation01, "1;0;0;0;0;0;RT;");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation02, "1;0;0;0;0;0;RO;<CLEAN>");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation03, "1;0;4;4;7;42;RI;depleted");
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	const auto observation = bridge.read_step_input().cockpit.weapon_stations;
+	TEST_EXPECT(context, observation.status.available);
+	TEST_EXPECT(context, observation.stations[0].configuration == Core::StoreConfiguration::Empty);
+	TEST_EXPECT(context, observation.stations[1].configuration == Core::StoreConfiguration::Clean);
+	TEST_EXPECT(context, observation.stations[1].weapon_identifier == "<CLEAN>");
+	TEST_EXPECT(context, observation.stations[2].configuration == Core::StoreConfiguration::Equipped);
+	TEST_EXPECT(context, observation.stations[2].count == 0);
+	TEST_EXPECT(context, observation.stations[2].weapon_identifier == "depleted");
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation02, "1;1;0;0;0;0;RO;<CLEAN>");
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.weapon_stations.status.available);
+}
+
+void test_native_gun_ammunition_contract(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
+	cockpit.set(DcsIds::CockpitParams::McGunCountAvailable, 1.0);
+	cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 2.0);
+	for (const double count : { 261.0, 216.0, 0.0, 523.0 })
+	{
+		cockpit.set(DcsIds::CockpitParams::McGunCount, count);
+		const auto observation = bridge.read_step_input().cockpit.gun_ammunition;
+		TEST_EXPECT(context, observation.status.available && observation.status.revision == 2);
+		TEST_EXPECT(context, observation.count == static_cast<int>(count));
+	}
+	for (const double count : { -1.0, 17.5, 10000.0, std::numeric_limits<double>::quiet_NaN() })
+	{
+		cockpit.set(DcsIds::CockpitParams::McGunCount, count);
+		TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
+	}
+	cockpit.set(DcsIds::CockpitParams::McGunCount, 216.0);
+	cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 3.0);
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
+	cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 4.0);
+	cockpit.after_number_read = [&](const char* name)
+	{
+		if (std::strcmp(name, DcsIds::CockpitParams::McGunCount) == 0)
+			cockpit.set(DcsIds::CockpitParams::McGunCountRevision, 6.0);
+	};
+	const auto torn = bridge.read_step_input().cockpit.gun_ammunition;
+	TEST_EXPECT(context, !torn.status.available);
+	TEST_EXPECT(context, torn.status.invalid_reason == Core::ObservationInvalidReason::InvalidRevision);
+	cockpit.after_number_read = {};
+	cockpit.set(DcsIds::CockpitParams::McGunCountAvailable, 0.0);
+	TEST_EXPECT(context, !bridge.read_step_input().cockpit.gun_ammunition.status.available);
+}
+
 }
 
 void run_cockpit_bridge_tests(Tests::Context& context)
 {
+	test_empty_clean_and_zero_quantity_configuration(context);
+	test_native_gun_ammunition_contract(context);
 	test_atmosphere_temperature_is_exported_in_celsius(context);
 	test_non_finite_temperature_preserves_last_cockpit_value(context);
 	test_pressure_altitude_observation_is_typed_in_feet(context);

@@ -6,6 +6,8 @@ namespace DcsIds
 {
 namespace CockpitParams
 {
+static const char* const HmcsWeaponQuantityAvailable = "HMCS_WEAPON_QTY_AVAILABLE";
+static const char* const McStoresGunCountAvailable = "CPP_MC_STORES_GUN_COUNT_AVAILABLE";
 static const char* const McStoresGunCount = "CPP_MC_STORES_GUN_COUNT";
 static const char* const McTriggerSecondStageHeld = "CPP_MC_TRIGGER_SECOND_STAGE_HELD";
 static const char* const McMasterArmPressSequence = "CPP_MC_MASTER_ARM_PRESS_SEQUENCE";
@@ -38,6 +40,7 @@ static const char* const McAdapterAvailable = "OBS_MC_ADAPTER_AVAILABLE";
 static const char* const McAcknowledgedSequence = "OBS_MC_ACKNOWLEDGED_SEQUENCE";
 static const char* const McMissileCountAvailable = "OBS_MC_MISSILE_COUNT_AVAILABLE";
 static const char* const McMissileCount = "OBS_MC_MISSILE_COUNT";
+static const char* const McGunCountRevision = "OBS_MC_GUN_COUNT_REVISION";
 static const char* const McGunCountAvailable = "OBS_MC_GUN_COUNT_AVAILABLE";
 static const char* const McGunCount = "OBS_MC_GUN_COUNT";
 static const char* const TemperatureC = "FM_TEMPERATURE_C";
@@ -106,6 +109,8 @@ static const char* const WeaponStation04 = "OBS_WEAPON_STATION_04";
 static const char* const WeaponStation05 = "OBS_WEAPON_STATION_05";
 static const char* const WeaponStation06 = "OBS_WEAPON_STATION_06";
 static const char* const WeaponStation07 = "OBS_WEAPON_STATION_07";
+static const char* const WeaponStation08 = "OBS_WEAPON_STATION_08";
+static const char* const WeaponStation09 = "OBS_WEAPON_STATION_09";
 static const char* const CockpitSnapshotAvailable = "CPP_COCKPIT_SNAPSHOT_AVAILABLE";
 static const char* const CockpitSnapshotRevision = "CPP_COCKPIT_SNAPSHOT_REVISION";
 static const char* const CockpitSnapshotTimeS = "CPP_COCKPIT_SNAPSHOT_TIME_S";
@@ -142,6 +147,8 @@ struct Entry
 };
 
 static constexpr Entry Catalog[] = {
+    { HmcsWeaponQuantityAvailable, "lua_internal", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "HMCS", nullptr },
+    { McStoresGunCountAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McStoresGunCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McTriggerSecondStageHeld, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McMasterArmPressSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
@@ -174,8 +181,9 @@ static constexpr Entry Catalog[] = {
     { McAcknowledgedSequence, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/mc_io.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { McMissileCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { McMissileCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { McGunCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { McGunCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McGunCountRevision, "lua_to_cpp", "revision", "Cockpit/Scripts/Systems/cms_system.lua", "MissionComputer", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McGunCountAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/cms_system.lua", "MissionComputer", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { McGunCount, "lua_to_cpp", "count", "Cockpit/Scripts/Systems/cms_system.lua", "MissionComputer", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { TemperatureC, "cpp_to_lua", "celsius", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "CockpitSnapshotExporter", nullptr },
     { PressureAltitudeAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { PressureAltitudeM, "lua_to_cpp", "meters", "Cockpit/Scripts/Systems/hmcs_system.lua", "PressureAltitudeObservationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
@@ -242,6 +250,8 @@ static constexpr Entry Catalog[] = {
     { WeaponStation05, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponStation06, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { WeaponStation07, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation08, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { WeaponStation09, "lua_to_cpp", "text", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { CockpitSnapshotAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },
     { CockpitSnapshotTimeS, "cpp_to_lua", "seconds", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CockpitSnapshotExporter", nullptr },

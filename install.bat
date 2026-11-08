@@ -35,6 +35,7 @@ call :CopyOptionalFile "F-CK-1C.png" || goto copy_failed
 
 call :CopyRequiredDir "bin" || goto copy_failed
 call :CopyRequiredDir "Cockpit" || goto copy_failed
+call :CopyRequiredDir "Export" || goto copy_failed
 call :CopyRequiredDir "FM" || goto copy_failed
 call :CopyRequiredDir "Input" || goto copy_failed
 call :CopyRequiredDir "Liveries" || goto copy_failed

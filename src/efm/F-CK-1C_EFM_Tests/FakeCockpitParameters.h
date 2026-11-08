@@ -60,6 +60,7 @@ public:
 	}
 
 	std::function<void()> after_string_read;
+	std::function<void(const char*)> after_number_read;
 
 	void set_available(const char* name, bool available)
 	{
@@ -125,7 +126,10 @@ private:
 	static bool read_number(const void* handle, double& result, bool interpolated)
 	{
 		(void)interpolated;
-		result = static_cast<const FakeCockpitParameter*>(handle)->value;
+		const auto* parameter = static_cast<const FakeCockpitParameter*>(handle);
+		result = parameter->value;
+		if (active_fixture()->after_number_read)
+			active_fixture()->after_number_read(parameter->name);
 		return true;
 	}
 

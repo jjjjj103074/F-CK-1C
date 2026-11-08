@@ -74,6 +74,7 @@ private:
 		McMissileCount,
 		McGunCountAvailable,
 		McGunCount,
+		McGunCountRevision,
 		Count
 	};
 
@@ -96,6 +97,7 @@ private:
 	CockpitValueResult<Core::RadarObservation> read_radar();
 	CockpitValueResult<Core::IrSeekerObservation> read_ir_seeker();
 	CockpitValueResult<Core::WeaponStationObservation> read_weapon_stations();
+	CockpitValueResult<Core::GunAmmunitionObservation> read_gun_ammunition();
 	CockpitValueResult<Core::MissionAdapterObservation> read_mission_adapter();
 
 	const cockpit_param_api api_;
