@@ -714,6 +714,86 @@ void test_stop_cancels_published_selection_before_reasserting_it(Tests::Context&
 	TEST_EXPECT(context, batch.actions[offset + 1].station == 8);
 }
 
+void test_stop_preserves_commands_submitted_after_it(Tests::Context& context)
+{
+	Fixture f;
+	f.select(OperatingMode::Dogfight);
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOn });
+	const auto stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOff });
+	f.select(OperatingMode::MissileOverride);
+	const auto launch = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	f.step(seconds(1));
+	auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 1);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, !f.commands.acknowledged(stop));
+	TEST_EXPECT(context, !f.commands.acknowledged(launch));
+	f.actions.acknowledge(batch.first_sequence);
+	f.observe(2);
+	f.input.cockpit.weapon_stations.stations[8] = { StoreConfiguration::Equipped,
+		                                            1,
+		                                            WeaponCategory::Missile,
+		                                            WeaponRole::AirToAir,
+		                                            "aa" };
+	f.step(milliseconds(1100));
+	batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 3);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[0].selection_revision < batch.actions[1].selection_revision);
+	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::PickleOn);
+	TEST_EXPECT(context, f.commands.acknowledged(stop));
+	TEST_EXPECT(context, !f.commands.acknowledged(launch));
+	f.actions.acknowledge(batch.first_sequence + batch.count - 1);
+	TEST_EXPECT(context, f.commands.acknowledged(launch));
+}
+
+void test_stop_submitted_during_notification_keeps_its_retry(Tests::Context& context)
+{
+	Fixture f;
+	f.observe(2);
+	f.input.cockpit.weapon_stations.stations[8] = { StoreConfiguration::Equipped,
+		                                            1,
+		                                            WeaponCategory::Missile,
+		                                            WeaponRole::AirToAir,
+		                                            "aa" };
+	f.step(seconds(1));
+	sigslot::scoped_connection ready = f.commands.commands_available.connect(
+	    [&]()
+	    {
+		    f.manager.dispatch();
+	    });
+	std::uint64_t stop = 0;
+	bool submitted = false;
+	sigslot::scoped_connection changed = f.events.selection_changed.connect(
+	    [&](const SelectionChanged&)
+	    {
+		    if (submitted)
+			    return;
+		    submitted = true;
+		    stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOff });
+	    });
+	f.select(OperatingMode::Dogfight);
+	auto batch = f.actions.batch();
+	TEST_EXPECT(context, submitted);
+	TEST_EXPECT(context, batch.count == 1);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
+	const auto initial_revision = batch.actions[0].selection_revision;
+	f.actions.acknowledge(batch.first_sequence);
+	f.input.cockpit.weapon_stations.selected_station = 8;
+	f.input.cockpit.weapon_stations.selection_ack_revision = initial_revision;
+	f.step(milliseconds(1100));
+	batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 2);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[1].station == 8);
+	TEST_EXPECT(context, batch.actions[1].selection_revision > initial_revision);
+	TEST_EXPECT(context, !f.commands.acknowledged(stop));
+	f.actions.acknowledge(batch.first_sequence);
+	TEST_EXPECT(context, f.commands.acknowledged(stop));
+}
+
 void test_store_receipts_track_execution_and_survive_retirement(Tests::Context& context)
 {
 	Fixture f;
@@ -758,6 +838,8 @@ void test_submission_notification_keeps_stop_before_following_control_release(Te
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_stop_preserves_commands_submitted_after_it(context);
+	test_stop_submitted_during_notification_keeps_its_retry(context);
 	test_submission_notification_keeps_stop_before_following_control_release(context);
 	test_store_receipts_track_execution_and_survive_retirement(context);
 	test_plain_stop_precedes_selection_retry(context);

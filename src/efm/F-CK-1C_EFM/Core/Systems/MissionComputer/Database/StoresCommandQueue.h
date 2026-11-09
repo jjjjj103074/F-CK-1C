@@ -31,7 +31,7 @@ struct CancelStoresCommands
 using StoresCommand = std::variant<SelectStoresForMode, StoresWeaponAction, CancelStoresCommands>;
 class StoresManagement;
 
-/// @brief SM 的具型別指令入口，保存 FIFO、指令編號及各筆要求的執行回覆。
+/// @brief SM 的具型別指令入口，保存原始 FIFO、指令編號及執行回覆。
 class StoresCommandQueue final
 {
 public:
@@ -45,7 +45,7 @@ public:
 	std::uint64_t submit(const StoresCommand& command);
 	/// @brief 回報該筆要求已完成執行或取消。
 	bool acknowledged(std::uint64_t ticket) const noexcept;
-	/// @brief 一批要求排入後，通知 MC 派送目前就緒的 SM 指令。
+	/// @brief 原始要求入列後，同步通知 MC 交由 SM 接受與派送。
 	sigslot::signal_st<> commands_available;
 
 private:
@@ -54,7 +54,6 @@ private:
 	{
 		std::uint64_t ticket;
 		StoresCommand command;
-		bool canceled = false;
 	};
 	struct Receipt
 	{
@@ -64,11 +63,8 @@ private:
 	void resolve(std::uint64_t ticket, std::uint64_t external_sequence);
 	void retire_completed();
 	std::uint64_t enqueue(const StoresCommand& command);
-	void cancel_pending();
-	bool has_pending_mode() const;
-	OperatingMode latest_mode_ = OperatingMode::Navigation;
 	ExternalActionQueue& actions_;
-	std::deque<Entry> pending_;
+	std::deque<Entry> incoming_;
 	std::deque<Receipt> receipts_;
 	std::uint64_t last_ticket_ = 0;
 	std::uint64_t retired_through_ = 0;

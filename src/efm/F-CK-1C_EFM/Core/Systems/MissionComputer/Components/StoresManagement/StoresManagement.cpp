@@ -29,6 +29,7 @@ MissionAction StoresManagement::selection_action() const
 
 void StoresManagement::prepare(std::chrono::nanoseconds time)
 {
+	accept_commands();
 	commands_.retire_completed();
 	time = (std::max)(time, input_.observed_at);
 	const auto change = Internal::update_inventory(stores_.inventory, input_.cockpit.weapon_stations, time);
@@ -38,8 +39,8 @@ void StoresManagement::prepare(std::chrono::nanoseconds time)
 	gun_changed_ =
 	    Internal::update_gun_ammunition(stores_.gun_ammunition, input_.cockpit.gun_ammunition, time) || gun_changed_;
 	const auto previous_request = stores_.selection.request_revision;
-	const bool changed = commands_.pending_.empty() ? selection_.update(input_.cockpit.weapon_stations)
-	                                                : selection_.acknowledge(input_.cockpit.weapon_stations);
+	const bool changed = pending_commands_.empty() ? selection_.update(input_.cockpit.weapon_stations)
+	                                               : selection_.acknowledge(input_.cockpit.weapon_stations);
 	selection_changed_ = changed || selection_changed_;
 	if (stores_.selection.request_revision != previous_request)
 		actions_.append(selection_action());
@@ -47,6 +48,8 @@ void StoresManagement::prepare(std::chrono::nanoseconds time)
 
 void StoresManagement::dispatch()
 {
+	// 接受通知期間送入的要求，保存停止與取消的處理順序。
+	accept_commands();
 	if (dispatching_)
 		return;
 	dispatching_ = true;
@@ -63,13 +66,60 @@ void StoresManagement::dispatch()
 	dispatching_ = false;
 }
 
+void StoresManagement::cancel_pending_commands()
+{
+	for (auto& entry : pending_commands_)
+	{
+		const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command);
+		if (std::holds_alternative<SelectStoresForMode>(entry.command) || (weapon && is_weapon_start(weapon->action)))
+			entry.canceled = true;
+	}
+}
+
+bool StoresManagement::has_pending_mode() const
+{
+	return std::any_of(pending_commands_.begin(),
+	                   pending_commands_.end(),
+	                   [](const PendingCommand& entry)
+	                   {
+		                   const auto* mode = std::get_if<SelectStoresForMode>(&entry.command);
+		                   return !entry.canceled && mode && mode->mode != OperatingMode::Navigation;
+	                   });
+}
+
+void StoresManagement::accept_commands()
+{
+	while (!commands_.incoming_.empty())
+	{
+		const auto& entry = commands_.incoming_.front();
+		const auto* mode = std::get_if<SelectStoresForMode>(&entry.command);
+		if (mode)
+			latest_mode_ = mode->mode;
+		if (std::holds_alternative<CancelStoresCommands>(entry.command) ||
+		    (mode && mode->mode == OperatingMode::Navigation))
+			cancel_pending_commands();
+		const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command);
+		if (weapon && is_weapon_stop(weapon->action) && (has_pending_mode() || actions_.has_pending_selection()))
+		{
+			// 撤回等待選站的前綴，先停止，再依最新模式重新確認掛點。
+			cancel_pending_commands();
+			pending_commands_.push_back({ std::nullopt, CancelStoresCommands{} });
+			pending_commands_.push_back({ entry.ticket, entry.command });
+			pending_commands_.push_back({ std::nullopt, SelectStoresForMode{ latest_mode_, false, true } });
+		}
+		else
+			pending_commands_.push_back({ entry.ticket, entry.command });
+		commands_.incoming_.pop_front();
+	}
+}
+
 void StoresManagement::drain_commands()
 {
 	const bool previously_awaiting = stores_.selection.awaiting_inventory;
 	stores_.selection.awaiting_inventory = false;
-	while (!commands_.pending_.empty())
+	while (!pending_commands_.empty())
 	{
-		const auto& entry = commands_.pending_.front();
+		const auto& entry = pending_commands_.front();
 		MissionAction action;
 		if (!entry.canceled)
 		{
@@ -94,8 +144,9 @@ void StoresManagement::drain_commands()
 				actions_.cancel_weapon_starts();
 		}
 		const auto sequence = action.kind == MissionActionKind::None ? 0 : actions_.append(action);
-		commands_.resolve(entry.ticket, sequence);
-		commands_.pending_.pop_front();
+		if (entry.ticket)
+			commands_.resolve(*entry.ticket, sequence);
+		pending_commands_.pop_front();
 	}
 	commands_.retire_completed();
 	selection_changed_ = selection_changed_ || previously_awaiting != stores_.selection.awaiting_inventory;
