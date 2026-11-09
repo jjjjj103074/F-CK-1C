@@ -22,6 +22,17 @@ void StoresCommandQueue::resolve(std::uint64_t ticket, std::uint64_t external_se
 {
 	auto& receipt = receipts_.at(static_cast<std::size_t>(ticket - retired_through_ - 1));
 	receipt = { true, external_sequence };
+	retire_completed();
+}
+
+std::optional<QueuedStoresCommand> StoresCommandQueue::take_next()
+{
+	retire_completed();
+	if (incoming_.empty())
+		return std::nullopt;
+	const auto request = incoming_.front();
+	incoming_.pop_front();
+	return request;
 }
 
 bool StoresCommandQueue::acknowledged(std::uint64_t ticket) const noexcept

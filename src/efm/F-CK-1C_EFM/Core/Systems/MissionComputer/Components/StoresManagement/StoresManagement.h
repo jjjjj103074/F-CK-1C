@@ -44,6 +44,8 @@ private:
 	void accept_commands();
 	/// @brief 撤回待執行的選站與武器啟動，保留停止操作。
 	void cancel_pending_commands();
+	/// @brief 撤回執行佇列中的選站與啟動，記錄選站取消版本。
+	void cancel_dispatched_commands();
 	/// @brief 查詢待執行的作戰模式選站要求。
 	bool has_pending_mode() const;
 	MissionAction selection_action() const;

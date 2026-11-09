@@ -57,13 +57,22 @@ bool StationSelection::acknowledge(const WeaponStationObservation& observation)
 	return previous != state_.acknowledged_revision;
 }
 
+bool StationSelection::cancel_pending()
+{
+	if (state_.request_revision <= state_.acknowledged_revision ||
+	    state_.request_revision <= state_.canceled_through_revision)
+		return false;
+	state_.canceled_through_revision = state_.request_revision;
+	return true;
+}
+
 bool StationSelection::update(const WeaponStationObservation& observation)
 {
 	const auto previous = state_;
 	acknowledge(observation);
 	if (mode_ == OperatingMode::Navigation)
 	{
-		request(std::nullopt, reset_selection_ && state_.pending());
+		request(std::nullopt, reset_selection_ && state_.request_revision != state_.acknowledged_revision);
 		reset_selection_ = false;
 		cycle_requested_ = false;
 		reassert_requested_ = false;

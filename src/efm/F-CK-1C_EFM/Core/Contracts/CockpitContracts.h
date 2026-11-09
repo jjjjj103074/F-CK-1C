@@ -473,11 +473,13 @@ struct StationSelectionState
 	std::optional<int> acknowledged_station;
 	std::uint64_t acknowledged_revision = 0;
 	bool awaiting_inventory = false; ///< 選站指令正等待有效庫存。
+	std::uint64_t canceled_through_revision = 0; ///< 已取消要求的最高版本。
 
 	/// @brief 回報最新要求是否仍等待相符的執行確認。
 	bool pending() const noexcept
 	{
-		return awaiting_inventory || request_revision != acknowledged_revision;
+		return awaiting_inventory ||
+		       (request_revision > canceled_through_revision && request_revision != acknowledged_revision);
 	}
 };
 

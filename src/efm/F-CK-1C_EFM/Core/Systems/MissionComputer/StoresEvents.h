@@ -21,12 +21,13 @@ struct GunAmmunitionChanged
 	std::uint64_t revision = 0;
 };
 
-/// @brief 已完成寫入的選站要求與執行確認版本。
+/// @brief 已完成寫入的選站要求、執行確認及取消版本。
 struct SelectionChanged
 {
 	std::uint64_t request_revision = 0;
 	std::uint64_t acknowledged_revision = 0;
 	bool awaiting_inventory = false;
+	std::uint64_t canceled_through_revision = 0;
 };
 
 /// @brief 每台 MC 持有的掛載同步通知通道。

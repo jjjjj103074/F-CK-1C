@@ -4,6 +4,7 @@
 #include "../../../Contracts/CockpitContracts.h"
 
 #include <deque>
+#include <optional>
 #include <variant>
 #include <sigslot/signal.hpp>
 
@@ -29,7 +30,13 @@ struct CancelStoresCommands
 };
 
 using StoresCommand = std::variant<SelectStoresForMode, StoresWeaponAction, CancelStoresCommands>;
-class StoresManagement;
+
+/// @brief 已入列的原始要求及其 SM 指令編號。
+struct QueuedStoresCommand
+{
+	std::uint64_t ticket;
+	StoresCommand command;
+};
 
 /// @brief SM 的具型別指令入口，保存原始 FIFO、指令編號及執行回覆。
 class StoresCommandQueue final
@@ -45,26 +52,23 @@ public:
 	std::uint64_t submit(const StoresCommand& command);
 	/// @brief 回報該筆要求已完成執行或取消。
 	bool acknowledged(std::uint64_t ticket) const noexcept;
+	/// @brief 依 FIFO 交付下一筆原始要求，並回收已完成的回覆紀錄。
+	std::optional<QueuedStoresCommand> take_next();
+	/// @brief 登記執行序號；0 表示要求已在 SM 完成處理。
+	void resolve(std::uint64_t ticket, std::uint64_t external_sequence);
 	/// @brief 原始要求入列後，同步通知 MC 交由 SM 接受與派送。
 	sigslot::signal_st<> commands_available;
 
 private:
-	friend class StoresManagement;
-	struct Entry
-	{
-		std::uint64_t ticket;
-		StoresCommand command;
-	};
 	struct Receipt
 	{
 		bool resolved = false;
 		std::uint64_t external_sequence = 0;
 	};
-	void resolve(std::uint64_t ticket, std::uint64_t external_sequence);
 	void retire_completed();
 	std::uint64_t enqueue(const StoresCommand& command);
 	ExternalActionQueue& actions_;
-	std::deque<Entry> incoming_;
+	std::deque<QueuedStoresCommand> incoming_;
 	std::deque<Receipt> receipts_;
 	std::uint64_t last_ticket_ = 0;
 	std::uint64_t retired_through_ = 0;

@@ -30,7 +30,6 @@ MissionAction StoresManagement::selection_action() const
 void StoresManagement::prepare(std::chrono::nanoseconds time)
 {
 	accept_commands();
-	commands_.retire_completed();
 	time = (std::max)(time, input_.observed_at);
 	const auto change = Internal::update_inventory(stores_.inventory, input_.cockpit.weapon_stations, time);
 	inventory_change_.revision = change.revision;
@@ -76,6 +75,12 @@ void StoresManagement::cancel_pending_commands()
 	}
 }
 
+void StoresManagement::cancel_dispatched_commands()
+{
+	actions_.cancel_weapon_starts();
+	selection_changed_ = selection_.cancel_pending() || selection_changed_;
+}
+
 bool StoresManagement::has_pending_mode() const
 {
 	return std::any_of(pending_commands_.begin(),
@@ -89,27 +94,25 @@ bool StoresManagement::has_pending_mode() const
 
 void StoresManagement::accept_commands()
 {
-	while (!commands_.incoming_.empty())
+	while (const auto entry = commands_.take_next())
 	{
-		const auto& entry = commands_.incoming_.front();
-		const auto* mode = std::get_if<SelectStoresForMode>(&entry.command);
+		const auto* mode = std::get_if<SelectStoresForMode>(&entry->command);
 		if (mode)
 			latest_mode_ = mode->mode;
-		if (std::holds_alternative<CancelStoresCommands>(entry.command) ||
+		if (std::holds_alternative<CancelStoresCommands>(entry->command) ||
 		    (mode && mode->mode == OperatingMode::Navigation))
 			cancel_pending_commands();
-		const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command);
+		const auto* weapon = std::get_if<StoresWeaponAction>(&entry->command);
 		if (weapon && is_weapon_stop(weapon->action) && (has_pending_mode() || actions_.has_pending_selection()))
 		{
 			// 撤回等待選站的前綴，先停止，再依最新模式重新確認掛點。
 			cancel_pending_commands();
 			pending_commands_.push_back({ std::nullopt, CancelStoresCommands{} });
-			pending_commands_.push_back({ entry.ticket, entry.command });
+			pending_commands_.push_back({ entry->ticket, entry->command });
 			pending_commands_.push_back({ std::nullopt, SelectStoresForMode{ latest_mode_, false, true } });
 		}
 		else
-			pending_commands_.push_back({ entry.ticket, entry.command });
-		commands_.incoming_.pop_front();
+			pending_commands_.push_back({ entry->ticket, entry->command });
 	}
 }
 
@@ -131,7 +134,7 @@ void StoresManagement::drain_commands()
 					break;
 				}
 				if (mode->mode == OperatingMode::Navigation)
-					actions_.cancel_weapon_starts();
+					cancel_dispatched_commands();
 				const auto previous_request = stores_.selection.request_revision;
 				selection_.select_mode(mode->mode, mode->cycle_weapon, mode->reassert_selection);
 				selection_changed_ = selection_.update(input_.cockpit.weapon_stations) || selection_changed_;
@@ -141,14 +144,13 @@ void StoresManagement::drain_commands()
 			else if (const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command))
 				action.kind = weapon->action;
 			else
-				actions_.cancel_weapon_starts();
+				cancel_dispatched_commands();
 		}
 		const auto sequence = action.kind == MissionActionKind::None ? 0 : actions_.append(action);
 		if (entry.ticket)
 			commands_.resolve(*entry.ticket, sequence);
 		pending_commands_.pop_front();
 	}
-	commands_.retire_completed();
 	selection_changed_ = selection_changed_ || previously_awaiting != stores_.selection.awaiting_inventory;
 }
 
@@ -168,7 +170,8 @@ void StoresManagement::notify_changes()
 	if (selection_changed_)
 		events_.selection_changed(SelectionChanged{ stores_.selection.request_revision,
 		                                            stores_.selection.acknowledged_revision,
-		                                            stores_.selection.awaiting_inventory });
+		                                            stores_.selection.awaiting_inventory,
+		                                            stores_.selection.canceled_through_revision });
 	inventory_change_ = {};
 	gun_changed_ = false;
 	selection_changed_ = false;

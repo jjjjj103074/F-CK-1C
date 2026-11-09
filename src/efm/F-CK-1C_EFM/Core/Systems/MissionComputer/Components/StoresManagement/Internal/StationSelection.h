@@ -15,6 +15,8 @@ public:
 	void select_mode(OperatingMode mode, bool cycle_weapon, bool reassert_selection = false);
 	/// @brief 核對已發出的要求，保存最近完成的選站。
 	bool acknowledge(const WeaponStationObservation& observation);
+	/// @brief 結束尚待確認的要求，保存選站內容與真實執行回覆。
+	bool cancel_pending();
 	/// @brief 套用選站意圖、掛載變化及確認，回報對外選站狀態是否改變。
 	bool update(const WeaponStationObservation& observation);
 

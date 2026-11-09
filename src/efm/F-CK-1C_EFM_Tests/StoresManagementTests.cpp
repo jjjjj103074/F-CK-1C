@@ -550,6 +550,146 @@ void test_selection_waits_for_inventory_and_reselects_replaced_loads(Tests::Cont
 	TEST_EXPECT(context, count_missiles(f.stores.inventory).count == 0);
 }
 
+void test_cancel_selection_completes_wait_and_keeps_later_requests(Tests::Context& context)
+{
+	for (bool source_available : { false, true })
+	{
+		Fixture f;
+		f.observe(2);
+		auto& observation = f.input.cockpit.weapon_stations;
+		observation.stations[8] = { StoreConfiguration::Equipped,
+			                        1,
+			                        WeaponCategory::Missile,
+			                        WeaponRole::AirToAir,
+			                        "aa" };
+		f.select(OperatingMode::Dogfight);
+		f.step(seconds(1));
+		const auto canceled = f.stores.selection.request_revision;
+		std::vector<SelectionChanged> changes;
+		sigslot::scoped_connection changed = f.events.selection_changed.connect(
+		    [&](const SelectionChanged& event)
+		    {
+			    changes.push_back(event);
+		    });
+		if (!source_available)
+			observation.status = { false, 4, ObservationInvalidReason::StationApiError };
+		const auto cancel = f.commands.submit(CancelStoresCommands{});
+		f.step(milliseconds(1100));
+		auto batch = f.actions.batch();
+		TEST_EXPECT(context, f.commands.acknowledged(cancel));
+		TEST_EXPECT(context, !f.stores.selection.pending());
+		TEST_EXPECT(context, f.stores.selection.request_revision == canceled);
+		TEST_EXPECT(context, f.stores.selection.canceled_through_revision == canceled);
+		TEST_EXPECT(context, f.stores.selection.acknowledged_revision == 0);
+		TEST_EXPECT(context, !f.stores.selection.acknowledged_station);
+		TEST_EXPECT(context, f.stores.selection.requested_station == 8);
+		TEST_EXPECT(context, batch.count == 1 && batch.actions[0].kind == MissionActionKind::None);
+		TEST_EXPECT(context, changes.size() == 1);
+		if (!changes.empty())
+			TEST_EXPECT(context, changes.back().canceled_through_revision == canceled);
+		f.actions.acknowledge(batch.first_sequence + batch.count - 1);
+		f.commands.submit(CancelStoresCommands{});
+		f.step(milliseconds(1150));
+		TEST_EXPECT(context, changes.size() == 1);
+		f.observe(6);
+		f.step(milliseconds(1200));
+		TEST_EXPECT(context, !f.stores.selection.pending());
+		TEST_EXPECT(context, f.stores.selection.request_revision == canceled);
+		TEST_EXPECT(context, f.actions.batch().count == 0);
+		f.select(OperatingMode::Dogfight);
+		f.step(milliseconds(1250));
+		const auto next = f.stores.selection.request_revision;
+		TEST_EXPECT(context, next > canceled);
+		TEST_EXPECT(context, f.stores.selection.pending());
+		observation.selected_station = 8;
+		observation.selection_ack_revision = canceled;
+		f.observe(8);
+		f.step(milliseconds(1300));
+		TEST_EXPECT(context, f.stores.selection.acknowledged_revision == canceled);
+		TEST_EXPECT(context, f.stores.selection.pending());
+		TEST_EXPECT(context, f.stores.selection.request_revision == next);
+		observation.selection_ack_revision = next;
+		f.observe(10);
+		f.step(milliseconds(1400));
+		TEST_EXPECT(context, !f.stores.selection.pending());
+		TEST_EXPECT(context, f.stores.selection.acknowledged_revision == next);
+	}
+}
+
+void test_selection_cancel_preserves_real_acknowledgements(Tests::Context& context)
+{
+	for (bool acknowledge_first : { false, true })
+	{
+		Fixture f;
+		f.observe(2);
+		auto& observation = f.input.cockpit.weapon_stations;
+		observation.stations[8] = { StoreConfiguration::Equipped,
+			                        1,
+			                        WeaponCategory::Missile,
+			                        WeaponRole::AirToAir,
+			                        "aa" };
+		f.select(OperatingMode::Dogfight);
+		f.step(seconds(1));
+		const auto requested = f.stores.selection.request_revision;
+		if (acknowledge_first)
+		{
+			observation.selected_station = 8;
+			observation.selection_ack_revision = requested;
+			f.observe(4);
+			f.step(milliseconds(1050));
+		}
+		f.commands.submit(CancelStoresCommands{});
+		f.step(milliseconds(1100));
+		TEST_EXPECT(context, !f.stores.selection.pending());
+		TEST_EXPECT(context, f.stores.selection.acknowledged_revision == (acknowledge_first ? requested : 0));
+		TEST_EXPECT(context, f.stores.selection.canceled_through_revision == (acknowledge_first ? 0 : requested));
+		observation.selected_station = 8;
+		observation.selection_ack_revision = requested;
+		f.observe(6);
+		f.step(milliseconds(1200));
+		TEST_EXPECT(context, !f.stores.selection.pending());
+		TEST_EXPECT(context, f.stores.selection.acknowledged_revision == requested);
+		TEST_EXPECT(context, f.stores.selection.acknowledged_station == 8);
+	}
+}
+
+void test_command_queue_consumer_keeps_fifo_and_execution_receipts(Tests::Context& context)
+{
+	ExternalActionQueue actions;
+	StoresCommandQueue commands(actions);
+	const StoresCommand requests[] = { SelectStoresForMode{ OperatingMode::Dogfight, true },
+		                               CancelStoresCommands{},
+		                               StoresWeaponAction{ MissionActionKind::GunOff } };
+	const auto mode = commands.submit(requests[0]);
+	const auto cancel = commands.submit(requests[1]);
+	const auto stop = commands.submit(requests[2]);
+	const std::uint64_t expected[] = { mode, cancel, stop };
+	for (std::size_t i = 0; i < std::size(expected); ++i)
+	{
+		const auto entry = commands.take_next();
+		TEST_EXPECT(context, entry.has_value());
+		if (!entry)
+			continue;
+		TEST_EXPECT(context, entry->ticket == expected[i]);
+		TEST_EXPECT(context, entry->command.index() == requests[i].index());
+		TEST_EXPECT(context, !commands.acknowledged(entry->ticket));
+	}
+	TEST_EXPECT(context, !commands.take_next());
+	TEST_EXPECT(context, actions.batch().count == 0);
+	commands.resolve(mode, 0);
+	commands.resolve(cancel, 0);
+	TEST_EXPECT(context, commands.acknowledged(mode));
+	TEST_EXPECT(context, commands.acknowledged(cancel));
+	const auto execution = actions.append(MissionActionKind::GunOff);
+	commands.resolve(stop, execution);
+	TEST_EXPECT(context, !commands.acknowledged(stop));
+	const auto batch = actions.batch();
+	actions.acknowledge(batch.first_sequence + batch.count - 1);
+	TEST_EXPECT(context, !commands.take_next());
+	TEST_EXPECT(context, commands.acknowledged(stop));
+	TEST_EXPECT(context, !commands.acknowledged(0));
+}
+
 void test_command_gateway_preserves_interleaved_order_and_payloads(Tests::Context& context)
 {
 	Fixture f;
@@ -838,6 +978,9 @@ void test_submission_notification_keeps_stop_before_following_control_release(Te
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_cancel_selection_completes_wait_and_keeps_later_requests(context);
+	test_selection_cancel_preserves_real_acknowledgements(context);
+	test_command_queue_consumer_keeps_fifo_and_execution_receipts(context);
 	test_stop_preserves_commands_submitted_after_it(context);
 	test_stop_submitted_during_notification_keeps_its_retry(context);
 	test_submission_notification_keeps_stop_before_following_control_release(context);
