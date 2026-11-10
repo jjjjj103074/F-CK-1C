@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../../../Contracts/CockpitContracts.h"
-#include "StoresData.h"
 
 namespace Core::Systems::Mc
 {
@@ -18,12 +17,8 @@ struct ModeData
 	}
 };
 
-struct TargetingData
-{
-	AirToAirSubmode submode = AirToAirSubmode::None;
-	bool uncage_held = false;
-	bool designation_requested = false; // 目標指定的操作意圖。
-};
+/// @brief 由目標指定模組寫入，供武器使用與快照發布讀取。
+using TargetDesignationData = TargetDesignationSnapshot;
 
 struct InfraredMissileData
 {
@@ -40,6 +35,7 @@ struct InfraredMissileData
 
 struct WeaponOperationData
 {
+	bool uncage_held = false; ///< 駕駛的飛彈解籠操作狀態。
 	bool gun_requested = false;
 	std::uint64_t gun_start_ticket = 0; // 已接受的機砲啟動指令編號。
 	bool gun_firing_indication = false;
@@ -49,7 +45,8 @@ struct WeaponOperationData
 /// @brief FireControl 及其內部模組唯一寫入；外部功能只讀指定分區。
 struct FireControlData
 {
-	TargetingData targeting;
+	AirToAirSubmode acquisition_mode = AirToAirSubmode::None; ///< FC 選擇的捕獲操作方式。
+	TargetDesignationData target_designation;
 	WeaponOperationData weapon;
 	InfraredMissileData infrared_missile;
 };

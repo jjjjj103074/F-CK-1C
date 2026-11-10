@@ -13,49 +13,78 @@ using namespace Core::Systems::Mc;
 
 static_assert(!std::is_move_constructible<ModeEvents>::value, "Channels must retain their MC's address.");
 
-void test_selection_events_keep_each_command_stage(Tests::Context& context)
+void test_master_arm_and_mode_events_are_independent(Tests::Context& context)
 {
-	ModeData data;
-	ModeEvents events;
-	ModeManagement modes(data, events);
-	std::vector<MasterArmSelected> arm_selections;
-	std::vector<OperatingModeSelected> mode_selections;
-	std::vector<char> order;
-	sigslot::scoped_connection arm_connection = events.master_arm_selected.connect(
-	    [&](const MasterArmSelected& event)
-	    {
-		    arm_selections.push_back(event);
-		    order.push_back('A');
-		    TEST_EXPECT(context, data.master_arm == event.selected.master_arm);
-		    TEST_EXPECT(context, data.operating_mode == event.selected.operating_mode);
-	    });
-	sigslot::scoped_connection mode_connection = events.operating_mode_selected.connect(
-	    [&](const OperatingModeSelected& event)
-	    {
-		    mode_selections.push_back(event);
-		    order.push_back('M');
-		    TEST_EXPECT(context, data.operating_mode == event.selected.operating_mode);
-	    });
-
-	modes.handle({ CommandId::SelectDogfightMode, 1.0 });
-	modes.handle({ CommandId::SetMasterArmOff, 1.0 });
-	modes.handle({ CommandId::SetMasterArmOn, 1.0 });
-	TEST_EXPECT(context, order == std::vector<char>({ 'A', 'M', 'A', 'M', 'A', 'M' }));
-	TEST_EXPECT(context, arm_selections.size() == 3);
-	TEST_EXPECT(context, mode_selections.size() == 3);
-	if (arm_selections.size() != 3 || mode_selections.size() != 3)
-		return;
-	TEST_EXPECT(context, arm_selections[1].previous.master_arm == MasterArmMode::On);
-	TEST_EXPECT(context, arm_selections[1].selected.master_arm == MasterArmMode::Off);
-	TEST_EXPECT(context, arm_selections[1].selected.operating_mode == OperatingMode::Dogfight);
-	TEST_EXPECT(context, mode_selections[1].previous.master_arm == MasterArmMode::Off);
-	TEST_EXPECT(context, mode_selections[1].previous.operating_mode == OperatingMode::Dogfight);
-	TEST_EXPECT(context, mode_selections[1].selected.operating_mode == OperatingMode::Navigation);
-	TEST_EXPECT(context, mode_selections[0].cycle_weapon);
-	TEST_EXPECT(context, !mode_selections[1].cycle_weapon);
-	TEST_EXPECT(context, !mode_selections[2].cycle_weapon);
-	TEST_EXPECT(context, data.master_arm == MasterArmMode::On);
-	TEST_EXPECT(context, data.operating_mode == OperatingMode::Navigation);
+	for (OperatingMode initial_mode :
+	     { OperatingMode::Navigation, OperatingMode::Dogfight, OperatingMode::MissileOverride })
+	{
+		ModeData data;
+		data.operating_mode = initial_mode;
+		ModeEvents events;
+		ModeManagement modes(data, events);
+		std::vector<MasterArmSelected> arms;
+		std::vector<OperatingModeSelected> selections;
+		std::vector<char> order;
+		sigslot::scoped_connection arm_connection = events.master_arm_selected.connect(
+		    [&](const MasterArmSelected& event)
+		    {
+			    arms.push_back(event);
+			    order.push_back('A');
+			    TEST_EXPECT(context, data.master_arm == event.selected.master_arm);
+			    TEST_EXPECT(context, event.selected.operating_mode == initial_mode);
+		    });
+		sigslot::scoped_connection mode_connection = events.operating_mode_selected.connect(
+		    [&](const OperatingModeSelected& event)
+		    {
+			    selections.push_back(event);
+			    order.push_back('M');
+			    TEST_EXPECT(context, data.operating_mode == event.selected.operating_mode);
+		    });
+		for (CommandId command : { CommandId::SetMasterArmOff, CommandId::SetMasterArmSim, CommandId::SetMasterArmOn })
+		{
+			modes.handle({ command, 1.0 });
+			TEST_EXPECT(context, data.operating_mode == initial_mode);
+		}
+		TEST_EXPECT(context, order == std::vector<char>({ 'A', 'A', 'A' }));
+		TEST_EXPECT(context, arms.size() == 3 && selections.empty());
+		TEST_EXPECT(context, data.master_arm == MasterArmMode::On);
+		if (arms.size() == 3)
+		{
+			TEST_EXPECT(context, arms[0].selected.master_arm == MasterArmMode::Off);
+			TEST_EXPECT(context, arms[1].selected.master_arm == MasterArmMode::Simulation);
+		}
+	}
+	for (MasterArmMode initial_arm : { MasterArmMode::Off, MasterArmMode::Simulation, MasterArmMode::On })
+	{
+		ModeData data;
+		data.master_arm = initial_arm;
+		ModeEvents events;
+		ModeManagement modes(data, events);
+		int arm_events = 0;
+		std::vector<OperatingModeSelected> selections;
+		sigslot::scoped_connection arm_connection = events.master_arm_selected.connect(
+		    [&](const MasterArmSelected&)
+		    {
+			    ++arm_events;
+		    });
+		sigslot::scoped_connection mode_connection = events.operating_mode_selected.connect(
+		    [&](const OperatingModeSelected& event)
+		    {
+			    selections.push_back(event);
+		    });
+		for (CommandId command :
+		     { CommandId::SelectDogfightMode, CommandId::SelectMissileOverride, CommandId::SelectNavigationMode })
+		{
+			modes.handle({ command, 1.0 });
+			TEST_EXPECT(context, data.master_arm == initial_arm);
+		}
+		TEST_EXPECT(context, arm_events == 0 && selections.size() == 3);
+		if (selections.size() == 3)
+		{
+			TEST_EXPECT(context, selections[0].cycle_weapon && selections[1].cycle_weapon);
+			TEST_EXPECT(context, !selections[2].cycle_weapon);
+		}
+	}
 }
 
 void test_repeated_selection_and_ignored_commands(Tests::Context& context)
@@ -139,7 +168,7 @@ void test_countermeasure_reactions_use_selection_payload(Tests::Context& context
 
 void run_mode_management_tests(Tests::Context& context)
 {
-	test_selection_events_keep_each_command_stage(context);
+	test_master_arm_and_mode_events_are_independent(context);
 	test_repeated_selection_and_ignored_commands(context);
 	test_ordered_scoped_subscriptions_and_instance_isolation(context);
 	test_countermeasure_reactions_use_selection_payload(context);

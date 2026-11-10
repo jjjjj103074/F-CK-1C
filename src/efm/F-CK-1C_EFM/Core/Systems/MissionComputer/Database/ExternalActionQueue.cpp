@@ -23,7 +23,15 @@ std::uint64_t ExternalActionQueue::append(const MissionAction& action)
 void ExternalActionQueue::cancel_weapon_starts()
 {
 	for (auto& action : pending_)
-		if (action.kind == MissionActionKind::SelectStation || is_weapon_start(action.kind))
+		if (is_weapon_start(action.kind))
+			action = MissionAction{};
+}
+
+void ExternalActionQueue::cancel_stores_commands()
+{
+	cancel_weapon_starts();
+	for (auto& action : pending_)
+		if (action.kind == MissionActionKind::SelectStation)
 			action = MissionAction{};
 }
 

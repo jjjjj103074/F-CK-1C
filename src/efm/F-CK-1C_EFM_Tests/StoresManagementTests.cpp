@@ -550,6 +550,77 @@ void test_selection_waits_for_inventory_and_reselects_replaced_loads(Tests::Cont
 	TEST_EXPECT(context, count_missiles(f.stores.inventory).count == 0);
 }
 
+void test_weapon_cancel_preserves_selection_and_execution_receipts(Tests::Context& context)
+{
+	Fixture f;
+	f.observe(2);
+	auto& observation = f.input.cockpit.weapon_stations;
+	observation.stations[8] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+	f.select(OperatingMode::Dogfight);
+	f.step(seconds(1));
+	const auto revision = f.stores.selection.request_revision;
+	const auto gun = f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOn });
+	const auto permission = f.commands.submit(StoresWeaponAction{ MissionActionKind::LaunchPermissionOverride });
+	const auto release = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	f.step(milliseconds(1050));
+	const auto cancel = f.commands.submit(CancelWeaponStarts{});
+	f.step(milliseconds(1100));
+	auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 4);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
+	for (std::size_t i = 1; i < batch.count; ++i)
+		TEST_EXPECT(context, batch.actions[i].kind == MissionActionKind::None);
+	TEST_EXPECT(context, f.commands.acknowledged(cancel));
+	TEST_EXPECT(context, f.stores.selection.request_revision == revision);
+	TEST_EXPECT(context, f.stores.selection.requested_station == 8);
+	TEST_EXPECT(context, f.stores.selection.canceled_through_revision == 0);
+	TEST_EXPECT(context, f.stores.selection.pending());
+	f.actions.acknowledge(batch.first_sequence + batch.count - 1);
+	observation.selected_station = 8;
+	observation.selection_ack_revision = revision;
+	f.observe(4);
+	f.step(milliseconds(1200));
+	TEST_EXPECT(context, !f.stores.selection.pending());
+	TEST_EXPECT(context, f.commands.acknowledged(gun));
+	TEST_EXPECT(context, f.commands.acknowledged(permission));
+	TEST_EXPECT(context, f.commands.acknowledged(release));
+}
+
+void test_weapon_cancel_bypasses_inventory_wait_and_keeps_later_starts(Tests::Context& context)
+{
+	Fixture f;
+	f.observe(2);
+	auto& observation = f.input.cockpit.weapon_stations;
+	observation.stations[8] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+	f.select(OperatingMode::Dogfight);
+	f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOn });
+	f.step(seconds(1));
+	const auto revision = f.stores.selection.request_revision;
+	observation.status = { false, 4, ObservationInvalidReason::StationApiError };
+	f.select(OperatingMode::MissileOverride);
+	f.step(milliseconds(1100));
+	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
+	const auto cancel = f.commands.submit(CancelWeaponStarts{});
+	const auto later = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
+	f.step(milliseconds(1200));
+	auto batch = f.actions.batch();
+	TEST_EXPECT(context, f.commands.acknowledged(cancel));
+	TEST_EXPECT(context, batch.count == 2);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::None);
+	TEST_EXPECT(context, f.stores.selection.request_revision == revision);
+	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
+	TEST_EXPECT(context, !f.commands.acknowledged(later));
+	f.observe(6);
+	f.step(milliseconds(1300));
+	batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 4);
+	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, batch.actions[3].kind == MissionActionKind::PickleOn);
+	TEST_EXPECT(context, f.stores.selection.request_revision > revision);
+	TEST_EXPECT(context, f.stores.selection.canceled_through_revision == 0);
+}
+
 void test_cancel_selection_completes_wait_and_keeps_later_requests(Tests::Context& context)
 {
 	for (bool source_available : { false, true })
@@ -978,6 +1049,8 @@ void test_submission_notification_keeps_stop_before_following_control_release(Te
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_weapon_cancel_preserves_selection_and_execution_receipts(context);
+	test_weapon_cancel_bypasses_inventory_wait_and_keeps_later_starts(context);
 	test_cancel_selection_completes_wait_and_keeps_later_requests(context);
 	test_selection_cancel_preserves_real_acknowledgements(context);
 	test_command_queue_consumer_keeps_fifo_and_execution_receipts(context);

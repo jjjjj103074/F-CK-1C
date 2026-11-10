@@ -9,12 +9,14 @@ namespace Core::Systems::Mc::Internal
 InfraredMissileSupport::InfraredMissileSupport(const MissionInputs& input,
                                                const ModeData& mode,
                                                const StoresData& stores,
-                                               const TargetingData& targeting,
+                                               const TargetDesignationData& designation,
+                                               const WeaponOperationData& weapon,
                                                InfraredMissileData& missile)
     : input_(input),
       mode_(mode),
       stores_(stores),
-      targeting_(targeting),
+      designation_(designation),
+      weapon_(weapon),
       missile_(missile)
 {
 }
@@ -48,15 +50,15 @@ void InfraredMissileSupport::resolve_tracking()
 	{
 		if (telemetry_active())
 		{
-			missile_.contact = missile_.active && targeting_.uncage_held &&
+			missile_.contact = missile_.active && weapon_.uncage_held &&
 			                   std::abs(ir.desired_azimuth_rad) + std::abs(ir.desired_elevation_rad) > 0.00001;
-			missile_.locked = missile_.active && targeting_.uncage_held && radar.stt_range_m > 1.0;
+			missile_.locked = missile_.active && weapon_.uncage_held && radar.stt_range_m > 1.0;
 		}
 		else
 		{
-			// Preserve the existing prototype fallback only for valid all-zero samples.
-			missile_.contact = missile_.active && targeting_.uncage_held;
-			missile_.locked = missile_.contact && targeting_.designation_requested;
+			// 有效全零觀測沿用既有原型的操作意圖推導。
+			missile_.contact = missile_.active && weapon_.uncage_held;
+			missile_.locked = missile_.contact && designation_.requested;
 		}
 	}
 }
@@ -64,10 +66,10 @@ void InfraredMissileSupport::resolve_tracking()
 void InfraredMissileSupport::step(std::chrono::nanoseconds, double)
 {
 	const int missile_count = count_missiles(stores_.inventory, { WeaponRole::AirToAir, {} }).count;
-	missile_.readiness = !mode_.air_to_air() || missile_count <= 0                    ? InfraredMissileReadiness::Off
-	                     : targeting_.uncage_held && targeting_.designation_requested ? InfraredMissileReadiness::Track
-	                     : targeting_.uncage_held                                     ? InfraredMissileReadiness::Ready
-	                                                                                  : InfraredMissileReadiness::Cool;
+	missile_.readiness = !mode_.air_to_air() || missile_count <= 0       ? InfraredMissileReadiness::Off
+	                     : weapon_.uncage_held && designation_.requested ? InfraredMissileReadiness::Track
+	                     : weapon_.uncage_held                           ? InfraredMissileReadiness::Ready
+	                                                                     : InfraredMissileReadiness::Cool;
 	missile_.active = mode_.air_to_air() && missile_count > 0 && missile_.readiness != InfraredMissileReadiness::Off;
 	resolve_tracking();
 	missile_.seeker_state = missile_.readiness == InfraredMissileReadiness::Off ? InfraredSeekerState::Off

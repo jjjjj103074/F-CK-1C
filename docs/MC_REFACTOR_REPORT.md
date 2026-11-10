@@ -1,5 +1,7 @@
 # MC 七元件重構報告與驗收規格
 
+本文件保留原七元件重構的歷史規格與證據。現行目標指定職責與 2026-11-10 模式規則見 [FireControl](../src/efm/F-CK-1C_EFM/Core/Systems/MissionComputer/Components/FireControl/README.md)。
+
 審查基準固定為 `d7dcccbad59f0dd36dbacb640e9b1a66f39ce3f9`。
 範圍包含基準之後全部未提交變更：先前火控職責重構，以及本次紅外線支援／顯示責任調整。
 本文件記錄使用者在討論中確認的需求，作為 Spec 審查來源；本次已授權 commit、push 與 CI 驗證。

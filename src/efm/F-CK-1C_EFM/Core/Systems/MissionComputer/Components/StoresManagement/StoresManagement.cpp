@@ -67,17 +67,25 @@ void StoresManagement::dispatch()
 
 void StoresManagement::cancel_pending_commands()
 {
+	cancel_pending_weapon_starts();
+	for (auto& entry : pending_commands_)
+		if (std::holds_alternative<SelectStoresForMode>(entry.command))
+			entry.canceled = true;
+}
+
+void StoresManagement::cancel_pending_weapon_starts()
+{
 	for (auto& entry : pending_commands_)
 	{
 		const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command);
-		if (std::holds_alternative<SelectStoresForMode>(entry.command) || (weapon && is_weapon_start(weapon->action)))
+		if (weapon && is_weapon_start(weapon->action))
 			entry.canceled = true;
 	}
 }
 
 void StoresManagement::cancel_dispatched_commands()
 {
-	actions_.cancel_weapon_starts();
+	actions_.cancel_stores_commands();
 	selection_changed_ = selection_.cancel_pending() || selection_changed_;
 }
 
@@ -96,6 +104,13 @@ void StoresManagement::accept_commands()
 {
 	while (const auto entry = commands_.take_next())
 	{
+		if (std::holds_alternative<CancelWeaponStarts>(entry->command))
+		{
+			cancel_pending_weapon_starts();
+			actions_.cancel_weapon_starts();
+			commands_.resolve(entry->ticket, 0);
+			continue;
+		}
 		const auto* mode = std::get_if<SelectStoresForMode>(&entry->command);
 		if (mode)
 			latest_mode_ = mode->mode;

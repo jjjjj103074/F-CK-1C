@@ -183,7 +183,8 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.status = output.status;
 	output.mode.master_arm_mode = mode_data_.master_arm;
 	output.mode.operating_mode = mode_data_.operating_mode;
-	output.fire_control.air_to_air_submode = fire_control_data_.targeting.submode;
+	output.fire_control.air_to_air_submode = fire_control_data_.acquisition_mode;
+	output.fire_control.target_designation = fire_control_data_.target_designation;
 	output.mode.dogfight_mode = mode_data_.operating_mode == OperatingMode::Dogfight;
 	output.fire_control.gun_fire_requested = fire_control_data_.weapon.gun_requested;
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
@@ -196,8 +197,8 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.stores.gun_ammunition = stores_data_.gun_ammunition;
 	output.stores.gun_count = stores_data_.gun_ammunition.count.value_or(0);
 	output.stores.selection = stores_data_.selection;
-	output.infrared_missile.uncage_held = fire_control_data_.targeting.uncage_held;
-	output.infrared_missile.target_designated = fire_control_data_.targeting.designation_requested;
+	output.infrared_missile.uncage_held = fire_control_data_.weapon.uncage_held;
+	output.infrared_missile.target_designated = fire_control_data_.target_designation.requested;
 	output.infrared_missile.status = output.status;
 	output.infrared_missile.readiness = fire_control_data_.infrared_missile.readiness;
 	output.infrared_missile.active = fire_control_data_.infrared_missile.active;

@@ -448,7 +448,18 @@ struct ModeSnapshot
 	bool dogfight_mode = false;
 };
 
-/// @brief 火控的目標子模式與武器操作狀態。
+/// @brief 機載目標指定意圖及雷達回報的追蹤結果。
+struct TargetDesignationSnapshot
+{
+	bool requested = false;
+	ObservationStatus radar_observation;
+	bool radar_tracking = false;
+	double radar_azimuth_rad = 0.0;
+	double radar_elevation_rad = 0.0;
+	double radar_range_m = 0.0;
+};
+
+/// @brief 火控的操作子模式、目標指定與武器操作狀態。
 struct FireControlSnapshot
 {
 	SnapshotStatus status;
@@ -456,6 +467,7 @@ struct FireControlSnapshot
 	bool gun_fire_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
+	TargetDesignationSnapshot target_designation;
 };
 
 struct RadarSnapshot

@@ -1,6 +1,7 @@
 # MC 模式狀態與同步事件
 
-本次將 ModeManagement 對火控與反制的直接操作改為有序同步事件，保留現有功能。
+ModeManagement 透過有序同步事件通知火控與反制。
+2026-11-10 起主保險與操作模式各自選擇；目標指定與流程見 [FireControl](../src/efm/F-CK-1C_EFM/Core/Systems/MissionComputer/Components/FireControl/README.md)。
 此為 DCS 專案架構，不代表實機 MC 或硬體保險的實作。
 
 ## 第三方依賴
@@ -57,17 +58,17 @@ DFLCC 的資料庫先建立、固定參照與單一 Executive 原則保持適用
 → Bridge → 原有 Lua 介面與 HMCS
 ```
 
-主保險 OFF/SIM：先更新主保險 → 火控停止（group 0）→ CMS 中止（group 1）
-→ 選 NAV → 火控處理模式。保留停止、CMS abort、模式動作的原有先後。
+主保險 OFF/SIM：先更新主保險 → 火控停止（group 0）→ CMS 中止（group 1）。
+保險操作只發布 MasterArmSelected；模式操作只發布 OperatingModeSelected，兩者保持各自原有選擇。
 事件含選擇前後的狀態副本，不以後續狀態覆蓋當次操作；連續 OFF→ON 仍保留停止。
 事件命名為 Selected，重選同一模式仍會執行既有武器循環。
 回呼不能遞迴消費 MC 命令；不把各型事件累積至幀末再分組通知。
 
 ## 保留的功能規則
 
-32 Hz、原 FIFO、ACK 與外部動作重試機制不變。DGFT/MSL 自動 Master ON、
-Master ON 回 NAV、NAV 不強制新增停止規則、OFF/SIM 停止、CMS Right 無條件中止，
-以及 CMS Press 保留狀態均維持。反制施放程序仍在 Lua。
+32 Hz、原 FIFO、ACK 與外部動作傳輸重試機制維持。保險與模式操作各自生效。
+NAV 維持原有目標與選站操作；OFF/SIM 停止武器、CMS Right 無條件中止，
+CMS Press 保留狀態。反制施放程序仍在 Lua。
 不增加 A-G、冷啟動、電源恢復、故障備援或新武器支援。
 
 ## 驗證
@@ -78,7 +79,9 @@ scoped_connection 解除、不同實例隔離、CMS 與模式的 FIFO、既有 O
 不延伸到自有檔案。Windows Release 與 DCS 的實際驗證結果須另行記錄，不能以 Linux
 測試推定已完成 Windows DLL 或遊戲內驗證。
 
-## 本次驗證紀錄
+## 原模式事件重構的驗證紀錄
+
+以下為原模式事件重構的歷史證據；2026-11-10 修改的驗證另見 FireControl 說明。
 
 基準為 `9eb8ff319e822f11aa0f747a4c6aeb282b7149ef`，最終來源為 `5ca3675a5b31aee58340d77edea7cde19f4085eb`。
 Windows 完整驗證與 DLL 憑證見[驗證紀錄](MC_MODE_EVENTS_VALIDATION.md)。

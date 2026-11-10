@@ -24,6 +24,7 @@ SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發�
 - `SelectStoresForMode`：處理模式選站與同模式循環。
 - `StoresWeaponAction`：轉送 FCC 已判定的 GunOn／GunOff、LaunchPermissionOverride、PickleOn／PickleOff。
 - `CancelStoresCommands`：取消尚待執行的選站與武器啟動要求，保留停止操作。
+- `CancelWeaponStarts`：撤回先前待執行的武器啟動，保留選站要求；SM 接受後立即處理撤回。
 
 MC 的模式事件連線將選站意圖送到入口；FCC 武器操作只取得此入口與唯讀掛載資料。
 入口回傳 SM 指令編號，並將該筆要求對應到 DCS 執行確認；完成回覆回收後仍可查詢結果。
@@ -40,7 +41,8 @@ MC 在處理當次操縱命令前呼叫 `prepare` 更新觀測與自動掛點接
 
 SM 接受停止命令時，若仍有未完成選站，會撤回前面的待選站與啟動項目，先安排取消及停止，
 再依最新模式重新確認掛點。重新確認保留仍有效的選擇；停止命令的 SM 指令編號固定，由入口追蹤其 DCS 執行確認。
-這項處理涵蓋一般 GunOff／PickleOff，以及主保險／NAV 取消，來源無效時仍可完成停止。
+這項處理涵蓋一般 GunOff／PickleOff，來源無效時仍可完成停止。
+主保險使用 CancelWeaponStarts 撤回啟動，再提交必要停止；NAV 使用完整選站取消規則。
 
 入口在每筆原始要求入列後同步發布 commands_available，由 MC 組裝處喚醒 SM 接受要求與派送就緒動作。
 呼叫端收到指令編號後再執行後續目標操作，維持停止先於解鎖的原有順序。

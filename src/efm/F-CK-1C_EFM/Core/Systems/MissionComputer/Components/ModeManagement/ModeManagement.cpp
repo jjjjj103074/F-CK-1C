@@ -36,15 +36,12 @@ void ModeManagement::handle(const Command& command)
 	{
 	case CommandId::SetMasterArmOff: // Set Master Arm to Off
 	case CommandId::SetMasterArmSim: // Set Master Arm to Simulation
-		// 同步完成火控停止與 CMS 中止後才選 NAV，保留原有外部動作順序。
+		// 主保險事件依序通知火控停止與 CMS 中止。
 		select_master_arm(command.id == CommandId::SetMasterArmOff ? MasterArmMode::Off : MasterArmMode::Simulation);
-		select_operating_mode(OperatingMode::Navigation, false);
 		break;
 
 	case CommandId::SetMasterArmOn: // Set Master Arm to On
-		// 主保險切至 ON，模式切至 NAV。
 		select_master_arm(MasterArmMode::On);
-		select_operating_mode(OperatingMode::Navigation, false);
 		break;
 
 	case CommandId::SelectNavigationMode: // Select Navigation Mode
@@ -53,8 +50,7 @@ void ModeManagement::handle(const Command& command)
 
 	case CommandId::SelectDogfightMode: // Select Dogfight Mode
 	case CommandId::SelectMissileOverride: // Select Missile Override Mode
-		// 選擇 DGFT/MSL 時切至 ON，並要求武器循環。
-		select_master_arm(MasterArmMode::On);
+		// 模式選擇發布選站與目標操作通知。
 		select_operating_mode(command.id == CommandId::SelectDogfightMode ? OperatingMode::Dogfight
 		                                                                  : OperatingMode::MissileOverride,
 		                      true);

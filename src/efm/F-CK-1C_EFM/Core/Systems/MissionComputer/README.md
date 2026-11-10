@@ -2,7 +2,7 @@
 
 MC 是單一 `System`，以專案選用的 32 Hz 運作；組裝沿用 DFLCC 的資料庫先建立、固定參照
 與單一 Executive。這是專案設計，並非實機 F-CK-1C MC 的架構復刻。
-本次保留既有操作、計時、尋標推導與畫面行為，只調整職責及資料介面。
+目前主保險與操作模式各自選擇；目標指定職責及最新流程見 [FireControl](Components/FireControl/README.md)。
 目前模式事件、反制職責與驗證限制見[模式事件重構](../../../../../../docs/MC_MODE_EVENTS.md)。
 先前元件整併見[重構報告](../../../../../../docs/MC_REFACTOR_REPORT.md)，
 遷移經過見[歷史遷移報告](../../../../../../docs/MC_MIGRATION_REPORT.md)。
@@ -16,7 +16,7 @@ MissionComputer : System [32 Hz]
 │   ├── InputOutputData
 │   ├── SystemStatusTables
 │   ├── MissionData (ModeData / FireControlData)
-│   │   └── FireControlData.targeting / weapon / infrared_missile
+│   │   └── FireControlData.target_designation / acquisition_mode / weapon / infrared_missile
 │   ├── StoresData（逐掛點庫存、彈量與選站紀錄）
 │   └── ExternalActionQueue
 ├── StoresCommandQueue（SM 的單一指令入口）
@@ -28,7 +28,7 @@ MissionComputer : System [32 Hz]
     │   └── Internal/（ObservationProcessing、StationSelection）
     ├── FireControl
     │   └── Internal/
-    │       ├── Targeting
+    │       ├── TargetDesignation
     │       ├── WeaponOperation
     │       └── InfraredMissileSupport
     ├── Executive
@@ -52,10 +52,10 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 | SystemMonitor | 健康監控預留入口，目前無功能 |
 | FailureManager | 故障處置預留入口，目前無功能 |
 
-FireControl 內的 Targeting 保存解籠、指定意圖、捕獲子模式與捕獲計時；
-WeaponOperation 保留扳機／投放資格、保持與停止程序；InfraredMissileSupport
+FireControl 解讀 TMS 與操作模式，安排雷達與捕獲輸入；TargetDesignation 保存指定意圖及雷達追蹤結果。
+WeaponOperation 保存解籠、扳機／投放資格、保持與停止程序，回傳程序結果供 FC 安排目標接續；InfraredMissileSupport
 整理尋標接觸、鎖定、狀態與音調要求。模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
-StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認；模式意圖及 FCC 武器操作皆經 StoresCommandQueue 入口。FireControl 讀取唯讀掛載資料處理目標與武器資格。雷達模型、DCS API 及操作映射由外部介面提供。
+StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認；模式意圖及 FCC 武器操作皆經 StoresCommandQueue 入口。FireControl 的紅外線支援讀取唯讀掛載資料；目標指定只接收明確要求與雷達觀測。雷達模型、DCS API 及操作映射由外部介面提供。
 
 ## 資料所有權
 
@@ -66,14 +66,15 @@ StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認
 | InputOutputData.output | MC publish_outputs | Pipeline、Bridge |
 | ModeData | ModeManagement | 火控、反制及輸出投影（唯讀） |
 | StoresData | StoresManagement | 火控及輸出投影 |
-| FireControlData.targeting | Targeting | 武器操作、紅外線支援及輸出投影 |
+| FireControlData.target_designation | TargetDesignation | 紅外線支援及輸出投影 |
+| FireControlData.acquisition_mode | FireControl | 輸出投影 |
 | FireControlData.weapon | WeaponOperation | 射擊狀態輸出與診斷 |
 | FireControlData.infrared_missile | InfraredMissileSupport | 輸出投影 |
 | ExternalActionQueue | 任務元件追加動作；MC 確認及取得視窗 | 操作程序查詢已執行序號 |
 | ExecutiveTables | Executive | 排程診斷 |
 | SystemStatusTables | 各基礎元件的指定分區 | 預留 |
 
-MC 直接持有七個具型別記憶體物件；FireControlData 內有三個功能分區。
+MC 直接持有七個具型別記憶體物件；FireControlData 保存目標指定、捕獲操作方式、武器程序與紅外線支援資料。
 Core 不知道 DCS ID、座艙參數或顯示格式。`CombatAvionicsSnapshot` 不再包含
 最終 weapon_display；改為任務／掛載／火控資料及 `control_inputs`。
 輸入序號與外部動作序號獨立；前者只表示操作順序，後者仍用於執行確認。
@@ -102,11 +103,11 @@ HMCS_WEAPON_CLASS／HMCS_WEAPON_QTY 由 hmcs_system.lua 單獨寫入，數量只
 
 週期順序為 StoresManagement → FireControl → SystemMonitor → FailureManager。
 MC 在操縱命令前準備 SM 觀測，並在火控計時器後派送 SM 後續指令；指令入口以 SM 編號追蹤各筆要求及其外部動作確認，掛載等待保留在 SM 內。
-FireControl 內依 WeaponOperation → Targeting → InfraredMissileSupport 推進，保留原先順序。
-ModeManagement 是事件入口。外層仍為命令 FIFO、32 Hz、80 ms 最短保持、1 s 自動捕獲；
+FireControl 內依武器程序 → 捕獲輸入計時 → 雷達目標觀測 → 紅外線支援推進。
+ModeManagement 是事件入口。外層保持命令 FIFO、32 Hz 及 80 ms 最短保持；每秒自動重送捕獲已移除。
 保持時間仍從 MC 觀測到 Lua ACK 的當前輸入時間起算，補跑不回填新的操作／ACK。
 Master OFF/SIM 立即追加停止與 CMS 中止要求；NAV 不新增強制停止規則。
-NAV/DGFT/MSL、DGFT/MSL 自動 Master ON、Master ON 回 NAV 的連動保留。
+NAV/DGFT/MSL 與 Master ON/OFF/SIM 各自選擇；保險切換保留目前模式，模式切換保留目前保險。
 
 外部動作視窗仍為 16 個連續序號，保留成功前綴確認、缺號拒絕、失敗重試及序號界限。
 Bridge 在奇數 generation 寫入，完整成功後提交偶數；HMCS 拒絕中途變動的版本。
@@ -144,7 +145,7 @@ MC 持有自己的 `ModeEvents`，由 ModeManagement 同步發布
 事件含當次選擇前後的 ModeData 副本；重複選擇也通知，不因數值相同而省略。
 ModeManagement 不再依賴 FireControl 或 ExternalActionQueue。
 
-Master OFF/SIM 先同步通知火控停止，再通知反制中止，接著選 NAV 並通知火控。
+Master OFF/SIM 先同步通知火控停止，再通知反制中止；目標指定與所選模式保持。
 火控與反制使用不同 sigslot group 保證順序；同 group 的順序不作假設。
 同一 FIFO 命令的通知全部結束，才處理下一筆，保留同 tick OFF→ON 的停止效果。
 監聽者不得遞迴消費命令；訂閱在組裝時建立，不在週期計算中反覆建立。

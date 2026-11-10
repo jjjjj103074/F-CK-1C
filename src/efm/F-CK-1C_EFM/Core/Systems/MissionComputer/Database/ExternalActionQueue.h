@@ -12,8 +12,10 @@ class ExternalActionQueue final
 public:
 	std::uint64_t append(MissionActionKind action);
 	std::uint64_t append(const MissionAction& action);
-	/// @brief 將尚待確認的選站及武器啟動動作轉為取消項目。
+	/// @brief 將尚待確認的武器啟動動作轉為取消項目。
 	void cancel_weapon_starts();
+	/// @brief 將尚待確認的選站及武器啟動動作轉為取消項目。
+	void cancel_stores_commands();
 	/// @brief 回報傳送佇列是否仍包含尚待確認的選站動作。
 	bool has_pending_selection() const noexcept;
 	void acknowledge(std::uint64_t sequence);

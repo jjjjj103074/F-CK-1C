@@ -29,7 +29,12 @@ struct CancelStoresCommands
 {
 };
 
-using StoresCommand = std::variant<SelectStoresForMode, StoresWeaponAction, CancelStoresCommands>;
+/// @brief 撤回尚待執行的武器啟動要求，保留選站與停止操作。
+struct CancelWeaponStarts
+{
+};
+
+using StoresCommand = std::variant<SelectStoresForMode, StoresWeaponAction, CancelStoresCommands, CancelWeaponStarts>;
 
 /// @brief 已入列的原始要求及其 SM 指令編號。
 struct QueuedStoresCommand

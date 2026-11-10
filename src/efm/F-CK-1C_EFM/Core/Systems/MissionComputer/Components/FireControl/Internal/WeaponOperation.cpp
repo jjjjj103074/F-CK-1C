@@ -8,15 +8,11 @@ namespace Core::Systems::Mc::Internal
 {
 WeaponOperation::WeaponOperation(const MissionInputs& input,
                                  const ModeData& mode,
-                                 const TargetingData& targeting,
                                  WeaponOperationData& weapon,
-                                 Targeting& targeting_control,
                                  StoresCommandQueue& stores_commands)
     : input_(input),
       mode_(mode),
-      targeting_(targeting),
       weapon_(weapon),
-      targeting_control_(targeting_control),
       stores_commands_(stores_commands)
 {
 }
@@ -24,6 +20,11 @@ WeaponOperation::WeaponOperation(const MissionInputs& input,
 void WeaponOperation::handle(const Command& command)
 {
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
+	if (command.id == CommandId::SetMissileUncage)
+	{
+		weapon_.uncage_held = pressed;
+		return;
+	}
 	if (command.id == CommandId::SetTriggerSecondStage)
 	{
 		if (!pressed)
@@ -31,7 +32,7 @@ void WeaponOperation::handle(const Command& command)
 			gun_.request_release();
 		}
 		else if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On &&
-		         mode_.operating_mode == OperatingMode::Dogfight && !targeting_.uncage_held)
+		         mode_.operating_mode == OperatingMode::Dogfight && !weapon_.uncage_held)
 		{
 			weapon_.gun_start_ticket = stores_commands_.submit(StoresWeaponAction{ MissionActionKind::GunOn });
 			gun_.begin(weapon_.gun_start_ticket);
@@ -46,9 +47,8 @@ void WeaponOperation::handle(const Command& command)
 		pickle_.request_release();
 		return;
 	}
-	targeting_control_.prepare_release();
 	if (input_.cockpit.mission_adapter.available && mode_.master_arm == MasterArmMode::On && mode_.air_to_air() &&
-	    targeting_.uncage_held)
+	    weapon_.uncage_held)
 	{
 		stores_commands_.submit(StoresWeaponAction{ MissionActionKind::LaunchPermissionOverride });
 		pickle_.begin(stores_commands_.submit(StoresWeaponAction{ MissionActionKind::PickleOn }));
@@ -64,35 +64,33 @@ void WeaponOperation::finish_gun()
 	weapon_.gun_start_ticket = 0;
 }
 
-void WeaponOperation::finish_pickle(bool unlock_target)
+void WeaponOperation::finish_pickle()
 {
 	stores_commands_.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
 	pickle_.clear();
 	weapon_.pickle_requested = false;
-	if (unlock_target)
-	{
-		targeting_control_.unlock();
-	}
 }
 
 void WeaponOperation::stop()
 {
-	stores_commands_.submit(CancelStoresCommands{});
+	stores_commands_.submit(CancelWeaponStarts{});
 	// 主保險 OFF/SIM 時立即取消程序，涵蓋等待 Lua 確認的動作。
 	if (gun_.active())
 		finish_gun();
 	if (pickle_.active())
-		finish_pickle(false);
+		finish_pickle();
 }
 
-void WeaponOperation::step(std::chrono::nanoseconds time, double)
+WeaponOperationEvent WeaponOperation::step(std::chrono::nanoseconds time, double)
 {
 	time = (std::max)(time, input_.observed_at);
 	if (gun_.release_due(time, stores_commands_))
 		finish_gun();
-	if (pickle_.release_due(time, stores_commands_))
-		finish_pickle(true);
+	const bool release_ended = pickle_.release_due(time, stores_commands_);
+	if (release_ended)
+		finish_pickle();
 	weapon_.gun_firing_indication = weapon_.gun_requested && mode_.master_arm == MasterArmMode::On &&
 	                                mode_.operating_mode == OperatingMode::Dogfight;
+	return release_ended ? WeaponOperationEvent::ReleaseInputEnded : WeaponOperationEvent::None;
 }
 }
