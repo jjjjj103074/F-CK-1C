@@ -37,7 +37,6 @@ struct WeaponOperationData
 {
 	bool uncage_held = false; ///< 駕駛的飛彈解籠操作狀態。
 	bool gun_requested = false;
-	std::uint64_t gun_start_ticket = 0; // 已接受的機砲啟動指令編號。
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
 };

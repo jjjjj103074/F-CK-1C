@@ -17,7 +17,7 @@ FireControl::FireControl(const MissionInputs& input,
       data_(data),
       actions_(actions),
       target_designation_(data.target_designation),
-      weapon_operation_(input, mode, data.weapon, stores_commands),
+      weapon_operation_(mode, stores.weapon_use, data.weapon, stores_commands),
       infrared_missile_support_(input, mode, stores, data.target_designation, data.weapon, data.infrared_missile)
 {
 }
@@ -71,8 +71,8 @@ void FireControl::on_master_arm_selected(const MasterArmSelected& event)
 void FireControl::step(std::chrono::nanoseconds time, double dt_s)
 {
 	time = (std::max)(time, input_.observed_at);
-	// 先安排武器停止與目標接續，再推進捕獲操作的執行計時。
-	if (weapon_operation_.step(time, dt_s) == Internal::WeaponOperationEvent::ReleaseInputEnded)
+	// 讀取 SM 已安排的武器結束結果，先處理目標接續，再推進捕獲計時。
+	if (weapon_operation_.step() == Internal::WeaponOperationEvent::ReleaseInputEnded)
 		cancel_target_designation();
 	if (input_.cockpit.mission_adapter.radar_power_on)
 		radar_on_requested_ = false;

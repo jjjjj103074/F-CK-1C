@@ -943,10 +943,100 @@ void test_mc_subscriptions_are_isolated_between_instances(Tests::Context& contex
 	TEST_EXPECT(context, first.step(kMissionPeriod * 2).fire_control.gun_fire_requested);
 }
 
+void test_unavailable_weapon_use_requires_a_new_press(Tests::Context& context)
+{
+	MissionFixture f;
+	f.frame.cockpit.mission_adapter.available = false;
+	f.send(CommandId::SelectDogfightMode);
+	f.send(CommandId::SetTriggerSecondStage);
+	auto output = f.step(kMissionPeriod);
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, !contains(output.external_actions.batch, MissionActionKind::GunOn));
+	f.frame.cockpit.mission_adapter.available = true;
+	output = f.step(kMissionPeriod * 2);
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, !contains(output.external_actions.batch, MissionActionKind::GunOn));
+	f.send(CommandId::SetTriggerSecondStage);
+	output = f.step(kMissionPeriod * 3);
+	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::GunOn));
+	f.frame.cockpit.mission_adapter.acknowledged_sequence =
+	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
+	f.step(kMissionPeriod * 4);
+	f.frame.cockpit.mission_adapter.available = false;
+	f.send(CommandId::SetTriggerSecondStage);
+	f.send(CommandId::SetTriggerSecondStage, 0.0);
+	output = f.step(kMissionPeriod * 5);
+	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
+	output = f.step(kMissionPeriod * 7);
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::GunOff));
+}
+
+void test_canceled_release_keeps_designation_after_late_ack(Tests::Context& context)
+{
+	for (CommandId master : { CommandId::SetMasterArmOff, CommandId::SetMasterArmSim })
+	{
+		MissionFixture f;
+		f.send(CommandId::SelectDogfightMode);
+		f.send(CommandId::SetMissileUncage);
+		f.send(CommandId::SetWeaponRelease);
+		f.send(CommandId::SetWeaponRelease, 0.0);
+		f.send(master);
+		f.send(CommandId::SetMasterArmOn);
+		auto output = f.step(kMissionPeriod);
+		TEST_EXPECT(context, !output.fire_control.pickle_requested);
+		TEST_EXPECT(context, output.fire_control.target_designation.requested);
+		TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::PickleOff));
+		for (int tick = 2; tick <= 12; ++tick)
+		{
+			const auto& batch = output.external_actions.batch;
+			if (batch.count)
+				f.frame.cockpit.mission_adapter.acknowledged_sequence = batch.first_sequence + batch.count - 1;
+			output = f.step(kMissionPeriod * tick);
+		}
+		TEST_EXPECT(context, output.fire_control.target_designation.requested);
+		TEST_EXPECT(context, !output.fire_control.pickle_requested);
+	}
+}
+
+void test_repress_restarts_the_existing_gun_hold_rule(Tests::Context& context)
+{
+	MissionFixture f;
+	f.send(CommandId::SelectDogfightMode);
+	f.send(CommandId::SetTriggerSecondStage);
+	auto output = f.step(kMissionPeriod);
+	f.frame.cockpit.mission_adapter.acknowledged_sequence =
+	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
+	f.step(kMissionPeriod * 2);
+	f.send(CommandId::SetTriggerSecondStage, 0.0);
+	f.send(CommandId::SetTriggerSecondStage);
+	output = f.step(kMissionPeriod * 3);
+	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::GunOn));
+	f.send(CommandId::SetTriggerSecondStage, 0.0);
+	output = f.step(kMissionPeriod * 7);
+	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, !contains(output.external_actions.batch, MissionActionKind::GunOff));
+	f.frame.cockpit.mission_adapter.acknowledged_sequence =
+	    output.external_actions.batch.first_sequence + output.external_actions.batch.count - 1;
+	output = f.step(kMissionPeriod * 8);
+	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
+	output = f.step(kMissionPeriod * 10);
+	TEST_EXPECT(context, output.fire_control.gun_fire_requested);
+	output = f.step(kMissionPeriod * 11);
+	TEST_EXPECT(context, !output.fire_control.gun_fire_requested);
+	TEST_EXPECT(context, contains(output.external_actions.batch, MissionActionKind::GunOff));
+}
+
 }
 
 void run_mission_computer_tests(Tests::Context& context)
 {
+	test_unavailable_weapon_use_requires_a_new_press(context);
+	test_canceled_release_keeps_designation_after_late_ack(context);
+	test_repress_restarts_the_existing_gun_hold_rule(context);
+
 	test_target_designation_keeps_intent_and_observation_independent(context);
 	test_target_commands_work_with_safe_modes_and_empty_stores(context);
 	test_master_arm_changes_preserve_designation_and_selected_station(context);

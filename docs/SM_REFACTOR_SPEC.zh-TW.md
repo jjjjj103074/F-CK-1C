@@ -1,6 +1,6 @@
 # 掛載管理規格
 
-更新：2026-11-09。架構與來源依據見 [StoresManagement](../src/efm/F-CK-1C_EFM/Core/Systems/MissionComputer/Components/StoresManagement/README.md)，
+更新：2026-11-11。架構與來源依據見 [StoresManagement](../src/efm/F-CK-1C_EFM/Core/Systems/MissionComputer/Components/StoresManagement/README.md)，
 原生介面契約見 [DCS API 指引](DCS_API_GUIDE.zh-TW.md)。
 
 ## 分工與資料
@@ -28,11 +28,18 @@
    已送出取消項維持傳輸序號連續；等待庫存的要求留在 SM，目標控制與反制操作仍可繼續。
    取消獨立記錄已取消的最高選站版本，結束該次 pending，保存要求內容與真正收到的 ACK。
    較晚抵達的真實 ACK 可更新完成紀錄；新選站使用較高版本並等待自己的回覆。
-   主保險以 CancelWeaponStarts 撤回先前武器啟動，保留選站與停止；SM 接受後即處理撤回，後續新要求依序保留。
+   主保險以 AbortWeaponUse 撤回先前武器啟動並安排必要停止；SM 接受後即處理撤回，後續新要求依序保留。
 7. MC 組裝處持有同步通知連線；SM 完成資料寫入後發出變更事件。
    模式選站先於後續目標操作，主保險停止先於 CMS 中止，投放結束維持停止先於解鎖。
-8. FCC 維持既有許可、目標及射擊／投放時序；至少 80 ms 保持由實際執行確認後起算。
-   選站 ACK 表示轉接層呼叫完成，與武器備便分別表達。
+8. FCC 的 WeaponOperation 判斷使用資格，明確提出開始、正常結束與立即中止意圖。
+   SM 的內部 WeaponExecution 管理執行確認、至少 80 ms 輸入保持及停止結果；正常保持從 MC 本次觀察開始 ACK 的時間起算。
+   BeginWeaponUse 明確攜帶 LaunchPermission；投放超控決定由火控提供。
+   EndWeaponUse 對應開始要求編號；AbortWeaponUse 撤回先前啟動並安排必要停止。
+   SM 唯一寫入 StoresData.weapon_use；火控唯讀目前程序及最近拒絕的要求，較早回覆依要求編號核對。
+   正常結束以停止已排入為準，FC 接續既有目標操作；取消保留取消結果及原有目標指定。
+   開始要求在轉接層不可用時拒絕；已接受的程序與本次拒絕分別保存。
+   取消後仍保存必要停止責任，正常放開與立即中止各自完成既有收尾。
+   選站與開始 ACK 表示轉接層呼叫完成，武器離架及彈量由觀測更新。
 
 ## 原生機砲與安裝
 

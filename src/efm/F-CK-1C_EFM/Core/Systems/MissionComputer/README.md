@@ -17,7 +17,7 @@ MissionComputer : System [32 Hz]
 │   ├── SystemStatusTables
 │   ├── MissionData (ModeData / FireControlData)
 │   │   └── FireControlData.target_designation / acquisition_mode / weapon / infrared_missile
-│   ├── StoresData（逐掛點庫存、彈量與選站紀錄）
+│   ├── StoresData（逐掛點庫存、彈量、選站與武器執行結果）
 │   └── ExternalActionQueue
 ├── StoresCommandQueue（SM 的單一指令入口）
 ├── ModeEvents / StoresEvents（MC 專用同步事件通道）
@@ -25,7 +25,7 @@ MissionComputer : System [32 Hz]
     ├── ModeManagement
     ├── CountermeasureControl
     ├── StoresManagement
-    │   └── Internal/（ObservationProcessing、StationSelection）
+    │   └── Internal/（ObservationProcessing、StationSelection、WeaponExecution）
     ├── FireControl
     │   └── Internal/
     │       ├── TargetDesignation
@@ -53,9 +53,9 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 | FailureManager | 故障處置預留入口，目前無功能 |
 
 FireControl 解讀 TMS 與操作模式，安排雷達與捕獲輸入；TargetDesignation 保存指定意圖及雷達追蹤結果。
-WeaponOperation 保存解籠、扳機／投放資格、保持與停止程序，回傳程序結果供 FC 安排目標接續；InfraredMissileSupport
+WeaponOperation 保存解籠與扳機／投放資格，提交使用意圖並讀取 SM 執行結果，供 FC 安排目標接續；InfraredMissileSupport
 整理尋標接觸、鎖定、狀態與音調要求。模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
-StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認；模式意圖及 FCC 武器操作皆經 StoresCommandQueue 入口。FireControl 的紅外線支援讀取唯讀掛載資料；目標指定只接收明確要求與雷達觀測。雷達模型、DCS API 及操作映射由外部介面提供。
+StoresManagement 統一負責庫存、武器掛點選擇、循環、武器輸入保持與執行確認；模式意圖及 FCC 武器操作皆經 StoresCommandQueue 入口。FireControl 的紅外線支援讀取唯讀掛載資料；目標指定只接收明確要求與雷達觀測。雷達模型、DCS API 及操作映射由外部介面提供。
 
 ## 資料所有權
 
@@ -66,6 +66,7 @@ StoresManagement 統一負責庫存、武器掛點選擇、循環與執行確認
 | InputOutputData.output | MC publish_outputs | Pipeline、Bridge |
 | ModeData | ModeManagement | 火控、反制及輸出投影（唯讀） |
 | StoresData | StoresManagement | 火控及輸出投影 |
+| StoresData.weapon_use | SM 的 WeaponExecution | WeaponOperation 唯讀執行階段及取消／拒絕結果 |
 | FireControlData.target_designation | TargetDesignation | 紅外線支援及輸出投影 |
 | FireControlData.acquisition_mode | FireControl | 輸出投影 |
 | FireControlData.weapon | WeaponOperation | 射擊狀態輸出與診斷 |
@@ -102,8 +103,8 @@ HMCS_WEAPON_CLASS／HMCS_WEAPON_QTY 由 hmcs_system.lua 單獨寫入，數量只
 ## 時間與原功能
 
 週期順序為 StoresManagement → FireControl → SystemMonitor → FailureManager。
-MC 在操縱命令前準備 SM 觀測，並在火控計時器後派送 SM 後續指令；指令入口以 SM 編號追蹤各筆要求及其外部動作確認，掛載等待保留在 SM 內。
-FireControl 內依武器程序 → 捕獲輸入計時 → 雷達目標觀測 → 紅外線支援推進。
+MC 在操縱命令前準備 SM 觀測；SM 先推進武器執行與保持，再由火控讀取結果，最後派送後續指令；指令入口以 SM 編號追蹤各筆要求及其外部動作確認，掛載等待保留在 SM 內。
+FireControl 內依武器執行結果與目標接續 → 捕獲輸入計時 → 雷達目標觀測 → 紅外線支援推進。
 ModeManagement 是事件入口。外層保持命令 FIFO、32 Hz 及 80 ms 最短保持；每秒自動重送捕獲已移除。
 保持時間仍從 MC 觀測到 Lua ACK 的當前輸入時間起算，補跑不回填新的操作／ACK。
 Master OFF/SIM 立即追加停止與 CMS 中止要求；NAV 不新增強制停止規則。

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ExternalActionQueue.h"
+#include "WeaponUseData.h"
 #include "../../../Contracts/CockpitContracts.h"
 
 #include <deque>
@@ -34,7 +35,38 @@ struct CancelWeaponStarts
 {
 };
 
-using StoresCommand = std::variant<SelectStoresForMode, StoresWeaponAction, CancelStoresCommands, CancelWeaponStarts>;
+/// @brief 火控明確選擇的投放許可處理方式。
+enum class LaunchPermission
+{
+	Normal,
+	Override
+};
+
+/// @brief 火控已判定的開始意圖，明確攜帶投放超控選擇。
+struct BeginWeaponUse
+{
+	WeaponUseKind kind = WeaponUseKind::Gun;
+	LaunchPermission launch_permission = LaunchPermission::Normal;
+};
+
+/// @brief 正常放開一筆已接受的使用要求。
+struct EndWeaponUse
+{
+	WeaponUseReference use;
+};
+
+/// @brief 立即中止先前武器使用，安排撤回與必要停止。
+struct AbortWeaponUse
+{
+};
+
+using StoresCommand = std::variant<SelectStoresForMode,
+                                   StoresWeaponAction,
+                                   CancelStoresCommands,
+                                   CancelWeaponStarts,
+                                   BeginWeaponUse,
+                                   EndWeaponUse,
+                                   AbortWeaponUse>;
 
 /// @brief 已入列的原始要求及其 SM 指令編號。
 struct QueuedStoresCommand
@@ -55,7 +87,7 @@ public:
 
 	/// @brief 提交模式、武器操作或取消要求，回傳供呼叫端追蹤執行確認的 SM 指令編號。
 	std::uint64_t submit(const StoresCommand& command);
-	/// @brief 回報該筆要求已完成執行或取消。
+	/// @brief 回報要求已由 SM 處理，或其外部動作已完成確認。
 	bool acknowledged(std::uint64_t ticket) const noexcept;
 	/// @brief 依 FIFO 交付下一筆原始要求，並回收已完成的回覆紀錄。
 	std::optional<QueuedStoresCommand> take_next();

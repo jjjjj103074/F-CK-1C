@@ -16,7 +16,9 @@ StoresManagement::StoresManagement(const MissionInputs& input,
       events_(events),
       commands_(commands),
       actions_(actions),
-      selection_(stores.inventory, stores.selection)
+      selection_(stores.inventory, stores.selection),
+      gun_execution_(stores.weapon_use.gun, commands),
+      release_execution_(stores.weapon_use.release, commands)
 {
 }
 
@@ -75,6 +77,8 @@ void StoresManagement::cancel_pending_commands()
 
 void StoresManagement::cancel_pending_weapon_starts()
 {
+	gun_execution_.cancel_pending();
+	release_execution_.cancel_pending();
 	for (auto& entry : pending_commands_)
 	{
 		const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command);
@@ -104,6 +108,8 @@ void StoresManagement::accept_commands()
 {
 	while (const auto entry = commands_.take_next())
 	{
+		if (accept_weapon_use(*entry))
+			continue;
 		if (std::holds_alternative<CancelWeaponStarts>(entry->command))
 		{
 			cancel_pending_weapon_starts();
@@ -117,18 +123,23 @@ void StoresManagement::accept_commands()
 		if (std::holds_alternative<CancelStoresCommands>(entry->command) ||
 		    (mode && mode->mode == OperatingMode::Navigation))
 			cancel_pending_commands();
-		const auto* weapon = std::get_if<StoresWeaponAction>(&entry->command);
-		if (weapon && is_weapon_stop(weapon->action) && (has_pending_mode() || actions_.has_pending_selection()))
-		{
-			// 撤回等待選站的前綴，先停止，再依最新模式重新確認掛點。
-			cancel_pending_commands();
-			pending_commands_.push_back({ std::nullopt, CancelStoresCommands{} });
-			pending_commands_.push_back({ entry->ticket, entry->command });
-			pending_commands_.push_back({ std::nullopt, SelectStoresForMode{ latest_mode_, false, true } });
-		}
-		else
-			pending_commands_.push_back({ entry->ticket, entry->command });
+		schedule_command({ entry->ticket, entry->command });
 	}
+}
+
+void StoresManagement::schedule_command(PendingCommand entry)
+{
+	const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command);
+	if (weapon && is_weapon_stop(weapon->action) && (has_pending_mode() || actions_.has_pending_selection()))
+	{
+		// 撤回等待選站的前綴，先停止，再依最新模式重新確認掛點。
+		cancel_pending_commands();
+		pending_commands_.push_back({ std::nullopt, CancelStoresCommands{} });
+		pending_commands_.push_back(entry);
+		pending_commands_.push_back({ std::nullopt, SelectStoresForMode{ latest_mode_, false, true } });
+	}
+	else
+		pending_commands_.push_back(entry);
 }
 
 void StoresManagement::drain_commands()
@@ -162,6 +173,7 @@ void StoresManagement::drain_commands()
 				cancel_dispatched_commands();
 		}
 		const auto sequence = action.kind == MissionActionKind::None ? 0 : actions_.append(action);
+		record_weapon_dispatch(entry, action.kind, sequence);
 		if (entry.ticket)
 			commands_.resolve(*entry.ticket, sequence);
 		pending_commands_.pop_front();
@@ -172,6 +184,7 @@ void StoresManagement::drain_commands()
 void StoresManagement::step(std::chrono::nanoseconds time, double)
 {
 	prepare(time);
+	advance_weapon_use((std::max)(time, input_.observed_at));
 	dispatch();
 }
 

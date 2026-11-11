@@ -1,6 +1,6 @@
 # StoresManagement 掛載管理
 
-SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發布唯讀資料及同步變更通知。
+SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇與武器操作執行，並發布唯讀資料及同步變更通知。
 本元件是 MC 的掛載與數量權威；DCS 提供模擬世界的原始觀測。
 
 ## 分工與檔案
@@ -10,23 +10,28 @@ SM 統整固定掛點與原生機砲觀測，管理武器掛點選擇，並發�
 | `StoresManagement` | 接受原始指令，管理模式意圖、停止／取消／重新選站規則，安排觀測、執行與通知順序 |
 | `Database/StoresCommandQueue` | 所有 SM 傳入指令的單一具型別入口，保存原始 FIFO、SM 指令編號及執行回覆 |
 | `Internal/ObservationProcessing` | 接收觀測批次、維護掛載身分／數量／有效性、判斷過期 |
+| `Internal/WeaponExecution` | 每條機砲／投放程序的開始確認、80 ms 保持、取消與正常結束 |
+| `StoresManagementWeaponUse.cpp` | 同一 SM 類別的使用要求解讀、操作安排與結果寫回 |
 | `Internal/StationSelection` | 依模式意圖與有效庫存決定掛點、保存要求與執行確認 |
 | `Database/StoresData` | 保存逐掛點庫存、機砲彈量及選站狀態 |
 | `Common/StoresQueries` | 提供唯讀飛彈候選查詢與數量加總 |
 | `StoresEvents` | 發布庫存、機砲彈量及選站變化 |
 
-這兩個 Internal 檔案組是 SM 的內部實作。MC 頂層仍保有原本八個元件，DFLCC 維持原有架構。
+這三個 Internal 檔案組是 SM 的內部實作。MC 頂層仍保有原本八個元件，DFLCC 維持原有架構。
 
 ## 指令入口與排程介面
 
 呼叫端僅透過 `StoresCommandQueue::submit` 提交 SM 指令：
 
 - `SelectStoresForMode`：處理模式選站與同模式循環。
-- `StoresWeaponAction`：轉送 FCC 已判定的 GunOn／GunOff、LaunchPermissionOverride、PickleOn／PickleOff。
+- `BeginWeaponUse`：接受火控的機砲／投放開始意圖；LaunchPermission 明確表達火控的超控選擇。
+- `EndWeaponUse`：依開始要求編號保存正常放開意圖。
+- `AbortWeaponUse`：立即撤回先前啟動並安排必要停止。
+- `StoresWeaponAction`：保留既有具型別執行操作入口；火控的使用程序透過上述三種要求協作。
 - `CancelStoresCommands`：取消尚待執行的選站與武器啟動要求，保留停止操作。
 - `CancelWeaponStarts`：撤回先前待執行的武器啟動，保留選站要求；SM 接受後立即處理撤回。
 
-MC 的模式事件連線將選站意圖送到入口；FCC 武器操作只取得此入口與唯讀掛載資料。
+MC 的模式事件連線將選站意圖送到入口；FCC 武器操作只取得此入口、唯讀模式與使用執行資料。
 入口回傳 SM 指令編號，並將該筆要求對應到 DCS 執行確認；完成回覆回收後仍可查詢結果。
 SM 是入口的唯一消費者。佇列接收原始要求、檢查合法操作類型、通知及追蹤完成回覆；
 SM 以 take_next 取得 FIFO 要求、resolve 登記完成或外部執行序號；佇列自行管理儲存與完成紀錄回收。
@@ -42,12 +47,26 @@ MC 在處理當次操縱命令前呼叫 `prepare` 更新觀測與自動掛點接
 SM 接受停止命令時，若仍有未完成選站，會撤回前面的待選站與啟動項目，先安排取消及停止，
 再依最新模式重新確認掛點。重新確認保留仍有效的選擇；停止命令的 SM 指令編號固定，由入口追蹤其 DCS 執行確認。
 這項處理涵蓋一般 GunOff／PickleOff，來源無效時仍可完成停止。
-主保險使用 CancelWeaponStarts 撤回啟動，再提交必要停止；NAV 使用完整選站取消規則。
+主保險使用 AbortWeaponUse，由 SM 撤回啟動並安排必要停止；NAV 使用完整選站取消規則。
 
 入口在每筆原始要求入列後同步發布 commands_available，由 MC 組裝處喚醒 SM 接受要求與派送就緒動作。
 呼叫端收到指令編號後再執行後續目標操作，維持停止先於解鎖的原有順序。
 等待庫存的流程保留在 SM 的待執行紀錄。事件通知期間送入的要求也先由 SM 接受並安排規則，
 後續派送階段完成執行。
+
+## 武器使用執行
+
+StoresData.weapon_use 分別保存 gun 與 release。每條程序以開始要求的 SM 編號識別，
+執行階段為 Idle、StartPending、StartAcknowledged、StopScheduled 或 Canceled；rejected_request_id 保存最近拒絕的開始要求。
+新的拒絕與原有已接受程序各自保留；新開始要求重設該種類的保持與放開意圖。
+
+WeaponExecution 使用既有入口回覆追蹤開始確認，將 MC 首次觀察到該回覆的時間記為保持起點。
+正常結束要求滿足 80 ms 後，由 SM 透過既有停止優先及重新選站流程派送停止，再寫入 StopScheduled。
+StopScheduled 表示停止已排入共用動作佇列。Canceled 保存取消原因；撤回的開始也保留必要停止收尾。
+火控只依正常投放結束接續目標操作，SAFE／SIM 中止保留原有指定意圖。
+
+開始要求在轉接層不可用時記錄拒絕；恢復後由新的操作提出開始要求。
+已接受的開始、重按、同週期短按及延遲回覆沿用原有 FIFO 與保持規則。
 
 ## 資料流
 
@@ -115,12 +134,12 @@ SM 等待有效庫存時，流程保留於 SM 的待執行紀錄；雷達／目�
 已交給 DCS 的取消項目保留原傳輸序號並完成確認。
 NAV 與取消指令會取消先前待執行的選站及啟動項目，停止操作保留。
 
-FireControl 維持目標操作、武器資格、射擊／投放計時與解鎖流程。
+FireControl 維持目標操作、武器資格、使用意圖與目標接續；SM 處理射擊／投放輸入保持與停止派送。
 數量在 SM 收到 DCS 新觀測後更新，武器操作的完成通知只結束該程序。
 
 ## 架構依據
 
-本專案由 MC 容納 SM，將掛載庫存與選站集中於 SM；FCC 使用唯讀資料，持有許可、目標與操作時序。
+本專案由 MC 容納 SM，將掛載庫存與選站集中於 SM；FCC 使用唯讀資料，持有許可、目標與使用意圖；SM 持有掛載操作的執行時序。
 公開資料支持這個功能分工；本專案的類別、排程與選站順序依自身需求設計。
 
 | 來源與定位 | 架構依據 |

@@ -5,6 +5,7 @@
 #include "../../Database/StoresCommandQueue.h"
 #include "../../StoresEvents.h"
 #include "Internal/StationSelection.h"
+#include "Internal/WeaponExecution.h"
 
 #include <deque>
 #include <optional>
@@ -39,9 +40,19 @@ private:
 		std::optional<std::uint64_t> ticket; ///< 對應外部要求的完成回覆。
 		StoresCommand command;
 		bool canceled = false;
+		std::optional<WeaponUseReference> use; ///< 綁定正常停止所屬的使用要求。
 	};
 	/// @brief 接受入口要求，安排停止、取消與模式接續。
 	void accept_commands();
+	/// @brief 將一筆操作排入停止優先與選站接續流程。
+	void schedule_command(PendingCommand entry);
+	/// @brief 接受開始、正常結束及立即中止的使用要求。
+	bool accept_weapon_use(const QueuedStoresCommand& entry);
+	/// @brief 依執行確認推進使用保持，安排就緒的正常停止。
+	void advance_weapon_use(std::chrono::nanoseconds time);
+	/// @brief 將實際派送結果交回相符的使用程序。
+	void record_weapon_dispatch(const PendingCommand& entry, MissionActionKind action, std::uint64_t sequence);
+	Internal::WeaponExecution& weapon_execution(WeaponUseKind kind);
 	/// @brief 撤回待執行的選站與武器啟動，保留停止操作。
 	void cancel_pending_commands();
 	/// @brief 撤回等待中的武器啟動，保留原有選站要求。
@@ -61,6 +72,8 @@ private:
 	OperatingMode latest_mode_ = OperatingMode::Navigation;
 	std::deque<PendingCommand> pending_commands_;
 	Internal::StationSelection selection_;
+	Internal::WeaponExecution gun_execution_;
+	Internal::WeaponExecution release_execution_;
 	InventoryChanged inventory_change_;
 	bool gun_changed_ = false;
 	bool selection_changed_ = false;

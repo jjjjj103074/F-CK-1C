@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../../Contracts/CockpitContracts.h"
+#include "WeaponUseData.h"
 
 namespace Core::Systems::Mc
 {
@@ -10,5 +11,6 @@ struct StoresData
 	StoresInventorySnapshot inventory;
 	GunAmmunitionState gun_ammunition;
 	StationSelectionState selection;
+	WeaponUseData weapon_use; ///< SM 寫入的使用執行結果，供火控追蹤。
 };
 }

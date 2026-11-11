@@ -3,6 +3,7 @@
 #include "Core/Systems/MissionComputer/Components/StoresManagement/StoresManagement.h"
 #include "Core/Systems/MissionComputer/Common/StoresQueries.h"
 
+#include <algorithm>
 #include <chrono>
 #include <limits>
 #include <stdexcept>
@@ -1045,10 +1046,293 @@ void test_submission_notification_keeps_stop_before_following_control_release(Te
 	TEST_EXPECT(context, f.commands.acknowledged(stop));
 }
 
+void test_weapon_use_waits_for_ack_and_observed_hold(Tests::Context& context)
+{
+	for (WeaponUseKind kind : { WeaponUseKind::Gun, WeaponUseKind::Release })
+	{
+		Fixture f;
+		f.input.cockpit.mission_adapter.available = true;
+		f.observe(2);
+		const auto use = f.commands.submit(
+		    BeginWeaponUse{ kind,
+		                    kind == WeaponUseKind::Release ? LaunchPermission::Override : LaunchPermission::Normal });
+		f.commands.submit(EndWeaponUse{ { kind, use } });
+		f.step(seconds(1));
+		const auto& state = kind == WeaponUseKind::Gun ? f.stores.weapon_use.gun : f.stores.weapon_use.release;
+		const auto start = f.actions.batch();
+		TEST_EXPECT(context, state.request_id == use && state.phase == WeaponUsePhase::StartPending);
+		TEST_EXPECT(context, start.count == (kind == WeaponUseKind::Gun ? 1 : 2));
+		TEST_EXPECT(context, !f.commands.acknowledged(use));
+		if (kind == WeaponUseKind::Release)
+			TEST_EXPECT(context, start.actions[0].kind == MissionActionKind::LaunchPermissionOverride);
+		f.step(seconds(2));
+		TEST_EXPECT(context, state.phase == WeaponUsePhase::StartPending);
+		f.actions.acknowledge(start.first_sequence + start.count - 1);
+		f.input.observed_at = seconds(5);
+		f.manager.step(seconds(3), 0.03125);
+		TEST_EXPECT(context, state.phase == WeaponUsePhase::StartAcknowledged);
+		TEST_EXPECT(context, f.actions.batch().count == 0);
+		f.step(milliseconds(5079));
+		TEST_EXPECT(context, state.phase == WeaponUsePhase::StartAcknowledged);
+		f.step(milliseconds(5080));
+		const auto stop = f.actions.batch();
+		TEST_EXPECT(context, state.phase == WeaponUsePhase::StopScheduled);
+		TEST_EXPECT(context, stop.count == 1);
+		TEST_EXPECT(context,
+		            stop.actions[0].kind ==
+		                (kind == WeaponUseKind::Gun ? MissionActionKind::GunOff : MissionActionKind::PickleOff));
+		f.step(seconds(6));
+		TEST_EXPECT(context, f.actions.batch().count == 1);
+	}
+}
+
+void test_repeated_use_keeps_new_ack_and_ignores_old_end(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	const auto first = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, first } });
+	const auto second = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.step(seconds(1));
+	const auto starts = f.actions.batch();
+	TEST_EXPECT(context, starts.count == 2);
+	f.actions.acknowledge(starts.first_sequence);
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, first } });
+	f.step(milliseconds(1100));
+	TEST_EXPECT(context, f.stores.weapon_use.gun.request_id == second);
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StartPending);
+	f.actions.acknowledge(starts.first_sequence + 1);
+	f.step(milliseconds(1200));
+	f.step(milliseconds(1400));
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StartAcknowledged);
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, second } });
+	f.step(milliseconds(1500));
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StopScheduled);
+	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOff);
+}
+
+void test_unavailable_start_preserves_accepted_use_and_needs_new_input(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	const auto first = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.step(seconds(1));
+	const auto start = f.actions.batch();
+	f.actions.acknowledge(start.first_sequence);
+	f.step(milliseconds(1100));
+	f.input.cockpit.mission_adapter.available = false;
+	const auto rejected = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.step(milliseconds(1200));
+	const auto& state = f.stores.weapon_use.gun;
+	TEST_EXPECT(context, state.request_id == first && state.phase == WeaponUsePhase::StartAcknowledged);
+	TEST_EXPECT(context, state.rejected_request_id == rejected);
+	TEST_EXPECT(context, f.commands.acknowledged(rejected));
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, first } });
+	f.step(milliseconds(1300));
+	TEST_EXPECT(context, state.phase == WeaponUsePhase::StopScheduled);
+	const auto stop = f.actions.batch();
+	f.actions.acknowledge(stop.first_sequence);
+	f.input.cockpit.mission_adapter.available = true;
+	f.step(milliseconds(1400));
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, state.phase == WeaponUsePhase::StopScheduled);
+	const auto next = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.step(milliseconds(1500));
+	TEST_EXPECT(context, state.request_id == next && state.phase == WeaponUsePhase::StartPending);
+}
+
+void test_abort_keeps_later_use_and_its_minimum_hold(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	const auto first = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, first } });
+	f.commands.submit(AbortWeaponUse{});
+	const auto second = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, second } });
+	f.step(seconds(1));
+	const auto batch = f.actions.batch();
+	TEST_EXPECT(context, batch.count == 2);
+	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::GunOn);
+	TEST_EXPECT(context, f.stores.weapon_use.gun.request_id == second);
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StartPending);
+	f.actions.acknowledge(batch.first_sequence + batch.count - 1);
+	f.step(milliseconds(1100));
+	f.step(milliseconds(1179));
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StartAcknowledged);
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	f.step(milliseconds(1180));
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StopScheduled);
+	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOff);
+}
+
+void test_abort_stops_both_channels_before_following_actions(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	sigslot::scoped_connection connection = f.commands.commands_available.connect(
+	    [&]()
+	    {
+		    f.manager.dispatch();
+	    });
+	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Normal });
+	const auto start = f.actions.batch();
+	TEST_EXPECT(context, start.count == 2);
+	TEST_EXPECT(context, start.actions[1].kind == MissionActionKind::PickleOn);
+	f.commands.submit(AbortWeaponUse{});
+	f.actions.append(MissionActionKind::AbortCms);
+	const auto stop = f.actions.batch();
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
+	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
+	TEST_EXPECT(context, stop.count == 5);
+	TEST_EXPECT(context, stop.actions[2].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, stop.actions[3].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, stop.actions[4].kind == MissionActionKind::AbortCms);
+	f.actions.acknowledge(stop.first_sequence + stop.count - 1);
+	f.step(seconds(5));
+	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+}
+
+void test_navigation_cancels_pending_use_and_preserves_acknowledged_use(Tests::Context& context)
+{
+	for (bool acknowledged : { false, true })
+	{
+		Fixture f;
+		f.input.cockpit.mission_adapter.available = true;
+		f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+		f.step(seconds(1));
+		const auto start = f.actions.batch();
+		if (acknowledged)
+			f.actions.acknowledge(start.first_sequence + start.count - 1);
+		f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation });
+		f.step(milliseconds(1100));
+		TEST_EXPECT(context,
+		            f.stores.weapon_use.gun.phase ==
+		                (acknowledged ? WeaponUsePhase::StartAcknowledged : WeaponUsePhase::Canceled));
+	}
+}
+
+void test_use_abort_bypasses_inventory_wait_and_preserves_later_start(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	f.input.cockpit.weapon_stations.status = { false, 2, ObservationInvalidReason::StationApiError };
+	f.select(OperatingMode::Dogfight);
+	const auto first = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Override });
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Release, first } });
+	f.step(seconds(1));
+	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
+	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::StartPending);
+	f.commands.submit(AbortWeaponUse{});
+	f.manager.dispatch();
+	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
+	const auto stop = f.actions.batch();
+	TEST_EXPECT(context, stop.count == 1 && stop.actions[0].kind == MissionActionKind::PickleOff);
+	const auto next = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Normal });
+	f.manager.dispatch();
+	TEST_EXPECT(context, f.stores.weapon_use.release.request_id == next);
+	f.observe(4);
+	f.step(milliseconds(1100));
+	const auto recovered = f.actions.batch();
+	TEST_EXPECT(context, recovered.count == 3);
+	TEST_EXPECT(context, recovered.actions[0].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, recovered.actions[1].kind == MissionActionKind::SelectStation);
+	TEST_EXPECT(context, recovered.actions[2].kind == MissionActionKind::PickleOn);
+	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::StartPending);
+}
+
+void test_canceled_start_retains_the_required_stop_on_abort(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.step(seconds(1));
+	f.actions.batch();
+	f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation });
+	f.step(milliseconds(1100));
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
+	f.commands.submit(AbortWeaponUse{});
+	f.commands.submit(AbortWeaponUse{});
+	f.manager.dispatch();
+	const auto batch = f.actions.batch();
+	const auto stops = std::count_if(batch.actions.begin(),
+	                                 batch.actions.begin() + batch.count,
+	                                 [](const MissionAction& action)
+	                                 {
+		                                 return action.kind == MissionActionKind::GunOff;
+	                                 });
+	TEST_EXPECT(context, stops == 1);
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
+}
+
+void test_canceled_use_keeps_normal_cleanup_and_cancellation_result(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	const auto use = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.step(seconds(1));
+	f.actions.batch();
+	f.commands.submit(CancelWeaponStarts{});
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, use } });
+	f.step(milliseconds(1100));
+	const auto canceled = f.actions.batch();
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
+	TEST_EXPECT(context, canceled.count == 1 && canceled.actions[0].kind == MissionActionKind::None);
+	f.actions.acknowledge(canceled.first_sequence);
+	f.step(milliseconds(1200));
+	f.step(milliseconds(1279));
+	TEST_EXPECT(context, f.actions.batch().count == 0);
+	f.step(milliseconds(1280));
+	TEST_EXPECT(context, f.actions.batch().count == 1);
+	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
+}
+
+void test_gun_and_release_keep_independent_use_progress(Tests::Context& context)
+{
+	Fixture f;
+	f.input.cockpit.mission_adapter.available = true;
+	const auto gun = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
+	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Override });
+	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, gun } });
+	f.step(seconds(1));
+	const auto starts = f.actions.batch();
+	f.actions.acknowledge(starts.first_sequence + starts.count - 1);
+	f.step(milliseconds(1100));
+	f.step(milliseconds(1180));
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StopScheduled);
+	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::StartAcknowledged);
+	TEST_EXPECT(context, f.actions.batch().count == 1);
+	f.commands.submit(AbortWeaponUse{});
+	f.manager.dispatch();
+	const auto stops = f.actions.batch();
+	TEST_EXPECT(context, stops.count == 2);
+	TEST_EXPECT(context, stops.actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, stops.actions[1].kind == MissionActionKind::PickleOff);
+	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StopScheduled);
+	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
+}
+
 }
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_canceled_use_keeps_normal_cleanup_and_cancellation_result(context);
+	test_gun_and_release_keep_independent_use_progress(context);
+	test_canceled_start_retains_the_required_stop_on_abort(context);
+	test_weapon_use_waits_for_ack_and_observed_hold(context);
+	test_repeated_use_keeps_new_ack_and_ignores_old_end(context);
+	test_unavailable_start_preserves_accepted_use_and_needs_new_input(context);
+	test_abort_keeps_later_use_and_its_minimum_hold(context);
+	test_abort_stops_both_channels_before_following_actions(context);
+	test_navigation_cancels_pending_use_and_preserves_acknowledged_use(context);
+	test_use_abort_bypasses_inventory_wait_and_preserves_later_start(context);
+
 	test_weapon_cancel_preserves_selection_and_execution_receipts(context);
 	test_weapon_cancel_bypasses_inventory_wait_and_keeps_later_starts(context);
 	test_cancel_selection_completes_wait_and_keeps_later_requests(context);
