@@ -70,6 +70,13 @@ MC 頂層維持八個元件；DFLCC、SM 的選站／執行規則及 TargetDesig
 - 音效保留既有 ToneHi 資源。來源／MC 不可用、奇數 generation 或讀取中 generation 變動時，鎖定音停止。
 - DCS 發射命令、機砲、投放保持、主保險、選站及彈量計算維持既有流程。
 
+## Code-review
+
+以本輪整理前的 `3818a41` 為基準，對全部變更執行獨立雙軸審查：
+
+- Standards：0 項問題；既有 ModeManagement、TargetDesignation、WeaponOperation 與 SM 執行規則維持原責任邊界。
+- Spec：0 項問題；移除清單符合本輪決策，來源觀測、有效鎖定音與手動 Sound Test 保留。
+
 ## 驗證
 
 驗證執行實際 MC／SM、Bridge／Exporter 及 Lua 腳本。Bridge／Exporter 的 Linux 相容建置
@@ -87,6 +94,9 @@ MC 頂層維持八個元件；DFLCC、SM 的選站／執行規則及 TargetDesig
 | 座艙架構 | 123 個自訂參數、16 個原生參數通過 |
 | DCS ID 產生器回歸與重複生成 | 通過 |
 | 座艙架構檢查器回歸 | 通過 |
+| 本機提交／排版／CI 工具回歸 | 84 項通過、5 項 Windows 專用檢查由 CI 執行 |
+| Windows 完整原生測試 | 4,575 項，0 失敗 |
+| Windows 固定工具鏈完整驗證 | 16 個步驟通過，包含分析、DLL 雜湊、接口、載入／卸載、來源完整性 |
 
 回歸涵蓋有效全零、來源失效與恢復、不同模式／保險／空載下的觀測、
 要求／目標角度分離、來源隔離、匯出有效性與 generation，以及音效和 HMCS 的有效性處理。
@@ -94,3 +104,12 @@ MC 頂層維持八個元件；DFLCC、SM 的選站／執行規則及 TargetDesig
 來源先經本機驗證與雙軸 code-review，再提交至 Windows CI，以固定工具鏈完成重建與完整驗證。
 經來源版本及雜湊核對的 DLL 另作產物提交；DCS 遊戲驗證獨立記錄。
 DCS 測試使用同一版本的 DLL、Lua 與生成參數。
+
+### Windows CI 產物
+
+- 驗證來源：`703b0ddcdce20954da9bb4077669538a10d00583`。
+- [成功的 Windows CI](https://github.com/jjjjj103074/F-CK-1C/actions/runs/42978312093)。
+- CI manifest 的來源 commit、tree 與本機版本一致；下載 DLL、一般建置與分析重建的 SHA256 一致。
+- `bin/F-CK-1C_EFM.dll` 更新為該驗證產物。
+- DLL SHA256：`c25d6858c34af10b3450555ff8c4ecce6ba7af0c49dd191481acd4dbc5b5aa24`。
+- DCS 遊戲驗證尚未執行；音效與原生 IR 來源的實際回報由遊戲內測試確認。
