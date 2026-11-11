@@ -1318,10 +1318,44 @@ void test_gun_and_release_keep_independent_use_progress(Tests::Context& context)
 	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
 }
 
+void test_global_ir_observations_keep_source_validity_and_instance_isolation(Tests::Context& context)
+{
+	Fixture first;
+	Fixture second;
+	auto& source = first.input.cockpit.ir_seeker;
+	source.status = { true, 12, ObservationInvalidReason::None };
+	source.locked = true;
+	source.desired_azimuth_rad = 0.1;
+	source.target_azimuth_rad = 0.2;
+	first.step(seconds(1));
+	second.step(seconds(1));
+	TEST_EXPECT(context, first.stores.ir_seeker.status.available && first.stores.ir_seeker.locked);
+	TEST_EXPECT(context, first.stores.ir_seeker.status.revision == 12);
+	TEST_EXPECT_NEAR(context, first.stores.ir_seeker.desired_azimuth_rad, 0.1, 1e-12);
+	TEST_EXPECT_NEAR(context, first.stores.ir_seeker.target_azimuth_rad, 0.2, 1e-12);
+	TEST_EXPECT(context, !second.stores.ir_seeker.status.available);
+	source = {};
+	source.status = { true, 14, ObservationInvalidReason::None };
+	first.step(milliseconds(1100));
+	TEST_EXPECT(context, first.stores.ir_seeker.status.available && !first.stores.ir_seeker.locked);
+	TEST_EXPECT(context, first.stores.ir_seeker.desired_azimuth_rad == 0.0);
+	source.status = { false, 14, ObservationInvalidReason::ParameterUnavailable };
+	first.step(milliseconds(1200));
+	TEST_EXPECT(context, !first.stores.ir_seeker.status.available);
+	TEST_EXPECT(context,
+	            first.stores.ir_seeker.status.invalid_reason == ObservationInvalidReason::ParameterUnavailable);
+	source.status = { true, 16, ObservationInvalidReason::None };
+	source.locked = true;
+	first.step(milliseconds(1300));
+	TEST_EXPECT(context, first.stores.ir_seeker.status.available && first.stores.ir_seeker.locked);
+	TEST_EXPECT(context, first.stores.ir_seeker.status.revision == 16);
+}
+
 }
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_global_ir_observations_keep_source_validity_and_instance_isolation(context);
 	test_canceled_use_keeps_normal_cleanup_and_cancellation_result(context);
 	test_gun_and_release_keep_independent_use_progress(context);
 	test_canceled_start_retains_the_required_stop_on_abort(context);

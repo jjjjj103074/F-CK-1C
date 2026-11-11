@@ -140,30 +140,6 @@ enum class AirToAirSubmode
 	BeyondVisualRange = 4
 };
 
-enum class InfraredSeekerState
-{
-	Off = 0,
-	SearchCaged = 1,
-	SearchUncaged = 2,
-	Track = 3
-};
-
-enum class InfraredSeekerTone
-{
-	Off = 0,
-	Seek = 1,
-	Acquire = 2,
-	Lock = 3
-};
-
-enum class InfraredMissileReadiness
-{
-	Off = 0,
-	Cool = 1,
-	Ready = 2,
-	Track = 3
-};
-
 enum class HmcsDisplayMode
 {
 	Screen = 0,
@@ -205,6 +181,7 @@ struct RadarObservation
 	double contact_01_range_normalized = 0.0;
 };
 
+/// @brief 全域武器介面回報的 IR 鎖定、要求方向與目標方向。
 struct IrSeekerObservation
 {
 	ObservationStatus status;
@@ -213,7 +190,6 @@ struct IrSeekerObservation
 	double desired_elevation_rad = 0.0;
 	double target_azimuth_rad = 0.0;
 	double target_elevation_rad = 0.0;
-	double target_range_m = 0.0;
 };
 
 inline constexpr std::size_t kWeaponStationCount = 9;
@@ -467,6 +443,7 @@ struct FireControlSnapshot
 	bool gun_fire_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
+	bool missile_uncage_held = false; ///< 駕駛的解籠操作意圖。
 	TargetDesignationSnapshot target_designation;
 };
 
@@ -504,22 +481,7 @@ struct StoresSnapshot
 	bool air_to_air_missile_count_complete = false;
 	double gun_count = 0.0; ///< 最近有效彈量的既有數值介面。
 	GunAmmunitionState gun_ammunition;
-};
-
-struct InfraredMissileSnapshot
-{
-	SnapshotStatus status;
-	bool active = false;
-	bool contact = false;
-	bool locked = false;
-	bool uncage_held = false;
-	bool target_designated = false;
-	InfraredMissileReadiness readiness = InfraredMissileReadiness::Off;
-	InfraredSeekerState seeker_state = InfraredSeekerState::Off;
-	InfraredSeekerTone requested_tone = InfraredSeekerTone::Off;
-	double seeker_azimuth_rad = 0.0;
-	double seeker_elevation_rad = 0.0;
-	double lock_range_m = 0.0;
+	IrSeekerObservation ir_seeker; ///< 全域武器介面回報的 IR 觀測。
 };
 
 /// @brief Raw cockpit control observations in MC FIFO order, including rejected operation requests.
@@ -556,7 +518,6 @@ struct CombatAvionicsSnapshot
 	FireControlSnapshot fire_control;
 	RadarSnapshot radar;
 	StoresSnapshot stores;
-	InfraredMissileSnapshot infrared_missile;
 	MissionControlInputsSnapshot control_inputs;
 	CountermeasureSnapshot countermeasures;
 	ExternalActionIntentSnapshot external_actions;

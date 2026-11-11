@@ -76,19 +76,17 @@ static const char* const HmcsAamSubmode = "HMCS_AAM_SUBMODE";
 static const char* const HmcsGunFiring = "HMCS_GUN_FIRING";
 static const char* const HmcsEnabled = "HMCS_ENABLED";
 static const char* const HmcsDisplayMode = "HMCS_DISPLAY_MODE";
-static const char* const Aim9UncageHeld = "AIM9_UNCAGE_HELD";
-static const char* const Aim9ToneState = "AIM9_TONE_STATE";
-static const char* const Aim9SeekerState = "AIM9_SEEKER_STATE";
-static const char* const Aim9SeekerContact = "AIM9_SEEKER_CONTACT";
-static const char* const Aim9SeekerLock = "AIM9_SEEKER_LOCK";
-static const char* const Aim9TargetDesignated = "AIM9_TARGET_DESIGNATED";
-static const char* const Aim9WeaponActive = "AIM9_WEAPON_ACTIVE";
-static const char* const Aim9MissileStatus = "AIM9_MISSILE_STATUS";
-static const char* const Aim9MissileCount = "AIM9_MISSILE_COUNT";
+static const char* const McMissileUncageHeld = "CPP_MC_MISSILE_UNCAGE_HELD";
+static const char* const McStoresAirToAirMissileCount = "CPP_MC_STORES_AIR_TO_AIR_MISSILE_COUNT";
+static const char* const McStoresIrSeekerAvailable = "CPP_MC_STORES_IR_SEEKER_AVAILABLE";
+static const char* const McStoresIrSeekerRevision = "CPP_MC_STORES_IR_SEEKER_REVISION";
+static const char* const McStoresIrSeekerInvalidReason = "CPP_MC_STORES_IR_SEEKER_INVALID_REASON";
+static const char* const McStoresIrSeekerLock = "CPP_MC_STORES_IR_SEEKER_LOCK";
+static const char* const McStoresIrDesiredAzimuth = "CPP_MC_STORES_IR_DESIRED_AZIMUTH";
+static const char* const McStoresIrDesiredElevation = "CPP_MC_STORES_IR_DESIRED_ELEVATION";
+static const char* const McStoresIrTargetAzimuth = "CPP_MC_STORES_IR_TARGET_AZIMUTH";
+static const char* const McStoresIrTargetElevation = "CPP_MC_STORES_IR_TARGET_ELEVATION";
 static const char* const McStoresMissileCountAvailable = "CPP_MC_STORES_MISSILE_COUNT_AVAILABLE";
-static const char* const Aim9SeekerAzimuth = "AIM9_SEEKER_AZIMUTH";
-static const char* const Aim9SeekerElevation = "AIM9_SEEKER_ELEVATION";
-static const char* const Aim9LockRange = "AIM9_LOCK_RANGE";
 static const char* const RadarState = "RADARSTATE";
 static const char* const RadarPowerState = "RADARPOWER_STATE";
 static const char* const WeaponObservationAvailable = "OBS_WEAPON_STATIONS_AVAILABLE";
@@ -119,7 +117,6 @@ static const char* const DebugIndicatorText5 = "DEBUG_INDICATOR_TEXT_5";
 static const char* const DebugIndicatorText6 = "DEBUG_INDICATOR_TEXT_6";
 static const char* const DebugIndicatorStatus = "DEBUG_INDICATOR_STATUS";
 static const char* const RadarRequestedPower = "CPP_RADAR_REQUESTED_POWER";
-static const char* const Aim9RequestedTone = "CPP_AIM9_REQUESTED_TONE";
 static const char* const WeaponRequestedStation = "CPP_WEAPON_REQUESTED_STATION";
 static const char* const WeaponSelectionRequestRevision = "CPP_WEAPON_SELECTION_REQUEST_REVISION";
 static const char* const WeaponSelectionActionSequence = "CPP_WEAPON_SELECTION_ACTION_SEQUENCE";
@@ -214,19 +211,17 @@ static constexpr Entry Catalog[] = {
     { HmcsGunFiring, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsEnabled, "lua_internal", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
     { HmcsDisplayMode, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HmcsPresenter", nullptr },
-    { Aim9UncageHeld, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9ToneState, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9SeekerState, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9SeekerContact, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9SeekerLock, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9TargetDesignated, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9WeaponActive, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9MissileStatus, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9MissileCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McMissileUncageHeld, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresAirToAirMissileCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrSeekerAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrSeekerRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrSeekerInvalidReason, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrSeekerLock, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrDesiredAzimuth, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrDesiredElevation, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrTargetAzimuth, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McStoresIrTargetElevation, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McStoresMissileCountAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9SeekerAzimuth, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9SeekerElevation, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
-    { Aim9LockRange, "cpp_to_lua", "meters", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { RadarState, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { RadarPowerState, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", nullptr },
     { WeaponObservationAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
@@ -257,7 +252,6 @@ static constexpr Entry Catalog[] = {
     { DebugIndicatorText6, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
     { DebugIndicatorStatus, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorExporter.cpp", "DebugIndicatorExporter", nullptr },
     { RadarRequestedPower, "cpp_to_lua", "boolean", nullptr, "CombatAvionics", nullptr },
-    { Aim9RequestedTone, "cpp_to_lua", "enum", nullptr, "CombatAvionics", nullptr },
     { WeaponRequestedStation, "cpp_to_lua", "station_index", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
     { WeaponSelectionRequestRevision, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
     { WeaponSelectionActionSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "CombatAvionics", nullptr },
@@ -286,7 +280,6 @@ static const char* const RadarTdcRangeScaled = "RADAR_TDC_RANGE_SCALED";
 static const char* const RadarGateRangeScaled = "RADAR_GATE_RANGE_SCALED";
 static const char* const RadarContact01Azimuth = "RADAR_CONTACT_01_AZIMUTH";
 static const char* const RadarContact01RangeScaled = "RADAR_CONTACT_01_RANGE_SCALED";
-static const char* const WeaponTargetRange = "WS_TARGET_RANGE";
 static const char* const IrDesiredAzimuth = "WS_IR_MISSILE_SEEKER_DESIRED_AZIMUTH";
 static const char* const IrDesiredElevation = "WS_IR_MISSILE_SEEKER_DESIRED_ELEVATION";
 static const char* const IrLock = "WS_IR_MISSILE_LOCK";
@@ -317,7 +310,6 @@ static constexpr Entry Catalog[] = {
     { RadarGateRangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { RadarContact01Azimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_contact_xx_", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { RadarContact01RangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { WeaponTargetRange, "dcs_to_cpp", "meters", "non_negative_range", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { IrDesiredAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { IrDesiredElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { IrLock, "dcs_to_cpp", "boolean", "not_applicable", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

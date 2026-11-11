@@ -33,6 +33,7 @@ void StoresManagement::prepare(std::chrono::nanoseconds time)
 {
 	accept_commands();
 	time = (std::max)(time, input_.observed_at);
+	stores_.ir_seeker = input_.cockpit.ir_seeker;
 	const auto change = Internal::update_inventory(stores_.inventory, input_.cockpit.weapon_stations, time);
 	inventory_change_.revision = change.revision;
 	inventory_change_.changed_stations |= change.changed_stations;

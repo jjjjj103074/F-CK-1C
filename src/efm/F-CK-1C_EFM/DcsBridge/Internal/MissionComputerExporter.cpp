@@ -17,22 +17,20 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsFireControlMode),
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsAamSubmode),
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsGunFiring),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9UncageHeld),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9TargetDesignated),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileStatus),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9MissileCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McMissileUncageHeld),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrSeekerAvailable),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrSeekerRevision),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrSeekerInvalidReason),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrSeekerLock),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrDesiredAzimuth),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrDesiredElevation),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrTargetAzimuth),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresIrTargetElevation),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McStoresAirToAirMissileCount),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McStoresMissileCountAvailable),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponRequestedStation),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionRequestRevision),
                  cockpit_parameter_writer(DcsIds::CockpitParams::WeaponSelectionActionSequence),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerState),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9ToneState),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerContact),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerLock),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9WeaponActive),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerAzimuth),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9SeekerElevation),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::Aim9LockRange),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McStoresGunCount),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McStoresGunCountAvailable),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McTriggerSecondStageHeld),
@@ -81,7 +79,10 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 {
 	CockpitParameterEvents events;
 	if (!snapshot.status.available)
+	{
+		write(Parameter::Available, 0.0, events);
 		return events;
+	}
 	if (generation_ > Core::kMaximumExactCockpitInteger - 2)
 	{
 		throw std::overflow_error("MC cockpit generation exhausted its exact numeric range.");
@@ -105,9 +106,16 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(OperatingMode, static_cast<double>(snapshot.mode.operating_mode));
 	WRITE_MC(Submode, static_cast<double>(snapshot.fire_control.air_to_air_submode));
 	WRITE_MC(GunFiring, snapshot.fire_control.gun_firing_indication ? 1.0 : 0.0);
-	WRITE_MC(Uncage, snapshot.infrared_missile.uncage_held ? 1.0 : 0.0);
-	WRITE_MC(Designated, snapshot.infrared_missile.target_designated ? 1.0 : 0.0);
-	WRITE_MC(MissileStatus, static_cast<double>(snapshot.infrared_missile.readiness));
+	WRITE_MC(Uncage, snapshot.fire_control.missile_uncage_held ? 1.0 : 0.0);
+	const auto& ir = snapshot.stores.ir_seeker;
+	WRITE_MC(IrAvailable, ir.status.available ? 1.0 : 0.0);
+	WRITE_MC(IrRevision, static_cast<double>(ir.status.revision));
+	WRITE_MC(IrInvalidReason, static_cast<double>(ir.status.invalid_reason));
+	WRITE_MC(IrLock, ir.status.available && ir.locked ? 1.0 : 0.0);
+	WRITE_MC(IrDesiredAzimuth, ir.status.available ? ir.desired_azimuth_rad : 0.0);
+	WRITE_MC(IrDesiredElevation, ir.status.available ? ir.desired_elevation_rad : 0.0);
+	WRITE_MC(IrTargetAzimuth, ir.status.available ? ir.target_azimuth_rad : 0.0);
+	WRITE_MC(IrTargetElevation, ir.status.available ? ir.target_elevation_rad : 0.0);
 	WRITE_MC(MissileCount, static_cast<double>(snapshot.stores.air_to_air_missile_count));
 	WRITE_MC(MissileCountAvailable, snapshot.stores.air_to_air_missile_count_complete ? 1.0 : 0.0);
 	// 僅發布佇列首項的選站資料，讓前一筆操作先完成。
@@ -115,14 +123,6 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(RequestedStation, selecting ? static_cast<double>(batch.actions[0].station.value_or(-1)) : -1.0);
 	WRITE_MC(SelectionRequestRevision, selecting ? static_cast<double>(batch.actions[0].selection_revision) : 0.0);
 	WRITE_MC(SelectionActionSequence, selecting ? static_cast<double>(batch.first_sequence) : 0.0);
-	WRITE_MC(SeekerState, static_cast<double>(snapshot.infrared_missile.seeker_state));
-	WRITE_MC(Tone, static_cast<double>(snapshot.infrared_missile.requested_tone));
-	WRITE_MC(Contact, snapshot.infrared_missile.contact ? 1.0 : 0.0);
-	WRITE_MC(Lock, snapshot.infrared_missile.locked ? 1.0 : 0.0);
-	WRITE_MC(Active, snapshot.infrared_missile.active ? 1.0 : 0.0);
-	WRITE_MC(Azimuth, snapshot.infrared_missile.seeker_azimuth_rad);
-	WRITE_MC(Elevation, snapshot.infrared_missile.seeker_elevation_rad);
-	WRITE_MC(LockRange, snapshot.infrared_missile.lock_range_m);
 	WRITE_MC(GunCount, snapshot.stores.gun_count);
 	WRITE_MC(GunCountAvailable, snapshot.stores.gun_ammunition.observation.available ? 1.0 : 0.0);
 	WRITE_MC(TriggerHeld, snapshot.control_inputs.trigger_second_stage_held ? 1.0 : 0.0);

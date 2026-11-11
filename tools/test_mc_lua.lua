@@ -366,14 +366,12 @@ end
 -- Radar/HMCS preserve MC mission state while publishing observations and presentation.
 values = fixture(function() return true end)
 local mission_values = {
-    [cockpit_params.Aim9ToneState] = 3,
-    [cockpit_params.Aim9SeekerState] = 3,
-    [cockpit_params.Aim9SeekerContact] = 1,
-    [cockpit_params.Aim9SeekerLock] = 1,
-    [cockpit_params.Aim9WeaponActive] = 1,
-    [cockpit_params.Aim9SeekerAzimuth] = 0.1,
-    [cockpit_params.Aim9SeekerElevation] = -0.2,
-    [cockpit_params.Aim9LockRange] = 1200,
+    [cockpit_params.McStoresIrSeekerAvailable] = 1,
+    [cockpit_params.McStoresIrSeekerLock] = 1,
+    [cockpit_params.McStoresIrDesiredAzimuth] = 0.1,
+    [cockpit_params.McStoresIrDesiredElevation] = -0.2,
+    [cockpit_params.McStoresIrTargetAzimuth] = 0.3,
+    [cockpit_params.McStoresIrTargetElevation] = -0.4,
 }
 for name, value in pairs(mission_values) do
     values[name] = value
@@ -436,7 +434,7 @@ expect(values[cockpit_params.HmcsWeaponQuantity] == 77, "unavailable MC must not
 values[cockpit_params.McGeneration] = 2
 values[cockpit_params.McAvailable] = 1
 values[cockpit_params.McStoresGunCount] = 523
-values[cockpit_params.Aim9MissileCount] = 4
+values[cockpit_params.McStoresAirToAirMissileCount] = 4
 values[cockpit_params.McStoresMissileCountAvailable] = 1
 update()
 expect(values[cockpit_params.HmcsWeaponClass] == 5 and values[cockpit_params.HmcsWeaponQuantity] == 523,
@@ -444,7 +442,7 @@ expect(values[cockpit_params.HmcsWeaponClass] == 5 and values[cockpit_params.Hmc
 values[cockpit_params.McNavigationPressSequence] = 1
 values[cockpit_params.McMissileUncagePressSequence] = 2
 -- Both uncage edges have already been consumed by MC; the last press is retained.
-values[cockpit_params.Aim9UncageHeld] = 0
+values[cockpit_params.McMissileUncageHeld] = 0
 update()
 expect(values[cockpit_params.HmcsWeaponClass] == 1 and values[cockpit_params.HmcsWeaponQuantity] == 4,
     "a completed short NAV uncage pulse retains the old AAM preference")
@@ -469,8 +467,9 @@ values[cockpit_params.McStoresGunCount] = 0
 update()
 expect(values[cockpit_params.HmcsWeaponClass] == 5 and values[cockpit_params.HmcsWeaponQuantity] == 0,
     "valid zero gun quantity must not fall back to an estimate")
-values[cockpit_params.Aim9SeekerLock] = 1
-values[cockpit_params.Aim9MissileCount] = 0
+values[cockpit_params.McStoresIrSeekerAvailable] = 1
+values[cockpit_params.McStoresIrSeekerLock] = 1
+values[cockpit_params.McStoresAirToAirMissileCount] = 0
 update()
 expect(values[cockpit_params.HmcsWeaponClass] == 1 and values[cockpit_params.HmcsWeaponQuantity] == 0,
     "lock indication has precedence while zero missile quantity remains authoritative")
@@ -481,7 +480,10 @@ expect(values[cockpit_params.HmcsWeaponQuantityAvailable] == 0, "incomplete miss
 values[cockpit_params.McStoresMissileCountAvailable] = 1
 update()
 expect(values[cockpit_params.HmcsWeaponQuantityAvailable] == 1, "fresh complete inventory restores missile count display")
-values[cockpit_params.Aim9SeekerLock] = 0
+values[cockpit_params.McStoresIrSeekerAvailable] = 0
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 5, "unavailable IR lock cannot select missile presentation")
+values[cockpit_params.McStoresIrSeekerLock] = 0
 values[cockpit_params.HmcsWeaponClass] = 1
 values[cockpit_params.HmcsWeaponQuantity] = 77
 values[cockpit_params.McGeneration] = 3
@@ -501,7 +503,7 @@ update()
 expect(values[cockpit_params.HmcsWeaponQuantity] == 77, "unavailable MC retains the last complete presentation")
 values[cockpit_params.McAvailable] = 1
 
--- Replay the pre-refactor DisplayManagement rules as a reference, with consumer
+-- Replay presentation using operation intent and valid weapon observations, with consumer
 -- frames deliberately skipped. Inputs cover raw rejected presses and FIFO pulses.
 local legacy_preferred, legacy_trigger = 5, false
 local input_sequence = 0
@@ -528,22 +530,20 @@ for frame = 1, 8192 do
         end
     end
     local mode = random(3)
-    local uncage, contact, locked = random(5) == 0, random(7) == 0, random(7) == 0
-    local readiness = random(5) == 0 and 1 or 0
+    local uncage, locked, ir_available = random(5) == 0, random(7) == 0, random(5) ~= 0
     local firing = random(7) == 0
     local gun, missiles = random(524), random(7)
     values[cockpit_params.McGeneration] = frame * 2 + 6
     values[cockpit_params.HmcsFireControlMode] = mode
-    values[cockpit_params.Aim9UncageHeld] = uncage and 1 or 0
-    values[cockpit_params.Aim9SeekerContact] = contact and 1 or 0
-    values[cockpit_params.Aim9SeekerLock] = locked and 1 or 0
-    values[cockpit_params.Aim9MissileStatus] = readiness
+    values[cockpit_params.McMissileUncageHeld] = uncage and 1 or 0
+    values[cockpit_params.McStoresIrSeekerAvailable] = ir_available and 1 or 0
+    values[cockpit_params.McStoresIrSeekerLock] = locked and 1 or 0
     values[cockpit_params.HmcsGunFiring] = firing and 1 or 0
     values[cockpit_params.McTriggerSecondStageHeld] = legacy_trigger and 1 or 0
     values[cockpit_params.McStoresGunCount] = gun
-    values[cockpit_params.Aim9MissileCount] = missiles
+    values[cockpit_params.McStoresAirToAirMissileCount] = missiles
     local expected_class
-    if mode ~= 0 or uncage or contact or locked or readiness ~= 0 then
+    if mode ~= 0 or uncage or (ir_available and locked) then
         expected_class = 1
     elseif firing or legacy_trigger or legacy_preferred == 5 then
         expected_class = 5
@@ -553,10 +553,77 @@ for frame = 1, 8192 do
     if frame % 3 == 0 or frame == 8192 then
         update()
         expect(values[cockpit_params.HmcsWeaponClass] == expected_class,
-            "legacy display class replay frame " .. frame)
+            "weapon fact display class replay frame " .. frame)
         expect(values[cockpit_params.HmcsWeaponQuantity] == (expected_class == 5 and gun or missiles),
-            "legacy display quantity replay frame " .. frame)
+            "weapon fact display quantity replay frame " .. frame)
     end
+end
+
+-- Exercise real audio using only committed, valid weapon lock observations.
+do
+    values = fixture(function() error("audio must not execute weapon actions") end)
+    local sounds = {}
+    create_sound_host = function()
+        return { create_sound = function(_, name)
+            local sound = { playing = false, starts = 0, stops = 0 }
+            sound.is_playing = function(self) return self.playing end
+            sound.play_continue = function(self) self.playing = true; self.starts = self.starts + 1 end
+            sound.play_once = sound.play_continue
+            sound.stop = function(self) self.playing = false; self.stops = self.stops + 1 end
+            sound.update = function() end
+            sounds[name] = sound
+            return sound
+        end }
+    end
+    make_default_activity = function(rate) expect(rate == 0.05, "retain audio update period") end
+    dofile("Cockpit/Scripts/Systems/aam_audio_system.lua")
+    post_initialize()
+    local lock = assert(sounds["Cockpit/AIM9/ToneHi"])
+    values[cockpit_params.McStoresIrSeekerLock] = 1
+    update()
+    expect(not lock.playing, "uncommitted source cannot play lock audio")
+    values[cockpit_params.McGeneration] = 2
+    values[cockpit_params.McAvailable] = 1
+    values[cockpit_params.McStoresIrSeekerAvailable] = 0
+    update()
+    expect(not lock.playing, "unknown observation cannot play lock audio")
+    values[cockpit_params.McStoresIrSeekerAvailable] = 1
+    values[cockpit_params.McStoresIrSeekerLock] = 0
+    values[cockpit_params.McMissileUncageHeld] = 1
+    values[dcs_cockpit_params.RadarSttRange] = 9000
+    update()
+    expect(not lock.playing, "uncage and radar range cannot synthesize lock audio")
+    values[cockpit_params.McStoresIrSeekerLock] = 1
+    update()
+    expect(lock.playing and lock.starts == 1, "valid source lock starts lock audio")
+    update()
+    expect(lock.starts == 1, "unchanged lock sustains the current sound")
+    values[cockpit_params.McStoresIrSeekerAvailable] = 0
+    update()
+    expect(not lock.playing and lock.stops == 1, "observation loss stops lock audio")
+    values[cockpit_params.McStoresIrSeekerAvailable] = 1
+    values[cockpit_params.McGeneration] = 3
+    update()
+    expect(not lock.playing, "odd generation cannot restart audio")
+    values[cockpit_params.McGeneration] = 4
+    values[cockpit_params.McStoresIrSeekerLock] = function()
+        values[cockpit_params.McGeneration] = 6
+        return 1
+    end
+    update()
+    expect(not lock.playing, "mixed generation cannot restart audio")
+    values[cockpit_params.McStoresIrSeekerLock] = 1
+    values[cockpit_params.McGeneration] = 8
+    update()
+    expect(lock.playing, "fresh complete lock observation restores audio")
+    values[cockpit_params.McAvailable] = 0
+    update()
+    expect(not lock.playing, "MC loss stops lock audio")
+    expect(sounds["Cockpit/AIM9/Seek"] == nil and sounds["Cockpit/AIM9/AcquireLo"] == nil,
+        "automatic seek and acquire sounds are retired")
+    SetCommand(device_commands.SoundTestCycle, 1)
+    expect(sounds["Cockpit/Test/AIM9_Seek"].playing, "manual sound test remains available")
+    create_sound_host = nil
 end
 
 -- Execute both real DCS input profiles: every MC/HOTAS binding reaches EFM with both edges.

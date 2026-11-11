@@ -159,3 +159,15 @@ Export 的 `Cannon.shells` 已有可核對實作，但屬於 Export 執行環境
 
 相關文件：[座艙](COCKPIT.md)、[DcsBridge](../src/efm/F-CK-1C_EFM/DcsBridge/README.md)、
 [單位契約](EFM_UNIT_CONVENTIONS.md)、[SDK／DLL 建置](BUILD_DLL.md)。
+
+## 全域 IR 武器觀測（2026-11-11）
+
+CockpitBridge 以來源目錄中的 IrLock、IrDesiredAzimuth／Elevation、IrTargetAzimuth／Elevation 讀取原始欄位，
+驗證有限數值後形成 IrSeekerObservation。此型別只表達來源回報，SM 保存並隨 MC 快照發布。
+所有角度維持來源契約的弧度；要求方向與目標方向分別保存。
+來源欄位、方向、單位與讀取者由 CommandIds.json 及其產生器維護。
+
+目前來源沒有掛點識別及獨立的接觸、冷卻完成、備便回報。
+全零數值是有效樣本；availability 表達讀取結果，與 locked 分別使用。
+WS_TARGET_RANGE 已自 IR 讀取群組移除，距離資訊由目標／雷達觀測提供。
+資料流與已移除推導見 [IR 觀測整理報告](IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。

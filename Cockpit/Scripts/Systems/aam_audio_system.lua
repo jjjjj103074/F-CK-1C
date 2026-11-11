@@ -6,19 +6,16 @@ make_default_activity(update_rate)
 dofile(LockOn_Options.script_path .. "command_defs.lua")
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
-local AIM9_TONE_OFF = 0
-local AIM9_TONE_SEEK = 1
-local AIM9_TONE_ACQUIRE = 2
-local AIM9_TONE_LOCK = 3
 local SOUND_TEST_CYCLE_CMD = device_commands.SoundTestCycle
 
-local tone_state = get_param_handle(cockpit_params.Aim9ToneState)
+local mc_generation = get_param_handle(cockpit_params.McGeneration)
+local mc_available = get_param_handle(cockpit_params.McAvailable)
+local ir_available = get_param_handle(cockpit_params.McStoresIrSeekerAvailable)
+local ir_locked = get_param_handle(cockpit_params.McStoresIrSeekerLock)
 
 local sound_host = nil
-local seek_sound = nil
-local acquire_sound = nil
 local lock_sound = nil
-local active_tone = AIM9_TONE_OFF
+local lock_playing = false
 local active_gain = 1.6
 local test_gain = 1.4
 local test_index = 0
@@ -125,23 +122,23 @@ local function play_test_sound(entry)
     dlog("test -> " .. tostring(entry.name) .. " [" .. tostring(entry.sdef) .. "]")
 end
 
-local function set_active_tone(next_tone)
-    if active_tone == next_tone then return end
+-- 從同一份完整 MC 快照讀取有效 IR 鎖定回報。
+local function read_ir_lock()
+    local before = mc_generation:get()
+    if before < 2 or before > 9007199254740991 or before ~= math.floor(before) or before % 2 ~= 0 then return false end
+    if mc_available:get() < 0.5 then return false end
+    local locked = ir_available:get() >= 0.5 and ir_locked:get() >= 0.5
+    return mc_generation:get() == before and locked
+end
 
-    stop_sound(seek_sound)
-    stop_sound(acquire_sound)
-    stop_sound(lock_sound)
-
-    if next_tone == AIM9_TONE_SEEK then
-        start_sound(seek_sound, "seek", true)
-    elseif next_tone == AIM9_TONE_ACQUIRE then
-        start_sound(acquire_sound, "acquire", true)
-    elseif next_tone == AIM9_TONE_LOCK then
-        start_sound(lock_sound, "tone_hi", true)
+local function set_lock_audio(enabled)
+    if lock_playing == enabled then return end
+    if enabled then
+        start_sound(lock_sound, "lock", true)
+    else
+        stop_sound(lock_sound)
     end
-
-    active_tone = next_tone
-    dlog("tone -> " .. tostring(next_tone))
+    lock_playing = enabled
 end
 
 function post_initialize()
@@ -163,11 +160,7 @@ function post_initialize()
         return
     end
 
-    seek_sound = sound_host:create_sound("Cockpit/AIM9/Seek")
-    acquire_sound = sound_host:create_sound("Cockpit/AIM9/AcquireLo")
     lock_sound = sound_host:create_sound("Cockpit/AIM9/ToneHi")
-    dlog("seek sound created=" .. tostring(seek_sound ~= nil))
-    dlog("acquire sound created=" .. tostring(acquire_sound ~= nil))
     dlog("lock sound created=" .. tostring(lock_sound ~= nil))
     dlog("test playlist size=" .. tostring(#test_playlist))
     dlog("initialized")
@@ -188,18 +181,8 @@ function SetCommand(command, value)
 end
 
 function update()
-    local requested_tone = math.floor((tone_state:get() or 0) + 0.5)
-    if requested_tone < AIM9_TONE_OFF or requested_tone > AIM9_TONE_LOCK then requested_tone = AIM9_TONE_OFF end
-
-    set_active_tone(requested_tone)
-
-    if active_tone == AIM9_TONE_SEEK then
-        sustain_sound(seek_sound, "seek")
-    elseif active_tone == AIM9_TONE_ACQUIRE then
-        sustain_sound(acquire_sound, "acquire")
-    elseif active_tone == AIM9_TONE_LOCK then
-        sustain_sound(lock_sound, "tone_hi")
-    end
+    set_lock_audio(read_ir_lock())
+    if lock_playing then sustain_sound(lock_sound, "lock") end
 
     if test_sound ~= nil then update_playing_sound(test_sound) end
 end

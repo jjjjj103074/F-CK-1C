@@ -1,7 +1,7 @@
 # 座艙
 
 座艙入口為 `Cockpit/Scripts/device_init.lua`。
-C++ MC 負責任務模式、掛載策略、武器資格、目標操作及紅外線飛彈支援；
+C++ MC 負責任務模式、掛載策略、武器資格、目標操作及武器觀測管理；
 Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、繪圖與播放。
 完整元件、資料庫及遷移範圍見 [MC 重構報告](MC_REFACTOR_REPORT.md)。
 
@@ -14,7 +14,7 @@ Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、
 | RADAR | avSimpleRadar / RADAR/FCK1C_Radar.lua | DCS 雷達設定與原始 DCS 觀測來源 |
 | RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原有雷達開啟參數介面 |
 | HMCS | avLuaDevice / hmcs_system.lua | 64 Hz 原始飛行資料取樣、武器顯示規則、單位呈現、航向刻度與繪圖參數 |
-| AAM_AUDIO | avLuaDevice / aam_audio_system.lua | 20 Hz 依 MC tone 要求選資源、播放及 Sound Test |
+| AAM_AUDIO | avLuaDevice / aam_audio_system.lua | 20 Hz 依 SM 有效 IR 鎖定觀測選擇鎖定音，另提供 Sound Test |
 
 MC 外層與內部週期工作為 32 Hz；介面的取樣／播放頻率各自保留。
 Controls Indicator、HMCS 2D／VR 與 EFM Debug Indicator 由各自的指示器腳本呈現。
@@ -63,7 +63,7 @@ HMCS 不監聽或執行武器命令；MC 未提供完整快照時保留上一份
 
 外掛清單由 `avSimpleWeaponSystem:get_station_info(0..8)` 取得。
 Lua 發布原始紀錄；CockpitBridge 驗證整份 revision 後，轉為具型別觀測送入 MC。
-StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與執行確認；全部操作要求經 StoresCommandQueue 入口，FireControl 讀取唯讀掛載資料。
+StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與執行確認；全部操作要求經 StoresCommandQueue 入口，FireControl 讀取唯讀武器執行結果。
 九掛點名稱與機型註冊共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`。
 原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
@@ -95,5 +95,16 @@ Exporter 將執行視窗首項選站發布為 WeaponRequestedStation、WeaponSel
 weapon_system 完成呼叫後回傳選站 ACK；CMS 核對全域動作序號及選站回覆，完成屏障後繼續後續投放。
 取消項目保留原序號並直接確認；停止操作照序執行。
 
-SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續完成。火控的武器保持時間
-透過 SM 入口查詢實際執行確認；目標控制使用既有外部動作確認。
+SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續完成。武器保持時間
+由 SM 依入口執行回覆推進；目標控制使用既有外部動作確認。
+
+## IR 觀測與音效
+
+SM 的全域 IR 觀測包含 lock、要求方向、目標方向與有效性。MissionComputerExporter 在 MC generation 內發布
+McStoresIrSeekerAvailable、Revision、InvalidReason、Lock 及各方向欄位。
+McMissileUncageHeld 表達駕駛操作意圖；McStoresAirToAirMissileCount 表達掛載數量。
+
+HMCS 的武器類別採模式、解籠意圖、有效 lock 與既有操作偏好；數量由 SM 提供。
+aam_audio_system 接受同一份完整快照的有效 lock，播放並維持鎖定音；來源或 MC 不可用、奇數／變動 generation 時停止鎖定音。
+自動 Seek／Acquire 音效與原型備便／接觸推導已移除；Sound Test 的手動試播保留。
+原始資料與移除清單見 [IR 觀測整理報告](IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。

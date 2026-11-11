@@ -54,7 +54,6 @@ private:
 		RadarGateRangeScaled,
 		RadarContact01Azimuth,
 		RadarContact01RangeScaled,
-		WeaponTargetRange,
 		IrDesiredAzimuth,
 		IrDesiredElevation,
 		IrLock,

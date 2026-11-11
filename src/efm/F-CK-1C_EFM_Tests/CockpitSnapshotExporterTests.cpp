@@ -76,14 +76,13 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.mode.master_arm_mode = Core::MasterArmMode::On;
 	mc.mode.operating_mode = Core::OperatingMode::Dogfight;
 	mc.mode.dogfight_mode = true;
-	mc.infrared_missile.requested_tone = Core::InfraredSeekerTone::Lock;
-	mc.infrared_missile.locked = true;
-	mc.infrared_missile.contact = true;
-	mc.infrared_missile.active = true;
-	mc.infrared_missile.seeker_state = Core::InfraredSeekerState::Track;
-	mc.infrared_missile.seeker_azimuth_rad = 0.1;
-	mc.infrared_missile.seeker_elevation_rad = -0.2;
-	mc.infrared_missile.lock_range_m = 1200.0;
+	mc.fire_control.missile_uncage_held = true;
+	mc.stores.ir_seeker.status = { true, 12, Core::ObservationInvalidReason::None };
+	mc.stores.ir_seeker.locked = true;
+	mc.stores.ir_seeker.desired_azimuth_rad = 0.1;
+	mc.stores.ir_seeker.desired_elevation_rad = -0.2;
+	mc.stores.ir_seeker.target_azimuth_rad = 0.3;
+	mc.stores.ir_seeker.target_elevation_rad = -0.4;
 	mc.stores.air_to_air_missile_count = 2;
 	mc.stores.air_to_air_missile_count_complete = true;
 	mc.stores.gun_count = 240.0;
@@ -114,18 +113,19 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsFireControlMode), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionCount), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponRequestedStation), -1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9ToneState), 3.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerState), 3.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerContact), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerLock), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9WeaponActive), 1.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerAzimuth), 0.1, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9SeekerElevation), -0.2, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9LockRange), 1200.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMissileUncageHeld), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerAvailable), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerRevision), 12.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerInvalidReason), 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerLock), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrDesiredAzimuth), 0.1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrDesiredElevation), -0.2, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrTargetAzimuth), 0.3, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrTargetElevation), -0.4, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponClass), 5.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsWeaponQuantity), 99.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionRequestRevision), 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::Aim9MissileCount), 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresAirToAirMissileCount), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresMissileCountAvailable), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCount), 240.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresGunCountAvailable), 1.0, kTolerance);
@@ -171,13 +171,13 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::CockpitSnapshot snapshot;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot);
-	TEST_EXPECT(context, events.count == 70);
+	TEST_EXPECT(context, events.count == 68);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot);
-	TEST_EXPECT(context, events.count == 70);
+	TEST_EXPECT(context, events.count == 68);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
@@ -225,10 +225,47 @@ void test_selection_mailbox_uses_the_front_command_payload(Tests::Context& conte
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponSelectionActionSequence), 0, kTolerance);
 }
 
+void test_ir_observation_validity_clears_unavailable_cockpit_values(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	auto& mc = snapshot.combat_avionics;
+	mc.status = { true, 1 };
+	auto& ir = mc.stores.ir_seeker;
+	ir.status = { true, 2, Core::ObservationInvalidReason::None };
+	ir.locked = true;
+	ir.desired_azimuth_rad = 0.4;
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerLock), 1.0, kTolerance);
+	ir.status = { false, 2, Core::ObservationInvalidReason::ParameterUnavailable };
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerAvailable), 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerLock), 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrDesiredAzimuth), 0.0, kTolerance);
+	TEST_EXPECT_NEAR(context,
+	                 cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerInvalidReason),
+	                 static_cast<double>(Core::ObservationInvalidReason::ParameterUnavailable),
+	                 kTolerance);
+	ir = {};
+	ir.status = { true, 4, Core::ObservationInvalidReason::None };
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerAvailable), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McStoresIrSeekerLock), 0.0, kTolerance);
+	cockpit.set_available(DcsIds::CockpitParams::McStoresIrSeekerAvailable, false);
+	DcsBridge::Internal::CockpitSnapshotExporter missing_exporter(cockpit.api());
+	missing_exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
+	mc.status.available = false;
+	missing_exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McAvailable), 0.0, kTolerance);
+}
+
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
+	test_ir_observation_validity_clears_unavailable_cockpit_values(context);
 	test_selection_mailbox_uses_the_front_command_payload(context);
 	test_gun_count_availability_is_exported_separately(context);
 	test_snapshot_envelope_is_exported(context);

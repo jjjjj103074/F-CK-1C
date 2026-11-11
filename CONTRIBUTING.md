@@ -26,7 +26,8 @@ then validate it. Reports are written to `tmp/pr-validation/`.
   physical models run through `SimulationPipeline`.
 - `DcsIds/` owns DCS boundary identifiers and generated C++/Lua tables.
 - `Core/Systems/MissionComputer/` owns mission modes, stores policy, weapon
-  authorization, targeting and infrared missile support through FireControl.
+  authorization and targeting through FireControl; StoresManagement owns weapon
+  observations, including the global IR seeker source.
   HUD/HMCS owns weapon presentation using MC state and ordered input observations.
 - Cockpit Lua adapts DCS observations and actions, runs CM programs, and renders
   displays/audio as described in the [cockpit guide](docs/COCKPIT.md).
@@ -103,7 +104,7 @@ npm run validate:efm
   物理模型由 `SimulationPipeline` 執行。
 - `DcsIds/`：DCS 邊界 ID 與生成的 C++／Lua 表格。
 - `Core/Systems/MissionComputer/`：任務模式、掛載策略與 FireControl 火控，
-  包含紅外線飛彈支援；HUD／HMCS 依 MC 狀態與有序輸入觀測決定武器呈現。
+  SM 保存包含全域 IR 尋標來源在內的武器觀測；HUD／HMCS 依 MC 狀態與有序輸入觀測決定武器呈現。
 - Cockpit Lua：DCS 觀測與操作介面、反制程序、顯示及播放，
   詳見[座艙指南](docs/COCKPIT.md)。
 

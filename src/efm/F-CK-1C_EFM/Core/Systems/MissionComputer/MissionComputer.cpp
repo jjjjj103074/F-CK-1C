@@ -25,7 +25,7 @@ MissionComputer::MissionComputer()
       stores_management_(input_output_data_.input, stores_data_, stores_events_, stores_commands_, external_actions_),
       fire_control_(input_output_data_.input,
                     mode_data_,
-                    stores_data_,
+                    stores_data_.weapon_use,
                     fire_control_data_,
                     external_actions_,
                     stores_commands_),
@@ -189,6 +189,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.gun_fire_requested = fire_control_data_.weapon.gun_requested;
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
+	output.fire_control.missile_uncage_held = fire_control_data_.weapon.uncage_held;
 	output.stores.status = output.status;
 	output.stores.inventory = stores_data_.inventory;
 	const auto missiles = Mc::count_missiles(stores_data_.inventory, { WeaponRole::AirToAir, {} });
@@ -197,18 +198,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.stores.gun_ammunition = stores_data_.gun_ammunition;
 	output.stores.gun_count = stores_data_.gun_ammunition.count.value_or(0);
 	output.stores.selection = stores_data_.selection;
-	output.infrared_missile.uncage_held = fire_control_data_.weapon.uncage_held;
-	output.infrared_missile.target_designated = fire_control_data_.target_designation.requested;
-	output.infrared_missile.status = output.status;
-	output.infrared_missile.readiness = fire_control_data_.infrared_missile.readiness;
-	output.infrared_missile.active = fire_control_data_.infrared_missile.active;
-	output.infrared_missile.contact = fire_control_data_.infrared_missile.contact;
-	output.infrared_missile.locked = fire_control_data_.infrared_missile.locked;
-	output.infrared_missile.seeker_state = fire_control_data_.infrared_missile.seeker_state;
-	output.infrared_missile.requested_tone = fire_control_data_.infrared_missile.requested_tone;
-	output.infrared_missile.seeker_azimuth_rad = fire_control_data_.infrared_missile.seeker_azimuth_rad;
-	output.infrared_missile.seeker_elevation_rad = fire_control_data_.infrared_missile.seeker_elevation_rad;
-	output.infrared_missile.lock_range_m = fire_control_data_.infrared_missile.lock_range_m;
+	output.stores.ir_seeker = stores_data_.ir_seeker;
 	output.control_inputs = input_output_data_.input.control_inputs;
 	output.external_actions.status = output.status;
 	output.external_actions.batch = external_actions_.batch();

@@ -1,7 +1,8 @@
 # FireControl、目標指定與武器使用
 
 更新：2026-11-11。這是本專案的職責安排，沿用 MC 的 32 Hz 與共用動作傳輸。
-本輪基準：`8ce0a591ce818af73526bf3a921c19dacf403334`。
+武器使用整理基準：`8ce0a591ce818af73526bf3a921c19dacf403334`。
+目前 IR 觀測整理基準為 `3818a41`，詳細變更見文內報告連結。
 
 ## 分工與資料
 
@@ -11,14 +12,14 @@
 | FireControlTargetInput.cpp | 同一 FireControl 類別的 TMS 解讀、雷達操作及捕獲輸入計時 | acquisition_mode、私有 acquisition_input_ |
 | Internal/TargetDesignation | 接受指定／切換／取消意圖，整理雷達追蹤觀測 | target_designation，唯一寫入 |
 | Internal/WeaponOperation | 解籠、使用資格、開始／結束意圖及執行結果整理 | weapon，唯一寫入；StoresData.weapon_use 唯讀 |
-| Internal/InfraredMissileSupport | 整理既有尋標接觸、鎖定與音調要求 | infrared_missile，唯一寫入 |
-| StoresManagement | 掛載、選站、武器執行確認、輸入保持與停止 | StoresData，含 weapon_use |
+| StoresManagement | 掛載、選站、IR 觀測、武器執行確認、輸入保持與停止 | StoresData，含 weapon_use |
 
 TargetDesignation 只持有 TargetDesignationData 的參照，提供 request 與 observe 兩個介面。
 FC 是目標操作的單一協調入口；模式、按鍵、保險、掛載條件與操作計時各由表中責任位置處理。
 FireControlTargetInput.cpp 是既有 FC 的實作分檔。MC 仍有八個同層元件，DFLCC 維持原有架構。
 WeaponOperation 回傳 ReleaseInputEnded 後，由 FC 安排原有的投放結束取消指定流程。
-紅外線支援讀取指定意圖與武器解籠狀態，沿用原型推導。WeaponOperation 依資格提出使用意圖，尋標資料由紅外線支援整理。
+WeaponOperation 依資格提出使用意圖；IR 觀測由 SM 保存，座艙自行決定呈現與聲音。
+本輪移除原型的範圍與驗證見 [IR 觀測整理報告](../../../../../../../../docs/IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
 
 ## 目標指定流程
 
@@ -44,7 +45,7 @@ requested 表示 FC 已接受的指定／切換意圖；取消要求將其設為
 radar_tracking 依有效雷達觀測的 SingleTargetTrack 模式更新。
 指定意圖、雷達追蹤結果及飛彈尋標器鎖定各自保存；取消指定後，雷達欄位仍反映最近收到的觀測。
 幾何資料使用弧度與公尺。目標觀測隨 FireControlSnapshot.target_designation 發布；
-原有 AIM9 指定、解籠、音調與 HMCS 參數沿用既有映射。
+解籠意圖由 FireControlSnapshot.missile_uncage_held 發布；IR 來源狀態位於 StoresSnapshot.ir_seeker。
 
 ## FC 操作與更新
 
@@ -58,8 +59,7 @@ flowchart TD
     RESULT -->|否| TIMER[推進捕獲輸入保持計時]
     CANCEL --> TIMER
     TIMER --> OBS[TargetDesignation 整理本次雷達觀測]
-    OBS --> IR[更新紅外線支援]
-    IR --> PUBLISH[MC 派送 SM 後續要求並發布快照]
+    OBS --> PUBLISH[MC 派送 SM 後續要求並發布快照]
 ```
 
 TMS 與模式進入維持既有單次捕獲操作；每秒自動重送已移除。
@@ -121,7 +121,7 @@ Canceled 與正常結束分別保存；SAFE／SIM 中止保留目前目標指定
 撤回的開始仍由 SM 保存必要停止責任，正常放開依既有保持規則收尾，立即中止安排必要停止。
 階段及 ACK 表達操作處理進度，實際離架與彈量變化由觀測更新。
 
-## 本輪驗證
+## 武器使用整理的驗證紀錄（3818a41）
 
 | 檢查 | 結果 |
 |---|---|
@@ -142,6 +142,6 @@ GCC 使用 C++17、Wall／Wextra／Werror，保留既有聚合初始化例外。
 座艙架構檢查在暫存控制器中使用平台路徑分隔符；專案檢查腳本維持原版。
 
 前輪目標指定整理已提交為 `8ce0a59`，當時兩軸 code-review 各為 0 findings。
-本輪武器使用整理完成兩軸 code-review 後提交至本機，尚未 push。
+武器使用整理已提交為 `3818a41`；該次兩軸 code-review 各為 0 findings。
 bin 的 DLL 保留前次 Windows 產物，待後續重建。
 固定 Windows 工具鏈建置／分析與 DCS 遊戲驗證待後續 DLL 重建時執行。

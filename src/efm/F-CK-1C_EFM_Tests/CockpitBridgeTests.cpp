@@ -150,7 +150,7 @@ void test_zero_radar_and_ir_samples_are_available(Tests::Context& context)
 	TEST_EXPECT(context, observation.ir_seeker.status.available);
 	TEST_EXPECT(context, observation.ir_seeker.status.revision == 1);
 	TEST_EXPECT_NEAR(context, observation.radar.stt_range_m, 0.0, kTolerance);
-	TEST_EXPECT_NEAR(context, observation.ir_seeker.target_range_m, 0.0, kTolerance);
+	TEST_EXPECT(context, !observation.ir_seeker.locked);
 }
 
 void test_typed_radar_and_ir_units(Tests::Context& context)
@@ -161,7 +161,6 @@ void test_typed_radar_and_ir_units(Tests::Context& context)
 	cockpit.set(DcsIds::RawCockpitParams::RadarSttRange, 4200.0);
 	cockpit.set(DcsIds::RawCockpitParams::IrLock, 1.0);
 	cockpit.set(DcsIds::RawCockpitParams::IrDesiredElevation, -0.15);
-	cockpit.set(DcsIds::RawCockpitParams::WeaponTargetRange, 3100.0);
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
 	const Core::CockpitObservation observation = bridge.read_step_input().cockpit;
 	TEST_EXPECT(context, observation.radar.mode == Core::RadarMode::SingleTargetTrack);
@@ -169,7 +168,7 @@ void test_typed_radar_and_ir_units(Tests::Context& context)
 	TEST_EXPECT_NEAR(context, observation.radar.stt_range_m, 4200.0, kTolerance);
 	TEST_EXPECT(context, observation.ir_seeker.locked);
 	TEST_EXPECT_NEAR(context, observation.ir_seeker.desired_elevation_rad, -0.15, kTolerance);
-	TEST_EXPECT_NEAR(context, observation.ir_seeker.target_range_m, 3100.0, kTolerance);
+	TEST_EXPECT(context, observation.ir_seeker.status.available);
 }
 
 void test_missing_radar_parameter_marks_only_radar_unavailable(Tests::Context& context)
@@ -189,7 +188,7 @@ void test_non_finite_radar_and_ir_values_are_rejected(Tests::Context& context)
 {
 	Tests::FakeCockpitParameters cockpit;
 	cockpit.set(DcsIds::RawCockpitParams::RadarSttRange, std::numeric_limits<double>::quiet_NaN());
-	cockpit.set(DcsIds::RawCockpitParams::WeaponTargetRange, std::numeric_limits<double>::infinity());
+	cockpit.set(DcsIds::RawCockpitParams::IrDesiredElevation, std::numeric_limits<double>::infinity());
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
 	const auto observation = bridge.read_step_input().cockpit;
 	expect_invalid_numeric(context, observation.radar.status);

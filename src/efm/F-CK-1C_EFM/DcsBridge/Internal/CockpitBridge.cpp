@@ -195,7 +195,6 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 		       cockpit_parameter_reader(RawCockpitParams::RadarGateRangeScaled),
 		       cockpit_parameter_reader(RawCockpitParams::RadarContact01Azimuth),
 		       cockpit_parameter_reader(RawCockpitParams::RadarContact01RangeScaled),
-		       cockpit_parameter_reader(RawCockpitParams::WeaponTargetRange),
 		       cockpit_parameter_reader(RawCockpitParams::IrDesiredAzimuth),
 		       cockpit_parameter_reader(RawCockpitParams::IrDesiredElevation),
 		       cockpit_parameter_reader(RawCockpitParams::IrLock),
@@ -359,13 +358,12 @@ CockpitValueResult<Core::RadarObservation> CockpitBridge::read_radar()
 
 CockpitValueResult<Core::IrSeekerObservation> CockpitBridge::read_ir_seeker()
 {
-	const auto range = read_parameter(Parameter::WeaponTargetRange);
 	const auto desired_az = read_parameter(Parameter::IrDesiredAzimuth);
 	const auto desired_el = read_parameter(Parameter::IrDesiredElevation);
 	const auto lock = read_parameter(Parameter::IrLock);
 	const auto target_az = read_parameter(Parameter::IrTargetAzimuth);
 	const auto target_el = read_parameter(Parameter::IrTargetElevation);
-	const auto reads = { range, desired_az, desired_el, lock, target_az, target_el };
+	const auto reads = { desired_az, desired_el, lock, target_az, target_el };
 	const CockpitParameterEvents events = events_from(reads);
 	Core::IrSeekerObservation result;
 	result.status.revision = ir_seeker_revision_;
@@ -375,7 +373,6 @@ CockpitValueResult<Core::IrSeekerObservation> CockpitBridge::read_ir_seeker()
 		return { result, events };
 	}
 	result.locked = is_enabled(lock.value);
-	result.target_range_m = range.value;
 	result.desired_azimuth_rad = desired_az.value;
 	result.desired_elevation_rad = desired_el.value;
 	result.target_azimuth_rad = target_az.value;

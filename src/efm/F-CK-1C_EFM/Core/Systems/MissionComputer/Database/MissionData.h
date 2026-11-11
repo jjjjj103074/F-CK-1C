@@ -20,19 +20,6 @@ struct ModeData
 /// @brief 由目標指定模組寫入，供武器使用與快照發布讀取。
 using TargetDesignationData = TargetDesignationSnapshot;
 
-struct InfraredMissileData
-{
-	InfraredMissileReadiness readiness = InfraredMissileReadiness::Off;
-	bool active = false;
-	bool contact = false;
-	bool locked = false;
-	InfraredSeekerState seeker_state = InfraredSeekerState::Off;
-	InfraredSeekerTone requested_tone = InfraredSeekerTone::Off;
-	double seeker_azimuth_rad = 0.0;
-	double seeker_elevation_rad = 0.0;
-	double lock_range_m = 0.0;
-};
-
 struct WeaponOperationData
 {
 	bool uncage_held = false; ///< 駕駛的飛彈解籠操作狀態。
@@ -47,7 +34,6 @@ struct FireControlData
 	AirToAirSubmode acquisition_mode = AirToAirSubmode::None; ///< FC 選擇的捕獲操作方式。
 	TargetDesignationData target_designation;
 	WeaponOperationData weapon;
-	InfraredMissileData infrared_missile;
 };
 
 }

@@ -3,7 +3,7 @@
 #include "../../ModeEvents.h"
 #include "Internal/TargetDesignation.h"
 #include "Internal/WeaponOperation.h"
-#include "Internal/InfraredMissileSupport.h"
+#include "../../Database/InputOutputData.h"
 #include "../TimedAction.h"
 
 namespace Core::Systems::Mc
@@ -14,7 +14,7 @@ class FireControl final
 public:
 	FireControl(const MissionInputs& input,
 	            const ModeData& mode,
-	            const StoresData& stores,
+	            const WeaponUseData& execution,
 	            FireControlData& data,
 	            ExternalActionQueue& actions,
 	            StoresCommandQueue& stores_commands);
@@ -61,7 +61,6 @@ private:
 	ExternalActionQueue& actions_;
 	Internal::TargetDesignation target_designation_;
 	Internal::WeaponOperation weapon_operation_;
-	Internal::InfraredMissileSupport infrared_missile_support_;
 	TimedAction acquisition_input_; ///< 捕獲操作的執行確認與保持計時。
 	bool radar_on_requested_ = false;
 };

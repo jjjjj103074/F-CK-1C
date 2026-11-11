@@ -26,15 +26,14 @@ local hmcs_weapon_quantity = get_param_handle(cockpit_params.HmcsWeaponQuantity)
 local mc_generation = get_param_handle(cockpit_params.McGeneration)
 local mc_available = get_param_handle(cockpit_params.McAvailable)
 local mc_fire_control_mode = get_param_handle(cockpit_params.HmcsFireControlMode)
-local mc_uncage = get_param_handle(cockpit_params.Aim9UncageHeld)
-local mc_contact = get_param_handle(cockpit_params.Aim9SeekerContact)
-local mc_locked = get_param_handle(cockpit_params.Aim9SeekerLock)
-local mc_readiness = get_param_handle(cockpit_params.Aim9MissileStatus)
+local mc_uncage = get_param_handle(cockpit_params.McMissileUncageHeld)
+local mc_ir_available = get_param_handle(cockpit_params.McStoresIrSeekerAvailable)
+local mc_locked = get_param_handle(cockpit_params.McStoresIrSeekerLock)
 local mc_gun_firing = get_param_handle(cockpit_params.HmcsGunFiring)
 local mc_gun_count = get_param_handle(cockpit_params.McStoresGunCount)
 local mc_gun_count_available = get_param_handle(cockpit_params.McStoresGunCountAvailable)
 local hmcs_weapon_quantity_available = get_param_handle(cockpit_params.HmcsWeaponQuantityAvailable)
-local mc_missile_count = get_param_handle(cockpit_params.Aim9MissileCount)
+local mc_missile_count = get_param_handle(cockpit_params.McStoresAirToAirMissileCount)
 local mc_missile_count_available = get_param_handle(cockpit_params.McStoresMissileCountAvailable)
 local mc_trigger_held = get_param_handle(cockpit_params.McTriggerSecondStageHeld)
 local mc_master_arm_press = get_param_handle(cockpit_params.McMasterArmPressSequence)
@@ -55,9 +54,7 @@ local function update_weapon_presentation()
 
     local mode = mc_fire_control_mode:get()
     local uncage = mc_uncage:get() >= 0.5
-    local contact = mc_contact:get() >= 0.5
-    local locked = mc_locked:get() >= 0.5
-    local readiness = mc_readiness:get()
+    local locked = mc_ir_available:get() >= 0.5 and mc_locked:get() >= 0.5
     local gun_firing = mc_gun_firing:get() >= 0.5
     local gun_count = mc_gun_count:get()
     local gun_count_available = mc_gun_count_available:get() >= 0.5
@@ -72,7 +69,7 @@ local function update_weapon_presentation()
     -- began and ended between HMCS updates, or its weapon operation was rejected.
     local preferred_class = missile_preference_sequence > gun_preference_sequence and WEAPON_CLASS_AAM or WEAPON_CLASS_GUN
     local weapon_class
-    if mode ~= 0 or uncage or contact or locked or readiness ~= 0 then
+    if mode ~= 0 or uncage or locked then
         weapon_class = WEAPON_CLASS_AAM
     elseif gun_firing or trigger_held or preferred_class == WEAPON_CLASS_GUN then
         weapon_class = WEAPON_CLASS_GUN

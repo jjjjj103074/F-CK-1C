@@ -16,8 +16,8 @@ MissionComputer : System [32 Hz]
 │   ├── InputOutputData
 │   ├── SystemStatusTables
 │   ├── MissionData (ModeData / FireControlData)
-│   │   └── FireControlData.target_designation / acquisition_mode / weapon / infrared_missile
-│   ├── StoresData（逐掛點庫存、彈量、選站與武器執行結果）
+│   │   └── FireControlData.target_designation / acquisition_mode / weapon
+│   ├── StoresData（逐掛點庫存、彈量、選站、IR 觀測與武器執行結果）
 │   └── ExternalActionQueue
 ├── StoresCommandQueue（SM 的單一指令入口）
 ├── ModeEvents / StoresEvents（MC 專用同步事件通道）
@@ -29,8 +29,7 @@ MissionComputer : System [32 Hz]
     ├── FireControl
     │   └── Internal/
     │       ├── TargetDesignation
-    │       ├── WeaponOperation
-    │       └── InfraredMissileSupport
+    │       └── WeaponOperation
     ├── Executive
     ├── StartupAndRestart
     ├── SystemMonitor
@@ -46,16 +45,18 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 | ModeManagement | 唯一寫入 Master ON/OFF/SIM、NAV/DGFT/MSL，發布具型別選擇事件 |
 | CountermeasureControl | 讀取模式判斷 CMS 啟動資格，接收 Master Arm 事件處理中止 |
 | StoresManagement | 全部固定掛點庫存、彈量、掛點選擇／循環、執行確認與掛載變化通知 |
-| FireControl | 目標操作、武器資格／使用程序及紅外線飛彈支援 |
+| FireControl | 目標操作、武器資格與使用程序 |
 | Executive | 四個週期工作的固定順序、頻率及時間推進 |
 | StartupAndRestart | 原有建構時啟用排程 |
 | SystemMonitor | 健康監控預留入口，目前無功能 |
 | FailureManager | 故障處置預留入口，目前無功能 |
 
 FireControl 解讀 TMS 與操作模式，安排雷達與捕獲輸入；TargetDesignation 保存指定意圖及雷達追蹤結果。
-WeaponOperation 保存解籠與扳機／投放資格，提交使用意圖並讀取 SM 執行結果，供 FC 安排目標接續；InfraredMissileSupport
-整理尋標接觸、鎖定、狀態與音調要求。模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
-StoresManagement 統一負責庫存、武器掛點選擇、循環、武器輸入保持與執行確認；模式意圖及 FCC 武器操作皆經 StoresCommandQueue 入口。FireControl 的紅外線支援讀取唯讀掛載資料；目標指定只接收明確要求與雷達觀測。雷達模型、DCS API 及操作映射由外部介面提供。
+WeaponOperation 保存解籠與扳機／投放資格，提交使用意圖並讀取 SM 執行結果，供 FC 安排目標接續。
+模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
+StoresManagement 統一負責庫存、選站、武器輸入保持與執行確認，並保存全域武器介面的 IR 來源觀測。
+火控只持有唯讀 WeaponUseData；目標指定只接收明確要求與雷達觀測。
+雷達模型、DCS API 及操作映射由外部介面提供；HMCS 與音效 Lua 使用完成快照決定呈現。
 
 ## 資料所有權
 
@@ -67,15 +68,15 @@ StoresManagement 統一負責庫存、武器掛點選擇、循環、武器輸入
 | ModeData | ModeManagement | 火控、反制及輸出投影（唯讀） |
 | StoresData | StoresManagement | 火控及輸出投影 |
 | StoresData.weapon_use | SM 的 WeaponExecution | WeaponOperation 唯讀執行階段及取消／拒絕結果 |
-| FireControlData.target_designation | TargetDesignation | 紅外線支援及輸出投影 |
+| FireControlData.target_designation | TargetDesignation | 輸出投影 |
 | FireControlData.acquisition_mode | FireControl | 輸出投影 |
 | FireControlData.weapon | WeaponOperation | 射擊狀態輸出與診斷 |
-| FireControlData.infrared_missile | InfraredMissileSupport | 輸出投影 |
+| StoresData.ir_seeker | StoresManagement | 輸出投影；HMCS 與音效 Lua 的來源觀測 |
 | ExternalActionQueue | 任務元件追加動作；MC 確認及取得視窗 | 操作程序查詢已執行序號 |
 | ExecutiveTables | Executive | 排程診斷 |
 | SystemStatusTables | 各基礎元件的指定分區 | 預留 |
 
-MC 直接持有七個具型別記憶體物件；FireControlData 保存目標指定、捕獲操作方式、武器程序與紅外線支援資料。
+MC 直接持有七個具型別記憶體物件；FireControlData 保存目標指定、捕獲操作方式、武器使用意圖。
 Core 不知道 DCS ID、座艙參數或顯示格式。`CombatAvionicsSnapshot` 不再包含
 最終 weapon_display；改為任務／掛載／火控資料及 `control_inputs`。
 輸入序號與外部動作序號獨立；前者只表示操作順序，後者仍用於執行確認。
@@ -104,7 +105,7 @@ HMCS_WEAPON_CLASS／HMCS_WEAPON_QTY 由 hmcs_system.lua 單獨寫入，數量只
 
 週期順序為 StoresManagement → FireControl → SystemMonitor → FailureManager。
 MC 在操縱命令前準備 SM 觀測；SM 先推進武器執行與保持，再由火控讀取結果，最後派送後續指令；指令入口以 SM 編號追蹤各筆要求及其外部動作確認，掛載等待保留在 SM 內。
-FireControl 內依武器執行結果與目標接續 → 捕獲輸入計時 → 雷達目標觀測 → 紅外線支援推進。
+FireControl 內依武器執行結果與目標接續 → 捕獲輸入計時 → 雷達目標觀測。
 ModeManagement 是事件入口。外層保持命令 FIFO、32 Hz 及 80 ms 最短保持；每秒自動重送捕獲已移除。
 保持時間仍從 MC 觀測到 Lua ACK 的當前輸入時間起算，補跑不回填新的操作／ACK。
 Master OFF/SIM 立即追加停止與 CMS 中止要求；NAV 不新增強制停止規則。
@@ -112,20 +113,20 @@ NAV/DGFT/MSL 與 Master ON/OFF/SIM 各自選擇；保險切換保留目前模式
 
 外部動作視窗仍為 16 個連續序號，保留成功前綴確認、缺號拒絕、失敗重試及序號界限。
 Bridge 在奇數 generation 寫入，完整成功後提交偶數；HMCS 拒絕中途變動的版本。
-現有命令 ID、輸入設定、音效及 AIM9_* 座艙參數的值與名稱保持相容。
+命令 ID 與輸入設定維持既有對應；IR 來源與座艙契約見[IR 觀測整理報告](../../../../../../docs/IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
 新輸入序號與機砲數量參數由 CommandIds.json 管理並經原產生器生成。
 
-## 紅外線支援的實作範圍
+## IR 武器介面觀測
 
-名稱與內部資料改用 Infrared；目前仍完整保留原 AIM-9 原型演算法，沒有新增武器型號支援。
-直接 IR 鎖定／目標角度優先，其次是原有 IR／雷達推導，再其次是有效全零觀測回退。
-readiness 是簡化命令狀態；designation 是操作意圖；contact／locked 是另外推導的狀態。
-`lock_range_m` 仍是雷達 STT 距離，並非紅外線尋標器自行測距。
-未把鎖定狀態新增為發射條件，也未接手 DCS 的飛彈導引模擬。
+DcsBridge 讀取 IR lock、要求方向及目標方向，SM 將當前來源觀測存入 StoresData.ir_seeker，
+再隨 CombatAvionicsSnapshot.stores 發布。可用性、來源版本與失效原因一併保存。
+此資料代表全域武器介面，掛點庫存、所選掛點與該觀測各自保存。
+目標距離由 TargetDesignation 的雷達觀測提供；武器解籠意圖保存在 FireControlData.weapon。
 
-掛載分類仍沿用廣泛 AAM 判斷，尚未精確區分紅外線與其他空對空飛彈。
-未來優先以武器能力／參數資料共用流程，必要時才增加特殊操作；此部分只留待辦註解。
-固定掛點由座艙 Lua 入口觀測，機砲由模組內 C++ 原生來源觀測；兩者由 SM 統整並發布。
+HMCS 依有效 lock、模式及操作意圖決定武器呈現；音效 Lua 依有效 lock 選擇並維持鎖定音。
+原型的接觸、備便、尋標狀態及雷達／操作意圖鎖定推導已移除。
+完整移除清單、介面與驗證見[整理報告](../../../../../../docs/IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
+
 反制程序仍在 Lua，CountermeasureControl 管理啟動資格與中止要求。
 
 ## 逐掛點庫存

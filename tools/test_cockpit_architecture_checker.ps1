@@ -93,7 +93,7 @@ try {
     Assert-Rejected {
         [IO.File]::WriteAllText(
             $duplicateLuaWriter,
-            "local duplicate = get_param_handle(`"AIM9_TONE_STATE`")`r`nduplicate:set(1)`r`n",
+            "local duplicate = get_param_handle(`"CPP_MC_STORES_IR_SEEKER_LOCK`")`r`nduplicate:set(1)`r`n",
             $utf8NoBom)
     } 'Parameter has multiple writers' $temporaryRoot
     Remove-Item -LiteralPath $duplicateLuaWriter -Force

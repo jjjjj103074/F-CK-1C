@@ -8,7 +8,7 @@ namespace Core::Systems::Mc
 {
 FireControl::FireControl(const MissionInputs& input,
                          const ModeData& mode,
-                         const StoresData& stores,
+                         const WeaponUseData& execution,
                          FireControlData& data,
                          ExternalActionQueue& actions,
                          StoresCommandQueue& stores_commands)
@@ -17,8 +17,7 @@ FireControl::FireControl(const MissionInputs& input,
       data_(data),
       actions_(actions),
       target_designation_(data.target_designation),
-      weapon_operation_(mode, stores.weapon_use, data.weapon, stores_commands),
-      infrared_missile_support_(input, mode, stores, data.target_designation, data.weapon, data.infrared_missile)
+      weapon_operation_(mode, execution, data.weapon, stores_commands)
 {
 }
 
@@ -68,7 +67,7 @@ void FireControl::on_master_arm_selected(const MasterArmSelected& event)
 		weapon_operation_.stop();
 }
 
-void FireControl::step(std::chrono::nanoseconds time, double dt_s)
+void FireControl::step(std::chrono::nanoseconds time, double)
 {
 	time = (std::max)(time, input_.observed_at);
 	// 讀取 SM 已安排的武器結束結果，先處理目標接續，再推進捕獲計時。
@@ -79,6 +78,5 @@ void FireControl::step(std::chrono::nanoseconds time, double dt_s)
 	if (acquisition_input_.release_due(time, actions_))
 		finish_acquisition_input();
 	target_designation_.observe(input_.cockpit.radar);
-	infrared_missile_support_.step(time, dt_s);
 }
 }

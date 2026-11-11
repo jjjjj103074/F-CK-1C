@@ -663,7 +663,7 @@ void test_uncage_hold_keeps_single_capture_until_an_explicit_request(Tests::Cont
 		stations.selection_ack_revision = output.stores.selection.request_revision;
 	}
 	TEST_EXPECT(context, captures == 1 && changes == 1);
-	TEST_EXPECT(context, output.infrared_missile.uncage_held);
+	TEST_EXPECT(context, output.fire_control.missile_uncage_held);
 	TEST_EXPECT(context, output.fire_control.target_designation.requested);
 	fixture.send(CommandId::SetTmsUp);
 	output = fixture.step(kMissionPeriod * 97);
@@ -696,75 +696,36 @@ void test_capture_input_waits_for_execution_before_its_minimum_hold(Tests::Conte
 	TEST_EXPECT(context, !output.fire_control.target_designation.requested);
 }
 
-void test_seeker_observation_precedence_and_availability(Tests::Context& context)
+void test_global_ir_observation_is_independent_from_fire_control_intent(Tests::Context& context)
 {
-	MissionInputs input;
-	ModeData mode;
-	StoresData stores;
-	TargetDesignationData designation;
-	WeaponOperationData weapon;
-	InfraredMissileData aim9;
-	mode.operating_mode = OperatingMode::MissileOverride;
-	stores.inventory.stations[0].observation.available = true;
-	stores.inventory.stations[0].configuration = StoreConfiguration::Equipped;
-	stores.inventory.stations[0].category = WeaponCategory::Missile;
-	stores.inventory.stations[0].role = WeaponRole::AirToAir;
-	stores.inventory.stations[0].count = 1;
-	auto& ir = input.cockpit.ir_seeker;
-	auto& radar = input.cockpit.radar;
-	ir.status.available = true;
-	radar.status.available = true;
-	Internal::InfraredMissileSupport processor(input, mode, stores, designation, weapon, aim9);
-	ir.locked = true;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, aim9.active && aim9.contact && aim9.locked);
-	TEST_EXPECT(context, aim9.readiness == InfraredMissileReadiness::Cool);
-	TEST_EXPECT(context, aim9.seeker_state == InfraredSeekerState::Track);
-	TEST_EXPECT(context, aim9.requested_tone == InfraredSeekerTone::Lock);
-	ir.locked = false;
-	ir.target_azimuth_rad = 0.01;
-	radar.stt_range_m = 2000.0;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, aim9.contact && !aim9.locked); // Direct IR signal wins over STT range.
-	ir.target_azimuth_rad = 0.0;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, !aim9.contact && !aim9.locked); // Caged radar telemetry cannot lock.
-	weapon.uncage_held = true;
-	ir.desired_azimuth_rad = 0.1;
-	ir.desired_elevation_rad = -0.2;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, aim9.contact && aim9.locked);
-	TEST_EXPECT_NEAR(context, aim9.seeker_azimuth_rad, 0.1, 1e-12);
-	TEST_EXPECT_NEAR(context, aim9.seeker_elevation_rad, -0.2, 1e-12);
-	TEST_EXPECT_NEAR(context, aim9.lock_range_m, 2000.0, 1e-12);
-	ir.desired_azimuth_rad = 0.0;
-	ir.desired_elevation_rad = 0.0;
-	radar.stt_range_m = 0.0;
-	designation.requested = true;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, aim9.contact && aim9.locked); // Valid all-zero prototype fallback.
-	radar.tdc_azimuth_rad = 0.1;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, !aim9.contact && !aim9.locked); // Real telemetry suppresses that fallback.
-	radar.tdc_azimuth_rad = 0.0;
-	radar.status.available = false;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, !aim9.contact && !aim9.locked);
-	TEST_EXPECT(context,
-	            aim9.readiness == InfraredMissileReadiness::Track); // Command readiness is distinct from observation.
-	ir.locked = true;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, aim9.locked); // Direct valid IR does not require radar availability.
-	ir.status.available = false;
-	radar.status.available = true;
-	radar.stt_range_m = 2000.0;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, !aim9.contact && !aim9.locked);
-	stores.inventory.stations[0].count = 0;
-	processor.step({}, 0.015625);
-	TEST_EXPECT(context, !aim9.active && aim9.readiness == InfraredMissileReadiness::Off);
-	TEST_EXPECT(context,
-	            aim9.seeker_state == InfraredSeekerState::Off && aim9.requested_tone == InfraredSeekerTone::Off);
+	for (CommandId master : { CommandId::SetMasterArmOn, CommandId::SetMasterArmOff, CommandId::SetMasterArmSim })
+	{
+		for (CommandId mode :
+		     { CommandId::SelectNavigationMode, CommandId::SelectDogfightMode, CommandId::SelectMissileOverride })
+		{
+			MissionFixture fixture;
+			auto& ir = fixture.frame.cockpit.ir_seeker;
+			ir.status = { true, 42, ObservationInvalidReason::None };
+			fixture.frame.cockpit.radar.status = { true, 2, ObservationInvalidReason::None };
+			fixture.frame.cockpit.radar.mode = RadarMode::SingleTargetTrack;
+			fixture.frame.cockpit.radar.stt_range_m = 9000.0;
+			fixture.send(master);
+			fixture.send(mode);
+			fixture.send(CommandId::SetMissileUncage);
+			fixture.send(CommandId::SetTmsUp);
+			auto output = fixture.step(kMissionPeriod);
+			TEST_EXPECT(context, output.stores.ir_seeker.status.available);
+			TEST_EXPECT(context, output.stores.ir_seeker.status.revision == 42);
+			TEST_EXPECT(context, !output.stores.ir_seeker.locked);
+			TEST_EXPECT(context, output.stores.air_to_air_missile_count == 0);
+			TEST_EXPECT(context, output.fire_control.missile_uncage_held);
+			ir.locked = true;
+			ir.status.revision = 44;
+			output = fixture.step(kMissionPeriod * 2);
+			TEST_EXPECT(context, output.stores.ir_seeker.status.revision == 44);
+			TEST_EXPECT(context, output.stores.ir_seeker.locked);
+		}
+	}
 }
 
 void test_control_observations_preserve_fifo_pulses_and_rejected_requests(Tests::Context& context)
@@ -805,23 +766,34 @@ void test_control_observations_preserve_fifo_pulses_and_rejected_requests(Tests:
 	TEST_EXPECT(context, output.control_inputs.weapon_release_press_sequence == 4);
 }
 
-void test_fire_control_publishes_infrared_support_in_the_same_tick(Tests::Context& context)
+void test_stores_publish_current_ir_observations_in_the_same_tick(Tests::Context& context)
 {
 	MissionFixture fixture;
-	auto& inventory = fixture.frame.cockpit.weapon_stations;
-	inventory.status = { true, 2, ObservationInvalidReason::None };
-	inventory.stations[2] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
-	fixture.frame.cockpit.ir_seeker.status.available = true;
-	fixture.frame.cockpit.ir_seeker.locked = true;
+	auto& ir = fixture.frame.cockpit.ir_seeker;
+	ir.status = { true, 20, ObservationInvalidReason::None };
+	ir.locked = true;
+	ir.desired_azimuth_rad = 0.1;
+	ir.desired_elevation_rad = -0.2;
+	ir.target_azimuth_rad = 0.3;
+	ir.target_elevation_rad = -0.4;
 	fixture.send(CommandId::SelectMissileOverride);
 	auto output = fixture.step(kMissionPeriod);
-	TEST_EXPECT(context, output.infrared_missile.status.available);
-	TEST_EXPECT(context, output.infrared_missile.active && output.infrared_missile.locked);
-	TEST_EXPECT(context, output.infrared_missile.requested_tone == InfraredSeekerTone::Lock);
-	fixture.send(CommandId::SelectNavigationMode);
+	TEST_EXPECT(context, output.stores.ir_seeker.status.available);
+	TEST_EXPECT(context, output.stores.ir_seeker.locked);
+	TEST_EXPECT_NEAR(context, output.stores.ir_seeker.desired_azimuth_rad, 0.1, 1e-12);
+	TEST_EXPECT_NEAR(context, output.stores.ir_seeker.target_azimuth_rad, 0.3, 1e-12);
+	TEST_EXPECT_NEAR(context, output.stores.ir_seeker.desired_elevation_rad, -0.2, 1e-12);
+	TEST_EXPECT_NEAR(context, output.stores.ir_seeker.target_elevation_rad, -0.4, 1e-12);
+	ir.status = { false, 22, ObservationInvalidReason::ParameterUnavailable };
 	output = fixture.step(kMissionPeriod * 2);
-	TEST_EXPECT(context, !output.infrared_missile.active && !output.infrared_missile.locked);
-	TEST_EXPECT(context, output.infrared_missile.requested_tone == InfraredSeekerTone::Off);
+	TEST_EXPECT(context, !output.stores.ir_seeker.status.available);
+	TEST_EXPECT(context,
+	            output.stores.ir_seeker.status.invalid_reason == ObservationInvalidReason::ParameterUnavailable);
+	ir.status = { true, 24, ObservationInvalidReason::None };
+	ir.locked = false;
+	output = fixture.step(kMissionPeriod * 3);
+	TEST_EXPECT(context, output.stores.ir_seeker.status.available && !output.stores.ir_seeker.locked);
+	TEST_EXPECT(context, output.stores.ir_seeker.status.revision == 24);
 }
 
 void test_gun_quantity_observations_and_catch_up(Tests::Context& context)
@@ -1056,9 +1028,9 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
 	test_pickle_and_targeting_modes(context);
 	test_inventory_authority_selection_and_rearm(context);
-	test_seeker_observation_precedence_and_availability(context);
+	test_global_ir_observation_is_independent_from_fire_control_intent(context);
 	test_control_observations_preserve_fifo_pulses_and_rejected_requests(context);
-	test_fire_control_publishes_infrared_support_in_the_same_tick(context);
+	test_stores_publish_current_ir_observations_in_the_same_tick(context);
 	test_gun_quantity_observations_and_catch_up(context);
 	test_gun_restart_in_one_fifo_does_not_backdate_quantity(context);
 	test_cms_commands_share_fifo_with_mode_commands(context);
