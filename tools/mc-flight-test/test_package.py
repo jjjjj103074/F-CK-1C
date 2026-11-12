@@ -82,7 +82,7 @@ class TestFlightBundle(unittest.TestCase):
         self.assertNotIn('<script',document)
     def test_recorder_and_indicator_are_passive(self):
         for name in ['Recorder.lua','Indicator_page.lua']:
-            source=(package.ROOT/name).read_text()
+            source=(package.ROOT/name).read_text(encoding='utf-8')
             self.assertNotIn('dispatch_action', source)
             self.assertNotIn('performClickableAction', source)
             self.assertNotIn(':set(', source)
