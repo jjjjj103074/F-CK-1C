@@ -68,7 +68,7 @@ ExternalActionOutbox 保存功能要求及結果；ExternalActionTransport 擁�
 
 本輪以實際 SystemPipeline、MC、RadarSystem 及 DcsBridge 傳送器執行回歸，涵蓋跨 tick 保留、多次操作順序、部分 ACK、撤回、來源失效、捕獲保持與模式／保險獨立。
 
-使用者指定先不 commit。本機環境為 Linux，固定 Windows 工具鏈及 DCS 遊戲驗證留待後續執行；bin 的 DLL 保持已提交版本，遊戲測試使用重建後的 DLL 與同版來源。
+Linux 回歸與固定 Windows 工具鏈驗證結果分列如下。bin 的 DLL 採用下列已核對來源的 CI 產物；DCS 實機測試流程見 [MC 完整測試](MC_FLIGHT_TEST.zh-TW.md)。
 
 ### 本機驗證結果
 
@@ -87,3 +87,14 @@ ExternalActionOutbox 保存功能要求及結果；ExternalActionTransport 擁�
 Bridge 相容檢查只在暫存副本提供 Windows 模組查詢／路徑函式及 MSVC 宣告巨集的相容替身，生成表的字串常數宣告亦只在該副本適配 GCC。專案 SDK、第三方與產生器維持原版；固定 MSVC 工具鏈、DLL 載入與 DCS 遊戲驗證另行執行。
 
 命令、參數名稱及數值與基準一致；子模式 VerticalScan=2、Hud=3 由實際 Exporter 回歸核對。變更中的參數目錄只更新共用傳輸項目的擁有者。
+
+## Windows 驗證（2026-11-12）
+
+- 驗證來源：`d0bb57ccda07ad9dce47c5983175ad79ee9754d0`。
+- [完整 Windows CI](https://github.com/jjjjj103074/F-CK-1C/actions/runs/43195246543) 通過。
+- DLL 專案明確編譯 ExternalActionTransport；來源、一般建置與分析重建使用相同內容。
+- 固定工具鏈：MSVC `19.29.30159.0`、link `14.29.30159.0`、Windows SDK `10.0.26100.0`。
+- 原生測試：**4,631 項，0 失敗**；完整驗證 **16 個步驟通過**，含靜態分析、DLL 雜湊、接口、載入／卸載、來源完整性與產生器測試。
+- CI manifest 的 source commit、tree 與本機對應版本一致；下載 DLL、一般重建及分析重建的 SHA256 一致。
+- `bin/F-CK-1C_EFM.dll` 更新為該驗證產物；SHA256：`05ecc0b6a0f14af83802fbc3a03a654f3e53b92227316d8c01441bc88cef72af`。
+- DCS 遊戲驗證維持 `not_run`，由測試包的人工流程另行核對。
