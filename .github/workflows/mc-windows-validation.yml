@@ -45,6 +45,8 @@ jobs:
           make -C "$lua_root/lua-5.1.5" generic
           "$lua_root/lua-5.1.5/src/luac" -p Cockpit/Scripts/Systems/cms_system.lua Cockpit/Scripts/Systems/mc_io.lua Cockpit/Scripts/Systems/weapon_system.lua Cockpit/Scripts/Systems/radar_state_system.lua Cockpit/Scripts/Systems/hmcs_system.lua
           "$lua_root/lua-5.1.5/src/lua" tools/test_mc_lua.lua
+          mkdir -p "$RUNNER_TEMP/mc-flight-recorder/Logs/FCK1C-MC-TEST"
+          "$lua_root/lua-5.1.5/src/lua" tools/mc-flight-test/test_recorder.lua tools/mc-flight-test "$RUNNER_TEMP/mc-flight-recorder"
   build-validation:
     name: Build and validate MC migration
     runs-on: windows-2025-vs2026
@@ -88,6 +90,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs tools/pr-checks.test.mjs tools/pr-results.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check MC flight-test assembly and collection
+        shell: powershell
+        run: |
+          python -m unittest discover -s tools/mc-flight-test -p "test_*.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/mc-flight-test/test_collection.ps1
       - name: Check legacy Export cleanup
         shell: powershell
         run: ./tools/test_legacy_stores_export_removal.ps1
@@ -151,5 +159,21 @@ jobs:
           path: |
             dist/F-CK-1C-mc-*.zip
             dist/F-CK-1C-mc-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Assemble the MC flight-test bundle
+        shell: powershell
+        run: |
+          $module = 'dist/F-CK-1C-mc-' + $env:GITHUB_SHA.Substring(0, 8) + '.zip'
+          python tools/mc-flight-test/package_test_bundle.py --module-zip $module --manifest "$env:RUNNER_TEMP/mc-artifact/manifest.json" --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json --expected-source $env:GITHUB_SHA --output dist/mc-flight-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload the MC flight-test bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mc-flight-test-${{ github.sha }}
+          path: |
+            dist/mc-flight-test/F-CK-1C-mc-flight-test-*.zip
+            dist/mc-flight-test/F-CK-1C-mc-flight-test-*.zip.sha256
           if-no-files-found: error
           retention-days: 7
