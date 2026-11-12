@@ -7,13 +7,14 @@
 
 namespace DcsBridge::Internal
 {
-/// @brief Commits one MC action window using an odd/even generation around numeric cockpit parameters.
+/// @brief Commits MC state and the shared DCS action window using an odd/even generation around numeric cockpit parameters.
 class MissionComputerExporter final
 {
 public:
 	explicit MissionComputerExporter(cockpit_param_api api);
 	void reset();
-	CockpitParameterEvents export_snapshot(const Core::CombatAvionicsSnapshot& snapshot);
+	CockpitParameterEvents export_snapshot(const Core::CombatAvionicsSnapshot& snapshot,
+	                                       const Core::MissionActionBatch& actions);
 
 private:
 	enum class Parameter : std::size_t

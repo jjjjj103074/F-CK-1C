@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ExternalActionQueue.h"
+#include "../../ExternalActionOutbox.h"
 #include "WeaponUseData.h"
 #include "../../../Contracts/CockpitContracts.h"
 
@@ -79,7 +79,7 @@ struct QueuedStoresCommand
 class StoresCommandQueue final
 {
 public:
-	explicit StoresCommandQueue(ExternalActionQueue& actions);
+	explicit StoresCommandQueue(ExternalActionOutbox& actions);
 	StoresCommandQueue(const StoresCommandQueue&) = delete;
 	StoresCommandQueue& operator=(const StoresCommandQueue&) = delete;
 	StoresCommandQueue(StoresCommandQueue&&) = delete;
@@ -91,8 +91,8 @@ public:
 	bool acknowledged(std::uint64_t ticket) const noexcept;
 	/// @brief 依 FIFO 交付下一筆原始要求，並回收已完成的回覆紀錄。
 	std::optional<QueuedStoresCommand> take_next();
-	/// @brief 登記執行序號；0 表示要求已在 SM 完成處理。
-	void resolve(std::uint64_t ticket, std::uint64_t external_sequence);
+	/// @brief 登記生產端操作要求編號；0 表示要求已在 SM 完成處理。
+	void resolve(std::uint64_t ticket, std::uint64_t action_request_sequence);
 	/// @brief 原始要求入列後，同步通知 MC 交由 SM 接受與派送。
 	sigslot::signal_st<> commands_available;
 
@@ -100,11 +100,11 @@ private:
 	struct Receipt
 	{
 		bool resolved = false;
-		std::uint64_t external_sequence = 0;
+		std::uint64_t action_request_sequence = 0;
 	};
 	void retire_completed();
 	std::uint64_t enqueue(const StoresCommand& command);
-	ExternalActionQueue& actions_;
+	ExternalActionOutbox& actions_;
 	std::deque<QueuedStoresCommand> incoming_;
 	std::deque<Receipt> receipts_;
 	std::uint64_t last_ticket_ = 0;

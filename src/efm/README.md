@@ -24,8 +24,10 @@ The supported build is Release/x64 using the toolchain in
 Units are defined in [EFM_UNIT_CONVENTIONS.md](../../docs/EFM_UNIT_CONVENTIONS.md).
 Cockpit ownership is described in [COCKPIT.md](../../docs/COCKPIT.md).
 The 32 Hz [MissionComputer](F-CK-1C_EFM/Core/Systems/MissionComputer/README.md)
-owns mission decisions, with Lua adapting DCS observations/actions. See the
-[MC migration report](../../docs/MC_MIGRATION_REPORT.md) for architecture and flows.
+owns mission decisions. The parallel 32 Hz [RadarSystem](F-CK-1C_EFM/Core/Systems/RadarSystem/README.md)
+executes radar requests through SystemPipeline; DcsBridge owns shared DCS delivery
+and acknowledgment mapping. See the [current architecture](../../docs/RADAR_TARGETING_ARCHITECTURE.zh-TW.md)
+and the [historical MC migration report](../../docs/MC_MIGRATION_REPORT.md).
 
 DFLCC currently implements configurable three-axis direct mapping.
 Feedback, trim application, autopilot and automatic throttle are unimplemented;

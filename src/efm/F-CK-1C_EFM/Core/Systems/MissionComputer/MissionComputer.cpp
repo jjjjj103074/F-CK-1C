@@ -20,14 +20,15 @@ namespace Core::Systems
 {
 MissionComputer::MissionComputer()
     : stores_commands_(external_actions_),
+      radar_requests_(external_actions_),
       system_monitor_(input_output_data_, system_status_tables_.health),
       failure_manager_(system_status_tables_.health, system_status_tables_.failure_response),
       stores_management_(input_output_data_.input, stores_data_, stores_events_, stores_commands_, external_actions_),
-      fire_control_(input_output_data_.input,
-                    mode_data_,
+      fire_control_(mode_data_,
+                    input_output_data_.input.radar,
                     stores_data_.weapon_use,
                     fire_control_data_,
-                    external_actions_,
+                    radar_requests_,
                     stores_commands_),
       mode_management_(mode_data_, mode_events_),
       countermeasure_control_(mode_data_, external_actions_),
@@ -101,6 +102,8 @@ void MissionComputer::setup(SystemSetup& setup)
 	// MC 以 32 Hz 更新。
 	setup.update_rate_hz(kMissionComputerProjectUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
+	setup.read(AircraftDataKeys::kRadarSnapshot);
+	setup.publish(AircraftDataKeys::kRadarRequests, RadarRequests{});
 	setup.publish(AircraftDataKeys::kMissionComputerSnapshot, input_output_data_.output.combat_avionics);
 	// 各類指令先進入同一 FIFO，待本 tick 讀取觀測後才執行，保留跨元件的操作順序。
 	const CommandId mode_commands[] = { CommandId::SetMasterArmOn,     CommandId::SetMasterArmOff,
@@ -167,10 +170,12 @@ void MissionComputer::read_inputs(const SystemStepContext& context, const Aircra
 {
 	input_output_data_.input.cockpit = aircraft.read(AircraftDataKeys::kFrameInput).cockpit;
 	input_output_data_.input.observed_at = context.input_time;
+	input_output_data_.input.radar = aircraft.read(AircraftDataKeys::kRadarSnapshot);
 	const MissionAdapterObservation& adapter = input_output_data_.input.cockpit.mission_adapter;
 	if (adapter.available)
 	{
-		external_actions_.acknowledge(adapter.acknowledged_sequence);
+		external_actions_.acknowledge(
+		    input_output_data_.input.cockpit.external_action_feedback.mission_acknowledged_through);
 	}
 }
 
@@ -183,8 +188,8 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.status = output.status;
 	output.mode.master_arm_mode = mode_data_.master_arm;
 	output.mode.operating_mode = mode_data_.operating_mode;
-	output.fire_control.air_to_air_submode = fire_control_data_.acquisition_mode;
-	output.fire_control.target_designation = fire_control_data_.target_designation;
+	output.fire_control.air_to_air_submode = fire_control_data_.targeting.acquisition_mode;
+	output.fire_control.target_designation = fire_control_data_.targeting.designation;
 	output.mode.dogfight_mode = mode_data_.operating_mode == OperatingMode::Dogfight;
 	output.fire_control.gun_fire_requested = fire_control_data_.weapon.gun_requested;
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
@@ -200,8 +205,8 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.stores.selection = stores_data_.selection;
 	output.stores.ir_seeker = stores_data_.ir_seeker;
 	output.control_inputs = input_output_data_.input.control_inputs;
-	output.external_actions.status = output.status;
-	output.external_actions.batch = external_actions_.batch();
+	output.action_requests = external_actions_.pending();
+	result.publish(AircraftDataKeys::kRadarRequests, radar_requests_.pending());
 	result.publish(AircraftDataKeys::kMissionComputerSnapshot, output);
 }
 

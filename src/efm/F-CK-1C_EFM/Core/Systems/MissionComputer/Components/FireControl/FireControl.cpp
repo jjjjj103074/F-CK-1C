@@ -2,21 +2,15 @@
 
 #include "Common/CommandValue.h"
 
-#include <algorithm>
-
 namespace Core::Systems::Mc
 {
-FireControl::FireControl(const MissionInputs& input,
-                         const ModeData& mode,
+FireControl::FireControl(const ModeData& mode,
+                         const RadarSnapshot& radar,
                          const WeaponUseData& execution,
                          FireControlData& data,
-                         ExternalActionQueue& actions,
+                         RadarRequestQueue& radar_requests,
                          StoresCommandQueue& stores_commands)
-    : input_(input),
-      mode_(mode),
-      data_(data),
-      actions_(actions),
-      target_designation_(data.target_designation),
+    : targeting_(mode, radar, data.targeting, radar_requests),
       weapon_operation_(mode, execution, data.weapon, stores_commands)
 {
 }
@@ -26,15 +20,18 @@ void FireControl::handle(const Command& command)
 	switch (command.id)
 	{
 	case CommandId::SetMissileUncage:
+		weapon_operation_.handle(command);
+		targeting_.handle(command);
+		break;
 	case CommandId::SetTmsUp:
 	case CommandId::PressTmsDown:
 	case CommandId::PressTmsLeft:
 	case CommandId::PressTmsRight:
-		handle_target_input(command);
+		targeting_.handle(command);
 		break;
 	case CommandId::SetWeaponRelease:
 		if (Common::command_value_is_pressed(command.value_normalized))
-			reapply_acquisition_mode();
+			targeting_.before_weapon_release();
 		weapon_operation_.handle(command);
 		break;
 	default:
@@ -43,22 +40,9 @@ void FireControl::handle(const Command& command)
 	}
 }
 
-void FireControl::on_operating_mode_selected(const OperatingModeSelected&)
+void FireControl::on_operating_mode_selected(const OperatingModeSelected& event)
 {
-	if (mode_.operating_mode == OperatingMode::Navigation)
-	{
-		data_.acquisition_mode = AirToAirSubmode::None;
-		cancel_target_designation();
-		actions_.append(MissionActionKind::ModeCannon);
-		return;
-	}
-	const bool dogfight = mode_.operating_mode == OperatingMode::Dogfight;
-	if (!dogfight)
-		cancel_target_designation();
-	request_radar_on();
-	apply_acquisition_mode(dogfight ? AirToAirSubmode::Helmet : AirToAirSubmode::BeyondVisualRange);
-	if (dogfight)
-		acquire_target(AcquisitionInput::Pulse);
+	targeting_.on_operating_mode_selected(event);
 }
 
 void FireControl::on_master_arm_selected(const MasterArmSelected& event)
@@ -67,16 +51,10 @@ void FireControl::on_master_arm_selected(const MasterArmSelected& event)
 		weapon_operation_.stop();
 }
 
-void FireControl::step(std::chrono::nanoseconds time, double)
+void FireControl::step(std::chrono::nanoseconds, double)
 {
-	time = (std::max)(time, input_.observed_at);
-	// 讀取 SM 已安排的武器結束結果，先處理目標接續，再推進捕獲計時。
 	if (weapon_operation_.step() == Internal::WeaponOperationEvent::ReleaseInputEnded)
-		cancel_target_designation();
-	if (input_.cockpit.mission_adapter.radar_power_on)
-		radar_on_requested_ = false;
-	if (acquisition_input_.release_due(time, actions_))
-		finish_acquisition_input();
-	target_designation_.observe(input_.cockpit.radar);
+		targeting_.on_weapon_release_ended();
+	targeting_.step();
 }
 }

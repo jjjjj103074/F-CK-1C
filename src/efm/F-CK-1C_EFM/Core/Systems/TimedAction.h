@@ -5,7 +5,7 @@
 #include <chrono>
 #include <optional>
 
-namespace Core::Systems::Mc
+namespace Core::Systems
 {
 /// @brief 從 Lua 確認執行動作起算最短保持時間。
 class TimedAction final

@@ -21,6 +21,10 @@
     <ClInclude Include="$(EfmModuleRoot)Common\Configuration\ConfigurationTools.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\CockpitContracts.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\ExternalActions.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\RadarCommands.h" />
+    <ClInclude Include="$(EfmSystemRoot)\ExternalActionOutbox.h" />
+    <ClInclude Include="$(EfmSystemRoot)\TimedAction.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetry.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetryTypes.h" />
     <ClInclude Include="$(EfmCoreRoot)Diagnostics\ExecutionContext.h" />
@@ -63,6 +67,9 @@
     <ClCompile Include="$(EfmCoreRoot)Simulation\Models\*\*.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ObjectFileName>$(IntDir)SimulationModels\$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('%(FullPath)')))).%(Filename).obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="$(EfmSystemRoot)\ExternalActionOutbox.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="$(EfmCoreRoot)Systems\SystemPipeline.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

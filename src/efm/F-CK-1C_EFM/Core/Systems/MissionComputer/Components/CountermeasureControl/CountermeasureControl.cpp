@@ -4,7 +4,7 @@
 
 namespace Core::Systems::Mc
 {
-CountermeasureControl::CountermeasureControl(const ModeData& mode, ExternalActionQueue& actions)
+CountermeasureControl::CountermeasureControl(const ModeData& mode, ExternalActionOutbox& actions)
     : mode_(mode),
       actions_(actions)
 {

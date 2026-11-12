@@ -75,7 +75,8 @@ bool MissionComputerExporter::write(Parameter parameter, double value, CockpitPa
 	return result.success;
 }
 
-CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::CombatAvionicsSnapshot& snapshot)
+CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::CombatAvionicsSnapshot& snapshot,
+                                                                const Core::MissionActionBatch& batch)
 {
 	CockpitParameterEvents events;
 	if (!snapshot.status.available)
@@ -87,7 +88,6 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	{
 		throw std::overflow_error("MC cockpit generation exhausted its exact numeric range.");
 	}
-	const auto& batch = snapshot.external_actions.batch;
 	if (batch.count > action_slots_.size())
 		throw std::logic_error("Invalid MC action window size.");
 	if (!write(Parameter::Generation, static_cast<double>(++generation_), events))

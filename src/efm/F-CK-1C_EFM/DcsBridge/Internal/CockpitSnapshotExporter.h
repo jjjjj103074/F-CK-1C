@@ -22,7 +22,8 @@ public:
 	CockpitSnapshotExporter& operator=(const CockpitSnapshotExporter&) = delete;
 
 	void reset();
-	CockpitParameterEvents export_snapshot(const Core::CockpitSnapshot& snapshot);
+	CockpitParameterEvents export_snapshot(const Core::CockpitSnapshot& snapshot,
+	                                       const Core::MissionActionBatch& actions = {});
 
 private:
 	enum class Parameter : std::size_t

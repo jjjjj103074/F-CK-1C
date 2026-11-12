@@ -1,3 +1,4 @@
+#include "ExternalActionTestSupport.h"
 #include "TestHarness.h"
 
 #include "Core/Systems/MissionComputer/Components/StoresManagement/StoresManagement.h"
@@ -12,6 +13,7 @@
 namespace
 {
 using namespace Core;
+using namespace Core::Systems;
 using namespace Core::Systems::Mc;
 using namespace std::chrono;
 
@@ -20,7 +22,7 @@ struct Fixture
 	MissionInputs input;
 	StoresData stores;
 	StoresEvents events;
-	ExternalActionQueue actions;
+	ExternalActionOutbox actions;
 	StoresCommandQueue commands{ actions };
 	StoresManagement manager{ input, stores, events, commands, actions };
 
@@ -479,7 +481,7 @@ void test_navigation_completes_replaced_clear_requests(Tests::Context& context)
 		f.select(OperatingMode::Navigation);
 		f.step(milliseconds(1100));
 		const auto replacement = f.stores.selection.request_revision;
-		const auto batch = f.actions.batch();
+		const auto batch = Tests::pending_actions(f.actions);
 		TEST_EXPECT(context, replacement == canceled_revision + 1);
 		TEST_EXPECT(context, f.stores.selection.pending());
 		TEST_EXPECT(context, batch.count >= 2);
@@ -493,7 +495,7 @@ void test_navigation_completes_replaced_clear_requests(Tests::Context& context)
 		f.step(milliseconds(1200));
 		TEST_EXPECT(context, !f.stores.selection.pending());
 		TEST_EXPECT(context, f.stores.selection.acknowledged_revision == replacement);
-		TEST_EXPECT(context, f.actions.batch().count == 0);
+		TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 		f.step(milliseconds(1250));
 		TEST_EXPECT(context, f.stores.selection.request_revision == replacement);
 	}
@@ -566,7 +568,7 @@ void test_weapon_cancel_preserves_selection_and_execution_receipts(Tests::Contex
 	f.step(milliseconds(1050));
 	const auto cancel = f.commands.submit(CancelWeaponStarts{});
 	f.step(milliseconds(1100));
-	auto batch = f.actions.batch();
+	auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 4);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
 	for (std::size_t i = 1; i < batch.count; ++i)
@@ -604,7 +606,7 @@ void test_weapon_cancel_bypasses_inventory_wait_and_keeps_later_starts(Tests::Co
 	const auto cancel = f.commands.submit(CancelWeaponStarts{});
 	const auto later = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
 	f.step(milliseconds(1200));
-	auto batch = f.actions.batch();
+	auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, f.commands.acknowledged(cancel));
 	TEST_EXPECT(context, batch.count == 2);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
@@ -614,7 +616,7 @@ void test_weapon_cancel_bypasses_inventory_wait_and_keeps_later_starts(Tests::Co
 	TEST_EXPECT(context, !f.commands.acknowledged(later));
 	f.observe(6);
 	f.step(milliseconds(1300));
-	batch = f.actions.batch();
+	batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 4);
 	TEST_EXPECT(context, batch.actions[2].kind == MissionActionKind::SelectStation);
 	TEST_EXPECT(context, batch.actions[3].kind == MissionActionKind::PickleOn);
@@ -647,7 +649,7 @@ void test_cancel_selection_completes_wait_and_keeps_later_requests(Tests::Contex
 			observation.status = { false, 4, ObservationInvalidReason::StationApiError };
 		const auto cancel = f.commands.submit(CancelStoresCommands{});
 		f.step(milliseconds(1100));
-		auto batch = f.actions.batch();
+		auto batch = Tests::pending_actions(f.actions);
 		TEST_EXPECT(context, f.commands.acknowledged(cancel));
 		TEST_EXPECT(context, !f.stores.selection.pending());
 		TEST_EXPECT(context, f.stores.selection.request_revision == canceled);
@@ -667,7 +669,7 @@ void test_cancel_selection_completes_wait_and_keeps_later_requests(Tests::Contex
 		f.step(milliseconds(1200));
 		TEST_EXPECT(context, !f.stores.selection.pending());
 		TEST_EXPECT(context, f.stores.selection.request_revision == canceled);
-		TEST_EXPECT(context, f.actions.batch().count == 0);
+		TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 		f.select(OperatingMode::Dogfight);
 		f.step(milliseconds(1250));
 		const auto next = f.stores.selection.request_revision;
@@ -727,7 +729,7 @@ void test_selection_cancel_preserves_real_acknowledgements(Tests::Context& conte
 
 void test_command_queue_consumer_keeps_fifo_and_execution_receipts(Tests::Context& context)
 {
-	ExternalActionQueue actions;
+	ExternalActionOutbox actions;
 	StoresCommandQueue commands(actions);
 	const StoresCommand requests[] = { SelectStoresForMode{ OperatingMode::Dogfight, true },
 		                               CancelStoresCommands{},
@@ -747,7 +749,7 @@ void test_command_queue_consumer_keeps_fifo_and_execution_receipts(Tests::Contex
 		TEST_EXPECT(context, !commands.acknowledged(entry->ticket));
 	}
 	TEST_EXPECT(context, !commands.take_next());
-	TEST_EXPECT(context, actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(actions).count == 0);
 	commands.resolve(mode, 0);
 	commands.resolve(cancel, 0);
 	TEST_EXPECT(context, commands.acknowledged(mode));
@@ -755,7 +757,7 @@ void test_command_queue_consumer_keeps_fifo_and_execution_receipts(Tests::Contex
 	const auto execution = actions.append(MissionActionKind::GunOff);
 	commands.resolve(stop, execution);
 	TEST_EXPECT(context, !commands.acknowledged(stop));
-	const auto batch = actions.batch();
+	const auto batch = Tests::pending_actions(actions);
 	actions.acknowledge(batch.first_sequence + batch.count - 1);
 	TEST_EXPECT(context, !commands.take_next());
 	TEST_EXPECT(context, commands.acknowledged(stop));
@@ -778,9 +780,9 @@ void test_command_gateway_preserves_interleaved_order_and_payloads(Tests::Contex
 	const auto next = f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
 	const auto fire_b = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
 	TEST_EXPECT(context, first < fire_a && fire_a < next && next < fire_b && radar != 0);
-	TEST_EXPECT(context, f.actions.batch().count == 1);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 1);
 	f.step(seconds(1));
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 5);
 	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::SelectStation);
 	TEST_EXPECT(context, batch.actions[1].station == 2 && batch.actions[1].selection_revision == 1);
@@ -804,13 +806,13 @@ void test_command_gateway_cancels_waiting_starts_and_preserves_stops(Tests::Cont
 	f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
 	f.step(seconds(1));
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
 	f.commands.submit(CancelStoresCommands{});
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
 	f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation, false });
 	f.step(milliseconds(1100));
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 1);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::PickleOff);
 	TEST_EXPECT(context, !f.stores.selection.awaiting_inventory);
@@ -832,15 +834,15 @@ void test_command_gateway_cancels_previously_published_starts(Tests::Context& co
 	Fixture f;
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOn });
 	f.step(seconds(1));
-	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOn);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).actions[0].kind == MissionActionKind::GunOn);
 	f.commands.submit(CancelStoresCommands{});
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOff });
 	f.step(milliseconds(1100));
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::None);
 	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::GunOff);
 	f.actions.acknowledge(batch.first_sequence + batch.count - 1);
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 }
 
 void test_waiting_mode_command_keeps_selection_revisions_in_order(Tests::Context& context)
@@ -863,7 +865,7 @@ void test_waiting_mode_command_keeps_selection_revisions_in_order(Tests::Context
 	f.observe(6);
 	f.input.cockpit.weapon_stations.stations[2].count = 0;
 	f.step(milliseconds(1200));
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 3);
 	TEST_EXPECT(context, batch.actions[0].station == 2 && batch.actions[0].selection_revision == 1);
 	TEST_EXPECT(context, batch.actions[1].station == 8 && batch.actions[1].selection_revision == 2);
@@ -876,10 +878,10 @@ void test_plain_stop_precedes_selection_retry(Tests::Context& context)
 	f.select(OperatingMode::MissileOverride);
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
 	f.step(seconds(1));
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	const auto stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
 	f.step(milliseconds(1100));
-	auto batch = f.actions.batch();
+	auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 1);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::PickleOff);
 	TEST_EXPECT(context, !f.commands.acknowledged(stop));
@@ -894,7 +896,7 @@ void test_plain_stop_precedes_selection_retry(Tests::Context& context)
 		                                            WeaponRole::AirToAir,
 		                                            "aa" };
 	f.step(milliseconds(1200));
-	batch = f.actions.batch();
+	batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 1 && batch.first_sequence > stopped_through);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
 	TEST_EXPECT(context, batch.actions[0].station == 8);
@@ -917,7 +919,7 @@ void test_stop_cancels_published_selection_before_reasserting_it(Tests::Context&
 	TEST_EXPECT(context, f.stores.selection.requested_station == 8);
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOff });
 	f.step(milliseconds(1200));
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::None);
 	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::None);
 	const std::size_t offset = 2;
@@ -935,7 +937,7 @@ void test_stop_preserves_commands_submitted_after_it(Tests::Context& context)
 	f.select(OperatingMode::MissileOverride);
 	const auto launch = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
 	f.step(seconds(1));
-	auto batch = f.actions.batch();
+	auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 1);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::GunOff);
 	TEST_EXPECT(context, !f.commands.acknowledged(stop));
@@ -948,7 +950,7 @@ void test_stop_preserves_commands_submitted_after_it(Tests::Context& context)
 		                                            WeaponRole::AirToAir,
 		                                            "aa" };
 	f.step(milliseconds(1100));
-	batch = f.actions.batch();
+	batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 3);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
 	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::SelectStation);
@@ -986,7 +988,7 @@ void test_stop_submitted_during_notification_keeps_its_retry(Tests::Context& con
 		    stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOff });
 	    });
 	f.select(OperatingMode::Dogfight);
-	auto batch = f.actions.batch();
+	auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, submitted);
 	TEST_EXPECT(context, batch.count == 1);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::SelectStation);
@@ -995,7 +997,7 @@ void test_stop_submitted_during_notification_keeps_its_retry(Tests::Context& con
 	f.input.cockpit.weapon_stations.selected_station = 8;
 	f.input.cockpit.weapon_stations.selection_ack_revision = initial_revision;
 	f.step(milliseconds(1100));
-	batch = f.actions.batch();
+	batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 2);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::GunOff);
 	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::SelectStation);
@@ -1013,7 +1015,7 @@ void test_store_receipts_track_execution_and_survive_retirement(Tests::Context& 
 	const auto ticket = f.commands.submit(StoresWeaponAction{ MissionActionKind::GunOn });
 	TEST_EXPECT(context, !f.commands.acknowledged(ticket));
 	f.step(seconds(1));
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 2);
 	f.actions.acknowledge(radar);
 	TEST_EXPECT(context, !f.commands.acknowledged(ticket));
@@ -1036,7 +1038,7 @@ void test_submission_notification_keeps_stop_before_following_control_release(Te
 	const auto stop = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
 	f.actions.append(MissionActionKind::LockFinish);
 	f.actions.append(MissionActionKind::ChangeLockUp);
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 3);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::PickleOff);
 	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::LockFinish);
@@ -1059,7 +1061,7 @@ void test_weapon_use_waits_for_ack_and_observed_hold(Tests::Context& context)
 		f.commands.submit(EndWeaponUse{ { kind, use } });
 		f.step(seconds(1));
 		const auto& state = kind == WeaponUseKind::Gun ? f.stores.weapon_use.gun : f.stores.weapon_use.release;
-		const auto start = f.actions.batch();
+		const auto start = Tests::pending_actions(f.actions);
 		TEST_EXPECT(context, state.request_id == use && state.phase == WeaponUsePhase::StartPending);
 		TEST_EXPECT(context, start.count == (kind == WeaponUseKind::Gun ? 1 : 2));
 		TEST_EXPECT(context, !f.commands.acknowledged(use));
@@ -1071,18 +1073,18 @@ void test_weapon_use_waits_for_ack_and_observed_hold(Tests::Context& context)
 		f.input.observed_at = seconds(5);
 		f.manager.step(seconds(3), 0.03125);
 		TEST_EXPECT(context, state.phase == WeaponUsePhase::StartAcknowledged);
-		TEST_EXPECT(context, f.actions.batch().count == 0);
+		TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 		f.step(milliseconds(5079));
 		TEST_EXPECT(context, state.phase == WeaponUsePhase::StartAcknowledged);
 		f.step(milliseconds(5080));
-		const auto stop = f.actions.batch();
+		const auto stop = Tests::pending_actions(f.actions);
 		TEST_EXPECT(context, state.phase == WeaponUsePhase::StopScheduled);
 		TEST_EXPECT(context, stop.count == 1);
 		TEST_EXPECT(context,
 		            stop.actions[0].kind ==
 		                (kind == WeaponUseKind::Gun ? MissionActionKind::GunOff : MissionActionKind::PickleOff));
 		f.step(seconds(6));
-		TEST_EXPECT(context, f.actions.batch().count == 1);
+		TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 1);
 	}
 }
 
@@ -1094,7 +1096,7 @@ void test_repeated_use_keeps_new_ack_and_ignores_old_end(Tests::Context& context
 	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, first } });
 	const auto second = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 	f.step(seconds(1));
-	const auto starts = f.actions.batch();
+	const auto starts = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, starts.count == 2);
 	f.actions.acknowledge(starts.first_sequence);
 	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, first } });
@@ -1105,11 +1107,11 @@ void test_repeated_use_keeps_new_ack_and_ignores_old_end(Tests::Context& context
 	f.step(milliseconds(1200));
 	f.step(milliseconds(1400));
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StartAcknowledged);
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, second } });
 	f.step(milliseconds(1500));
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StopScheduled);
-	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).actions[0].kind == MissionActionKind::GunOff);
 }
 
 void test_unavailable_start_preserves_accepted_use_and_needs_new_input(Tests::Context& context)
@@ -1118,7 +1120,7 @@ void test_unavailable_start_preserves_accepted_use_and_needs_new_input(Tests::Co
 	f.input.cockpit.mission_adapter.available = true;
 	const auto first = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 	f.step(seconds(1));
-	const auto start = f.actions.batch();
+	const auto start = Tests::pending_actions(f.actions);
 	f.actions.acknowledge(start.first_sequence);
 	f.step(milliseconds(1100));
 	f.input.cockpit.mission_adapter.available = false;
@@ -1128,15 +1130,15 @@ void test_unavailable_start_preserves_accepted_use_and_needs_new_input(Tests::Co
 	TEST_EXPECT(context, state.request_id == first && state.phase == WeaponUsePhase::StartAcknowledged);
 	TEST_EXPECT(context, state.rejected_request_id == rejected);
 	TEST_EXPECT(context, f.commands.acknowledged(rejected));
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, first } });
 	f.step(milliseconds(1300));
 	TEST_EXPECT(context, state.phase == WeaponUsePhase::StopScheduled);
-	const auto stop = f.actions.batch();
+	const auto stop = Tests::pending_actions(f.actions);
 	f.actions.acknowledge(stop.first_sequence);
 	f.input.cockpit.mission_adapter.available = true;
 	f.step(milliseconds(1400));
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	TEST_EXPECT(context, state.phase == WeaponUsePhase::StopScheduled);
 	const auto next = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 	f.step(milliseconds(1500));
@@ -1153,7 +1155,7 @@ void test_abort_keeps_later_use_and_its_minimum_hold(Tests::Context& context)
 	const auto second = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, second } });
 	f.step(seconds(1));
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 2);
 	TEST_EXPECT(context, batch.actions[0].kind == MissionActionKind::GunOff);
 	TEST_EXPECT(context, batch.actions[1].kind == MissionActionKind::GunOn);
@@ -1163,10 +1165,10 @@ void test_abort_keeps_later_use_and_its_minimum_hold(Tests::Context& context)
 	f.step(milliseconds(1100));
 	f.step(milliseconds(1179));
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StartAcknowledged);
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	f.step(milliseconds(1180));
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StopScheduled);
-	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).actions[0].kind == MissionActionKind::GunOff);
 }
 
 void test_abort_stops_both_channels_before_following_actions(Tests::Context& context)
@@ -1180,12 +1182,12 @@ void test_abort_stops_both_channels_before_following_actions(Tests::Context& con
 	    });
 	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Normal });
-	const auto start = f.actions.batch();
+	const auto start = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, start.count == 2);
 	TEST_EXPECT(context, start.actions[1].kind == MissionActionKind::PickleOn);
 	f.commands.submit(AbortWeaponUse{});
 	f.actions.append(MissionActionKind::AbortCms);
-	const auto stop = f.actions.batch();
+	const auto stop = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
 	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
 	TEST_EXPECT(context, stop.count == 5);
@@ -1195,7 +1197,7 @@ void test_abort_stops_both_channels_before_following_actions(Tests::Context& con
 	f.actions.acknowledge(stop.first_sequence + stop.count - 1);
 	f.step(seconds(5));
 	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 }
 
 void test_navigation_cancels_pending_use_and_preserves_acknowledged_use(Tests::Context& context)
@@ -1206,7 +1208,7 @@ void test_navigation_cancels_pending_use_and_preserves_acknowledged_use(Tests::C
 		f.input.cockpit.mission_adapter.available = true;
 		f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 		f.step(seconds(1));
-		const auto start = f.actions.batch();
+		const auto start = Tests::pending_actions(f.actions);
 		if (acknowledged)
 			f.actions.acknowledge(start.first_sequence + start.count - 1);
 		f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation });
@@ -1231,14 +1233,14 @@ void test_use_abort_bypasses_inventory_wait_and_preserves_later_start(Tests::Con
 	f.commands.submit(AbortWeaponUse{});
 	f.manager.dispatch();
 	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
-	const auto stop = f.actions.batch();
+	const auto stop = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, stop.count == 1 && stop.actions[0].kind == MissionActionKind::PickleOff);
 	const auto next = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Normal });
 	f.manager.dispatch();
 	TEST_EXPECT(context, f.stores.weapon_use.release.request_id == next);
 	f.observe(4);
 	f.step(milliseconds(1100));
-	const auto recovered = f.actions.batch();
+	const auto recovered = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, recovered.count == 3);
 	TEST_EXPECT(context, recovered.actions[0].kind == MissionActionKind::PickleOff);
 	TEST_EXPECT(context, recovered.actions[1].kind == MissionActionKind::SelectStation);
@@ -1252,14 +1254,14 @@ void test_canceled_start_retains_the_required_stop_on_abort(Tests::Context& cont
 	f.input.cockpit.mission_adapter.available = true;
 	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 	f.step(seconds(1));
-	f.actions.batch();
+	Tests::pending_actions(f.actions);
 	f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation });
 	f.step(milliseconds(1100));
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
 	f.commands.submit(AbortWeaponUse{});
 	f.commands.submit(AbortWeaponUse{});
 	f.manager.dispatch();
-	const auto batch = f.actions.batch();
+	const auto batch = Tests::pending_actions(f.actions);
 	const auto stops = std::count_if(batch.actions.begin(),
 	                                 batch.actions.begin() + batch.count,
 	                                 [](const MissionAction& action)
@@ -1276,20 +1278,20 @@ void test_canceled_use_keeps_normal_cleanup_and_cancellation_result(Tests::Conte
 	f.input.cockpit.mission_adapter.available = true;
 	const auto use = f.commands.submit(BeginWeaponUse{ WeaponUseKind::Gun });
 	f.step(seconds(1));
-	f.actions.batch();
+	Tests::pending_actions(f.actions);
 	f.commands.submit(CancelWeaponStarts{});
 	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, use } });
 	f.step(milliseconds(1100));
-	const auto canceled = f.actions.batch();
+	const auto canceled = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
 	TEST_EXPECT(context, canceled.count == 1 && canceled.actions[0].kind == MissionActionKind::None);
 	f.actions.acknowledge(canceled.first_sequence);
 	f.step(milliseconds(1200));
 	f.step(milliseconds(1279));
-	TEST_EXPECT(context, f.actions.batch().count == 0);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	f.step(milliseconds(1280));
-	TEST_EXPECT(context, f.actions.batch().count == 1);
-	TEST_EXPECT(context, f.actions.batch().actions[0].kind == MissionActionKind::GunOff);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 1);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).actions[0].kind == MissionActionKind::GunOff);
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
 }
 
@@ -1301,16 +1303,16 @@ void test_gun_and_release_keep_independent_use_progress(Tests::Context& context)
 	f.commands.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Override });
 	f.commands.submit(EndWeaponUse{ { WeaponUseKind::Gun, gun } });
 	f.step(seconds(1));
-	const auto starts = f.actions.batch();
+	const auto starts = Tests::pending_actions(f.actions);
 	f.actions.acknowledge(starts.first_sequence + starts.count - 1);
 	f.step(milliseconds(1100));
 	f.step(milliseconds(1180));
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::StopScheduled);
 	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::StartAcknowledged);
-	TEST_EXPECT(context, f.actions.batch().count == 1);
+	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 1);
 	f.commands.submit(AbortWeaponUse{});
 	f.manager.dispatch();
-	const auto stops = f.actions.batch();
+	const auto stops = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, stops.count == 2);
 	TEST_EXPECT(context, stops.actions[0].kind == MissionActionKind::GunOff);
 	TEST_EXPECT(context, stops.actions[1].kind == MissionActionKind::PickleOff);

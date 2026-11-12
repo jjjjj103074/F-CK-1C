@@ -16,10 +16,11 @@ MissionComputer : System [32 Hz]
 │   ├── InputOutputData
 │   ├── SystemStatusTables
 │   ├── MissionData (ModeData / FireControlData)
-│   │   └── FireControlData.target_designation / acquisition_mode / weapon
+│   │   └── FireControlData.targeting / weapon
 │   ├── StoresData（逐掛點庫存、彈量、選站、IR 觀測與武器執行結果）
-│   └── ExternalActionQueue
+│   └── ExternalActionOutbox（功能端操作與回覆）
 ├── StoresCommandQueue（SM 的單一指令入口）
+├── RadarRequestQueue（Targeting 的雷達要求入口）
 ├── ModeEvents / StoresEvents（MC 專用同步事件通道）
 └── Components/
     ├── ModeManagement
@@ -28,7 +29,7 @@ MissionComputer : System [32 Hz]
     │   └── Internal/（ObservationProcessing、StationSelection、WeaponExecution）
     ├── FireControl
     │   └── Internal/
-    │       ├── TargetDesignation
+    │       ├── Targeting
     │       └── WeaponOperation
     ├── Executive
     ├── StartupAndRestart
@@ -51,11 +52,12 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 | SystemMonitor | 健康監控預留入口，目前無功能 |
 | FailureManager | 故障處置預留入口，目前無功能 |
 
-FireControl 解讀 TMS 與操作模式，安排雷達與捕獲輸入；TargetDesignation 保存指定意圖及雷達追蹤結果。
+FireControl 分派操作；Targeting 解讀 TMS 與操作模式，規劃捕獲策略並保存指定意圖與雷達追蹤結果。
+與 MC 並列的 [RadarSystem](../RadarSystem/README.md) 透過 Pipeline 接受要求、推進設備操作與發布觀測。
 WeaponOperation 保存解籠與扳機／投放資格，提交使用意圖並讀取 SM 執行結果，供 FC 安排目標接續。
 模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
 StoresManagement 統一負責庫存、選站、武器輸入保持與執行確認，並保存全域武器介面的 IR 來源觀測。
-火控只持有唯讀 WeaponUseData；目標指定只接收明確要求與雷達觀測。
+WeaponOperation 只讀 WeaponUseData；Targeting 讀取模式與 RadarSnapshot，透過 RadarRequestQueue 提出要求。
 雷達模型、DCS API 及操作映射由外部介面提供；HMCS 與音效 Lua 使用完成快照決定呈現。
 
 ## 資料所有權
@@ -68,11 +70,12 @@ StoresManagement 統一負責庫存、選站、武器輸入保持與執行確認
 | ModeData | ModeManagement | 火控、反制及輸出投影（唯讀） |
 | StoresData | StoresManagement | 火控及輸出投影 |
 | StoresData.weapon_use | SM 的 WeaponExecution | WeaponOperation 唯讀執行階段及取消／拒絕結果 |
-| FireControlData.target_designation | TargetDesignation | 輸出投影 |
-| FireControlData.acquisition_mode | FireControl | 輸出投影 |
+| FireControlData.targeting | Targeting | 輸出投影 |
 | FireControlData.weapon | WeaponOperation | 射擊狀態輸出與診斷 |
 | StoresData.ir_seeker | StoresManagement | 輸出投影；HMCS 與音效 Lua 的來源觀測 |
-| ExternalActionQueue | 任務元件追加動作；MC 確認及取得視窗 | 操作程序查詢已執行序號 |
+| ExternalActionOutbox | 任務元件提出操作；MC 接收生產端回覆 | DcsBridge 合併傳送；SM 查詢要求完成 |
+| RadarRequests | Targeting 提出，MC 發布 | RadarSystem |
+| RadarSnapshot | RadarSystem | MC／Targeting、DcsBridge |
 | ExecutiveTables | Executive | 排程診斷 |
 | SystemStatusTables | 各基礎元件的指定分區 | 預留 |
 
@@ -89,8 +92,8 @@ DCS 觀測／駕駛操作 → Bridge／SystemPipeline → MC
   → AircraftData → AircraftSimulation 座艙快照 → MissionComputerExporter
   → 同一 generation 的座艙參數 → HMCS 顯示規則 → HMCS 繪圖頁
 
-MC 核准的語意動作 → ExternalActionQueue → Bridge
-  → mc_io.lua → cms_system.lua → DCS → ACK → MC
+MC／RadarSystem 的操作要求 → Pipeline 完成快照 → DcsBridge ExternalActionTransport
+  → mc_io.lua → cms_system.lua → DCS → ACK → 生產端回覆 → FrameInput／Pipeline
 
 MC 選站要求 → weapon_system.lua → DCS SDK → 選站確認 → MC
 ```
@@ -105,9 +108,10 @@ HMCS_WEAPON_CLASS／HMCS_WEAPON_QTY 由 hmcs_system.lua 單獨寫入，數量只
 
 週期順序為 StoresManagement → FireControl → SystemMonitor → FailureManager。
 MC 在操縱命令前準備 SM 觀測；SM 先推進武器執行與保持，再由火控讀取結果，最後派送後續指令；指令入口以 SM 編號追蹤各筆要求及其外部動作確認，掛載等待保留在 SM 內。
-FireControl 內依武器執行結果與目標接續 → 捕獲輸入計時 → 雷達目標觀測。
+FireControl 內依武器執行結果通知 Targeting，再整理 RadarSnapshot 的目標觀測。
+捕獲輸入計時由 RadarSystem 執行；新要求在後續 Pipeline tick 由雷達處理。
 ModeManagement 是事件入口。外層保持命令 FIFO、32 Hz 及 80 ms 最短保持；每秒自動重送捕獲已移除。
-保持時間仍從 MC 觀測到 Lua ACK 的當前輸入時間起算，補跑不回填新的操作／ACK。
+SM 與 RadarSystem 的保持從首次觀測到生產端執行確認的 input_time 起算，補跑沿用當前觀測時間。
 Master OFF/SIM 立即追加停止與 CMS 中止要求；NAV 不新增強制停止規則。
 NAV/DGFT/MSL 與 Master ON/OFF/SIM 各自選擇；保險切換保留目前模式，模式切換保留目前保險。
 
@@ -121,7 +125,7 @@ Bridge 在奇數 generation 寫入，完整成功後提交偶數；HMCS 拒絕�
 DcsBridge 讀取 IR lock、要求方向及目標方向，SM 將當前來源觀測存入 StoresData.ir_seeker，
 再隨 CombatAvionicsSnapshot.stores 發布。可用性、來源版本與失效原因一併保存。
 此資料代表全域武器介面，掛點庫存、所選掛點與該觀測各自保存。
-目標距離由 TargetDesignation 的雷達觀測提供；武器解籠意圖保存在 FireControlData.weapon。
+目標距離由 Targeting 整理 RadarSystem 的觀測提供；武器解籠意圖保存在 FireControlData.weapon。
 
 HMCS 依有效 lock、模式及操作意圖決定武器呈現；音效 Lua 依有效 lock 選擇並維持鎖定音。
 原型的接觸、備便、尋標狀態及雷達／操作意圖鎖定推導已移除。
@@ -145,7 +149,7 @@ HMCS 依有效 lock、模式及操作意圖決定武器呈現；音效 Lua 依�
 MC 持有自己的 `ModeEvents`，由 ModeManagement 同步發布
 `MasterArmSelected`／`OperatingModeSelected`，組裝時集中登記訂閱。
 事件含當次選擇前後的 ModeData 副本；重複選擇也通知，不因數值相同而省略。
-ModeManagement 不再依賴 FireControl 或 ExternalActionQueue。
+ModeManagement 透過 ModeData 及 ModeEvents 提供模式與通知。
 
 Master OFF/SIM 先同步通知火控停止，再通知反制中止；目標指定與所選模式保持。
 火控與反制使用不同 sigslot group 保證順序；同 group 的順序不作假設。
@@ -162,6 +166,12 @@ ModeEvents 先於使用者建立；scoped_connection 最後宣告，先於接收
 單一 System、具型別資料、固定參照及單一 Executive 與 DFLCC 一致。
 這次調整的是 MC 的任務職責，沒有改動 DFLCC，也不要求它新增對應任務元件。
 不新增冷啟動、電源或故障備援；NAV/A-A/A-G、超控恢復及實際火控解算留待後續。
+
+## Targeting 與 RadarSystem
+
+Targeting 與 RadarSystem 依 RadarRequests／RadarSnapshot 透過 AircraftData 交換資料。
+DcsBridge 將各生產端要求對應到共用 DCS 序號，維持 16 項視窗與成功前綴確認。
+本輪架構、序號及來源驗證見 [跨 System 說明](../../../../../../docs/RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
 
 ## 驗證
 

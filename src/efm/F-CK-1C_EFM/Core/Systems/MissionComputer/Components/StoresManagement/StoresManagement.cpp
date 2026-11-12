@@ -10,7 +10,7 @@ StoresManagement::StoresManagement(const MissionInputs& input,
                                    StoresData& stores,
                                    StoresEvents& events,
                                    StoresCommandQueue& commands,
-                                   ExternalActionQueue& actions)
+                                   ExternalActionOutbox& actions)
     : input_(input),
       stores_(stores),
       events_(events),
@@ -78,6 +78,11 @@ void StoresManagement::cancel_pending_commands()
 
 void StoresManagement::cancel_pending_weapon_starts()
 {
+	actions_.cancel_pending(
+	    [](const MissionAction& action)
+	    {
+		    return is_weapon_start(action.kind);
+	    });
 	gun_execution_.cancel_pending();
 	release_execution_.cancel_pending();
 	for (auto& entry : pending_commands_)
@@ -90,7 +95,11 @@ void StoresManagement::cancel_pending_weapon_starts()
 
 void StoresManagement::cancel_dispatched_commands()
 {
-	actions_.cancel_stores_commands();
+	actions_.cancel_pending(
+	    [](const MissionAction& action)
+	    {
+		    return is_weapon_start(action.kind) || action.kind == MissionActionKind::SelectStation;
+	    });
 	selection_changed_ = selection_.cancel_pending() || selection_changed_;
 }
 
@@ -114,7 +123,6 @@ void StoresManagement::accept_commands()
 		if (std::holds_alternative<CancelWeaponStarts>(entry->command))
 		{
 			cancel_pending_weapon_starts();
-			actions_.cancel_weapon_starts();
 			commands_.resolve(entry->ticket, 0);
 			continue;
 		}
@@ -131,7 +139,8 @@ void StoresManagement::accept_commands()
 void StoresManagement::schedule_command(PendingCommand entry)
 {
 	const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command);
-	if (weapon && is_weapon_stop(weapon->action) && (has_pending_mode() || actions_.has_pending_selection()))
+	if (weapon && is_weapon_stop(weapon->action) &&
+	    (has_pending_mode() || actions_.contains(MissionActionKind::SelectStation)))
 	{
 		// 撤回等待選站的前綴，先停止，再依最新模式重新確認掛點。
 		cancel_pending_commands();

@@ -203,3 +203,9 @@ quantities and availability flow through the MC snapshot to HMCS.
 The [DCS API guide](../../../../docs/DCS_API_GUIDE.zh-TW.md) records the supported
 profile, call contract and DCS runtime evidence. Native tests cover invalid profiles,
 zero, rearm, failure isolation, flight reset and MC delivery.
+
+## Ordered DCS actions
+
+ExternalActionTransport owns shared wire sequences, the 16-action window and Lua execution acknowledgements. MC and RadarSystem publish producer-local operation requests through completed Pipeline snapshots. The bridge maps successful wire prefixes back into ExternalActionFeedback in FrameInput; source requests retain their own identifiers.
+
+Radar operation placeholders preserve the order of MC mode/weapon actions until RadarSystem supplies their expansion. The cockpit exporter receives the bridge-owned action window explicitly. See [the architecture guide](../../../../docs/RADAR_TARGETING_ARCHITECTURE.zh-TW.md).

@@ -21,7 +21,7 @@ public:
 	                 StoresData& stores,
 	                 StoresEvents& events,
 	                 StoresCommandQueue& commands,
-	                 ExternalActionQueue& actions);
+	                 ExternalActionOutbox& actions);
 	StoresManagement(const StoresManagement&) = delete;
 	StoresManagement& operator=(const StoresManagement&) = delete;
 	StoresManagement(StoresManagement&&) = delete;
@@ -68,7 +68,7 @@ private:
 	StoresData& stores_;
 	StoresEvents& events_;
 	StoresCommandQueue& commands_;
-	ExternalActionQueue& actions_;
+	ExternalActionOutbox& actions_;
 	OperatingMode latest_mode_ = OperatingMode::Navigation;
 	std::deque<PendingCommand> pending_commands_;
 	Internal::StationSelection selection_;

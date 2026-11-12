@@ -1,4 +1,4 @@
--- Preserve the existing constant-on DCS radar adapter. MC owns seeker/tone decisions.
+-- Publish the existing constant-on DCS radar power observation.
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 make_default_activity(0.02)
 local radar_state = get_param_handle(cockpit_params.RadarState)

@@ -17,8 +17,12 @@ struct ModeData
 	}
 };
 
-/// @brief 由目標指定模組寫入，供武器使用與快照發布讀取。
-using TargetDesignationData = TargetDesignationSnapshot;
+/// @brief Targeting 唯一寫入的目標取得策略及指定資料。
+struct TargetingData
+{
+	TargetAcquisitionMode acquisition_mode = TargetAcquisitionMode::None;
+	TargetDesignationSnapshot designation;
+};
 
 struct WeaponOperationData
 {
@@ -31,8 +35,7 @@ struct WeaponOperationData
 /// @brief FireControl 及其內部模組唯一寫入；外部功能只讀指定分區。
 struct FireControlData
 {
-	AirToAirSubmode acquisition_mode = AirToAirSubmode::None; ///< FC 選擇的捕獲操作方式。
-	TargetDesignationData target_designation;
+	TargetingData targeting;
 	WeaponOperationData weapon;
 };
 

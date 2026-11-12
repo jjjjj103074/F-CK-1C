@@ -20,7 +20,7 @@ constexpr double kPositionOffset = 20.0;
 constexpr double kTolerance = 1e-12;
 constexpr double kFullIntegrity = 1.0;
 constexpr int kFirstCall = 0;
-constexpr std::size_t kCurrentCatalogSize = 10;
+constexpr std::size_t kCurrentCatalogSize = 11;
 constexpr std::uint32_t kInvalidUpdateRateHz = 0;
 constexpr SystemScheduledTime kZeroUpdatePeriod = {};
 constexpr SystemScheduledTime kNegativeUpdatePeriod = std::chrono::nanoseconds(-1);
@@ -415,6 +415,8 @@ void test_each_system_data_type_can_be_published(Tests::Context& context)
 	expect_optional_publication(context, AircraftDataKeys::kAutomaticFlightControlSnapshot);
 	expect_optional_publication(context, AircraftDataKeys::kPropulsionTestIntent);
 	expect_optional_publication(context, AircraftDataKeys::kMissionComputerSnapshot);
+	expect_optional_publication(context, AircraftDataKeys::kRadarRequests);
+	expect_optional_publication(context, AircraftDataKeys::kRadarSnapshot);
 }
 
 void test_snapshot_copies_retain_values_after_commit(Tests::Context& context)

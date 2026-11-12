@@ -135,6 +135,11 @@ CockpitSnapshotExporter& BridgeContext::cockpit_snapshot_exporter()
 	return cockpit_snapshot_exporter_;
 }
 
+ExternalActionTransport& BridgeContext::action_transport()
+{
+	return action_transport_;
+}
+
 CockpitBridge& BridgeContext::cockpit_bridge()
 {
 	return cockpit_bridge_;
@@ -173,6 +178,7 @@ Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
 	output_store_.mark_released();
 	param_exporter_.reset();
 	cockpit_snapshot_exporter_.reset();
+	action_transport_.reset();
 	carrier_bridge_.reset();
 	event_reporter_.log_cockpit_parameter_events(debug_indicator_exporter_.begin_flight());
 	debug_telemetry_hub_.begin_flight();

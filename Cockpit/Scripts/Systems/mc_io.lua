@@ -1,4 +1,4 @@
--- Numeric transport only. Mission decisions and operation ordering belong to MC.
+-- Numeric DCS transport. Systems own operation decisions; DcsBridge owns delivery order and ACK mapping.
 -- MissionActionKind values are defined in Core/Contracts/MissionActions.h.
 local M = {}
 

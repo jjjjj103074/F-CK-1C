@@ -171,3 +171,11 @@ CockpitBridge 以來源目錄中的 IrLock、IrDesiredAzimuth／Elevation、IrTa
 全零數值是有效樣本；availability 表達讀取結果，與 locked 分別使用。
 WS_TARGET_RANGE 已自 IR 讀取群組移除，距離資訊由目標／雷達觀測提供。
 資料流與已移除推導見 [IR 觀測整理報告](IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
+
+## 雷達與共用操作傳輸
+
+雷達原生觀測由 CockpitBridge 轉譯至 FrameInput，再由 RadarSystem 經 SystemPipeline 發布。Targeting 依 RadarSnapshot 規劃目標操作。
+
+Lua 的 OBS_MC_ACKNOWLEDGED_SEQUENCE 保留既有參數名稱，現在表示 DcsBridge 共用 DCS 視窗的傳送確認；Core 功能取得 ExternalActionFeedback 的各生產端編號。ACK 表示呼叫已執行，STT 及 IR 鎖定仍由來源觀測提供。
+
+詳見 [Targeting／RadarSystem 架構](RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。

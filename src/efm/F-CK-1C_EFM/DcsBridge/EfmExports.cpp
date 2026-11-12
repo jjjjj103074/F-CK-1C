@@ -128,6 +128,7 @@ try
 	const DcsBridge::Internal::CockpitStepInput cockpit = bridge().cockpit_bridge().read_step_input();
 	bridge().event_reporter().log_cockpit_parameter_events(cockpit.events);
 	Core::FrameOutput output;
+	Core::MissionActionBatch action_batch;
 	bool output_available = false;
 	{
 		const std::lock_guard<std::mutex> lock(bridge().execution_mutex());
@@ -135,10 +136,15 @@ try
 		if (output_available)
 		{
 			Core::CockpitObservation observation = cockpit.cockpit;
+			if (observation.mission_adapter.available)
+				bridge().action_transport().acknowledge(observation.mission_adapter.acknowledged_sequence);
+			observation.external_action_feedback = bridge().action_transport().feedback();
 			observation.gun_ammunition =
 			    bridge().gun_ammunition_source().observe(bridge().output_store().read()->simulation_time_s);
 			bridge().input_collector().publish_cockpit_observation(observation);
 			output = bridge().core().step(bridge().input_collector().snapshot(dt));
+			bridge().action_transport().collect(output.cockpit.combat_avionics.action_requests, output.cockpit.radar);
+			action_batch = bridge().action_transport().batch();
 			bridge().output_store().publish(output);
 			bridge().param_exporter().observe(output);
 			bridge().state_csv_writer().publish_step(output);
@@ -153,7 +159,7 @@ try
 	bridge().event_reporter().log_cockpit_parameter_events(
 	    bridge().cockpit_bridge().export_temperature(output.flight.atmosphere_temperature_k));
 	bridge().event_reporter().log_cockpit_parameter_events(
-	    bridge().cockpit_snapshot_exporter().export_snapshot(output.cockpit));
+	    bridge().cockpit_snapshot_exporter().export_snapshot(output.cockpit, action_batch));
 	bridge().event_reporter().log_cockpit_parameter_events(
 	    bridge().debug_indicator_exporter().export_latest(bridge().debug_csv_writer().status()));
 }

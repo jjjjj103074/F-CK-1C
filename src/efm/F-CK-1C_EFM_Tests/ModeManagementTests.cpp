@@ -1,3 +1,4 @@
+#include "ExternalActionTestSupport.h"
 #include "TestHarness.h"
 
 #include "Core/Systems/MissionComputer/Components/CountermeasureControl/CountermeasureControl.h"
@@ -9,6 +10,7 @@
 namespace
 {
 using namespace Core;
+using namespace Core::Systems;
 using namespace Core::Systems::Mc;
 
 static_assert(!std::is_move_constructible<ModeEvents>::value, "Channels must retain their MC's address.");
@@ -149,14 +151,14 @@ void test_ordered_scoped_subscriptions_and_instance_isolation(Tests::Context& co
 void test_countermeasure_reactions_use_selection_payload(Tests::Context& context)
 {
 	ModeData current;
-	ExternalActionQueue actions;
+	ExternalActionOutbox actions;
 	CountermeasureControl cms(current, actions);
 	ModeData off;
 	off.master_arm = MasterArmMode::Off;
 	// 在資料庫為 ON 時，驗證 OFF 事件仍產生中止要求。
 	cms.on_master_arm_selected({ current, off });
 	cms.handle({ CommandId::StartCmsForward, 1.0 });
-	const auto batch = actions.batch();
+	const auto batch = Tests::pending_actions(actions);
 	TEST_EXPECT(context, batch.count == 2);
 	if (batch.count == 2)
 	{

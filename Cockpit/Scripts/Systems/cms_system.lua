@@ -1,4 +1,4 @@
--- 執行 MC 的有序 DCS 操作命令，發布介面可用性，並運行反制程序。
+-- 執行 DcsBridge 的共用有序 DCS 操作，發布介面可用性，並運行反制程序。
 local update_rate = 0.02
 make_default_activity(update_rate)
 dofile(LockOn_Options.script_path .. "command_defs.lua")
@@ -150,7 +150,7 @@ local function start_cms_program(name, steps, interval, flare_per_step, chaff_pe
     end
 end
 
--- Stable semantic MC values -> generated DCS IDs. No native IDs enter Core.
+-- Stable semantic action values -> generated DCS IDs. No native IDs enter Core.
 local native_actions = {
     [1] = dcs_commands.iCommandPlaneFire,
     [2] = dcs_commands.iCommandPlaneFireOff,

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "MissionActions.h"
+#include "ExternalActions.h"
+#include "RadarCommands.h"
 
 #include <array>
 #include <chrono>
@@ -131,14 +133,7 @@ enum class OperatingMode
 	MissileOverride = 2
 };
 
-enum class AirToAirSubmode
-{
-	None = 0,
-	Helmet = 1,
-	VerticalScan = 2,
-	Hud = 3,
-	BeyondVisualRange = 4
-};
+using AirToAirSubmode = TargetAcquisitionMode;
 
 enum class HmcsDisplayMode
 {
@@ -302,6 +297,7 @@ struct CockpitObservation
 	GunAmmunitionObservation gun_ammunition;
 	PressureAltitudeObservation pressure_altitude;
 	MissionAdapterObservation mission_adapter;
+	ExternalActionFeedback external_action_feedback;
 };
 
 struct SnapshotStatus
@@ -447,11 +443,17 @@ struct FireControlSnapshot
 	TargetDesignationSnapshot target_designation;
 };
 
+/// @brief RadarSystem 發布的設備觀測、操作結果與待傳送動作。
 struct RadarSnapshot
 {
 	SnapshotStatus status;
 	bool power_requested = false;
-	RadarMode operating_mode = RadarMode::Off;
+	bool power_on = false;
+	bool adapter_available = false;
+	TargetAcquisitionMode requested_acquisition_mode = TargetAcquisitionMode::None;
+	RadarObservation observation;
+	std::vector<RadarCommandResult> command_results;
+	ExternalActionRequests action_requests;
 };
 
 /// @brief SM 的選站要求與轉接層最近確認執行的要求。
@@ -505,22 +507,15 @@ struct CountermeasureSnapshot
 	std::uint64_t combined_release_count = 0;
 };
 
-struct ExternalActionIntentSnapshot
-{
-	SnapshotStatus status;
-	MissionActionBatch batch;
-};
-
 struct CombatAvionicsSnapshot
 {
 	SnapshotStatus status;
 	ModeSnapshot mode;
 	FireControlSnapshot fire_control;
-	RadarSnapshot radar;
 	StoresSnapshot stores;
 	MissionControlInputsSnapshot control_inputs;
 	CountermeasureSnapshot countermeasures;
-	ExternalActionIntentSnapshot external_actions;
+	ExternalActionRequests action_requests;
 };
 
 struct HmcsDisplaySnapshot
@@ -541,6 +536,7 @@ struct CockpitSnapshot
 	AutomaticFlightControlSnapshot automatic_flight_control;
 	bool propulsion_test_thrust_cut_requested = false;
 	CombatAvionicsSnapshot combat_avionics;
+	RadarSnapshot radar;
 	HmcsDisplaySnapshot hmcs;
 };
 }

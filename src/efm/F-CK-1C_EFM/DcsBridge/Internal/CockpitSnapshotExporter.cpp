@@ -49,7 +49,8 @@ void CockpitSnapshotExporter::reset()
 	}
 }
 
-CockpitParameterEvents CockpitSnapshotExporter::export_snapshot(const Core::CockpitSnapshot& snapshot)
+CockpitParameterEvents CockpitSnapshotExporter::export_snapshot(const Core::CockpitSnapshot& snapshot,
+                                                                const Core::MissionActionBatch& actions)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	CockpitParameterEvents events;
@@ -59,7 +60,7 @@ CockpitParameterEvents CockpitSnapshotExporter::export_snapshot(const Core::Cock
 	events = events.merged(
 	    write_parameter(Parameter::MaxPowerSwitch, snapshot.propulsion_test_thrust_cut_requested ? 0.0 : 1.0));
 	events = events.merged(export_automatic_flight_control(snapshot.automatic_flight_control));
-	events = events.merged(mission_computer_.export_snapshot(snapshot.combat_avionics));
+	events = events.merged(mission_computer_.export_snapshot(snapshot.combat_avionics, actions));
 	return events;
 }
 

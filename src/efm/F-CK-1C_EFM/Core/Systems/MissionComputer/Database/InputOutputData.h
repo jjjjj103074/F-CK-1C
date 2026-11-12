@@ -26,6 +26,7 @@ struct PendingMissionCommand
 struct MissionInputs
 {
 	CockpitObservation cockpit;
+	RadarSnapshot radar;
 	std::chrono::nanoseconds observed_at = {};
 	std::deque<PendingMissionCommand> pending_commands;
 	std::uint64_t command_sequence = 0;

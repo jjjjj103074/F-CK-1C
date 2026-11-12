@@ -41,6 +41,7 @@ Core::CockpitObservation make_cockpit_observation()
 	observation.ir_seeker.status = { true, 13, Core::ObservationInvalidReason::None };
 	observation.weapon_stations.status = { true, 14, Core::ObservationInvalidReason::None };
 	observation.weapon_stations.stations[3].count = 2;
+	observation.external_action_feedback = { 37, 9 };
 	return observation;
 }
 
@@ -252,6 +253,8 @@ void expect_complete_input(Tests::Context& context, const Core::FrameInput& inpu
 	TEST_EXPECT(context, input.cockpit.magnetic_heading.status.revision == 11);
 	TEST_EXPECT_NEAR(context, input.cockpit.magnetic_heading.magnetic_heading_deg, 1.25, kTolerance);
 	TEST_EXPECT(context, input.cockpit.radar.status.available);
+	TEST_EXPECT(context, input.cockpit.external_action_feedback.mission_acknowledged_through == 37);
+	TEST_EXPECT(context, input.cockpit.external_action_feedback.radar_acknowledged_through == 9);
 	TEST_EXPECT(context, input.cockpit.radar.status.revision == 12);
 	TEST_EXPECT_NEAR(context, input.cockpit.radar.stt_range_m, 4500.0, kTolerance);
 	TEST_EXPECT(context, input.cockpit.ir_seeker.status.revision == 13);

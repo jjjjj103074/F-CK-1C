@@ -4,7 +4,7 @@
 
 namespace Core::Systems::Mc
 {
-StoresCommandQueue::StoresCommandQueue(ExternalActionQueue& actions)
+StoresCommandQueue::StoresCommandQueue(ExternalActionOutbox& actions)
     : actions_(actions)
 {
 }
@@ -18,10 +18,10 @@ std::uint64_t StoresCommandQueue::enqueue(const StoresCommand& command)
 	return last_ticket_;
 }
 
-void StoresCommandQueue::resolve(std::uint64_t ticket, std::uint64_t external_sequence)
+void StoresCommandQueue::resolve(std::uint64_t ticket, std::uint64_t action_request_sequence)
 {
 	auto& receipt = receipts_.at(static_cast<std::size_t>(ticket - retired_through_ - 1));
-	receipt = { true, external_sequence };
+	receipt = { true, action_request_sequence };
 	retire_completed();
 }
 
@@ -42,7 +42,8 @@ bool StoresCommandQueue::acknowledged(std::uint64_t ticket) const noexcept
 	if (ticket <= retired_through_)
 		return true;
 	const auto& receipt = receipts_[static_cast<std::size_t>(ticket - retired_through_ - 1)];
-	return receipt.resolved && (receipt.external_sequence == 0 || actions_.acknowledged(receipt.external_sequence));
+	return receipt.resolved &&
+	       (receipt.action_request_sequence == 0 || actions_.acknowledged(receipt.action_request_sequence));
 }
 
 void StoresCommandQueue::retire_completed()

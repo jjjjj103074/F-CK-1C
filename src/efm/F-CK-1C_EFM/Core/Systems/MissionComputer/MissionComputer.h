@@ -12,8 +12,9 @@
 #include "Database/ExecutiveTables.h"
 #include "Database/InputOutputData.h"
 #include "Database/SystemStatusTables.h"
-#include "Database/ExternalActionQueue.h"
+#include "../ExternalActionOutbox.h"
 #include "Database/MissionData.h"
+#include "Database/RadarRequestQueue.h"
 
 namespace Core::Systems
 {
@@ -54,8 +55,9 @@ private:
 	Mc::ModeData mode_data_;
 	Mc::StoresData stores_data_;
 	Mc::FireControlData fire_control_data_;
-	Mc::ExternalActionQueue external_actions_;
+	ExternalActionOutbox external_actions_;
 	Mc::StoresCommandQueue stores_commands_;
+	Mc::RadarRequestQueue radar_requests_;
 
 	Mc::StoresEvents stores_events_; ///< 掛載通道先於使用者建立，並在使用者之後銷毀。
 	Mc::ModeEvents mode_events_; ///< 通道先於使用者建立，並在所有使用者銷毀後才銷毀。

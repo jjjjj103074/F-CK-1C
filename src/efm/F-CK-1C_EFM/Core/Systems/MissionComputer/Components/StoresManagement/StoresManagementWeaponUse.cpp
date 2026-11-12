@@ -32,7 +32,6 @@ bool StoresManagement::accept_weapon_use(const QueuedStoresCommand& entry)
 		return false;
 
 	cancel_pending_weapon_starts();
-	actions_.cancel_weapon_starts();
 	const bool stop_gun = gun_execution_.abort();
 	const bool stop_release = release_execution_.abort();
 	if (stop_gun)

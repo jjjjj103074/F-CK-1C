@@ -16,7 +16,7 @@ Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、
 | HMCS | avLuaDevice / hmcs_system.lua | 64 Hz 原始飛行資料取樣、武器顯示規則、單位呈現、航向刻度與繪圖參數 |
 | AAM_AUDIO | avLuaDevice / aam_audio_system.lua | 20 Hz 依 SM 有效 IR 鎖定觀測選擇鎖定音，另提供 Sound Test |
 
-MC 外層與內部週期工作為 32 Hz；介面的取樣／播放頻率各自保留。
+MC 與並列的 RadarSystem 均為 32 Hz；介面的取樣／播放頻率各自保留。
 Controls Indicator、HMCS 2D／VR 與 EFM Debug Indicator 由各自的指示器腳本呈現。
 Gear、Actuators 與 Autopilot device ID 保留；目前未建立其 Lua device。
 起落架與致動器由 Core Systems 執行，DFLCC 的 AP／A/T 狀態快照不可用。
@@ -68,7 +68,7 @@ StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與執行
 原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
 
-機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS 執行 MC 有序指令及既有反制程序。
+機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS 執行 DcsBridge 的共用有序動作及既有反制程序。
 空對空總數由 SM 庫存投影，完整性經 `McStoresMissileCountAvailable` 發布；HMCS 顯示數字或 `AAM ---`。
 
 ## 驗證
@@ -96,7 +96,7 @@ weapon_system 完成呼叫後回傳選站 ACK；CMS 核對全域動作序號及�
 取消項目保留原序號並直接確認；停止操作照序執行。
 
 SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續完成。武器保持時間
-由 SM 依入口執行回覆推進；目標控制使用既有外部動作確認。
+由 SM 依入口執行回覆推進；RadarSystem 使用 DcsBridge 對應的生產端動作確認。
 
 ## IR 觀測與音效
 
@@ -108,3 +108,9 @@ HMCS 的武器類別採模式、解籠意圖、有效 lock 與既有操作偏好
 aam_audio_system 接受同一份完整快照的有效 lock，播放並維持鎖定音；來源或 MC 不可用、奇數／變動 generation 時停止鎖定音。
 自動 Seek／Acquire 音效與原型備便／接觸推導已移除；Sound Test 的手動試播保留。
 原始資料與移除清單見 [IR 觀測整理報告](IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
+
+## Targeting 與 RadarSystem
+
+Targeting 規劃目標取得；RadarSystem 經 SystemPipeline 處理設備操作及雷達觀測。共用 DCS 傳送序號與 16 項視窗由 DcsBridge 持有，Lua 保留原參數及動作值。MC 與 RadarSystem 分別取得自己的要求完成前綴。
+
+職責、資料流與序號對應見 [架構說明](RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
