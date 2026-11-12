@@ -27,9 +27,20 @@ jobs:
         run: |
           lua_root="$RUNNER_TEMP/mc-lua"
           mkdir -p "$lua_root"
-          curl --fail --silent --show-error --location https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$lua_root/lua.tar.gz"
-          # Published at https://www.lua.org/ftp/.
-          printf '%s  %s\n' 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333 "$lua_root/lua.tar.gz" | sha256sum --check
+          # Both archives contain the same upstream bytes, verified by Lua's published SHA256.
+          downloaded=false
+          for uri in https://www.lua.org/ftp/lua-5.1.5.tar.gz https://deb.debian.org/debian/pool/main/l/lua5.1/lua5.1_5.1.5.orig.tar.gz; do
+            if curl --fail --silent --show-error --location --connect-timeout 10 --max-time 45 --retry 2 --retry-all-errors "$uri" -o "$lua_root/lua.tar.gz"; then
+              if printf '%s  %s\n' 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333 "$lua_root/lua.tar.gz" | sha256sum --check; then
+                downloaded=true
+                break
+              fi
+            fi
+          done
+          if [ "$downloaded" != true ]; then
+            echo 'Unable to download the pinned Lua source with its expected SHA256.' >&2
+            exit 1
+          fi
           tar -xzf "$lua_root/lua.tar.gz" -C "$lua_root"
           make -C "$lua_root/lua-5.1.5" generic
           "$lua_root/lua-5.1.5/src/luac" -p Cockpit/Scripts/Systems/cms_system.lua Cockpit/Scripts/Systems/mc_io.lua Cockpit/Scripts/Systems/weapon_system.lua Cockpit/Scripts/Systems/radar_state_system.lua Cockpit/Scripts/Systems/hmcs_system.lua
