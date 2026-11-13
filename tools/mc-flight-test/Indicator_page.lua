@@ -9,8 +9,8 @@ local panel = CreateElement("ceMeshPoly")
 panel.name = "mc_flight_test_background"
 panel.primitivetype = "triangles"
 panel.material = material
-panel.vertices = { { left - 0.015, top - 0.82 }, { left - 0.015, top + 0.03 },
-    { right, top + 0.03 }, { right, top - 0.82 } }
+panel.vertices = { { left - 0.015, top - 1.10 }, { left - 0.015, top + 0.03 },
+    { right, top + 0.03 }, { right, top - 1.10 } }
 panel.indices = default_box_indices
 panel.screenspace = ScreenType.SCREENSPACE_TRUE
 Add(panel)
@@ -32,6 +32,11 @@ local function text(name, value, x, y, parameter, format)
 end
 text("title", "MC TEST / READ ONLY", left, top)
 local rows = {
+    { "NATIVE", "CPP_NATIVE_CM_ENABLED", "NATIVE %.0f", "API", "CPP_NATIVE_CM_API_MASK", "API %.0f" },
+    { "NSTATUS", "CPP_NATIVE_CM_STATUS", "STAT %.0f", "NLAST", "CPP_NATIVE_CM_LAST_REQUEST", "LAST %.0f" },
+    { "NREQUEST", "CPP_NATIVE_CM_REQUESTS", "REQ %.0f", "NCALLS", "CPP_NATIVE_CM_CALLS", "CALL %.0f" },
+    { "CMOBS", "FCK1C_TEST_CM_OBSERVATION_AVAILABLE", "CMOBS %.0f", "FLARE", "FCK1C_TEST_CM_FLARE_COUNT", "FLR %.0f" },
+    { "NMETHOD", "CPP_NATIVE_CM_METHOD", "METH %.0f", "CHAFF", "FCK1C_TEST_CM_CHAFF_COUNT", "CHF %.0f" },
     { "MC", "CPP_MC_AVAILABLE", "MC %.0f", "GEN", "CPP_MC_GENERATION", "GEN %.0f" },
     { "ARM", "HMCS_MASTER_MODE", "ARM %.0f", "MODE", "HMCS_FC_MODE", "MODE %.0f" },
     { "SUB", "HMCS_AAM_SUBMODE", "SUB %.0f", "UNCAGE", "CPP_MC_MISSILE_UNCAGE_HELD", "UNCAGE %.0f" },
@@ -48,7 +53,7 @@ for i, row in ipairs(rows) do
     text(row[1], "", left, y, row[2], row[3])
     text(row[4], "", left + 0.34, y, row[5], row[6])
 end
-text("legend1", "ARM 0=SAFE 1=SIM 2=ON", left, top - 0.62)
-text("legend2", "MODE 0=NAV 1=DGF 2=MSL", left, top - 0.67)
-text("legend3", "SEL 0 RT/1 RO/2 RI/3 MM", left, top - 0.72)
-text("legend4", "4 MF/5 MB/6 LI/7 LO/8 LT", left, top - 0.77)
+text("legend1", "ARM 0=SAFE 1=SIM 2=ON", left, top - 0.90)
+text("legend2", "MODE 0=NAV 1=DGF 2=MSL", left, top - 0.95)
+text("legend3", "SEL 0 RT/1 RO/2 RI/3 MM", left, top - 1.00)
+text("legend4", "4 MF/5 MB/6 LI/7 LO/8 LT", left, top - 1.05)

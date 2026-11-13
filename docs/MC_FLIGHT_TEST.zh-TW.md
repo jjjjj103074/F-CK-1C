@@ -32,10 +32,20 @@
 - IR OK=1、LOCK=1 表示 MC 已接受有效 IR 鎖定回報；鎖定音跟這個值。RDR=3 與 IR LOCK 分開看。
 - TX 是目前 DCS 動作視窗數量，ACK 是已執行前綴。停止操作後通常 1–2 秒回 TX=0；停超過 5 秒仍卡住請回報畫面與前一個操作。
 
+## C++ 反制驗證
+
+先做 A 的 N01–N09，再繼續原本 69 項 MC 測試。四個原生測試鍵已在本包綁定；原有鍵位保持。使用同一個記錄器與結果收集器。
+
+STAT：1=就緒、2=排隊、3=原生呼叫返回、4=Analog 放開返回、5=保險阻擋、6=具名入口缺少、7=呼叫失敗、8=離開任務、9=佇列已滿。數字 3／4 代表呼叫返回；實際成功還要看 FLR／CHF 減少及離機效果。
+
+若 CMOBS 某一位不可讀，該彈量顯示 -1，直接回報 CMOBS 數值與可見離機效果，原始記錄仍會保存。STAT=7 時停止原生測試，繼續原有 MC 測試；收集包會保留例外碼。
+
 ## 預設快捷鍵
 
 | 功能 | 預設鍵 |
 |---|---|
+| C++ Digital 熱焰彈／干擾絲（本包預設） | 左 Alt＋左 Shift＋Insert／左 Alt＋左 Shift＋Delete |
+| C++ Analog 熱焰彈／干擾絲（本包預設） | 左 Ctrl＋左 Shift＋Insert／左 Ctrl＋左 Shift＋Delete |
 | 主模式 NAV／DGFT／MSL | 1／右 Ctrl＋D／4 |
 | 保險 ON／OFF／SIM | 右 Ctrl＋M／右 Shift＋M／右 Alt＋M |
 | 第一段扳機／機砲 | 左 Alt＋Space／Space |
@@ -59,6 +69,78 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 看哪裡：HMCS；右上 MC TEST 面板。
 
 正常：初始 ARM／NAV／---；MC=1、GEN 持續增加。沒有自行開砲、投放或釋放反制。
+
+### N01　原生反制測試準備
+
+操作：按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Alt＋End），等待 2 秒。
+
+看哪裡：右上 NATIVE、API、CMOBS、FLR、CHF、REQ、CALL。
+
+正常：NATIVE=1、REQ=0、CALL=0，FLR／CHF 穩定。API：1=Digital、2=Analog、3=兩者、0=皆未找到。CMOBS=3 表示兩種實際彈量可讀；1=只有 FLR、2=只有 CHF、0=兩者皆不可讀，無讀值顯示 -1。記下 API 與 CMOBS；後續仍各試一次以記錄缺少的入口。
+
+### N02　C++ Digital 熱焰彈
+
+操作：按一次 Digital 熱焰彈（左 Alt＋左 Shift＋Insert），放開並等 1 秒。要看離機效果可按外部視角（F2），返回座艙按 F1。
+
+看哪裡：右上 REQ、CALL、STAT、FLR、CHF；機尾離機效果。
+
+正常：REQ 增 1。Digital 可用時 CALL 增 1、STAT=3、FLR 恰減 1、CHF 不變，實際釋放一發熱焰彈。API 未含 Digital 時 STAT=6、CALL 與彈量不變；回報「入口缺少」。只有 CALL 增加而彈量不變，回報「呼叫返回但未施放」。
+
+### N03　C++ Digital 干擾絲
+
+操作：按一次 Digital 干擾絲（左 Alt＋左 Shift＋Delete），放開並等 1 秒。
+
+看哪裡：右上 REQ、CALL、STAT、FLR、CHF。
+
+正常：REQ 增 1。Digital 可用時 CALL 增 1、STAT=3、CHF 恰減 1、FLR 不變。入口缺少為 STAT=6。干擾絲外觀不明顯，以實際 CHF 減少核對；CALL 增加本身只表示函式返回。
+
+### N04　C++ Analog 熱焰彈
+
+操作：按一次 Analog 熱焰彈（左 Ctrl＋左 Shift＋Insert），放開並等 1 秒。可按 F2 看離機效果，返回按 F1。
+
+看哪裡：右上 REQ、CALL、STAT、FLR、CHF。
+
+正常：REQ 增 1。Analog 可用時 CALL 增 2（按下與放開）、STAT=4、FLR 恰減 1、CHF 不變。入口缺少為 STAT=6。兩次 CALL 對應一次測試脈衝，正常只施放一發。
+
+### N05　C++ Analog 干擾絲
+
+操作：按一次 Analog 干擾絲（左 Ctrl＋左 Shift＋Delete），放開並等 1 秒。
+
+看哪裡：右上 REQ、CALL、STAT、FLR、CHF。
+
+正常：REQ 增 1。Analog 可用時 CALL 增 2、STAT=4、CHF 恰減 1、FLR 不變。入口缺少為 STAT=6。
+
+### N06　按住與重複操作
+
+操作：對已找到且未出錯的入口依序測：Digital 熱焰彈（左 Alt＋左 Shift＋Insert）、Digital 干擾絲（左 Alt＋左 Shift＋Delete）、Analog 熱焰彈（左 Ctrl＋左 Shift＋Insert）、Analog 干擾絲（左 Ctrl＋左 Shift＋Delete）。每鍵按住 2 秒後放開、等 1 秒，再各按放 5 次，每次間隔約半秒。
+
+看哪裡：右上 REQ、CALL、FLR、CHF；是否自行連續施放。
+
+正常：每個按住操作僅 REQ＋1、該類彈量減 1；放開後不再施放。後續 5 次按放僅 REQ＋5、該類減 5。Digital 每要求 CALL＋1、Analog＋2；另一類彈量不變。入口缺少的種類填未測；STAT=7 時停止本輪原生按鍵測試、繼續原有 MC 項目。
+
+### N07　SAFE／SIM 阻擋與無延後重播
+
+操作：按 OFF（右 Shift＋M），各按放一次四個測試鍵：Digital 熱焰彈（左 Alt＋左 Shift＋Insert）、Digital 干擾絲（左 Alt＋左 Shift＋Delete）、Analog 熱焰彈（左 Ctrl＋左 Shift＋Insert）、Analog 干擾絲（左 Ctrl＋左 Shift＋Delete），各等 1 秒。按 SIM（右 Alt＋M）再做同一組四鍵。最後按 ON（右 Ctrl＋M），等 2 秒。
+
+看哪裡：ARM、REQ、CALL、STAT、FLR、CHF。
+
+正常：SAFE／SIM 每次 REQ 增 1、STAT=5，CALL 與彈量保持。回 ON 後沒有補發或意外施放。若先前已有 STAT=7，跳過本項並回報。
+
+### N08　快速交錯兩種原生派送
+
+操作：ON（右 Ctrl＋M）下，快速依序按放 Digital 熱焰彈（左 Alt＋左 Shift＋Insert）、Digital 干擾絲（左 Alt＋左 Shift＋Delete）、Analog 熱焰彈（左 Ctrl＋左 Shift＋Insert）、Analog 干擾絲（左 Ctrl＋左 Shift＋Delete），之後等 2 秒。
+
+看哪裡：REQ、CALL、FLR、CHF。
+
+正常：兩種 API 可用時 REQ＋4、CALL＋6、FLR 減 2、CHF 減 2，停止操作後沒有繼續釋放。只找到一種 API 時，只該種的兩個要求可實際施放，其餘記為入口缺少。
+
+### N09　重新進入任務
+
+操作：按 Esc 離開任務，再進入原 A 任務，等待 5 秒。
+
+看哪裡：右上 REQ、CALL、STAT、FLR、CHF；實際飛機。
+
+正常：REQ／CALL 重設為 0、STAT=1；彈量依任務重新載入且保持穩定，沒有自動補發前一任務的要求。接著繼續 M02 起的原有 MC 測試。
 
 ### M02　三個主模式
 
@@ -624,9 +706,9 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ## 驗證範圍
 
-人工流程共 69 項，涵蓋目前實作的模式、反制、掛載、選站、火控資格、捕獲、原生彈量、IR 狀態、座艙呈現與生命週期。
+人工流程共 78 項，涵蓋目前實作的模式、反制、掛載、選站、火控資格、捕獲、原生彈量、IR 狀態、座艙呈現與生命週期。
 
-逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。
+逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。原生測試的 C++ 派送使用獨立測試佇列，Lua 僅取樣實際反制存量。後續目標為透過 SystemPipeline 的 C++ 反制系統；本包保留現行 CMS 程序供回歸。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。
 
 目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。
 

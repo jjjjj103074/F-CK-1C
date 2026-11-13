@@ -62,8 +62,39 @@ function CreateElement(kind) return { kind = kind } end
 local elements = {}
 function Add(element) elements[#elements + 1] = element end
 original_dofile(root .. '/Indicator_page.lua')
-assert(#elements == 26)
+assert(#elements == 36)
 local names = {}
 for _,element in ipairs(elements) do assert(not names[element.name]); names[element.name]=true end
 assert(elements[1].vertices[3][1] < LockOn_Options.screen.aspect)
 print('MC flight-test recorder/indicator fixtures passed.')
+
+-- 取樣器保留有效零值，並分別標示缺少的原生 getter。
+local methods = { get_flare_count = function() return 90 end, get_chaff_count = function() return 80 end }
+function get_param_handle(name)
+    return { set = function(_, value) values[name] = value end }
+end
+local observer = original_dofile(root .. '/NativeCountermeasureObservation.lua').new(methods)
+observer.update()
+assert(values.FCK1C_TEST_CM_OBSERVATION_AVAILABLE == 3)
+assert(values.FCK1C_TEST_CM_FLARE_COUNT == 90 and values.FCK1C_TEST_CM_CHAFF_COUNT == 80)
+methods.get_flare_count = function() return 0 end
+methods.get_chaff_count = function() error('missing') end
+observer.update()
+assert(values.FCK1C_TEST_CM_OBSERVATION_AVAILABLE == 1)
+assert(values.FCK1C_TEST_CM_FLARE_COUNT == 0 and values.FCK1C_TEST_CM_CHAFF_COUNT == -1)
+methods.get_flare_count = function() return 0/0 end
+methods.get_chaff_count = nil
+observer.update()
+assert(values.FCK1C_TEST_CM_OBSERVATION_AVAILABLE == 0)
+-- 執行實際鍵位加入器，核對四種測試入口及既有配置保留。
+function _(s) return s end
+local commands = { { name = 'existing' } }
+local ids = { NativeCmFlareDigital = 3150, NativeCmChaffDigital = 3151, NativeCmFlareAnalog = 3152, NativeCmChaffAnalog = 3153 }
+original_dofile(root .. '/NativeCountermeasureKeys.lua')(commands, ids)
+assert(#commands == 5 and commands[1].name == 'existing')
+for i = 2,5 do
+    assert(commands[i].down == 3148 + i and commands[i].up == commands[i].down)
+    assert(commands[i].value_down == 1 and commands[i].value_up == 0)
+    assert(commands[i].combos[1].key == (i % 2 == 0 and 'Insert' or 'Delete'))
+end
+print('Native countermeasure observer/key fixtures passed.')

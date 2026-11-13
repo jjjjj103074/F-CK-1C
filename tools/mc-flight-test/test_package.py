@@ -17,7 +17,8 @@ class TestFlightBundle(unittest.TestCase):
             package.DLL: b'MZvalidated-test-dll',
             package.DEVICE: b'creators = {}\nindicators = {}\nneed_to_be_closed = true\n',
             package.MODULE + 'Cockpit/Scripts/devices.lua': b'devices = { CMS = 3, AUTOPILOT = 9 }',
-            package.MODULE + 'Input/F-CK-1C/keyboard/default.lua': b'unchanged default bindings',
+            package.KEYBOARD: b'local res = { keyCommands = {} }\n-- existing bindings\nreturn res\n',
+            package.WEAPONS: b'function update() end\n',
             package.MODULE + 'entry.lua': b'unchanged runtime registration',
         }
         self.archive = self.root / 'module.zip'
@@ -43,12 +44,17 @@ class TestFlightBundle(unittest.TestCase):
         bundle = self.assemble()
         with zipfile.ZipFile(bundle) as archive:
             for name, content in self.entries.items():
-                if name != package.DEVICE:
+                if name not in {package.DEVICE, package.KEYBOARD, package.WEAPONS}:
                     self.assertEqual(archive.read(name), content)
             self.assertTrue(archive.read(package.DEVICE).startswith(self.entries[package.DEVICE]))
             build = json.loads(archive.read('BUILD.json'))
-            self.assertEqual(build['runtime_changed'], [package.DEVICE])
-            self.assertEqual(build['human_cases'], 69)
+            self.assertEqual(set(build['runtime_changed']), {package.DEVICE, package.KEYBOARD, package.WEAPONS})
+            addition = b'dofile(cscripts .. "MCFlightTest/NativeCountermeasureKeys.lua")(res.keyCommands, device_commands)\r\n\r\n'
+            self.assertEqual(archive.read(package.KEYBOARD).replace(addition, b''), self.entries[package.KEYBOARD])
+            self.assertTrue(archive.read(package.WEAPONS).startswith(self.entries[package.WEAPONS]))
+            self.assertIn(package.PROBE_FLAG, archive.namelist())
+            self.assertTrue(build['native_countermeasure_probe'])
+            self.assertEqual(build['human_cases'], 78)
             self.assertIn(self.source, archive.read(package.TEST_ROOT + 'Build.lua').decode())
         self.assertIn(package.digest(bundle.read_bytes()), Path(str(bundle)+'.sha256').read_text())
     def test_rejects_wrong_dll(self):
@@ -86,9 +92,17 @@ class TestFlightBundle(unittest.TestCase):
             self.assertNotIn('dispatch_action', source)
             self.assertNotIn('performClickableAction', source)
             self.assertNotIn(':set(', source)
+    def test_observer_has_no_actuation(self):
+        source=(package.ROOT/'NativeCountermeasureObservation.lua').read_text(encoding='utf-8')
+        for forbidden in ('dispatch_action', 'drop_flare', 'drop_chaff', 'performClickableAction'):
+            self.assertNotIn(forbidden, source)
+    def test_rejects_changed_keyboard_shape(self):
+        self.entries[package.KEYBOARD] = b'return another_profile'
+        self.write_zip()
+        with self.assertRaisesRegex(ValueError, 'keyboard profile'): self.assemble()
     def test_deduplicates_existing_parameters(self):
         data=json.loads(self.catalog.read_text())
         data['raw_dcs_cockpit_params'].append(dict(name='duplicate',value='CPP_MC_GENERATION'))
-        self.assertEqual(package.parameter_names(data),['CPP_MC_GENERATION','OBS_WEAPON_STATION_01','WS_IR_MISSILE_LOCK'])
+        self.assertEqual(package.parameter_names(data),['CPP_MC_GENERATION','OBS_WEAPON_STATION_01','WS_IR_MISSILE_LOCK'] + package.OBSERVATIONS)
 
 if __name__ == '__main__': unittest.main()

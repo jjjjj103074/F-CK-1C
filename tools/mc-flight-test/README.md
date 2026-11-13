@@ -17,10 +17,19 @@ python tools/mc-flight-test/package_test_bundle.py \
 `cases.json` is the shared source for the Markdown/HTML runbook and result sheet.
 The committed human guide is [MC flight testing](../../docs/MC_FLIGHT_TEST.zh-TW.md).
 
-The test module appends device 10 and its indicator registration to `device_init.lua`.
-The recorder and indicator read existing cockpit parameters. They preserve command
-bindings, the validated DLL, production Lua and aircraft assets. The build manifest
-records the sole edited runtime file and each added bundle entry.
+The bundle appends device 10 and its indicator registration to `device_init.lua`,
+four prebound native probe controls before the keyboard profile returns, and a
+read-only countermeasure observer after the existing weapon-device update.
+The module DLL is the exact CI-validated DLL. Existing controls and production MC,
+radar and CMS algorithms remain intact. `BUILD.json` lists the three edited runtime
+files and every added entry, including `FM/native-countermeasure-probe.enabled`.
+The ordinary release package omits this flag and keeps the probe disabled.
+
+The four controls invoke Bridge commands 3150–3153. The C++ probe dispatches the
+native digital/analog commands from `ed_fm_simulate`, outside the Bridge execution
+lock. `NativeCountermeasureObservation.lua` reads stock only; it sends no commands.
+Its validity mask (flare=1, chaff=2) distinguishes zero stock from missing getters.
+The test includes nine native cases plus the existing 69 MC cases.
 
 The recorder runs at 50 Hz. Each mission creates a separate CSV under
 `Saved Games/DCS/Logs/FCK1C-MC-TEST/`. MC and station generations have separate
