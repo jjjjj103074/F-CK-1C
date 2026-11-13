@@ -62,6 +62,8 @@ function Get-InventorySourceFiles {
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.h",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\MissionComputerExporter.cpp",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\MissionComputerExporter.h",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureIntegration.cpp",
+        "src\efm\F-CK-1C_EFM\DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureIntegration.h",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.cpp",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorCommandHandler.h",
         "src\efm\F-CK-1C_EFM\DcsBridge\Internal\DebugTelemetry\DebugIndicatorExporter.cpp",

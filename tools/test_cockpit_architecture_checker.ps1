@@ -37,7 +37,8 @@ function Copy-CheckerFixture {
         'CockpitBridge.cpp',
         'CockpitSnapshotExporter.cpp',
         'MissionComputerExporter.cpp',
-        'DebugTelemetry\DebugIndicatorExporter.cpp'
+        'DebugTelemetry\DebugIndicatorExporter.cpp',
+        'NativeCountermeasures\NativeCountermeasureIntegration.cpp'
     )
     foreach ($name in $writerSources) {
         $destination = Join-Path $bridgeDirectory $name
