@@ -164,11 +164,7 @@ try
 	    bridge().cockpit_snapshot_exporter().export_snapshot(output.cockpit, action_batch));
 	bridge().event_reporter().log_cockpit_parameter_events(
 	    bridge().debug_indicator_exporter().export_latest(bridge().debug_csv_writer().status()));
-	// 在 Core 執行鎖解除後處理原生反制測試。
-	const auto& mc = output.cockpit.combat_avionics;
-	bridge().native_countermeasure_probe().step(output.simulation_time_s,
-	                                            mc.status.available &&
-	                                                mc.mode.master_arm_mode == Core::MasterArmMode::On);
+	DcsBridge::Internal::step_native_countermeasure_probe(bridge(), output);
 }
 EFM_ABI_CATCH_VOID("ed_fm_simulate", (void)0)
 
@@ -303,12 +299,11 @@ void ed_fm_set_command(int command, float value)
 try
 {
 	ensure_module_initialized();
-	if (DcsBridge::Internal::handle_debug_indicator_command(bridge(), command, value))
+	if (DcsBridge::Internal::handle_debug_indicator_command(bridge(), command, value) ||
+	    DcsBridge::Internal::handle_native_countermeasure_command(bridge(), command, value))
 	{
 		return;
 	}
-	if (DcsBridge::Internal::handle_native_countermeasure_command(bridge(), command, value))
-		return;
 	(void)bridge().perform_core_action(
 	    { "ed_fm_set_command", "command", command },
 	    [command, value](Core::Fck1cEfm& core)
