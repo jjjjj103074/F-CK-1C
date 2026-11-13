@@ -60,7 +60,11 @@
     { "name": "EngineThrustCutTestToggle", "value": 3135, "route": "efm" },
     { "name": "EngineThrustCutTestEnable", "value": 3136, "route": "efm" },
     { "name": "EngineThrustCutTestDisable", "value": 3137, "route": "efm" },
-    { "name": "DebugIndicatorToggle", "value": 3140, "route": "bridge" }
+    { "name": "DebugIndicatorToggle", "value": 3140, "route": "bridge" },
+    { "name": "NativeCmFlareDigital", "value": 3150, "route": "bridge" },
+    { "name": "NativeCmChaffDigital", "value": 3151, "route": "bridge" },
+    { "name": "NativeCmFlareAnalog", "value": 3152, "route": "bridge" },
+    { "name": "NativeCmChaffAnalog", "value": 3153, "route": "bridge" }
   ],
   "efm_ignored_dcs_commands": [
     {
@@ -326,7 +330,16 @@
     { "name": "ActionWeaponChangeCount", "value": "CPP_ACTION_WEAPON_CHANGE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
     { "name": "ActionFlareReleaseCount", "value": "CPP_ACTION_FLARE_RELEASE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
     { "name": "ActionChaffReleaseCount", "value": "CPP_ACTION_CHAFF_RELEASE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
-    { "name": "ActionCombinedReleaseCount", "value": "CPP_ACTION_COMBINED_RELEASE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" }
+    { "name": "ActionCombinedReleaseCount", "value": "CPP_ACTION_COMBINED_RELEASE_COUNT", "direction": "cpp_to_lua", "unit": "counter", "writer": null, "target_owner": "CombatAvionics" },
+    { "name": "NativeCmEnabled", "value": "CPP_NATIVE_CM_ENABLED", "direction": "cpp_to_lua", "unit": "boolean", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmApiMask", "value": "CPP_NATIVE_CM_API_MASK", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmStatus", "value": "CPP_NATIVE_CM_STATUS", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmRequests", "value": "CPP_NATIVE_CM_REQUESTS", "direction": "cpp_to_lua", "unit": "counter", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmCalls", "value": "CPP_NATIVE_CM_CALLS", "direction": "cpp_to_lua", "unit": "counter", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmLastRequest", "value": "CPP_NATIVE_CM_LAST_REQUEST", "direction": "cpp_to_lua", "unit": "counter", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmMethod", "value": "CPP_NATIVE_CM_METHOD", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmKind", "value": "CPP_NATIVE_CM_KIND", "direction": "cpp_to_lua", "unit": "enum", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" },
+    { "name": "NativeCmException", "value": "CPP_NATIVE_CM_EXCEPTION", "direction": "cpp_to_lua", "unit": "counter", "writer": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "target_owner": "DcsBridgeNativeCmProbe" }
   ],
   "raw_dcs_cockpit_params": [
     { "name": "RadarMode", "value": "RADAR_MODE", "data_direction": "dcs_to_cpp", "unit": "enum", "axis_convention": "not_applicable", "source": "avSimpleRadar", "verification_basis": "community_documentation", "reference": "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_mode", "cpp_reader": "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

@@ -129,6 +129,15 @@ static const char* const ActionWeaponChangeCount = "CPP_ACTION_WEAPON_CHANGE_COU
 static const char* const ActionFlareReleaseCount = "CPP_ACTION_FLARE_RELEASE_COUNT";
 static const char* const ActionChaffReleaseCount = "CPP_ACTION_CHAFF_RELEASE_COUNT";
 static const char* const ActionCombinedReleaseCount = "CPP_ACTION_COMBINED_RELEASE_COUNT";
+static const char* const NativeCmEnabled = "CPP_NATIVE_CM_ENABLED";
+static const char* const NativeCmApiMask = "CPP_NATIVE_CM_API_MASK";
+static const char* const NativeCmStatus = "CPP_NATIVE_CM_STATUS";
+static const char* const NativeCmRequests = "CPP_NATIVE_CM_REQUESTS";
+static const char* const NativeCmCalls = "CPP_NATIVE_CM_CALLS";
+static const char* const NativeCmLastRequest = "CPP_NATIVE_CM_LAST_REQUEST";
+static const char* const NativeCmMethod = "CPP_NATIVE_CM_METHOD";
+static const char* const NativeCmKind = "CPP_NATIVE_CM_KIND";
+static const char* const NativeCmException = "CPP_NATIVE_CM_EXCEPTION";
 
 struct Entry
 {
@@ -264,6 +273,15 @@ static constexpr Entry Catalog[] = {
     { ActionFlareReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
     { ActionChaffReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
     { ActionCombinedReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { NativeCmEnabled, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmApiMask, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmStatus, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmRequests, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmCalls, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmLastRequest, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmMethod, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmKind, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
+    { NativeCmException, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
 };
 }
 

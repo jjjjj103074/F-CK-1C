@@ -1,4 +1,5 @@
 #include "BridgeContext.h"
+#include "NativeCountermeasures/NativeCountermeasureIntegration.h"
 #include "../../Common/Configuration/Configuration.h"
 
 #include <filesystem>
@@ -61,6 +62,11 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
       cockpit_snapshot_exporter_(cockpit_api_),
       cockpit_bridge_(cockpit_api_),
       gun_ammunition_source_(event_log_),
+      native_countermeasure_probe_(make_native_countermeasure_host(),
+                                   [this](const NativeCmProbeSnapshot& snapshot, const char* reason)
+                                   {
+	                                   report_native_countermeasure_probe(event_log_, cockpit_api_, snapshot, reason);
+                                   }),
       carrier_bridge_(make_carrier_config()),
       core_(make_core(config.core_factory, debug_telemetry_hub_))
 {
@@ -150,6 +156,11 @@ GunAmmunitionSource& BridgeContext::gun_ammunition_source()
 	return gun_ammunition_source_;
 }
 
+NativeCountermeasureProbe& BridgeContext::native_countermeasure_probe()
+{
+	return native_countermeasure_probe_;
+}
+
 CarrierBridge& BridgeContext::carrier_bridge()
 {
 	return carrier_bridge_;
@@ -179,6 +190,8 @@ Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
 	param_exporter_.reset();
 	cockpit_snapshot_exporter_.reset();
 	action_transport_.reset();
+	native_countermeasure_probe_.begin_flight(Common::path_file_exists(
+	    Common::build_path({ module_paths_.mod_root_path.c_str(), "FM\\native-countermeasure-probe.enabled" })));
 	carrier_bridge_.reset();
 	event_reporter_.log_cockpit_parameter_events(debug_indicator_exporter_.begin_flight());
 	debug_telemetry_hub_.begin_flight();

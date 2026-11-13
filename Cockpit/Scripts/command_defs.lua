@@ -60,6 +60,10 @@ device_commands = {
     EngineThrustCutTestEnable = 3136,
     EngineThrustCutTestDisable = 3137,
     DebugIndicatorToggle = 3140,
+    NativeCmFlareDigital = 3150,
+    NativeCmChaffDigital = 3151,
+    NativeCmFlareAnalog = 3152,
+    NativeCmChaffAnalog = 3153,
 }
 
 dcs_commands = {

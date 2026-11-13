@@ -124,6 +124,15 @@ cockpit_params = {
     ActionFlareReleaseCount = "CPP_ACTION_FLARE_RELEASE_COUNT",
     ActionChaffReleaseCount = "CPP_ACTION_CHAFF_RELEASE_COUNT",
     ActionCombinedReleaseCount = "CPP_ACTION_COMBINED_RELEASE_COUNT",
+    NativeCmEnabled = "CPP_NATIVE_CM_ENABLED",
+    NativeCmApiMask = "CPP_NATIVE_CM_API_MASK",
+    NativeCmStatus = "CPP_NATIVE_CM_STATUS",
+    NativeCmRequests = "CPP_NATIVE_CM_REQUESTS",
+    NativeCmCalls = "CPP_NATIVE_CM_CALLS",
+    NativeCmLastRequest = "CPP_NATIVE_CM_LAST_REQUEST",
+    NativeCmMethod = "CPP_NATIVE_CM_METHOD",
+    NativeCmKind = "CPP_NATIVE_CM_KIND",
+    NativeCmException = "CPP_NATIVE_CM_EXCEPTION",
 }
 
 dcs_cockpit_params = {

@@ -66,6 +66,9 @@
     <None Include="DcsBridge\README.md" />
     <None Include="DcsIds\CommandIds.json" />
     <None Include="DcsIds\README.md" />
+    <ClCompile Include="DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureProbe.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureHost.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureIntegration.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\Actuator.h" />

@@ -1,6 +1,6 @@
 # DCS API 使用指引
 
-本指引整理本專案的 DCS 介面位置、資料契約及實測依據。更新日期：2026-11-09。
+本指引整理本專案的 DCS 介面位置、資料契約及實測依據。更新日期：2026-11-13。
 
 ## 選擇執行環境
 
@@ -179,3 +179,43 @@ WS_TARGET_RANGE 已自 IR 讀取群組移除，距離資訊由目標／雷達觀
 Lua 的 OBS_MC_ACKNOWLEDGED_SEQUENCE 保留既有參數名稱，現在表示 DcsBridge 共用 DCS 視窗的傳送確認；Core 功能取得 ExternalActionFeedback 的各生產端編號。ACK 表示呼叫已執行，STT 及 IR 鎖定仍由來源觀測提供。
 
 詳見 [Targeting／RadarSystem 架構](RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
+
+## 原生反制派送：待實機驗證的候選入口
+
+本輪目標是確認 C++ 能直接施放熱焰彈與干擾絲。測試成功後，反制的程序、
+狀態及控制將規劃在透過 SystemPipeline 溝通的 C++ System，座艙處理操作與呈現。
+本輪測試工具位於 `DcsBridge/Internal/NativeCountermeasures/`，由 BridgeContext
+持有；目前的 MC CountermeasureControl、CMS Lua 程序及 FIFO 操作行為保留供回歸。
+
+### 呼叫與觀測路徑
+
+```text
+測試包預綁按鍵 -> ed_fm_set_command -> NativeCountermeasureProbe 佇列
+ -> ed_fm_simulate（Core 執行鎖以外）
+ -> CockpitBase.dll 具名匯出 -> DCS 原生命令 357 / 358
+
+既有 avSimpleWeaponSystem -> 測試包內的唯讀 getter 取樣
+ -> FLR / CHF / CMOBS -> 面板與 CSV
+```
+
+| 候選具名入口 | 呼叫契約 | 測試 |
+|---|---|---|
+| `ed_cockpit_dispatch_action_digital` | `void(int command)` | 357 熱焰彈；358 干擾絲，每次呼叫一次 |
+| `ed_cockpit_dispatch_action_analog` | `void(int command, float value)` | 357／358；送 1，至少 40 ms 後送 0 |
+
+來源是 [Community A-4E 的原生標頭](https://github.com/heclak/community-a4e-c/blob/34c1ef439581234ee24d4bde2e13a54999ebaa5a/A-4E-C/ExternalFM/FM/cockpit_base_api.h)
+中的函式宣告。宣告提供候選簽章；本專案的 DCS 版本及 EFM 呼叫上下文是否會實際施放，
+由 N01–N09 實機測試判定。只解析已載入 CockpitBase.dll 的具名匯出，原生呼叫集中於
+Windows SEH 包裝；記錄入口可用性、要求／呼叫數、執行緒與例外碼。
+
+測試包使用 `FM/native-countermeasure-probe.enabled` 啟用；一般模組包預設關閉。
+四個測試鍵將要求排至 EFM 更新回呼執行。每次按住僅建立一筆要求，類比按下／放開
+共同構成一筆脈衝；SAFE／SIM 清除待執行要求並放開進行中的類比輸入。
+飛行結束／重入會清除佇列，原生呼叫失敗時記錄 SEH 例外碼並停止該次飛行的派送。
+
+測試觀測使用 `avSimpleWeaponSystem:get_flare_count()`／`get_chaff_count()`，參考
+[A-4E 的反制裝置](https://github.com/heclak/community-a4e-c/blob/34c1ef439581234ee24d4bde2e13a54999ebaa5a/A-4E-C/Cockpit/Scripts/Systems/countermeasures.lua)。
+本機模組的裝置能力另由實測確認。取樣器僅附加在測試包的武器 Lua 更新末端，
+CMOBS 位元 1 代表熱焰彈有效、2 代表干擾絲有效；有效零值保持為 0，
+缺少 getter／無效回傳則顯示 -1。原生呼叫返回與實際存量減少各自記錄，
+前者只證明函式返回。完整操作及回報格式見 [MC 實機流程](MC_FLIGHT_TEST.zh-TW.md)。

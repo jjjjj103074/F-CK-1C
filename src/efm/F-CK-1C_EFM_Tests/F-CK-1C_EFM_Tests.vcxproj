@@ -55,6 +55,7 @@
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\GunAmmunition\NativeGunAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\GunAmmunition\GunAmmunitionSource.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="NativeGunAccessTests.cpp" />
+    <ClCompile Include="NativeCountermeasureProbeTests.cpp" />
     <ClCompile Include="GunAmmunitionSourceTests.cpp" />
     <ClInclude Include="TestHarness.h" />
     <ClInclude Include="TestFileUtils.h" />
@@ -62,6 +63,9 @@
     <ClInclude Include="Fck1cEfmTestFixture.h" />
     <ClInclude Include="DebugTelemetryTestSupport.h" />
     <ClInclude Include="SystemPipelineTestFixture.h" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureProbe.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureHost.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureIntegration.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AerodynamicsPhysicsTests.cpp" />

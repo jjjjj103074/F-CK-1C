@@ -4,6 +4,7 @@
 #include "CockpitBridge.h"
 #include "ExternalActionTransport.h"
 #include "GunAmmunition/GunAmmunitionSource.h"
+#include "NativeCountermeasures/NativeCountermeasureProbe.h"
 #include "CockpitSnapshotExporter.h"
 #include "DebugTelemetry/DebugCsvWriter.h"
 #include "DebugTelemetry/DebugIndicatorExporter.h"
@@ -59,6 +60,7 @@ public:
 	CockpitBridge& cockpit_bridge();
 	ExternalActionTransport& action_transport();
 	GunAmmunitionSource& gun_ammunition_source();
+	NativeCountermeasureProbe& native_countermeasure_probe();
 	CarrierBridge& carrier_bridge();
 	std::mutex& execution_mutex();
 	Core::Fck1cEfm& core();
@@ -121,6 +123,7 @@ private:
 	CockpitBridge cockpit_bridge_;
 	ExternalActionTransport action_transport_;
 	GunAmmunitionSource gun_ammunition_source_;
+	NativeCountermeasureProbe native_countermeasure_probe_;
 	CarrierBridge carrier_bridge_;
 	std::mutex execution_mutex_;
 	std::unique_ptr<Core::Fck1cEfm> core_;

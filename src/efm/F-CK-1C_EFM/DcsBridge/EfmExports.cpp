@@ -9,6 +9,7 @@
 #include "Internal/DcsKinematicsAdapter.h"
 #include "Internal/DcsSuspensionAdapter.h"
 #include "Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
+#include "Internal/NativeCountermeasures/NativeCountermeasureIntegration.h"
 #include "Internal/DrawArgs.h"
 #include "Internal/LegacyDebugInfoAdapter.h"
 #include "Internal/ProcessBridgeContext.h"
@@ -58,6 +59,7 @@ void release_active_flight()
 	bridge().event_reporter().log_cockpit_parameter_events(bridge().debug_indicator_exporter().release_flight());
 	bridge().debug_csv_writer().release_flight(final_simulation_time.value_or(0.0));
 	bridge().gun_ammunition_source().reset_flight();
+	bridge().native_countermeasure_probe().end_flight();
 	bridge().core().release();
 	bridge().debug_telemetry_hub().release_flight();
 	bridge().input_collector().reset();
@@ -162,6 +164,11 @@ try
 	    bridge().cockpit_snapshot_exporter().export_snapshot(output.cockpit, action_batch));
 	bridge().event_reporter().log_cockpit_parameter_events(
 	    bridge().debug_indicator_exporter().export_latest(bridge().debug_csv_writer().status()));
+	// 在 Core 執行鎖解除後處理原生反制測試。
+	const auto& mc = output.cockpit.combat_avionics;
+	bridge().native_countermeasure_probe().step(output.simulation_time_s,
+	                                            mc.status.available &&
+	                                                mc.mode.master_arm_mode == Core::MasterArmMode::On);
 }
 EFM_ABI_CATCH_VOID("ed_fm_simulate", (void)0)
 
@@ -300,6 +307,8 @@ try
 	{
 		return;
 	}
+	if (DcsBridge::Internal::handle_native_countermeasure_command(bridge(), command, value))
+		return;
 	(void)bridge().perform_core_action(
 	    { "ed_fm_set_command", "command", command },
 	    [command, value](Core::Fck1cEfm& core)
