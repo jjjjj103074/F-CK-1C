@@ -62,7 +62,7 @@ bool NativeCountermeasureProbe::handle_command(int command, float value)
 	std::size_t index = 0;
 	while (index < std::size(kBindings) && kBindings[index].id != command)
 		++index;
-	if (index == std::size(kBindings))
+	if (index >= std::size(kBindings))
 		return false;
 	const auto thread = host_.thread_id ? host_.thread_id() : 0;
 	{
