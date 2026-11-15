@@ -1,4 +1,6 @@
 #include "TestHarness.h"
+#include "DcsAircraftTestFixture.h"
+#include "DcsBridge/Internal/Aircraft/DcsAircraftInterface.h"
 #include "TestFileUtils.h"
 #include "Fck1cEfmTestFixture.h"
 #include "DcsBridge/Internal/EventLog.h"
@@ -81,16 +83,27 @@ void test_stable_status_logging(Tests::Context& context)
 	TEST_EXPECT(context, TestFiles::read_text_while_open(root.path() / "log/fck1c_efm.log") == first);
 }
 
+void test_invalid_header_keeps_diagnostic(Tests::Context& context)
+{
+	TestFiles::TemporaryDirectory root;
+	EventLog log(root.path().string().c_str());
+	Tests::Aircraft::Fixture fixture;
+	fixture.module.valid = false;
+	DcsAircraftInterface aircraft(fixture.backend());
+	GunAmmunitionSource source(log, aircraft);
+	TEST_EXPECT(context, !source.observe(0).status.available);
+	const auto text = TestFiles::read_text_while_open(root.path() / "log/fck1c_efm.log");
+	TEST_EXPECT(context, text.find("gun_ammunition event=host_header_invalid") != std::string::npos);
+	TEST_EXPECT(context, fixture.calls == 0);
+}
+
 void test_native_observation_reaches_mc(Tests::Context& context)
 {
 	TestFiles::TemporaryDirectory root;
 	EventLog log(root.path().string().c_str());
-	unsigned count = 523;
-	GunAmmunitionSource source(log,
-	                           [&]()
-	                           {
-		                           return NativeGunResult{ NativeGunStatus::Available, count, 1 };
-	                           });
+	Tests::Aircraft::Fixture fixture;
+	DcsAircraftInterface aircraft(fixture.backend());
+	GunAmmunitionSource source(log, aircraft);
 	Core::Fck1cEfm core(Tests::Fck1c::make_test_config(), Tests::disabled_debug_telemetry());
 	(void)core.start(Core::StartMode::HotAir);
 	auto input = Tests::Fck1c::make_frame_input();
@@ -99,7 +112,7 @@ void test_native_observation_reaches_mc(Tests::Context& context)
 	Core::FrameOutput output;
 	for (const unsigned rounds : { 523u, 464u, 407u, 340u, 269u, 212u, 0u, 523u })
 	{
-		count = rounds;
+		fixture.gun = rounds;
 		for (int step = 0; step < 4; ++step)
 		{
 			input.cockpit.gun_ammunition = source.observe(time_s);
@@ -112,9 +125,10 @@ void test_native_observation_reaches_mc(Tests::Context& context)
 		TEST_EXPECT(context, gun.source == Core::AmmunitionSource::Native);
 	}
 	core.release();
+	aircraft.reset_flight();
 	source.reset_flight();
 	(void)core.start(Core::StartMode::HotAir);
-	count = 261;
+	fixture.gun = 261;
 	input.cockpit.gun_ammunition = source.observe(0);
 	output = core.step(input);
 	TEST_EXPECT(context, output.cockpit.combat_avionics.stores.gun_ammunition.count == 261);
@@ -125,5 +139,6 @@ void run_gun_ammunition_source_tests(Tests::Context& context)
 {
 	test_sampling_and_recovery(context);
 	test_stable_status_logging(context);
+	test_invalid_header_keeps_diagnostic(context);
 	test_native_observation_reaches_mc(context);
 }

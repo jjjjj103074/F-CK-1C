@@ -60,6 +60,8 @@
   </ItemDefinitionGroup>
   <Import Project="..\EfmCore.props" />
   <ItemGroup>
+    <ClCompile Include="DcsBridge\Internal\Aircraft\DcsAircraftInterface.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="DcsBridge\Internal\Aircraft\DcsAircraftBackend.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="DcsBridge\Internal\GunAmmunition\NativeGunAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="DcsBridge\Internal\GunAmmunition\GunAmmunitionSource.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <None Include="ReadMe.txt" />
@@ -71,6 +73,9 @@
     <ClCompile Include="DcsBridge\Internal\NativeCountermeasures\NativeCountermeasureIntegration.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DcsBridge\Internal\Aircraft\DcsAircraftInterface.h" />
+    <ClInclude Include="DcsBridge\Internal\Aircraft\DcsAircraftBackend.h" />
+    <ClInclude Include="DcsBridge\Internal\GunAmmunition\GunAmmunitionTypes.h" />
     <ClInclude Include="Common\Actuator.h" />
     <ClInclude Include="Common\Clamp.h" />
     <ClInclude Include="Common\CommandValue.h" />

@@ -52,6 +52,61 @@ post_initialize()
 assert(#messages == count + 1 and messages[#messages]:match('unavailable'))
 update(); release()
 io = saved_io
+-- 以 DCS 的零回傳值 I/O 包裝重放實際寫入流程，並核對標準 I/O 錯誤。
+for _, mode in ipairs({ "void-write", "void-flush", "void-both", "write-error", "flush-error", "row-error", "write-throws" }) do
+    io = { open = function(path, access)
+        local handle, reason = original_io.open(path, access)
+        if not handle or access ~= "wb" then return handle, reason end
+        local writes = 0
+        return {
+            write = function(_, text)
+                writes = writes + 1
+                if mode == "write-error" or (mode == "row-error" and writes == 2) then
+                    return nil, "fixture write failure"
+                end
+                if mode == "write-throws" then error("fixture write exception") end
+                local result, failure = handle:write(text)
+                if not result then return nil, failure end
+                if mode == "void-write" or mode == "void-both" then return end
+                return result
+            end,
+            flush = function()
+                if mode == "flush-error" then return nil, "fixture flush failure" end
+                local result, failure = handle:flush()
+                if not result then return nil, failure end
+                if mode == "void-flush" or mode == "void-both" then return end
+                return result
+            end,
+            close = function() return handle:close() end
+        }
+    end }
+    original_dofile(root .. '/Recorder.lua')
+    post_initialize()
+    if mode:match('^void') or mode == "row-error" then
+        assert(messages[#messages]:match('recording'), mode .. ': ' .. messages[#messages])
+        local path = assert(messages[#messages]:match('recording (.+)$'))
+        if mode == "row-error" then
+            update()
+            assert(messages[#messages]:match('recorder stopped:') and messages[#messages]:match('fixture write failure'))
+            local before = #messages
+            update()
+            assert(#messages == before)
+        else
+            for i = 1, 51 do time = time + 0.02; update() end
+        end
+        release()
+        local handle = assert(original_io.open(path, 'rb'))
+        local rows = 0
+        for _ in handle:lines() do rows = rows + 1 end
+        handle:close()
+        assert(rows == (mode == "row-error" and 1 or 52), mode .. ': row count ' .. rows)
+    else
+        assert(messages[#messages]:match('recorder unavailable:') and messages[#messages]:match('fixture'))
+        update(); release()
+    end
+    io = original_io
+end
+print('Recorder DCS I/O return and failure fixtures passed.')
 -- 用既有指示器介面建立實際面板元素並核對邊界與參數唯讀。
 function dofile(path) if path:match('elements_defs.lua$') then return end; return original_dofile(path) end
 function SetCustomScale(value) assert(value==1) end

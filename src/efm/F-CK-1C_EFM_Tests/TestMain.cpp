@@ -57,6 +57,7 @@ void initialize_configuration()
 }
 }
 
+void run_dcs_aircraft_interface_tests(Tests::Context& context);
 void run_native_gun_access_tests(Tests::Context& context);
 void run_native_countermeasure_probe_tests(Tests::Context& context);
 void run_gun_ammunition_source_tests(Tests::Context& context);
@@ -65,6 +66,7 @@ int main()
 {
 	initialize_configuration();
 	Tests::Context context;
+	run_dcs_aircraft_interface_tests(context);
 	run_native_gun_access_tests(context);
 	run_native_countermeasure_probe_tests(context);
 	run_gun_ammunition_source_tests(context);
