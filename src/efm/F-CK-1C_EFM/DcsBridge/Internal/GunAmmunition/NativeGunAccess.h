@@ -28,7 +28,6 @@ inline constexpr NativeGunProfile kNativeGunProfiles[] = { { 0x6adbad09, 0x68e00
 inline constexpr std::size_t kNativeGunFingerprintSize = 49;
 
 const NativeGunProfile* native_gun_profile(std::uint32_t timestamp, std::uint32_t image_size) noexcept;
-std::uint64_t native_gun_fingerprint(const unsigned char* bytes, std::size_t size) noexcept;
 
 /// @brief 將記憶體讀取與三種原生呼叫交給執行環境。
 struct NativeGunAccess
