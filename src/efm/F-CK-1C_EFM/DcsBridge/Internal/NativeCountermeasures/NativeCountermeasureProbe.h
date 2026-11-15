@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -108,7 +107,7 @@ private:
 	NativeCmProbeSnapshot state_;
 	std::uint64_t epoch_ = 0;
 	bool active_ = false, calling_ = false, failed_ = false;
-	std::array<bool, 2> held_ = {};
+	bool flare_held_ = false, chaff_held_ = false;
 	std::deque<NativeCmCall> pending_;
 	double next_sample_s_ = 0, next_report_s_ = 0;
 };

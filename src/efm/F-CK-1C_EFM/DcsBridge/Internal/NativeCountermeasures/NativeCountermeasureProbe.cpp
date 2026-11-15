@@ -1,21 +1,9 @@
 #include "NativeCountermeasureProbe.h"
 #include "../../../DcsIds/CustomCommands.g.h"
 #include <cmath>
-#include <iterator>
 #include <optional>
 #include <utility>
 
-namespace
-{
-using namespace DcsBridge::Internal;
-struct ProbeBinding
-{
-	int id;
-	NativeCmKind kind;
-};
-constexpr ProbeBinding kBindings[] = { { DcsIds::Commands::NativeCmFlareDirect, NativeCmKind::Flare },
-	                                   { DcsIds::Commands::NativeCmChaffDirect, NativeCmKind::Chaff } };
-}
 namespace DcsBridge::Internal
 {
 NativeCountermeasureProbe::NativeCountermeasureProbe(NativeCmHost host, Reporter reporter)
@@ -35,7 +23,7 @@ void NativeCountermeasureProbe::begin_flight(bool enabled)
 		state_.status = enabled ? NativeCmStatus::Ready : NativeCmStatus::Disabled;
 		active_ = enabled;
 		failed_ = false;
-		held_ = {};
+		flare_held_ = chaff_held_ = false;
 		pending_.clear();
 		next_sample_s_ = next_report_s_ = 0;
 	}
@@ -51,7 +39,7 @@ void NativeCountermeasureProbe::end_flight()
 		++epoch_;
 		active_ = false;
 		pending_.clear();
-		held_ = {};
+		flare_held_ = chaff_held_ = false;
 		state_.status = NativeCmStatus::Canceled;
 	}
 	if (emit)
@@ -59,10 +47,12 @@ void NativeCountermeasureProbe::end_flight()
 }
 bool NativeCountermeasureProbe::handle_command(int command, float value)
 {
-	std::size_t index = 0;
-	while (index < std::size(kBindings) && kBindings[index].id != command)
-		++index;
-	if (index >= std::size(kBindings))
+	NativeCmKind kind;
+	if (command == DcsIds::Commands::NativeCmFlareDirect)
+		kind = NativeCmKind::Flare;
+	else if (command == DcsIds::Commands::NativeCmChaffDirect)
+		kind = NativeCmKind::Chaff;
+	else
 		return false;
 	const auto thread = host_.thread_id ? host_.thread_id() : 0;
 	{
@@ -70,8 +60,9 @@ bool NativeCountermeasureProbe::handle_command(int command, float value)
 		if (!active_ || !std::isfinite(value))
 			return true;
 		const bool pressed = value > 0;
-		const bool rising = pressed && !held_[index];
-		held_[index] = pressed;
+		bool& held = kind == NativeCmKind::Flare ? flare_held_ : chaff_held_;
+		const bool rising = pressed && !held;
+		held = pressed;
 		if (!rising)
 			return true;
 		if (failed_)
@@ -80,7 +71,7 @@ bool NativeCountermeasureProbe::handle_command(int command, float value)
 			state_.status = NativeCmStatus::QueueFull;
 		else
 		{
-			pending_.push_back({ ++state_.requests, kBindings[index].kind, thread });
+			pending_.push_back({ ++state_.requests, kind, thread });
 			state_.status = NativeCmStatus::Queued;
 		}
 	}

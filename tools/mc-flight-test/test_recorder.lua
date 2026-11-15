@@ -32,6 +32,7 @@ function dofile(path)
     return original_dofile(path)
 end
 original_dofile(root .. '/Recorder.lua')
+assert(need_to_be_closed == false, 'Recorder keeps its Lua state for periodic sampling')
 post_initialize()
 assert(#messages == 1 and messages[1]:match('recording'))
 local first = assert(messages[1]:match('recording (.+)$'))

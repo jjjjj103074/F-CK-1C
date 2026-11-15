@@ -76,4 +76,5 @@ function update()
     if not ok then close_file(); report("recorder stopped: " .. tostring(reason)) end
 end
 function release() close_file() end
-need_to_be_closed = true
+-- 保留 Lua 狀態供定期取樣與 release 關檔。
+need_to_be_closed = false
