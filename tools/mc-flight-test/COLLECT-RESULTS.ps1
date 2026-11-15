@@ -6,7 +6,7 @@ if (-not (Test-Path -LiteralPath $SavedGamesRoot -PathType Container)) {
     throw "DCS Saved Games folder not found: $SavedGamesRoot"
 }
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
-$target = Join-Path $PSScriptRoot "FCK1C-MC-RESULTS-$stamp"
+$target = Join-Path $PSScriptRoot "FCK1C-CM-DIRECT-RESULTS-$stamp"
 New-Item -ItemType Directory -Path $target | Out-Null
 $missing = [System.Collections.Generic.List[string]]::new()
 function Copy-Evidence([string]$Relative, [string]$Name) {

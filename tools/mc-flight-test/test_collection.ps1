@@ -21,7 +21,7 @@ try {
     }
     Set-Content -LiteralPath (Join-Path $toolRoot 'BUILD.json') -Value '{"fixture":true}' -Encoding UTF8
     & (Join-Path $toolRoot 'COLLECT-RESULTS.ps1') -SavedGamesRoot $saved
-    $zips = @(Get-ChildItem -LiteralPath $toolRoot -Filter 'FCK1C-MC-RESULTS-*.zip')
+    $zips = @(Get-ChildItem -LiteralPath $toolRoot -Filter 'FCK1C-CM-DIRECT-RESULTS-*.zip')
     if ($zips.Count -ne 1) { throw 'Expected one collection archive.' }
     $unpacked = Join-Path $fixture 'unpacked'
     Expand-Archive -LiteralPath $zips[0].FullName -DestinationPath $unpacked

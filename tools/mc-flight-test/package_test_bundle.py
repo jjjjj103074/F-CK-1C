@@ -1,4 +1,4 @@
-"""Assemble MC regression and native countermeasure tests around a CI-validated module."""
+"""Assemble minimal direct C++ countermeasure tests around a CI-validated module."""
 import argparse
 import hashlib
 import json
@@ -43,11 +43,8 @@ def parameter_names(catalog):
     names = []
     for item in catalog['cockpit_params']:
         key = item['name']
-        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm'))
-                or key in {'HmcsMasterMode', 'HmcsFireControlMode', 'HmcsAamSubmode', 'HmcsGunFiring',
-                           'HmcsWeaponClass', 'HmcsWeaponQuantity', 'HmcsWeaponQuantityAvailable'}):
+        if key.startswith('NativeCm') or key in {'McGeneration', 'HmcsMasterMode'}:
             names.append(item['value'])
-    names.extend(item['value'] for item in catalog['raw_dcs_cockpit_params'])
     return list(dict.fromkeys(names + OBSERVATIONS))
 
 def assemble(module_zip, manifest_path, catalog_path, output, expected_source):
@@ -107,10 +104,10 @@ end
     entries['TESTING.zh-TW.md'] = guide.markdown().encode('utf-8')
     entries['RESULTS.csv'] = b'\xef\xbb\xbf' + guide.results_csv().encode('utf-8')
     entries['TEST-CASES.json'] = (ROOT / 'cases.json').read_bytes()
-    build = dict(manifest, package_kind='mc-flight-test', dcs_runtime='not_run',
+    build = dict(manifest, package_kind='native-cm-direct-test', dcs_runtime='not_run',
         base_module_sha256=digest(Path(module_zip).read_bytes()),
         human_cases=len(guide.cases()), test_device_id=10, recorded_parameters=len(names),
-        native_countermeasure_probe=True, native_dispatch='C++ ed_fm_simulate',
+        native_countermeasure_probe=True, expected_cockpitbase_sha256='fb0a09be70627c7790dea1527cedfee43082bb8b112484d5c85be1d99d33de95', native_dispatch='C++ human virtual call from ed_fm_simulate',
         native_test_keys='prebound; existing bindings preserved',
         migration_goal='Countermeasure control and programs in a C++ System through SystemPipeline',
         runtime_changed=changed,

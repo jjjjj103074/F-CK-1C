@@ -22,11 +22,11 @@ void report_native_countermeasure_probe(EventLog& log,
                                         const NativeCmProbeSnapshot& s,
                                         const char* reason)
 {
-	char message[640] = {};
+	char message[1400] = {};
 	std::snprintf(
 	    message,
 	    sizeof(message),
-	    "native_cm_probe reason=%s source=ed_fm_simulate enabled=%u api_mask=%u status=%d requests=%llu calls=%llu last_request=%llu method=%d kind=%d input_thread=%u execution_thread=%u exception=0x%08x",
+	    "native_cm_probe reason=%s source=ed_fm_simulate interface=human_virtual enabled=%u api_mask=%u status=%d requests=%llu calls=%llu last_request=%llu kind=%d input_thread=%u execution_thread=%u exception=0x%08x samples=%llu inventory_available=%u inventory_status=%d payload_matches=%u flare=%d chaff=%d before_flare=%d before_chaff=%d context=0x%llx human=0x%llx payload=0x%llx human_payload=0x%llx flare_function=0x%llx chaff_function=0x%llx",
 	    reason,
 	    s.enabled ? 1U : 0U,
 	    s.api_mask,
@@ -34,11 +34,24 @@ void report_native_countermeasure_probe(EventLog& log,
 	    static_cast<unsigned long long>(s.requests),
 	    static_cast<unsigned long long>(s.calls),
 	    static_cast<unsigned long long>(s.last_request),
-	    static_cast<int>(s.method),
 	    static_cast<int>(s.kind),
 	    s.request_thread,
 	    s.execute_thread,
-	    s.exception);
+	    s.exception,
+	    static_cast<unsigned long long>(s.samples),
+	    s.inventory.available ? 1U : 0U,
+	    static_cast<int>(s.inventory.status),
+	    s.inventory.payload_matches ? 1U : 0U,
+	    s.inventory.flare,
+	    s.inventory.chaff,
+	    s.before_flare,
+	    s.before_chaff,
+	    static_cast<unsigned long long>(s.inventory.context),
+	    static_cast<unsigned long long>(s.inventory.human),
+	    static_cast<unsigned long long>(s.inventory.payload),
+	    static_cast<unsigned long long>(s.inventory.human_payload),
+	    static_cast<unsigned long long>(s.inventory.flare_function),
+	    static_cast<unsigned long long>(s.inventory.chaff_function));
 	(void)log.write(
 	    { s.status == NativeCmStatus::CallFailed ? EventLevel::Error : EventLevel::Info, s.time_s, message });
 	struct Value
@@ -53,9 +66,17 @@ void report_native_countermeasure_probe(EventLog& log,
 		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmRequests), static_cast<double>(s.requests) },
 		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmCalls), static_cast<double>(s.calls) },
 		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmLastRequest), static_cast<double>(s.last_request) },
-		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmMethod), static_cast<double>(s.method) },
 		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmKind), static_cast<double>(s.kind) },
-		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmException), static_cast<double>(s.exception) }
+		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmException), static_cast<double>(s.exception) },
+		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmInventoryAvailable),
+		  s.inventory.available ? 1.0 : 0.0 },
+		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmPayloadMatches),
+		  s.inventory.payload_matches ? 1.0 : 0.0 },
+		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmFlareCount), static_cast<double>(s.inventory.flare) },
+		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmChaffCount), static_cast<double>(s.inventory.chaff) },
+		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmSamples), static_cast<double>(s.samples) },
+		{ cockpit_parameter_writer(DcsIds::CockpitParams::NativeCmSourceStatus),
+		  static_cast<double>(s.inventory.status) }
 	};
 	for (auto& entry : values)
 		(void)entry.parameter.write_number(api, entry.number);

@@ -1,26 +1,20 @@
 #include "NativeCountermeasureProbe.h"
 #include "../../../DcsIds/CustomCommands.g.h"
-
 #include <cmath>
 #include <iterator>
+#include <optional>
 #include <utility>
 
 namespace
 {
+using namespace DcsBridge::Internal;
 struct ProbeBinding
 {
 	int id;
-	DcsBridge::Internal::NativeCmMethod method;
-	DcsBridge::Internal::NativeCmKind kind;
+	NativeCmKind kind;
 };
-using DcsBridge::Internal::NativeCmKind;
-using DcsBridge::Internal::NativeCmMethod;
-constexpr ProbeBinding kBindings[] = {
-	{ DcsIds::Commands::NativeCmFlareDigital, NativeCmMethod::Digital, NativeCmKind::Flare },
-	{ DcsIds::Commands::NativeCmChaffDigital, NativeCmMethod::Digital, NativeCmKind::Chaff },
-	{ DcsIds::Commands::NativeCmFlareAnalog, NativeCmMethod::Analog, NativeCmKind::Flare },
-	{ DcsIds::Commands::NativeCmChaffAnalog, NativeCmMethod::Analog, NativeCmKind::Chaff }
-};
+constexpr ProbeBinding kBindings[] = { { DcsIds::Commands::NativeCmFlareDirect, NativeCmKind::Flare },
+	                                   { DcsIds::Commands::NativeCmChaffDirect, NativeCmKind::Chaff } };
 }
 namespace DcsBridge::Internal
 {
@@ -31,36 +25,32 @@ NativeCountermeasureProbe::NativeCountermeasureProbe(NativeCmHost host, Reporter
 }
 void NativeCountermeasureProbe::begin_flight(bool enabled)
 {
-	bool emit = enabled;
+	bool emit;
 	{
 		const std::lock_guard<std::mutex> lock(mutex_);
-		emit = emit || state_.enabled;
+		emit = enabled || state_.enabled;
 		++epoch_;
 		state_ = {};
 		state_.enabled = enabled;
-		state_.api_mask = enabled && host_.availability ? host_.availability() : 0;
 		state_.status = enabled ? NativeCmStatus::Ready : NativeCmStatus::Disabled;
 		active_ = enabled;
 		failed_ = false;
-		calling_ = false;
 		held_ = {};
 		pending_.clear();
-		analog_.reset();
+		next_sample_s_ = next_report_s_ = 0;
 	}
 	if (emit)
 		report("begin_flight");
 }
 void NativeCountermeasureProbe::end_flight()
 {
-	bool emit = false;
+	bool emit;
 	{
 		const std::lock_guard<std::mutex> lock(mutex_);
 		emit = state_.enabled;
 		++epoch_;
 		active_ = false;
-		calling_ = false;
 		pending_.clear();
-		analog_.reset();
 		held_ = {};
 		state_.status = NativeCmStatus::Canceled;
 	}
@@ -74,7 +64,7 @@ bool NativeCountermeasureProbe::handle_command(int command, float value)
 		++index;
 	if (index == std::size(kBindings))
 		return false;
-	bool emit = false;
+	const auto thread = host_.thread_id ? host_.thread_id() : 0;
 	{
 		const std::lock_guard<std::mutex> lock(mutex_);
 		if (!active_ || !std::isfinite(value))
@@ -84,107 +74,146 @@ bool NativeCountermeasureProbe::handle_command(int command, float value)
 		held_[index] = pressed;
 		if (!rising)
 			return true;
-		emit = true;
-		if (pending_.size() >= 16 || failed_)
-			state_.status = failed_ ? NativeCmStatus::CallFailed : NativeCmStatus::QueueFull;
+		if (failed_)
+			state_.status = NativeCmStatus::CallFailed;
+		else if (pending_.size() >= 16)
+			state_.status = NativeCmStatus::QueueFull;
 		else
 		{
-			const auto& binding = kBindings[index];
-			const int native = binding.kind == NativeCmKind::Flare ? DcsIds::DcsCommands::iCommandPlaneDropFlareOnce
-			                                                       : DcsIds::DcsCommands::iCommandPlaneDropChaffOnce;
-			pending_.push_back({ epoch_,
-			                     ++state_.requests,
-			                     binding.method,
-			                     binding.kind,
-			                     native,
-			                     1.0F,
-			                     host_.thread_id ? host_.thread_id() : 0 });
+			pending_.push_back({ ++state_.requests, kBindings[index].kind, thread });
 			state_.status = NativeCmStatus::Queued;
 		}
 	}
-	if (emit)
-		report("input");
+	report("input");
 	return true;
 }
 void NativeCountermeasureProbe::step(double time_s, bool armed)
 {
 	std::optional<NativeCmCall> work;
+	std::uint64_t epoch;
 	bool rejected = false;
 	{
 		const std::lock_guard<std::mutex> lock(mutex_);
 		if (!active_ || calling_ || failed_ || !std::isfinite(time_s))
 			return;
 		state_.time_s = time_s;
-		if (!armed && analog_)
-			pending_.clear();
-		if (analog_)
-		{
-			if (armed && time_s < release_at_)
-				return;
-			work = analog_;
-			work->value = 0;
-			analog_.reset();
-		}
-		else if (!pending_.empty())
+		if (!pending_.empty())
 		{
 			work = pending_.front();
 			pending_.pop_front();
 			state_.last_request = work->request;
-			state_.method = work->method;
 			state_.kind = work->kind;
 			state_.request_thread = work->request_thread;
-			state_.api_mask = host_.availability ? host_.availability() : 0;
-			if (!armed || !(state_.api_mask & static_cast<unsigned>(work->method)))
+			if (!armed)
 			{
-				state_.status = armed ? NativeCmStatus::MissingExport : NativeCmStatus::NotArmed;
-				if (!armed)
-					pending_.clear();
+				state_.status = NativeCmStatus::NotArmed;
+				pending_.clear();
 				work.reset();
 				rejected = true;
 			}
 		}
-		if (work)
-			calling_ = true;
+		if (!work && !rejected && time_s < next_sample_s_)
+			return;
+		next_sample_s_ = time_s + 0.1;
+		epoch = epoch_;
+		calling_ = true;
 	}
-	if (rejected)
-		report("rejected");
-	if (!work)
-		return;
-	// 原生派送在本工具及 Bridge 執行鎖以外進行，供 DCS 回送輸入回呼。
+	// 在 EFM 回呼中取樣與施放，將引擎呼叫放在測試工具鎖以外。
+	unsigned mask = 0;
+	NativeCmInventory inventory;
+	NativeCmInventory before;
 	NativeCmCallResult result;
 	try
 	{
-		result = host_.dispatch ? host_.dispatch(*work) : NativeCmCallResult{};
+		mask = host_.availability ? host_.availability() : 0;
+		if ((mask & 1U) && host_.observe)
+			inventory = host_.observe();
+		else
+			inventory.status = NativeCmSourceStatus::UnsupportedBuild;
+		before = inventory;
+		{
+			const std::lock_guard<std::mutex> lock(mutex_);
+			if (epoch != epoch_ || !active_)
+			{
+				calling_ = false;
+				return;
+			}
+		}
+		if (work && inventory.available && (mask & 2U) && host_.dispatch)
+		{
+			result = host_.dispatch(*work);
+			before = result.before;
+			inventory = result.after;
+		}
 	}
 	catch (...)
 	{
-		result = {};
+		inventory.available = false;
+		inventory.flare = inventory.chaff = -1;
+		inventory.status = NativeCmSourceStatus::NativeCallFailed;
+		inventory.exception = 0xe0000001U;
 	}
+	const auto thread = host_.thread_id ? host_.thread_id() : 0;
+	bool emit;
+	const char* reason = rejected ? "rejected" : work ? "direct_call" : "inventory";
 	{
 		const std::lock_guard<std::mutex> lock(mutex_);
-		if (work->epoch != epoch_ || !active_)
-			return;
-		calling_ = false;
-		state_.execute_thread = host_.thread_id ? host_.thread_id() : 0;
-		state_.exception = result.exception;
-		if (!result.returned)
+		if (epoch != epoch_ || !active_)
 		{
-			state_.status = NativeCmStatus::CallFailed;
+			calling_ = false;
+			return;
+		}
+		calling_ = false;
+		const auto& previous = state_.inventory;
+		emit = work.has_value() || rejected || time_s >= next_report_s_ || previous.available != inventory.available ||
+		       previous.status != inventory.status || previous.flare != inventory.flare ||
+		       previous.chaff != inventory.chaff;
+		state_.api_mask = mask;
+		state_.execute_thread = thread;
+		state_.inventory = inventory;
+		++state_.samples;
+		state_.exception = inventory.exception ? inventory.exception : result.exception;
+		if (work)
+		{
+			state_.before_flare = before.flare;
+			state_.before_chaff = before.chaff;
+		}
+		if (state_.exception)
+		{
 			failed_ = true;
 			pending_.clear();
+			state_.status = NativeCmStatus::CallFailed;
+			emit = true;
 		}
-		else
+		else if (work)
 		{
-			++state_.calls;
-			state_.status = work->value == 0 ? NativeCmStatus::Released : NativeCmStatus::Called;
-			if (work->method == NativeCmMethod::Analog && work->value > 0)
+			if (!(mask & 2U))
+				state_.status = NativeCmStatus::MissingExport;
+			else if (inventory.status == NativeCmSourceStatus::NoAmmunition)
+				state_.status = NativeCmStatus::NoAmmunition;
+			else if (!result.returned)
 			{
-				analog_ = work;
-				release_at_ = time_s + 0.04;
+				state_.status = inventory.available ? NativeCmStatus::CallFailed : NativeCmStatus::WaitingForSource;
+				if (inventory.available)
+				{
+					failed_ = true;
+					pending_.clear();
+				}
+			}
+			else
+			{
+				++state_.calls;
+				state_.status = NativeCmStatus::Called;
 			}
 		}
+		else if (!rejected &&
+		         (state_.status == NativeCmStatus::Ready || state_.status == NativeCmStatus::WaitingForSource))
+			state_.status = inventory.available ? NativeCmStatus::Ready : NativeCmStatus::WaitingForSource;
+		if (emit)
+			next_report_s_ = time_s + 1;
 	}
-	report(work->value == 0 ? "release" : "native_call");
+	if (emit)
+		report(reason);
 }
 NativeCmProbeSnapshot NativeCountermeasureProbe::snapshot() const
 {

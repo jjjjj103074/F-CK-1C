@@ -1,55 +1,30 @@
-# MC flight-test bundle
+# Direct native countermeasure flight test
 
-`package_test_bundle.py` wraps the module produced by `mc-windows-validation.yml`
-in a test bundle with a human runbook, result collection, a passive cockpit recorder,
-and a small parameter indicator. The source revision and DLL hash must match the
-successful CI manifest before assembly.
+This isolated test profile validates C++ inventory reads and one-round flare/chaff
+calls from `ed_fm_simulate`. `cases.json` defines the three human checks. The package
+adds two default test keys, a passive Lua inventory reference, and a side-by-side
+C++/Lua indicator. The exact Windows DLL and source revision must match the passed
+CI manifest before assembly.
 
-```text
-python tools/mc-flight-test/package_test_bundle.py \
-  --module-zip dist/F-CK-1C-mc-<source>.zip \
-  --manifest <validated-artifact>/manifest.json \
-  --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json \
-  --expected-source <full-source-commit> \
-  --output dist/mc-flight-test
-```
+The native host checks the supplied CockpitBase version and five code fingerprints,
+then reacquires context/human/payload for each sample. It compares the human payload
+with `c_payload()` before reading both counts or dispensing one round. EFM sampling
+runs at 10 Hz; the cockpit recorder runs at 50 Hz. Calls run after the Bridge lock
+has been released. Input edges and per-flight epochs control queued requests.
 
-`cases.json` is the shared source for the Markdown/HTML runbook and result sheet.
-The committed human guide is [MC flight testing](../../docs/MC_FLIGHT_TEST.zh-TW.md).
+`FM/native-countermeasure-probe.enabled` enables the probe in this test package.
+The ordinary release assembly keeps the probe disabled. The test profile uses
+Bridge commands 3150/3151, bound to left Alt + left Shift + Insert/Delete.
 
-The bundle appends device 10 and its indicator registration to `device_init.lua`,
-four prebound native probe controls before the keyboard profile returns, and a
-read-only countermeasure observer after the existing weapon-device update.
-The module DLL is the exact CI-validated DLL. Existing controls and production MC,
-radar and CMS algorithms remain intact. `BUILD.json` lists the three edited runtime
-files and every added entry, including `FM/native-countermeasure-probe.enabled`.
-The ordinary release package omits this flag and keeps the probe disabled.
+Build the module through `mc-windows-validation.yml`, then use the existing
+`package_test_bundle.py` arguments to assemble it. `START-HERE.zh-TW.html` contains
+installation, all default keys, three cases, expected results, and collection steps.
 
-The four controls invoke Bridge commands 3150–3153. The C++ probe dispatches the
-native digital/analog commands from `ed_fm_simulate`, outside the Bridge execution
-lock. `NativeCountermeasureObservation.lua` reads stock only; it sends no commands.
-Its validity mask (flare=1, chaff=2) distinguishes zero stock from missing getters.
-The test includes nine native cases plus the existing 69 MC cases.
+`COLLECT-RESULTS.bat` gathers the cockpit CSVs, DCS/EFM logs, existing input profiles,
+installed DLL hash, and build manifest into `FCK1C-CM-DIRECT-RESULTS-<time>.zip`.
+Its first argument accepts a Saved Games directory, including drag-and-drop.
 
-The recorder runs at 50 Hz. Each mission creates a separate CSV under
-`Saved Games/DCS/Logs/FCK1C-MC-TEST/`. MC and station generations have separate
-coherence flags; raw DCS sensor and presentation fields remain individually sampled.
-The file records the source commit and DLL SHA256 on each row. `release` closes the
-file; I/O errors are reported in `dcs.log`.
-
-`COLLECT-RESULTS.bat` runs the PowerShell collector after DCS exits. It copies the
-recordings, DCS/EFM logs, existing input profiles, installed DLL hash and result sheet
-into a timestamped ZIP. Its optional first argument selects the Saved Games root.
-
-Checks:
-
-```text
-python -m unittest discover -s tools/mc-flight-test -p "test_*.py"
-lua tools/mc-flight-test/test_recorder.lua tools/mc-flight-test <fixture-root>
-powershell.exe -NoProfile -File tools/mc-flight-test/test_collection.ps1
-```
-
-Create `<fixture-root>/Logs/FCK1C-MC-TEST` before running the Lua fixtures.
-The Windows CI executes the collector fixtures, package fixtures and actual
-adapter/recorder Lua fixtures, then uploads `mc-flight-test-<source-commit>`.
-In-game results remain pending until the pilot returns the evidence.
+Validation uses the existing package, Lua recorder/indicator, and PowerShell
+collector fixtures. Native probe tests cover input edges, sampling, ordering,
+arm rejection, unavailable sources, exceptions, reentrancy, and flight changes.
+DCS execution remains the pilot's real-world check after the build passes CI.

@@ -7,8 +7,6 @@ return function(commands, ids)
             name = _("[Flight Test] Native CM - " .. label), category = { _("Flight Test") }
         }
     end
-    bind("Insert", { "LAlt", "LShift" }, ids.NativeCmFlareDigital, "Flare Digital")
-    bind("Delete", { "LAlt", "LShift" }, ids.NativeCmChaffDigital, "Chaff Digital")
-    bind("Insert", { "LCtrl", "LShift" }, ids.NativeCmFlareAnalog, "Flare Analog")
-    bind("Delete", { "LCtrl", "LShift" }, ids.NativeCmChaffAnalog, "Chaff Analog")
+    bind("Insert", { "LAlt", "LShift" }, ids.NativeCmFlareDirect, "Flare Direct - one round")
+    bind("Delete", { "LAlt", "LShift" }, ids.NativeCmChaffDirect, "Chaff Direct - one round")
 end

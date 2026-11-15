@@ -130,9 +130,14 @@ cockpit_params = {
     NativeCmRequests = "CPP_NATIVE_CM_REQUESTS",
     NativeCmCalls = "CPP_NATIVE_CM_CALLS",
     NativeCmLastRequest = "CPP_NATIVE_CM_LAST_REQUEST",
-    NativeCmMethod = "CPP_NATIVE_CM_METHOD",
     NativeCmKind = "CPP_NATIVE_CM_KIND",
     NativeCmException = "CPP_NATIVE_CM_EXCEPTION",
+    NativeCmInventoryAvailable = "CPP_NATIVE_CM_INVENTORY_AVAILABLE",
+    NativeCmPayloadMatches = "CPP_NATIVE_CM_PAYLOAD_MATCHES",
+    NativeCmFlareCount = "CPP_NATIVE_CM_FLARE_COUNT",
+    NativeCmChaffCount = "CPP_NATIVE_CM_CHAFF_COUNT",
+    NativeCmSamples = "CPP_NATIVE_CM_SAMPLES",
+    NativeCmSourceStatus = "CPP_NATIVE_CM_SOURCE_STATUS",
 }
 
 dcs_cockpit_params = {

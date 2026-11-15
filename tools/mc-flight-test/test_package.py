@@ -54,7 +54,7 @@ class TestFlightBundle(unittest.TestCase):
             self.assertTrue(archive.read(package.WEAPONS).startswith(self.entries[package.WEAPONS]))
             self.assertIn(package.PROBE_FLAG, archive.namelist())
             self.assertTrue(build['native_countermeasure_probe'])
-            self.assertEqual(build['human_cases'], 78)
+            self.assertEqual(build['human_cases'], 3)
             self.assertIn(self.source, archive.read(package.TEST_ROOT + 'Build.lua').decode())
         self.assertIn(package.digest(bundle.read_bytes()), Path(str(bundle)+'.sha256').read_text())
     def test_rejects_wrong_dll(self):
@@ -103,6 +103,6 @@ class TestFlightBundle(unittest.TestCase):
     def test_deduplicates_existing_parameters(self):
         data=json.loads(self.catalog.read_text())
         data['raw_dcs_cockpit_params'].append(dict(name='duplicate',value='CPP_MC_GENERATION'))
-        self.assertEqual(package.parameter_names(data),['CPP_MC_GENERATION','OBS_WEAPON_STATION_01','WS_IR_MISSILE_LOCK'] + package.OBSERVATIONS)
+        self.assertEqual(package.parameter_names(data),['CPP_MC_GENERATION'] + package.OBSERVATIONS)
 
 if __name__ == '__main__': unittest.main()

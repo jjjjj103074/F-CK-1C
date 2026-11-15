@@ -65,10 +65,8 @@ static constexpr int EngineThrustCutTestToggle = 3135;
 static constexpr int EngineThrustCutTestEnable = 3136;
 static constexpr int EngineThrustCutTestDisable = 3137;
 static constexpr int DebugIndicatorToggle = 3140;
-static constexpr int NativeCmFlareDigital = 3150;
-static constexpr int NativeCmChaffDigital = 3151;
-static constexpr int NativeCmFlareAnalog = 3152;
-static constexpr int NativeCmChaffAnalog = 3153;
+static constexpr int NativeCmFlareDirect = 3150;
+static constexpr int NativeCmChaffDirect = 3151;
 }
 
 namespace DcsCommands
@@ -177,10 +175,8 @@ static constexpr Entry CustomCommands[] = {
     { Commands::EngineThrustCutTestEnable, Route::Efm },
     { Commands::EngineThrustCutTestDisable, Route::Efm },
     { Commands::DebugIndicatorToggle, Route::Bridge },
-    { Commands::NativeCmFlareDigital, Route::Bridge },
-    { Commands::NativeCmChaffDigital, Route::Bridge },
-    { Commands::NativeCmFlareAnalog, Route::Bridge },
-    { Commands::NativeCmChaffAnalog, Route::Bridge },
+    { Commands::NativeCmFlareDirect, Route::Bridge },
+    { Commands::NativeCmChaffDirect, Route::Bridge },
 };
 
 static constexpr int IgnoredDcsCommands[] = {
