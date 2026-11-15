@@ -21,10 +21,18 @@ Build the module through `mc-windows-validation.yml`, then use the existing
 installation, all default keys, three cases, expected results, and collection steps.
 
 `COLLECT-RESULTS.bat` gathers the cockpit CSVs, DCS/EFM logs, existing input profiles,
-installed DLL hash, and build manifest into `FCK1C-CM-DIRECT-RESULTS-<time>.zip`.
+installed DLL hash, installed input scripts and their hashes, and build manifest into `FCK1C-CM-DIRECT-RESULTS-<time>.zip`.
 Its first argument accepts a Saved Games directory, including drag-and-drop.
 
 Validation uses the existing package, Lua recorder/indicator, and PowerShell
 collector fixtures. Native probe tests cover input edges, sampling, ordering,
 arm rejection, unavailable sources, exceptions, reentrancy, and flight changes.
 DCS execution remains the pilot's real-world check after the build passes CI.
+
+The input-trace build records every raw `ed_fm_set_command` call after module
+initialization and before command handlers. `native_cm_input stage=efm_entry`
+contains the unmodified command ID, decimal float, float bits, and finiteness.
+`stage=probe_result` records the test-command state after handling. The test flag
+controls this trace. Existing request and native-call events complete the path.
+The collector adds `EFM-COMMAND-TRACE.log` and `INPUT-SUMMARY.json`; command 3040
+provides the known master-arm input alongside the two probe commands 3150/3151.

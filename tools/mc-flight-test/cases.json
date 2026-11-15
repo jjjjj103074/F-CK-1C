@@ -1,19 +1,25 @@
 [
   {
-    "id": "N01", "scenario": "A", "title": "C++ 庫存讀取",
-    "action": "進入空中任務後等待 5 秒。看右上測試面板，記下起始熱焰彈 F0、干擾絲 C0。",
+    "id": "N01",
+    "scenario": "A",
+    "title": "C++ 庫存讀取",
+    "action": "進入空中任務後按 F1 回座艙，等待 5 秒。看右上測試面板，記下起始熱焰彈 F0、干擾絲 C0。按一下右 Ctrl＋M，放開全部按鍵，確認 ARM=2；這個操作也用來對照 EFM 命令入口。",
     "look": "CPP FLR／LUA FLR、CPP CHF／LUA CHF、READ、MATCH、HOST、LUA OK、SOURCE、ERROR、SAMPLES。",
     "normal": "CPP 與 LUA 的兩種庫存各自相同；READ=1、MATCH=1、HOST=3、LUA OK=3、SOURCE=0、ERROR=0；SAMPLES 持續增加。一般初始值是 90／90，以任務實際配量為準。"
   },
   {
-    "id": "N02", "scenario": "A", "title": "C++ 直接施放一發熱焰彈",
-    "action": "按右 Ctrl＋M 將主保險設為 ON，確認 ARM=2。按 F2 切外部視角，再按一下左 Alt＋左 Shift＋Insert，放開按鍵並看熱焰彈離機。按 F1 回座艙，等 3 秒。",
-    "look": "實際熱焰彈，以及右上 CPP FLR／LUA FLR、CPP CHF／LUA CHF、REQ、CALLS、LAST、ERROR。",
-    "normal": "看到一發熱焰彈離機；CPP FLR=LUA FLR=F0−1，CPP CHF=LUA CHF=C0；REQ=1、CALLS=1、LAST=1、STATUS=3、ERROR=0。"
+    "id": "N02",
+    "scenario": "A",
+    "title": "C++ 直接施放一發熱焰彈",
+    "action": "保持 F1 座艙視角與 ARM=2。按一下左 Alt＋左 Shift＋Insert，放開全部按鍵，等待 3 秒。記下 REQ、CALLS 與庫存。即使 REQ 沒增加，也繼續 N03，讓兩個測試命令都有紀錄。",
+    "look": "右上 CPP FLR／LUA FLR、CPP CHF／LUA CHF、REQ、CALLS、LAST、ERROR。想看離機效果時，在按鍵放開後立即按 F2，再按 F1 回座艙看數值。",
+    "normal": "CPP FLR=LUA FLR=F0−1，CPP CHF=LUA CHF=C0；REQ=1、CALLS=1、LAST=1、STATUS=3、ERROR=0。若未符合，直接保留紀錄即可。"
   },
   {
-    "id": "N03", "scenario": "A", "title": "C++ 直接施放一發干擾絲",
-    "action": "確認 ARM=2，再按一下左 Alt＋左 Shift＋Delete，放開按鍵並等待 3 秒；之後保持不操作 5 秒。",
+    "id": "N03",
+    "scenario": "A",
+    "title": "C++ 直接施放一發干擾絲",
+    "action": "按 F1 回座艙，確認 ARM=2。按一下左 Alt＋左 Shift＋Delete，放開全部按鍵並等待 3 秒；之後保持不操作 5 秒。",
     "look": "右上 CPP CHF／LUA CHF、CPP FLR／LUA FLR、REQ、CALLS、LAST、ERROR。",
     "normal": "CPP CHF=LUA CHF=C0−1，CPP FLR=LUA FLR=F0−1；REQ=2、CALLS=2、LAST=2、STATUS=3、ERROR=0。等待期間庫存保持不變。干擾絲視覺效果不明顯，主要以兩個來源的扣量判定。"
   }

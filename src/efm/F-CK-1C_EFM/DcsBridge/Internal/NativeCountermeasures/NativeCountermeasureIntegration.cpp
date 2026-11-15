@@ -3,12 +3,42 @@
 #include "../EventLog.h"
 #include "../../../DcsIds/CockpitParams.g.h"
 #include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <limits>
 
 namespace DcsBridge::Internal
 {
+void trace_native_countermeasure_command(BridgeContext& context, int command, float value, const char* stage)
+{
+	const auto state = context.native_countermeasure_probe().snapshot();
+	if (!state.enabled)
+		return;
+	std::uint32_t bits = 0;
+	static_assert(sizeof(value) == sizeof(bits), "DCS command values use 32-bit floats.");
+	std::memcpy(&bits, &value, sizeof(bits));
+	char message[512] = {};
+	std::snprintf(
+	    message,
+	    sizeof(message),
+	    "native_cm_input stage=%s callback=ed_fm_set_command command=%d value=%.*g value_bits=0x%08x finite=%u status=%d requests=%llu calls=%llu",
+	    stage,
+	    command,
+	    std::numeric_limits<float>::max_digits10,
+	    static_cast<double>(value),
+	    static_cast<unsigned>(bits),
+	    std::isfinite(value) ? 1U : 0U,
+	    static_cast<int>(state.status),
+	    static_cast<unsigned long long>(state.requests),
+	    static_cast<unsigned long long>(state.calls));
+	(void)context.event_log().write({ EventLevel::Info, state.time_s, message });
+}
 bool handle_native_countermeasure_command(BridgeContext& context, int command, float value)
 {
-	return context.native_countermeasure_probe().handle_command(command, value);
+	const bool handled = context.native_countermeasure_probe().handle_command(command, value);
+	if (handled)
+		trace_native_countermeasure_command(context, command, value, "probe_result");
+	return handled;
 }
 void step_native_countermeasure_probe(BridgeContext& context, const Core::FrameOutput& output)
 {

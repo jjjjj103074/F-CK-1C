@@ -14,6 +14,8 @@ DLL = MODULE + 'bin/F-CK-1C_EFM.dll'
 DEVICE = MODULE + 'Cockpit/Scripts/device_init.lua'
 TEST_ROOT = MODULE + 'Cockpit/Scripts/MCFlightTest/'
 KEYBOARD = MODULE + 'Input/F-CK-1C/keyboard/default.lua'
+COMMANDS = MODULE + 'Cockpit/Scripts/command_defs.lua'
+WEAPON_INPUT = MODULE + 'Input/F-CK-1C/mission_weapon_input.lua'
 WEAPONS = MODULE + 'Cockpit/Scripts/Systems/weapon_system.lua'
 PROBE_FLAG = MODULE + 'FM/native-countermeasure-probe.enabled'
 OBSERVATIONS = ['FCK1C_TEST_CM_OBSERVATION_AVAILABLE', 'FCK1C_TEST_CM_FLARE_COUNT', 'FCK1C_TEST_CM_CHAFF_COUNT']
@@ -34,7 +36,7 @@ def read_module(path):
             if name in entries:
                 raise ValueError('Duplicate module ZIP path: ' + name)
             entries[name] = archive.read(entry)
-    for required in (DLL, DEVICE, MODULE + 'Cockpit/Scripts/devices.lua', KEYBOARD, WEAPONS):
+    for required in (DLL, DEVICE, MODULE + 'Cockpit/Scripts/devices.lua', KEYBOARD, WEAPONS, COMMANDS, WEAPON_INPUT):
         if required not in entries:
             raise ValueError('Missing runtime file: ' + required)
     return entries
@@ -109,6 +111,8 @@ end
         human_cases=len(guide.cases()), test_device_id=10, recorded_parameters=len(names),
         native_countermeasure_probe=True, expected_cockpitbase_sha256='fb0a09be70627c7790dea1527cedfee43082bb8b112484d5c85be1d99d33de95', native_dispatch='C++ human virtual call from ed_fm_simulate',
         native_test_keys='prebound; existing bindings preserved',
+        native_input_trace='all raw ed_fm_set_command inputs before handlers; test probe results after handling',
+        input_file_sha256={name[len(MODULE):]: digest(entries[name]) for name in (KEYBOARD, WEAPON_INPUT, COMMANDS, TEST_ROOT + 'NativeCountermeasureKeys.lua', PROBE_FLAG)},
         migration_goal='Countermeasure control and programs in a C++ System through SystemPipeline',
         runtime_changed=changed,
         runtime_added=sorted(name for name in set(entries) - set(original) if name.startswith(MODULE)),

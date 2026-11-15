@@ -299,6 +299,7 @@ void ed_fm_set_command(int command, float value)
 try
 {
 	ensure_module_initialized();
+	DcsBridge::Internal::trace_native_countermeasure_command(bridge(), command, value, "efm_entry");
 	if (DcsBridge::Internal::handle_debug_indicator_command(bridge(), command, value) ||
 	    DcsBridge::Internal::handle_native_countermeasure_command(bridge(), command, value))
 	{

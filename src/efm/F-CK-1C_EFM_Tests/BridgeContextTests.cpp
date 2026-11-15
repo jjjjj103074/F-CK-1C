@@ -6,6 +6,8 @@
 #include "../F-CK-1C_EFM/DcsBridge/Internal/BridgeContext.h"
 #include "../F-CK-1C_EFM/DcsBridge/Internal/DebugTelemetry/DebugIndicatorCommandHandler.h"
 #include "../F-CK-1C_EFM/DcsIds/CustomCommands.g.h"
+#include "../F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.h"
+#include <limits>
 
 #include <algorithm>
 #include <array>
@@ -502,10 +504,42 @@ void test_configuration_error_survives_failed_restart(Tests::Context& tests)
 	TEST_EXPECT(tests, log.find("[Error]") != std::string::npos);
 }
 
+void test_native_cm_trace_preserves_raw_input_and_routing(Tests::Context& tests)
+{
+	using namespace DcsBridge::Internal;
+	TestFiles::TemporaryDirectory root("bct");
+	const std::string config_path = create_config_path(root.path());
+	BridgeContextOwner owner(make_environment());
+	auto& bridge = owner.get(config_path.c_str());
+	const auto log_path = root.path() / "log" / "fck1c_efm.log";
+	trace_native_countermeasure_command(bridge, 3150, 1.0F, "efm_entry");
+	TEST_EXPECT(tests, TestFiles::read_text_while_open(log_path).find("native_cm_input") == std::string::npos);
+	bridge.native_countermeasure_probe().begin_flight(true);
+	trace_native_countermeasure_command(bridge, 3150, 1.0F, "efm_entry");
+	TEST_EXPECT(tests, handle_native_countermeasure_command(bridge, 3150, 1.0F));
+	trace_native_countermeasure_command(bridge, 3150, -0.0F, "efm_entry");
+	TEST_EXPECT(tests, handle_native_countermeasure_command(bridge, 3150, -0.0F));
+	trace_native_countermeasure_command(bridge, 3151, std::numeric_limits<float>::infinity(), "efm_entry");
+	TEST_EXPECT(tests, handle_native_countermeasure_command(bridge, 3151, std::numeric_limits<float>::infinity()));
+	trace_native_countermeasure_command(bridge, 2001, 0.125F, "efm_entry");
+	TEST_EXPECT(tests, !handle_native_countermeasure_command(bridge, 2001, 0.125F));
+	const auto log = TestFiles::read_text_while_open(log_path);
+	const auto entry = log.find(
+	    "native_cm_input stage=efm_entry callback=ed_fm_set_command command=3150 value=1 value_bits=0x3f800000 finite=1 status=1 requests=0 calls=0");
+	const auto result = log.find(
+	    "native_cm_input stage=probe_result callback=ed_fm_set_command command=3150 value=1 value_bits=0x3f800000 finite=1 status=2 requests=1 calls=0");
+	TEST_EXPECT(tests, entry != std::string::npos && result != std::string::npos && entry < result);
+	TEST_EXPECT(tests, log.find("command=3150 value=-0 value_bits=0x80000000 finite=1") != std::string::npos);
+	TEST_EXPECT(tests, log.find("command=3151 value=inf value_bits=0x7f800000 finite=0") != std::string::npos);
+	TEST_EXPECT(tests, log.find("command=2001 value=0.125 value_bits=0x3e000000 finite=1") != std::string::npos);
+	TEST_EXPECT(tests, bridge.native_countermeasure_probe().snapshot().requests == 1);
+}
+
 }
 
 void run_bridge_context_tests(Tests::Context& context)
 {
+	test_native_cm_trace_preserves_raw_input_and_routing(context);
 	test_module_paths_preserve_long_config_paths(context);
 	test_first_callback_initializes_once(context);
 	test_files_ready_before_flight(context);

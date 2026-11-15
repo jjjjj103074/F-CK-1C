@@ -18,24 +18,26 @@ def cases():
 
 def markdown():
     lines = ['# C++ 熱焰彈／干擾絲最小測試', '',
-        '只做 N01–N03。一個空中任務，約一分鐘即可完成；測試兩種庫存讀取與各一發直接施放。', '',
+        '本包加上 EFM 原始命令紀錄。只做 N01–N03，一個空中任務，約一分鐘；各按一次熱焰彈與干擾絲測試鍵。', '',
         '## 安裝與任務', '',
         '1. 關閉 DCS。解壓縮本包，進入 F-CK-1C 資料夾，雙擊 install.bat；預設安裝到 Saved Games\\DCS。沿用原有操作按鍵，本包另附下表兩個測試鍵。',
-        '2. 使用你原本的 F-CK-1C 空中任務，關閉「無限彈藥」，熱焰彈與干擾絲都要有庫存。外掛武器不限。特殊選項選用 JHMCS＋2D Overlay。',
-        '3. 進任務後，右上應出現「C++ COUNTERMEASURE DIRECT TEST」面板。C++ 與 Lua 讀數會自動保存成 CSV。', '',
+        '2. 啟動 DCS 後，在控制設定選 F-CK-1C，查看「Flight Test」分類的鍵盤欄：應有「[Flight Test] Native CM - Flare Direct - one round」與「[Flight Test] Native CM - Chaff Direct - one round」，預設鍵如下表。沿用預設鍵；若項目缺少或按鍵不同，記下這點並照後續步驟回傳紀錄。',
+        '3. 使用你原本的 F-CK-1C 空中任務，關閉「無限彈藥」，熱焰彈與干擾絲都要有庫存。外掛武器不限。特殊選項選用 JHMCS＋2D Overlay。',
+        '4. 進任務後，右上應出現「C++ COUNTERMEASURE DIRECT TEST」面板。C++ 與 Lua 讀數會自動保存成 CSV。', '',
         '## 測試按鍵', '', '| 功能 | 本包預設鍵 |', '|---|---|']
     lines += [f'| {name} | {key} |' for name, key in KEYS]
     lines += ['', '## 測試順序', '',
-        'N01 的 READ、MATCH、HOST 或 LUA OK 不符合正常值，或任何時候 ERROR 不為 0，停止施放並直接回收紀錄；回報停在哪一項及面板數值。', '']
+        'N01 的 READ、MATCH、HOST 或 LUA OK 不符合正常值，或任何時候 ERROR 不為 0，停止施放並直接回收紀錄；回報停在哪一項及面板數值。若只是 REQ／CALLS 沒增加，完成 N02、N03 各一次後就回收紀錄。', '']
     for c in cases():
         lines += [f"## {c['id']}　{c['title']}", '', c['action'], '', '看哪裡：'+c['look'], '', '正常：'+c['normal'], '']
     lines += ['## 回傳紀錄', '',
         '1. 測完按 Esc，點「結束任務」，再關閉 DCS。',
         '2. 回到本包最外層，雙擊 COLLECT-RESULTS.bat。它會產生 FCK1C-CM-DIRECT-RESULTS-日期.zip。',
-        '3. 把這個 ZIP 回傳，並告訴我 N02 是否看到熱焰彈離機，以及有無異常。RESULTS.csv 可選填。',
+        '3. 把這個 ZIP 回傳，並告訴我控制設定中兩個測試項目是否存在、預設鍵是否相符。RESULTS.csv 可選填。',
         'Saved Games 使用其他位置時，可將該資料夾拖放到 COLLECT-RESULTS.bat。', '',
         '面板 STATUS=3 表示原生呼叫已返回，成功以庫存正確減少及熱焰彈離機為準。C++ 與 Lua 取樣時間不同，操作後等 3 秒再看穩定數字。', '',
-        '紀錄包含：C++ 與 Lua 庫存、來源有效性、payload 比對、兩次呼叫前後庫存、執行緒、例外碼、DCS 日誌、安裝 DLL 雜湊與建置版本。', '']
+        '紀錄包含：每筆進入 ed_fm_set_command 的原始 command／value／浮點位元、測試命令處理後的要求數、實際安裝的按鍵腳本與雜湊、C++ 與 Lua 庫存、來源有效性、payload 比對、兩次呼叫前後庫存、執行緒、例外碼、DCS 日誌、安裝 DLL 雜湊與建置版本。', '']
+    lines += ['EFM-COMMAND-TRACE.log 保留入口與處理紀錄；INPUT-SUMMARY.json 列出 3040（主保險 ON）、3150（熱焰彈）、3151（干擾絲）的入口次數及原始值。這些檔案由回傳工具自動打包，不需要自行整理。', '']
     return '\n'.join(lines)
 
 def html_document():

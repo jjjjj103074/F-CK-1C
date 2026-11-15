@@ -19,6 +19,8 @@ class TestFlightBundle(unittest.TestCase):
             package.MODULE + 'Cockpit/Scripts/devices.lua': b'devices = { CMS = 3, AUTOPILOT = 9 }',
             package.KEYBOARD: b'local res = { keyCommands = {} }\n-- existing bindings\nreturn res\n',
             package.WEAPONS: b'function update() end\n',
+            package.COMMANDS: b'device_commands = {NativeCmFlareDirect=3150, NativeCmChaffDirect=3151}',
+            package.WEAPON_INPUT: b'return function() end',
             package.MODULE + 'entry.lua': b'unchanged runtime registration',
         }
         self.archive = self.root / 'module.zip'
@@ -54,6 +56,10 @@ class TestFlightBundle(unittest.TestCase):
             self.assertTrue(archive.read(package.WEAPONS).startswith(self.entries[package.WEAPONS]))
             self.assertIn(package.PROBE_FLAG, archive.namelist())
             self.assertTrue(build['native_countermeasure_probe'])
+            self.assertIn('before handlers', build['native_input_trace'])
+            self.assertEqual(len(build['input_file_sha256']), 5)
+            for path, sha256 in build['input_file_sha256'].items():
+                self.assertEqual(package.digest(archive.read(package.MODULE + path)), sha256)
             self.assertEqual(build['human_cases'], 3)
             self.assertIn(self.source, archive.read(package.TEST_ROOT + 'Build.lua').decode())
         self.assertIn(package.digest(bundle.read_bytes()), Path(str(bundle)+'.sha256').read_text())

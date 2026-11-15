@@ -29,6 +29,45 @@ $installed = [ordered]@{ saved_games_root = $SavedGamesRoot; collected_at = (Get
 if (Test-Path -LiteralPath $installedDll) {
     $installed.dll_sha256 = (Get-FileHash -LiteralPath $installedDll -Algorithm SHA256).Hash.ToLowerInvariant()
 }
+$installed.input_files = @()
+foreach ($relative in @('Input\F-CK-1C\keyboard\default.lua', 'Input\F-CK-1C\mission_weapon_input.lua',
+    'Cockpit\Scripts\command_defs.lua', 'Cockpit\Scripts\MCFlightTest\NativeCountermeasureKeys.lua',
+    'FM\native-countermeasure-probe.enabled')) {
+    $source = Join-Path $module $relative
+    if (Test-Path -LiteralPath $source -PathType Leaf) {
+        $destination = Join-Path (Join-Path $target 'installed-module') $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        Copy-Item -LiteralPath $source -Destination $destination
+        $installed.input_files += [ordered]@{
+            path = $relative.Replace('\', '/')
+            sha256 = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
+    } else {
+        $missing.Add('Mods\aircraft\F-CK-1C\' + $relative)
+    }
+}
+$efmLog = Join-Path $module 'log\fck1c_efm.log'
+$trace = @()
+if (Test-Path -LiteralPath $efmLog -PathType Leaf) {
+    $trace = @(Get-Content -LiteralPath $efmLog -Encoding UTF8 | Where-Object { $_ -match 'native_cm_(input|probe) ' })
+}
+($trace -join [Environment]::NewLine) | Set-Content -LiteralPath (Join-Path $target 'EFM-COMMAND-TRACE.log') -Encoding UTF8
+$entries = @($trace | Where-Object { $_ -match 'native_cm_input stage=efm_entry ' })
+$commands = @()
+foreach ($id in @(3040, 3150, 3151)) {
+    $pattern = ' command=' + $id + ' value=(\S+)'
+    $received = @($entries | Where-Object { $_ -match $pattern })
+    $values = @($received | ForEach-Object { [regex]::Match($_, $pattern).Groups[1].Value })
+    $results = @($trace | Where-Object { $_ -match ('native_cm_input stage=probe_result .* command=' + $id + ' ') })
+    $commands += [ordered]@{ command = $id; efm_entries = $received.Count; raw_values = $values; probe_results = $results.Count }
+}
+[ordered]@{
+    raw_efm_entries = $entries.Count
+    commands = $commands
+    direct_call_events = @($trace | Where-Object { $_ -match 'native_cm_probe reason=direct_call ' }).Count
+    trace_file = 'EFM-COMMAND-TRACE.log'
+} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $target 'INPUT-SUMMARY.json') -Encoding UTF8
+$installed.missing = $missing.ToArray()
 $installed | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $target 'installed.json') -Encoding UTF8
 foreach ($name in @('BUILD.json', 'RESULTS.csv')) {
     $path = Join-Path $PSScriptRoot $name
