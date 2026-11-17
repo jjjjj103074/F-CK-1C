@@ -24,6 +24,10 @@ Core debug producer -> DebugTelemetryHub -> latest Indicator values
                                         -> 64 Hz samples -> DebugCsvWriter
 ```
 
+[DcsAircraftInterface](Internal/Aircraft/README.md) provides the shared player-aircraft
+interface for native observations and actions. BridgeContext owns it;
+GunAmmunitionSource uses it for native rounds.
+
 CockpitSnapshotExporter writes completed C++ snapshots to generated parameters.
 Cockpit-only sensor observations enter separately through CockpitBridge.
 HMCS Lua publishes availability plus magnetic heading in radians and barometric

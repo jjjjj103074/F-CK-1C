@@ -19,16 +19,6 @@ const NativeGunProfile* native_gun_profile(std::uint32_t timestamp, std::uint32_
 	return nullptr;
 }
 
-std::uint64_t native_gun_fingerprint(const unsigned char* bytes, std::size_t size) noexcept
-{
-	if (bytes == nullptr || size != kNativeGunFingerprintSize)
-		return 0;
-	std::uint64_t hash = 14695981039346656037ULL;
-	for (std::size_t i = 0; i < size; ++i)
-		hash = (hash ^ bytes[i]) * 1099511628211ULL;
-	return hash;
-}
-
 const char* native_gun_status_name(NativeGunStatus status) noexcept
 {
 	switch (status)

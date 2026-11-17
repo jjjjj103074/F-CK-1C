@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GunAmmunitionTypes.h"
 #include <cstddef>
 #include <cstdint>
 
@@ -27,23 +28,6 @@ inline constexpr NativeGunProfile kNativeGunProfiles[] = { { 0x6adbad09, 0x68e00
 inline constexpr std::size_t kNativeGunFingerprintSize = 49;
 
 const NativeGunProfile* native_gun_profile(std::uint32_t timestamp, std::uint32_t image_size) noexcept;
-std::uint64_t native_gun_fingerprint(const unsigned char* bytes, std::size_t size) noexcept;
-
-enum class NativeGunStatus
-{
-	WaitingForModule,
-	UnsupportedBuild,
-	MissingPayloadExport,
-	WaitingForPayload,
-	UnreadableObject,
-	CallFailed,
-	NoGunMount,
-	InvalidCount,
-	TooManyMounts,
-	Available
-};
-
-const char* native_gun_status_name(NativeGunStatus status) noexcept;
 
 /// @brief 將記憶體讀取與三種原生呼叫交給執行環境。
 struct NativeGunAccess
@@ -53,13 +37,6 @@ struct NativeGunAccess
 	bool (*payload)(void*, std::uintptr_t, std::uintptr_t&);
 	bool (*mount)(void*, std::uintptr_t, std::uintptr_t, unsigned char, std::uintptr_t&);
 	bool (*count)(void*, std::uintptr_t, std::uintptr_t, unsigned&);
-};
-
-struct NativeGunResult
-{
-	NativeGunStatus status = NativeGunStatus::WaitingForModule;
-	unsigned count = 0;
-	unsigned mounts = 0;
 };
 
 /// @brief 核對版本後讀取原生機砲存量，回傳讀值或具體診斷狀態。

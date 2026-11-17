@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CarrierBridge.h"
+#include "Aircraft/DcsAircraftInterface.h"
 #include "CockpitBridge.h"
 #include "ExternalActionTransport.h"
 #include "GunAmmunition/GunAmmunitionSource.h"
@@ -59,6 +60,7 @@ public:
 	CockpitSnapshotExporter& cockpit_snapshot_exporter();
 	CockpitBridge& cockpit_bridge();
 	ExternalActionTransport& action_transport();
+	DcsAircraftInterface& aircraft_interface();
 	GunAmmunitionSource& gun_ammunition_source();
 	NativeCountermeasureProbe& native_countermeasure_probe();
 	CarrierBridge& carrier_bridge();
@@ -122,6 +124,7 @@ private:
 	CockpitSnapshotExporter cockpit_snapshot_exporter_;
 	CockpitBridge cockpit_bridge_;
 	ExternalActionTransport action_transport_;
+	DcsAircraftInterface aircraft_interface_;
 	GunAmmunitionSource gun_ammunition_source_;
 	NativeCountermeasureProbe native_countermeasure_probe_;
 	CarrierBridge carrier_bridge_;

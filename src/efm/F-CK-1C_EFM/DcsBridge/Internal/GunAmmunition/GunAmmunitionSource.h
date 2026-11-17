@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NativeGunAccess.h"
+#include "GunAmmunitionTypes.h"
 #include "../../../Core/Contracts/CockpitContracts.h"
 
 #include <functional>
@@ -9,13 +9,15 @@
 namespace DcsBridge::Internal
 {
 class EventLog;
+class DcsAircraftInterface;
 
 /// @brief 每 0.1 秒提供經版本核對的原生機砲存量觀測。
 class GunAmmunitionSource final
 {
 public:
 	using Reader = std::function<NativeGunResult()>;
-	explicit GunAmmunitionSource(EventLog& log, Reader reader = {});
+	GunAmmunitionSource(EventLog& log, DcsAircraftInterface& aircraft);
+	explicit GunAmmunitionSource(EventLog& log, Reader reader);
 	~GunAmmunitionSource();
 	GunAmmunitionSource(const GunAmmunitionSource&) = delete;
 	GunAmmunitionSource& operator=(const GunAmmunitionSource&) = delete;

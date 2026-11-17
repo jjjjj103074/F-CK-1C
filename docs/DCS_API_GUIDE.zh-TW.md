@@ -1,6 +1,6 @@
 # DCS API 使用指引
 
-本指引整理本專案的 DCS 介面位置、資料契約及實測依據。更新日期：2026-11-13。
+本指引整理本專案的 DCS 介面位置、資料契約及實測依據。更新日期：2026-11-15。
 
 ## 選擇執行環境
 
@@ -180,7 +180,7 @@ Lua 的 OBS_MC_ACKNOWLEDGED_SEQUENCE 保留既有參數名稱，現在表示 Dcs
 
 詳見 [Targeting／RadarSystem 架構](RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
 
-## 原生反制派送：待實機驗證的候選入口
+## 原生反制派送：候選入口與實測結果
 
 本輪目標是確認 C++ 能直接施放熱焰彈與干擾絲。測試成功後，反制的程序、
 狀態及控制將規劃在透過 SystemPipeline 溝通的 C++ System，座艙處理操作與呈現。
@@ -219,3 +219,69 @@ Windows SEH 包裝；記錄入口可用性、要求／呼叫數、執行緒與�
 CMOBS 位元 1 代表熱焰彈有效、2 代表干擾絲有效；有效零值保持為 0，
 缺少 getter／無效回傳則顯示 -1。原生呼叫返回與實際存量減少各自記錄，
 前者只證明函式返回。完整操作及回報格式見 [MC 實機流程](MC_FLIGHT_TEST.zh-TW.md)。
+
+### 2026-11-14 實測：兩種派送皆返回，熱焰彈存量保持 90
+
+測試環境為使用者日誌回報的 DCS `2.9.31.29434`、Windows x64 MT。
+測試包來源 `717ea0d938708d4990884bdd5da4569bcee085bc`；安裝 DLL 與 BUILD.json
+皆為 SHA256 `f4c459b0e93733dec485a5d680d4e3672de548123a72c4d3f3e6beba326da279`。
+使用者確認無限彈藥關閉，第一輪原生測試結果如下：
+
+| 熱焰彈入口 | 要求次數 | 正常返回的呼叫 | 熱焰彈存量 | 判定 |
+|---|---:|---:|---|---|
+| Digital | 20 | 20 | 90 → 90 | 施放驗證未通過 |
+| Analog | 20 | 40（按下＋放開） | 90 → 90 | 施放驗證未通過 |
+
+C++ 日誌的 `api_mask=3`，兩種具名入口皆可解析；呼叫期間 exception 為 0。
+Analog 的按下／放開間隔為 42 ms。Digital 熱焰彈要求落在模型時間
+21.960–28.020 秒，30.309 秒的存量仍為 90；Analog 熱焰彈要求落在
+53.928–58.284 秒，60.737 秒的存量仍為 90。
+
+佐證來自這次 `dcs.log` 內既有 ammo-probe-r1 的 Export 診斷：
+`LoGetSnares().flare` 與裝置 4 的 `get_flare_count()` 皆回報 90；
+第一輪有 14 組存量取樣，三輪合計 56 組。此紀錄確認原生派送函式返回
+與實際施放各自需要驗證；上述兩個入口的現行呼叫方式維持為待修正的候選路徑。
+
+本次三份座艙 CSV 只有表頭。`Recorder.lua` 對 `file:write()` 的成功回傳值
+使用 assert，而本次 DCS 寫入成功後回傳零個值，初始化於第 40 行中止。
+記錄器已加入零回傳值相容處理，並用實際紀錄器驗證 header、資料列、定期 flush
+及標準 I/O 錯誤回報。已有表頭的三份紀錄以當次 DCS 日誌交叉核對。
+
+### 2026-11-15 原生派送接收端查核
+
+本機 CMS 只派送 357／358，武器轉接層只處理選站與觀測；兩者皆缺少將這些指令
+轉成 `drop_flare()`／`drop_chaff()` 的接收及執行端。公開舊版 avSimpleWeaponSystem
+樣本與開源 Skyhawk／A-29B 的接線差異支持此缺口是目前失敗的主要解釋。
+目前已證實的是專案內接線缺漏；補上接收端後，仍須以同一 C++ 派送入口及實際彈量
+作一次對照，確認目前 DCS 版本的完整路徑。兩個全域 API 的搜尋結果以標頭宣告為主，
+可追到真實 C++ 呼叫的是 A-4E 的 `to_device`；Analog 的 1／0 脈衝也缺少作為
+數位熱焰彈替代入口的公開契約。完整來源、命令編碼及證據界線見
+[原生反制 API 研究紀錄](NATIVE_COUNTERMEASURE_API_RESEARCH.zh-TW.md)。
+
+
+## DCS 玩家飛機共用介面
+
+`DcsBridge/Internal/Aircraft/DcsAircraftInterface` 由現有 `BridgeContext` 持有。
+它集中管理 DLL 識別、符號、程式指紋、物件取得及受保護的原生呼叫，
+以資料與操作結果提供機砲及反制能力。原生物件所有權屬於 DCS；各次操作重新取得。
+
+| 方法 | 內容 |
+|---|---|
+| `read_gun_ammunition()` | 機砲總彈量、來源狀態、版本資訊與例外代碼 |
+| `read_countermeasures()` | 熱焰彈、干擾絲庫存及來源狀態 |
+| `dispense_countermeasure(kind)` | 單發施放與前後庫存；`returned` 表示原生呼叫返回 |
+| `reset_flight()` | 清除本次飛行的解析狀態 |
+
+目前機砲資料來源已接入。反制介面採用 2026-11-15 的 DCS 直接施放實測路徑：
+`context -> human -> payload` 讀取兩種庫存，`human` 執行單發施放。
+該次結果包 `FCK1C-CM-DIRECT-RESULTS-20261115-233433-950.zip` 記錄
+16 次要求／16 次呼叫：熱焰彈 90→80、干擾絲 90→84，每次只扣對應的一發，例外碼為零。
+共用介面的重構行為以替代執行環境的原生測試及 Windows CI 驗證。
+
+機砲與反制各自核對其功能所需的版本／程式指紋。模組識別改變時重新解析，
+施放前再次比對玩家物件及方法。`DcsAircraftBackend` 提供平台與測試替換的接點。
+
+System 經由 `FrameInput`、`AircraftData`、`SystemPipeline` 與 `FrameOutput`
+交換觀測、狀態及動作需求。後續原生雷達、掛載等能力可建立各自 Adapter，
+共用這一層的環境存取。詳細分工見
+[DCS 飛機介面](../src/efm/F-CK-1C_EFM/DcsBridge/Internal/Aircraft/README.md)。

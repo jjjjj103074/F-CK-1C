@@ -14,6 +14,12 @@ end
 local function quote(value)
     return '"' .. tostring(value):gsub('"', '""') .. '"'
 end
+-- 核對標準 Lua I/O 回傳值，並接受 DCS 完成操作後的零回傳值。
+local function check_file_result(...)
+    if select("#", ...) == 0 then return end
+    local result, reason = ...
+    assert(result, reason or "File operation failed")
+end
 local function close_file()
     if file then pcall(function() file:flush(); file:close() end); file = nil end
 end
@@ -37,8 +43,8 @@ local function open_file()
     local header = { "source_commit", "dll_sha256", "sample", "model_time_s", "mc_coherent", "stations_coherent" }
     for _, name in ipairs(schema) do header[#header + 1] = name end
     for i, value in ipairs(header) do header[i] = quote(value) end
-    assert(file:write(table.concat(header, ",") .. "\r\n"))
-    assert(file:flush())
+    check_file_result(file:write(table.concat(header, ",") .. "\r\n"))
+    check_file_result(file:flush())
     report("recording " .. path)
 end
 function post_initialize()
@@ -64,8 +70,8 @@ function update()
             coherent(mc_before, mc_after) and 1 or 0, coherent(stations_before, stations_after) and 1 or 0 }
         for _, value in ipairs(readings) do row[#row + 1] = value end
         for i, value in ipairs(row) do row[i] = quote(value) end
-        assert(file:write(table.concat(row, ",") .. "\r\n"))
-        if updates % 50 == 0 then assert(file:flush()) end
+        check_file_result(file:write(table.concat(row, ",") .. "\r\n"))
+        if updates % 50 == 0 then check_file_result(file:flush()) end
     end)
     if not ok then close_file(); report("recorder stopped: " .. tostring(reason)) end
 end
