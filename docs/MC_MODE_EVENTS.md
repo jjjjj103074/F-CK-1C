@@ -110,9 +110,12 @@ Bridge／Lua 回歸核對新數值及輸入路由。
 | EFM 架構 | 276 個來源檔通過 |
 | 座艙架構 | 134 個自訂參數、16 個原生參數通過 |
 | Recorder／indicator／反制按鍵 fixture | 通過 |
-| Windows DLL 重建與 DCS 實機 | 待執行 |
+| Windows 指定工具鏈完整驗證與 DLL 重建 | 通過；4,965 checks，0 failures；來源 `ee1db575` |
+| DCS 實機 | 待執行 |
 
 Linux 原生測試使用 g++ C++17、O0、Wall／Wextra／Werror／pedantic。
 座艙輸出測試使用暫存 Windows API stub，並在相容副本將既有產生表的字串常數改為 constexpr；
 來源產生器及 SDK 保持原樣。座艙架構清單使用暫存 Linux 路徑轉接產生，再交由專案檢查器檢查。
-現有 DLL 保持原版本，遊戲內驗證須先用 Windows 指定工具鏈重建。
+Windows CI 已依指定工具鏈重建 DLL，並通過完整專案驗證；產物與來源憑證位於 bin。
+[CI 驗證紀錄](https://github.com/jjjjj103074/F-CK-1C/actions/runs/44035007396)對應來源 `ee1db5757872d8d002596444737ad92555977c0f`。
+DCS 遊戲內操作另行驗證。
