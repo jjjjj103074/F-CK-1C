@@ -125,13 +125,37 @@ enum class MasterArmMode
 	On = 2
 };
 
-/// @brief MC 操作模式，數值對應座艙參數。
+/// @brief 駕駛選擇的一般任務主模式。
+enum class MasterMode
+{
+	Navigation = 0,
+	AirToAir = 1,
+	AirToGround = 2
+};
+
+/// @brief 油門三段開關選擇的空戰超控；中央位置恢復一般主模式。
+enum class OverrideMode
+{
+	None = 0,
+	Dogfight = 1,
+	Missile = 2
+};
+
+/// @brief 目前生效的操作配置，數值對應座艙參數。
 enum class OperatingMode
 {
 	Navigation = 0,
 	Dogfight = 1,
-	MissileOverride = 2
+	MissileOverride = 2,
+	AirToAir = 3,
+	AirToGround = 4
 };
+
+/// @brief 判斷操作配置是否提供空對空武器操作。
+constexpr bool is_air_to_air_mode(OperatingMode mode) noexcept
+{
+	return mode == OperatingMode::AirToAir || mode == OperatingMode::Dogfight || mode == OperatingMode::MissileOverride;
+}
 
 using AirToAirSubmode = TargetAcquisitionMode;
 
@@ -416,6 +440,8 @@ struct ModeSnapshot
 {
 	SnapshotStatus status;
 	MasterArmMode master_arm_mode = MasterArmMode::Off;
+	MasterMode master_mode = MasterMode::Navigation;
+	OverrideMode override_mode = OverrideMode::None;
 	OperatingMode operating_mode = OperatingMode::Navigation;
 	bool dogfight_mode = false;
 };

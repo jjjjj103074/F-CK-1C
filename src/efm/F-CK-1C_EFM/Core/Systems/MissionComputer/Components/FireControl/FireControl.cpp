@@ -42,6 +42,9 @@ void FireControl::handle(const Command& command)
 
 void FireControl::on_operating_mode_selected(const OperatingModeSelected& event)
 {
+	// 結束先前配置的武器使用，再套用本次模式的目標取得設定。
+	if (event.previous.operating_mode() != event.selected.operating_mode())
+		weapon_operation_.stop();
 	targeting_.on_operating_mode_selected(event);
 }
 

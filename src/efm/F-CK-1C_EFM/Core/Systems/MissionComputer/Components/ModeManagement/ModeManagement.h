@@ -16,15 +16,17 @@ public:
 	ModeManagement(ModeData& mode, ModeEvents& events);
 	/// @brief 處理模式與主保險的按下指令。
 	/// 返回前完成此次選擇的全部同步通知，供外層繼續處理下一筆 FIFO 指令。
-	/// DGFT/MSL 自動 ON、主保險 ON 回 NAV 等既有連動在此保留。
 	void handle(const Command& command);
 
 private:
 	/// @brief 先更新軟體主保險，再以該階段的狀態副本通知所有訂閱者。
 	void select_master_arm(MasterArmMode mode);
-	/// @brief 更新模式並通知；重選相同模式也保留原有操作效果。
-	/// @param cycle_weapon 是否保留此次 DGFT/MSL 選擇所要求的武器循環。
-	void select_operating_mode(OperatingMode mode, bool cycle_weapon);
+	/// @brief 在超控中央位置處理主模式選擇；重按 A-A／A-G 回到 NAV。
+	void select_master_mode(MasterMode mode);
+	/// @brief 更新超控位置並發布生效模式；中央位置恢復保存的主模式。
+	void select_override(OverrideMode mode);
+	/// @brief 以更新前後的完整狀態同步通知模式訂閱者。
+	void publish_selection(const ModeData& previous);
 	ModeData& mode_; ///< MC 持有的共用狀態；本元件負責寫入。
 	ModeEvents& events_; ///< MC 持有的同步通知通道。
 };

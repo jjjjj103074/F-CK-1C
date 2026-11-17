@@ -1,113 +1,118 @@
 # MC 模式狀態與同步事件
 
-ModeManagement 透過有序同步事件通知火控與反制。
-2026-11-10 起主保險與操作模式各自選擇；目標指定與流程見 [FireControl](../src/efm/F-CK-1C_EFM/Core/Systems/MissionComputer/Components/FireControl/README.md)。
-此為 DCS 專案架構，不代表實機 MC 或硬體保險的實作。
+ModeManagement 是模式資料的唯一寫入者，管理一般主模式、空戰超控與主保險。
+本專案以 F-16 的模式切換操作作參考，狀態機與資料結構由本專案實作。
 
-## 第三方依賴
+## 模式與資料所有權
 
-sigslot v1.2.3 原始標頭與 MIT 授權放在
-`src/efm/F-CK-1C_EFM/ThirdParty/sigslot/`，版本、完整 SHA 與檔案雜湊見該處 README。
-沿用 EfmBuild.targets 的 ThirdParty 路徑，所有 EFM C++ 與原生測試可使用
-`<sigslot/signal.hpp>`。無額外 runtime DLL，也不在建置時下載依賴。
+| 資料 | 值 | 功能 |
+|---|---|---|
+| `ModeData.master_mode` | NAV／A-A／A-G | 保存一般任務情境，超控期間保留原選擇 |
+| `ModeData.override_mode` | None／Dogfight／Missile | 保存三段超控開關位置 |
+| `ModeData.master_arm` | OFF／SIM／ON | 保存獨立的軟體主保險狀態 |
+| `ModeData.operating_mode()` | NAV／DGFT／MSL／A-A／A-G | 由主模式及超控位置計算目前生效配置 |
 
-採用 `signal_st`、具型別參數與 scoped_connection；只有需要先後的監聽者指定不同 group。
-上游標頭不自行修改。格式化已排除 ThirdParty；架構檔案長度檢查只新增該原始標頭的例外，
-不放寬自有程式的限制。檢查用的相對路徑統一為反斜線，避免 Linux PowerShell 因分隔符不同
-而漏掉依賴規則或誤判 SDK／第三方檔案。使用連線物件解除訂閱，不以函式地址識別回呼。
+模式資料由 MC 持有，其他元件取得 const 參照。生效配置即時計算，切換與恢復規則集中在
+ModeManagement。頂層元件數量維持原狀。
 
-## 元件與資料所有權
+## 操作規則
 
-| 元件／資料 | 責任 |
-|---|---|
-| ModeManagement | ModeData 唯一寫入者；處理主保險與模式操作並發布選擇事件 |
-| FireControl | 讀取模式；接收主保險事件停止操作、接收模式事件更新自身程序 |
-| CountermeasureControl | 讀取主保險資格；處理 CMS 命令與主保險導致的中止 |
-| StoresManagement | 讀取模式；既有掛載與選站工作 |
-| ModeData | MC 持有的記憶體資料；其他元件取得 const 引用 |
-| ModeEvents | 每一台 MC 持有的兩個同步通道；不是資料庫、System 或排程工作 |
+- 超控在中央位置時，A-A／A-G 按鈕切換到指定主模式；重按目前 A-A／A-G 按鈕回 NAV。
+- NAV 指令選擇 NAV。超控期間，NAV／A-A／A-G 指令保持原選擇。
+- 選 DGFT 或 MSL 會保留原主模式並套用超控配置；兩個超控可互相切換。
+- 選中央位置解除超控，恢復保存的一般主模式。
+- 重選同一超控位置保持狀態、掛點與目標取得設定。
+- MSL STEP 是獨立武器操作，FC 在空對空配置將輪站要求送入 SM 佇列，SM 決定下一個可用掛點。
+- 主保險與模式各自選擇；SAFE／SIM 的武器中止順序沿用既有事件機制。
 
-ModeManagement 只依賴 ModeData 與模式事件，不知道 FireControl 或反制的具體實作。
-MC 集中連接訂閱，並持有 scoped_connection。連線先於接收者銷毀；通道晚於接收者銷毀。
-其他系統可共用 sigslot 套件，但各自決定事件範圍；本次沒有導入全機全域廣播中心。
-跨 System 與 Lua 的溝通繼續使用既有資料／Bridge 契約。
-
-原本三個任務元件加四個基礎元件，改成四個任務元件加四個基礎元件。
-CountermeasureControl 是命令／事件處理者，沒有新增週期工作或獨立執行緒。
-DFLCC 的資料庫先建立、固定參照與單一 Executive 原則保持適用，無須新增對應反制元件。
-
-## 名稱與對外快照
-
-- `FireControlMode` 改為 `OperatingMode`，維持 Navigation=0、Dogfight=1、MissileOverride=2。
-- `ModeData.fire_control` 改為 `ModeData.operating_mode`。
-- Master Arm、operating_mode 與 dogfight 指示移到 `CombatAvionicsSnapshot.mode` 的 ModeSnapshot。
-- FireControlSnapshot 保留目標子模式、武器要求與射擊指示。
-- Bridge 映射至原有 HMCS_FC_MODE 等座艙參數，外部名稱、數值與 Lua/HMCS 行為不變。
-
-## 指令與事件順序
-
-```text
-駕駛指令 → MC 共用 FIFO
-  模式／保險 → ModeManagement → ModeData
-                             → MasterArmSelected / OperatingModeSelected
-                             → sigslot 同步呼叫訂閱者
-  CMS       → CountermeasureControl（唯讀 ModeData）
-  火控      → FireControl（唯讀 ModeData）
-  每筆命令及通知完成後，才取出下一筆命令
-→ 原 Executive → 發布 ModeSnapshot／火控／掛載資料
-→ Bridge → 原有 Lua 介面與 HMCS
+```mermaid
+flowchart LR
+    Input[駕駛模式指令] --> FIFO[MC 共用 FIFO]
+    FIFO --> MM[ModeManagement]
+    MM --> Data[主模式／超控／主保險]
+    Data --> Effective[計算生效配置]
+    MM --> Event[同步模式事件]
+    Event --> SM[SM 套用選站配置]
+    Event --> FC[FC 更新武器與目標取得程序]
+    Effective --> Snapshot[ModeSnapshot]
+    Snapshot --> Bridge[Bridge／HMCS]
+    Step[MSL STEP] --> FIFO
+    FIFO --> WO[FC WeaponOperation]
+    WO --> Queue[SM 指令佇列]
+    Queue --> SM
 ```
 
-主保險 OFF/SIM：先更新主保險 → 火控停止（group 0）→ CMS 中止（group 1）。
-保險操作只發布 MasterArmSelected；模式操作只發布 OperatingModeSelected，兩者保持各自原有選擇。
-事件含選擇前後的狀態副本，不以後續狀態覆蓋當次操作；連續 OFF→ON 仍保留停止。
-事件命名為 Selected，重選同一模式仍會執行既有武器循環。
-回呼不能遞迴消費 MC 命令；不把各型事件累積至幀末再分組通知。
+## 職責與同步通知
 
-## 保留的功能規則
+ModeManagement 依賴 ModeData、ModeEvents 與語意指令。MC 集中組裝 scoped_connection。
+每筆 FIFO 指令及同步回呼完成後，才處理下一筆指令。
 
-32 Hz、原 FIFO、ACK 與外部動作傳輸重試機制維持。保險與模式操作各自生效。
-NAV 維持原有目標與選站操作；OFF/SIM 停止武器、CMS Right 無條件中止，
-CMS Press 保留狀態。反制施放程序仍在 Lua。
-不增加 A-G、冷啟動、電源恢復、故障備援或新武器支援。
+`OperatingModeSelected` 保存選擇前後的完整 ModeData 副本。模式回呼依 group 先通知 SM，
+再通知 FC。主模式或超控的有效切換會結束先前配置的武器操作，再更新目標取得設定。
+武器輪站透過獨立的 MSL STEP 指令處理。
+
+`MasterArmSelected` 也保存前後副本；OFF／SIM 先通知 FC 停止，再通知 CMS 中止。
+各台 MC 持有自己的事件通道及連線，回呼生命週期由 MC 組裝管理。
+
+事件使用 `ThirdParty/sigslot` v1.2.3 的 `signal_st` 與 scoped_connection。
+版本、SHA 與授權保存在第三方目錄的 README。跨 System 仍使用 SystemPipeline 資料契約。
+
+## 對外快照與座艙契約
+
+`CombatAvionicsSnapshot.mode` 同時發布保存的主模式、超控位置與生效配置。
+Bridge 以原有 MC generation 一起提交所有數值：
+
+| 參數 | 數值 |
+|---|---|
+| `MC_MASTER_MODE` | NAV=0、A-A=1、A-G=2 |
+| `MC_OVERRIDE_MODE` | 中央=0、DGFT=1、MSL=2 |
+| `HMCS_FC_MODE` | NAV=0、DGFT=1、MSL=2、A-A=3、A-G=4 |
+| `HMCS_MASTER_MODE` | 主保險 OFF=0、SIM=1、ON=2（沿用既有名稱） |
+
+HMCS 的 MODE 顯示目前生效的 NAV／DGF／MSL／A-A／A-G。
+一般 A-A 沿用現有飛彈選站與 BVR 目標取得流程；DGFT 保留既有機砲及飛彈操作。
+A-G 這輪提供狀態與切換架構，對地武器使用及雷達模式待後續實作。
+
+## DCS 指令
+
+| 操作 | 預設鍵／控制選項 |
+|---|---|
+| NAV | `1`；超控中央位置時生效 |
+| DGFT | `右 Ctrl + D` |
+| MSL OVRD | `4` |
+| A-A | `Master Mode Button - A-A (Toggle to NAV)`；未指定預設鍵 |
+| A-G | `Master Mode Button - A-G (Toggle to NAV)`；未指定預設鍵 |
+| 超控中央位置 | `Dogfight Switch - CENTER (Restore Master Mode)`；未指定預設鍵 |
+| 輪站 | `MSL STEP - Next Air-to-Air Station`；未指定預設鍵 |
+
+進入超控後，使用中央位置指令回復原主模式。NAV 的 `1` 對應主模式選擇，
+因此超控期間保持目前配置。MSL STEP 依既有掛點順序循環所有可用空對空飛彈掛點。
 
 ## 驗證
 
-新增原生回歸涵蓋事件狀態副本、重複選擇、忽略釋放／無關指令、不同 group 的順序、
-scoped_connection 解除、不同實例隔離、CMS 與模式的 FIFO、既有 OFF→ON 停止順序。
-既有 MC 與 exporter 測試核對新快照及原參數映射；架構測試核對第三方原始標頭例外
-不延伸到自有檔案。Windows Release 與 DCS 的實際驗證結果須另行記錄，不能以 Linux
-測試推定已完成 Windows DLL 或遊戲內驗證。
+模式測試涵蓋所有主模式的超控進入、DGFT／MSL 互換、中央復歸、重選保持、
+主模式按鈕切換與超控期間的按鈕處理、主保險獨立性、事件副本、通知順序及實例隔離。
+MC 整合回歸涵蓋 SM 選站、獨立輪站、A-G 使用資格、輸出快照與指令 FIFO。
+Bridge／Lua 回歸核對新數值及輸入路由。
 
-## 原模式事件重構的驗證紀錄
+原 sigslot 事件重構的 Windows 與 DLL 證據見 [歷史驗證紀錄](MC_MODE_EVENTS_VALIDATION.md)。
+本輪來源與 DLL／DCS 執行期驗證分別記錄。
 
-以下為原模式事件重構的歷史證據；2026-11-10 修改的驗證另見 FireControl 說明。
-
-基準為 `9eb8ff319e822f11aa0f747a4c6aeb282b7149ef`，最終來源為 `5ca3675a5b31aee58340d77edea7cde19f4085eb`。
-Windows 完整驗證與 DLL 憑證見[驗證紀錄](MC_MODE_EVENTS_VALIDATION.md)。
+### 本輪來源驗證（2026-11-17）
 
 | 項目 | 結果 |
 |---|---|
-| Linux MC／模式原生測試 | 219 checks，0 failures |
-| Linux 相容模式快照匯出測試 | 122 checks，0 failures |
-| Lua 5.1.5 介面／顯示回歸 | 6,169 checks，0 failures |
-| 完整 C++ 排版檢查 | 276 個檔案通過 |
-| 排版及 CI 工具回歸 | 84 passed，5 個 Windows 專用測試 skipped，0 failed |
-| EFM 架構檢查 | 241 個來源檔通過 |
-| 架構檢查器回歸 | 通過，包含上游標頭例外與自有檔案長度拒絕 |
-| code-review：Standards | 0 findings |
-| code-review：Spec | 0 findings |
-| 固定工具鏈 Windows Release／DLL 完整驗證 | 通過；全專案 3,746 checks，0 failures |
-| DCS 遊戲內驗證 | 尚未執行 |
+| Linux C++17 模式、MC、SM、RadarSystem、指令路由 | 1,489 checks，0 failures |
+| Linux 相容模式座艙快照輸出 | 162 checks，0 failures |
+| Lua 5.1.5 介面與顯示回歸 | 6,237 checks，0 failures |
+| C++ 排版 | 319 個檔案通過 |
+| DCS ID 產生器回歸 | 通過 |
+| EFM 架構 | 276 個來源檔通過 |
+| 座艙架構 | 134 個自訂參數、16 個原生參數通過 |
+| Recorder／indicator／反制按鍵 fixture | 通過 |
+| Windows DLL 重建與 DCS 實機 | 待執行 |
 
-Linux MC 使用 g++ C++17、O2、LTO、Wall/Wextra/Werror/pedantic，僅停用既有
-missing-field-initializers 警告。原生主程式執行實際 MC、模式與 Pipeline 回歸。
-
-Linux 匯出測試使用原始 exporter 程式與實際測試，Windows 模組查詢由暫存 stub 提供。
-既有產生的 CockpitParams.g.h 常數表被 GCC 拒絕；僅在暫存副本將字串宣告改成 constexpr，
-數值與名稱不變，專案 SDK、產生器與產生檔均未修改。此相容測試可核對映射，不能取代
-Windows 編譯、ABI、最佳化與 DLL 載入驗證。
-
-Node 22.14.0、clang-format 22.1.8 與 Lua 5.1.5 均在暫存目錄取得並核對完整性；
-架構檢查與 fixture 使用 PowerShell 7.4.6。Windows CI 已對上述來源完成完整驗證，
-對應的 DLL 與來源憑證已放入 bin；DCS 遊戲內驗證另行記錄。
+Linux 原生測試使用 g++ C++17、O0、Wall／Wextra／Werror／pedantic。
+座艙輸出測試使用暫存 Windows API stub，並在相容副本將既有產生表的字串常數改為 constexpr；
+來源產生器及 SDK 保持原樣。座艙架構清單使用暫存 Linux 路徑轉接產生，再交由專案檢查器檢查。
+現有 DLL 保持原版本，遊戲內驗證須先用 Windows 指定工具鏈重建。

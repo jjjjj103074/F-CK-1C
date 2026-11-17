@@ -77,6 +77,8 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	auto& mc = snapshot.combat_avionics;
 	mc.status = { true, 1 };
 	mc.mode.master_arm_mode = Core::MasterArmMode::On;
+	mc.mode.master_mode = Core::MasterMode::AirToGround;
+	mc.mode.override_mode = Core::OverrideMode::Dogfight;
 	mc.mode.operating_mode = Core::OperatingMode::Dogfight;
 	mc.mode.dogfight_mode = true;
 	mc.fire_control.missile_uncage_held = true;
@@ -114,6 +116,8 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsMasterMode), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsDogfightMode), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsFireControlMode), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMasterMode), 2.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McOverrideMode), 1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McActionCount), 2.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::WeaponRequestedStation), -1.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMissileUncageHeld), 1.0, kTolerance);
@@ -176,14 +180,14 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::MissionActionBatch actions;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 68);
+	TEST_EXPECT(context, events.count == 70);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context,
 	            exporter.export_snapshot(snapshot, actions).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 68);
+	TEST_EXPECT(context, events.count == 70);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
@@ -284,10 +288,33 @@ void test_targeting_submodes_preserve_cockpit_wire_values(Tests::Context& contex
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsAamSubmode), 3.0, kTolerance);
 }
 
+void test_master_and_override_parameters_commit_together(Tests::Context& context)
+{
+	for (const char* field : { DcsIds::CockpitParams::McMasterMode, DcsIds::CockpitParams::McOverrideMode })
+	{
+		Tests::FakeCockpitParameters cockpit;
+		cockpit.set_available(field, false);
+		DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+		Core::CockpitSnapshot snapshot;
+		snapshot.combat_avionics.status = { true, 1 };
+		snapshot.combat_avionics.mode.master_mode = Core::MasterMode::AirToGround;
+		snapshot.combat_avionics.mode.override_mode = Core::OverrideMode::Missile;
+		snapshot.combat_avionics.mode.operating_mode = Core::OperatingMode::MissileOverride;
+		TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 1);
+		TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
+		cockpit.set_available(field, true);
+		TEST_EXPECT(context, exporter.export_snapshot(snapshot).count == 1);
+		TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 4.0, kTolerance);
+		TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McMasterMode), 2.0, kTolerance);
+		TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McOverrideMode), 2.0, kTolerance);
+	}
+}
+
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
+	test_master_and_override_parameters_commit_together(context);
 	test_targeting_submodes_preserve_cockpit_wire_values(context);
 	test_ir_observation_validity_clears_unavailable_cockpit_values(context);
 	test_selection_mailbox_uses_the_front_command_payload(context);

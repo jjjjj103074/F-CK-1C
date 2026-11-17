@@ -110,7 +110,7 @@ bool StoresManagement::has_pending_mode() const
 	                   [](const PendingCommand& entry)
 	                   {
 		                   const auto* mode = std::get_if<SelectStoresForMode>(&entry.command);
-		                   return !entry.canceled && mode && mode->mode != OperatingMode::Navigation;
+		                   return !entry.canceled && mode && is_air_to_air_mode(mode->mode);
 	                   });
 }
 
@@ -129,8 +129,7 @@ void StoresManagement::accept_commands()
 		const auto* mode = std::get_if<SelectStoresForMode>(&entry->command);
 		if (mode)
 			latest_mode_ = mode->mode;
-		if (std::holds_alternative<CancelStoresCommands>(entry->command) ||
-		    (mode && mode->mode == OperatingMode::Navigation))
+		if (std::holds_alternative<CancelStoresCommands>(entry->command) || (mode && !is_air_to_air_mode(mode->mode)))
 			cancel_pending_commands();
 		schedule_command({ entry->ticket, entry->command });
 	}
@@ -164,12 +163,12 @@ void StoresManagement::drain_commands()
 		{
 			if (const auto* mode = std::get_if<SelectStoresForMode>(&entry.command))
 			{
-				if (mode->mode != OperatingMode::Navigation && !stores_.inventory.observation.available)
+				if (is_air_to_air_mode(mode->mode) && !stores_.inventory.observation.available)
 				{
 					stores_.selection.awaiting_inventory = true;
 					break;
 				}
-				if (mode->mode == OperatingMode::Navigation)
+				if (!is_air_to_air_mode(mode->mode))
 					cancel_dispatched_commands();
 				const auto previous_request = stores_.selection.request_revision;
 				selection_.select_mode(mode->mode, mode->cycle_weapon, mode->reassert_selection);

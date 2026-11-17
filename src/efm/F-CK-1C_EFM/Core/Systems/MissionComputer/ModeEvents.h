@@ -14,12 +14,11 @@ struct MasterArmSelected
 	ModeData selected; ///< 已寫入資料庫、與本次通知對應的狀態。
 };
 
-/// @brief NAV／DGFT／MSL 的選擇事件，包含重選時仍須執行的操作意圖。
+/// @brief 主模式或超控選擇完成後的狀態副本，供訂閱者套用生效配置。
 struct OperatingModeSelected
 {
 	ModeData previous; ///< 此次選擇前的狀態。
 	ModeData selected; ///< 已寫入資料庫、與本次通知對應的狀態。
-	bool cycle_weapon = false; ///< 本次選擇要求執行武器循環。
 };
 
 /// @brief 單台 MC 持有的同步事件通道；訂閱關係與連線生命週期集中在 MC 組裝處。

@@ -95,6 +95,10 @@ constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 	EXPECT_COMMAND(TMSRight, PressTmsRight),
 	EXPECT_COMMAND(NavMode, SelectNavigationMode),
 	EXPECT_COMMAND(MissileOverride, SelectMissileOverride),
+	EXPECT_COMMAND(AirToAirMode, SelectAirToAirMode),
+	EXPECT_COMMAND(AirToGroundMode, SelectAirToGroundMode),
+	EXPECT_COMMAND(DogfightCenter, SelectOverrideCenter),
+	EXPECT_COMMAND(MissileStep, StepMissileStation),
 	EXPECT_COMMAND(EngineThrustCutTestToggle, ToggleThrustCutTest),
 	EXPECT_COMMAND(EngineThrustCutTestEnable, EnableThrustCutTest),
 	EXPECT_COMMAND(EngineThrustCutTestDisable, DisableThrustCutTest)

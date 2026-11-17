@@ -43,7 +43,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 
 | 元件 | 職責 |
 |---|---|
-| ModeManagement | 唯一寫入 Master ON/OFF/SIM、NAV/DGFT/MSL，發布具型別選擇事件 |
+| ModeManagement | 唯一寫入一般 NAV/A-A/A-G、DGFT/MSL 超控與主保險，發布具型別選擇事件 |
 | CountermeasureControl | 讀取模式判斷 CMS 啟動資格，接收 Master Arm 事件處理中止 |
 | StoresManagement | 全部固定掛點庫存、彈量、掛點選擇／循環、執行確認與掛載變化通知 |
 | FireControl | 目標操作、武器資格與使用程序 |
@@ -113,7 +113,7 @@ FireControl 內依武器執行結果通知 Targeting，再整理 RadarSnapshot �
 ModeManagement 是事件入口。外層保持命令 FIFO、32 Hz 及 80 ms 最短保持；每秒自動重送捕獲已移除。
 SM 與 RadarSystem 的保持從首次觀測到生產端執行確認的 input_time 起算，補跑沿用當前觀測時間。
 Master OFF/SIM 立即追加停止與 CMS 中止要求；NAV 不新增強制停止規則。
-NAV/DGFT/MSL 與 Master ON/OFF/SIM 各自選擇；保險切換保留目前模式，模式切換保留目前保險。
+一般 NAV/A-A/A-G、DGFT/MSL 超控與 Master ON/OFF/SIM 各自保存；保險切換保留目前模式，模式切換保留目前保險。
 
 外部動作視窗仍為 16 個連續序號，保留成功前綴確認、缺號拒絕、失敗重試及序號界限。
 Bridge 在奇數 generation 寫入，完整成功後提交偶數；HMCS 拒絕中途變動的版本。
@@ -142,13 +142,14 @@ HMCS 依有效 lock、模式及操作意圖決定武器呈現；音效 Lua 依�
 
 ## 模式狀態與事件
 
-`ModeData.operating_mode` 使用 `OperatingMode`，不再以 fire_control 命名。
+`ModeData.master_mode` 保存一般 NAV/A-A/A-G，`override_mode` 保存中央/DGFT/MSL。
+`operating_mode()` 計算生效配置，模式選擇與超控復歸由 ModeManagement 管理。
 對外 `CombatAvionicsSnapshot.mode` 獨立發布 `ModeSnapshot`；FireControlSnapshot
-只保留火控資料。Bridge 仍輸出原有座艙參數名稱與數值，Lua/HMCS 操作不變。
+只保留火控資料。Bridge 發布主模式、超控與生效配置，HMCS 顯示目前配置；對照見模式事件說明。
 
 MC 持有自己的 `ModeEvents`，由 ModeManagement 同步發布
 `MasterArmSelected`／`OperatingModeSelected`，組裝時集中登記訂閱。
-事件含當次選擇前後的 ModeData 副本；重複選擇也通知，不因數值相同而省略。
+事件含當次選擇前後的 ModeData 副本；超控重選保持原設定，獨立 MSL STEP 處理輪站。
 ModeManagement 透過 ModeData 及 ModeEvents 提供模式與通知。
 
 Master OFF/SIM 先同步通知火控停止，再通知反制中止；目標指定與所選模式保持。

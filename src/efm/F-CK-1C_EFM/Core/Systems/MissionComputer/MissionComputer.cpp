@@ -80,7 +80,7 @@ MissionComputer::MissionComputer()
 	stores_mode_connection_ = mode_events_.operating_mode_selected.connect(
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
-		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode, event.cycle_weapon });
+		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode(), false });
 		    stores_management_.dispatch();
 	    },
 	    kStoresModeOrder);
@@ -106,9 +106,11 @@ void MissionComputer::setup(SystemSetup& setup)
 	setup.publish(AircraftDataKeys::kRadarRequests, RadarRequests{});
 	setup.publish(AircraftDataKeys::kMissionComputerSnapshot, input_output_data_.output.combat_avionics);
 	// 各類指令先進入同一 FIFO，待本 tick 讀取觀測後才執行，保留跨元件的操作順序。
-	const CommandId mode_commands[] = { CommandId::SetMasterArmOn,     CommandId::SetMasterArmOff,
-		                                CommandId::SetMasterArmSim,    CommandId::SelectNavigationMode,
-		                                CommandId::SelectDogfightMode, CommandId::SelectMissileOverride };
+	const CommandId mode_commands[] = { CommandId::SetMasterArmOn,      CommandId::SetMasterArmOff,
+		                                CommandId::SetMasterArmSim,     CommandId::SelectNavigationMode,
+		                                CommandId::SelectDogfightMode,  CommandId::SelectMissileOverride,
+		                                CommandId::SelectAirToAirMode,  CommandId::SelectAirToGroundMode,
+		                                CommandId::SelectOverrideCenter };
 	for (CommandId id : mode_commands)
 	{
 		setup.register_command_handler(id,
@@ -139,7 +141,8 @@ void MissionComputer::setup(SystemSetup& setup)
 		                                        CommandId::SetTmsUp,
 		                                        CommandId::PressTmsDown,
 		                                        CommandId::PressTmsLeft,
-		                                        CommandId::PressTmsRight };
+		                                        CommandId::PressTmsRight,
+		                                        CommandId::StepMissileStation };
 	for (CommandId id : fire_control_commands)
 	{
 		setup.register_command_handler(id,
@@ -187,10 +190,12 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.mode.status = output.status;
 	output.fire_control.status = output.status;
 	output.mode.master_arm_mode = mode_data_.master_arm;
-	output.mode.operating_mode = mode_data_.operating_mode;
+	output.mode.master_mode = mode_data_.master_mode;
+	output.mode.override_mode = mode_data_.override_mode;
+	output.mode.operating_mode = mode_data_.operating_mode();
 	output.fire_control.air_to_air_submode = fire_control_data_.targeting.acquisition_mode;
 	output.fire_control.target_designation = fire_control_data_.targeting.designation;
-	output.mode.dogfight_mode = mode_data_.operating_mode == OperatingMode::Dogfight;
+	output.mode.dogfight_mode = mode_data_.override_mode == OverrideMode::Dogfight;
 	output.fire_control.gun_fire_requested = fire_control_data_.weapon.gun_requested;
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;

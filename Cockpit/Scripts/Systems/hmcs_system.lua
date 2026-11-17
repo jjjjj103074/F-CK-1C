@@ -69,7 +69,7 @@ local function update_weapon_presentation()
     -- began and ended between HMCS updates, or its weapon operation was rejected.
     local preferred_class = missile_preference_sequence > gun_preference_sequence and WEAPON_CLASS_AAM or WEAPON_CLASS_GUN
     local weapon_class
-    if mode ~= 0 or uncage or locked then
+    if mode == 1 or mode == 2 or mode == 3 or uncage or locked then
         weapon_class = WEAPON_CLASS_AAM
     elseif gun_firing or trigger_held or preferred_class == WEAPON_CLASS_GUN then
         weapon_class = WEAPON_CLASS_GUN

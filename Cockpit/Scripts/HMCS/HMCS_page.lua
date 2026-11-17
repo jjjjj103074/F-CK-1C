@@ -205,6 +205,9 @@ add_param_text("hmcs_mode_nav", "NAV", { -0.245, -0.202 }, "LeftCenter", "HMCS_F
 add_param_text("hmcs_mode_dgf", "DGF", { -0.245, -0.202 }, "LeftCenter", "HMCS_FC_MODE", 0.9, 1.1, text_size_value)
 add_param_text("hmcs_mode_msl", "MSL", { -0.245, -0.202 }, "LeftCenter", "HMCS_FC_MODE", 1.9, 2.1, text_size_value)
 
+add_param_text("hmcs_mode_aa", "A-A", { -0.245, -0.202 }, "LeftCenter", "HMCS_FC_MODE", 2.9, 3.1, text_size_value)
+add_param_text("hmcs_mode_ag", "A-G", { -0.245, -0.202 }, "LeftCenter", "HMCS_FC_MODE", 3.9, 4.1, text_size_value)
+
 add_text("hmcs_sub_title", "SUB", { -0.255, -0.232 }, "RightCenter", "font_hmcs_small", text_size_title)
 add_param_text("hmcs_sub_none", "---", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", -0.1, 0.1, text_size_value)
 add_param_text("hmcs_sub_hmd", "HMD", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 0.9, 1.1, text_size_value)

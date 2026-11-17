@@ -15,6 +15,8 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsMasterMode),
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsDogfightMode),
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsFireControlMode),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McMasterMode),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McOverrideMode),
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsAamSubmode),
                  cockpit_parameter_writer(DcsIds::CockpitParams::HmcsGunFiring),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McMissileUncageHeld),
@@ -104,6 +106,8 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(MasterArm, static_cast<double>(snapshot.mode.master_arm_mode));
 	WRITE_MC(Dogfight, snapshot.mode.dogfight_mode ? 1.0 : 0.0);
 	WRITE_MC(OperatingMode, static_cast<double>(snapshot.mode.operating_mode));
+	WRITE_MC(MasterMode, static_cast<double>(snapshot.mode.master_mode));
+	WRITE_MC(OverrideMode, static_cast<double>(snapshot.mode.override_mode));
 	WRITE_MC(Submode, static_cast<double>(snapshot.fire_control.air_to_air_submode));
 	WRITE_MC(GunFiring, snapshot.fire_control.gun_firing_indication ? 1.0 : 0.0);
 	WRITE_MC(Uncage, snapshot.fire_control.missile_uncage_held ? 1.0 : 0.0);

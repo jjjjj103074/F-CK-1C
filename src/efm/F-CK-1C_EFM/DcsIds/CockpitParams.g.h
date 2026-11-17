@@ -71,6 +71,8 @@ static const char* const HmcsMasterMode = "HMCS_MASTER_MODE";
 static const char* const HmcsWeaponClass = "HMCS_WEAPON_CLASS";
 static const char* const HmcsWeaponQuantity = "HMCS_WEAPON_QTY";
 static const char* const HmcsDogfightMode = "HMCS_DOGFIGHT_MODE";
+static const char* const McMasterMode = "MC_MASTER_MODE";
+static const char* const McOverrideMode = "MC_OVERRIDE_MODE";
 static const char* const HmcsFireControlMode = "HMCS_FC_MODE";
 static const char* const HmcsAamSubmode = "HMCS_AAM_SUBMODE";
 static const char* const HmcsGunFiring = "HMCS_GUN_FIRING";
@@ -215,6 +217,8 @@ static constexpr Entry Catalog[] = {
     { HmcsWeaponClass, "lua_internal", "enum", "Cockpit/Scripts/Systems/hmcs_system.lua", "HMCS", nullptr },
     { HmcsWeaponQuantity, "lua_internal", "count", "Cockpit/Scripts/Systems/hmcs_system.lua", "HMCS", nullptr },
     { HmcsDogfightMode, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McMasterMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McOverrideMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsFireControlMode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsAamSubmode, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { HmcsGunFiring, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },

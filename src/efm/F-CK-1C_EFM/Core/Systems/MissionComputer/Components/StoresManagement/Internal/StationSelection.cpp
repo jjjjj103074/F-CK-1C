@@ -16,7 +16,7 @@ StationSelection::StationSelection(const StoresInventorySnapshot& inventory, Sta
 
 void StationSelection::select_mode(OperatingMode mode, bool cycle_weapon, bool reassert_selection)
 {
-	reset_selection_ = mode != mode_ || mode == OperatingMode::Navigation;
+	reset_selection_ = mode != mode_ || !is_air_to_air_mode(mode);
 	cycle_requested_ = !reset_selection_ && cycle_weapon;
 	reassert_requested_ = reassert_selection;
 	mode_ = mode;
@@ -70,7 +70,7 @@ bool StationSelection::update(const WeaponStationObservation& observation)
 {
 	const auto previous = state_;
 	acknowledge(observation);
-	if (mode_ == OperatingMode::Navigation)
+	if (!is_air_to_air_mode(mode_))
 	{
 		request(std::nullopt, reset_selection_ && state_.request_revision != state_.acknowledged_revision);
 		reset_selection_ = false;

@@ -17,7 +17,7 @@ WeaponOperation::WeaponOperation(const ModeData& mode,
 
 bool WeaponOperation::can_use_gun() const
 {
-	return mode_.master_arm == MasterArmMode::On && mode_.operating_mode == OperatingMode::Dogfight &&
+	return mode_.master_arm == MasterArmMode::On && mode_.override_mode == OverrideMode::Dogfight &&
 	       !weapon_.uncage_held;
 }
 
@@ -39,6 +39,10 @@ void WeaponOperation::handle(const Command& command)
 		break;
 	case CommandId::SetWeaponRelease:
 		handle_release(pressed);
+		break;
+	case CommandId::StepMissileStation:
+		if (pressed && mode_.air_to_air())
+			stores_commands_.submit(SelectStoresForMode{ mode_.operating_mode(), true });
 		break;
 	default:
 		break;
@@ -76,8 +80,8 @@ WeaponOperationEvent WeaponOperation::step()
 {
 	weapon_.gun_requested = execution_.gun.in_progress();
 	weapon_.pickle_requested = execution_.release.in_progress();
-	weapon_.gun_firing_indication = weapon_.gun_requested && mode_.master_arm == MasterArmMode::On &&
-	                                mode_.operating_mode == OperatingMode::Dogfight;
+	weapon_.gun_firing_indication =
+	    weapon_.gun_requested && mode_.master_arm == MasterArmMode::On && mode_.override_mode == OverrideMode::Dogfight;
 	const auto& release = execution_.release;
 	if (release.phase == WeaponUsePhase::StopScheduled && release.request_id != reported_release_end_)
 	{

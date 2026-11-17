@@ -58,7 +58,7 @@ ExternalActionOutbox 保存功能要求及結果；ExternalActionTransport 擁�
 
 ## 保留的行為
 
-- 主保險與 NAV／DGFT／MSL 獨立；SAFE／SIM 保留目標指定。
+- 主保險與一般 NAV／A-A／A-G、DGFT／MSL 超控獨立；SAFE／SIM 保留目標指定。
 - DGFT 進入的一次捕獲、TMS 脈衝／按住、解籠配合及投放結束取消指定維持原規則。
 - Hud 保存捕獲選擇，TMS Left 維持空操作。
 - 武器使用資格、SM 選站／停止／取消、至少 80 ms 的保持及反制程序維持原分工。

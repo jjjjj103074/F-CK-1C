@@ -462,6 +462,12 @@ values[cockpit_params.McMasterArmPressSequence] = 5
 values[cockpit_params.HmcsFireControlMode] = 1
 update()
 expect(values[cockpit_params.HmcsWeaponClass] == 1, "AA mode has precedence over gun preference")
+values[cockpit_params.HmcsFireControlMode] = 3
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 1, "normal A-A mode selects air-to-air presentation")
+values[cockpit_params.HmcsFireControlMode] = 4
+update()
+expect(values[cockpit_params.HmcsWeaponClass] == 5, "A-G mode retains the selected gun preference")
 values[cockpit_params.HmcsFireControlMode] = 0
 values[cockpit_params.McStoresGunCount] = 0
 update()
@@ -681,6 +687,10 @@ local mission_commands = {
     "NavMode",
     "DogfightSwitch",
     "MissileOverride",
+    "AirToAirMode",
+    "AirToGroundMode",
+    "DogfightCenter",
+    "MissileStep",
     "MissileUncage",
     "WeaponRelease",
     "TMSUp",

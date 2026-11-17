@@ -26,6 +26,8 @@ private:
 		MasterArm,
 		Dogfight,
 		OperatingMode,
+		MasterMode,
+		OverrideMode,
 		Submode,
 		GunFiring,
 		Uncage,

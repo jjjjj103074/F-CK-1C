@@ -8,12 +8,31 @@ namespace Core::Systems::Mc
 struct ModeData
 {
 	MasterArmMode master_arm = MasterArmMode::On; ///< 軟體主保險狀態。
-	OperatingMode operating_mode = OperatingMode::Navigation;
+	MasterMode master_mode = MasterMode::Navigation; ///< 超控前後持續保存的一般主模式。
+	OverrideMode override_mode = OverrideMode::None; ///< 油門超控開關位置。
 
-	/// @brief 判斷目前模式是否為 DGFT/MSL。
+	/// @brief 依超控位置及保存的主模式取得目前生效的操作配置。
+	OperatingMode operating_mode() const noexcept
+	{
+		if (override_mode == OverrideMode::Dogfight)
+			return OperatingMode::Dogfight;
+		if (override_mode == OverrideMode::Missile)
+			return OperatingMode::MissileOverride;
+		switch (master_mode)
+		{
+		case MasterMode::AirToAir:
+			return OperatingMode::AirToAir;
+		case MasterMode::AirToGround:
+			return OperatingMode::AirToGround;
+		default:
+			return OperatingMode::Navigation;
+		}
+	}
+
+	/// @brief 判斷一般 A-A 或空戰超控是否生效。
 	bool air_to_air() const noexcept
 	{
-		return operating_mode != OperatingMode::Navigation;
+		return is_air_to_air_mode(operating_mode());
 	}
 };
 

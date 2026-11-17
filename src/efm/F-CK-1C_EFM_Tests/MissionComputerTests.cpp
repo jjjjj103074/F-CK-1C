@@ -346,7 +346,7 @@ void test_plain_gun_stop_survives_invalid_inventory_mode_wait(Tests::Context& co
 	    output.actions.first_sequence + output.actions.count - 1;
 	fixture.step(kMissionPeriod * 2);
 	fixture.frame.cockpit.weapon_stations.status = { false, 4, ObservationInvalidReason::StationApiError };
-	fixture.send(CommandId::SelectDogfightMode);
+	fixture.send(CommandId::StepMissileStation);
 	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
 	bool stopped = false;
 	for (int tick = 3; tick <= 40; ++tick)
@@ -521,7 +521,7 @@ void test_inventory_authority_selection_and_rearm(Tests::Context& context)
 	fixture.send(CommandId::SelectMissileOverride);
 	output = fixture.step(kMissionPeriod * 12);
 	TEST_EXPECT(context, output.state.stores.selection.request_revision == revision + 1);
-	fixture.send(CommandId::SelectNavigationMode);
+	fixture.send(CommandId::SelectOverrideCenter);
 	output = fixture.step(kMissionPeriod * 13);
 	TEST_EXPECT(context, !output.state.stores.selection.requested_station);
 	TEST_EXPECT(context, output.state.stores.selection.request_revision == revision + 2);
@@ -547,7 +547,7 @@ void test_target_designation_keeps_intent_and_observation_independent(Tests::Con
 	TEST_EXPECT_NEAR(context, data.designation.radar_range_m, 4200, 1e-12);
 	targeting.handle({ CommandId::PressTmsDown, 1.0 });
 	TEST_EXPECT(context, !data.designation.requested && data.designation.radar_tracking);
-	mode.operating_mode = OperatingMode::MissileOverride;
+	mode.override_mode = OverrideMode::Missile;
 	targeting.handle({ CommandId::PressTmsRight, 1.0 });
 	TEST_EXPECT(context, data.designation.requested);
 	radar.observation.status = { false, 9, ObservationInvalidReason::ParameterUnavailable };
@@ -911,7 +911,7 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 	TEST_EXPECT(context, output.state.mode.status.revision == output.state.status.revision);
 }
 
-void test_repeat_mode_selection_still_cycles_weapon(Tests::Context& context)
+void test_missile_step_cycles_without_reselecting_override(Tests::Context& context)
 {
 	MissionFixture fixture;
 	auto& inventory = fixture.frame.cockpit.weapon_stations;
@@ -925,7 +925,7 @@ void test_repeat_mode_selection_still_cycles_weapon(Tests::Context& context)
 			                      WeaponRole::AirToAir,
 			                      "aa" };
 	fixture.send(CommandId::SelectMissileOverride);
-	fixture.send(CommandId::SelectMissileOverride);
+	fixture.send(CommandId::StepMissileStation);
 	const auto output = fixture.step(kMissionPeriod);
 	TEST_EXPECT(context, output.state.stores.selection.requested_station == 8);
 	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::MissileOverride);
@@ -1030,10 +1030,106 @@ void test_repress_restarts_the_existing_gun_hold_rule(Tests::Context& context)
 	TEST_EXPECT(context, contains(output.actions, MissionActionKind::GunOff));
 }
 
+void test_master_and_override_state_flow(Tests::Context& context)
+{
+	MissionFixture f;
+	f.send(CommandId::SelectAirToGroundMode);
+	auto output = f.step(kMissionPeriod);
+	TEST_EXPECT(context, output.state.mode.master_mode == MasterMode::AirToGround);
+	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::AirToGround);
+	TEST_EXPECT(context, !output.state.stores.selection.requested_station);
+	f.send(CommandId::SelectDogfightMode);
+	output = f.step(kMissionPeriod * 2);
+	const auto request = output.state.stores.selection.request_revision;
+	TEST_EXPECT(context, output.state.mode.master_mode == MasterMode::AirToGround);
+	TEST_EXPECT(context, output.state.mode.override_mode == OverrideMode::Dogfight);
+	f.send(CommandId::SelectDogfightMode);
+	f.send(CommandId::SelectNavigationMode);
+	f.send(CommandId::SelectAirToAirMode);
+	output = f.step(kMissionPeriod * 3);
+	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::Dogfight);
+	TEST_EXPECT(context, output.state.stores.selection.request_revision == request);
+	f.send(CommandId::SelectMissileOverride);
+	f.send(CommandId::SelectOverrideCenter);
+	output = f.step(kMissionPeriod * 4);
+	TEST_EXPECT(context, output.state.mode.master_mode == MasterMode::AirToGround);
+	TEST_EXPECT(context, output.state.mode.override_mode == OverrideMode::None);
+	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::AirToGround);
+	TEST_EXPECT(context, !output.state.stores.selection.requested_station);
+	TEST_EXPECT(context, output.state.fire_control.air_to_air_submode == AirToAirSubmode::None);
+	f.send(CommandId::SelectAirToAirMode);
+	output = f.step(kMissionPeriod * 5);
+	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::AirToAir);
+	TEST_EXPECT(context, output.state.fire_control.air_to_air_submode == AirToAirSubmode::BeyondVisualRange);
+}
+
+void test_override_reselection_preserves_targeting_and_station(Tests::Context& context)
+{
+	MissionFixture f;
+	auto& stations = f.frame.cockpit.weapon_stations.stations;
+	for (std::size_t index : { 2u, 5u })
+		stations[index] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+	f.send(CommandId::SelectDogfightMode);
+	f.send(CommandId::PressTmsRight);
+	auto output = f.step(kMissionPeriod);
+	const auto selection = output.state.stores.selection;
+	TEST_EXPECT(context, selection.requested_station == 2);
+	TEST_EXPECT(context, output.state.fire_control.air_to_air_submode == AirToAirSubmode::Hud);
+	f.send(CommandId::SelectDogfightMode);
+	output = f.step(kMissionPeriod * 2);
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == selection.requested_station);
+	TEST_EXPECT(context, output.state.stores.selection.request_revision == selection.request_revision);
+	TEST_EXPECT(context, output.state.fire_control.air_to_air_submode == AirToAirSubmode::Hud);
+	f.send(CommandId::StepMissileStation);
+	output = f.step(kMissionPeriod * 3);
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 5);
+	TEST_EXPECT(context, output.state.mode.override_mode == OverrideMode::Dogfight);
+	TEST_EXPECT(context, output.state.fire_control.air_to_air_submode == AirToAirSubmode::Hud);
+}
+
+void test_override_change_cancels_pending_gun_start(Tests::Context& context)
+{
+	for (CommandId next : { CommandId::SelectMissileOverride, CommandId::SelectOverrideCenter })
+	{
+		MissionFixture f;
+		f.send(CommandId::SelectDogfightMode);
+		f.send(CommandId::SetTriggerSecondStage);
+		f.send(next);
+		auto output = f.step(kMissionPeriod);
+		TEST_EXPECT(context, !output.state.fire_control.gun_fire_requested);
+		TEST_EXPECT(context, !contains(output.actions, MissionActionKind::GunOn));
+		output = f.step(kMissionPeriod * 2);
+		TEST_EXPECT(context, !output.state.fire_control.gun_fire_requested);
+		TEST_EXPECT(context, !contains(output.actions, MissionActionKind::GunOn));
+	}
+}
+
+void test_ground_mode_is_independent_from_inventory_and_weapon_inputs(Tests::Context& context)
+{
+	MissionFixture f;
+	f.frame.cockpit.weapon_stations.status.available = false;
+	f.send(CommandId::SelectAirToGroundMode);
+	f.send(CommandId::SetMissileUncage);
+	f.send(CommandId::SetWeaponRelease);
+	f.send(CommandId::SetTriggerSecondStage);
+	f.send(CommandId::StepMissileStation);
+	const auto output = f.step(kMissionPeriod);
+	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::AirToGround);
+	TEST_EXPECT(context, !output.state.stores.selection.awaiting_inventory);
+	TEST_EXPECT(context, !output.state.stores.selection.requested_station);
+	TEST_EXPECT(context, !output.state.fire_control.gun_fire_requested && !output.state.fire_control.pickle_requested);
+	TEST_EXPECT(context, !contains(output.actions, MissionActionKind::GunOn));
+	TEST_EXPECT(context, !contains(output.actions, MissionActionKind::PickleOn));
+}
+
 }
 
 void run_mission_computer_tests(Tests::Context& context)
 {
+	test_master_and_override_state_flow(context);
+	test_override_reselection_preserves_targeting_and_station(context);
+	test_override_change_cancels_pending_gun_start(context);
+	test_ground_mode_is_independent_from_inventory_and_weapon_inputs(context);
 	test_unavailable_weapon_use_requires_a_new_press(context);
 	test_canceled_release_keeps_designation_after_late_ack(context);
 	test_repress_restarts_the_existing_gun_hold_rule(context);
@@ -1063,6 +1159,6 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_gun_quantity_observations_and_catch_up(context);
 	test_gun_restart_in_one_fifo_does_not_backdate_quantity(context);
 	test_cms_commands_share_fifo_with_mode_commands(context);
-	test_repeat_mode_selection_still_cycles_weapon(context);
+	test_missile_step_cycles_without_reselecting_override(context);
 	test_mc_subscriptions_are_isolated_between_instances(context);
 }

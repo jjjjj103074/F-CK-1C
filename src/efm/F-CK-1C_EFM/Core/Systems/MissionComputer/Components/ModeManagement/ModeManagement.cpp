@@ -18,11 +18,27 @@ void ModeManagement::select_master_arm(MasterArmMode mode)
 	events_.master_arm_selected(MasterArmSelected{ previous, mode_ });
 }
 
-void ModeManagement::select_operating_mode(OperatingMode mode, bool cycle_weapon)
+void ModeManagement::publish_selection(const ModeData& previous)
 {
+	events_.operating_mode_selected(OperatingModeSelected{ previous, mode_ });
+}
+
+void ModeManagement::select_master_mode(MasterMode mode)
+{
+	if (mode_.override_mode != OverrideMode::None)
+		return;
 	const ModeData previous = mode_;
-	mode_.operating_mode = mode;
-	events_.operating_mode_selected(OperatingModeSelected{ previous, mode_, cycle_weapon });
+	mode_.master_mode = mode_.master_mode == mode ? MasterMode::Navigation : mode;
+	publish_selection(previous);
+}
+
+void ModeManagement::select_override(OverrideMode mode)
+{
+	if (mode_.override_mode == mode)
+		return;
+	const ModeData previous = mode_;
+	mode_.override_mode = mode;
+	publish_selection(previous);
 }
 
 void ModeManagement::handle(const Command& command)
@@ -45,15 +61,21 @@ void ModeManagement::handle(const Command& command)
 		break;
 
 	case CommandId::SelectNavigationMode: // Select Navigation Mode
-		select_operating_mode(OperatingMode::Navigation, false);
+		select_master_mode(MasterMode::Navigation);
+		break;
+	case CommandId::SelectAirToAirMode:
+		select_master_mode(MasterMode::AirToAir);
+		break;
+	case CommandId::SelectAirToGroundMode:
+		select_master_mode(MasterMode::AirToGround);
+		break;
+	case CommandId::SelectOverrideCenter:
+		select_override(OverrideMode::None);
 		break;
 
 	case CommandId::SelectDogfightMode: // Select Dogfight Mode
 	case CommandId::SelectMissileOverride: // Select Missile Override Mode
-		// 模式選擇發布選站與目標操作通知。
-		select_operating_mode(command.id == CommandId::SelectDogfightMode ? OperatingMode::Dogfight
-		                                                                  : OperatingMode::MissileOverride,
-		                      true);
+		select_override(command.id == CommandId::SelectDogfightMode ? OverrideMode::Dogfight : OverrideMode::Missile);
 		break;
 
 	default:

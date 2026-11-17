@@ -39,7 +39,7 @@ void Targeting::cancel()
 void Targeting::handle(const Command& command)
 {
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
-	const bool dogfight = mode_.operating_mode == OperatingMode::Dogfight;
+	const bool dogfight = mode_.override_mode == OverrideMode::Dogfight;
 	switch (command.id)
 	{
 	case CommandId::SetMissileUncage:
@@ -78,7 +78,7 @@ void Targeting::handle(const Command& command)
 		{
 			if (dogfight)
 				select_mode(TargetAcquisitionMode::Hud);
-			else if (mode_.operating_mode == OperatingMode::MissileOverride)
+			else if (mode_.air_to_air())
 			{
 				latest_designation_request_ = requests_.submit({ RadarOperation::SelectNextTarget });
 				data_.designation.requested = true;
@@ -92,14 +92,14 @@ void Targeting::handle(const Command& command)
 
 void Targeting::on_operating_mode_selected(const OperatingModeSelected&)
 {
-	if (mode_.operating_mode == OperatingMode::Navigation)
+	if (!mode_.air_to_air())
 	{
 		data_.acquisition_mode = TargetAcquisitionMode::None;
 		cancel();
 		requests_.submit({ RadarOperation::SelectNavigation });
 		return;
 	}
-	const bool dogfight = mode_.operating_mode == OperatingMode::Dogfight;
+	const bool dogfight = mode_.override_mode == OverrideMode::Dogfight;
 	if (!dogfight)
 		cancel();
 	requests_.submit({ RadarOperation::EnsureOn });

@@ -47,6 +47,10 @@ static constexpr int TMSRight = 3049;
 static constexpr int NavMode = 3050;
 static constexpr int MissileOverride = 3051;
 static constexpr int SoundTestCycle = 3052;
+static constexpr int AirToAirMode = 3053;
+static constexpr int AirToGroundMode = 3054;
+static constexpr int DogfightCenter = 3055;
+static constexpr int MissileStep = 3056;
 static constexpr int APMasterOn = 3101;
 static constexpr int APMasterOff = 3102;
 static constexpr int APBypass = 3103;
@@ -159,6 +163,10 @@ static constexpr Entry CustomCommands[] = {
     { Commands::NavMode, Route::Efm },
     { Commands::MissileOverride, Route::Efm },
     { Commands::SoundTestCycle, Route::Cockpit },
+    { Commands::AirToAirMode, Route::Efm },
+    { Commands::AirToGroundMode, Route::Efm },
+    { Commands::DogfightCenter, Route::Efm },
+    { Commands::MissileStep, Route::Efm },
     { Commands::APMasterOn, Route::Efm },
     { Commands::APMasterOff, Route::Efm },
     { Commands::APBypass, Route::Efm },

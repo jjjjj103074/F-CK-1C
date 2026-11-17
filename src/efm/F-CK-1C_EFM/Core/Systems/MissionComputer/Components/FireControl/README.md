@@ -10,7 +10,7 @@ FireControl 組裝 Targeting 與 WeaponOperation，分派操作及程序結果�
 | RadarSystem | 設備要求展開、捕獲輸入 ACK／保持／放開、雷達觀測與操作結果 |
 | DcsBridge/ExternalActionTransport | 共用 DCS 序號、16 項傳送視窗及執行確認對應 |
 
-`FireControlTargetInput.cpp` 與 TargetDesignation 類別已移除。TMS、解籠的目標配合、NAV／DGFT／MSL 的捕獲策略及投放正常結束的取消指定規則，由 Targeting 完整管理。
+`FireControlTargetInput.cpp` 與 TargetDesignation 類別已移除。TMS、解籠的目標配合、一般 A-A 與 DGFT／MSL 超控的捕獲策略及投放正常結束的取消指定規則，由 Targeting 完整管理。
 
 ## 目標與武器操作
 
@@ -28,7 +28,7 @@ flowchart LR
 ```
 
 主保險 OFF／SIM 由 WeaponOperation／SM 停止武器操作；Targeting 使用操作模式及雷達回報。
-模式切換保留保險。SM 的選站、停止、取消與武器保持規則維持原設計。
+模式切換保留保險，並由 WeaponOperation 結束先前配置的武器使用。MSL STEP 在空對空配置送出輪站要求，下一個可用掛點由 SM 決定。超控切換規則及座艙指令見[模式架構](../../../../../../../../docs/MC_MODE_EVENTS.md)。
 
 TargetingData 保存期望的捕獲方式與指定意圖。雷達設備來源的工作模式、幾何及有效性由 RadarSystem 發布，再由 Targeting 整理成目前的目標資料。指定意圖與 STT 觀測各自保存。
 
