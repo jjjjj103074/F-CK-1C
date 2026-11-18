@@ -346,7 +346,8 @@ void test_plain_gun_stop_survives_invalid_inventory_mode_wait(Tests::Context& co
 	    output.actions.first_sequence + output.actions.count - 1;
 	fixture.step(kMissionPeriod * 2);
 	fixture.frame.cockpit.weapon_stations.status = { false, 4, ObservationInvalidReason::StationApiError };
-	fixture.send(CommandId::StepMissileStation);
+	fixture.send(CommandId::SetMissileStep);
+	fixture.send(CommandId::SetMissileStep, 0.0);
 	fixture.send(CommandId::SetTriggerSecondStage, 0.0);
 	bool stopped = false;
 	for (int tick = 3; tick <= 40; ++tick)
@@ -925,7 +926,8 @@ void test_missile_step_cycles_without_reselecting_override(Tests::Context& conte
 			                      WeaponRole::AirToAir,
 			                      "aa" };
 	fixture.send(CommandId::SelectMissileOverride);
-	fixture.send(CommandId::StepMissileStation);
+	fixture.send(CommandId::SetMissileStep);
+	fixture.send(CommandId::SetMissileStep, 0.0);
 	const auto output = fixture.step(kMissionPeriod);
 	TEST_EXPECT(context, output.state.stores.selection.requested_station == 8);
 	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::MissileOverride);
@@ -1080,7 +1082,8 @@ void test_override_reselection_preserves_targeting_and_station(Tests::Context& c
 	TEST_EXPECT(context, output.state.stores.selection.requested_station == selection.requested_station);
 	TEST_EXPECT(context, output.state.stores.selection.request_revision == selection.request_revision);
 	TEST_EXPECT(context, output.state.fire_control.air_to_air_submode == AirToAirSubmode::Hud);
-	f.send(CommandId::StepMissileStation);
+	f.send(CommandId::SetMissileStep);
+	f.send(CommandId::SetMissileStep, 0.0);
 	output = f.step(kMissionPeriod * 3);
 	TEST_EXPECT(context, output.state.stores.selection.requested_station == 5);
 	TEST_EXPECT(context, output.state.mode.override_mode == OverrideMode::Dogfight);
@@ -1104,6 +1107,99 @@ void test_override_change_cancels_pending_gun_start(Tests::Context& context)
 	}
 }
 
+void test_missile_step_short_and_hold_use_separate_selection_intents(Tests::Context& context)
+{
+	MissionFixture f;
+	auto& observation = f.frame.cockpit.weapon_stations;
+	observation.stations[2] = { StoreConfiguration::Equipped, 1,         WeaponCategory::Missile,
+		                        WeaponRole::AirToAir,         "short-a", "type-a" };
+	observation.stations[5] = { StoreConfiguration::Equipped, 1,        WeaponCategory::Missile,
+		                        WeaponRole::AirToAir,         "medium", "type-b" };
+	observation.stations[8] = { StoreConfiguration::Equipped, 1,         WeaponCategory::Missile,
+		                        WeaponRole::AirToAir,         "short-b", "type-a" };
+	auto advance = [&](nanoseconds time)
+	{
+		observation.status.revision += 2;
+		return f.step(time);
+	};
+	f.send(CommandId::SelectMissileOverride);
+	f.send(CommandId::SetMissileStep);
+	f.send(CommandId::SetMissileStep, 0.0);
+	auto output = advance(kMissionPeriod);
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 8);
+	f.send(CommandId::SetMissileStep);
+	advance(kMissionPeriod * 2);
+	f.send(CommandId::SetMasterArmOff);
+	f.send(CommandId::SetMissileStep);
+	output = advance(kMissionPeriod * 17);
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 8);
+	output = advance(kMissionPeriod * 18);
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 5);
+	TEST_EXPECT(context, output.state.mode.master_arm_mode == MasterArmMode::Off);
+	const auto revision = output.state.stores.selection.request_revision;
+	output = advance(kMissionPeriod * 40);
+	TEST_EXPECT(context, output.state.stores.selection.request_revision == revision);
+	f.send(CommandId::SetMissileStep, 0.0);
+	output = advance(kMissionPeriod * 41);
+	TEST_EXPECT(context, output.state.stores.selection.request_revision == revision);
+	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::MissileOverride);
+}
+
+void test_missile_step_release_threshold(Tests::Context& context)
+{
+	for (int duration_ms : { 499, 500 })
+	{
+		MissionFixture f;
+		auto& observation = f.frame.cockpit.weapon_stations;
+		observation.stations[0] = { StoreConfiguration::Equipped, 1,   WeaponCategory::Missile,
+			                        WeaponRole::AirToAir,         "a", "type-a" };
+		observation.stations[1] = { StoreConfiguration::Equipped, 1,           WeaponCategory::Missile,
+			                        WeaponRole::AirToAir,         "a-adapter", "type-a" };
+		observation.stations[2] = { StoreConfiguration::Equipped, 1,   WeaponCategory::Missile,
+			                        WeaponRole::AirToAir,         "b", "type-b" };
+		f.send(CommandId::SelectMissileOverride);
+		f.send(CommandId::SetMissileStep);
+		f.step(seconds(1));
+		observation.status.revision += 2;
+		f.send(CommandId::SetMissileStep, 0.0);
+		const auto output = f.step(milliseconds(1000 + duration_ms));
+		TEST_EXPECT(context, output.state.stores.selection.requested_station == (duration_ms < 500 ? 1 : 2));
+	}
+}
+
+void test_missile_step_hold_uses_input_time_and_cancels_on_mode_change(Tests::Context& context)
+{
+	MissionFixture f;
+	auto& observation = f.frame.cockpit.weapon_stations;
+	observation.stations[2] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "a" };
+	observation.stations[5] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "b" };
+	auto advance = [&](nanoseconds time)
+	{
+		observation.status.revision += 2;
+		return f.step(time);
+	};
+	f.send(CommandId::SelectMissileOverride);
+	advance(kMissionPeriod);
+	f.send(CommandId::SetMissileStep);
+	auto output = advance(seconds(10));
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 2);
+	output = advance(milliseconds(10499));
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 2);
+	output = advance(milliseconds(10500));
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 5);
+	f.send(CommandId::SetMissileStep, 0.0);
+	advance(seconds(11));
+	f.send(CommandId::SetMissileStep);
+	advance(milliseconds(11100));
+	f.send(CommandId::SelectOverrideCenter);
+	advance(milliseconds(11200));
+	f.send(CommandId::SelectMissileOverride);
+	advance(milliseconds(11300));
+	f.send(CommandId::SetMissileStep, 0.0);
+	output = advance(seconds(12));
+	TEST_EXPECT(context, output.state.stores.selection.requested_station == 2);
+}
+
 void test_ground_mode_is_independent_from_inventory_and_weapon_inputs(Tests::Context& context)
 {
 	MissionFixture f;
@@ -1112,7 +1208,7 @@ void test_ground_mode_is_independent_from_inventory_and_weapon_inputs(Tests::Con
 	f.send(CommandId::SetMissileUncage);
 	f.send(CommandId::SetWeaponRelease);
 	f.send(CommandId::SetTriggerSecondStage);
-	f.send(CommandId::StepMissileStation);
+	f.send(CommandId::SetMissileStep);
 	const auto output = f.step(kMissionPeriod);
 	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::AirToGround);
 	TEST_EXPECT(context, !output.state.stores.selection.awaiting_inventory);
@@ -1127,6 +1223,9 @@ void test_ground_mode_is_independent_from_inventory_and_weapon_inputs(Tests::Con
 void run_mission_computer_tests(Tests::Context& context)
 {
 	test_master_and_override_state_flow(context);
+	test_missile_step_short_and_hold_use_separate_selection_intents(context);
+	test_missile_step_release_threshold(context);
+	test_missile_step_hold_uses_input_time_and_cancels_on_mode_change(context);
 	test_override_reselection_preserves_targeting_and_station(context);
 	test_override_change_cancels_pending_gun_start(context);
 	test_ground_mode_is_independent_from_inventory_and_weapon_inputs(context);

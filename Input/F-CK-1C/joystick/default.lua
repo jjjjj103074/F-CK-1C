@@ -41,22 +41,17 @@ join(res.keyCommands, {
     { down = device_commands.MasterArmOn, up = device_commands.MasterArmOn, value_down = 1.0, value_up = 0.0, name = _("Master Arm - ON (Momentary)"), category = { _("Weapons") } },
     { down = device_commands.MasterArmOff, up = device_commands.MasterArmOff, value_down = 1.0, value_up = 0.0, name = _("Master Arm - OFF (Momentary)"), category = { _("Weapons") } },
     { down = device_commands.MasterArmSim, up = device_commands.MasterArmSim, value_down = 1.0, value_up = 0.0, name = _("Master Arm - SIM (Momentary)"), category = { _("Weapons") } },
-    { down = device_commands.SoundTestCycle, up = device_commands.SoundTestCycle, cockpit_device_id = devices.AAM_AUDIO, value_down = 1.0, value_up = 0.0, name = _("Audio Test - Next Sound"), category = { _("Systems") } },
-    { down = device_commands.NavMode, up = device_commands.NavMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode - NAV"), category = { _("Weapons") } },
-    { down = device_commands.DogfightSwitch, up = device_commands.DogfightSwitch, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - DGFT"), category = { _("Weapons") } },
-    { down = device_commands.MissileOverride, up = device_commands.MissileOverride, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - MSL OVRD"), category = { _("Weapons") } },
+    { down = device_commands.SoundTestCycle, up = device_commands.SoundTestCycle, cockpit_device_id = devices.AAM_AUDIO, value_down = 1.0, value_up = 0.0, name = _("[Developer] Audio Test - Next Sound"), category = { _("Developer Tools") } },
+    { down = device_commands.NavMode, up = device_commands.NavMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode - NAV"), category = { _("Modes") } },
+    { down = device_commands.DogfightSwitch, up = device_commands.DogfightSwitch, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - DGFT"), category = { _("Modes") } },
+    { down = device_commands.MissileOverride, up = device_commands.MissileOverride, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - MSL OVRD"), category = { _("Modes") } },
     { down = device_commands.MissileUncage, up = device_commands.MissileUncage, value_down = 1.0, value_up = 0.0, name = _("Missile Uncage (Hold)"), category = { _("Weapons") } },
     { down = device_commands.AirToAirMode, up = device_commands.AirToAirMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode Button - A-A (Toggle to NAV)"), category = { _("Modes") } },
     { down = device_commands.AirToGroundMode, up = device_commands.AirToGroundMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode Button - A-G (Toggle to NAV)"), category = { _("Modes") } },
     { down = device_commands.DogfightCenter, up = device_commands.DogfightCenter, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - CENTER (Restore Master Mode)"), category = { _("Modes") } },
-    { down = device_commands.MissileStep, up = device_commands.MissileStep, value_down = 1.0, value_up = 0.0, name = _("MSL STEP - Next Air-to-Air Station"), category = { _("Weapons") } },
+    { down = device_commands.MissileStep, up = device_commands.MissileStep, value_down = 1.0, value_up = 0.0, name = _("MSL STEP - Station (Short) / Missile Type (Hold)"), category = { _("Weapons") } },
     { down = device_commands.WeaponRelease, up = device_commands.WeaponRelease, value_down = 1.0, value_up = 0.0, name = _("Weapon Release (AAM, Uncage-Gated)"), category = { _("Weapons") } },
-    { down = iCommandPlaneModeBVR, name = _("Air-to-Air Mode - BVR (Direct)"), category = { _("Modes") } },
-    { down = iCommandPlaneModeBore, name = _("Air-to-Air Mode - Bore (Direct)"), category = { _("Modes") } },
-    { down = iCommandPlaneModeHelmet, name = _("Air-to-Air Mode - Helmet (Direct)"), category = { _("Modes") } },
-    { down = iCommandPlaneModeFI0, name = _("Air-to-Air Mode - FI0 (Direct)"), category = { _("Modes") } },
-    { down = iCommandPlaneEOSOnOff, name = _("Electro-Optical System On/Off (IRST Test)"), category = { _("Sensors") } },
-    { down = iCommandPlaneChangeWeapon, name = _("Weapon Change - Direct"), category = { _("Weapons") } },
+    { down = iCommandPlaneEOSOnOff, name = _("[Developer] IRST Test - Toggle"), category = { _("Developer Tools") } },
     { down = device_commands.TMSUp, up = device_commands.TMSUp, value_down = 1.0, value_up = 0.0, name = _("HOTAS TMS - Up"), category = { _("Sensors") } },
     { down = device_commands.TMSDown, up = device_commands.TMSDown, value_down = 1.0, value_up = 0.0, name = _("HOTAS TMS - Down"), category = { _("Sensors") } },
     { down = device_commands.TMSLeft, up = device_commands.TMSLeft, value_down = 1.0, value_up = 0.0, name = _("HOTAS TMS - Left"), category = { _("Sensors") } },
@@ -71,10 +66,6 @@ join(res.keyCommands, {
     { down = iCommandPlaneFire, up = iCommandPlaneFireOff, name = _("Gun Fire (MC)"), category = { _("Weapons") } },
     { combos = { { key = "JOY_BTN2" } }, down = iCommandPlanePickleOn, up = iCommandPlanePickleOff, name = _("Weapon Release"), category = { _("Weapons") } },
     { down = iCommandPlanePickleOn, up = iCommandPlanePickleOff, name = _("Weapon Release (MC)"), category = { _("Weapons") } },
-    { down = iCommandPlaneLaunchPermissionOverride, name = _("Launch Permission Override - Direct"), category = { _("Weapons") } },
-    { down = iCommandPlaneDropSnarOnce, up = iCommandPlaneDropSnarOnceOff, name = _("Countermeasures Release - Direct (Standard)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
-    { down = iCommandPlaneDropFlareOnce, name = _("Flare Release - Direct (Fallback)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
-    { down = iCommandPlaneDropChaffOnce, name = _("Chaff Release - Direct (Fallback)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
 
     { down = device_commands.FBWCatToggle, name = _("FBW CAT - Toggle"), category = { _("Flight Control") } },
     { down = device_commands.FBWCat1, name = _("FBW CAT - CAT I"), category = { _("Flight Control") } },
@@ -121,6 +112,6 @@ join(res.keyCommands, {
     { down = device_commands.EngineThrustCutTestDisable, up = device_commands.EngineThrustCutTestDisable, value_down = 1.0, value_up = 0.0, name = _("Engine Thrust Cut Test - Disable (Restore Thrust)"), category = { _("Flight Test") } },
 })
 
-dofile(folder .. "../mission_weapon_input.lua")(res.keyCommands, device_commands, dcs_commands)
+dofile(folder .. "../mission_input.lua")(res.keyCommands, device_commands, dcs_commands)
 
 return res

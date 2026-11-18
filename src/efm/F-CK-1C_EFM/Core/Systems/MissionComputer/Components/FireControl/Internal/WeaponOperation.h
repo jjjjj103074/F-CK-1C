@@ -21,11 +21,15 @@ public:
 	                const WeaponUseData& execution,
 	                WeaponOperationData& weapon,
 	                StoresCommandQueue& stores_commands);
-	void handle(const Command& command);
+	void handle(const Command& command, std::chrono::nanoseconds input_time);
 	void stop();
-	WeaponOperationEvent step();
+	/// @brief 結束先前配置的武器使用與掛點切換輸入。
+	void on_mode_changed();
+	WeaponOperationEvent step(std::chrono::nanoseconds time);
 
 private:
+	void handle_missile_step(bool pressed, std::chrono::nanoseconds time);
+	void submit_missile_step(MissileSelectionStep step);
 	bool can_use_gun() const;
 	bool can_release_weapon() const;
 	void handle_gun(bool pressed);
@@ -34,6 +38,8 @@ private:
 	const WeaponUseData& execution_;
 	WeaponOperationData& weapon_;
 	StoresCommandQueue& stores_commands_;
+	std::optional<std::chrono::nanoseconds> missile_step_pressed_at_;
+	bool missile_type_step_sent_ = false;
 	std::uint64_t reported_release_end_ = 0; ///< 最近已通知 FC 的正常投放結束要求。
 };
 }

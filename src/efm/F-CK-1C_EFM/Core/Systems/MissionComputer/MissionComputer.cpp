@@ -80,7 +80,7 @@ MissionComputer::MissionComputer()
 	stores_mode_connection_ = mode_events_.operating_mode_selected.connect(
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
-		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode(), false });
+		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode() });
 		    stores_management_.dispatch();
 	    },
 	    kStoresModeOrder);
@@ -142,7 +142,7 @@ void MissionComputer::setup(SystemSetup& setup)
 		                                        CommandId::PressTmsDown,
 		                                        CommandId::PressTmsLeft,
 		                                        CommandId::PressTmsRight,
-		                                        CommandId::StepMissileStation };
+		                                        CommandId::SetMissileStep };
 	for (CommandId id : fire_control_commands)
 	{
 		setup.register_command_handler(id,
@@ -231,7 +231,7 @@ void MissionComputer::consume_commands()
 			countermeasure_control_.handle(intent.command);
 			break;
 		case Mc::MissionCommandTarget::FireControl:
-			fire_control_.handle(intent.command);
+			fire_control_.handle(intent.command, input_output_data_.input.observed_at);
 			break;
 		}
 		stores_management_.dispatch();

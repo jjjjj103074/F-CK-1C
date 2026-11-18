@@ -637,7 +637,7 @@ for name, value in pairs(dcs_commands) do
     _G[name] = value
 end
 external_profile = function()
-    return {
+    local profile = {
         keyCommands = {
             {
                 down = iCommandPlaneFire,
@@ -668,6 +668,12 @@ external_profile = function()
         },
         axisCommands = {},
     }
+    for _, name in ipairs({ "iCommandPlaneModeBVR", "iCommandPlaneModeBore", "iCommandPlaneModeHelmet", "iCommandPlaneModeFI0", "iCommandPlaneChangeWeapon", "iCommandPlaneLaunchPermissionOverride", "iCommandPlaneDropFlareOnce", "iCommandPlaneDropChaffOnce", "iCommandPlaneLockOnStart", "iCommandPlaneLockOnFinish" }) do
+        profile.keyCommands[#profile.keyCommands + 1] = { down = dcs_commands[name], name = "Inherited Direct " .. name }
+        profile.keyCommands[#profile.keyCommands + 1] = { up = dcs_commands[name], name = "Inherited Direct release " .. name }
+        profile.keyCommands[#profile.keyCommands + 1] = { pressed = dcs_commands[name], name = "Inherited Direct held " .. name }
+    end
+    return profile
 end
 defaultDeviceAssignmentFor = function(role)
     return role == "weapon_release_button" and { { key = "DeviceRelease" } } or {}
@@ -728,6 +734,24 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         [dcs_commands.iCommandPlanePickleOn] = true,
         [dcs_commands.iCommandPlanePickleOff] = true,
     }
+    for _, name in ipairs({ "iCommandPlaneModeBVR", "iCommandPlaneModeVS", "iCommandPlaneModeBore", "iCommandPlaneModeHelmet", "iCommandPlaneModeFI0", "iCommandPlaneModeCannon", "iCommandPlaneChangeWeapon", "iCommandPlaneLaunchPermissionOverride", "iCommandPlaneDropSnarOnce", "iCommandPlaneDropSnarOnceOff", "iCommandPlaneDropFlareOnce", "iCommandPlaneDropChaffOnce", "iCommandPlaneLockOnStart", "iCommandPlaneLockOnFinish", "iCommandPlaneChangeLock", "iCommandPlaneChangeLockUp" }) do
+        if dcs_commands[name] then forbidden[dcs_commands[name]] = true end
+    end
+    if profile == "keyboard" then
+        local expected = { ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep" }
+        local found = {}
+        for _, binding in ipairs(bindings.keyCommands) do
+            for _, combo in ipairs(binding.combos or {}) do
+                local key = table.concat(combo.reformers or {}, "+")
+                key = (key ~= "" and key .. "+" or "") .. combo.key
+                if expected[key] then
+                    expect(binding.down == device_commands[expected[key]], "mode/step key routes to MC: " .. key)
+                    found[key] = (found[key] or 0) + 1
+                end
+            end
+        end
+        for key in pairs(expected) do expect(found[key] == 1, "exactly one mode/step binding: " .. key) end
+    end
     local inherited_release, held_gun, unrelated, space_gun = 0, 0, 0, 0
     local joystick_gun, joystick_release, keyboard_release, device_release = 0, 0, 0, 0
     for _, binding in ipairs(bindings.keyCommands) do
@@ -799,7 +823,7 @@ local release_only = {
     { down = dcs_commands.iCommandPlaneFireOff, cockpit_device_id = 999 },
     { down = dcs_commands.iCommandPlanePickleOff, cockpit_device_id = 999 },
 }
-dofile("Input/F-CK-1C/mission_weapon_input.lua")(release_only, device_commands, dcs_commands)
+dofile("Input/F-CK-1C/mission_input.lua")(release_only, device_commands, dcs_commands)
 expect(
     release_only[1].down == device_commands.TriggerSecondStage and release_only[1].value_down == 0,
     "a native gun stop must remain a release request"

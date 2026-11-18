@@ -98,7 +98,7 @@ constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 	EXPECT_COMMAND(AirToAirMode, SelectAirToAirMode),
 	EXPECT_COMMAND(AirToGroundMode, SelectAirToGroundMode),
 	EXPECT_COMMAND(DogfightCenter, SelectOverrideCenter),
-	EXPECT_COMMAND(MissileStep, StepMissileStation),
+	EXPECT_COMMAND(MissileStep, SetMissileStep),
 	EXPECT_COMMAND(EngineThrustCutTestToggle, ToggleThrustCutTest),
 	EXPECT_COMMAND(EngineThrustCutTestEnable, EnableThrustCutTest),
 	EXPECT_COMMAND(EngineThrustCutTestDisable, DisableThrustCutTest)
@@ -152,6 +152,10 @@ void test_non_flight_control_commands_have_expected_semantics(Tests::Context& co
 
 void test_inactive_cockpit_binding_value_rules(Tests::Context& context)
 {
+	const auto step_release = DcsBridge::inspect_command_binding(DcsIds::Commands::MissileStep, 0.0F);
+	TEST_EXPECT(context, step_release.should_dispatch());
+	TEST_EXPECT(context, step_release.command.id == Core::CommandId::SetMissileStep);
+	TEST_EXPECT_NEAR(context, step_release.command.value_normalized, 0.0, kTolerance);
 	const DcsBridge::DcsCommandMapping held_release =
 	    DcsBridge::inspect_command_binding(DcsIds::Commands::MissileUncage, 0.0F);
 	TEST_EXPECT(context, held_release.should_dispatch());

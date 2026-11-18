@@ -64,7 +64,7 @@ enum class CommandId
 	SelectAirToAirMode,
 	SelectAirToGroundMode,
 	SelectOverrideCenter,
-	StepMissileStation,
+	SetMissileStep,
 	EngageAutopilot,
 	DisengageAutopilot,
 	SetAutopilotBypass,

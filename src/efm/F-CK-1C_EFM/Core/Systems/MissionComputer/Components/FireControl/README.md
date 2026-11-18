@@ -28,7 +28,7 @@ flowchart LR
 ```
 
 主保險 OFF／SIM 由 WeaponOperation／SM 停止武器操作；Targeting 使用操作模式及雷達回報。
-模式切換保留保險，並由 WeaponOperation 結束先前配置的武器使用。MSL STEP 在空對空配置送出輪站要求，下一個可用掛點由 SM 決定。超控切換規則及座艙指令見[模式架構](../../../../../../../../docs/MC_MODE_EVENTS.md)。
+模式切換保留保險，並由 WeaponOperation 結束先前配置的武器使用。MSL STEP 的短按送出同型輪站意圖，按住達 0.5 秒送出一次換型意圖；SM 決定實際掛點。超控切換規則及座艙指令見[模式架構](../../../../../../../../docs/MC_MODE_EVENTS.md)。
 
 TargetingData 保存期望的捕獲方式與指定意圖。雷達設備來源的工作模式、幾何及有效性由 RadarSystem 發布，再由 Targeting 整理成目前的目標資料。指定意圖與 STT 觀測各自保存。
 

@@ -24,7 +24,7 @@
 
 ## 面板怎麼看
 
-- MC=1 表示 MC 快照可用；GEN 持續增加。ARM：0=SAFE、1=SIM、2=ON；MODE：0=NAV、1=DGF、2=MSL。
+- MC=1 表示 MC 快照可用；GEN 持續增加。ARM：0=SAFE、1=SIM、2=ON；MODE：0=NAV、1=DGF、2=MSL、3=A-A、4=A-G。
 - SUB：0=---、1=HMD、2=VS、3=HUD、4=BVR。UNCAGE、TRIG 分別為解籠與第二段扳機的 MC 按住狀態。
 - GUN OK／AAM OK=1 時，旁邊的 GUN／AAM 是有效存量；GUN 是原生實際存量。DGF 的 WPN 顯示 AAM 並不阻擋機砲。
 - SEL 是 Lua 最近完成選站呼叫的紀錄：0 RT、1 RO、2 RI、3 MM、4 MF、5 MB、6 LI、7 LO、8 LT；-1 表示邏輯選擇為空。實際選站以離架掛點再核對。
@@ -46,7 +46,9 @@ STAT：1=就緒、2=排隊、3=原生呼叫返回、4=Analog 放開返回、5=�
 |---|---|
 | C++ Digital 熱焰彈／干擾絲（本包預設） | 左 Alt＋左 Shift＋Insert／左 Alt＋左 Shift＋Delete |
 | C++ Analog 熱焰彈／干擾絲（本包預設） | 左 Ctrl＋左 Shift＋Insert／左 Ctrl＋左 Shift＋Delete |
-| 主模式 NAV／DGFT／MSL | 1／右 Ctrl＋D／4 |
+| 一般主模式 NAV／A-A／A-G | 1／2／3 |
+| 超控 DGFT／CENTER／MSL | 右 Ctrl＋D／右 Shift＋D／右 Alt＋D |
+| MSL STEP 短按／長按 | Q：短按同型輪站；按住達 0.5 秒換型 |
 | 保險 ON／OFF／SIM | 右 Ctrl＋M／右 Shift＋M／右 Alt＋M |
 | 第一段扳機／機砲 | 左 Alt＋Space／Space |
 | Uncage（按住）／投放 | 右 Alt＋右 Shift＋M／右 Alt＋Space |
@@ -72,7 +74,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### N01　原生反制測試準備
 
-操作：按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Alt＋End），等待 2 秒。
+操作：按 超控中央（右 Shift＋D）後按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Alt＋End），等待 2 秒。
 
 看哪裡：右上 NATIVE、API、CMOBS、FLR、CHF、REQ、CALL。
 
@@ -144,7 +146,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### M02　三個主模式
 
-操作：依序按 DGFT（右 Ctrl＋D）、MSL（4）、NAV（1）；各次放開並等 2 秒。
+操作：依序按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）；各次放開並等 2 秒。
 
 看哪裡：HMCS 的 SYS、MODE、SUB。
 
@@ -160,7 +162,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### M04　SAFE 下切換模式
 
-操作：按 OFF（右 Shift＋M），依序按 DGFT（右 Ctrl＋D）、MSL（4）、NAV（1）。
+操作：按 OFF（右 Shift＋M），依序按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：HMCS 的 SYS、MODE、SUB。
 
@@ -168,7 +170,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### M05　SIM 下切換模式
 
-操作：按 SIM（右 Alt＋M），依序按 DGFT（右 Ctrl＋D）、MSL（4）、NAV（1）。
+操作：按 SIM（右 Alt＋M），依序按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：HMCS 的 SYS、MODE、SUB。
 
@@ -208,7 +210,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### G04　NAV、MSL 開砲資格
 
-操作：按 ON（右 Ctrl＋M）、NAV（1），點按機砲（Space）；按 MSL（4），再點按機砲（Space）。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1），點按機砲（Space）；按 MSL（右 Alt＋D），再點按機砲（Space）。
 
 看哪裡：實際砲火與右上 GUN。
 
@@ -248,7 +250,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### G09　射擊中切主模式
 
-操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按住機砲（Space），射擊時按 NAV（1），等半秒後放開 Space。另一次把 NAV（1）改成 MSL（4）。
+操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按住機砲（Space），射擊時按 超控中央（右 Shift＋D）後按 NAV（1），等半秒後放開 Space。另一次把 超控中央（右 Shift＋D）後按 NAV（1）改成 MSL（右 Alt＋D）。
 
 看哪裡：實際砲火，右上 GUN；另看 MODE。
 
@@ -256,7 +258,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### G10　機砲耗盡
 
-操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），按住機砲（Space）直到射擊停止再放開。按 NAV（1）查看機砲欄。
+操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），按住機砲（Space）直到射擊停止再放開。按 超控中央（右 Shift＋D）後按 NAV（1）查看機砲欄。
 
 看哪裡：實際砲火；右上 GUN OK、GUN；HMCS 的 WPN。
 
@@ -312,7 +314,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### C07　NAV 可使用 CMS
 
-操作：按 ON（右 Ctrl＋M）、NAV（1），按 CMS Left（右 Alt＋Insert）。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1），按 CMS Left（右 Alt＋Insert）。
 
 看哪裡：MODE、實際反制。
 
@@ -336,7 +338,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### P01　NAV 的武器顯示偏好
 
-操作：按 ON（右 Ctrl＋M）、NAV（1）；短按 Uncage（右 Alt＋右 Shift＋M）並全放開；按住機砲（Space）1 秒後放開；最後再按 NAV（1）。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；短按 Uncage（右 Alt＋右 Shift＋M）並全放開；按住機砲（Space）1 秒後放開；最後再按 超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：HMCS WPN；右上 GUN、AAM。
 
@@ -344,7 +346,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### P02　拒絕的投放與畫面偏好
 
-操作：按 ON（右 Ctrl＋M）、NAV（1）；點按投放（右 Alt＋Space）；再按 NAV（1）。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；點按投放（右 Alt＋Space）；再按 超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：HMCS WPN；實際武器。
 
@@ -352,7 +354,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### P03　DGF 機砲與 AAM-0
 
-操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按機砲（Space）半秒後放開；再按 NAV（1）。
+操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按機砲（Space）半秒後放開；再按 超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：HMCS WPN；右上 GUN。
 
@@ -360,7 +362,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### L02　低 FPS 的短按與停止
 
-操作：在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Alt＋Delete），再按 CMS Right（右 Alt＋End）；依序按 MSL（4）、NAV（1）。
+操作：在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Alt＋Delete），再按 CMS Right（右 Alt＋End）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：砲火停止、反制中止、最後 MODE／SUB、TX。
 
@@ -378,31 +380,31 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### S01　八枚混合空對空掛載
 
-操作：載入 B；按 MSL（4），等待 2 秒。
+操作：載入 B；按 MSL（右 Alt＋D），等待 2 秒。
 
 看哪裡：HMCS AAM；右上 AAM OK、AAM、SEL。
 
 正常：AAM OK=1、AAM=8、SEL=0（RT）。CSV 保存九個掛點的原始數量與識別。
 
-### S02　同模式選站循環
+### S02　MSL STEP 同型輪站與換型
 
-操作：先按 NAV（1），再按 MSL（4）進入；之後每隔 1 秒重按 MSL（4），共 8 次。
+操作：按超控中央（右 Shift＋D）、NAV（1）、MSL（右 Alt＋D）。短按並放開 Q 四次；接著每次按住 Q 達 0.5 秒再放開，共三次；每次操作後等 1 秒。
 
 看哪裡：右上 SEL；不用依 WPN 猜選站。
 
-正常：進入時 0；之後依序 1、2、4、5、6、7、8、0。AAM 保持 8。
+正常：進入時 SEL=0。短按依序 1、7、8、0（AIM-9X）。長按依序 2（AIM-7P）、4（AIM-120C）、0（AIM-9X）。長按放開時保持該站，AAM 保持 8。
 
-### S03　DGFT 選站與切換重置
+### S03　超控重選保持與切換配置
 
-操作：按 NAV（1），按 DGFT（右 Ctrl＋D），再重按 DGFT（右 Ctrl＋D）一次，最後按 MSL（4）。
+操作：按 超控中央（右 Shift＋D）後按 NAV（1），按 DGFT（右 Ctrl＋D），再重按 DGFT（右 Ctrl＋D）一次，最後按 MSL（右 Alt＋D）。
 
 看哪裡：右上 SEL；HMCS MODE。
 
-正常：SEL 依序 0、1、0；切換主模式重新選第一個候選，重按同模式才循環。
+正常：SEL 保持 0；重選 DGFT 保持原站及捕獲選擇，切換 MSL 套用該配置。
 
 ### S04　NAV 清除邏輯選站
 
-操作：按 MSL（4），等 1 秒，再按 NAV（1），等 2 秒。
+操作：按 MSL（右 Alt＋D），等 1 秒，再按 超控中央（右 Shift＋D）後按 NAV（1），等 2 秒。
 
 看哪裡：右上 SEL、TX；HMCS AAM／GUN。
 
@@ -434,7 +436,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### T04　MSL BVR 捕獲及放開
 
-操作：按 MSL（4）；對準目標，按住 TMS 上（Enter）1 秒再放開，等 2 秒。
+操作：按 MSL（右 Alt＋D）；對準目標，按住 TMS 上（Enter）1 秒再放開，等 2 秒。
 
 看哪裡：HMCS MSL／BVR；右上 RDR、STT、TX。
 
@@ -442,7 +444,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### T05　MSL 下一目標
 
-操作：在 B 的兩個目標均位於前方時，按 MSL（4），按住 TMS 上（Enter）1 秒再放開；點按 TMS 右（=），等 2 秒。
+操作：在 B 的兩個目標均位於前方時，按 MSL（右 Alt＋D），按住 TMS 上（Enter）1 秒再放開；點按 TMS 右（=），等 2 秒。
 
 看哪裡：右上 RDR、STT 距離；外部目標位置；CSV。
 
@@ -450,7 +452,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### T06　取消捕獲與回 NAV
 
-操作：按 MSL（4），點按 TMS 下（Backspace），等 1 秒；再按 NAV（1），等 2 秒。
+操作：按 MSL（右 Alt＋D），點按 TMS 下（Backspace），等 1 秒；再按 超控中央（右 Shift＋D）後按 NAV（1），等 2 秒。
 
 看哪裡：MODE、SUB、右上 TX、RDR。
 
@@ -458,7 +460,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### T07　TMS 左保留操作
 
-操作：按 DGFT（右 Ctrl＋D），點按 TMS 左（-）；按 MSL（4），再點按 TMS 左（-）。
+操作：按 DGFT（右 Ctrl＋D），點按 TMS 左（-）；按 MSL（右 Alt＋D），再點按 TMS 左（-）。
 
 看哪裡：MODE、SUB、掛載與 TX。
 
@@ -466,7 +468,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### T08　Uncage 按住與放開
 
-操作：按 DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M）4 秒後放開；在 MSL（4）重做一次。
+操作：按 DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M）4 秒後放開；在 MSL（右 Alt＋D）重做一次。
 
 看哪裡：右上 UNCAGE、RDR、STT、TX。
 
@@ -474,7 +476,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### T09　鎖定後切保險
 
-操作：按 MSL（4），按住 TMS 上（Enter）1 秒再放開；成功追蹤後依序按 OFF（右 Shift＋M）、SIM（右 Alt＋M）、ON（右 Ctrl＋M）。
+操作：按 MSL（右 Alt＋D），按住 TMS 上（Enter）1 秒再放開；成功追蹤後依序按 OFF（右 Shift＋M）、SIM（右 Alt＋M）、ON（右 Ctrl＋M）。
 
 看哪裡：SYS、MODE、SUB、右上 RDR／STT。
 
@@ -482,7 +484,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### T10　SIM 下捕獲
 
-操作：按 SIM（右 Alt＋M）、MSL（4）；按住 TMS 上（Enter）1 秒再放開。
+操作：按 SIM（右 Alt＋M）、MSL（右 Alt＋D）；按住 TMS 上（Enter）1 秒再放開。
 
 看哪裡：SYS、SUB、右上 RDR、STT、TX。
 
@@ -490,7 +492,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### K01　預設發射組合鍵能否同時送達
 
-操作：按 ON（右 Ctrl＋M）、MSL（4）；按住 Uncage（右 Alt＋右 Shift＋M），再點按投放（右 Alt＋Space），先放開 Space，再完整放開 Uncage（右 Alt＋右 Shift＋M）。已有搖桿可用預設投放 JOY_BTN2 代替右 Alt＋Space。
+操作：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M），再點按投放（右 Alt＋Space），先放開 Space，再完整放開 Uncage（右 Alt＋右 Shift＋M）。已有搖桿可用預設投放 JOY_BTN2 代替右 Alt＋Space。
 
 看哪裡：右上 UNCAGE、AAM、SEL；實際離架；CSV 的投放按下序號。
 
@@ -498,7 +500,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W01　沒有 Uncage 的投放
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（4）；不碰 Uncage，點按投放（右 Alt＋Space）。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；不碰 Uncage，點按投放（右 Alt＋Space）。
 
 看哪裡：實際掛載、右上 AAM。
 
@@ -506,7 +508,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W02　SAFE／SIM 投放資格
 
-操作：按 MSL（4）、OFF（右 Shift＋M）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；再按 SIM（右 Alt＋M），重做同組 Uncage 與投放（右 Alt＋右 Shift＋M；右 Alt＋Space）。
+操作：按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；再按 SIM（右 Alt＋M），重做同組 Uncage 與投放（右 Alt＋右 Shift＋M；右 Alt＋Space）。
 
 看哪裡：SYS、實際離架、AAM；CSV。
 
@@ -514,7 +516,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W03　NAV 投放資格
 
-操作：按 ON（右 Ctrl＋M）、NAV（1）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
 
 看哪裡：MODE、實際離架、AAM；CSV。
 
@@ -522,7 +524,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W04　MSL 短按發射與自動換站
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（4）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；等 3 秒。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；等 3 秒。
 
 看哪裡：實際離架位置、右上 AAM／SEL／TX。
 
@@ -530,7 +532,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W05　指定掛點的發射
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、NAV（1）、MSL（4）；再按 MSL（4）兩次，等 SEL=2。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；再按 MSL（右 Alt＋D）兩次，等 SEL=2。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
 
 看哪裡：右上 SEL=2；外部 RI 的 AIM-7P；AAM。
 
@@ -538,7 +540,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W06　另一種空對空飛彈
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、NAV（1）、MSL（4）；再按 MSL（4）三次，等 SEL=4。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；再按 MSL（右 Alt＋D）三次，等 SEL=4。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
 
 看哪裡：MF 的 AIM-120C 離架、右上 AAM／SEL。
 
@@ -554,7 +556,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W08　長按投放後放開
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（4）；按住 Uncage（右 Alt＋右 Shift＋M）及投放（右 Alt＋Space）1 秒，先放開 Space，再放開 Uncage（右 Alt＋右 Shift＋M），等 3 秒。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M）及投放（右 Alt＋Space）1 秒，先放開 Space，再放開 Uncage（右 Alt＋右 Shift＋M），等 3 秒。
 
 看哪裡：每枚實際離架、右上 AAM／SEL／TX。
 
@@ -562,7 +564,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W09　快速選站後投放
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（4），立即再按 MSL（4）一次；接著按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即再按 MSL（右 Alt＋D）一次；接著按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
 
 看哪裡：實際離架掛點、右上 SEL／AAM／TX；CSV。
 
@@ -570,7 +572,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W10　飛彈耗盡
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（4）；重複「按住 Uncage（右 Alt＋右 Shift＋M）→點按投放（右 Alt＋Space）→全放開→等 2 秒」，直到全部離架；最後再重做一次。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；重複「按住 Uncage（右 Alt＋右 Shift＋M）→點按投放（右 Alt＋Space）→全放開→等 2 秒」，直到全部離架；最後再重做一次。
 
 看哪裡：每次實際離架、右上 AAM／SEL、HMCS。
 
@@ -578,7 +580,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W11　Uncage 放開後投放
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（4）；短按並放開 Uncage（右 Alt＋右 Shift＋M），確認 UNCAGE=0，再點按投放（右 Alt＋Space）。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；短按並放開 Uncage（右 Alt＋右 Shift＋M），確認 UNCAGE=0，再點按投放（右 Alt＋Space）。
 
 看哪裡：UNCAGE、實際離架、AAM。
 
@@ -586,7 +588,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W12　投放中切 SAFE／SIM（已有獨立控制時）
 
-操作：已有可同時操作的搖桿按鈕時：按 ON（右 Ctrl＋M）、MSL（4），按住原有 Uncage 按鈕與預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開搖桿按鈕。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。
+操作：已有可同時操作的搖桿按鈕時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），按住原有 Uncage 按鈕與預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開搖桿按鈕。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。
 
 看哪裡：實際離架、SYS、AAM；CSV。
 
@@ -594,7 +596,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### I01　來源 IR 鎖定音
 
-操作：重新載入 B；在 B 對準前方飛機並接近至約 1–3 km；按 MSL（4），按住 Uncage（右 Alt＋右 Shift＋M）約 4 秒再放開。
+操作：重新載入 B；在 B 對準前方飛機並接近至約 1–3 km；按 MSL（右 Alt＋D），按住 Uncage（右 Alt＋右 Shift＋M）約 4 秒再放開。
 
 看哪裡：右上 IR OK、LOCK；實際耳機聲音。
 
@@ -602,7 +604,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### I02　IR 脫離及跨模式觀測
 
-操作：曾出現 IR LOCK=1 後，轉離目標直到 LOCK=0；依序按 NAV（1）、OFF（右 Shift＋M）、SIM（右 Alt＋M）。
+操作：曾出現 IR LOCK=1 後，轉離目標直到 LOCK=0；依序按 超控中央（右 Shift＋D）後按 NAV（1）、OFF（右 Shift＋M）、SIM（右 Alt＋M）。
 
 看哪裡：右上 IR OK、LOCK；聲音。
 
@@ -610,7 +612,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### L01　快速跨系統操作
 
-操作：按 ON（右 Ctrl＋M）；依序快速點按 DGFT（右 Ctrl＋D）、MSL（4）、TMS 上（Enter）、TMS 下（Backspace）、CMS Left（右 Alt＋Insert）、NAV（1），每組結束等 2 秒，重做 5 組。
+操作：按 ON（右 Ctrl＋M）；依序快速點按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、TMS 上（Enter）、TMS 下（Backspace）、CMS Left（右 Alt＋Insert）、超控中央（右 Shift＋D）後按 NAV（1），每組結束等 2 秒，重做 5 組。
 
 看哪裡：最後 MODE／SUB、右上 TX／ACK；實際武器。
 
@@ -636,25 +638,25 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### S05　混合掛載與複合掛架
 
-操作：載入 C，按 MSL（4），等 2 秒。
+操作：載入 C，按 MSL（右 Alt＋D），等 2 秒。
 
 看哪裡：外部掛載；HMCS AAM；右上 SEL；CSV 九站。
 
 正常：AAM=2，第一個可用 AAM 站為 RT=0；炸彈、油箱與複合掛架保存於各站資料，沒有混入 AAM 數量。
 
-### S06　混合掛載的循環
+### S06　混合掛載的型別輪換
 
-操作：先按 NAV（1），再按 MSL（4），然後每隔 1 秒重按 MSL（4）三次。
+操作：按超控中央（右 Shift＋D）、NAV（1）、MSL（右 Alt＋D）。短按 Q，再各按住 Q 達 0.5 秒並放開三次；各次等 1 秒。
 
 看哪裡：右上 SEL；實際掛載。
 
-正常：SEL 由 0 開始，依序 8、0、8；略過炸彈／油箱／複合掛架。
+正常：SEL 由 0 開始；短按保持 0（唯一 AIM-9X）。長按依序 8（AIM-9L）、0、8；略過炸彈／油箱／複合掛架。
 
 ## E：空中全部 CLEAN
 
 ### S07　全部 CLEAN
 
-操作：載入 E，按 MSL（4），等 2 秒。
+操作：載入 E，按 MSL（右 Alt＋D），等 2 秒。
 
 看哪裡：外部各掛點、AAM OK、AAM、SEL；CSV。
 
@@ -664,7 +666,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### S08　維持空掛載
 
-操作：載入 F，按 MSL（4），等 2 秒。
+操作：載入 F，按 MSL（右 Alt＋D），等 2 秒。
 
 看哪裡：外部掛架、AAM OK、AAM、SEL；CSV。
 
@@ -674,7 +676,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### S09　空對地飛彈觀測（選單有提供時）
 
-操作：將 C 的 MM 複合掛架改成任務編輯器中可選的空對地飛彈，記下名稱；進任務後按 MSL（4），等 2 秒。
+操作：將 C 的 MM 複合掛架改成任務編輯器中可選的空對地飛彈，記下名稱；進任務後按 MSL（右 Alt＋D），等 2 秒。
 
 看哪裡：外部掛載、AAM；CSV MM 原始資料。
 
@@ -692,7 +694,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### R02　地面外掛補彈與換裝
 
-操作：在 D 開通訊（反斜線鍵 \），用地勤把 RT／LT 改成 AIM-9X、RO／LO 改成 AIM-120C；完成後按 ON（右 Ctrl＋M）、NAV（1）、MSL（4）。
+操作：在 D 開通訊（反斜線鍵 \），用地勤把 RT／LT 改成 AIM-9X、RO／LO 改成 AIM-120C；完成後按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）。
 
 看哪裡：外部掛載、右上 AAM／SEL；CSV rearm revision。
 

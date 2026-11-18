@@ -1,5 +1,4 @@
--- Route native firing/release input aliases through MC, including inherited profiles.
--- Native actuation IDs remain available to the downstream DCS adapter.
+-- Route firing/release aliases through MC and filter inherited direct mission controls.
 return function(bindings, commands, native_commands)
     local routes = {
         [native_commands.iCommandPlaneFire] = {
@@ -15,6 +14,27 @@ return function(bindings, commands, native_commands)
         },
         [native_commands.iCommandPlanePickleOff] = { command = commands.WeaponRelease, value = 0 },
     }
+    -- MC and RadarSystem own these mission operations; this profile exposes their semantic inputs.
+    local internal_actions = {
+        "iCommandPlaneChangeWeapon", "iCommandPlaneModeBVR", "iCommandPlaneModeVS",
+        "iCommandPlaneModeBore", "iCommandPlaneModeHelmet", "iCommandPlaneModeFI0",
+        "iCommandPlaneModeCannon", "iCommandPlaneLaunchPermissionOverride",
+        "iCommandPlaneDropSnarOnce", "iCommandPlaneDropSnarOnceOff",
+        "iCommandPlaneDropFlareOnce", "iCommandPlaneDropChaffOnce",
+        "iCommandPlaneLockOnStart", "iCommandPlaneLockOnFinish",
+        "iCommandPlaneChangeLock", "iCommandPlaneChangeLockUp",
+    }
+    local internal = {}
+    for _, name in ipairs(internal_actions) do
+        local command = native_commands[name]
+        if command then internal[command] = true end
+    end
+    for index = #bindings, 1, -1 do
+        local binding = bindings[index]
+        if internal[binding.down] or internal[binding.up] or internal[binding.pressed] then
+            table.remove(bindings, index)
+        end
+    end
     local canonical = {}
     for _, binding in ipairs(bindings) do
         if

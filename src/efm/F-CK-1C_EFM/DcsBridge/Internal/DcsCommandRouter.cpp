@@ -130,7 +130,7 @@ constexpr CommandBinding kBindings[] = { BIND_INPUT(JoystickPitch, SetPitchAxis)
 	                                     BIND_PRESS(AirToAirMode, SelectAirToAirMode),
 	                                     BIND_PRESS(AirToGroundMode, SelectAirToGroundMode),
 	                                     BIND_PRESS(DogfightCenter, SelectOverrideCenter),
-	                                     BIND_PRESS(MissileStep, StepMissileStation),
+	                                     BIND_INPUT(MissileStep, SetMissileStep),
 	                                     BIND_PRESS(APMasterOn, EngageAutopilot),
 	                                     BIND_PRESS(APMasterOff, DisengageAutopilot),
 	                                     BIND_INPUT(APBypass, SetAutopilotBypass),
