@@ -30,3 +30,9 @@ flowchart LR
 System 間以 AircraftData 的具型別快照交換資料。兩個 System 在同一排程時間讀取同一份已提交快照；新要求於後續 tick 處理。
 
 完整排序及確認規則見 [架構說明](../../../../../../docs/RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
+
+## TMS 介面
+
+依 Targeting 要求提供 Spotlight、CRM／TWS、目標資料展開、優先目標輪選與空地指定入口。RadarCommandResult 以 Native／Simplified／Reserved 描述每筆要求，原生追蹤結果維持 RadarObservation 的權威。BORE 使用既有原生操作；WideScan 以 boresight 配合。
+
+完整操作與實作程度見 [感測器操作](../../../../../../docs/MC_SENSOR_CONTROLS.zh-TW.md)。

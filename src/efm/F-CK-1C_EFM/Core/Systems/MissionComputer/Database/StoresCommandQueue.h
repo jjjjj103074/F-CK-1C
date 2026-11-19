@@ -2,6 +2,7 @@
 
 #include "../../ExternalActionOutbox.h"
 #include "WeaponUseData.h"
+#include "../Common/MissileSelection.h"
 #include "../../../Contracts/CockpitContracts.h"
 
 #include <deque>
@@ -11,11 +12,11 @@
 
 namespace Core::Systems::Mc
 {
-/// @brief 依模式選擇掛點，或在重選同模式時循環掛點。
+/// @brief 套用模式配置，以及同型輪站或武器型別輪換意圖。
 struct SelectStoresForMode
 {
 	OperatingMode mode = OperatingMode::Navigation;
-	bool cycle_weapon = false;
+	MissileSelectionStep step = MissileSelectionStep::None;
 	bool reassert_selection = false; ///< 重新確認目前候選，保留仍有效的掛點。
 };
 

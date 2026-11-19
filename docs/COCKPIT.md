@@ -31,7 +31,7 @@ Gear、Actuators 與 Autopilot device ID 保留；目前未建立其 Lua device�
 - `cockpit`：送至指定 cockpit device。
 
 MC/HOTAS 指令走 `efm`，由 MC FIFO 在下一次 tick 依序處理。
-`mission_weapon_input.lua` 在載入鍵盤／搖桿設定後，將原生開火與投放別名
+`mission_input.lua` 在載入鍵盤／搖桿設定後，將原生開火與投放別名
 （含共用設定繼承項目）轉成 MC 的 TriggerSecondStage／WeaponRelease。
 原按鍵組合保留，重複指令合併；DCS 原生 actuation ID 留在 MC 核准後的 Lua 呼叫端。
 其他既有模式、感測器與反制測試入口保留，不能將其視為全部經過 MC。

@@ -20,7 +20,7 @@ constexpr double kPositionOffset = 20.0;
 constexpr double kTolerance = 1e-12;
 constexpr double kFullIntegrity = 1.0;
 constexpr int kFirstCall = 0;
-constexpr std::size_t kCurrentCatalogSize = 11;
+constexpr std::size_t kCurrentCatalogSize = 12;
 constexpr std::uint32_t kInvalidUpdateRateHz = 0;
 constexpr SystemScheduledTime kZeroUpdatePeriod = {};
 constexpr SystemScheduledTime kNegativeUpdatePeriod = std::chrono::nanoseconds(-1);
@@ -618,6 +618,7 @@ void test_phase_three_generated_catalog(Tests::Context& context)
 {
 	SystemPipeline pipeline(flight_setup());
 	TEST_EXPECT(context, pipeline.system_count() == kCurrentCatalogSize);
+	TEST_EXPECT(context, pipeline.snapshot().has(AircraftDataKeys::kDisplaySnapshot));
 	const AircraftDataSnapshot output = pipeline.snapshot();
 	TEST_EXPECT_NEAR(context,
 	                 output.read(AircraftDataKeys::kPilotControlSignal).pitch_axis_normalized,

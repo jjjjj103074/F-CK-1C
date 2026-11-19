@@ -23,6 +23,7 @@
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\ExternalActions.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\RadarCommands.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\DisplayContracts.h" />
     <ClInclude Include="$(EfmSystemRoot)\ExternalActionOutbox.h" />
     <ClInclude Include="$(EfmSystemRoot)\TimedAction.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Diagnostics\DebugTelemetry.h" />

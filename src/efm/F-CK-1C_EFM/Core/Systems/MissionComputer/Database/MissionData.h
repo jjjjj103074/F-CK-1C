@@ -40,7 +40,9 @@ struct ModeData
 struct TargetingData
 {
 	TargetAcquisitionMode acquisition_mode = TargetAcquisitionMode::None;
+	RadarSearchMode search_mode = RadarSearchMode::RangeWhileSearch;
 	TargetDesignationSnapshot designation;
+	std::optional<RadarRequest> last_tms_request;
 };
 
 struct WeaponOperationData

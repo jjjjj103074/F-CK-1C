@@ -31,6 +31,7 @@ MissionComputer::MissionComputer()
                     radar_requests_,
                     stores_commands_),
       mode_management_(mode_data_, mode_events_),
+      sensor_of_interest_(mode_data_, input_output_data_.input.display, sensor_of_interest_data_),
       countermeasure_control_(mode_data_, external_actions_),
       executive_(executive_tables_,
                  { { "stores_management.step",
@@ -80,7 +81,7 @@ MissionComputer::MissionComputer()
 	stores_mode_connection_ = mode_events_.operating_mode_selected.connect(
 	    [this](const Mc::OperatingModeSelected& event)
 	    {
-		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode(), false });
+		    stores_commands_.submit(Mc::SelectStoresForMode{ event.selected.operating_mode() });
 		    stores_management_.dispatch();
 	    },
 	    kStoresModeOrder);
@@ -103,6 +104,8 @@ void MissionComputer::setup(SystemSetup& setup)
 	setup.update_rate_hz(kMissionComputerProjectUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
 	setup.read(AircraftDataKeys::kRadarSnapshot);
+	setup.read(AircraftDataKeys::kDisplaySnapshot);
+	sensor_control_telemetry_.setup(setup);
 	setup.publish(AircraftDataKeys::kRadarRequests, RadarRequests{});
 	setup.publish(AircraftDataKeys::kMissionComputerSnapshot, input_output_data_.output.combat_avionics);
 	// 各類指令先進入同一 FIFO，待本 tick 讀取觀測後才執行，保留跨元件的操作順序。
@@ -138,11 +141,7 @@ void MissionComputer::setup(SystemSetup& setup)
 		                                        CommandId::SetTriggerSecondStage,
 		                                        CommandId::SetWeaponRelease,
 		                                        CommandId::SetMissileUncage,
-		                                        CommandId::SetTmsUp,
-		                                        CommandId::PressTmsDown,
-		                                        CommandId::PressTmsLeft,
-		                                        CommandId::PressTmsRight,
-		                                        CommandId::StepMissileStation };
+		                                        CommandId::SetMissileStep };
 	for (CommandId id : fire_control_commands)
 	{
 		setup.register_command_handler(id,
@@ -152,6 +151,15 @@ void MissionComputer::setup(SystemSetup& setup)
 			                                   { Mc::MissionCommandTarget::FireControl, command });
 		                               });
 	}
+	const CommandId sensor_commands[] = { CommandId::SetTmsUp,      CommandId::PressTmsDown, CommandId::PressTmsLeft,
+		                                  CommandId::PressTmsRight, CommandId::PressDmsUp,   CommandId::PressDmsDown };
+	for (CommandId id : sensor_commands)
+		setup.register_command_handler(id,
+		                               [this](const SystemActionContext&, const Command& command)
+		                               {
+			                               input_output_data_.input.pending_commands.push_back(
+			                                   { Mc::MissionCommandTarget::SensorControl, command });
+		                               });
 }
 
 void MissionComputer::step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result)
@@ -162,11 +170,18 @@ void MissionComputer::step(const SystemStepContext& context, const AircraftDataV
 	}
 
 	read_inputs(context, aircraft);
+	sensor_of_interest_.refresh();
 	stores_management_.prepare(context.input_time);
 	consume_commands();
 	executive_.step(context.scheduled_time);
 	stores_management_.dispatch();
 	publish_outputs(result);
+	sensor_control_telemetry_.publish(context.scheduled_time,
+	                                  mode_data_,
+	                                  input_output_data_.input.display,
+	                                  sensor_of_interest_data_,
+	                                  fire_control_data_.targeting,
+	                                  input_output_data_.input.radar);
 }
 
 void MissionComputer::read_inputs(const SystemStepContext& context, const AircraftDataView& aircraft)
@@ -174,6 +189,7 @@ void MissionComputer::read_inputs(const SystemStepContext& context, const Aircra
 	input_output_data_.input.cockpit = aircraft.read(AircraftDataKeys::kFrameInput).cockpit;
 	input_output_data_.input.observed_at = context.input_time;
 	input_output_data_.input.radar = aircraft.read(AircraftDataKeys::kRadarSnapshot);
+	input_output_data_.input.display = aircraft.read(AircraftDataKeys::kDisplaySnapshot);
 	const MissionAdapterObservation& adapter = input_output_data_.input.cockpit.mission_adapter;
 	if (adapter.available)
 	{
@@ -188,6 +204,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.status = { true, output.status.revision + 1 };
 	// 模式由獨立快照對外發布；Bridge 仍映射到原有座艙參數名稱與數值。
 	output.mode.status = output.status;
+	output.sensor_of_interest = sensor_of_interest_data_;
 	output.fire_control.status = output.status;
 	output.mode.master_arm_mode = mode_data_.master_arm;
 	output.mode.master_mode = mode_data_.master_mode;
@@ -225,13 +242,25 @@ void MissionComputer::consume_commands()
 		switch (intent.target)
 		{
 		case Mc::MissionCommandTarget::Mode:
+		{
+			const auto previous_mode = mode_data_.operating_mode();
 			mode_management_.handle(intent.command);
+			if (previous_mode != mode_data_.operating_mode())
+			{
+				held_tms_up_.source = SensorControlSource::None;
+				held_tms_right_.source = SensorControlSource::None;
+			}
+			sensor_of_interest_.refresh();
 			break;
+		}
 		case Mc::MissionCommandTarget::Countermeasure:
 			countermeasure_control_.handle(intent.command);
 			break;
+		case Mc::MissionCommandTarget::SensorControl:
+			route_sensor_control(intent.command);
+			break;
 		case Mc::MissionCommandTarget::FireControl:
-			fire_control_.handle(intent.command);
+			fire_control_.handle(intent.command, input_output_data_.input.observed_at);
 			break;
 		}
 		stores_management_.dispatch();
@@ -239,6 +268,40 @@ void MissionComputer::consume_commands()
 		pending.pop_front();
 	}
 }
+void MissionComputer::route_sensor_control(const Command& command)
+{
+	if (command.id == CommandId::PressDmsUp || command.id == CommandId::PressDmsDown)
+	{
+		sensor_of_interest_.handle(command);
+		return;
+	}
+	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
+	SensorControlSource source = sensor_of_interest_data_.source;
+	HeldSensorInput* held_input = nullptr;
+	if (command.id == CommandId::SetTmsUp)
+		held_input = &held_tms_up_;
+	else if (command.id == CommandId::PressTmsRight)
+		held_input = &held_tms_right_;
+	if (held_input)
+	{
+		if (pressed)
+		{
+			if (!held_input->held)
+				*held_input = { true, source };
+			source = held_input->source;
+		}
+		else
+		{
+			// 放開沿用按下時的接收者，完成同一次操作的生命週期。
+			source = held_input->source;
+			*held_input = {};
+		}
+	}
+	sensor_control_telemetry_.record_tms(command, source, fire_control_data_.targeting.last_tms_request);
+	if (source == SensorControlSource::Radar)
+		fire_control_.handle(command, input_output_data_.input.observed_at);
+}
+
 void MissionComputer::record_control_input(const Command& command)
 {
 	auto& input = input_output_data_.input;

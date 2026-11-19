@@ -79,14 +79,14 @@ A-G 這輪提供狀態與切換架構，對地武器使用及雷達模式待後�
 |---|---|
 | NAV | `1`；超控中央位置時生效 |
 | DGFT | `右 Ctrl + D` |
-| MSL OVRD | `4` |
-| A-A | `Master Mode Button - A-A (Toggle to NAV)`；未指定預設鍵 |
-| A-G | `Master Mode Button - A-G (Toggle to NAV)`；未指定預設鍵 |
-| 超控中央位置 | `Dogfight Switch - CENTER (Restore Master Mode)`；未指定預設鍵 |
-| 輪站 | `MSL STEP - Next Air-to-Air Station`；未指定預設鍵 |
+| MSL OVRD | `右 Alt + D` |
+| A-A | `2`；Master Mode Button - A-A (Toggle to NAV) |
+| A-G | `3`；Master Mode Button - A-G (Toggle to NAV) |
+| 超控中央位置 | `右 Shift + D`；Dogfight Switch - CENTER (Restore Master Mode) |
+| 輪站 | `Q`；短按同型輪站、按住達 0.5 秒切換武器型別 |
 
 進入超控後，使用中央位置指令回復原主模式。NAV 的 `1` 對應主模式選擇，
-因此超控期間保持目前配置。MSL STEP 依既有掛點順序循環所有可用空對空飛彈掛點。
+因此超控期間保持目前配置。MSL STEP 的型別與輸入處理見 [MC 操作說明](MC_CONTROLS.zh-TW.md)。
 
 ## 驗證
 

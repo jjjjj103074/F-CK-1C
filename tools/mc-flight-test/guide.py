@@ -18,11 +18,15 @@ SCENARIOS = [
 KEYS = [
     ('C++ Digital 熱焰彈／干擾絲（本包預設）', '左 Alt＋左 Shift＋Insert／左 Alt＋左 Shift＋Delete'),
     ('C++ Analog 熱焰彈／干擾絲（本包預設）', '左 Ctrl＋左 Shift＋Insert／左 Ctrl＋左 Shift＋Delete'),
-    ('主模式 NAV／DGFT／MSL', '1／右 Ctrl＋D／4'),
+    ('一般主模式 NAV／A-A／A-G', '1／2／3'),
+    ('超控 DGFT／CENTER／MSL', '右 Ctrl＋D／右 Shift＋D／右 Alt＋D'),
+    ('MSL STEP 短按／長按', 'Q：短按同型輪站；按住達 0.5 秒換型'),
     ('保險 ON／OFF／SIM', '右 Ctrl＋M／右 Shift＋M／右 Alt＋M'),
     ('第一段扳機／機砲', '左 Alt＋Space／Space'),
     ('Uncage（按住）／投放', '右 Alt＋右 Shift＋M／右 Alt＋Space'),
-    ('TMS 上／下／左／右', 'Enter／Backspace／-／='),
+    ('TMS 上／下／左／右', 'I／K／J／L'),
+    ('DMS 上／下／左／右', '右 Shift＋I／K／J／L'),
+    ('標準 Debug Indicator', '右 Ctrl＋右 Shift＋F12'),
     ('CMS Forward／Aft／Left', '右 Alt＋Delete／右 Alt＋Home／右 Alt＋Insert'),
     ('CMS Right／Press', '右 Alt＋End／右 Alt＋PgDn'),
     ('手動音效測試', '右 Shift＋T'),
@@ -39,8 +43,9 @@ def cases():
 def markdown():
     data = cases()
     lines = ['# MC 完整實機測試流程', '',
-        '使用本包 F-CK-1C 模組；依序做 A、B、C、E、F、C-AG、D。每項只需回報異常代號、實際情況；未測或被阻擋的項目請另列。', '',
+        '本輪先做 D01～D07 與 T01～T11，只需任務 A、B。其餘項目供既有 MC 功能回歸。每項回報異常代號與實際情況；未測項目另列。', '',
         '## 安裝與開始', '',
+        'SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查看；本輪以真實 F-16 手冊為操作依據。沒有實際 MFD 畫面，功能空殼會顯示 RESERVED。', '',
         '1. 完全關閉 DCS，解壓縮測試包，在 F-CK-1C 資料夾執行 install.bat；預設安裝到 Saved Games\\DCS。使用 DCS.openbeta 或其他資料夾時，將該 Saved Games 路徑作為 install.bat 的第一個參數。',
         '2. 在任務編輯器依下表存好各任務；使用空中或熱機出生、關閉無限彈藥，選 JHMCS＋2D Overlay。全部保持專案預設按鍵。',
         '3. 進任務後看 HMCS 與右上 MC TEST 面板。記錄器會自動將每次任務另存到 Saved Games\\DCS\\Logs\\FCK1C-MC-TEST；視窗／按鍵設定採用現有配置。', '',
@@ -48,7 +53,7 @@ def markdown():
     lines += [f'| {code}：{title} | {detail} |' for code, title, detail in SCENARIOS]
     lines += ['', '可將同一份任務另存並改掛載。A 的機砲耗盡後，機砲相關項目需重新載入有彈任務；B 中標示「重新載入」的項目要補回原八枚配置。', '',
         '## 面板怎麼看', '',
-        '- MC=1 表示 MC 快照可用；GEN 持續增加。ARM：0=SAFE、1=SIM、2=ON；MODE：0=NAV、1=DGF、2=MSL。',
+        '- MC=1 表示 MC 快照可用；GEN 持續增加。ARM：0=SAFE、1=SIM、2=ON；MODE：0=NAV、1=DGF、2=MSL、3=A-A、4=A-G。',
         '- SUB：0=---、1=HMD、2=VS、3=HUD、4=BVR。UNCAGE、TRIG 分別為解籠與第二段扳機的 MC 按住狀態。',
         '- GUN OK／AAM OK=1 時，旁邊的 GUN／AAM 是有效存量；GUN 是原生實際存量。DGF 的 WPN 顯示 AAM 並不阻擋機砲。',
         '- SEL 是 Lua 最近完成選站呼叫的紀錄：0 RT、1 RO、2 RI、3 MM、4 MF、5 MB、6 LI、7 LO、8 LT；-1 表示邏輯選擇為空。實際選站以離架掛點再核對。',

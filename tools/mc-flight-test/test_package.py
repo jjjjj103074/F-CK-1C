@@ -54,7 +54,7 @@ class TestFlightBundle(unittest.TestCase):
             self.assertTrue(archive.read(package.WEAPONS).startswith(self.entries[package.WEAPONS]))
             self.assertIn(package.PROBE_FLAG, archive.namelist())
             self.assertTrue(build['native_countermeasure_probe'])
-            self.assertEqual(build['human_cases'], 78)
+            self.assertEqual(build['human_cases'], 86)
             self.assertIn(self.source, archive.read(package.TEST_ROOT + 'Build.lua').decode())
         self.assertIn(package.digest(bundle.read_bytes()), Path(str(bundle)+'.sha256').read_text())
     def test_rejects_wrong_dll(self):

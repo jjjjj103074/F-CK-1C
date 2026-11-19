@@ -214,5 +214,7 @@ add_param_text("hmcs_sub_hmd", "HMD", { -0.245, -0.262 }, "LeftCenter", "HMCS_AA
 add_param_text("hmcs_sub_vs", "VS", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 1.9, 2.1, text_size_value)
 add_param_text("hmcs_sub_hud", "HUD", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 2.9, 3.1, text_size_value)
 add_param_text("hmcs_sub_bvr", "BVR", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 3.9, 4.1, text_size_value)
+add_param_text("hmcs_sub_bore", "BORE", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 4.9, 5.1, text_size_value)
+add_param_text("hmcs_sub_wide", "ACM", { -0.245, -0.262 }, "LeftCenter", "HMCS_AAM_SUBMODE", 5.9, 6.1, text_size_value)
 
 add_heading_tape()
