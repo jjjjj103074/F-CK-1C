@@ -23,6 +23,10 @@ void RadarSystem::apply_mode(TargetAcquisitionMode mode, std::uint64_t parent)
 	case TargetAcquisitionMode::VerticalScan:
 		actions_.append(MissionActionKind::ModeVerticalScan, parent);
 		break;
+	case TargetAcquisitionMode::Boresight:
+	case TargetAcquisitionMode::WideScan:
+		actions_.append(MissionActionKind::ModeBoresight, parent);
+		break;
 	case TargetAcquisitionMode::BeyondVisualRange:
 		actions_.append(MissionActionKind::ModeBeyondVisualRange, parent);
 		actions_.append(MissionActionKind::ModeFi0, parent);
@@ -43,6 +47,7 @@ void RadarSystem::execute(const RadarRequest& request)
 {
 	const auto previous = actions_.latest_sequence();
 	RadarCommandResult response{ request.sequence };
+	response.operation = request.command.operation;
 	switch (request.command.operation)
 	{
 	case RadarOperation::EnsureOn:
@@ -57,6 +62,8 @@ void RadarSystem::execute(const RadarRequest& request)
 		break;
 	case RadarOperation::SetAcquisitionMode:
 		apply_mode(request.command.mode, request.sequence);
+		if (request.command.mode == TargetAcquisitionMode::WideScan)
+			response.implementation = RadarImplementation::Simplified;
 		break;
 	case RadarOperation::BeginAcquisition:
 		if (!output_.adapter_available)
@@ -81,6 +88,25 @@ void RadarSystem::execute(const RadarRequest& request)
 		break;
 	case RadarOperation::SelectNextTarget:
 		actions_.append(MissionActionKind::ChangeLock, request.sequence);
+		break;
+	case RadarOperation::BeginSpotlight:
+	case RadarOperation::EndSpotlight:
+		output_.spotlight_requested = request.command.operation == RadarOperation::BeginSpotlight;
+		response.implementation = RadarImplementation::Reserved;
+		break;
+	case RadarOperation::SetSearchMode:
+		output_.requested_search_mode = request.command.search_mode;
+		// 搜尋模式介面保存駕駛要求，來源觀測持續回報原生搜尋及 STT。
+		response.implementation = request.command.search_mode == RadarSearchMode::TrackWhileScan
+		                              ? RadarImplementation::Reserved
+		                              : RadarImplementation::Native;
+		break;
+	case RadarOperation::ExpandTargetData:
+	case RadarOperation::StepPriorityTarget:
+	case RadarOperation::CycleSightingPoint:
+	case RadarOperation::DesignateGroundTarget:
+	case RadarOperation::RejectGroundTarget:
+		response.implementation = RadarImplementation::Reserved;
 		break;
 	case RadarOperation::SelectNavigation:
 		output_.requested_acquisition_mode = TargetAcquisitionMode::None;

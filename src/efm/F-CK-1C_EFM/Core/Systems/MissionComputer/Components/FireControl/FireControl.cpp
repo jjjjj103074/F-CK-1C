@@ -15,27 +15,27 @@ FireControl::FireControl(const ModeData& mode,
 {
 }
 
-void FireControl::handle(const Command& command)
+void FireControl::handle(const Command& command, std::chrono::nanoseconds input_time)
 {
 	switch (command.id)
 	{
 	case CommandId::SetMissileUncage:
-		weapon_operation_.handle(command);
-		targeting_.handle(command);
+		weapon_operation_.handle(command, input_time);
+		targeting_.handle(command, input_time);
 		break;
 	case CommandId::SetTmsUp:
 	case CommandId::PressTmsDown:
 	case CommandId::PressTmsLeft:
 	case CommandId::PressTmsRight:
-		targeting_.handle(command);
+		targeting_.handle(command, input_time);
 		break;
 	case CommandId::SetWeaponRelease:
 		if (Common::command_value_is_pressed(command.value_normalized))
 			targeting_.before_weapon_release();
-		weapon_operation_.handle(command);
+		weapon_operation_.handle(command, input_time);
 		break;
 	default:
-		weapon_operation_.handle(command);
+		weapon_operation_.handle(command, input_time);
 		break;
 	}
 }
@@ -44,7 +44,7 @@ void FireControl::on_operating_mode_selected(const OperatingModeSelected& event)
 {
 	// 結束先前配置的武器使用，再套用本次模式的目標取得設定。
 	if (event.previous.operating_mode() != event.selected.operating_mode())
-		weapon_operation_.stop();
+		weapon_operation_.on_mode_changed();
 	targeting_.on_operating_mode_selected(event);
 }
 
@@ -54,10 +54,10 @@ void FireControl::on_master_arm_selected(const MasterArmSelected& event)
 		weapon_operation_.stop();
 }
 
-void FireControl::step(std::chrono::nanoseconds, double)
+void FireControl::step(std::chrono::nanoseconds time, double)
 {
-	if (weapon_operation_.step() == Internal::WeaponOperationEvent::ReleaseInputEnded)
+	if (weapon_operation_.step(time) == Internal::WeaponOperationEvent::ReleaseInputEnded)
 		targeting_.on_weapon_release_ended();
-	targeting_.step();
+	targeting_.step(time);
 }
 }

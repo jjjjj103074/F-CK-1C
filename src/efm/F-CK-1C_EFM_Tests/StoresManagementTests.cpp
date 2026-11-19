@@ -28,7 +28,9 @@ struct Fixture
 
 	void select(OperatingMode selected)
 	{
-		commands.submit(SelectStoresForMode{ selected, selected != OperatingMode::Navigation });
+		commands.submit(SelectStoresForMode{ selected,
+		                                     selected != OperatingMode::Navigation ? MissileSelectionStep::Station
+		                                                                           : MissileSelectionStep::None });
 	}
 
 	void observe(std::uint64_t revision)
@@ -45,6 +47,51 @@ struct Fixture
 		manager.step(time, 0.03125);
 	}
 };
+
+void test_sms_type_selection_and_unknown_missiles(Tests::Context& context)
+{
+	Fixture f;
+	f.observe(2);
+	auto& samples = f.input.cockpit.weapon_stations.stations;
+	samples[0] = {
+		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9L}", "type-l"
+	};
+	samples[1] = {
+		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9M}", "type-m"
+	};
+	samples[2] = {
+		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "new-missile", "type-x"
+	};
+	samples[4] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::Other, "ground", "type-g" };
+	f.select(OperatingMode::MissileOverride);
+	f.step(milliseconds(30));
+	TEST_EXPECT(context, f.stores.selection.requested_station == 0);
+	f.commands.submit(SelectStoresForMode{ OperatingMode::MissileOverride, MissileSelectionStep::Station });
+	f.manager.dispatch();
+	TEST_EXPECT(context, f.stores.selection.requested_station == 1);
+	f.commands.submit(SelectStoresForMode{ OperatingMode::MissileOverride, MissileSelectionStep::Station });
+	f.manager.dispatch();
+	TEST_EXPECT(context, f.stores.selection.requested_station == 0);
+	f.commands.submit(SelectStoresForMode{ OperatingMode::MissileOverride, MissileSelectionStep::WeaponType });
+	f.manager.dispatch();
+	TEST_EXPECT(context, f.stores.selection.requested_station == 2);
+	const auto revision = f.stores.selection.request_revision;
+	f.commands.submit(SelectStoresForMode{ OperatingMode::MissileOverride, MissileSelectionStep::Station });
+	f.manager.dispatch();
+	TEST_EXPECT(context, f.stores.selection.requested_station == 2);
+	TEST_EXPECT(context, f.stores.selection.request_revision == revision + 1);
+	f.commands.submit(SelectStoresForMode{ OperatingMode::MissileOverride, MissileSelectionStep::WeaponType });
+	f.manager.dispatch();
+	TEST_EXPECT(context, f.stores.selection.requested_station == 0);
+	samples[0].count = 0;
+	f.observe(4);
+	f.step(milliseconds(60));
+	TEST_EXPECT(context, f.stores.selection.requested_station == 1);
+	samples[1].count = 0;
+	f.observe(6);
+	f.step(milliseconds(90));
+	TEST_EXPECT(context, f.stores.selection.requested_station == 2);
+}
 
 void test_all_station_inventory_and_queries(Tests::Context& context)
 {
@@ -511,11 +558,8 @@ void test_selection_waits_for_inventory_and_reselects_replaced_loads(Tests::Cont
 	f.observe(2);
 	auto& observation = f.input.cockpit.weapon_stations;
 	for (int i : { 2, 8 })
-		observation.stations[i] = { StoreConfiguration::Equipped,
-			                        1,
-			                        WeaponCategory::Missile,
-			                        WeaponRole::AirToAir,
-			                        "aa" };
+		observation.stations[i] = { StoreConfiguration::Equipped, 1,    WeaponCategory::Missile,
+			                        WeaponRole::AirToAir,         "aa", "same-type" };
 	f.step(milliseconds(1100));
 	TEST_EXPECT(context, f.stores.selection.requested_station == 8);
 	const auto first = f.stores.selection.request_revision;
@@ -731,7 +775,7 @@ void test_command_queue_consumer_keeps_fifo_and_execution_receipts(Tests::Contex
 {
 	ExternalActionOutbox actions;
 	StoresCommandQueue commands(actions);
-	const StoresCommand requests[] = { SelectStoresForMode{ OperatingMode::Dogfight, true },
+	const StoresCommand requests[] = { SelectStoresForMode{ OperatingMode::Dogfight, MissileSelectionStep::Station },
 		                               CancelStoresCommands{},
 		                               StoresWeaponAction{ MissionActionKind::GunOff } };
 	const auto mode = commands.submit(requests[0]);
@@ -774,10 +818,10 @@ void test_command_gateway_preserves_interleaved_order_and_payloads(Tests::Contex
 			                                            WeaponCategory::Missile,
 			                                            WeaponRole::AirToAir,
 			                                            "aa" };
-	const auto first = f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
+	const auto first = f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, MissileSelectionStep::Station });
 	const auto radar = f.actions.append(MissionActionKind::ModeHelmet);
 	const auto fire_a = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
-	const auto next = f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
+	const auto next = f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, MissileSelectionStep::Station });
 	const auto fire_b = f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
 	TEST_EXPECT(context, first < fire_a && fire_a < next && next < fire_b && radar != 0);
 	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 1);
@@ -803,14 +847,14 @@ void test_command_gateway_preserves_interleaved_order_and_payloads(Tests::Contex
 void test_command_gateway_cancels_waiting_starts_and_preserves_stops(Tests::Context& context)
 {
 	Fixture f;
-	f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, true });
+	f.commands.submit(SelectStoresForMode{ OperatingMode::Dogfight, MissileSelectionStep::Station });
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOn });
 	f.step(seconds(1));
 	TEST_EXPECT(context, Tests::pending_actions(f.actions).count == 0);
 	TEST_EXPECT(context, f.stores.selection.awaiting_inventory);
 	f.commands.submit(CancelStoresCommands{});
 	f.commands.submit(StoresWeaponAction{ MissionActionKind::PickleOff });
-	f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation, false });
+	f.commands.submit(SelectStoresForMode{ OperatingMode::Navigation });
 	f.step(milliseconds(1100));
 	const auto batch = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, batch.count == 1);
@@ -1357,6 +1401,7 @@ void test_global_ir_observations_keep_source_validity_and_instance_isolation(Tes
 
 void run_stores_management_tests(Tests::Context& context)
 {
+	test_sms_type_selection_and_unknown_missiles(context);
 	test_global_ir_observations_keep_source_validity_and_instance_isolation(context);
 	test_canceled_use_keeps_normal_cleanup_and_cancellation_result(context);
 	test_gun_and_release_keep_independent_use_progress(context);

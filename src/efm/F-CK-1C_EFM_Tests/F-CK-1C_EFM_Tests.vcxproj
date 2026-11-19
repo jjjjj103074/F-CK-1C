@@ -95,6 +95,7 @@
     <ClCompile Include="DigitalFlightControlExecutiveTests.cpp" />
     <ClCompile Include="MissionComputerTests.cpp" />
     <ClCompile Include="RadarSystemTests.cpp" />
+    <ClCompile Include="SensorControlTests.cpp" />
     <ClCompile Include="ModeManagementTests.cpp" />
     <ClCompile Include="StoresManagementTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />

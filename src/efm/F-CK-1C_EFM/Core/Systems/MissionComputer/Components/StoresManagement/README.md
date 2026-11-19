@@ -14,6 +14,7 @@ SM 統整固定掛點、原生機砲及全域 IR 觀測，管理武器掛點選�
 | `StoresManagementWeaponUse.cpp` | 同一 SM 類別的使用要求解讀、操作安排與結果寫回 |
 | `Internal/StationSelection` | 依模式意圖與有效庫存決定掛點、保存要求與執行確認 |
 | `Database/StoresData` | 保存逐掛點庫存、機砲彈量及選站狀態 |
+| `Common/MissileSelection` | 依有效庫存計算 SMS 同型輪站與武器型別輪換候選 |
 | `Common/StoresQueries` | 提供唯讀飛彈候選查詢與數量加總 |
 | `StoresEvents` | 發布庫存、機砲彈量及選站變化 |
 
@@ -23,7 +24,7 @@ SM 統整固定掛點、原生機砲及全域 IR 觀測，管理武器掛點選�
 
 呼叫端僅透過 `StoresCommandQueue::submit` 提交 SM 指令：
 
-- `SelectStoresForMode`：處理模式選站與同模式循環。
+- `SelectStoresForMode`：處理模式選站、同型輪站與武器型別輪換。
 - `BeginWeaponUse`：接受火控的機砲／投放開始意圖；LaunchPermission 明確表達火控的超控選擇。
 - `EndWeaponUse`：依開始要求編號保存正常放開意圖。
 - `AbortWeaponUse`：立即撤回先前啟動並安排必要停止。

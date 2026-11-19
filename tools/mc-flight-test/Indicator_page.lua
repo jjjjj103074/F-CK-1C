@@ -54,6 +54,6 @@ for i, row in ipairs(rows) do
     text(row[4], "", left + 0.34, y, row[5], row[6])
 end
 text("legend1", "ARM 0=SAFE 1=SIM 2=ON", left, top - 0.90)
-text("legend2", "MODE 0=NAV 1=DGF 2=MSL", left, top - 0.95)
+text("legend2", "MODE 0=NAV 1=DGF 2=MSL 3=AA 4=AG", left, top - 0.95)
 text("legend3", "SEL 0 RT/1 RO/2 RI/3 MM", left, top - 1.00)
 text("legend4", "4 MF/5 MB/6 LI/7 LO/8 LT", left, top - 1.05)

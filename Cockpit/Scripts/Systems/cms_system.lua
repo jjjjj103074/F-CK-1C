@@ -159,6 +159,7 @@ local native_actions = {
     [5] = dcs_commands.iCommandPlanePickleOff,
     [6] = dcs_commands.iCommandPlaneRadarOnOff,
     [8] = dcs_commands.iCommandPlaneModeHelmet,
+    [22] = dcs_commands.iCommandPlaneModeBore,
     [9] = dcs_commands.iCommandPlaneModeVS,
     [10] = dcs_commands.iCommandPlaneModeBVR,
     [11] = dcs_commands.iCommandPlaneModeFI0,

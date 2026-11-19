@@ -46,6 +46,10 @@
     { "name": "AirToGroundMode", "value": 3054, "route": "efm" },
     { "name": "DogfightCenter", "value": 3055, "route": "efm" },
     { "name": "MissileStep", "value": 3056, "route": "efm" },
+    { "name": "DMSUp", "value": 3057, "route": "efm" },
+    { "name": "DMSDown", "value": 3058, "route": "efm" },
+    { "name": "DMSLeft", "value": 3059, "route": "efm" },
+    { "name": "DMSRight", "value": 3060, "route": "efm" },
 
     { "name": "APMasterOn", "value": 3101, "route": "efm" },
     { "name": "APMasterOff", "value": 3102, "route": "efm" },

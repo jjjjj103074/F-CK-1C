@@ -18,7 +18,7 @@ public:
 	FireControl& operator=(const FireControl&) = delete;
 	FireControl(FireControl&&) = delete;
 	FireControl& operator=(FireControl&&) = delete;
-	void handle(const Command& command);
+	void handle(const Command& command, std::chrono::nanoseconds input_time);
 	void on_operating_mode_selected(const OperatingModeSelected& event);
 	void on_master_arm_selected(const MasterArmSelected& event);
 	void step(std::chrono::nanoseconds time, double dt_s);

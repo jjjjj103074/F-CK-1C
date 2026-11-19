@@ -26,6 +26,7 @@ void run_flight_control_actuation_system_tests(Tests::Context& context);
 void run_digital_flight_control_executive_tests(Tests::Context& context);
 void run_mission_computer_tests(Tests::Context& context);
 void run_radar_system_tests(Tests::Context& context);
+void run_sensor_control_tests(Tests::Context& context);
 void run_mode_management_tests(Tests::Context& context);
 void run_stores_management_tests(Tests::Context& context);
 void run_configuration_ownership_tests(Tests::Context& context);
@@ -108,6 +109,7 @@ int main()
 	run_digital_flight_control_executive_tests(context);
 	run_mission_computer_tests(context);
 	run_radar_system_tests(context);
+	run_sensor_control_tests(context);
 	run_mode_management_tests(context);
 	run_stores_management_tests(context);
 	run_configuration_ownership_tests(context);

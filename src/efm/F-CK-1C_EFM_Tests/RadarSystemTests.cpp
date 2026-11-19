@@ -195,15 +195,18 @@ void test_core_projects_radar_and_resets_flight_requests(Tests::Context& c)
 void test_targeting_ignores_old_rejections_after_cancel_and_new_request(Tests::Context& c)
 {
 	Core::Systems::Mc::ModeData mode;
+	mode.master_mode = MasterMode::AirToAir;
 	Core::Systems::Mc::TargetingData data;
 	RadarSnapshot radar;
 	ExternalActionOutbox actions;
 	Core::Systems::Mc::RadarRequestQueue requests(actions);
 	Core::Systems::Mc::Internal::Targeting targeting(mode, radar, data, requests);
 	targeting.handle({ CommandId::SetTmsUp, 1 });
+	targeting.handle({ CommandId::SetTmsUp, 0 });
 	const auto first = requests.pending().items.back().sequence;
 	targeting.handle({ CommandId::PressTmsDown, 1 });
 	targeting.handle({ CommandId::SetTmsUp, 1 });
+	targeting.handle({ CommandId::SetTmsUp, 0 });
 	const auto latest = requests.pending().items.back().sequence;
 	TEST_EXPECT(c, latest > first && data.designation.requested);
 	radar.command_results = { { first, false, 0, 0 } };

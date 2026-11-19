@@ -112,7 +112,7 @@ end
         human_cases=len(guide.cases()), test_device_id=10, recorded_parameters=len(names),
         native_countermeasure_probe=True, native_dispatch='C++ ed_fm_simulate',
         native_test_keys='prebound; existing bindings preserved',
-        migration_goal='Countermeasure control and programs in a C++ System through SystemPipeline',
+        migration_goal='MC SOI, mode-driven display assignments and real-aircraft HOTAS interfaces',
         runtime_changed=changed,
         runtime_added=sorted(name for name in set(entries) - set(original) if name.startswith(MODULE)),
         bundle_added=sorted({name for name in set(entries) - set(original) if not name.startswith(MODULE)} | {'BUILD.json'}),

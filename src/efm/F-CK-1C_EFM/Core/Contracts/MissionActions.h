@@ -30,7 +30,8 @@ enum class MissionActionKind
 	StartCmsAft = 18,
 	StartCmsLeft = 19,
 	AbortCms = 20,
-	SelectStation = 21
+	SelectStation = 21,
+	ModeBoresight = 22
 };
 
 /// @brief 判斷操作是否會啟動武器程序。

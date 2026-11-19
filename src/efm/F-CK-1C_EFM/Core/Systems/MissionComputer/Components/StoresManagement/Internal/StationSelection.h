@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../../../Contracts/CockpitContracts.h"
+#include "../../../Common/MissileSelection.h"
 
 #include <deque>
 
@@ -11,8 +11,8 @@ class StationSelection final
 {
 public:
 	StationSelection(const StoresInventorySnapshot& inventory, StationSelectionState& state);
-	/// @brief 保存本筆模式選擇與同模式重選意圖。
-	void select_mode(OperatingMode mode, bool cycle_weapon, bool reassert_selection = false);
+	/// @brief 保存本筆模式配置與飛彈選擇意圖。
+	void select_mode(OperatingMode mode, MissileSelectionStep step, bool reassert_selection = false);
 	/// @brief 核對已發出的要求，保存最近完成的選站。
 	bool acknowledge(const WeaponStationObservation& observation);
 	/// @brief 結束尚待確認的要求，保存選站內容與真實執行回覆。
@@ -32,7 +32,8 @@ private:
 	StationSelectionState& state_;
 	OperatingMode mode_ = OperatingMode::Navigation;
 	bool reset_selection_ = false;
-	bool cycle_requested_ = false;
+	MissileSelectionStep step_requested_ = MissileSelectionStep::None;
+	std::string selected_type_; ///< SM 保存的 SMS 武器型別。
 	bool reassert_requested_ = false;
 	std::uint64_t rearm_revision_ = 0;
 	std::uint64_t requested_load_revision_ = 0;
