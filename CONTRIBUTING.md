@@ -31,7 +31,8 @@ then validate it. Reports are written to `tmp/pr-validation/`.
   observations, including the global IR seeker source.
   DcsBridge owns shared DCS action delivery and acknowledgment mapping.
   HUD/HMCS owns weapon presentation using MC state and ordered input observations.
-- Cockpit Lua adapts DCS observations and actions, runs CM programs, and renders
+- CountermeasureSystem schedules CM programs through SystemPipeline; DcsBridge executes native dispensing and observes inventory.
+- Cockpit Lua adapts DCS observations and actions, and renders
   displays/audio as described in the [cockpit guide](docs/COCKPIT.md).
 
 Start with the [EFM overview](src/efm/README.md).
@@ -108,7 +109,8 @@ npm run validate:efm
 - `Core/Systems/MissionComputer/`：任務模式、掛載策略與 FireControl 火控，
   RadarSystem 經 Pipeline 處理設備操作與觀測；DcsBridge 管理共用動作傳送與確認。
   SM 保存包含全域 IR 尋標來源在內的武器觀測；HUD／HMCS 依 MC 狀態與有序輸入觀測決定武器呈現。
-- Cockpit Lua：DCS 觀測與操作介面、反制程序、顯示及播放，
+- CountermeasureSystem 經 SystemPipeline 排程反制程序；DcsBridge 執行原生施放及庫存觀測。
+- Cockpit Lua：DCS 觀測與操作介面、顯示及播放，
   詳見[座艙指南](docs/COCKPIT.md)。
 
 由 [EFM 總覽](src/efm/README.md) 進入各模組指南。

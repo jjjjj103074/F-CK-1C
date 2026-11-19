@@ -37,6 +37,10 @@ local rows = {
     { "CMVALID", "CPP_CM_INVENTORY_AVAILABLE", "CM OK %.0f", "CMFLARE", "CPP_CM_FLARE_COUNT", "CPP FLR %.0f" },
     { "CMOBS", "FCK1C_TEST_CM_OBSERVATION_AVAILABLE", "LUA OK %.0f", "FLARE", "FCK1C_TEST_CM_FLARE_COUNT", "LUA FLR %.0f" },
     { "CPPCHAFF", "CPP_CM_CHAFF_COUNT", "CPP CHF %.0f", "CHAFF", "FCK1C_TEST_CM_CHAFF_COUNT", "LUA CHF %.0f" },
+    { "NATIVE", "CPP_NATIVE_CM_ENABLED", "NATIVE %.0f", "API", "CPP_NATIVE_CM_API_MASK", "API %.0f" },
+    { "NSTATUS", "CPP_NATIVE_CM_STATUS", "STAT %.0f", "NLAST", "CPP_NATIVE_CM_LAST_REQUEST", "LAST %.0f" },
+    { "NREQUEST", "CPP_NATIVE_CM_REQUESTS", "REQ %.0f", "NCALLS", "CPP_NATIVE_CM_CALLS", "CALL %.0f" },
+    { "NMETHOD", "CPP_NATIVE_CM_METHOD", "METH %.0f", "CMPROFILE", "CPP_CM_PROGRAM", "CM PROG %.0f" },
     { "MC", "CPP_MC_AVAILABLE", "MC %.0f", "GEN", "CPP_MC_GENERATION", "GEN %.0f" },
     { "ARM", "HMCS_MASTER_MODE", "ARM %.0f", "MODE", "HMCS_FC_MODE", "MODE %.0f" },
     { "SUB", "HMCS_AAM_SUBMODE", "SUB %.0f", "UNCAGE", "CPP_MC_MISSILE_UNCAGE_HELD", "UNCAGE %.0f" },
@@ -49,7 +53,7 @@ local rows = {
     { "COUNT", "CPP_MC_ACTION_COUNT", "TX %.0f", "ACK", "OBS_MC_ACKNOWLEDGED_SEQUENCE", "ACK %.0f" },
 }
 for i, row in ipairs(rows) do
-    local y = top - i * 0.055
+    local y = top - i * 0.042
     text(row[1], "", left, y, row[2], row[3])
     text(row[4], "", left + 0.34, y, row[5], row[6])
 end

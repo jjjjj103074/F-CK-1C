@@ -27,9 +27,10 @@ The interface mutex serializes its local state and operations. Bridge chooses th
 DCS callback/phase for each capability, using its verified execution path.
 
 GunAmmunitionSource currently consumes this interface, retaining its 10 Hz
-observations, source diagnostics and per-flight error policy. Countermeasure
-inventory/dispense methods are available for a later adapter integration. The
-existing probe and cockpit delivery continue through their current adapters.
+observations, source diagnostics and per-flight error policy. CountermeasureExecutor
+uses the same interface in the native I/O phase of ed_fm_simulate to observe inventory
+and execute one round from CountermeasureSystem. Its feedback returns through
+FrameInput and SystemPipeline; program scheduling belongs to CountermeasureSystem.
 
 Core Systems consume typed FrameInput/AircraftData and publish typed actions to
 FrameOutput through SystemPipeline. Further aircraft capabilities can add their

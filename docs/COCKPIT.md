@@ -2,14 +2,15 @@
 
 座艙入口為 `Cockpit/Scripts/device_init.lua`。
 C++ MC 負責任務模式、掛載策略、武器資格、目標操作及武器觀測管理；
-Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、繪圖與播放。
+CountermeasureSystem 經 SystemPipeline 排程反制程序，Bridge 執行原生施放並觀測庫存。
+Lua 負責 DCS 觀測／操作介面、HUD／HMCS 顯示規則、繪圖與播放。
 完整元件、資料庫及遷移範圍見 [MC 重構報告](MC_REFACTOR_REPORT.md)。
 
 ## Device 與狀態
 
 | Device | DCS class / 腳本 | 目前責任 |
 |---|---|---|
-| CMS | avLuaDevice / cms_system.lua | 50 Hz 觀測接收與時效更新、有序 DCS action 執行、反制程序及執行互鎖 |
+| CMS | avLuaDevice / cms_system.lua | 50 Hz 觀測接收與時效更新、有序武器／選站／雷達 DCS action 執行與確認 |
 | WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始九站觀測、執行 MC 選站要求及確認 |
 | RADAR | avSimpleRadar / RADAR/FCK1C_Radar.lua | DCS 雷達設定與原始 DCS 觀測來源 |
 | RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原有雷達開啟參數介面 |
@@ -68,7 +69,7 @@ StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與執行
 原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
 
-機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS 執行 DcsBridge 的共用有序動作及既有反制程序。
+機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS Lua device 執行 DcsBridge 的共用有序武器／選站／雷達動作；反制程序及施放由 C++ CountermeasureSystem／Bridge 處理。
 空對空總數由 SM 庫存投影，完整性經 `McStoresMissileCountAvailable` 發布；HMCS 顯示數字或 `AAM ---`。
 
 ## 驗證
