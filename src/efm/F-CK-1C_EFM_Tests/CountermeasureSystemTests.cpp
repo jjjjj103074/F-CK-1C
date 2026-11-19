@@ -61,15 +61,15 @@ void test_programs_reach_native_dispensing_and_stock(Tests::Context& c)
 			TEST_EXPECT(c, cm.accepted_sequence == 1 && cm.completed_rounds == (forward ? 10 : 7));
 			TEST_EXPECT(c, cm.remaining_rounds == 0 && !cm.dispense);
 			TEST_EXPECT(c, f.host.flare == (forward ? 80 : 90) && f.host.chaff == (forward ? 80 : 83));
-			TEST_EXPECT(c, f.host.drops == (forward ? 20 : 7));
+			TEST_EXPECT(c, f.host.drops == (forward ? 20U : 7U));
 			TEST_EXPECT(c, f.output.cockpit.combat_avionics.action_requests.items.empty());
-			TEST_EXPECT(c, f.executor.observe().execution.sequence == (forward ? 10 : 7));
+			TEST_EXPECT(c, f.executor.observe().execution.sequence == (forward ? 10ULL : 7ULL));
 			TEST_EXPECT(c, cm.observation.inventory.available && cm.observation.inventory.chaff == f.host.chaff);
 			TEST_EXPECT(c, f.execution_times.size() == static_cast<std::size_t>(forward ? 10 : 7));
 			for (std::size_t i = 1; i < f.execution_times.size(); ++i)
 				TEST_EXPECT_NEAR(c, f.execution_times[i] - f.execution_times[i - 1], forward ? 1.0 : 0.5, 1e-8);
 			f.step(100);
-			TEST_EXPECT(c, f.host.drops == (forward ? 20 : 7));
+			TEST_EXPECT(c, f.host.drops == (forward ? 20U : 7U));
 		}
 }
 void test_program_replacement_and_inputs(Tests::Context& c)
