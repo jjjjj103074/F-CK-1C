@@ -14,10 +14,10 @@ StationSelection::StationSelection(const StoresInventorySnapshot& inventory, Sta
 {
 }
 
-void StationSelection::select_mode(OperatingMode mode, bool cycle_weapon, bool reassert_selection)
+void StationSelection::select_mode(OperatingMode mode, MissileSelectionStep step, bool reassert_selection)
 {
 	reset_selection_ = mode != mode_ || !is_air_to_air_mode(mode);
-	cycle_requested_ = !reset_selection_ && cycle_weapon;
+	step_requested_ = reset_selection_ ? MissileSelectionStep::None : step;
 	reassert_requested_ = reassert_selection;
 	mode_ = mode;
 }
@@ -72,30 +72,28 @@ bool StationSelection::update(const WeaponStationObservation& observation)
 	acknowledge(observation);
 	if (!is_air_to_air_mode(mode_))
 	{
+		selected_type_.clear();
 		request(std::nullopt, reset_selection_ && state_.request_revision != state_.acknowledged_revision);
 		reset_selection_ = false;
-		cycle_requested_ = false;
+		step_requested_ = MissileSelectionStep::None;
 		reassert_requested_ = false;
 	}
 	else if (inventory_.observation.available)
 	{
-		const auto candidates = find_missile_stations(inventory_, { WeaponRole::AirToAir, {} });
-		auto selected = std::find(candidates.begin(), candidates.end(), state_.requested_station.value_or(-1));
-		if (reset_selection_ || selected == candidates.end())
-			selected = candidates.begin();
-		if (!candidates.empty())
-		{
-			const auto offset = static_cast<std::uint64_t>(selected - candidates.begin());
-			selected = candidates.begin() +
-			           static_cast<std::ptrdiff_t>((offset + (cycle_requested_ ? 1 : 0)) % candidates.size());
-		}
-		const std::optional<int> station = selected == candidates.end() ? std::nullopt : std::optional<int>(*selected);
+		const auto selected = select_air_to_air_station(inventory_,
+		                                                reset_selection_ ? std::nullopt : state_.requested_station,
+		                                                reset_selection_ ? std::string_view{} : selected_type_,
+		                                                step_requested_);
+		const auto station = selected.station;
+		selected_type_ = selected.weapon_type;
 		const bool rearmed = rearm_revision_ != inventory_.rearm_revision;
 		const bool replaced = station && *station == state_.requested_station &&
 		                      requested_load_revision_ != inventory_.stations[*station].load_revision;
-		request(station, reset_selection_ || cycle_requested_ || rearmed || replaced || reassert_requested_);
+		request(station,
+		        reset_selection_ || step_requested_ == MissileSelectionStep::Station || rearmed || replaced ||
+		            reassert_requested_);
 		reset_selection_ = false;
-		cycle_requested_ = false;
+		step_requested_ = MissileSelectionStep::None;
 		reassert_requested_ = false;
 		rearm_revision_ = inventory_.rearm_revision;
 	}

@@ -3,6 +3,7 @@
 #include "MissionActions.h"
 #include "ExternalActions.h"
 #include "RadarCommands.h"
+#include "DisplayContracts.h"
 
 #include <array>
 #include <chrono>
@@ -446,6 +447,17 @@ struct ModeSnapshot
 	bool dogfight_mode = false;
 };
 
+/// @brief 顯示系統依模式發布的功能對應，供 MC 選擇控制來源。
+struct DisplaySnapshot
+{
+	SnapshotStatus status;
+	OperatingMode operating_mode = OperatingMode::Navigation;
+	DisplayAssignment left;
+	DisplayAssignment right;
+	bool hud_designation_available = false;
+	DisplayLocation last_format_step = DisplayLocation::None;
+};
+
 /// @brief 機載目標指定意圖及雷達回報的追蹤結果。
 struct TargetDesignationSnapshot
 {
@@ -465,7 +477,7 @@ struct FireControlSnapshot
 	bool gun_fire_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
-	bool missile_uncage_held = false; ///< 駕駛的解籠操作意圖。
+	bool missile_uncage_selected = false; ///< 駕駛選取的解籠狀態。
 	TargetDesignationSnapshot target_designation;
 };
 
@@ -478,6 +490,8 @@ struct RadarSnapshot
 	bool adapter_available = false;
 	TargetAcquisitionMode requested_acquisition_mode = TargetAcquisitionMode::None;
 	RadarObservation observation;
+	RadarSearchMode requested_search_mode = RadarSearchMode::RangeWhileSearch;
+	bool spotlight_requested = false;
 	std::vector<RadarCommandResult> command_results;
 	ExternalActionRequests action_requests;
 };
@@ -537,6 +551,7 @@ struct CombatAvionicsSnapshot
 {
 	SnapshotStatus status;
 	ModeSnapshot mode;
+	SensorOfInterestSnapshot sensor_of_interest;
 	FireControlSnapshot fire_control;
 	StoresSnapshot stores;
 	MissionControlInputsSnapshot control_inputs;

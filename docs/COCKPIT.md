@@ -31,7 +31,7 @@ Gear、Actuators 與 Autopilot device ID 保留；目前未建立其 Lua device�
 - `cockpit`：送至指定 cockpit device。
 
 MC/HOTAS 指令走 `efm`，由 MC FIFO 在下一次 tick 依序處理。
-`mission_weapon_input.lua` 在載入鍵盤／搖桿設定後，將原生開火與投放別名
+`mission_input.lua` 在載入鍵盤／搖桿設定後，將原生開火與投放別名
 （含共用設定繼承項目）轉成 MC 的 TriggerSecondStage／WeaponRelease。
 原按鍵組合保留，重複指令合併；DCS 原生 actuation ID 留在 MC 核准後的 Lua 呼叫端。
 其他既有模式、感測器與反制測試入口保留，不能將其視為全部經過 MC。
@@ -102,7 +102,7 @@ SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續�
 
 SM 的全域 IR 觀測包含 lock、要求方向、目標方向與有效性。MissionComputerExporter 在 MC generation 內發布
 McStoresIrSeekerAvailable、Revision、InvalidReason、Lock 及各方向欄位。
-McMissileUncageHeld 表達駕駛操作意圖；McStoresAirToAirMissileCount 表達掛載數量。
+McMissileUncageHeld 沿用既有參數名稱，表達駕駛選取的解籠狀態（C 切換）；McStoresAirToAirMissileCount 表達掛載數量。
 
 HMCS 的武器類別採模式、解籠意圖、有效 lock 與既有操作偏好；數量由 SM 提供。
 aam_audio_system 接受同一份完整快照的有效 lock，播放並維持鎖定音；來源或 MC 不可用、奇數／變動 generation 時停止鎖定音。

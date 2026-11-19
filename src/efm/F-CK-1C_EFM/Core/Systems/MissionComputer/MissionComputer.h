@@ -7,6 +7,8 @@
 #include "Components/FireControl/FireControl.h"
 #include "Components/StoresManagement/StoresManagement.h"
 #include "Components/ModeManagement/ModeManagement.h"
+#include "Components/SensorOfInterest/SensorOfInterest.h"
+#include "Diagnostics/SensorControlTelemetry.h"
 #include "Components/StartupAndRestart/StartupAndRestart.h"
 #include "Components/SystemMonitor/SystemMonitor.h"
 #include "Database/ExecutiveTables.h"
@@ -44,6 +46,7 @@ private:
 	/// @brief 依共用 FIFO 處理模式、反制及火控指令，每筆指令的同步通知完成後才前進。
 	void consume_commands();
 	void record_control_input(const Command& command);
+	void route_sensor_control(const Command& command);
 	void publish_outputs(SystemResult& result);
 
 	bool powered_ = true; ///< 控制 step 執行的供電狀態，預設為有電。
@@ -55,6 +58,7 @@ private:
 	Mc::ModeData mode_data_;
 	Mc::StoresData stores_data_;
 	Mc::FireControlData fire_control_data_;
+	SensorOfInterestSnapshot sensor_of_interest_data_;
 	ExternalActionOutbox external_actions_;
 	Mc::StoresCommandQueue stores_commands_;
 	Mc::RadarRequestQueue radar_requests_;
@@ -67,6 +71,15 @@ private:
 	Mc::StoresManagement stores_management_;
 	Mc::FireControl fire_control_;
 	Mc::ModeManagement mode_management_;
+	Mc::SensorOfInterest sensor_of_interest_;
+	Mc::SensorControlTelemetry sensor_control_telemetry_;
+	struct HeldSensorInput
+	{
+		bool held = false;
+		SensorControlSource source = SensorControlSource::None;
+	};
+	HeldSensorInput held_tms_up_;
+	HeldSensorInput held_tms_right_;
 	Mc::CountermeasureControl countermeasure_control_;
 	Mc::Executive executive_;
 	Mc::StartupAndRestart startup_and_restart_;

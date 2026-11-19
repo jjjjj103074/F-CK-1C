@@ -87,18 +87,22 @@ constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 	EXPECT_COMMAND(MasterArmOff, SetMasterArmOff),
 	EXPECT_COMMAND(MasterArmSim, SetMasterArmSim),
 	EXPECT_COMMAND(DogfightSwitch, SelectDogfightMode),
-	EXPECT_COMMAND(MissileUncage, SetMissileUncage),
+	EXPECT_COMMAND(MissileUncage, ToggleMissileUncage),
 	EXPECT_COMMAND(WeaponRelease, SetWeaponRelease),
 	EXPECT_COMMAND(TMSUp, SetTmsUp),
 	EXPECT_COMMAND(TMSDown, PressTmsDown),
 	EXPECT_COMMAND(TMSLeft, PressTmsLeft),
 	EXPECT_COMMAND(TMSRight, PressTmsRight),
+	EXPECT_COMMAND(DMSUp, PressDmsUp),
+	EXPECT_COMMAND(DMSDown, PressDmsDown),
+	EXPECT_COMMAND(DMSLeft, PressDmsLeft),
+	EXPECT_COMMAND(DMSRight, PressDmsRight),
 	EXPECT_COMMAND(NavMode, SelectNavigationMode),
 	EXPECT_COMMAND(MissileOverride, SelectMissileOverride),
 	EXPECT_COMMAND(AirToAirMode, SelectAirToAirMode),
 	EXPECT_COMMAND(AirToGroundMode, SelectAirToGroundMode),
 	EXPECT_COMMAND(DogfightCenter, SelectOverrideCenter),
-	EXPECT_COMMAND(MissileStep, StepMissileStation),
+	EXPECT_COMMAND(MissileStep, SetMissileStep),
 	EXPECT_COMMAND(EngineThrustCutTestToggle, ToggleThrustCutTest),
 	EXPECT_COMMAND(EngineThrustCutTestEnable, EnableThrustCutTest),
 	EXPECT_COMMAND(EngineThrustCutTestDisable, DisableThrustCutTest)
@@ -152,11 +156,12 @@ void test_non_flight_control_commands_have_expected_semantics(Tests::Context& co
 
 void test_inactive_cockpit_binding_value_rules(Tests::Context& context)
 {
-	const DcsBridge::DcsCommandMapping held_release =
-	    DcsBridge::inspect_command_binding(DcsIds::Commands::MissileUncage, 0.0F);
-	TEST_EXPECT(context, held_release.should_dispatch());
-	TEST_EXPECT(context, held_release.command.id == Core::CommandId::SetMissileUncage);
-	TEST_EXPECT_NEAR(context, held_release.command.value_normalized, 0.0, kTolerance);
+	const auto step_release = DcsBridge::inspect_command_binding(DcsIds::Commands::MissileStep, 0.0F);
+	TEST_EXPECT(context, step_release.should_dispatch());
+	TEST_EXPECT(context, step_release.command.id == Core::CommandId::SetMissileStep);
+	TEST_EXPECT_NEAR(context, step_release.command.value_normalized, 0.0, kTolerance);
+	const auto toggle_release = DcsBridge::inspect_command_binding(DcsIds::Commands::MissileUncage, 0.0F);
+	TEST_EXPECT(context, toggle_release.status == DcsBridge::DcsCommandMappingStatus::IgnoredRelease);
 	const DcsBridge::DcsCommandMapping press_release =
 	    DcsBridge::inspect_command_binding(DcsIds::Commands::TMSDown, 0.0F);
 	TEST_EXPECT(context, press_release.status == DcsBridge::DcsCommandMappingStatus::IgnoredRelease);

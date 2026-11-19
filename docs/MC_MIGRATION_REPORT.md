@@ -180,7 +180,7 @@ NAV 的空要求只清除介面紀錄；目前 SDK 沒有對應 deselect 呼叫�
 
 ```mermaid
 flowchart TD
-    KEY["鍵盤／搖桿（含共用設定）"] --> NORM["mission_weapon_input：原生射擊／投放別名正規化"]
+    KEY["鍵盤／搖桿（含共用設定）"] --> NORM["mission_input：原生射擊／投放別名正規化"]
     NORM --> EFM["ed_fm_set_command"]
     EFM --> ROUTER["DcsCommandRouter：DCS ID → Core CommandId"]
     ROUTER --> FIFO["MC pending_commands FIFO"]
@@ -295,5 +295,5 @@ DLL 為 920,576 bytes，SHA256 為
 | 語意操作 | [MissionActions.h](../src/efm/F-CK-1C_EFM/Core/Contracts/MissionActions.h) |
 | 原始觀測轉換 | [CockpitBridge.cpp](../src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp) |
 | MC 參數輸出 | [MissionComputerExporter.cpp](../src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp) |
-| 原生輸入正規化 | [mission_weapon_input.lua](../Input/F-CK-1C/mission_weapon_input.lua) |
+| 原生輸入正規化 | [mission_input.lua](../Input/F-CK-1C/mission_input.lua) |
 | Lua 保留責任 | [座艙指南](COCKPIT.md) |

@@ -59,12 +59,16 @@ enum class CommandId
 	PressTmsDown,
 	PressTmsLeft,
 	PressTmsRight,
+	PressDmsUp,
+	PressDmsDown,
+	PressDmsLeft,
+	PressDmsRight,
 	SelectNavigationMode,
 	SelectMissileOverride,
 	SelectAirToAirMode,
 	SelectAirToGroundMode,
 	SelectOverrideCenter,
-	StepMissileStation,
+	SetMissileStep,
 	EngageAutopilot,
 	DisengageAutopilot,
 	SetAutopilotBypass,
@@ -81,7 +85,8 @@ enum class CommandId
 	DecreaseAutopilotSpeed,
 	ToggleThrustCutTest,
 	EnableThrustCutTest,
-	DisableThrustCutTest
+	DisableThrustCutTest,
+	ToggleMissileUncage
 };
 
 struct Command

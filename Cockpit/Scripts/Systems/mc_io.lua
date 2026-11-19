@@ -47,7 +47,7 @@ function M.new(execute)
         local actions = {}
         for i = 1, size do
             actions[i] = slots[i]:get()
-            if not integer(actions[i], 0, 21) then return end
+            if not integer(actions[i], 0, 22) then return end
         end
         if generation:get() ~= before then return end
 

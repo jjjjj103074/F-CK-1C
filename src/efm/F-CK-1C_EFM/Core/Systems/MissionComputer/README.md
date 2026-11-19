@@ -24,6 +24,7 @@ MissionComputer : System [32 Hz]
 ├── ModeEvents / StoresEvents（MC 專用同步事件通道）
 └── Components/
     ├── ModeManagement
+    ├── SensorOfInterest
     ├── CountermeasureControl
     ├── StoresManagement
     │   └── Internal/（ObservationProcessing、StationSelection、WeaponExecution）
@@ -37,13 +38,14 @@ MissionComputer : System [32 Hz]
     └── FailureManager
 ```
 
-四個任務元件與四個基礎元件，共八個同層元件。
+五個任務元件與四個基礎元件，共九個同層元件。
 FireControl 內部模組不是獨立 System、執行緒或 Executive 工作。
 MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持固定參照。
 
 | 元件 | 職責 |
 |---|---|
 | ModeManagement | 唯一寫入一般 NAV/A-A/A-G、DGFT/MSL 超控與主保險，發布具型別選擇事件 |
+| SensorOfInterest | 讀取 DisplaySnapshot 與任務模式，唯一寫入 SOI 來源及顯示位置，處理 DMS 上下 |
 | CountermeasureControl | 讀取模式判斷 CMS 啟動資格，接收 Master Arm 事件處理中止 |
 | StoresManagement | 全部固定掛點庫存、彈量、掛點選擇／循環、執行確認與掛載變化通知 |
 | FireControl | 目標操作、武器資格與使用程序 |
@@ -52,7 +54,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 | SystemMonitor | 健康監控預留入口，目前無功能 |
 | FailureManager | 故障處置預留入口，目前無功能 |
 
-FireControl 分派操作；Targeting 解讀 TMS 與操作模式，規劃捕獲策略並保存指定意圖與雷達追蹤結果。
+FireControl 分派操作；MC 依 SOI 分派 TMS，Targeting 解讀雷達 TMS 與操作模式，規劃捕獲策略並保存指定意圖與雷達追蹤結果。
 與 MC 並列的 [RadarSystem](../RadarSystem/README.md) 透過 Pipeline 接受要求、推進設備操作與發布觀測。
 WeaponOperation 保存解籠與扳機／投放資格，提交使用意圖並讀取 SM 執行結果，供 FC 安排目標接續。
 模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
@@ -76,11 +78,13 @@ WeaponOperation 只讀 WeaponUseData；Targeting 讀取模式與 RadarSnapshot�
 | ExternalActionOutbox | 任務元件提出操作；MC 接收生產端回覆 | DcsBridge 合併傳送；SM 查詢要求完成 |
 | RadarRequests | Targeting 提出，MC 發布 | RadarSystem |
 | RadarSnapshot | RadarSystem | MC／Targeting、DcsBridge |
+| DisplaySnapshot | 與 MC 並列的 DisplaySystem | MC／SensorOfInterest、診斷 |
+| SensorOfInterestSnapshot | SensorOfInterest | MC 的 TMS 分派、輸出投影與診斷 |
 | ExecutiveTables | Executive | 排程診斷 |
 | SystemStatusTables | 各基礎元件的指定分區 | 預留 |
 
-MC 直接持有七個具型別記憶體物件；FireControlData 保存目標指定、捕獲操作方式、武器使用意圖。
-Core 不知道 DCS ID、座艙參數或顯示格式。`CombatAvionicsSnapshot` 不再包含
+MC 直接持有各功能的具型別資料分區；FireControlData 保存目標指定、捕獲操作方式、武器使用意圖。
+Core 以任務功能識別交換顯示對應；DCS ID、座艙參數與符號繪製由對外介面處理。`CombatAvionicsSnapshot` 不再包含
 最終 weapon_display；改為任務／掛載／火控資料及 `control_inputs`。
 輸入序號與外部動作序號獨立；前者只表示操作順序，後者仍用於執行確認。
 
@@ -182,3 +186,9 @@ Lua 5.1 執行實際 HMCS／介面／輸入設定，並以 8,192 幀原顯示規
 Windows 固定工具鏈的完整驗證與 DLL 產物依重構報告記錄；DCS 遊戲內驗證另行執行。
 
 掛點、原生機砲彈量與指令入口見 [StoresManagement](Components/StoresManagement/README.md)。
+
+## 顯示與控制來源
+
+[DisplaySystem](../DisplaySystem/README.md) 經 SystemPipeline 提供功能對應。MC 透過 SensorOfInterest 管理焦點；Targeting 沿用唯讀 ModeData／RadarSnapshot 及 RadarRequestQueue，顯示依賴集中於 SOI 與 MC 輸入分派。
+
+真機來源、固定模式配置、空殼範圍及 debug 欄位見 [感測器操作](../../../../../../docs/MC_SENSOR_CONTROLS.zh-TW.md)。
