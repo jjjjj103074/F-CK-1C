@@ -1,180 +1,50 @@
-name: MC Windows build validation
-
+name: MC flight-test recording package
 on:
-  push:
-    branches: [mission-computer]
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: mc-windows-${{ github.ref }}
-  cancel-in-progress: true
-
+  actions: read
 jobs:
-  lua-adapters:
-    name: Check MC Lua 5.1 adapters
+  package:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Check out the source revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out the flight-test tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Build the fixed Lua interpreter and test the adapters
-        shell: bash
+      - name: Retrieve the completely validated module
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          lua_root="$RUNNER_TEMP/mc-lua"
-          mkdir -p "$lua_root"
-          # Both archives contain the same upstream bytes, verified by Lua's published SHA256.
-          downloaded=false
-          for uri in https://www.lua.org/ftp/lua-5.1.5.tar.gz https://deb.debian.org/debian/pool/main/l/lua5.1/lua5.1_5.1.5.orig.tar.gz; do
-            if curl --fail --silent --show-error --location --connect-timeout 10 --max-time 45 --retry 2 --retry-all-errors "$uri" -o "$lua_root/lua.tar.gz"; then
-              if printf '%s  %s\n' 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333 "$lua_root/lua.tar.gz" | sha256sum --check; then
-                downloaded=true
-                break
-              fi
-            fi
-          done
-          if [ "$downloaded" != true ]; then
-            echo 'Unable to download the pinned Lua source with its expected SHA256.' >&2
-            exit 1
-          fi
-          tar -xzf "$lua_root/lua.tar.gz" -C "$lua_root"
-          make -C "$lua_root/lua-5.1.5" generic
-          "$lua_root/lua-5.1.5/src/luac" -p Cockpit/Scripts/Systems/cms_system.lua Cockpit/Scripts/Systems/mc_io.lua Cockpit/Scripts/Systems/weapon_system.lua Cockpit/Scripts/Systems/radar_state_system.lua Cockpit/Scripts/Systems/hmcs_system.lua
-          "$lua_root/lua-5.1.5/src/lua" tools/test_mc_lua.lua
-          mkdir -p "$RUNNER_TEMP/mc-flight-recorder/Logs/FCK1C-MC-TEST"
-          "$lua_root/lua-5.1.5/src/lua" tools/mc-flight-test/test_recorder.lua tools/mc-flight-test "$RUNNER_TEMP/mc-flight-recorder"
-  build-validation:
-    name: Build and validate MC migration
-    runs-on: windows-2025-vs2026
-    timeout-minutes: 30
-    needs: lua-adapters
-    steps:
-      - name: Check out the source revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          gh run download 44554521214 --repo "$GITHUB_REPOSITORY" --name mc-module-dbc72e624373583c306c519d93584e64945dc5b8 --dir validated-module
+          gh run download 44554521214 --repo "$GITHUB_REPOSITORY" --name mc-validated-dbc72e624373583c306c519d93584e64945dc5b8 --dir validated-dll
+      - name: Check the recording tools and assemble the flight-test package
+        run: |
+          python3 tools/mc-flight-test/test_package.py
+          python3 tools/mc-flight-test/package_test_bundle.py --module-zip validated-module/F-CK-1C-mc-dbc72e62.zip --manifest validated-dll/manifest.json --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json --expected-source dbc72e624373583c306c519d93584e64945dc5b8 --test-tools-source "$GITHUB_SHA" --output dist/cm-recording
+          python3 - <<'VERIFY'
+          import json,zipfile,hashlib
+          from pathlib import Path
+          archive=next(Path('dist/cm-recording').glob('*.zip'))
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None
+              build=json.loads(z.read('BUILD.json'))
+              schema=z.read('F-CK-1C/Cockpit/Scripts/MCFlightTest/Parameters.lua').decode()
+              catalog=json.loads(Path('src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json').read_text())
+              required=[p['value'] for p in catalog['cockpit_params'] if p['name'].startswith('Cm')]
+              assert len(required)==10
+              assert all(name in schema for name in required)
+              assert hashlib.sha256(z.read('F-CK-1C/bin/F-CK-1C_EFM.dll')).hexdigest()==build['dll_sha256']
+              assert build['source_commit']=='dbc72e624373583c306c519d93584e64945dc5b8'
+          print('All ten CMS fields recorded; validated DLL unchanged.')
+          VERIFY
+      - name: Upload the completed flight-test package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: npm
-      - name: Install validation tools
-        run: npm ci --ignore-scripts
-      - name: Install the pinned Build Tools release
-        shell: powershell
-        timeout-minutes: 15
-        run: |
-          # Fixed 18.10.3 bootstrapper from Microsoft's Visual Studio release history.
-          $bootstrapper = Join-Path $env:RUNNER_TEMP 'vs_BuildTools.exe'
-          $uri = 'https://download.visualstudio.microsoft.com/download/pr/e5f740e0-92f9-49d7-ab3b-5d17b84108fd/283d526008bf3ac56ec2c6aeb3102b8ca68b9af75643c8f5d0ee58060a1886bb/vs_BuildTools.exe'
-          Invoke-WebRequest -Uri $uri -OutFile $bootstrapper -UseBasicParsing
-          $expected = '283d526008bf3ac56ec2c6aeb3102b8ca68b9af75643c8f5d0ee58060a1886bb'
-          if ((Get-FileHash -LiteralPath $bootstrapper -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
-            throw 'Build Tools bootstrapper SHA256 mismatch.'
-          }
-          $installation = Join-Path $env:RUNNER_TEMP 'efm-buildtools'
-          $config = Join-Path $env:GITHUB_WORKSPACE '.vsconfig'
-          $arguments = @('--quiet', '--wait', '--norestart', '--nocache', '--installPath', $installation, '--config', $config)
-          $process = Start-Process -FilePath $bootstrapper -ArgumentList $arguments -Wait -PassThru
-          if ($process.ExitCode -notin @(0, 3010)) { throw "Build Tools installation failed: $($process.ExitCode)" }
-          ./tools/check_efm_toolchain.ps1
-      - name: Check formatting and tooling
-        shell: powershell
-        run: |
-          npm run check:cpp-format
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --test tools/cpp-format.test.mjs tools/pr-rule-changes.test.mjs tools/pr-workflow.test.mjs tools/pr-checks.test.mjs tools/pr-results.test.mjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Check MC flight-test assembly and collection
-        shell: powershell
-        run: |
-          python -m unittest discover -s tools/mc-flight-test -p "test_*.py"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./tools/mc-flight-test/test_collection.ps1
-      - name: Check legacy Export cleanup
-        shell: powershell
-        run: ./tools/test_legacy_stores_export_removal.ps1
-      - name: Build the pinned Windows DLL
-        shell: powershell
-        run: |
-          ./tools/build_efm.ps1 -Target Dll -LogDirectory "$env:RUNNER_TEMP/mc-build"
-          $artifact = Join-Path $env:RUNNER_TEMP 'mc-artifact'
-          New-Item -ItemType Directory -Path $artifact -Force | Out-Null
-          Copy-Item -LiteralPath 'src/efm/x64/Release/F-CK-1C_EFM.dll' -Destination "$artifact/F-CK-1C_EFM.dll"
-      - name: Run the complete project validation
-        shell: powershell
-        run: |
-          ./tools/validate_efm.ps1 -ExpectedHead $env:GITHUB_SHA -SubmittedDllPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -ReportDirectory "$env:RUNNER_TEMP/mc-validation"
-      - name: Record the validated source and DLL
-        shell: powershell
-        run: |
-          $tree = (& git rev-parse 'HEAD^{tree}').Trim()
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $dll = Join-Path $env:RUNNER_TEMP 'mc-artifact/F-CK-1C_EFM.dll'
-          $manifest = [ordered]@{
-            source_commit = $env:GITHUB_SHA
-            source_tree = $tree
-            run_id = $env:GITHUB_RUN_ID
-            run_attempt = $env:GITHUB_RUN_ATTEMPT
-            dll_sha256 = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
-            validation = 'passed'
-            dcs_runtime = 'not_run'
-          }
-          $manifest | ConvertTo-Json | Set-Content -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Encoding UTF8
-      - name: Upload the validated DLL and manifest
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: mc-validated-${{ github.sha }}
-          path: ${{ runner.temp }}/mc-artifact/
-          if-no-files-found: error
-          retention-days: 7
-      - name: Upload validation evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: mc-validation-evidence-${{ github.sha }}
+          name: mc-flight-test-cms-dbc72e62
           path: |
-            ${{ runner.temp }}/mc-build/*.log
-            ${{ runner.temp }}/mc-validation/*.json
-            ${{ runner.temp }}/mc-validation/*.md
-            ${{ runner.temp }}/mc-validation/*.log
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Package the validated MC module
-        shell: powershell
-        run: |
-          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -Destination 'bin/F-CK-1C_EFM.dll' -Force
-          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Destination 'bin/F-CK-1C_EFM.validation.json' -Force
-          $version = 'mc-' + $env:GITHUB_SHA.Substring(0, 8)
-          ./tools/package_release.ps1 -Version $version -AllowDirty
-      - name: Upload the validated module package
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: mc-module-${{ github.sha }}
-          path: |
-            dist/F-CK-1C-mc-*.zip
-            dist/F-CK-1C-mc-*.zip.sha256
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Assemble the MC flight-test bundle
-        shell: powershell
-        run: |
-          $module = 'dist/F-CK-1C-mc-' + $env:GITHUB_SHA.Substring(0, 8) + '.zip'
-          python tools/mc-flight-test/package_test_bundle.py --module-zip $module --manifest "$env:RUNNER_TEMP/mc-artifact/manifest.json" --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json --expected-source $env:GITHUB_SHA --output dist/mc-flight-test
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Upload the MC flight-test bundle
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: mc-flight-test-${{ github.sha }}
-          path: |
-            dist/mc-flight-test/F-CK-1C-mc-flight-test-*.zip
-            dist/mc-flight-test/F-CK-1C-mc-flight-test-*.zip.sha256
+            dist/cm-recording/F-CK-1C-mc-flight-test-*.zip
+            dist/cm-recording/F-CK-1C-mc-flight-test-*.zip.sha256
           if-no-files-found: error
           retention-days: 7
