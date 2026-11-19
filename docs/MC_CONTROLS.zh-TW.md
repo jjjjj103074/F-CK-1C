@@ -9,7 +9,7 @@
 | MSL STEP | Q：短按同型輪站，按住達 0.5 秒切換武器型別 |
 | 主保險 ON／OFF／SIM | 右 Ctrl＋M／右 Shift＋M／右 Alt＋M |
 | 扳機第一段／第二段 | 左 Alt＋Space／Space |
-| 解籠／投放 | 右 Alt＋右 Shift＋M（按住）／右 Alt＋Space |
+| 解籠／投放 | C（按一下切換）／右 Alt＋Space |
 | TMS 上／下／左／右 | I／K／J／L |
 | DMS 上／下／左／右 | 右 Shift＋I／K／J／L |
 | Debug Indicator（測試包） | 右 Ctrl＋右 Shift＋F12 |
@@ -17,11 +17,14 @@
 
 三段超控各自選定開關位置；放開按鍵後保持選定位置。CENTER 恢復保存的主模式。
 一般 A-A／A-G 重按回 NAV；超控期間保存原主模式。保險獨立。
-第一段扳機入口保留，第二段延續機砲使用。解籠、投放與 CMS 延續原有操作規則；TMS／SOI 依 [1997 年真機手冊與功能分工](MC_SENSOR_CONTROLS.zh-TW.md) 執行。
+第一段扳機入口保留，第二段延續機砲使用。解籠以 C 切換 MC 選擇，放開後保存，重新載入任務時為關閉；投放與 CMS 延續原有資格規則；TMS／SOI 依 [1997 年真機手冊與功能分工](MC_SENSOR_CONTROLS.zh-TW.md) 執行。
 
 玩家控制表使用 MC 語意入口；輸入轉接同時過濾繼承設定中的原生模式、武器循環、
 捕獲、發射超控與反制施放入口。原生 ID 與 DcsBridge 作動映射繼續服務內部操作。
 IRST 與手動音效測試列於 Developer Tools。機砲／投放的原生輸入別名轉接至 MC。
+
+UNCAGE=1 表示駕駛已選取解籠；再次按 C 回到 0。這是 MC 的操作選擇，實際 IR 鎖定由獨立來源回報。
+目前發射資格為 ON＋空戰模式＋UNCAGE=1；機砲新開始資格為 ON＋DGFT＋UNCAGE=0。
 
 ## MSL STEP 的處理
 

@@ -477,7 +477,7 @@ struct FireControlSnapshot
 	bool gun_fire_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
-	bool missile_uncage_held = false; ///< 駕駛的解籠操作意圖。
+	bool missile_uncage_selected = false; ///< 駕駛選取的解籠狀態。
 	TargetDesignationSnapshot target_designation;
 };
 

@@ -1,6 +1,6 @@
 # MC 完整實機測試流程
 
-本輪先做 D01～D07 與 T01～T11，只需任務 A、B。其餘項目供既有 MC 功能回歸。每項回報異常代號與實際情況；未測項目另列。
+本輪先做任務 B 的 K01：按 C 後獨立投放一枚 AIM-9。接著可測 T08 的切換與長按，以及 W11 的關閉後阻擋；其餘項目供既有 MC 功能回歸。
 
 ## 安裝與開始
 
@@ -27,7 +27,7 @@ SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查�
 ## 面板怎麼看
 
 - MC=1 表示 MC 快照可用；GEN 持續增加。ARM：0=SAFE、1=SIM、2=ON；MODE：0=NAV、1=DGF、2=MSL、3=A-A、4=A-G。
-- SUB：0=---、1=HMD、2=VS、3=HUD、4=BVR。UNCAGE、TRIG 分別為解籠與第二段扳機的 MC 按住狀態。
+- SUB：0=---、1=HMD、2=VS、3=HUD、4=BVR。UNCAGE 是 MC 保存的解籠選擇，按 C 在 0／1 間切換；TRIG 是第二段扳機的按住狀態。
 - GUN OK／AAM OK=1 時，旁邊的 GUN／AAM 是有效存量；GUN 是原生實際存量。DGF 的 WPN 顯示 AAM 並不阻擋機砲。
 - SEL 是 Lua 最近完成選站呼叫的紀錄：0 RT、1 RO、2 RI、3 MM、4 MF、5 MB、6 LI、7 LO、8 LT；-1 表示邏輯選擇為空。實際選站以離架掛點再核對。
 - RDR 是 DCS 原始雷達模式；RDR=3 且 STT 為正距離表示來源回報單目標追蹤。這版 HMCS 中央圈是固定瞄準圖形，用右上數值確認追蹤。
@@ -36,7 +36,7 @@ SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查�
 
 ## C++ 反制驗證
 
-先做 A 的 N01–N09，再繼續原本 69 項 MC 測試。四個原生測試鍵已在本包綁定；原有鍵位保持。使用同一個記錄器與結果收集器。
+N01–N09 是可選的既有反制回歸項目。四個原生測試鍵已在本包綁定，與本輪解籠測試使用同一個記錄器與結果收集器。
 
 STAT：1=就緒、2=排隊、3=原生呼叫返回、4=Analog 放開返回、5=保險阻擋、6=具名入口缺少、7=呼叫失敗、8=離開任務、9=佇列已滿。數字 3／4 代表呼叫返回；實際成功還要看 FLR／CHF 減少及離機效果。
 
@@ -53,7 +53,7 @@ STAT：1=就緒、2=排隊、3=原生呼叫返回、4=Analog 放開返回、5=�
 | MSL STEP 短按／長按 | Q：短按同型輪站；按住達 0.5 秒換型 |
 | 保險 ON／OFF／SIM | 右 Ctrl＋M／右 Shift＋M／右 Alt＋M |
 | 第一段扳機／機砲 | 左 Alt＋Space／Space |
-| Uncage（按住）／投放 | 右 Alt＋右 Shift＋M／右 Alt＋Space |
+| 解籠切換／投放 | C（再按一次關閉）／右 Alt＋Space |
 | TMS 上／下／左／右 | I／K／J／L |
 | DMS 上／下／左／右 | 右 Shift＋I／K／J／L |
 | 標準 Debug Indicator | 右 Ctrl＋右 Shift＋F12 |
@@ -64,7 +64,7 @@ STAT：1=就緒、2=排隊、3=原生呼叫返回、4=Analog 放開返回、5=�
 | 地勤通訊／離開任務選單 | 反斜線鍵 \／Esc |
 | 搖桿預設機砲／投放 | JOY_BTN1／JOY_BTN2 |
 
-K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾鍵使投放沒有送達，保留原按鍵並回報 K01；後續依賴同時投放的項目填「按鍵阻擋」。已有獨立搖桿按鈕可照原配置測；純鍵盤的結果不代替獨立停止輸入測試。
+C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨立操作右 Alt＋Space；再次按 C 解除選擇。這個值表示 MC 的駕駛選擇，尋標器鎖定另看 IR OK／LOCK。
 
 ## A：空中空載
 
@@ -286,11 +286,11 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### G06　Uncage 開砲資格
 
-操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M），再按機砲（Space），先放開 Space，再放開 Uncage（右 Alt＋右 Shift＋M）。
+操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按解籠切換（C）使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。
 
 看哪裡：右上 UNCAGE、TRIG、GUN，實際砲火。
 
-正常：UNCAGE=1 時新的機砲開始要求被拒絕；不發射。若 TRIG 完全沒有反應，填「組合鍵未送達」，由 CSV 核對。
+正常：UNCAGE=1 時新的機砲開始要求被拒絕，沒有砲火；第二次按 C 後回到 UNCAGE=0。
 
 ### G07　射擊中切 SAFE
 
@@ -398,7 +398,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### P01　NAV 的武器顯示偏好
 
-操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；短按 Uncage（右 Alt＋右 Shift＋M）並全放開；按住機砲（Space）1 秒後放開；最後再按 超控中央（右 Shift＋D）後按 NAV（1）。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再按 C 回 0；按住機砲（Space）1 秒後放開；最後再按 NAV（1）。
 
 看哪裡：HMCS WPN；右上 GUN、AAM。
 
@@ -526,13 +526,13 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 正常：兩次均為 EXPAND TARGET DATA／RESERVED，保留1997年手冊的資料展開語意；沒有投放或雷達模式切換。
 
-### T08　Uncage 按住與放開
+### T08　解籠切換、長按與放開
 
-操作：按 DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M）4 秒後放開；在 MSL（右 Alt＋D）重做一次。
+操作：按 DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按住 C 約 4 秒後放開，等 1 秒；再點按 C。按 MSL（右 Alt＋D）後重做一次。
 
 看哪裡：右上 UNCAGE、RDR、STT、TX。
 
-正常：UNCAGE 跟隨按住／放開為 1／0；放開後 TX 最終回 0。長按本身沒有每秒重新捕獲，也不發射。
+正常：第一次按下時 UNCAGE 由 0 變 1，長按與放開後維持 1；第二次按下變 0。操作本身不發射，沒有每秒重新捕獲，TX 最終回 0。
 
 ### T09　鎖定後切保險
 
@@ -550,13 +550,13 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 正常：SIM／MSL／BVR 保持；捕獲操作可送出，TX 最終回 0。實際追蹤依 RDR／STT 回報。
 
-### K01　預設發射組合鍵能否同時送達
+### K01　單鍵解籠後發射一枚AIM-9
 
-操作：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M），再點按投放（右 Alt＋Space），先放開 Space，再完整放開 Uncage（右 Alt＋右 Shift＋M）。已有搖桿可用預設投放 JOY_BTN2 代替右 Alt＋Space。
+操作：重新載入 B；按主保險 ON（右 Ctrl＋M），按 A-A（2），等 2 秒。確認 SEL=0、UNCAGE=0；點按 C 並放開，確認 UNCAGE=1；點按右 Alt＋Space 並放開。等 3 秒，再按 C 使 UNCAGE=0。
 
 看哪裡：右上 UNCAGE、AAM、SEL；實際離架；CSV 的投放按下序號。
 
-正常：MC 同時收到 Uncage 與投放時，發出投放操作；離架後 AAM 減少。若只到 Uncage，回報 K01「組合鍵未送達」，先保留其後同時投放用例為阻擋，保持原按鍵。
+正常：放開 C 後 UNCAGE 仍為 1；投放輸入可獨立送到 MC。預期 RT 的 AIM-9X 離架一枚，AAM 從 8 變 7；投放放開後停止，TX 最終回 0。記下實際離架數量；本項只確認離架，不驗收導引或命中。
 
 ### W01　沒有 Uncage 的投放
 
@@ -568,15 +568,15 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W02　SAFE／SIM 投放資格
 
-操作：按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；再按 SIM（右 Alt＋M），重做同組 Uncage 與投放（右 Alt＋右 Shift＋M；右 Alt＋Space）。
+操作：按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；按 SIM（右 Alt＋M），再點按投放（右 Alt＋Space）。最後按 C 使 UNCAGE=0。
 
 看哪裡：SYS、實際離架、AAM；CSV。
 
-正常：SAFE、SIM 均不離架，AAM 不減；投放輸入未送達的情況依 K01 記阻擋。
+正常：SAFE、SIM 均不離架，AAM 不減。
 
 ### W03　NAV 投放資格
 
-操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
 
 看哪裡：MODE、實際離架、AAM；CSV。
 
@@ -584,7 +584,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W04　MSL 短按發射與自動換站
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；等 3 秒。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0；等 3 秒。
 
 看哪裡：實際離架位置、右上 AAM／SEL／TX。
 
@@ -592,7 +592,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W05　指定掛點的發射
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；再按 MSL（右 Alt＋D）兩次，等 SEL=2。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；按住 Q 至少 0.5 秒再放開一次，等 SEL=2。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
 
 看哪裡：右上 SEL=2；外部 RI 的 AIM-7P；AAM。
 
@@ -600,7 +600,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W06　另一種空對空飛彈
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；再按 MSL（右 Alt＋D）三次，等 SEL=4。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；連續兩次各按住 Q 至少 0.5 秒後放開，等 SEL=4。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
 
 看哪裡：MF 的 AIM-120C 離架、右上 AAM／SEL。
 
@@ -608,7 +608,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W07　DGFT 飛彈發射
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
 
 看哪裡：實際 RT 離架、右上 AAM／SEL／TX。
 
@@ -616,7 +616,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W08　長按投放後放開
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M）及投放（右 Alt＋Space）1 秒，先放開 Space，再放開 Uncage（右 Alt＋右 Shift＋M），等 3 秒。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再按住投放（右 Alt＋Space）1 秒後放開，等 3 秒；最後按 C 使 UNCAGE=0。
 
 看哪裡：每枚實際離架、右上 AAM／SEL／TX。
 
@@ -624,7 +624,7 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W09　快速選站後投放
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即再按 MSL（右 Alt＋D）一次；接著按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即短按並放開 Q 一次；接著點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
 
 看哪裡：實際離架掛點、右上 SEL／AAM／TX；CSV。
 
@@ -632,31 +632,31 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### W10　飛彈耗盡
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；重複「按住 Uncage（右 Alt＋右 Shift＋M）→點按投放（右 Alt＋Space）→全放開→等 2 秒」，直到全部離架；最後再重做一次。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1。重複「點按並放開投放（右 Alt＋Space）→等 2 秒」，直到全部離架；最後再投放一次，再按 C 使 UNCAGE=0。
 
 看哪裡：每次實際離架、右上 AAM／SEL、HMCS。
 
 正常：AAM 跟隨實際剩餘量降至 0，SEL=-1；再次投放沒有新離架，已用完彈量保持 0。
 
-### W11　Uncage 放開後投放
+### W11　關閉解籠選擇後投放
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；短按並放開 Uncage（右 Alt＋右 Shift＋M），確認 UNCAGE=0，再點按投放（右 Alt＋Space）。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、A-A（2）；點按 C，確認 UNCAGE=1，再點按 C，確認 UNCAGE=0；點按投放（右 Alt＋Space）。
 
 看哪裡：UNCAGE、實際離架、AAM。
 
-正常：放開後新的投放要求被拒絕，沒有離架。
+正常：第二次按 C 後 UNCAGE=0，新的投放要求被拒絕，沒有離架，AAM 保持 8。
 
 ### W12　投放中切 SAFE／SIM（已有獨立控制時）
 
-操作：已有可同時操作的搖桿按鈕時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），按住原有 Uncage 按鈕與預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開搖桿按鈕。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。
+操作：有搖桿時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），點按 C 使 UNCAGE=1，再按住預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開 JOY_BTN2。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。
 
 看哪裡：實際離架、SYS、AAM；CSV。
 
-正常：OFF／SIM 後停止後續投放，恢復 ON 不自行續發。純鍵盤無法獨立維持這組按住輸入時，填「按鍵阻擋」；工程回歸另覆蓋這條停止路徑。
+正常：OFF／SIM 後停止後續投放，恢復 ON 不自行續發。沒有獨立投放按鈕時填「無此設備」；工程回歸另覆蓋這條停止路徑。
 
 ### I01　來源 IR 鎖定音
 
-操作：重新載入 B；在 B 對準前方飛機並接近至約 1–3 km；按 MSL（右 Alt＋D），按住 Uncage（右 Alt＋右 Shift＋M）約 4 秒再放開。
+操作：重新載入 B；對準前方飛機並接近至約 1–3 km；按 MSL（右 Alt＋D），點按 C 使 UNCAGE=1，觀察 4 秒，再按 C 使 UNCAGE=0。
 
 看哪裡：右上 IR OK、LOCK；實際耳機聲音。
 
@@ -680,15 +680,15 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 ### L04　射擊／投放後重入與全重啟
 
-操作：完成一次機砲（Space）或投放（Uncage：右 Alt＋右 Shift＋M；投放：右 Alt＋Space）後，按 Esc 並用滑鼠離開；放開按鍵，再進 B。最後完全關閉並重開 DCS，再進 B。
+操作：完成一次機砲（Space）或投放（先按 C；再點按右 Alt＋Space）後，按 Esc 並用滑鼠離開；再進 B。最後完全關閉並重開 DCS，再進 B。
 
 看哪裡：機上八枚 AAM、初始機砲量、SYS／MODE、TX。
 
-正常：每次都依新任務初始化，不帶入上次耗彈、選站或按住狀態，沒有自動發射。
+正常：每次都依新任務初始化，UNCAGE=0；彈量與選站依新任務設定，沒有自動發射。
 
 ### L05　既有搖桿入口（有搖桿時）
 
-操作：使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、Uncage（右 Alt＋右 Shift＋M）、TMS（Enter／Backspace／-／=）、CMS（右 Alt＋Delete／Home／Insert／End／PgDn）。
+操作：使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、解籠切換（C）、TMS（I／K／J／L）、CMS（右 Alt＋Delete／Home／Insert／End／PgDn）。
 
 看哪裡：相同功能的實際效果、放開停止與 CSV。
 
@@ -782,6 +782,6 @@ K01 先確認預設 Uncage 與投放組合能同時送到 MC。若多個修飾�
 
 目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。
 
-本輪刻意保留的行為：保險與主模式獨立；機砲僅在 ON＋DGF＋未按 Uncage 時接受新開始；AAM 投放在 ON＋空戰模式＋Uncage 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。
+本輪刻意保留的行為：保險與主模式獨立；機砲僅在 ON＋DGF＋UNCAGE=0 時接受新開始；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。
 
 來源 commit、DLL SHA256 與 Windows CI 位於測試包根目錄 BUILD.json；實機項目在收到你的回報前維持未驗證。

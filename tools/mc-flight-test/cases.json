@@ -246,9 +246,9 @@
     "id": "G06",
     "scenario": "A",
     "title": "Uncage 開砲資格",
-    "action": "按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M），再按機砲（Space），先放開 Space，再放開 Uncage（右 Alt＋右 Shift＋M）。",
+    "action": "按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按解籠切換（C）使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。",
     "look": "右上 UNCAGE、TRIG、GUN，實際砲火。",
-    "normal": "UNCAGE=1 時新的機砲開始要求被拒絕；不發射。若 TRIG 完全沒有反應，填「組合鍵未送達」，由 CSV 核對。",
+    "normal": "UNCAGE=1 時新的機砲開始要求被拒絕，沒有砲火；第二次按 C 後回到 UNCAGE=0。",
     "coverage": "WeaponOperation uncage gate / input overlap"
   },
   {
@@ -389,10 +389,10 @@
   {
     "id": "T08",
     "scenario": "B",
-    "title": "Uncage 按住與放開",
-    "action": "按 DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M）4 秒後放開；在 MSL（右 Alt＋D）重做一次。",
+    "title": "解籠切換、長按與放開",
+    "action": "按 DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按住 C 約 4 秒後放開，等 1 秒；再點按 C。按 MSL（右 Alt＋D）後重做一次。",
     "look": "右上 UNCAGE、RDR、STT、TX。",
-    "normal": "UNCAGE 跟隨按住／放開為 1／0；放開後 TX 最終回 0。長按本身沒有每秒重新捕獲，也不發射。",
+    "normal": "第一次按下時 UNCAGE 由 0 變 1，長按與放開後維持 1；第二次按下變 0。操作本身不發射，沒有每秒重新捕獲，TX 最終回 0。",
     "coverage": "Targeting uncage coordination / removed retry loop"
   },
   {
@@ -416,10 +416,10 @@
   {
     "id": "K01",
     "scenario": "B",
-    "title": "預設發射組合鍵能否同時送達",
-    "action": "按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M），再點按投放（右 Alt＋Space），先放開 Space，再完整放開 Uncage（右 Alt＋右 Shift＋M）。已有搖桿可用預設投放 JOY_BTN2 代替右 Alt＋Space。",
+    "title": "單鍵解籠後發射一枚AIM-9",
+    "action": "重新載入 B；按主保險 ON（右 Ctrl＋M），按 A-A（2），等 2 秒。確認 SEL=0、UNCAGE=0；點按 C 並放開，確認 UNCAGE=1；點按右 Alt＋Space 並放開。等 3 秒，再按 C 使 UNCAGE=0。",
     "look": "右上 UNCAGE、AAM、SEL；實際離架；CSV 的投放按下序號。",
-    "normal": "MC 同時收到 Uncage 與投放時，發出投放操作；離架後 AAM 減少。若只到 Uncage，回報 K01「組合鍵未送達」，先保留其後同時投放用例為阻擋，保持原按鍵。",
+    "normal": "放開 C 後 UNCAGE 仍為 1；投放輸入可獨立送到 MC。預期 RT 的 AIM-9X 離架一枚，AAM 從 8 變 7；投放放開後停止，TX 最終回 0。記下實際離架數量；本項只確認離架，不驗收導引或命中。",
     "coverage": "Default binding overlap / MC input routing"
   },
   {
@@ -435,16 +435,16 @@
     "id": "W02",
     "scenario": "B",
     "title": "SAFE／SIM 投放資格",
-    "action": "按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；再按 SIM（右 Alt＋M），重做同組 Uncage 與投放（右 Alt＋右 Shift＋M；右 Alt＋Space）。",
+    "action": "按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；按 SIM（右 Alt＋M），再點按投放（右 Alt＋Space）。最後按 C 使 UNCAGE=0。",
     "look": "SYS、實際離架、AAM；CSV。",
-    "normal": "SAFE、SIM 均不離架，AAM 不減；投放輸入未送達的情況依 K01 記阻擋。",
+    "normal": "SAFE、SIM 均不離架，AAM 不減。",
     "coverage": "WeaponOperation master arm gate"
   },
   {
     "id": "W03",
     "scenario": "B",
     "title": "NAV 投放資格",
-    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。",
+    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
     "look": "MODE、實際離架、AAM；CSV。",
     "normal": "NAV 不離架，AAM 不減；WPN 可以因操作偏好改成 AAM。",
     "coverage": "WeaponOperation NAV gate / presentation separation"
@@ -453,7 +453,7 @@
     "id": "W04",
     "scenario": "B",
     "title": "MSL 短按發射與自動換站",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開；等 3 秒。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0；等 3 秒。",
     "look": "實際離架位置、右上 AAM／SEL／TX。",
     "normal": "原 RT 離架後 AAM 從 8 變 7，SEL 接續第一個仍有彈候選（RO=1），TX 最終回 0；放開後沒有持續投放。若一次實際離架超過一枚，記下數量與按住時間。",
     "coverage": "SM release / depletion / selection acknowledgment"
@@ -462,7 +462,7 @@
     "id": "W05",
     "scenario": "B",
     "title": "指定掛點的發射",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；再按 MSL（右 Alt＋D）兩次，等 SEL=2。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；按住 Q 至少 0.5 秒再放開一次，等 SEL=2。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
     "look": "右上 SEL=2；外部 RI 的 AIM-7P；AAM。",
     "normal": "發射使用 RI；實際離架與 AAM 減量相符。此項確認選站／投放，飛彈導引效果另外記錄。",
     "coverage": "SM selected station / Fox-1 native release"
@@ -471,7 +471,7 @@
     "id": "W06",
     "scenario": "B",
     "title": "另一種空對空飛彈",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；再按 MSL（右 Alt＋D）三次，等 SEL=4。按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；連續兩次各按住 Q 至少 0.5 秒後放開，等 SEL=4。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
     "look": "MF 的 AIM-120C 離架、右上 AAM／SEL。",
     "normal": "發射使用 MF；數量與實際離架相符。命中率與完整導引不作這輪 MC 驗收依據。",
     "coverage": "SM type-independent selection / Fox-3 native release"
@@ -480,7 +480,7 @@
     "id": "W07",
     "scenario": "B",
     "title": "DGFT 飛彈發射",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
     "look": "實際 RT 離架、右上 AAM／SEL／TX。",
     "normal": "DGFT 可經同一投放入口發射；數量與實際離架相符，放開後停止。",
     "coverage": "WeaponOperation Dogfight release"
@@ -489,7 +489,7 @@
     "id": "W08",
     "scenario": "B",
     "title": "長按投放後放開",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住 Uncage（右 Alt＋右 Shift＋M）及投放（右 Alt＋Space）1 秒，先放開 Space，再放開 Uncage（右 Alt＋右 Shift＋M），等 3 秒。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再按住投放（右 Alt＋Space）1 秒後放開，等 3 秒；最後按 C 使 UNCAGE=0。",
     "look": "每枚實際離架、右上 AAM／SEL／TX。",
     "normal": "數量跟隨實際離架；放開後完成收尾、TX 最終回 0，沒有持續新增離架。長按實際發射幾枚照實記錄。",
     "coverage": "SM release hold / release-end targeting continuation"
@@ -498,7 +498,7 @@
     "id": "W09",
     "scenario": "B",
     "title": "快速選站後投放",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即再按 MSL（右 Alt＋D）一次；接著按住 Uncage（右 Alt＋右 Shift＋M），點按投放（右 Alt＋Space），全放開。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即短按並放開 Q 一次；接著點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
     "look": "實際離架掛點、右上 SEL／AAM／TX；CSV。",
     "normal": "最後選擇 RO=1；投放先等選站執行，再使用 RO，放開後沒有卡住。",
     "coverage": "DcsBridge merge ordering / station barrier"
@@ -507,7 +507,7 @@
     "id": "W10",
     "scenario": "B",
     "title": "飛彈耗盡",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；重複「按住 Uncage（右 Alt＋右 Shift＋M）→點按投放（右 Alt＋Space）→全放開→等 2 秒」，直到全部離架；最後再重做一次。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1。重複「點按並放開投放（右 Alt＋Space）→等 2 秒」，直到全部離架；最後再投放一次，再按 C 使 UNCAGE=0。",
     "look": "每次實際離架、右上 AAM／SEL、HMCS。",
     "normal": "AAM 跟隨實際剩餘量降至 0，SEL=-1；再次投放沒有新離架，已用完彈量保持 0。",
     "coverage": "SM inventory zero / automatic reselection"
@@ -515,19 +515,19 @@
   {
     "id": "W11",
     "scenario": "B",
-    "title": "Uncage 放開後投放",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；短按並放開 Uncage（右 Alt＋右 Shift＋M），確認 UNCAGE=0，再點按投放（右 Alt＋Space）。",
+    "title": "關閉解籠選擇後投放",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、A-A（2）；點按 C，確認 UNCAGE=1，再點按 C，確認 UNCAGE=0；點按投放（右 Alt＋Space）。",
     "look": "UNCAGE、實際離架、AAM。",
-    "normal": "放開後新的投放要求被拒絕，沒有離架。",
+    "normal": "第二次按 C 後 UNCAGE=0，新的投放要求被拒絕，沒有離架，AAM 保持 8。",
     "coverage": "WeaponOperation input state"
   },
   {
     "id": "W12",
     "scenario": "B",
     "title": "投放中切 SAFE／SIM（已有獨立控制時）",
-    "action": "已有可同時操作的搖桿按鈕時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），按住原有 Uncage 按鈕與預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開搖桿按鈕。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。",
+    "action": "有搖桿時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），點按 C 使 UNCAGE=1，再按住預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開 JOY_BTN2。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。",
     "look": "實際離架、SYS、AAM；CSV。",
-    "normal": "OFF／SIM 後停止後續投放，恢復 ON 不自行續發。純鍵盤無法獨立維持這組按住輸入時，填「按鍵阻擋」；工程回歸另覆蓋這條停止路徑。",
+    "normal": "OFF／SIM 後停止後續投放，恢復 ON 不自行續發。沒有獨立投放按鈕時填「無此設備」；工程回歸另覆蓋這條停止路徑。",
     "coverage": "SM immediate abort during release"
   },
   {
@@ -606,7 +606,7 @@
     "id": "I01",
     "scenario": "B",
     "title": "來源 IR 鎖定音",
-    "action": "重新載入 B；在 B 對準前方飛機並接近至約 1–3 km；按 MSL（右 Alt＋D），按住 Uncage（右 Alt＋右 Shift＋M）約 4 秒再放開。",
+    "action": "重新載入 B；對準前方飛機並接近至約 1–3 km；按 MSL（右 Alt＋D），點按 C 使 UNCAGE=1，觀察 4 秒，再按 C 使 UNCAGE=0。",
     "look": "右上 IR OK、LOCK；實際耳機聲音。",
     "normal": "IR OK=1 且 LOCK=1 時有鎖定音；有效 LOCK=0 時沒有合成搜索／捕獲音。記下是否出現 LOCK=1，雷達 RDR=3 不代替 IR LOCK。",
     "coverage": "SM global IR observation / cockpit audio"
@@ -633,7 +633,7 @@
     "id": "P01",
     "scenario": "A",
     "title": "NAV 的武器顯示偏好",
-    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；短按 Uncage（右 Alt＋右 Shift＋M）並全放開；按住機砲（Space）1 秒後放開；最後再按 超控中央（右 Shift＋D）後按 NAV（1）。",
+    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再按 C 回 0；按住機砲（Space）1 秒後放開；最後再按 NAV（1）。",
     "look": "HMCS WPN；右上 GUN、AAM。",
     "normal": "起始 GUN；Uncage 後偏好 AAM，機砲按住時 GUN、放開後回 AAM，再按 NAV 回 GUN。整段不射擊。",
     "coverage": "HMCS input observation / rejected input preference"
@@ -750,16 +750,16 @@
     "id": "L04",
     "scenario": "B",
     "title": "射擊／投放後重入與全重啟",
-    "action": "完成一次機砲（Space）或投放（Uncage：右 Alt＋右 Shift＋M；投放：右 Alt＋Space）後，按 Esc 並用滑鼠離開；放開按鍵，再進 B。最後完全關閉並重開 DCS，再進 B。",
+    "action": "完成一次機砲（Space）或投放（先按 C；再點按右 Alt＋Space）後，按 Esc 並用滑鼠離開；再進 B。最後完全關閉並重開 DCS，再進 B。",
     "look": "機上八枚 AAM、初始機砲量、SYS／MODE、TX。",
-    "normal": "每次都依新任務初始化，不帶入上次耗彈、選站或按住狀態，沒有自動發射。",
+    "normal": "每次都依新任務初始化，UNCAGE=0；彈量與選站依新任務設定，沒有自動發射。",
     "coverage": "Full restart / native source rebinding"
   },
   {
     "id": "L05",
     "scenario": "B",
     "title": "既有搖桿入口（有搖桿時）",
-    "action": "使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、Uncage（右 Alt＋右 Shift＋M）、TMS（Enter／Backspace／-／=）、CMS（右 Alt＋Delete／Home／Insert／End／PgDn）。",
+    "action": "使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、解籠切換（C）、TMS（I／K／J／L）、CMS（右 Alt＋Delete／Home／Insert／End／PgDn）。",
     "look": "相同功能的實際效果、放開停止與 CSV。",
     "normal": "同功能經相同 MC 入口處理，放開均能收尾。沒有該實體控制時填「無此設備」。",
     "coverage": "Inherited/native aliases / input routing"

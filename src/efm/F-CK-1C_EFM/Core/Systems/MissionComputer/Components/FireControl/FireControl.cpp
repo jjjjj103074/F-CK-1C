@@ -19,6 +19,10 @@ void FireControl::handle(const Command& command, std::chrono::nanoseconds input_
 {
 	switch (command.id)
 	{
+	case CommandId::ToggleMissileUncage:
+		if (Common::command_value_is_pressed(command.value_normalized))
+			targeting_.on_missile_uncage_selected(weapon_operation_.toggle_missile_uncage());
+		break;
 	case CommandId::SetMissileUncage:
 		weapon_operation_.handle(command, input_time);
 		targeting_.handle(command, input_time);

@@ -81,7 +81,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.mode.override_mode = Core::OverrideMode::Dogfight;
 	mc.mode.operating_mode = Core::OperatingMode::Dogfight;
 	mc.mode.dogfight_mode = true;
-	mc.fire_control.missile_uncage_held = true;
+	mc.fire_control.missile_uncage_selected = true;
 	mc.stores.ir_seeker.status = { true, 12, Core::ObservationInvalidReason::None };
 	mc.stores.ir_seeker.locked = true;
 	mc.stores.ir_seeker.desired_azimuth_rad = 0.1;

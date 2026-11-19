@@ -68,6 +68,7 @@ flowchart TD
 |---|---|
 | NAV／A-A／A-G | 1／2／3 |
 | DGFT／CENTER／MSL OVRD | 右 Ctrl＋D／右 Shift＋D／右 Alt＋D |
+| 解籠切換／投放 | C／右 Alt＋Space |
 | TMS 上／下／左／右 | I／K／J／L |
 | DMS 上／下／左／右 | 右 Shift＋I／K／J／L |
 | Debug Indicator（測試包） | 右 Ctrl＋右 Shift＋F12 |

@@ -633,7 +633,7 @@ do
     create_sound_host = nil
 end
 
--- Execute both real DCS input profiles: every MC/HOTAS binding reaches EFM with both edges.
+-- Execute both real DCS input profiles and verify each control's input edges.
 for name, value in pairs(dcs_commands) do
     _G[name] = value
 end
@@ -668,7 +668,7 @@ external_profile = function()
             },
             {
                 down = 999003, name = "Inherited Sensor Keys",
-                combos = { { key = "I" }, { key = "I", reformers = { "RShift" } }, { key = "I", reformers = { "LShift" } }, { key = "X" } },
+                combos = { { key = "C" }, { key = "I" }, { key = "I", reformers = { "RShift" } }, { key = "I", reformers = { "LShift" } }, { key = "X" } },
             },
         },
         axisCommands = {},
@@ -726,13 +726,19 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         for _, binding in ipairs(bindings.keyCommands) do
             if binding.down == device_commands[name] then
                 matches = matches + 1
-                expect(
-                    binding.cockpit_device_id == nil
-                        and binding.up == binding.down
-                        and binding.value_down == 1
-                        and binding.value_up == 0,
-                    profile .. ": MC command must reach EFM with press/release: " .. name
-                )
+                if name == "MissileUncage" then
+                    expect(binding.cockpit_device_id == nil and binding.value_down == 1
+                        and binding.up == nil and binding.pressed == nil,
+                        profile .. ": uncage toggle sends one press without held repeats or release")
+                else
+                    expect(
+                        binding.cockpit_device_id == nil
+                            and binding.up == binding.down
+                            and binding.value_down == 1
+                            and binding.value_up == 0,
+                        profile .. ": MC command must reach EFM with press/release: " .. name
+                    )
+                end
             end
         end
         expect(matches == 1, profile .. ": expected one MC command after merging aliases: " .. name)
@@ -747,7 +753,7 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         if dcs_commands[name] then forbidden[dcs_commands[name]] = true end
     end
     if profile == "keyboard" then
-        local expected = { ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep", ["I"] = "TMSUp", ["K"] = "TMSDown", ["J"] = "TMSLeft", ["L"] = "TMSRight", ["RShift+I"] = "DMSUp", ["RShift+K"] = "DMSDown", ["RShift+J"] = "DMSLeft", ["RShift+L"] = "DMSRight" }
+        local expected = { ["C"] = "MissileUncage", ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep", ["I"] = "TMSUp", ["K"] = "TMSDown", ["J"] = "TMSLeft", ["L"] = "TMSRight", ["RShift+I"] = "DMSUp", ["RShift+K"] = "DMSDown", ["RShift+J"] = "DMSLeft", ["RShift+L"] = "DMSRight" }
         local found = {}
         for _, binding in ipairs(bindings.keyCommands) do
             for _, combo in ipairs(binding.combos or {}) do

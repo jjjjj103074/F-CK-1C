@@ -104,10 +104,10 @@ return function(bindings, commands, native_commands)
         end
     end
 
-    -- 共用設定中相同的預設組合交給 TMS／DMS，其他組合沿用原動作。
-    local sensor_inputs = {}
-    for _, name in ipairs({ "TMSUp", "TMSDown", "TMSLeft", "TMSRight", "DMSUp", "DMSDown", "DMSLeft", "DMSRight" }) do
-        sensor_inputs[commands[name]] = true
+    -- 共用設定中相同的預設組合交給感測器與解籠控制，其他組合沿用原動作。
+    local owned_inputs = {}
+    for _, name in ipairs({ "TMSUp", "TMSDown", "TMSLeft", "TMSRight", "DMSUp", "DMSDown", "DMSLeft", "DMSRight", "MissileUncage" }) do
+        owned_inputs[commands[name]] = true
     end
     local function combo_key(combo)
         local modifiers = {}
@@ -117,12 +117,12 @@ return function(bindings, commands, native_commands)
     end
     local owned_combos = {}
     for _, binding in ipairs(bindings) do
-        if sensor_inputs[binding.down] then
+        if owned_inputs[binding.down] then
             for _, combo in ipairs(binding.combos or {}) do owned_combos[combo_key(combo)] = true end
         end
     end
     for _, binding in ipairs(bindings) do
-        if not sensor_inputs[binding.down] then
+        if not owned_inputs[binding.down] then
             for index = #(binding.combos or {}), 1, -1 do
                 if owned_combos[combo_key(binding.combos[index])] then table.remove(binding.combos, index) end
             end

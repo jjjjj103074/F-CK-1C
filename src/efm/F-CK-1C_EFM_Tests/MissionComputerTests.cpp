@@ -725,7 +725,7 @@ void test_uncage_hold_waits_for_an_explicit_target_request(Tests::Context& conte
 		stations.selection_ack_revision = output.state.stores.selection.request_revision;
 	}
 	TEST_EXPECT(context, captures == 0 && changes == 0);
-	TEST_EXPECT(context, output.state.fire_control.missile_uncage_held);
+	TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected);
 	TEST_EXPECT(context, !output.state.fire_control.target_designation.requested);
 	fixture.send(CommandId::SetTmsUp);
 	fixture.send(CommandId::SetTmsUp, 0.0);
@@ -793,7 +793,7 @@ void test_global_ir_observation_is_independent_from_fire_control_intent(Tests::C
 			TEST_EXPECT(context, output.state.stores.ir_seeker.status.revision == 42);
 			TEST_EXPECT(context, !output.state.stores.ir_seeker.locked);
 			TEST_EXPECT(context, output.state.stores.air_to_air_missile_count == 0);
-			TEST_EXPECT(context, output.state.fire_control.missile_uncage_held);
+			TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected);
 			ir.locked = true;
 			ir.status.revision = 44;
 			output = fixture.step(kMissionPeriod * 2);
@@ -1243,6 +1243,76 @@ void test_missile_step_hold_uses_input_time_and_cancels_on_mode_change(Tests::Co
 	TEST_EXPECT(context, output.state.stores.selection.requested_station == 2);
 }
 
+void test_uncage_toggle_persists_and_keeps_weapon_qualification(Tests::Context& context)
+{
+	MissionFixture f;
+	auto& stations = f.frame.cockpit.weapon_stations;
+	stations.stations[0] = { StoreConfiguration::Equipped, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "aim9" };
+	f.send(CommandId::SetMasterArmOn);
+	f.send(CommandId::SelectAirToAirMode);
+	auto advance = [&](int tick)
+	{
+		auto output = f.step(kMissionPeriod * tick);
+		if (output.actions.count)
+			f.frame.cockpit.mission_adapter.acknowledged_sequence =
+			    output.actions.first_sequence + output.actions.count - 1;
+		stations.selected_station = output.state.stores.selection.requested_station;
+		stations.selection_ack_revision = output.state.stores.selection.request_revision;
+		stations.status.revision += 2;
+		return output;
+	};
+	for (int tick = 1; tick <= 8; ++tick)
+		advance(tick);
+	f.send(CommandId::SetWeaponRelease);
+	auto output = advance(9);
+	TEST_EXPECT(context, !output.state.fire_control.missile_uncage_selected);
+	TEST_EXPECT(context, !output.state.fire_control.pickle_requested);
+	f.send(CommandId::SetWeaponRelease, 0.0);
+	f.send(CommandId::ToggleMissileUncage);
+	output = advance(10);
+	TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected);
+	TEST_EXPECT(context, output.state.control_inputs.missile_uncage_press_sequence != 0);
+	f.send(CommandId::ToggleMissileUncage, 0.0);
+	output = advance(11);
+	TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected);
+	for (int tick = 12; tick <= 20; ++tick)
+		output = advance(tick);
+	TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected);
+	TEST_EXPECT(context, !output.state.fire_control.target_designation.requested);
+	f.send(CommandId::SetWeaponRelease);
+	output = advance(21);
+	TEST_EXPECT(context, output.state.fire_control.pickle_requested);
+	f.send(CommandId::SetWeaponRelease, 0.0);
+	for (int tick = 22; tick <= 32; ++tick)
+		output = advance(tick);
+	TEST_EXPECT(context, !output.state.fire_control.pickle_requested);
+	TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected);
+	f.send(CommandId::ToggleMissileUncage);
+	output = advance(33);
+	TEST_EXPECT(context, !output.state.fire_control.missile_uncage_selected);
+	f.send(CommandId::SetWeaponRelease);
+	output = advance(34);
+	TEST_EXPECT(context, !output.state.fire_control.pickle_requested);
+	MissionFixture fresh;
+	TEST_EXPECT(context, !fresh.step(kMissionPeriod).state.fire_control.missile_uncage_selected);
+}
+
+void test_uncage_toggle_retains_fifo_order_and_master_arm_gate(Tests::Context& context)
+{
+	MissionFixture f;
+	f.send(CommandId::SetMasterArmOff);
+	f.send(CommandId::ToggleMissileUncage);
+	f.send(CommandId::ToggleMissileUncage);
+	TEST_EXPECT(context, !f.step(kMissionPeriod).state.fire_control.missile_uncage_selected);
+	f.send(CommandId::ToggleMissileUncage);
+	f.send(CommandId::SelectAirToAirMode);
+	f.send(CommandId::SetWeaponRelease);
+	auto output = f.step(kMissionPeriod * 2);
+	TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected);
+	TEST_EXPECT(context, output.state.mode.master_arm_mode == MasterArmMode::Off);
+	TEST_EXPECT(context, !output.state.fire_control.pickle_requested);
+}
+
 void test_ground_mode_is_independent_from_inventory_and_weapon_inputs(Tests::Context& context)
 {
 	MissionFixture f;
@@ -1265,6 +1335,8 @@ void test_ground_mode_is_independent_from_inventory_and_weapon_inputs(Tests::Con
 
 void run_mission_computer_tests(Tests::Context& context)
 {
+	test_uncage_toggle_persists_and_keeps_weapon_qualification(context);
+	test_uncage_toggle_retains_fifo_order_and_master_arm_gate(context);
 	test_master_and_override_state_flow(context);
 	test_missile_step_short_and_hold_use_separate_selection_intents(context);
 	test_missile_step_release_threshold(context);

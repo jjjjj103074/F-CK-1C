@@ -32,7 +32,8 @@ flowchart LR
 
 TargetingData 保存期望的捕獲方式與指定意圖。雷達設備來源的工作模式、幾何及有效性由 RadarSystem 發布，再由 Targeting 整理成目前的目標資料。指定意圖與 STT 觀測各自保存。
 
-解籠操作由 FC 分派給 WeaponOperation 及 Targeting。TMS 依 1997 年手冊處理 CRM／ACM 操作與右向 1 秒長按；設備能力由 RadarSystem 回報。投放前重送模式與投放結束取消指定維持既有分工。
+解籠切換由 WeaponOperation 保存選擇狀態，FC 將更新後的選擇交給 Targeting 接續雷達要求。
+DCS 輸入按一次切換，放開後保存；明確設定介面使用相同狀態。TMS 依 1997 年手冊處理 CRM／ACM 操作與右向 1 秒長按；設備能力由 RadarSystem 回報。投放前重送模式與投放結束取消指定維持既有分工。
 
 操作表、來源與預留功能見 [感測器操作](../../../../../../../../docs/MC_SENSOR_CONTROLS.zh-TW.md)。
 

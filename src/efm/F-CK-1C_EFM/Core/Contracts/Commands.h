@@ -85,7 +85,8 @@ enum class CommandId
 	DecreaseAutopilotSpeed,
 	ToggleThrustCutTest,
 	EnableThrustCutTest,
-	DisableThrustCutTest
+	DisableThrustCutTest,
+	ToggleMissileUncage
 };
 
 struct Command

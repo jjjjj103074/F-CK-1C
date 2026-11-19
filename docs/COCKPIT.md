@@ -102,7 +102,7 @@ SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續�
 
 SM 的全域 IR 觀測包含 lock、要求方向、目標方向與有效性。MissionComputerExporter 在 MC generation 內發布
 McStoresIrSeekerAvailable、Revision、InvalidReason、Lock 及各方向欄位。
-McMissileUncageHeld 表達駕駛操作意圖；McStoresAirToAirMissileCount 表達掛載數量。
+McMissileUncageHeld 沿用既有參數名稱，表達駕駛選取的解籠狀態（C 切換）；McStoresAirToAirMissileCount 表達掛載數量。
 
 HMCS 的武器類別採模式、解籠意圖、有效 lock 與既有操作偏好；數量由 SM 提供。
 aam_audio_system 接受同一份完整快照的有效 lock，播放並維持鎖定音；來源或 MC 不可用、奇數／變動 generation 時停止鎖定音。

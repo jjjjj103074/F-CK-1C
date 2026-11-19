@@ -16,6 +16,8 @@ public:
 	Targeting(const ModeData& mode, const RadarSnapshot& radar, TargetingData& data, RadarRequestQueue& requests);
 	/// @brief 接收已分派的 TMS 與解籠操作，依觀測時間處理按住及放開。
 	void handle(const Command& command, std::chrono::nanoseconds input_time = {});
+	/// @brief 依解籠選擇接續既有的雷達設定與狗鬥取消要求。
+	void on_missile_uncage_selected(bool selected);
 	void on_operating_mode_selected(const OperatingModeSelected& event);
 	void before_weapon_release();
 	void on_weapon_release_ended();

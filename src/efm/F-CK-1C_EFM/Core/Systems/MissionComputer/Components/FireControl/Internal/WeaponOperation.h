@@ -22,6 +22,8 @@ public:
 	                WeaponOperationData& weapon,
 	                StoresCommandQueue& stores_commands);
 	void handle(const Command& command, std::chrono::nanoseconds input_time);
+	/// @brief 切換駕駛的解籠選擇，回傳更新後的選擇狀態。
+	bool toggle_missile_uncage();
 	void stop();
 	/// @brief 結束先前配置的武器使用與掛點切換輸入。
 	void on_mode_changed();

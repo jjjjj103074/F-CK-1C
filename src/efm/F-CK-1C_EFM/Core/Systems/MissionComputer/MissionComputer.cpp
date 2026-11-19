@@ -137,11 +137,9 @@ void MissionComputer::setup(SystemSetup& setup)
 			                                   { Mc::MissionCommandTarget::Countermeasure, command });
 		                               });
 	}
-	const CommandId fire_control_commands[] = { CommandId::SetTriggerFirstStage,
-		                                        CommandId::SetTriggerSecondStage,
-		                                        CommandId::SetWeaponRelease,
-		                                        CommandId::SetMissileUncage,
-		                                        CommandId::SetMissileStep };
+	const CommandId fire_control_commands[] = { CommandId::SetTriggerFirstStage, CommandId::SetTriggerSecondStage,
+		                                        CommandId::SetWeaponRelease,     CommandId::SetMissileUncage,
+		                                        CommandId::ToggleMissileUncage,  CommandId::SetMissileStep };
 	for (CommandId id : fire_control_commands)
 	{
 		setup.register_command_handler(id,
@@ -216,7 +214,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.gun_fire_requested = fire_control_data_.weapon.gun_requested;
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
-	output.fire_control.missile_uncage_held = fire_control_data_.weapon.uncage_held;
+	output.fire_control.missile_uncage_selected = fire_control_data_.weapon.uncage_selected;
 	output.stores.status = output.status;
 	output.stores.inventory = stores_data_.inventory;
 	const auto missiles = Mc::count_missiles(stores_data_.inventory, { WeaponRole::AirToAir, {} });
@@ -331,6 +329,7 @@ void MissionComputer::record_control_input(const Command& command)
 		controls.missile_override_press_sequence = sequence;
 		break;
 	case CommandId::SetMissileUncage:
+	case CommandId::ToggleMissileUncage:
 		controls.missile_uncage_press_sequence = sequence;
 		break;
 	case CommandId::SetWeaponRelease:

@@ -23,12 +23,12 @@ WeaponOperation::WeaponOperation(const ModeData& mode,
 bool WeaponOperation::can_use_gun() const
 {
 	return mode_.master_arm == MasterArmMode::On && mode_.override_mode == OverrideMode::Dogfight &&
-	       !weapon_.uncage_held;
+	       !weapon_.uncage_selected;
 }
 
 bool WeaponOperation::can_release_weapon() const
 {
-	return mode_.master_arm == MasterArmMode::On && mode_.air_to_air() && weapon_.uncage_held;
+	return mode_.master_arm == MasterArmMode::On && mode_.air_to_air() && weapon_.uncage_selected;
 }
 
 void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds input_time)
@@ -37,7 +37,7 @@ void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds in
 	switch (command.id)
 	{
 	case CommandId::SetMissileUncage:
-		weapon_.uncage_held = pressed;
+		weapon_.uncage_selected = pressed;
 		break;
 	case CommandId::SetTriggerSecondStage:
 		handle_gun(pressed);
@@ -51,6 +51,12 @@ void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds in
 	default:
 		break;
 	}
+}
+
+bool WeaponOperation::toggle_missile_uncage()
+{
+	weapon_.uncage_selected = !weapon_.uncage_selected;
+	return weapon_.uncage_selected;
 }
 
 void WeaponOperation::handle_gun(bool pressed)
