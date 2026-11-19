@@ -33,7 +33,7 @@ try {
     $expected = (Get-FileHash -LiteralPath (Join-Path $saved 'Mods\aircraft\F-CK-1C\bin\F-CK-1C_EFM.dll') -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($installed.dll_sha256 -ne $expected) { throw 'Installed DLL hash mismatch.' }
     if (@($installed.missing) -notcontains 'Config\Input\F-CK-1C\joystick') { throw 'Missing optional evidence was not reported.' }
-    $health = @(Get-Content -LiteralPath (Join-Path $result 'recording-health.json') -Raw | ConvertFrom-Json)
+    $health = Get-Content -LiteralPath (Join-Path $result 'recording-health.json') -Raw | ConvertFrom-Json
     if ($health.Count -ne 2 -or $health[0].status -ne 'header_only' -or $health[0].rows -ne 0) { throw 'Empty recorder was not diagnosed.' }
     if ($health[1].status -ne 'samples_present' -or $health[1].rows -ne 1) { throw 'Recorder sample count is incorrect.' }
     Write-Output 'MC flight-test collection fixtures passed.'
