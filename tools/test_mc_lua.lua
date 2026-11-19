@@ -845,4 +845,14 @@ expect(
     release_only[1].cockpit_device_id == nil and release_only[2].cockpit_device_id == nil,
     "release-only input must reach EFM"
 )
+-- 測試包替既有 debug 入口提供預設鍵，保留已指定的其他組合。
+local debug_defaults = { { down = device_commands.DebugIndicatorToggle }, { down = 999888, combos = { { key = "X" } } } }
+dofile("tools/mc-flight-test/NativeCountermeasureKeys.lua")(debug_defaults, device_commands)
+expect(debug_defaults[1].combos[1].key == "F12", "flight-test debug default key")
+expect(table.concat(debug_defaults[1].combos[1].reformers, "+") == "RCtrl+RShift", "flight-test debug modifiers")
+expect(debug_defaults[2].combos[1].key == "X", "flight-test overlay preserves other controls")
+local debug_custom = { { down = device_commands.DebugIndicatorToggle, combos = { { key = "CustomDebug" } } } }
+dofile("tools/mc-flight-test/NativeCountermeasureKeys.lua")(debug_custom, device_commands)
+expect(debug_custom[1].combos[1].key == "CustomDebug", "flight-test overlay preserves explicit debug keys")
+
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))

@@ -1,5 +1,10 @@
--- 為測試包加入原生反制驗證按鍵。
+-- 為測試包加入原生反制驗證與既有 debug 入口的快捷鍵。
 return function(commands, ids)
+    for _, binding in ipairs(commands) do
+        if binding.down == ids.DebugIndicatorToggle and #(binding.combos or {}) == 0 then
+            binding.combos = { { key = "F12", reformers = { "RCtrl", "RShift" } } }
+        end
+    end
     local function bind(key, modifiers, command, label)
         commands[#commands + 1] = {
             combos = { { key = key, reformers = modifiers } },

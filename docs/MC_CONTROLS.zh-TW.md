@@ -12,7 +12,7 @@
 | 解籠／投放 | 右 Alt＋右 Shift＋M（按住）／右 Alt＋Space |
 | TMS 上／下／左／右 | I／K／J／L |
 | DMS 上／下／左／右 | 右 Shift＋I／K／J／L |
-| Debug Indicator | 右 Ctrl＋右 Shift＋F12 |
+| Debug Indicator（測試包） | 右 Ctrl＋右 Shift＋F12 |
 | CMS 前／後／左／右／按壓 | 右 Alt＋Delete／Home／Insert／End／Page Down |
 
 三段超控各自選定開關位置；放開按鍵後保持選定位置。CENTER 恢復保存的主模式。

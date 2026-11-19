@@ -70,7 +70,7 @@ flowchart TD
 | DGFT／CENTER／MSL OVRD | 右 Ctrl＋D／右 Shift＋D／右 Alt＋D |
 | TMS 上／下／左／右 | I／K／J／L |
 | DMS 上／下／左／右 | 右 Shift＋I／K／J／L |
-| Debug Indicator | 右 Ctrl＋右 Shift＋F12 |
+| Debug Indicator（測試包） | 右 Ctrl＋右 Shift＋F12 |
 
 TMS 是指定及資料管理控制；游標移動由獨立的原生游標輸入提供。
 輸入設定會將共用預設中與 TMS／DMS 相同的組合交給本機控制，其餘組合保留。
@@ -123,7 +123,7 @@ TMS 右以本專節的 **1 秒**為界，與 MSL STEP 的 0.5 秒操作分開。
 
 ## Debug Indicator 與紀錄
 
-按 **右 Ctrl＋右 Shift＋F12** 開啟。主要欄位如下：
+測試包自動為既有 debug 入口提供 **右 Ctrl＋右 Shift＋F12**；正式模組維持無預設鍵的 Developer Tools 入口。主要欄位如下：
 
 | 畫面標籤 | 內容 |
 |---|---|
