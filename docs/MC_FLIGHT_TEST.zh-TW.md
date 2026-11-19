@@ -57,8 +57,8 @@ STAT：1=就緒、2=排隊、3=原生呼叫返回、4=Analog 放開返回、5=�
 | TMS 上／下／左／右 | I／K／J／L |
 | DMS 上／下／左／右 | 右 Shift＋I／K／J／L |
 | 標準 Debug Indicator | 右 Ctrl＋右 Shift＋F12 |
-| CMS Forward／Aft／Left | 右 Alt＋Delete／右 Alt＋Home／右 Alt＋Insert |
-| CMS Right／Press | 右 Alt＋End／右 Alt＋PgDn |
+| CMS Forward／Aft／Left | 右 Ctrl＋I／右 Ctrl＋K／右 Ctrl＋J |
+| CMS Right／Press | 右 Ctrl＋L／右 Alt＋PgDn |
 | 手動音效測試 | 右 Shift＋T |
 | 座艙／外部視角 | F1／F2 |
 | 地勤通訊／離開任務選單 | 反斜線鍵 \／Esc |
@@ -134,7 +134,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### N01　原生反制測試準備
 
-操作：按 超控中央（右 Shift＋D）後按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Alt＋End），等待 2 秒。
+操作：按 超控中央（右 Shift＋D）後按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Ctrl＋L），等待 2 秒。
 
 看哪裡：右上 NATIVE、API、CMOBS、FLR、CHF、REQ、CALL。
 
@@ -326,7 +326,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C01　CMS Left 兩組
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Left（右 Alt＋Insert），全放開。按外部視角（F2）觀察，結束後回座艙（F1）。
+操作：按 ON（右 Ctrl＋M）；按 CMS Left（右 Ctrl＋J），全放開。按外部視角（F2）觀察，結束後回座艙（F1）。
 
 看哪裡：機尾反制、dcs.log 的 CMS 紀錄。
 
@@ -334,7 +334,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C02　CMS Aft 七次
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Aft（右 Alt＋Home），全放開；用外部視角（F2）觀察約 5 秒，再回座艙（F1）。
+操作：按 ON（右 Ctrl＋M）；按 CMS Aft（右 Ctrl＋K），全放開；用外部視角（F2）觀察約 5 秒，再回座艙（F1）。
 
 看哪裡：反制釋放；dcs.log。
 
@@ -342,7 +342,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C03　CMS Forward 十組
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Forward（右 Alt＋Delete），全放開；外部視角（F2）觀察約 12 秒，再回座艙（F1）。
+操作：按 ON（右 Ctrl＋M）；按 CMS Forward（右 Ctrl＋I），全放開；外部視角（F2）觀察約 12 秒，再回座艙（F1）。
 
 看哪裡：反制釋放；dcs.log。
 
@@ -350,7 +350,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C04　CMS Right 中止
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Forward（右 Alt＋Delete），等約 2 秒，再按 CMS Right（右 Alt＋End）。
+操作：按 ON（右 Ctrl＋M）；按 CMS Forward（右 Ctrl＋I），等約 2 秒，再按 CMS Right（右 Ctrl＋L）。
 
 看哪裡：外部視角（F2）的反制釋放；dcs.log，結束用 F1 回座艙。
 
@@ -358,7 +358,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C05　OFF／SIM 中止反制
 
-操作：按 ON（右 Ctrl＋M），按 CMS Forward（右 Alt＋Delete），等約 2 秒，快速按 OFF（右 Shift＋M）後再按 ON（右 Ctrl＋M）。重新啟動 CMS Forward（右 Alt＋Delete），約 2 秒後快速按 SIM（右 Alt＋M）再按 ON（右 Ctrl＋M）。
+操作：按 ON（右 Ctrl＋M），按 CMS Forward（右 Ctrl＋I），等約 2 秒，快速按 OFF（右 Shift＋M）後再按 ON（右 Ctrl＋M）。重新啟動 CMS Forward（右 Ctrl＋I），約 2 秒後快速按 SIM（右 Alt＋M）再按 ON（右 Ctrl＋M）。
 
 看哪裡：反制釋放、SYS；dcs.log。
 
@@ -366,7 +366,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C06　SAFE／SIM 的 CMS 啟動
 
-操作：按 OFF（右 Shift＋M），依序按 CMS Forward（右 Alt＋Delete）、Aft（右 Alt＋Home）、Left（右 Alt＋Insert）；再按 SIM（右 Alt＋M），重做這三個按鍵（右 Alt＋Delete／Home／Insert）。
+操作：按 OFF（右 Shift＋M），依序按 CMS Forward（右 Ctrl＋I）、Aft（右 Ctrl＋K）、Left（右 Ctrl＋J）；再按 SIM（右 Alt＋M），重做這三個按鍵（右 Ctrl＋I／K／J）。
 
 看哪裡：反制是否離機、SYS。
 
@@ -374,7 +374,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C07　NAV 可使用 CMS
 
-操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1），按 CMS Left（右 Alt＋Insert）。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1），按 CMS Left（右 Ctrl＋J）。
 
 看哪裡：MODE、實際反制。
 
@@ -382,7 +382,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### C08　反制程序替換與保留入口
 
-操作：按 ON（右 Ctrl＋M），按 CMS Forward（右 Alt＋Delete），約 2 秒後按 CMS Aft（右 Alt＋Home）；結束後按 CMS Press（右 Alt＋PgDn）。
+操作：按 ON（右 Ctrl＋M），按 CMS Forward（右 Ctrl＋I），約 2 秒後按 CMS Aft（右 Ctrl＋K）；結束後按 CMS Press（右 Alt＋PgDn）。
 
 看哪裡：反制序列、dcs.log。
 
@@ -422,7 +422,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### L02　低 FPS 的短按與停止
 
-操作：在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Alt＋Delete），再按 CMS Right（右 Alt＋End）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
+操作：在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Ctrl＋I），再按 CMS Right（右 Ctrl＋L）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：砲火停止、反制中止、最後 MODE／SUB、TX。
 
@@ -430,7 +430,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### L03　任務重入清除
 
-操作：先按 ON（右 Ctrl＋M）、CMS Forward（右 Alt＋Delete）；程序未完成時按 Esc，滑鼠離開任務。放開全部實體按鍵，重新載入 A，等 5 秒。
+操作：先按 ON（右 Ctrl＋M）、CMS Forward（右 Ctrl＋I）；程序未完成時按 Esc，滑鼠離開任務。放開全部實體按鍵，重新載入 A，等 5 秒。
 
 看哪裡：新任務的 MODE／SYS、砲火、反制、右上面板。
 
@@ -672,7 +672,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### L01　快速跨系統操作
 
-操作：按 ON（右 Ctrl＋M）；依序快速點按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、TMS 上（I）、TMS 下（K）、CMS Left（右 Alt＋Insert）、超控中央（右 Shift＋D）後按 NAV（1），每組結束等 2 秒，重做 5 組。
+操作：按 ON（右 Ctrl＋M）；依序快速點按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、TMS 上（I）、TMS 下（K）、CMS Left（右 Ctrl＋J）、超控中央（右 Shift＋D）後按 NAV（1），每組結束等 2 秒，重做 5 組。
 
 看哪裡：最後 MODE／SUB、右上 TX／ACK；實際武器。
 
@@ -688,7 +688,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### L05　既有搖桿入口（有搖桿時）
 
-操作：使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、解籠切換（C）、TMS（I／K／J／L）、CMS（右 Alt＋Delete／Home／Insert／End／PgDn）。
+操作：使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、解籠切換（C）、TMS（I／K／J／L）、CMS（右 Ctrl＋I／K／J／L；按壓為右 Alt＋PgDn）。
 
 看哪裡：相同功能的實際效果、放開停止與 CSV。
 

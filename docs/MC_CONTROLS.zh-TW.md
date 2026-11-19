@@ -13,7 +13,7 @@
 | TMS 上／下／左／右 | I／K／J／L |
 | DMS 上／下／左／右 | 右 Shift＋I／K／J／L |
 | Debug Indicator（測試包） | 右 Ctrl＋右 Shift＋F12 |
-| CMS 前／後／左／右／按壓 | 右 Alt＋Delete／Home／Insert／End／Page Down |
+| CMS 前／後／左／右／按壓 | 右 Ctrl＋I／K／J／L；按壓為右 Alt＋Page Down |
 
 三段超控各自選定開關位置；放開按鍵後保持選定位置。CENTER 恢復保存的主模式。
 一般 A-A／A-G 重按回 NAV；超控期間保存原主模式。保險獨立。
@@ -61,3 +61,6 @@ CMS 與解籠議題列於 [待辦](MC_TODO.zh-TW.md)。
 SOI、顯示對應與 TMS 的實作範圍及空殼見 [感測器操作](MC_SENSOR_CONTROLS.zh-TW.md)。
 Windows 驗證來源與 DLL 雜湊保存在 `bin/F-CK-1C_EFM.validation.json`；測試包的 `BUILD.json` 記錄同一組來源。
 DCS 人工測試見 [MC 飛測說明](MC_FLIGHT_TEST.zh-TW.md)，本輪先執行 D01～D07、T01～T11。
+
+CMS 四向採用右 Ctrl＋I／K／J／L；按下送出 1、放開送出 0，表示開關返回中央。
+目前由按下事件啟動既有施放程序，程序持續執行到結束或收到中止要求。

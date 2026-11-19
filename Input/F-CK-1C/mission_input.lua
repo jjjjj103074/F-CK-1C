@@ -104,9 +104,9 @@ return function(bindings, commands, native_commands)
         end
     end
 
-    -- 共用設定中相同的預設組合交給感測器與解籠控制，其他組合沿用原動作。
+    -- 共用設定中相同的預設組合交給 HOTAS 與解籠控制，其他組合沿用原動作。
     local owned_inputs = {}
-    for _, name in ipairs({ "TMSUp", "TMSDown", "TMSLeft", "TMSRight", "DMSUp", "DMSDown", "DMSLeft", "DMSRight", "MissileUncage" }) do
+    for _, name in ipairs({ "TMSUp", "TMSDown", "TMSLeft", "TMSRight", "DMSUp", "DMSDown", "DMSLeft", "DMSRight", "CMSForward", "CMSAft", "CMSLeft", "CMSRight", "MissileUncage" }) do
         owned_inputs[commands[name]] = true
     end
     local function combo_key(combo)

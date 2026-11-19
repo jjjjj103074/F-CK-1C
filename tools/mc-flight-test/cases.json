@@ -75,7 +75,7 @@
     "id": "N01",
     "scenario": "A",
     "title": "原生反制測試準備",
-    "action": "按 超控中央（右 Shift＋D）後按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Alt＋End），等待 2 秒。",
+    "action": "按 超控中央（右 Shift＋D）後按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Ctrl＋L），等待 2 秒。",
     "look": "右上 NATIVE、API、CMOBS、FLR、CHF、REQ、CALL。",
     "normal": "NATIVE=1、REQ=0、CALL=0，FLR／CHF 穩定。API：1=Digital、2=Analog、3=兩者、0=皆未找到。CMOBS=3 表示兩種實際彈量可讀；1=只有 FLR、2=只有 CHF、0=兩者皆不可讀，無讀值顯示 -1。記下 API 與 CMOBS；後續仍各試一次以記錄缺少的入口。",
     "coverage": "Native C++ countermeasure dispatch / actual stock observation"
@@ -534,7 +534,7 @@
     "id": "C01",
     "scenario": "A",
     "title": "CMS Left 兩組",
-    "action": "按 ON（右 Ctrl＋M）；按 CMS Left（右 Alt＋Insert），全放開。按外部視角（F2）觀察，結束後回座艙（F1）。",
+    "action": "按 ON（右 Ctrl＋M）；按 CMS Left（右 Ctrl＋J），全放開。按外部視角（F2）觀察，結束後回座艙（F1）。",
     "look": "機尾反制、dcs.log 的 CMS 紀錄。",
     "normal": "發出兩組 flare＋chaff，完成後停止。",
     "coverage": "CountermeasureControl Left"
@@ -543,7 +543,7 @@
     "id": "C02",
     "scenario": "A",
     "title": "CMS Aft 七次",
-    "action": "按 ON（右 Ctrl＋M）；按 CMS Aft（右 Alt＋Home），全放開；用外部視角（F2）觀察約 5 秒，再回座艙（F1）。",
+    "action": "按 ON（右 Ctrl＋M）；按 CMS Aft（右 Ctrl＋K），全放開；用外部視角（F2）觀察約 5 秒，再回座艙（F1）。",
     "look": "反制釋放；dcs.log。",
     "normal": "七次 chaff，間隔約 0.5 秒；完成後停止，沒有自動 flare 程序。",
     "coverage": "CountermeasureControl Aft"
@@ -552,7 +552,7 @@
     "id": "C03",
     "scenario": "A",
     "title": "CMS Forward 十組",
-    "action": "按 ON（右 Ctrl＋M）；按 CMS Forward（右 Alt＋Delete），全放開；外部視角（F2）觀察約 12 秒，再回座艙（F1）。",
+    "action": "按 ON（右 Ctrl＋M）；按 CMS Forward（右 Ctrl＋I），全放開；外部視角（F2）觀察約 12 秒，再回座艙（F1）。",
     "look": "反制釋放；dcs.log。",
     "normal": "十組 flare＋chaff，間隔約 1 秒；完成後停止。",
     "coverage": "CountermeasureControl Forward"
@@ -561,7 +561,7 @@
     "id": "C04",
     "scenario": "A",
     "title": "CMS Right 中止",
-    "action": "按 ON（右 Ctrl＋M）；按 CMS Forward（右 Alt＋Delete），等約 2 秒，再按 CMS Right（右 Alt＋End）。",
+    "action": "按 ON（右 Ctrl＋M）；按 CMS Forward（右 Ctrl＋I），等約 2 秒，再按 CMS Right（右 Ctrl＋L）。",
     "look": "外部視角（F2）的反制釋放；dcs.log，結束用 F1 回座艙。",
     "normal": "尚未執行的後續釋放被中止；已離機的反制仍正常燃燒。",
     "coverage": "CMS abort / shared action order"
@@ -570,7 +570,7 @@
     "id": "C05",
     "scenario": "A",
     "title": "OFF／SIM 中止反制",
-    "action": "按 ON（右 Ctrl＋M），按 CMS Forward（右 Alt＋Delete），等約 2 秒，快速按 OFF（右 Shift＋M）後再按 ON（右 Ctrl＋M）。重新啟動 CMS Forward（右 Alt＋Delete），約 2 秒後快速按 SIM（右 Alt＋M）再按 ON（右 Ctrl＋M）。",
+    "action": "按 ON（右 Ctrl＋M），按 CMS Forward（右 Ctrl＋I），等約 2 秒，快速按 OFF（右 Shift＋M）後再按 ON（右 Ctrl＋M）。重新啟動 CMS Forward（右 Ctrl＋I），約 2 秒後快速按 SIM（右 Alt＋M）再按 ON（右 Ctrl＋M）。",
     "look": "反制釋放、SYS；dcs.log。",
     "normal": "每次切 OFF／SIM 都中止原程序；隨後恢復 ON 不自行續跑。",
     "coverage": "ModeEvents / ordered CMS abort"
@@ -579,7 +579,7 @@
     "id": "C06",
     "scenario": "A",
     "title": "SAFE／SIM 的 CMS 啟動",
-    "action": "按 OFF（右 Shift＋M），依序按 CMS Forward（右 Alt＋Delete）、Aft（右 Alt＋Home）、Left（右 Alt＋Insert）；再按 SIM（右 Alt＋M），重做這三個按鍵（右 Alt＋Delete／Home／Insert）。",
+    "action": "按 OFF（右 Shift＋M），依序按 CMS Forward（右 Ctrl＋I）、Aft（右 Ctrl＋K）、Left（右 Ctrl＋J）；再按 SIM（右 Alt＋M），重做這三個按鍵（右 Ctrl＋I／K／J）。",
     "look": "反制是否離機、SYS。",
     "normal": "兩種保險下都不啟動程序。",
     "coverage": "CountermeasureControl arm gate"
@@ -588,7 +588,7 @@
     "id": "C07",
     "scenario": "A",
     "title": "NAV 可使用 CMS",
-    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1），按 CMS Left（右 Alt＋Insert）。",
+    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1），按 CMS Left（右 Ctrl＋J）。",
     "look": "MODE、實際反制。",
     "normal": "NAV 保持，仍釋放兩組 flare＋chaff；反制啟動資格取決於 ON。",
     "coverage": "CMS independent of operating mode"
@@ -597,7 +597,7 @@
     "id": "C08",
     "scenario": "A",
     "title": "反制程序替換與保留入口",
-    "action": "按 ON（右 Ctrl＋M），按 CMS Forward（右 Alt＋Delete），約 2 秒後按 CMS Aft（右 Alt＋Home）；結束後按 CMS Press（右 Alt＋PgDn）。",
+    "action": "按 ON（右 Ctrl＋M），按 CMS Forward（右 Ctrl＋I），約 2 秒後按 CMS Aft（右 Ctrl＋K）；結束後按 CMS Press（右 Alt＋PgDn）。",
     "look": "反制序列、dcs.log。",
     "normal": "改按 Aft 後執行新的七次 chaff 程序；尚在完成的已排入配對脈衝依原程序收尾。CMS Press 是保留入口，沒有新程序。",
     "coverage": "CMS program replacement / reserved press"
@@ -723,7 +723,7 @@
     "id": "L01",
     "scenario": "B",
     "title": "快速跨系統操作",
-    "action": "按 ON（右 Ctrl＋M）；依序快速點按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、TMS 上（I）、TMS 下（K）、CMS Left（右 Alt＋Insert）、超控中央（右 Shift＋D）後按 NAV（1），每組結束等 2 秒，重做 5 組。",
+    "action": "按 ON（右 Ctrl＋M）；依序快速點按 DGFT（右 Ctrl＋D）、MSL（右 Alt＋D）、TMS 上（I）、TMS 下（K）、CMS Left（右 Ctrl＋J）、超控中央（右 Shift＋D）後按 NAV（1），每組結束等 2 秒，重做 5 組。",
     "look": "最後 MODE／SUB、右上 TX／ACK；實際武器。",
     "normal": "每組最後 NAV／---，沒有意外開火或離架；TX 最終回 0、ACK 可繼續推進，下一組仍能操作。",
     "coverage": "MC FIFO / RadarSystem pipeline / shared transport"
@@ -732,7 +732,7 @@
     "id": "L02",
     "scenario": "A",
     "title": "低 FPS 的短按與停止",
-    "action": "在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Alt＋Delete），再按 CMS Right（右 Alt＋End）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。",
+    "action": "在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Ctrl＋I），再按 CMS Right（右 Ctrl＋L）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。",
     "look": "砲火停止、反制中止、最後 MODE／SUB、TX。",
     "normal": "短按可完成且放開後停止；反制中止；最後 NAV／---，TX 最終回 0。",
     "coverage": "Fixed update / delayed ACK / command completion"
@@ -741,7 +741,7 @@
     "id": "L03",
     "scenario": "A",
     "title": "任務重入清除",
-    "action": "先按 ON（右 Ctrl＋M）、CMS Forward（右 Alt＋Delete）；程序未完成時按 Esc，滑鼠離開任務。放開全部實體按鍵，重新載入 A，等 5 秒。",
+    "action": "先按 ON（右 Ctrl＋M）、CMS Forward（右 Ctrl＋I）；程序未完成時按 Esc，滑鼠離開任務。放開全部實體按鍵，重新載入 A，等 5 秒。",
     "look": "新任務的 MODE／SYS、砲火、反制、右上面板。",
     "normal": "新任務回 ARM／NAV／---，沒有前次未完成反制／開火；新 GEN 與 ACK 流程可正常建立。",
     "coverage": "BridgeContext reset / system lifecycle"
@@ -759,7 +759,7 @@
     "id": "L05",
     "scenario": "B",
     "title": "既有搖桿入口（有搖桿時）",
-    "action": "使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、解籠切換（C）、TMS（I／K／J／L）、CMS（右 Alt＋Delete／Home／Insert／End／PgDn）。",
+    "action": "使用原有搖桿預設機砲 JOY_BTN1、投放 JOY_BTN2，以及已配置的 Uncage／TMS／CMS；對照鍵盤機砲（Space）、投放（右 Alt＋Space）、解籠切換（C）、TMS（I／K／J／L）、CMS（右 Ctrl＋I／K／J／L；按壓為右 Alt＋PgDn）。",
     "look": "相同功能的實際效果、放開停止與 CSV。",
     "normal": "同功能經相同 MC 入口處理，放開均能收尾。沒有該實體控制時填「無此設備」。",
     "coverage": "Inherited/native aliases / input routing"

@@ -668,7 +668,7 @@ external_profile = function()
             },
             {
                 down = 999003, name = "Inherited Sensor Keys",
-                combos = { { key = "C" }, { key = "I" }, { key = "I", reformers = { "RShift" } }, { key = "I", reformers = { "LShift" } }, { key = "X" } },
+                combos = { { key = "C" }, { key = "I" }, { key = "I", reformers = { "RShift" } }, { key = "I", reformers = { "RCtrl" } }, { key = "K", reformers = { "RCtrl" } }, { key = "J", reformers = { "RCtrl" } }, { key = "L", reformers = { "RCtrl" } }, { key = "I", reformers = { "LShift" } }, { key = "X" } },
             },
         },
         axisCommands = {},
@@ -753,7 +753,7 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         if dcs_commands[name] then forbidden[dcs_commands[name]] = true end
     end
     if profile == "keyboard" then
-        local expected = { ["C"] = "MissileUncage", ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep", ["I"] = "TMSUp", ["K"] = "TMSDown", ["J"] = "TMSLeft", ["L"] = "TMSRight", ["RShift+I"] = "DMSUp", ["RShift+K"] = "DMSDown", ["RShift+J"] = "DMSLeft", ["RShift+L"] = "DMSRight" }
+        local expected = { ["C"] = "MissileUncage", ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep", ["I"] = "TMSUp", ["K"] = "TMSDown", ["J"] = "TMSLeft", ["L"] = "TMSRight", ["RShift+I"] = "DMSUp", ["RShift+K"] = "DMSDown", ["RShift+J"] = "DMSLeft", ["RShift+L"] = "DMSRight", ["RCtrl+I"] = "CMSForward", ["RCtrl+K"] = "CMSAft", ["RCtrl+J"] = "CMSLeft", ["RCtrl+L"] = "CMSRight" }
         local found = {}
         for _, binding in ipairs(bindings.keyCommands) do
             for _, combo in ipairs(binding.combos or {}) do
