@@ -46,7 +46,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 |---|---|
 | ModeManagement | 唯一寫入一般 NAV/A-A/A-G、DGFT/MSL 超控與主保險，發布具型別選擇事件 |
 | SensorOfInterest | 讀取 DisplaySnapshot 與任務模式，唯一寫入 SOI 來源及顯示位置，處理 DMS 上下 |
-| CountermeasureControl | 讀取模式判斷 CMS 啟動資格，接收 Master Arm 事件處理中止 |
+| CountermeasureControl | 接收 CMS 四向指令，前向啟動固定十輪混合程序，其餘方向保留入口 |
 | StoresManagement | 全部固定掛點庫存、彈量、掛點選擇／循環、執行確認與掛載變化通知 |
 | FireControl | 目標操作、武器資格與使用程序 |
 | Executive | 四個週期工作的固定順序、頻率及時間推進 |
@@ -69,7 +69,7 @@ WeaponOperation 只讀 WeaponUseData；Targeting 讀取模式與 RadarSnapshot�
 | InputOutputData.input | MC 輸入入口及外殼 | 掛載、火控、輸出投影 |
 | InputOutputData.input.control_inputs | MC 依命令 FIFO 記錄原始操作 | 輸出投影；HUD/HMCS 的唯讀觀測 |
 | InputOutputData.output | MC publish_outputs | Pipeline、Bridge |
-| ModeData | ModeManagement | 火控、反制及輸出投影（唯讀） |
+| ModeData | ModeManagement | 火控及輸出投影（唯讀） |
 | StoresData | StoresManagement | 火控及輸出投影 |
 | StoresData.weapon_use | SM 的 WeaponExecution | WeaponOperation 唯讀執行階段及取消／拒絕結果 |
 | FireControlData.targeting | Targeting | 輸出投影 |
@@ -116,7 +116,7 @@ FireControl 內依武器執行結果通知 Targeting，再整理 RadarSnapshot �
 捕獲輸入計時由 RadarSystem 執行；新要求在後續 Pipeline tick 由雷達處理。
 ModeManagement 是事件入口。外層保持命令 FIFO、32 Hz 及 80 ms 最短保持；每秒自動重送捕獲已移除。
 SM 與 RadarSystem 的保持從首次觀測到生產端執行確認的 input_time 起算，補跑沿用當前觀測時間。
-Master OFF/SIM 立即追加停止與 CMS 中止要求；NAV 不新增強制停止規則。
+Master OFF/SIM 立即追加武器停止要求；CMS 在各主保險狀態下啟用。
 一般 NAV/A-A/A-G、DGFT/MSL 超控與 Master ON/OFF/SIM 各自保存；保險切換保留目前模式，模式切換保留目前保險。
 
 外部動作視窗仍為 16 個連續序號，保留成功前綴確認、缺號拒絕、失敗重試及序號界限。
@@ -135,7 +135,7 @@ HMCS 依有效 lock、模式及操作意圖決定武器呈現；音效 Lua 依�
 原型的接觸、備便、尋標狀態及雷達／操作意圖鎖定推導已移除。
 完整移除清單、介面與驗證見[整理報告](../../../../../../docs/IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
 
-反制程序仍在 Lua，CountermeasureControl 管理啟動資格與中止要求。
+反制程序仍在 Lua，CountermeasureControl 將前向按下轉為施放要求。
 
 ## 逐掛點庫存
 
@@ -156,8 +156,8 @@ MC 持有自己的 `ModeEvents`，由 ModeManagement 同步發布
 事件含當次選擇前後的 ModeData 副本；超控重選保持原設定，獨立 MSL STEP 處理輪站。
 ModeManagement 透過 ModeData 及 ModeEvents 提供模式與通知。
 
-Master OFF/SIM 先同步通知火控停止，再通知反制中止；目標指定與所選模式保持。
-火控與反制使用不同 sigslot group 保證順序；同 group 的順序不作假設。
+Master OFF/SIM 同步通知火控停止；目標指定與所選模式保持。
+CMS 接收共用 FIFO 中的獨立指令，前向啟動固定施放程序。
 同一 FIFO 命令的通知全部結束，才處理下一筆，保留同 tick OFF→ON 的停止效果。
 監聽者不得遞迴消費命令；訂閱在組裝時建立，不在週期計算中反覆建立。
 
@@ -180,7 +180,7 @@ DcsBridge 將各生產端要求對應到共用 DCS 序號，維持 16 項視窗�
 
 ## 驗證
 
-Native 回歸覆蓋命令 FIFO、停止／CMS 順序、ACK／計時、數量及尋標觀測。
+Native 回歸覆蓋命令 FIFO、武器停止／獨立 CMS 要求、ACK／計時、數量及尋標觀測。
 Exporter 回歸核對新資料、顯示參數單一 writer 與不完整快照。
 Lua 5.1 執行實際 HMCS／介面／輸入設定，並以 8,192 幀原顯示規則重播核對結果。
 Windows 固定工具鏈的完整驗證與 DLL 產物依重構報告記錄；DCS 遊戲內驗證另行執行。

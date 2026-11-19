@@ -5,7 +5,6 @@ dofile(LockOn_Options.script_path .. "command_defs.lua")
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
 
 local adapter_available = get_param_handle(cockpit_params.McAdapterAvailable)
-local master_mode = get_param_handle(cockpit_params.HmcsMasterMode)
 local radar_power = get_param_handle(cockpit_params.RadarState)
 local mc_generation = get_param_handle(cockpit_params.McGeneration)
 local selection_sequence = get_param_handle(cockpit_params.WeaponSelectionActionSequence)
@@ -17,15 +16,11 @@ local selected_station = get_param_handle(cockpit_params.WeaponObservationSelect
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
-local ICMD_PLANE_DROP_FLARE_ONCE = dcs_commands.iCommandPlaneDropFlareOnce
-local ICMD_PLANE_DROP_CHAFF_ONCE = dcs_commands.iCommandPlaneDropChaffOnce
 local cms_program_active = false
-local cms_program_name = "idle"
 local cms_program_steps_remaining = 0
 local cms_program_timer = 0.0
-local cms_program_interval = 1.0
-local cms_program_flare_per_step = 0
-local cms_program_chaff_per_step = 0
+local cms_forward_rounds = 10
+local cms_forward_interval = 1.0
 local cms_pair_release_pending = 0
 local cms_pair_release_latched = false
 local cms_pair_release_hold_timer = 0.0
@@ -37,92 +32,38 @@ local function dlog(message)
     if log and log.info then log.info("FCK1C CMS: " .. tostring(message)) end
 end
 
-local function cms_release_allowed()
-    return dispatch_action ~= nil and master_mode:get() > 1.5
+local function cms_adapter_ready()
+    return dispatch_action ~= nil
 end
 
 local function publish_adapter_availability()
-    adapter_available:set(dispatch_action ~= nil and 1 or 0)
-end
-
-local function flare_once()
-    dlog("dispatch flare once")
-    local ok = dispatch_action(nil, ICMD_PLANE_DROP_FLARE_ONCE)
-    if ok ~= nil then dlog("dispatch flare result=" .. tostring(ok)) end
-end
-
-local function chaff_once()
-    dlog("dispatch chaff once")
-    local ok = dispatch_action(nil, ICMD_PLANE_DROP_CHAFF_ONCE)
-    if ok ~= nil then dlog("dispatch chaff result=" .. tostring(ok)) end
+    adapter_available:set(cms_adapter_ready() and 1 or 0)
 end
 
 local function pair_release_off()
     if not cms_pair_release_latched then return end
-
-    dlog("dispatch cm release OFF")
-    local ok = dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE_OFF)
-    if ok ~= nil then dlog("dispatch cm release OFF result=" .. tostring(ok)) end
-
+    if cms_adapter_ready() then
+        dlog("dispatch cm release OFF")
+        dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE_OFF)
+    end
     cms_pair_release_latched = false
     cms_pair_release_hold_timer = 0.0
 end
 
 local function clear_pair_release_queue(reason_tag)
-    if cms_pair_release_latched or cms_pair_release_pending > 0 then dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending)) end
-
+    if cms_pair_release_latched or cms_pair_release_pending > 0 then
+        dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending))
+    end
     pair_release_off()
     cms_pair_release_pending = 0
     cms_pair_release_gap_timer = 0.0
 end
 
-local function queue_pair_release(count)
-    if count == nil or count <= 0 then return end
-
-    cms_pair_release_pending = cms_pair_release_pending + count
-    dlog("queue cm release x" .. tostring(count) .. " pending=" .. tostring(cms_pair_release_pending))
-end
-
-local function release_countermeasures(flare_count, chaff_count)
-    if flare_count == nil then flare_count = 0 end
-    if chaff_count == nil then chaff_count = 0 end
-
-    if flare_count <= 0 and chaff_count <= 0 then return end
-
-    if not cms_release_allowed() then
-        dlog("countermeasure release blocked by arm/cms state")
-        return
-    end
-
-    local paired_release_count = math.min(flare_count, chaff_count)
-    if paired_release_count > 0 then
-        queue_pair_release(paired_release_count)
-        flare_count = flare_count - paired_release_count
-        chaff_count = chaff_count - paired_release_count
-    end
-
-    local i = 0
-    while i < flare_count do
-        flare_once()
-        i = i + 1
-    end
-
-    i = 0
-    while i < chaff_count do
-        chaff_once()
-        i = i + 1
-    end
-end
-
 local function stop_cms_program(reason_tag)
     if cms_program_active then dlog("cms program stop -> " .. tostring(reason_tag)) end
     cms_program_active = false
-    cms_program_name = "idle"
     cms_program_steps_remaining = 0
     cms_program_timer = 0.0
-    cms_program_interval = 1.0
-    cms_program_flare_per_step = 0
-    cms_program_chaff_per_step = 0
 end
 
 local function abort_cms_program(reason_tag)
@@ -130,24 +71,18 @@ local function abort_cms_program(reason_tag)
     clear_pair_release_queue(reason_tag)
 end
 
-local function start_cms_program(name, steps, interval, flare_per_step, chaff_per_step, immediate_release)
-    if not cms_release_allowed() then
-        dlog("cms program " .. tostring(name) .. " blocked by arm/cms state")
-        return
-    end
+-- 每輪要求熱焰彈與干擾絲各一發，沿用原生配對施放脈衝。
+local function queue_pair_release()
+    cms_pair_release_pending = cms_pair_release_pending + 1
+end
 
+local function start_cms_program()
+    abort_cms_program("restart")
     cms_program_active = true
-    cms_program_name = tostring(name)
-    cms_program_steps_remaining = steps
+    cms_program_steps_remaining = cms_forward_rounds - 1
     cms_program_timer = 0.0
-    cms_program_interval = interval
-    cms_program_flare_per_step = flare_per_step
-    cms_program_chaff_per_step = chaff_per_step
-
-    if immediate_release and cms_program_steps_remaining > 0 then
-        release_countermeasures(cms_program_flare_per_step, cms_program_chaff_per_step)
-        cms_program_steps_remaining = cms_program_steps_remaining - 1
-    end
+    queue_pair_release()
+    dlog("cms program start -> forward rounds=" .. tostring(cms_forward_rounds))
 end
 
 -- Stable semantic action values -> generated DCS IDs. No native IDs enter Core.
@@ -199,13 +134,7 @@ local function execute_action(action, sequence, generation)
         local ok, result = pcall(dispatch_action, nil, native)
         return ok and result ~= false
     elseif action == 17 then
-        start_cms_program("forward", 10, 1.0, 1, 1, true)
-    elseif action == 18 then
-        start_cms_program("aft", 7, 0.5, 0, 1, true)
-    elseif action == 19 then
-        start_cms_program("left", 2, 0.12, 1, 1, true)
-    elseif action == 20 then
-        abort_cms_program("mc_abort")
+        start_cms_program()
     else
         return false
     end
@@ -233,7 +162,7 @@ function update()
         if cms_pair_release_gap_timer > 0.0 then
             cms_pair_release_gap_timer = cms_pair_release_gap_timer - update_rate
             if cms_pair_release_gap_timer < 0.0 then cms_pair_release_gap_timer = 0.0 end
-        elseif cms_release_allowed() then
+        elseif cms_adapter_ready() then
             dlog("dispatch cm release ON")
             local ok = dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE)
             if ok ~= nil then dlog("dispatch cm release ON result=" .. tostring(ok)) end
@@ -252,10 +181,10 @@ function update()
     end
 
     cms_program_timer = cms_program_timer + update_rate
-    if cms_program_timer >= cms_program_interval then
-        cms_program_timer = cms_program_timer - cms_program_interval
-        if cms_release_allowed() then
-            release_countermeasures(cms_program_flare_per_step, cms_program_chaff_per_step)
+    if cms_program_timer >= cms_forward_interval then
+        cms_program_timer = cms_program_timer - cms_forward_interval
+        if cms_adapter_ready() then
+            queue_pair_release()
             cms_program_steps_remaining = cms_program_steps_remaining - 1
         else
             abort_cms_program("cms_prog_block")

@@ -27,9 +27,6 @@ enum class MissionActionKind
 	LockFinish = 15,
 	ChangeLockUp = 16,
 	StartCmsForward = 17,
-	StartCmsAft = 18,
-	StartCmsLeft = 19,
-	AbortCms = 20,
 	SelectStation = 21,
 	ModeBoresight = 22
 };

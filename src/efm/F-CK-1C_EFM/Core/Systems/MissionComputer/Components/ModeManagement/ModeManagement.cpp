@@ -52,7 +52,7 @@ void ModeManagement::handle(const Command& command)
 	{
 	case CommandId::SetMasterArmOff: // Set Master Arm to Off
 	case CommandId::SetMasterArmSim: // Set Master Arm to Simulation
-		// 主保險事件依序通知火控停止與 CMS 中止。
+		// 主保險事件通知火控同步處理武器操作。
 		select_master_arm(command.id == CommandId::SetMasterArmOff ? MasterArmMode::Off : MasterArmMode::Simulation);
 		break;
 

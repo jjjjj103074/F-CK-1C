@@ -285,7 +285,6 @@ void test_modes_and_immediate_master_cancel(Tests::Context& context)
 	TEST_EXPECT(context, !output.state.fire_control.gun_fire_requested);
 	output = fixture.step(kMissionPeriod * 4);
 	TEST_EXPECT(context, contains(output.actions, MissionActionKind::GunOff));
-	TEST_EXPECT(context, contains(output.actions, MissionActionKind::AbortCms));
 }
 
 void test_commands_wait_for_current_observation_and_retain_order(Tests::Context& context)
@@ -328,7 +327,7 @@ void test_master_cancel_stops_weapons_and_preserves_target_mode(Tests::Context& 
 	fixture.send(CommandId::SetMasterArmOff);
 	fixture.send(CommandId::SetMasterArmOn);
 	output = fixture.step(kMissionPeriod * 7);
-	const MissionActionKind expected[] = { MissionActionKind::GunOff, MissionActionKind::AbortCms };
+	const MissionActionKind expected[] = { MissionActionKind::GunOff };
 	std::vector<MissionActionKind> native_actions;
 	for (std::size_t i = 0; i < output.actions.count; ++i)
 		if (output.actions.actions[i].kind != MissionActionKind::None)
@@ -919,36 +918,29 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 	MissionFixture fixture;
 	fixture.send(CommandId::StartCmsForward);
 	fixture.send(CommandId::SetMasterArmOff);
-	fixture.send(CommandId::StartCmsAft); // OFF rejects start.
-	fixture.send(CommandId::SetMasterArmSim);
-	fixture.send(CommandId::StartCmsLeft); // SIM rejects start.
-	fixture.send(CommandId::StartCmsRight); // Abort is always allowed.
-	fixture.send(CommandId::SetMasterArmOn);
+	fixture.send(CommandId::StartCmsForward);
 	fixture.send(CommandId::StartCmsAft);
+	fixture.send(CommandId::SetMasterArmSim);
+	fixture.send(CommandId::StartCmsForward);
 	fixture.send(CommandId::StartCmsLeft);
-	fixture.send(CommandId::StartCmsForward, 0.0); // Releases do not start a program.
-	fixture.send(CommandId::PressCms); // Reserved.
+	fixture.send(CommandId::StartCmsRight);
+	fixture.send(CommandId::SetMasterArmOn);
+	fixture.send(CommandId::StartCmsForward, 0.0);
+	fixture.send(CommandId::PressCms);
 	const auto output = fixture.step(kMissionPeriod);
-	std::vector<MissionActionKind> cms;
+	std::vector<MissionActionKind> actions;
 	auto window = output.actions;
 	int tick = 2;
 	while (window.count != 0)
 	{
 		for (std::size_t i = 0; i < window.count; ++i)
-		{
-			const auto action = window.actions[i].kind;
-			if (action == MissionActionKind::AbortCms || action == MissionActionKind::StartCmsForward ||
-			    action == MissionActionKind::StartCmsAft || action == MissionActionKind::StartCmsLeft)
-				cms.push_back(action);
-		}
+			if (window.actions[i].kind != MissionActionKind::None)
+				actions.push_back(window.actions[i].kind);
 		fixture.frame.cockpit.mission_adapter.acknowledged_sequence = window.first_sequence + window.count - 1;
 		window = fixture.step(kMissionPeriod * tick++).actions;
 	}
-	const std::vector<MissionActionKind> expected = {
-		MissionActionKind::StartCmsForward, MissionActionKind::AbortCms,    MissionActionKind::AbortCms,
-		MissionActionKind::AbortCms,        MissionActionKind::StartCmsAft, MissionActionKind::StartCmsLeft
-	};
-	TEST_EXPECT(context, cms == expected);
+	const std::vector<MissionActionKind> expected(3, MissionActionKind::StartCmsForward);
+	TEST_EXPECT(context, actions == expected);
 	TEST_EXPECT(context, output.state.mode.master_arm_mode == MasterArmMode::On);
 	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::Navigation);
 	TEST_EXPECT(context, output.state.mode.status.available);

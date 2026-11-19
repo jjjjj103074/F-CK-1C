@@ -864,7 +864,7 @@ void test_command_gateway_cancels_waiting_starts_and_preserves_stops(Tests::Cont
 	bool rejected = false;
 	try
 	{
-		f.commands.submit(StoresWeaponAction{ MissionActionKind::AbortCms });
+		f.commands.submit(StoresWeaponAction{ MissionActionKind::StartCmsForward });
 	}
 	catch (const std::invalid_argument&)
 	{
@@ -1230,14 +1230,14 @@ void test_abort_stops_both_channels_before_following_actions(Tests::Context& con
 	TEST_EXPECT(context, start.count == 2);
 	TEST_EXPECT(context, start.actions[1].kind == MissionActionKind::PickleOn);
 	f.commands.submit(AbortWeaponUse{});
-	f.actions.append(MissionActionKind::AbortCms);
+	f.actions.append(MissionActionKind::StartCmsForward);
 	const auto stop = Tests::pending_actions(f.actions);
 	TEST_EXPECT(context, f.stores.weapon_use.gun.phase == WeaponUsePhase::Canceled);
 	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);
 	TEST_EXPECT(context, stop.count == 5);
 	TEST_EXPECT(context, stop.actions[2].kind == MissionActionKind::GunOff);
 	TEST_EXPECT(context, stop.actions[3].kind == MissionActionKind::PickleOff);
-	TEST_EXPECT(context, stop.actions[4].kind == MissionActionKind::AbortCms);
+	TEST_EXPECT(context, stop.actions[4].kind == MissionActionKind::StartCmsForward);
 	f.actions.acknowledge(stop.first_sequence + stop.count - 1);
 	f.step(seconds(5));
 	TEST_EXPECT(context, f.stores.weapon_use.release.phase == WeaponUsePhase::Canceled);

@@ -1,6 +1,6 @@
 # MC 完整實機測試流程
 
-本輪先做任務 A 的 G06：在UNCAGE=0與1各點射一次機砲；再做任務 B 的 T03雷達指定與K01單枚AIM-9投放。其餘項目供既有MC功能回歸。
+本輪先做任務 A 的 C03–C06：固定十輪混合施放、右向預留入口、程序中切保險，以及 SAFE／SIM 啟動；再做 C01、C02、C08 核對預留入口與開關回中。
 
 ## 安裝與開始
 
@@ -134,7 +134,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### N01　原生反制測試準備
 
-操作：按 超控中央（右 Shift＋D）後按 NAV（1）、保險 ON（右 Ctrl＋M）、CMS Right 中止程序（右 Ctrl＋L），等待 2 秒。
+操作：重新載入 A 任務，按超控中央（右 Shift＋D）後按 NAV（1），按保險 OFF（右 Shift＋M），等待 2 秒。
 
 看哪裡：右上 NATIVE、API、CMOBS、FLR、CHF、REQ、CALL。
 
@@ -180,13 +180,13 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 正常：每個按住操作僅 REQ＋1、該類彈量減 1；放開後不再施放。後續 5 次按放僅 REQ＋5、該類減 5。Digital 每要求 CALL＋1、Analog＋2；另一類彈量不變。入口缺少的種類填未測；STAT=7 時停止本輪原生按鍵測試、繼續原有 MC 項目。
 
-### N07　SAFE／SIM 阻擋與無延後重播
+### N07　原生反制與主保險獨立
 
 操作：按 OFF（右 Shift＋M），各按放一次四個測試鍵：Digital 熱焰彈（左 Alt＋左 Shift＋Insert）、Digital 干擾絲（左 Alt＋左 Shift＋Delete）、Analog 熱焰彈（左 Ctrl＋左 Shift＋Insert）、Analog 干擾絲（左 Ctrl＋左 Shift＋Delete），各等 1 秒。按 SIM（右 Alt＋M）再做同一組四鍵。最後按 ON（右 Ctrl＋M），等 2 秒。
 
 看哪裡：ARM、REQ、CALL、STAT、FLR、CHF。
 
-正常：SAFE／SIM 每次 REQ 增 1、STAT=5，CALL 與彈量保持。回 ON 後沒有補發或意外施放。若先前已有 STAT=7，跳過本項並回報。
+正常：OFF／SIM 下各入口依 N02–N05 相同規則執行；API 可用時 CALL 與對應實際施放數增加，主保險保持選定狀態。STAT=5 表示 MC 觀測尚未就緒；STAT=7 時停止本輪原生按鍵測試。
 
 ### N08　快速交錯兩種原生派送
 
@@ -324,69 +324,69 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 正常：原生讀值降至 GUN 0、GUN OK=1；NAV 顯示 GUN 000。重新點按機砲（Space）不會增加彈量。
 
-### C01　CMS Left 兩組
+### C01　CMS Left 程序 6 入口
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Left（右 Ctrl＋J），全放開。按外部視角（F2）觀察，結束後回座艙（F1）。
+操作：按 CMS Left（右 Ctrl＋J）後放開，等待 2 秒。
 
-看哪裡：機尾反制、dcs.log 的 CMS 紀錄。
+看哪裡：機尾反制與 FLR／CHF 存量。
 
-正常：發出兩組 flare＋chaff，完成後停止。
+正常：程序 6 為預留入口，存量維持，沒有施放。
 
-### C02　CMS Aft 七次
+### C02　CMS Aft 電子干擾許可入口
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Aft（右 Ctrl＋K），全放開；用外部視角（F2）觀察約 5 秒，再回座艙（F1）。
+操作：按 CMS Aft（右 Ctrl＋K）後放開，等待 2 秒。
 
-看哪裡：反制釋放；dcs.log。
+看哪裡：機尾反制與 FLR／CHF 存量。
 
-正常：七次 chaff，間隔約 0.5 秒；完成後停止，沒有自動 flare 程序。
+正常：電子干擾許可為預留入口，存量維持，沒有施放。
 
-### C03　CMS Forward 十組
+### C03　CMS Forward 固定十輪
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Forward（右 Ctrl＋I），全放開；外部視角（F2）觀察約 12 秒，再回座艙（F1）。
+操作：按 CMS Forward（右 Ctrl＋I）後放開；按外部視角（F2）觀察約 12 秒，再按座艙視角（F1）。
 
-看哪裡：反制釋放；dcs.log。
+看哪裡：機尾反制、FLR／CHF 存量與 CMS 紀錄。
 
-正常：十組 flare＋chaff，間隔約 1 秒；完成後停止。
+正常：完成十輪，每輪熱焰彈與干擾絲各一發，程序間隔約 1 秒；放開按鍵後繼續完成程序。
 
-### C04　CMS Right 中止
+### C04　CMS Right 電子干擾待命入口
 
-操作：按 ON（右 Ctrl＋M）；按 CMS Forward（右 Ctrl＋I），等約 2 秒，再按 CMS Right（右 Ctrl＋L）。
+操作：按 CMS Forward（右 Ctrl＋I），約 2 秒後點按 CMS Right（右 Ctrl＋L），再等 12 秒。
 
-看哪裡：外部視角（F2）的反制釋放；dcs.log，結束用 F1 回座艙。
+看哪裡：機尾反制與 FLR／CHF 存量。
 
-正常：尚未執行的後續釋放被中止；已離機的反制仍正常燃燒。
+正常：右向為電子干擾待命預留入口；前向程序繼續完成，總計十輪混合施放。
 
-### C05　OFF／SIM 中止反制
+### C05　程序中切換主保險
 
-操作：按 ON（右 Ctrl＋M），按 CMS Forward（右 Ctrl＋I），等約 2 秒，快速按 OFF（右 Shift＋M）後再按 ON（右 Ctrl＋M）。重新啟動 CMS Forward（右 Ctrl＋I），約 2 秒後快速按 SIM（右 Alt＋M）再按 ON（右 Ctrl＋M）。
+操作：按 CMS Forward（右 Ctrl＋I），約 2 秒後按 OFF（右 Shift＋M），再過 2 秒按 SIM（右 Alt＋M），再過 2 秒按 ON（右 Ctrl＋M），等待程序完成。
 
-看哪裡：反制釋放、SYS；dcs.log。
+看哪裡：主保險顯示、機尾反制與 FLR／CHF 存量。
 
-正常：每次切 OFF／SIM 都中止原程序；隨後恢復 ON 不自行續跑。
+正常：主保險依操作切換，反制持續完成同一組十輪；切換不重啟程序。
 
-### C06　SAFE／SIM 的 CMS 啟動
+### C06　SAFE／SIM 啟動反制
 
-操作：按 OFF（右 Shift＋M），依序按 CMS Forward（右 Ctrl＋I）、Aft（右 Ctrl＋K）、Left（右 Ctrl＋J）；再按 SIM（右 Alt＋M），重做這三個按鍵（右 Ctrl＋I／K／J）。
+操作：按 OFF（右 Shift＋M），點按 CMS Forward（右 Ctrl＋I）後等 12 秒；再按 SIM（右 Alt＋M），點按 CMS Forward（右 Ctrl＋I）後等 12 秒。
 
-看哪裡：反制是否離機、SYS。
+看哪裡：主保險顯示與 FLR／CHF 存量。
 
-正常：兩種保險下都不啟動程序。
+正常：OFF、SIM 各完成十輪混合施放；主保險保持選定狀態。
 
 ### C07　NAV 可使用 CMS
 
-操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1），按 CMS Left（右 Ctrl＋J）。
+操作：按超控中央（右 Shift＋D）後按 NAV（1），點按 CMS Forward（右 Ctrl＋I），等待 12 秒。
 
-看哪裡：MODE、實際反制。
+看哪裡：NAV 模式與 FLR／CHF 存量。
 
-正常：NAV 保持，仍釋放兩組 flare＋chaff；反制啟動資格取決於 ON。
+正常：保持 NAV 並完成十輪混合施放。
 
-### C08　反制程序替換與保留入口
+### C08　CMS 按住與回中
 
-操作：按 ON（右 Ctrl＋M），按 CMS Forward（右 Ctrl＋I），約 2 秒後按 CMS Aft（右 Ctrl＋K）；結束後按 CMS Press（右 Alt＋PgDn）。
+操作：按住 CMS Forward（右 Ctrl＋I）約 2 秒後放開，等待 12 秒；再按 CMS Press（右 Alt＋PgDn）後等 2 秒。
 
-看哪裡：反制序列、dcs.log。
+看哪裡：機尾反制與 FLR／CHF 存量。
 
-正常：改按 Aft 後執行新的七次 chaff 程序；尚在完成的已排入配對脈衝依原程序收尾。CMS Press 是保留入口，沒有新程序。
+正常：前向按住只啟動一次十輪程序；放開回中後完成原程序；預留按壓入口保持存量。
 
 ### I03　手動音效入口
 
@@ -422,7 +422,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### L02　低 FPS 的短按與停止
 
-操作：在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Ctrl＋I），再按 CMS Right（右 Ctrl＋L）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
+操作：在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Ctrl＋I），再按 CMS Right 預留入口（右 Ctrl＋L）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
 
 看哪裡：砲火停止、反制中止、最後 MODE／SUB、TX。
 
@@ -782,6 +782,6 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。
 
-本輪刻意保留的行為：保險與主模式獨立；機砲在 ON＋DGF 時接受新開始，與UNCAGE選擇獨立；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。
+本輪刻意保留的行為：保險與主模式獨立；機砲在 ON＋DGF 時接受新開始，與UNCAGE選擇獨立；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。CMS 在各主保險狀態下啟用；前向固定十輪混合施放，後／左／右為預留入口。
 
 安裝時會備份並移除舊F-CK-1C掛載匯出與彈量探針入口。回收包包含recording-health.json，可核對每份錄製CSV的資料列。來源commit、DLL SHA256與Windows CI位於測試包根目錄BUILD.json。

@@ -9,9 +9,8 @@
 
 namespace
 {
-// 依 group 順序先停止火控，再中止 CMS。
+// 主保險事件通知火控，模式事件依 group 順序套用選站與火控配置。
 constexpr sigslot::group_id kFireControlArmOrder = 0;
-constexpr sigslot::group_id kCountermeasureArmOrder = 1;
 constexpr sigslot::group_id kStoresModeOrder = 0;
 constexpr sigslot::group_id kFireControlModeOrder = 1;
 }
@@ -32,7 +31,7 @@ MissionComputer::MissionComputer()
                     stores_commands_),
       mode_management_(mode_data_, mode_events_),
       sensor_of_interest_(mode_data_, input_output_data_.input.display, sensor_of_interest_data_),
-      countermeasure_control_(mode_data_, external_actions_),
+      countermeasure_control_(external_actions_),
       executive_(executive_tables_,
                  { { "stores_management.step",
                      Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
@@ -66,12 +65,6 @@ MissionComputer::MissionComputer()
 		    stores_management_.dispatch();
 	    },
 	    kFireControlArmOrder);
-	countermeasure_arm_connection_ = mode_events_.master_arm_selected.connect(
-	    [this](const Mc::MasterArmSelected& event)
-	    {
-		    countermeasure_control_.on_master_arm_selected(event);
-	    },
-	    kCountermeasureArmOrder);
 	fire_control_mode_connection_ = mode_events_.operating_mode_selected.connect(
 	    [this](const Mc::OperatingModeSelected& event)
 	    {

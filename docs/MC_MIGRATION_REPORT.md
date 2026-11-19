@@ -76,7 +76,7 @@ SystemPipeline
 
 | 元件 | 責任 | 執行方式 |
 |---|---|---|
-| ModeManagement | Master Arm、主模式、模式變更協調及反制啟停資格 | FIFO 命令事件 |
+| ModeManagement | Master Arm、主模式與模式變更協調 | FIFO 命令事件 |
 | StoresManagement | 分類、數量來源／估算、選站要求、耗盡／再裝填後選站 | 32 Hz，另有投放數量更新入口 |
 | WeaponControl | 扳機／投放資格、最短保持、停止操作 | 命令事件及 32 Hz |
 | SensorCoordination | TMS、uncage、子模式、目標指定、DGFT 自動鎖定要求 | 命令事件及 32 Hz |
@@ -203,7 +203,7 @@ MC 共登記 19 個命令入口，含三個預留項目：
 | 類別 | 入口 | 處理者 |
 |---|---|---|
 | 主模式／武裝 | Master ON／OFF／SIM、NAV／DGFT／MSL | ModeManagement |
-| 反制 | Forward／Aft／Left、Right、Press | ModeManagement；Right 中止，Press 預留 |
+| 反制 | CMS 四向與預留按壓 | CountermeasureControl；Forward 固定十輪混合施放，其餘入口預留 |
 | 扳機 | 第一段、第二段 | 第一段預留；第二段由 WeaponControl |
 | 投放 | WeaponRelease | WeaponControl |
 | 尋標／指定 | Uncage、TMS Up／Down／Left／Right | SensorCoordination；TMS Left 預留 |
@@ -234,7 +234,7 @@ ModeManagement 只有事件入口，因此 **10 個元件對應 7 個週期工�
 - AIM-9 contact／lock 優先使用直接 IR 觀測；其他 IR／雷達推導及有效全零回退保留舊原型規則。
   缺失觀測不偽裝為有效全零；readiness 是命令狀態，不等同實測鎖定。
 - 顯示偏好可受被拒絕的扳機影響，以維持舊顯示行為；顯示不是開火權威。
-- 反制次數、間隔、配對排程及執行中互鎖仍在 CMS；MC 決定啟動資格與中止要求。
+- 反制次數、間隔與配對排程仍在 CMS；MC 將前向按下轉成啟動要求。反制在各主保險狀態下啟用。
 - DCS 雷達／武器模型、繪圖頁與播放資源保留；沒有新增彈道、導引、實體匯流排或 RIU 模擬。
 - CombatAvionicsSnapshot 的 radar／countermeasures 預留快照尚未成為可用完整狀態，不能據此宣稱已有雷達管理或反制庫存功能。
 - `set_powered(bool)` 僅為骨架測試開關；不支援飛行中斷電恢復及備援。

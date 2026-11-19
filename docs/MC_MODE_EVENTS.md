@@ -51,7 +51,7 @@ ModeManagement 依賴 ModeData、ModeEvents 與語意指令。MC 集中組裝 sc
 再通知 FC。主模式或超控的有效切換會結束先前配置的武器操作，再更新目標取得設定。
 武器輪站透過獨立的 MSL STEP 指令處理。
 
-`MasterArmSelected` 也保存前後副本；OFF／SIM 先通知 FC 停止，再通知 CMS 中止。
+`MasterArmSelected` 也保存前後副本；OFF／SIM 通知 FC 停止武器操作。CMS 由獨立的駕駛指令啟動固定施放程序。
 各台 MC 持有自己的事件通道及連線，回呼生命週期由 MC 組裝管理。
 
 事件使用 `ThirdParty/sigslot` v1.2.3 的 `signal_st` 與 scoped_connection。

@@ -150,6 +150,7 @@ jobs:
         shell: powershell
         run: |
           Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -Destination 'bin/F-CK-1C_EFM.dll' -Force
+          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Destination 'bin/F-CK-1C_EFM.validation.json' -Force
           $version = 'mc-' + $env:GITHUB_SHA.Substring(0, 8)
           ./tools/package_release.ps1 -Version $version -AllowDirty
       - name: Upload the validated module package

@@ -140,29 +140,50 @@ for i, entry in ipairs(mapping) do
 end
 update()
 expect(#native == #mapping, "the real CMS adapter must not replay an acknowledged window")
-values[cockpit_params.McGeneration] = 4
-values[cockpit_params.McActionFirstSequence] = #mapping + 1
-values[cockpit_params.McActionCount] = 4
-for i, name in ipairs({ "StartCmsForward", "StartCmsAft", "StartCmsLeft", "AbortCms" }) do
-    values[cockpit_params[string.format("McAction%02d", i)]] = kinds[name]
-end
-update()
-expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + 4, "CM requests are handled by the Lua CM subsystem")
-expect(#native == #mapping + 1 and native[#mapping + 1] == dcs_commands.iCommandPlaneDropChaffOnce, "abort clears queued paired releases")
-for _ = 1, 100 do
+-- 固定前向程序在每種主保險下執行，並跨越程序中的主保險變更。
+for arm = 0, 2 do
+    local first_native = #native + 1
+    values[cockpit_params.HmcsMasterMode] = arm
+    values[cockpit_params.McGeneration] = 4 + arm * 2
+    values[cockpit_params.McActionFirstSequence] = #mapping + arm + 1
+    values[cockpit_params.McActionCount] = 1
+    values[cockpit_params.McAction01] = kinds.StartCmsForward
     update()
+    for tick = 1, 600 do
+        if tick == 100 then values[cockpit_params.HmcsMasterMode] = (arm + 1) % 3 end
+        update()
+    end
+    local on, off = 0, 0
+    for i = first_native, #native do
+        if native[i] == dcs_commands.iCommandPlaneDropSnarOnce then on = on + 1 end
+        if native[i] == dcs_commands.iCommandPlaneDropSnarOnceOff then off = off + 1 end
+    end
+    expect(on == 10 and off == 10 and #native - first_native + 1 == 20,
+        "forward program completes ten paired pulses across master-arm changes: " .. arm)
+    expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + arm + 1,
+        "forward action is acknowledged exactly once: " .. arm)
 end
-expect(#native == #mapping + 1, "an aborted CM program must not release later")
-values[cockpit_params.McGeneration] = 6
-values[cockpit_params.McActionFirstSequence] = #mapping + 5
+local count_before_radar = #native
+values[cockpit_params.McGeneration] = 10
+values[cockpit_params.McActionFirstSequence] = #mapping + 4
 values[cockpit_params.McActionCount] = 1
 values[cockpit_params.McAction01] = kinds.EnsureRadarOn
 values[cockpit_params.RadarState] = 1
 update()
 expect(
-    values[cockpit_params.McAcknowledgedSequence] == #mapping + 5 and #native == #mapping + 1,
+    values[cockpit_params.McAcknowledgedSequence] == #mapping + 4 and #native == count_before_radar,
     "an ON request must not toggle an already ON radar"
 )
+-- 同一個傳送視窗的重新啟動，採用最後一筆固定程序要求。
+local count_before_restart = #native
+values[cockpit_params.McGeneration] = 12
+values[cockpit_params.McActionFirstSequence] = #mapping + 5
+values[cockpit_params.McActionCount] = 2
+values[cockpit_params.McAction01] = kinds.StartCmsForward
+values[cockpit_params.McAction02] = kinds.StartCmsForward
+for _ = 1, 600 do update() end
+expect(#native - count_before_restart == 20, "a forward restart replaces queued paired releases with ten rounds")
+expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + 6, "both forward requests retain transport order")
 -- CMS 執行 MC 動作；掛載數量由固定掛點觀測提供。
 expect(values[cockpit_params.McAdapterAvailable] == 1, "CMS publishes executable adapter availability")
 

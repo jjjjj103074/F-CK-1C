@@ -87,7 +87,6 @@ private:
 	// 成員依宣告反序銷毀；連線最後宣告，確保先解除訂閱，再銷毀接收者與通道。
 	sigslot::scoped_connection stores_commands_connection_;
 	sigslot::scoped_connection fire_control_arm_connection_;
-	sigslot::scoped_connection countermeasure_arm_connection_;
 	sigslot::scoped_connection fire_control_mode_connection_;
 	sigslot::scoped_connection stores_mode_connection_;
 };

@@ -62,9 +62,9 @@ join(res.keyCommands, {
     { down = device_commands.DMSRight, up = device_commands.DMSRight, value_down = 1.0, value_up = 0.0, name = _("HOTAS DMS - Right"), category = { _("Displays") } },
 
     { down = device_commands.CMSForward, up = device_commands.CMSForward, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Forward (10x Flare + Chaff / 1s)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
-    { down = device_commands.CMSAft, up = device_commands.CMSAft, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Aft (7x Chaff / 0.5s)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
-    { down = device_commands.CMSLeft, up = device_commands.CMSLeft, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Left (2x Flare + Chaff)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
-    { down = device_commands.CMSRight, up = device_commands.CMSRight, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Right (Abort Program)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
+    { down = device_commands.CMSAft, up = device_commands.CMSAft, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Aft (ECM Consent - Reserved)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
+    { down = device_commands.CMSLeft, up = device_commands.CMSLeft, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Left (Program 6 - Reserved)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
+    { down = device_commands.CMSRight, up = device_commands.CMSRight, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Right (ECM Standby - Reserved)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
     { down = device_commands.CMSPress, up = device_commands.CMSPress, value_down = 1.0, value_up = 0.0, name = _("HOTAS CMS - Press (Reserved)"), category = { _("Countermeasures") }, features = { "Countermeasures" } },
     { combos = { { key = "JOY_BTN1" } }, down = iCommandPlaneFire, up = iCommandPlaneFireOff, name = _("Gun Fire"), category = { _("Weapons") } },
     { down = iCommandPlaneFire, up = iCommandPlaneFireOff, name = _("Gun Fire (MC)"), category = { _("Weapons") } },
