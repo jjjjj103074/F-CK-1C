@@ -122,9 +122,24 @@ function CreateElement(kind) return { kind = kind } end
 local elements = {}
 function Add(element) elements[#elements + 1] = element end
 original_dofile(root .. '/Indicator_page.lua')
-assert(#elements == 36)
 local names = {}
-for _,element in ipairs(elements) do assert(not names[element.name]); names[element.name]=true end
+local shown = {}
+for _,element in ipairs(elements) do
+    assert(not names[element.name]); names[element.name]=true
+    if element.init_pos then
+        assert(element.init_pos[2] >= elements[1].vertices[1][2])
+        assert(element.init_pos[2] <= elements[1].vertices[3][2])
+    end
+    if element.element_params then shown[element.element_params[1]] = true end
+end
+for _,parameter in ipairs({
+    "CPP_CM_ACCEPTED_SEQUENCE", "CPP_CM_EXECUTED_SEQUENCE", "CPP_CM_PROGRAM_STATE", "CPP_CM_COMPLETED_ROUNDS",
+    "CPP_CM_INVENTORY_AVAILABLE", "CPP_CM_FLARE_COUNT", "CPP_CM_CHAFF_COUNT",
+    "CPP_NATIVE_CM_ENABLED", "CPP_NATIVE_CM_API_MASK", "CPP_NATIVE_CM_STATUS", "CPP_NATIVE_CM_LAST_REQUEST",
+    "CPP_NATIVE_CM_REQUESTS", "CPP_NATIVE_CM_CALLS", "CPP_NATIVE_CM_METHOD",
+    "FCK1C_TEST_CM_OBSERVATION_AVAILABLE", "FCK1C_TEST_CM_FLARE_COUNT", "FCK1C_TEST_CM_CHAFF_COUNT",
+    "OBS_MC_ACKNOWLEDGED_SEQUENCE", "CPP_MC_STORES_GUN_COUNT", "CPP_MC_STORES_AIR_TO_AIR_MISSILE_COUNT"
+}) do assert(shown[parameter], "missing visible diagnostic: " .. parameter) end
 assert(elements[1].vertices[3][1] < LockOn_Options.screen.aspect)
 print('MC flight-test recorder/indicator fixtures passed.')
 
