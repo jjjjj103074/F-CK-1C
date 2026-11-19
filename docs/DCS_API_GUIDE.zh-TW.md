@@ -297,3 +297,20 @@ HMCS VR在同一子頁先建立裁切遮罩，再建立以遮罩為父節點的�
 
 安裝工具會備份並移除歷史`FCK1C_AMMO_PROBE`與`FCK1C_STORES_EXPORT`載入區塊，並封存已識別的彈量探針檔案。
 其他Export內容與自訂檔案按原始位元組保存。未識別原生命令2659維持原有診斷，另以[issue #37](https://github.com/jjjjj103074/F-CK-1C/issues/37)追蹤。
+
+## 反制程序的正式 C++ 路徑
+
+CMS 前向及左向由 MC 轉為程序要求，經 SystemPipeline 交由 `CountermeasureSystem`。
+Bridge 的 `CountermeasureExecutor` 使用共用 `DcsAircraftInterface::dispense_countermeasure()`，
+直接呼叫已驗證的 context / human 施放能力。程序計時及庫存回報透過 Pipeline 完成。
+詳見 [CountermeasureSystem](../src/efm/F-CK-1C_EFM/Core/Systems/CountermeasureSystem/README.md)。
+
+2026-11-19 飛測確認舊 Lua `dispatch_action(nil, 176/536/358)` 路徑可以增加傳送 ACK、
+卻未消耗反制存量。該 ACK 僅表示 Lua 接受語意動作。此版本將程序與施放改接上述 C++ 路徑，
+移除 Lua 的反制計時、配對脈衝與程序 wire 動作 17/19。
+Lua 有序轉接繼續處理現有武器、選站與雷達操作。
+
+`CPP_CM_ACCEPTED_SEQUENCE` 是反制系統接受程序的序號；`CPP_CM_EXECUTED_SEQUENCE` 是 Bridge 已處理的一輪序號。
+`CPP_CM_FLARE_RETURNED` / `CPP_CM_CHAFF_RETURNED` 表示最近一輪各種類的原生呼叫返回。
+實際庫存由 `CPP_CM_INVENTORY_AVAILABLE`、`CPP_CM_FLARE_COUNT`、`CPP_CM_CHAFF_COUNT` 回報，
+飛測包另保留 Lua 獨立庫存觀測交叉核對。`countermeasure_dispense` 日誌包含各呼叫前後庫存與錯誤狀態。

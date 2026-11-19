@@ -131,6 +131,16 @@ static const char* const ActionWeaponChangeCount = "CPP_ACTION_WEAPON_CHANGE_COU
 static const char* const ActionFlareReleaseCount = "CPP_ACTION_FLARE_RELEASE_COUNT";
 static const char* const ActionChaffReleaseCount = "CPP_ACTION_CHAFF_RELEASE_COUNT";
 static const char* const ActionCombinedReleaseCount = "CPP_ACTION_COMBINED_RELEASE_COUNT";
+static const char* const CmInventoryAvailable = "CPP_CM_INVENTORY_AVAILABLE";
+static const char* const CmFlareCount = "CPP_CM_FLARE_COUNT";
+static const char* const CmChaffCount = "CPP_CM_CHAFF_COUNT";
+static const char* const CmAcceptedSequence = "CPP_CM_ACCEPTED_SEQUENCE";
+static const char* const CmProgram = "CPP_CM_PROGRAM";
+static const char* const CmProgramState = "CPP_CM_PROGRAM_STATE";
+static const char* const CmCompletedRounds = "CPP_CM_COMPLETED_ROUNDS";
+static const char* const CmExecutedSequence = "CPP_CM_EXECUTED_SEQUENCE";
+static const char* const CmFlareReturned = "CPP_CM_FLARE_RETURNED";
+static const char* const CmChaffReturned = "CPP_CM_CHAFF_RETURNED";
 static const char* const NativeCmEnabled = "CPP_NATIVE_CM_ENABLED";
 static const char* const NativeCmApiMask = "CPP_NATIVE_CM_API_MASK";
 static const char* const NativeCmStatus = "CPP_NATIVE_CM_STATUS";
@@ -277,6 +287,16 @@ static constexpr Entry Catalog[] = {
     { ActionFlareReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
     { ActionChaffReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
     { ActionCombinedReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { CmInventoryAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmFlareCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmChaffCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmAcceptedSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmProgram, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmProgramState, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmCompletedRounds, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmExecutedSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmFlareReturned, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmChaffReturned, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
     { NativeCmEnabled, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
     { NativeCmApiMask, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
     { NativeCmStatus, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },

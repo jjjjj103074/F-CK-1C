@@ -43,7 +43,7 @@ def cases():
 def markdown():
     data = cases()
     lines = ['# MC 完整實機測試流程', '',
-        '本輪先做任務 A 的 C01：按右 Ctrl＋J，確認 CHF 減 7、FLR 保持；再做 C03–C06 與 C08 核對前向程序、保險獨立及按住後回中。', '',
+        '本輪先做任務 A：按右 Ctrl＋J 後等 5 秒，CPP CHF 與 LUA CHF 均減 7、FLR 保持；按右 Ctrl＋I 後等 12 秒，兩類各減 10。CM REQ 增加代表程序已接受，EXEC 是已處理輪次；兩者與武器／雷達 ACK 分開。CM STATE：0待命、1運行、2呼叫完成、3呼叫失敗。再做 C04–C06 與 C08 核對保險獨立及按住後回中。', '',
         '## 安裝與開始', '',
         'SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查看；本輪以真實 F-16 手冊為操作依據。沒有實際 MFD 畫面，功能空殼會顯示 RESERVED。', '',
         '1. 完全關閉 DCS，解壓縮測試包，在 F-CK-1C 資料夾執行 install.bat；預設安裝到 Saved Games\\DCS。使用 DCS.openbeta 或其他資料夾時，將該 Saved Games 路徑作為 install.bat 的第一個參數。',
@@ -77,7 +77,7 @@ def markdown():
         '3. 記錄器會保存各次任務的座艙參數、原始掛點字串、MC 快照、DCS 視窗／ACK、雷達與 IR 來源。收集包另含安裝 DLL 雜湊、DCS 日誌及既有輸入設定。', '',
         '## 驗證範圍', '',
         f'人工流程共 {len(data)} 項，涵蓋目前實作的模式、反制、掛載、選站、火控資格、捕獲、原生彈量、IR 狀態、座艙呈現與生命週期。', '',
-        '逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。原生測試的 C++ 派送使用獨立測試佇列，Lua 僅取樣實際反制存量。後續目標為透過 SystemPipeline 的 C++ 反制系統；本包保留現行 CMS 程序供回歸。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。', '',
+        '逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。原生測試的 C++ 派送使用獨立測試佇列，Lua 僅取樣實際反制存量。正式 CMS 使用 SystemPipeline 的 C++ CountermeasureSystem 排程，Bridge 直接透過 context / human 施放；庫存由 C++ 與 Lua 獨立讀取交叉核對。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。', '',
         '目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。', '',
         '本輪刻意保留的行為：保險與主模式獨立；機砲在 ON＋DGF 時接受新開始，與UNCAGE選擇獨立；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。CMS 在各主保險狀態下啟用；前向固定十輪混合施放，左向程序 6 固定七發干擾絲、間隔 0.5 秒；後／右為預留入口。', '',
         '安裝時會備份並移除舊F-CK-1C掛載匯出與彈量探針入口。回收包包含recording-health.json，可核對每份錄製CSV的資料列。來源commit、DLL SHA256與Windows CI位於測試包根目錄BUILD.json。', '']

@@ -3,6 +3,7 @@
 #include "MissionActions.h"
 #include "ExternalActions.h"
 #include "RadarCommands.h"
+#include "CountermeasureContracts.h"
 #include "DisplayContracts.h"
 
 #include <array>
@@ -323,6 +324,7 @@ struct CockpitObservation
 	PressureAltitudeObservation pressure_altitude;
 	MissionAdapterObservation mission_adapter;
 	ExternalActionFeedback external_action_feedback;
+	CountermeasureObservation countermeasures;
 };
 
 struct SnapshotStatus
@@ -542,9 +544,12 @@ struct MissionControlInputsSnapshot
 struct CountermeasureSnapshot
 {
 	SnapshotStatus status;
-	std::uint64_t flare_release_count = 0;
-	std::uint64_t chaff_release_count = 0;
-	std::uint64_t combined_release_count = 0;
+	std::uint64_t accepted_sequence = 0;
+	CountermeasureProgram program = CountermeasureProgram::Forward;
+	CountermeasureProgramState state = CountermeasureProgramState::Idle;
+	int completed_rounds = 0, remaining_rounds = 0;
+	CountermeasureObservation observation;
+	std::optional<CountermeasureDispenseRequest> dispense;
 };
 
 struct CombatAvionicsSnapshot
@@ -555,7 +560,6 @@ struct CombatAvionicsSnapshot
 	FireControlSnapshot fire_control;
 	StoresSnapshot stores;
 	MissionControlInputsSnapshot control_inputs;
-	CountermeasureSnapshot countermeasures;
 	ExternalActionRequests action_requests;
 };
 
@@ -578,6 +582,7 @@ struct CockpitSnapshot
 	bool propulsion_test_thrust_cut_requested = false;
 	CombatAvionicsSnapshot combat_avionics;
 	RadarSnapshot radar;
+	CountermeasureSnapshot countermeasures;
 	HmcsDisplaySnapshot hmcs;
 };
 }

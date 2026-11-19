@@ -1,4 +1,4 @@
--- 執行 DcsBridge 的共用有序 DCS 操作，發布介面可用性，並運行反制程序。
+-- 執行 DcsBridge 的有序武器、選站與雷達操作，發布 Lua 轉接介面可用性。
 local update_rate = 0.02
 make_default_activity(update_rate)
 dofile(LockOn_Options.script_path .. "command_defs.lua")
@@ -14,82 +14,8 @@ local observation_revision = get_param_handle(cockpit_params.WeaponObservationRe
 local selection_ack = get_param_handle(cockpit_params.WeaponSelectionAckRevision)
 local selected_station = get_param_handle(cockpit_params.WeaponObservationSelectedStation)
 
-local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
-local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
-local ICMD_PLANE_DROP_CHAFF_ONCE = dcs_commands.iCommandPlaneDropChaffOnce
-local cms_program = nil
-local cms_program_steps_remaining = 0
-local cms_program_timer = 0.0
-local cms_pair_release_pending = 0
-local cms_pair_release_latched = false
-local cms_pair_release_hold_timer = 0.0
-local cms_pair_release_hold_time = 0.04
-local cms_pair_release_gap_timer = 0.0
-local cms_pair_release_gap_time = 0.12
-
-local function dlog(message)
-    if log and log.info then log.info("FCK1C CMS: " .. tostring(message)) end
-end
-
-local function cms_adapter_ready()
-    return dispatch_action ~= nil
-end
-
 local function publish_adapter_availability()
-    adapter_available:set(cms_adapter_ready() and 1 or 0)
-end
-
-local function pair_release_off()
-    if not cms_pair_release_latched then return end
-    if cms_adapter_ready() then
-        dlog("dispatch cm release OFF")
-        dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE_OFF)
-    end
-    cms_pair_release_latched = false
-    cms_pair_release_hold_timer = 0.0
-end
-
-local function clear_pair_release_queue(reason_tag)
-    if cms_pair_release_latched or cms_pair_release_pending > 0 then
-        dlog("clear cm release queue -> " .. tostring(reason_tag) .. " pending=" .. tostring(cms_pair_release_pending))
-    end
-    pair_release_off()
-    cms_pair_release_pending = 0
-    cms_pair_release_gap_timer = 0.0
-end
-
-local function stop_cms_program(reason_tag)
-    if cms_program then dlog("cms program stop -> " .. tostring(reason_tag)) end
-    cms_program = nil
-    cms_program_steps_remaining = 0
-    cms_program_timer = 0.0
-end
-
-local function abort_cms_program(reason_tag)
-    stop_cms_program(reason_tag)
-    clear_pair_release_queue(reason_tag)
-end
-
--- 每輪要求熱焰彈與干擾絲各一發，沿用原生配對施放脈衝。
-local function queue_pair_release()
-    cms_pair_release_pending = cms_pair_release_pending + 1
-end
-
-local function release_chaff_once()
-    dlog("dispatch chaff once")
-    dispatch_action(nil, ICMD_PLANE_DROP_CHAFF_ONCE)
-end
-
-local cms_forward_program = { name = "forward", rounds = 10, interval = 1.0, release = queue_pair_release }
-local cms_program6 = { name = "program6", rounds = 7, interval = 0.5, release = release_chaff_once }
-
-local function start_cms_program(program)
-    abort_cms_program("restart")
-    cms_program = program
-    cms_program_steps_remaining = program.rounds - 1
-    cms_program_timer = 0.0
-    program.release()
-    dlog("cms program start -> " .. program.name .. " rounds=" .. tostring(program.rounds))
+    adapter_available:set(dispatch_action ~= nil and 1 or 0)
 end
 
 -- Stable semantic action values -> generated DCS IDs. No native IDs enter Core.
@@ -140,10 +66,6 @@ local function execute_action(action, sequence, generation)
     if native then
         local ok, result = pcall(dispatch_action, nil, native)
         return ok and result ~= false
-    elseif action == 17 then
-        start_cms_program(cms_forward_program)
-    elseif action == 19 then
-        start_cms_program(cms_program6)
     else
         return false
     end
@@ -159,46 +81,6 @@ end
 function update()
     publish_adapter_availability()
     mc_io.update()
-    if cms_pair_release_latched then
-        cms_pair_release_hold_timer = cms_pair_release_hold_timer - update_rate
-        if cms_pair_release_hold_timer <= 0.0 then
-            pair_release_off()
-            cms_pair_release_pending = cms_pair_release_pending - 1
-            if cms_pair_release_pending < 0 then cms_pair_release_pending = 0 end
-            cms_pair_release_gap_timer = cms_pair_release_gap_time
-        end
-    elseif cms_pair_release_pending > 0 then
-        if cms_pair_release_gap_timer > 0.0 then
-            cms_pair_release_gap_timer = cms_pair_release_gap_timer - update_rate
-            if cms_pair_release_gap_timer < 0.0 then cms_pair_release_gap_timer = 0.0 end
-        elseif cms_adapter_ready() then
-            dlog("dispatch cm release ON")
-            local ok = dispatch_action(nil, ICMD_PLANE_DROP_SNAR_ONCE)
-            if ok ~= nil then dlog("dispatch cm release ON result=" .. tostring(ok)) end
-            cms_pair_release_latched = true
-            cms_pair_release_hold_timer = cms_pair_release_hold_time
-        else
-            clear_pair_release_queue("cms_pair_block")
-        end
-    end
-
-    if not cms_program then return end
-
-    if cms_program_steps_remaining <= 0 then
-        stop_cms_program("cms_done")
-        return
-    end
-
-    cms_program_timer = cms_program_timer + update_rate
-    if cms_program_timer >= cms_program.interval then
-        cms_program_timer = cms_program_timer - cms_program.interval
-        if cms_adapter_ready() then
-            cms_program.release()
-            cms_program_steps_remaining = cms_program_steps_remaining - 1
-        else
-            abort_cms_program("cms_prog_block")
-        end
-    end
 end
 
 need_to_be_closed = false

@@ -31,7 +31,6 @@ MissionComputer::MissionComputer()
                     stores_commands_),
       mode_management_(mode_data_, mode_events_),
       sensor_of_interest_(mode_data_, input_output_data_.input.display, sensor_of_interest_data_),
-      countermeasure_control_(external_actions_),
       executive_(executive_tables_,
                  { { "stores_management.step",
                      Mc::TaskFrequency(kMissionComputerProjectUpdateRateHz),
@@ -97,6 +96,8 @@ void MissionComputer::setup(SystemSetup& setup)
 	setup.update_rate_hz(kMissionComputerProjectUpdateRateHz);
 	setup.read(AircraftDataKeys::kFrameInput);
 	setup.read(AircraftDataKeys::kRadarSnapshot);
+	setup.read(AircraftDataKeys::kCountermeasureSnapshot);
+	setup.publish(AircraftDataKeys::kCountermeasureRequests, CountermeasureRequests{});
 	setup.read(AircraftDataKeys::kDisplaySnapshot);
 	sensor_control_telemetry_.setup(setup);
 	setup.publish(AircraftDataKeys::kRadarRequests, RadarRequests{});
@@ -181,6 +182,7 @@ void MissionComputer::read_inputs(const SystemStepContext& context, const Aircra
 	input_output_data_.input.observed_at = context.input_time;
 	input_output_data_.input.radar = aircraft.read(AircraftDataKeys::kRadarSnapshot);
 	input_output_data_.input.display = aircraft.read(AircraftDataKeys::kDisplaySnapshot);
+	countermeasure_control_.acknowledge(aircraft.read(AircraftDataKeys::kCountermeasureSnapshot).accepted_sequence);
 	const MissionAdapterObservation& adapter = input_output_data_.input.cockpit.mission_adapter;
 	if (adapter.available)
 	{
@@ -220,6 +222,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.control_inputs = input_output_data_.input.control_inputs;
 	output.action_requests = external_actions_.pending();
 	result.publish(AircraftDataKeys::kRadarRequests, radar_requests_.pending());
+	result.publish(AircraftDataKeys::kCountermeasureRequests, countermeasure_control_.pending());
 	result.publish(AircraftDataKeys::kMissionComputerSnapshot, output);
 }
 

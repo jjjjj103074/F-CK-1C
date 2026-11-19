@@ -535,8 +535,8 @@
     "scenario": "A",
     "title": "CMS Left 程序 6 七發干擾絲",
     "action": "按 CMS Left（右 Ctrl＋J）後放開，等待 5 秒。",
-    "look": "CHF／FLR 存量及機尾反制。",
-    "normal": "CHF 減少 7，FLR 保持；每發間隔約 0.5 秒，完成後停止。",
+    "look": "右上 CM REQ、EXEC、ROUND、CPP CHF／LUA CHF、CPP FLR／LUA FLR。",
+    "normal": "CM REQ 增加 1；EXEC 增加 7、ROUND=7、CM STATE=2。CPP CHF 與 LUA CHF 各比開始減 7；兩邊 FLR 保持。實際離機七發干擾絲。",
     "coverage": "Program 6 seven chaff rounds"
   },
   {
@@ -553,8 +553,8 @@
     "scenario": "A",
     "title": "CMS Forward 固定十輪",
     "action": "按 CMS Forward（右 Ctrl＋I）後放開；按外部視角（F2）觀察約 12 秒，再按座艙視角（F1）。",
-    "look": "機尾反制、FLR／CHF 存量與 CMS 紀錄。",
-    "normal": "完成十輪，每輪熱焰彈與干擾絲各一發，程序間隔約 1 秒；放開按鍵後繼續完成程序。",
+    "look": "機尾反制；右上 CM REQ、EXEC、ROUND 與 C++／Lua 存量。",
+    "normal": "CM REQ 增加 1；EXEC 增加 10、ROUND=10、CM STATE=2。約每秒一輪，各施放熱焰彈與干擾絲一發；CPP／LUA 的兩類存量均各減 10。",
     "coverage": "Fixed manual forward program"
   },
   {
@@ -598,8 +598,8 @@
     "scenario": "A",
     "title": "CMS 按住與回中",
     "action": "按住 CMS Left（右 Ctrl＋J）約 2 秒後放開，再等待 5 秒；按 CMS Press（右 Alt＋PgDn）後等 2 秒。",
-    "look": "機尾反制與 FLR／CHF 存量。",
-    "normal": "左向按住只啟動一次七發干擾絲程序；放開回中後完成原程序，FLR 保持；預留按壓入口保持存量。",
+    "look": "CM REQ、ROUND、EXEC、兩邊 CHF；機尾離機效果。",
+    "normal": "按住及放開只啟動一個程序，CM REQ 增加 1，七發干擾絲完成後停止；CMS Press 保留入口並保持存量。",
     "coverage": "Momentary CMS input and reserved press"
   },
   {
@@ -733,8 +733,8 @@
     "scenario": "A",
     "title": "低 FPS 的短按與停止",
     "action": "在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Ctrl＋I），再按 CMS Right 預留入口（右 Ctrl＋L）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。",
-    "look": "砲火停止、反制中止、最後 MODE／SUB、TX。",
-    "normal": "短按可完成且放開後停止；反制中止；最後 NAV／---，TX 最終回 0。",
+    "look": "砲火停止、反制程序、最後 MODE／SUB、TX。",
+    "normal": "短按機砲可完成且放開後停止；CMS Right 保留入口，前向仍完成十輪混合施放；最後 NAV／---，TX 最終回 0。",
     "coverage": "Fixed update / delayed ACK / command completion"
   },
   {

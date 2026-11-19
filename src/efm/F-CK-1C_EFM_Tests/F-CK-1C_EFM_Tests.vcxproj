@@ -95,6 +95,8 @@
     <ClCompile Include="DigitalFlightControlExecutiveTests.cpp" />
     <ClCompile Include="MissionComputerTests.cpp" />
     <ClCompile Include="RadarSystemTests.cpp" />
+    <ClCompile Include="CountermeasureSystemTests.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Countermeasures\CountermeasureExecutor.cpp" />
     <ClCompile Include="SensorControlTests.cpp" />
     <ClCompile Include="ModeManagementTests.cpp" />
     <ClCompile Include="StoresManagementTests.cpp" />

@@ -21,7 +21,7 @@
 namespace Core::Systems
 {
 /// @brief 一台 MC 的組裝與 Pipeline 介面；直接持有功能元件與具型別資料庫。
-/// 模式、掛載與火控共用一個 Executive，DCS 操作由 Lua 介面執行。
+/// 模式、掛載與火控共用一個 Executive；設備要求透過 Pipeline 與 Bridge 傳送。
 class MissionComputer final : public System
 {
 public:

@@ -1,6 +1,6 @@
 # MC 完整實機測試流程
 
-本輪先做任務 A 的 C01：按右 Ctrl＋J，確認 CHF 減 7、FLR 保持；再做 C03–C06 與 C08 核對前向程序、保險獨立及按住後回中。
+本輪先做任務 A：按右 Ctrl＋J 後等 5 秒，CPP CHF 與 LUA CHF 均減 7、FLR 保持；按右 Ctrl＋I 後等 12 秒，兩類各減 10。CM REQ 增加代表程序已接受，EXEC 是已處理輪次；兩者與武器／雷達 ACK 分開。CM STATE：0待命、1運行、2呼叫完成、3呼叫失敗。再做 C04–C06 與 C08 核對保險獨立及按住後回中。
 
 ## 安裝與開始
 
@@ -328,9 +328,9 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 操作：按 CMS Left（右 Ctrl＋J）後放開，等待 5 秒。
 
-看哪裡：CHF／FLR 存量及機尾反制。
+看哪裡：右上 CM REQ、EXEC、ROUND、CPP CHF／LUA CHF、CPP FLR／LUA FLR。
 
-正常：CHF 減少 7，FLR 保持；每發間隔約 0.5 秒，完成後停止。
+正常：CM REQ 增加 1；EXEC 增加 7、ROUND=7、CM STATE=2。CPP CHF 與 LUA CHF 各比開始減 7；兩邊 FLR 保持。實際離機七發干擾絲。
 
 ### C02　CMS Aft 電子干擾許可入口
 
@@ -344,9 +344,9 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 操作：按 CMS Forward（右 Ctrl＋I）後放開；按外部視角（F2）觀察約 12 秒，再按座艙視角（F1）。
 
-看哪裡：機尾反制、FLR／CHF 存量與 CMS 紀錄。
+看哪裡：機尾反制；右上 CM REQ、EXEC、ROUND 與 C++／Lua 存量。
 
-正常：完成十輪，每輪熱焰彈與干擾絲各一發，程序間隔約 1 秒；放開按鍵後繼續完成程序。
+正常：CM REQ 增加 1；EXEC 增加 10、ROUND=10、CM STATE=2。約每秒一輪，各施放熱焰彈與干擾絲一發；CPP／LUA 的兩類存量均各減 10。
 
 ### C04　CMS Right 電子干擾待命入口
 
@@ -384,9 +384,9 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 操作：按住 CMS Left（右 Ctrl＋J）約 2 秒後放開，再等待 5 秒；按 CMS Press（右 Alt＋PgDn）後等 2 秒。
 
-看哪裡：機尾反制與 FLR／CHF 存量。
+看哪裡：CM REQ、ROUND、EXEC、兩邊 CHF；機尾離機效果。
 
-正常：左向按住只啟動一次七發干擾絲程序；放開回中後完成原程序，FLR 保持；預留按壓入口保持存量。
+正常：按住及放開只啟動一個程序，CM REQ 增加 1，七發干擾絲完成後停止；CMS Press 保留入口並保持存量。
 
 ### I03　手動音效入口
 
@@ -424,9 +424,9 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 操作：在平常與較低 FPS 各做一輪：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D），短按機砲（Space）；按 CMS Forward（右 Ctrl＋I），再按 CMS Right 預留入口（右 Ctrl＋L）；依序按 MSL（右 Alt＋D）、超控中央（右 Shift＋D）後按 NAV（1）。
 
-看哪裡：砲火停止、反制中止、最後 MODE／SUB、TX。
+看哪裡：砲火停止、反制程序、最後 MODE／SUB、TX。
 
-正常：短按可完成且放開後停止；反制中止；最後 NAV／---，TX 最終回 0。
+正常：短按機砲可完成且放開後停止；CMS Right 保留入口，前向仍完成十輪混合施放；最後 NAV／---，TX 最終回 0。
 
 ### L03　任務重入清除
 
@@ -778,7 +778,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 人工流程共 86 項，涵蓋目前實作的模式、反制、掛載、選站、火控資格、捕獲、原生彈量、IR 狀態、座艙呈現與生命週期。
 
-逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。原生測試的 C++ 派送使用獨立測試佇列，Lua 僅取樣實際反制存量。後續目標為透過 SystemPipeline 的 C++ 反制系統；本包保留現行 CMS 程序供回歸。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。
+逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。原生測試的 C++ 派送使用獨立測試佇列，Lua 僅取樣實際反制存量。正式 CMS 使用 SystemPipeline 的 C++ CountermeasureSystem 排程，Bridge 直接透過 context / human 施放；庫存由 C++ 與 Lua 獨立讀取交叉核對。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。
 
 目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。
 

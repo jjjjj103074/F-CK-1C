@@ -141,12 +141,12 @@ try
 			if (observation.mission_adapter.available)
 				bridge().action_transport().acknowledge(observation.mission_adapter.acknowledged_sequence);
 			observation.external_action_feedback = bridge().action_transport().feedback();
-			observation.gun_ammunition =
-			    bridge().gun_ammunition_source().observe(bridge().output_store().read()->simulation_time_s);
+			bridge().observe_aircraft(observation);
 			bridge().input_collector().publish_cockpit_observation(observation);
 			output = bridge().core().step(bridge().input_collector().snapshot(dt));
 			bridge().action_transport().collect(output.cockpit.combat_avionics.action_requests, output.cockpit.radar);
 			action_batch = bridge().action_transport().batch();
+			bridge().countermeasure_executor().execute(output.cockpit.countermeasures, output.simulation_time_s);
 			bridge().output_store().publish(output);
 			bridge().param_exporter().observe(output);
 			bridge().state_csv_writer().publish_step(output);

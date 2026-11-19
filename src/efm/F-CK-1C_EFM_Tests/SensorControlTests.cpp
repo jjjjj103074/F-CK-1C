@@ -9,6 +9,11 @@ namespace Core::Systems::Catalog::DisplaySystem
 {
 SystemEntry create_entry();
 }
+namespace Core::Systems::Catalog::CountermeasureSystem
+{
+SystemEntry create_entry();
+}
+
 namespace Core::Systems::Catalog::MissionComputer
 {
 SystemEntry create_entry();
@@ -32,7 +37,8 @@ struct Fixture
 	SystemPipeline pipeline{ { StartMode::HotGround, {}, {}, telemetry },
 		                     { Catalog::MissionComputer::create_entry(),
 		                       Catalog::RadarSystem::create_entry(),
-		                       Catalog::DisplaySystem::create_entry() } };
+		                       Catalog::DisplaySystem::create_entry(),
+		                       Catalog::CountermeasureSystem::create_entry() } };
 	FrameInput frame;
 	DcsBridge::Internal::ExternalActionTransport transport;
 	std::vector<RadarRequest> requests;

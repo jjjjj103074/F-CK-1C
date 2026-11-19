@@ -49,9 +49,20 @@ private:
 		ApDisengageReason,
 		ApAutoThrottleEngageRejectionReason,
 		ApAutoThrottleDisengageReason,
+		CmInventoryAvailable,
+		CmFlareCount,
+		CmChaffCount,
+		CmAcceptedSequence,
+		CmProgram,
+		CmProgramState,
+		CmCompletedRounds,
+		CmExecutedSequence,
+		CmFlareReturned,
+		CmChaffReturned,
 		Count
 	};
 
+	CockpitParameterEvents export_countermeasures(const Core::CountermeasureSnapshot& snapshot);
 	CockpitParameterEvents export_automatic_flight_control(const Core::AutomaticFlightControlSnapshot& snapshot);
 	CockpitParameterEvents write_parameter(Parameter parameter, double value);
 	const cockpit_param_api api_;

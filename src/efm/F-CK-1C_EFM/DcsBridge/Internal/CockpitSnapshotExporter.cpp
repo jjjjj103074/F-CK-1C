@@ -34,7 +34,17 @@ CockpitSnapshotExporter::CockpitSnapshotExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApEngageRejectionReason),
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApDisengageReason),
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleEngageRejectionReason),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleDisengageReason) } }),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleDisengageReason),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmInventoryAvailable),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmFlareCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmChaffCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmAcceptedSequence),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmProgram),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmProgramState),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmCompletedRounds),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmExecutedSequence),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmFlareReturned),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmChaffReturned) } }),
       mission_computer_(api)
 {
 }
@@ -61,6 +71,25 @@ CockpitParameterEvents CockpitSnapshotExporter::export_snapshot(const Core::Cock
 	    write_parameter(Parameter::MaxPowerSwitch, snapshot.propulsion_test_thrust_cut_requested ? 0.0 : 1.0));
 	events = events.merged(export_automatic_flight_control(snapshot.automatic_flight_control));
 	events = events.merged(mission_computer_.export_snapshot(snapshot.combat_avionics, actions));
+	events = events.merged(export_countermeasures(snapshot.countermeasures));
+	return events;
+}
+
+CockpitParameterEvents CockpitSnapshotExporter::export_countermeasures(const Core::CountermeasureSnapshot& s)
+{
+	CockpitParameterEvents events;
+#define WRITE_CM(parameter, value) events = events.merged(write_parameter(Parameter::parameter, value))
+	WRITE_CM(CmInventoryAvailable, s.observation.inventory.available ? 1.0 : 0.0);
+	WRITE_CM(CmFlareCount, static_cast<double>(s.observation.inventory.flare));
+	WRITE_CM(CmChaffCount, static_cast<double>(s.observation.inventory.chaff));
+	WRITE_CM(CmAcceptedSequence, static_cast<double>(s.accepted_sequence));
+	WRITE_CM(CmProgram, static_cast<double>(s.program));
+	WRITE_CM(CmProgramState, static_cast<double>(s.state));
+	WRITE_CM(CmCompletedRounds, static_cast<double>(s.completed_rounds));
+	WRITE_CM(CmExecutedSequence, static_cast<double>(s.observation.execution.sequence));
+	WRITE_CM(CmFlareReturned, s.observation.execution.flare_returned ? 1.0 : 0.0);
+	WRITE_CM(CmChaffReturned, s.observation.execution.chaff_returned ? 1.0 : 0.0);
+#undef WRITE_CM
 	return events;
 }
 

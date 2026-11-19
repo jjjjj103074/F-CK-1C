@@ -135,7 +135,7 @@ HMCS 依有效 lock、模式及操作意圖決定武器呈現；音效 Lua 依�
 原型的接觸、備便、尋標狀態及雷達／操作意圖鎖定推導已移除。
 完整移除清單、介面與驗證見[整理報告](../../../../../../docs/IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
 
-反制程序仍在 Lua，CountermeasureControl 將前向與左向按下轉為施放要求。
+CountermeasureControl 將前向與左向按下轉為具序號的程序要求，經 SystemPipeline 交由同層 CountermeasureSystem 排程；Bridge 使用共用 DcsAircraftInterface 直接施放並回報原生庫存。
 
 ## 逐掛點庫存
 

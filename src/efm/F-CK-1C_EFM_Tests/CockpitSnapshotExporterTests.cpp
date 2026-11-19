@@ -180,17 +180,47 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::MissionActionBatch actions;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 70);
+	TEST_EXPECT(context, events.count == 80);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context,
 	            exporter.export_snapshot(snapshot, actions).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 70);
+	TEST_EXPECT(context, events.count == 80);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
+}
+
+void test_countermeasure_execution_and_inventory_are_exported_separately(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	auto& cm = snapshot.countermeasures;
+	cm.status = { true, 1 };
+	cm.accepted_sequence = 3;
+	cm.program = Core::CountermeasureProgram::Program6;
+	cm.state = Core::CountermeasureProgramState::Running;
+	cm.completed_rounds = 2;
+	cm.observation = { { true, 90, 88 }, { 12, false, true, 1.0 } };
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmAcceptedSequence), 3, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmExecutedSequence), 12, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmProgram), 1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmProgramState), 1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmCompletedRounds), 2, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmInventoryAvailable), 1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmFlareCount), 90, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmChaffCount), 88, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmFlareReturned), 0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmChaffReturned), 1, kTolerance);
+	cm = {};
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmExecutedSequence), 0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmInventoryAvailable), 0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmChaffCount), -1, kTolerance);
 }
 
 void test_gun_count_availability_is_exported_separately(Tests::Context& context)
@@ -319,6 +349,7 @@ void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 	test_ir_observation_validity_clears_unavailable_cockpit_values(context);
 	test_selection_mailbox_uses_the_front_command_payload(context);
 	test_gun_count_availability_is_exported_separately(context);
+	test_countermeasure_execution_and_inventory_are_exported_separately(context);
 	test_snapshot_envelope_is_exported(context);
 	test_missing_parameter_reports_once_then_recovers(context);
 	test_reset_restarts_error_reporting(context);

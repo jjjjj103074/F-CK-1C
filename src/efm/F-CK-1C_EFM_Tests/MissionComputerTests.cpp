@@ -13,6 +13,11 @@
 #include <type_traits>
 #include <vector>
 
+namespace Core::Systems::Catalog::CountermeasureSystem
+{
+SystemEntry create_entry();
+}
+
 namespace Core::Systems::Catalog::MissionComputer
 {
 SystemEntry create_entry();
@@ -144,8 +149,11 @@ void test_entry_in_pipeline(Tests::Context& context)
 	SystemEntry entry = Catalog::MissionComputer::create_entry();
 	TEST_EXPECT(context, entry.id == "mission_computer");
 	SystemPipeline pipeline(SystemPipelineTest::flight_setup(),
-	                        { entry, Catalog::RadarSystem::create_entry(), Catalog::DisplaySystem::create_entry() });
-	TEST_EXPECT(context, pipeline.system_count() == 3);
+	                        { entry,
+	                          Catalog::RadarSystem::create_entry(),
+	                          Catalog::DisplaySystem::create_entry(),
+	                          Catalog::CountermeasureSystem::create_entry() });
+	TEST_EXPECT(context, pipeline.system_count() == 4);
 	const auto before = std::make_unique<const AircraftDataSnapshot>(
 	    SystemPipelineTest::step_pipeline_to(pipeline, {}, {}, kMissionPeriod - nanoseconds(1)));
 	TEST_EXPECT(context, !before->read(AircraftDataKeys::kMissionComputerSnapshot).status.available);
@@ -166,6 +174,7 @@ struct MissionTestSnapshot
 {
 	CombatAvionicsSnapshot state;
 	MissionActionBatch actions;
+	CountermeasureRequests countermeasure_requests;
 };
 
 struct MissionFixture
@@ -173,7 +182,8 @@ struct MissionFixture
 	SystemPipeline pipeline{ SystemPipelineTest::flight_setup(),
 		                     { Catalog::MissionComputer::create_entry(),
 		                       Catalog::RadarSystem::create_entry(),
-		                       Catalog::DisplaySystem::create_entry() } };
+		                       Catalog::DisplaySystem::create_entry(),
+		                       Catalog::CountermeasureSystem::create_entry() } };
 	FrameInput frame;
 	DcsBridge::Internal::ExternalActionTransport transport;
 
@@ -194,7 +204,7 @@ struct MissionFixture
 		const auto snapshot = SystemPipelineTest::step_pipeline_to(pipeline, frame, {}, target);
 		const auto mc = snapshot.read(AircraftDataKeys::kMissionComputerSnapshot);
 		transport.collect(mc.action_requests, snapshot.read(AircraftDataKeys::kRadarSnapshot));
-		return { mc, transport.batch() };
+		return { mc, transport.batch(), snapshot.read(AircraftDataKeys::kCountermeasureRequests) };
 	}
 
 	void send(CommandId id, double value = 1.0)
@@ -396,7 +406,7 @@ void test_inventory_wait_keeps_targeting_release_and_cms_executable(Tests::Conte
 		started = started || contains(batch, MissionActionKind::LockStart);
 		finished = finished || contains(batch, MissionActionKind::LockFinish);
 		change_released = change_released || contains(batch, MissionActionKind::ChangeLockUp);
-		cms_started = cms_started || contains(batch, MissionActionKind::StartCmsForward);
+		cms_started = cms_started || !output.countermeasure_requests.items.empty();
 		if (batch.count != 0)
 			fixture.frame.cockpit.mission_adapter.acknowledged_sequence = batch.first_sequence + batch.count - 1;
 	}
@@ -931,22 +941,18 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 	fixture.send(CommandId::StartCmsForward, 0.0);
 	fixture.send(CommandId::PressCms);
 	const auto output = fixture.step(kMissionPeriod);
-	std::vector<MissionActionKind> actions;
-	auto window = output.actions;
-	int tick = 2;
-	while (window.count != 0)
-	{
-		for (std::size_t i = 0; i < window.count; ++i)
-			if (window.actions[i].kind != MissionActionKind::None)
-				actions.push_back(window.actions[i].kind);
-		fixture.frame.cockpit.mission_adapter.acknowledged_sequence = window.first_sequence + window.count - 1;
-		window = fixture.step(kMissionPeriod * tick++).actions;
-	}
-	const std::vector<MissionActionKind> expected = {
-		MissionActionKind::StartCmsForward, MissionActionKind::StartCmsForward,  MissionActionKind::StartCmsProgram6,
-		MissionActionKind::StartCmsForward, MissionActionKind::StartCmsProgram6, MissionActionKind::StartCmsProgram6
+	const auto& requests = output.countermeasure_requests.items;
+	const std::vector<CountermeasureProgram> expected = {
+		CountermeasureProgram::Forward, CountermeasureProgram::Forward,  CountermeasureProgram::Program6,
+		CountermeasureProgram::Forward, CountermeasureProgram::Program6, CountermeasureProgram::Program6
 	};
-	TEST_EXPECT(context, actions == expected);
+	TEST_EXPECT(context, requests.size() == expected.size());
+	for (std::size_t i = 0; i < requests.size(); ++i)
+	{
+		TEST_EXPECT(context, requests[i].sequence == i + 1);
+		TEST_EXPECT(context, requests[i].program == expected[i]);
+	}
+	TEST_EXPECT(context, output.actions.count == 0);
 	TEST_EXPECT(context, output.state.mode.master_arm_mode == MasterArmMode::On);
 	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::Navigation);
 	TEST_EXPECT(context, output.state.mode.status.available);

@@ -122,6 +122,7 @@ FrameOutput AircraftSimulation::make_frame_output(const Systems::AircraftDataSna
 	output.cockpit.automatic_flight_control = aircraft.read(AircraftDataKeys::kAutomaticFlightControlSnapshot);
 	output.cockpit.combat_avionics = aircraft.read(AircraftDataKeys::kMissionComputerSnapshot);
 	output.cockpit.radar = aircraft.read(AircraftDataKeys::kRadarSnapshot);
+	output.cockpit.countermeasures = aircraft.read(AircraftDataKeys::kCountermeasureSnapshot);
 	output.cockpit.propulsion_test_thrust_cut_requested = diagnostics.thrust_cut_requested;
 	output.shake_amplitude_normalized = simulation.shake_amplitude_normalized;
 	return output;
