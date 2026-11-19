@@ -861,4 +861,6 @@ local debug_custom = { { down = device_commands.DebugIndicatorToggle, combos = {
 dofile("tools/mc-flight-test/NativeCountermeasureKeys.lua")(debug_custom, device_commands)
 expect(debug_custom[1].combos[1].key == "CustomDebug", "flight-test overlay preserves explicit debug keys")
 
+dofile("tools/test_mc_runtime.lua")(expect)
+
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))

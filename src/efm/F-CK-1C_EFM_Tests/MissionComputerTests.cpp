@@ -1243,6 +1243,23 @@ void test_missile_step_hold_uses_input_time_and_cancels_on_mode_change(Tests::Co
 	TEST_EXPECT(context, output.state.stores.selection.requested_station == 2);
 }
 
+void test_dogfight_gun_qualification_is_independent_from_uncage(Tests::Context& context)
+{
+	for (bool uncage : { false, true })
+		for (auto arm : { CommandId::SetMasterArmOn, CommandId::SetMasterArmOff, CommandId::SetMasterArmSim })
+		{
+			MissionFixture fixture;
+			fixture.send(arm);
+			fixture.send(CommandId::SelectDogfightMode);
+			fixture.send(CommandId::SetMissileUncage, uncage ? 1.0 : 0.0);
+			fixture.send(CommandId::SetTriggerSecondStage);
+			const auto output = fixture.step(kMissionPeriod);
+			TEST_EXPECT(context, output.state.fire_control.gun_fire_requested == (arm == CommandId::SetMasterArmOn));
+			TEST_EXPECT(context, output.state.fire_control.missile_uncage_selected == uncage);
+			TEST_EXPECT(context, !output.state.fire_control.pickle_requested);
+		}
+}
+
 void test_uncage_toggle_persists_and_keeps_weapon_qualification(Tests::Context& context)
 {
 	MissionFixture f;
@@ -1335,6 +1352,7 @@ void test_ground_mode_is_independent_from_inventory_and_weapon_inputs(Tests::Con
 
 void run_mission_computer_tests(Tests::Context& context)
 {
+	test_dogfight_gun_qualification_is_independent_from_uncage(context);
 	test_uncage_toggle_persists_and_keeps_weapon_qualification(context);
 	test_uncage_toggle_retains_fifo_order_and_master_arm_gate(context);
 	test_master_and_override_state_flow(context);

@@ -30,4 +30,8 @@ function update()
     radar:set_power(true)
 end
 
-need_to_be_closed = true
+function post_initialize()
+    update()
+end
+
+need_to_be_closed = false

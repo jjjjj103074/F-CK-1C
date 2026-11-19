@@ -43,7 +43,7 @@ def cases():
 def markdown():
     data = cases()
     lines = ['# MC 完整實機測試流程', '',
-        '本輪先做任務 B 的 K01：按 C 後獨立投放一枚 AIM-9。接著可測 T08 的切換與長按，以及 W11 的關閉後阻擋；其餘項目供既有 MC 功能回歸。', '',
+        '本輪先做任務 A 的 G06：在UNCAGE=0與1各點射一次機砲；再做任務 B 的 T03雷達指定與K01單枚AIM-9投放。其餘項目供既有MC功能回歸。', '',
         '## 安裝與開始', '',
         'SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查看；本輪以真實 F-16 手冊為操作依據。沒有實際 MFD 畫面，功能空殼會顯示 RESERVED。', '',
         '1. 完全關閉 DCS，解壓縮測試包，在 F-CK-1C 資料夾執行 install.bat；預設安裝到 Saved Games\\DCS。使用 DCS.openbeta 或其他資料夾時，將該 Saved Games 路徑作為 install.bat 的第一個參數。',
@@ -79,8 +79,8 @@ def markdown():
         f'人工流程共 {len(data)} 項，涵蓋目前實作的模式、反制、掛載、選站、火控資格、捕獲、原生彈量、IR 狀態、座艙呈現與生命週期。', '',
         '逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。原生測試的 C++ 派送使用獨立測試佇列，Lua 僅取樣實際反制存量。後續目標為透過 SystemPipeline 的 C++ 反制系統；本包保留現行 CMS 程序供回歸。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。', '',
         '目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。', '',
-        '本輪刻意保留的行為：保險與主模式獨立；機砲僅在 ON＋DGF＋UNCAGE=0 時接受新開始；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。', '',
-        '來源 commit、DLL SHA256 與 Windows CI 位於測試包根目錄 BUILD.json；實機項目在收到你的回報前維持未驗證。', '']
+        '本輪刻意保留的行為：保險與主模式獨立；機砲在 ON＋DGF 時接受新開始，與UNCAGE選擇獨立；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。', '',
+        '安裝時會備份並移除舊F-CK-1C掛載匯出與彈量探針入口。回收包包含recording-health.json，可核對每份錄製CSV的資料列。來源commit、DLL SHA256與Windows CI位於測試包根目錄BUILD.json。', '']
     return '\n'.join(lines)
 
 def html_document():

@@ -24,7 +24,7 @@
 IRST 與手動音效測試列於 Developer Tools。機砲／投放的原生輸入別名轉接至 MC。
 
 UNCAGE=1 表示駕駛已選取解籠；再次按 C 回到 0。這是 MC 的操作選擇，實際 IR 鎖定由獨立來源回報。
-目前發射資格為 ON＋空戰模式＋UNCAGE=1；機砲新開始資格為 ON＋DGFT＋UNCAGE=0。
+目前發射資格為 ON＋空戰模式＋UNCAGE=1；機砲新開始資格為 ON＋DGFT，與解籠選擇獨立。
 
 ## MSL STEP 的處理
 

@@ -22,8 +22,7 @@ WeaponOperation::WeaponOperation(const ModeData& mode,
 
 bool WeaponOperation::can_use_gun() const
 {
-	return mode_.master_arm == MasterArmMode::On && mode_.override_mode == OverrideMode::Dogfight &&
-	       !weapon_.uncage_selected;
+	return mode_.master_arm == MasterArmMode::On && mode_.override_mode == OverrideMode::Dogfight;
 }
 
 bool WeaponOperation::can_release_weapon() const

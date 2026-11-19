@@ -285,3 +285,15 @@ System 經由 `FrameInput`、`AircraftData`、`SystemPipeline` 與 `FrameOutput`
 交換觀測、狀態及動作需求。後續原生雷達、掛載等能力可建立各自 Adapter，
 共用這一層的環境存取。詳細分工見
 [DCS 飛機介面](../src/efm/F-CK-1C_EFM/DcsBridge/Internal/Aircraft/README.md)。
+
+## Lua裝置更新與指示器父節點
+
+使用`make_default_activity()`並由Lua執行`update()`的裝置，透過`need_to_be_closed = false`保留執行狀態。
+本專案的雷達通電更新與飛測Recorder採用這個設定。靜態裝置配置與指示器初始化腳本依各自生命週期載入。
+驗證裝置時應從初始化推進到實際更新，核對副作用：Recorder產生表頭後持續新增資料列，雷達呼叫`set_power(true)`。
+
+HMCS VR在同一子頁先建立裁切遮罩，再建立以遮罩為父節點的符號。
+子頁測試分別核對父節點可見性、元素唯一性與遮罩／瞄準線保留情況。
+
+安裝工具會備份並移除歷史`FCK1C_AMMO_PROBE`與`FCK1C_STORES_EXPORT`載入區塊，並封存已識別的彈量探針檔案。
+其他Export內容與自訂檔案按原始位元組保存。未識別原生命令2659維持原有診斷，另以[issue #37](https://github.com/jjjjj103074/F-CK-1C/issues/37)追蹤。

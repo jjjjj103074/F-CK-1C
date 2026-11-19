@@ -35,9 +35,14 @@ original_dofile(root .. '/Recorder.lua')
 post_initialize()
 assert(#messages == 1 and messages[1]:match('recording'))
 local first = assert(messages[1]:match('recording (.+)$'))
-update(); time = 2; update(); mutate_generation = true; time = 3; update(); mutate_generation = false; release()
+-- 依裝置生命週期排程取樣，關閉狀態只留下初始化表頭。
+if need_to_be_closed == false then
+    update(); time = 2; update(); mutate_generation = true; time = 3; update(); mutate_generation = false
+end
+release()
 local f=assert(original_io.open(first,'rb')); local content=f:read('*a'); f:close()
 assert(content:match('"source_commit"'))
+assert(select(2, content:gsub('\n', '')) > 1, 'Recorder produced only a header; runtime updates did not run')
 assert(content:match('quoted,""weapon""'))
 assert(content:match(',"1","1","2","1",'))
 assert(content:match(',""\r\n'))

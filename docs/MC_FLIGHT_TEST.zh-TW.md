@@ -1,6 +1,6 @@
 # MC 完整實機測試流程
 
-本輪先做任務 B 的 K01：按 C 後獨立投放一枚 AIM-9。接著可測 T08 的切換與長按，以及 W11 的關閉後阻擋；其餘項目供既有 MC 功能回歸。
+本輪先做任務 A 的 G06：在UNCAGE=0與1各點射一次機砲；再做任務 B 的 T03雷達指定與K01單枚AIM-9投放。其餘項目供既有MC功能回歸。
 
 ## 安裝與開始
 
@@ -284,13 +284,13 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 正常：SAFE／SIM 均不開始射擊；MODE 維持 DGF。
 
-### G06　Uncage 開砲資格
+### G06　DGFT機砲與解籠選擇獨立
 
-操作：按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按解籠切換（C）使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。
+操作：按主保險 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，點按機砲（Space）；點按 C 使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。
 
 看哪裡：右上 UNCAGE、TRIG、GUN，實際砲火。
 
-正常：UNCAGE=1 時新的機砲開始要求被拒絕，沒有砲火；第二次按 C 後回到 UNCAGE=0。
+正常：UNCAGE=0與1時均有砲火，GUN隨實際射擊減少，放開Space後停止。機砲輸入維持獨立，UNCAGE保持選定值。
 
 ### G07　射擊中切 SAFE
 
@@ -782,6 +782,6 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。
 
-本輪刻意保留的行為：保險與主模式獨立；機砲僅在 ON＋DGF＋UNCAGE=0 時接受新開始；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。
+本輪刻意保留的行為：保險與主模式獨立；機砲在 ON＋DGF 時接受新開始，與UNCAGE選擇獨立；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。
 
-來源 commit、DLL SHA256 與 Windows CI 位於測試包根目錄 BUILD.json；實機項目在收到你的回報前維持未驗證。
+安裝時會備份並移除舊F-CK-1C掛載匯出與彈量探針入口。回收包包含recording-health.json，可核對每份錄製CSV的資料列。來源commit、DLL SHA256與Windows CI位於測試包根目錄BUILD.json。

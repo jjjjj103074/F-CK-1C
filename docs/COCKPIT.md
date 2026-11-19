@@ -114,3 +114,9 @@ aam_audio_system 接受同一份完整快照的有效 lock，播放並維持鎖�
 Targeting 規劃目標取得；RadarSystem 經 SystemPipeline 處理設備操作及雷達觀測。共用 DCS 傳送序號與 16 項視窗由 DcsBridge 持有，Lua 保留原參數及動作值。MC 與 RadarSystem 分別取得自己的要求完成前綴。
 
 職責、資料流與序號對應見 [架構說明](RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
+
+## 持續更新與VR頁面
+
+`RADAR/FCK1C_Radar.lua`在初始化時通電，並保留Lua狀態以持續呼叫既有更新。
+飛測Recorder同樣保留Lua狀態，持續寫入逐幀觀測；回收工具會統計資料列並標示僅有表頭的錄製檔。
+HMCS VR將遮罩與符號建立於同一子頁，先建立`hmcs_vr_tfov`，再掛接`hmcs_vr_root`及瞄準線。

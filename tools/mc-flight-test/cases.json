@@ -245,11 +245,11 @@
   {
     "id": "G06",
     "scenario": "A",
-    "title": "Uncage 開砲資格",
-    "action": "按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按解籠切換（C）使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。",
+    "title": "DGFT機砲與解籠選擇獨立",
+    "action": "按主保險 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，點按機砲（Space）；點按 C 使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。",
     "look": "右上 UNCAGE、TRIG、GUN，實際砲火。",
-    "normal": "UNCAGE=1 時新的機砲開始要求被拒絕，沒有砲火；第二次按 C 後回到 UNCAGE=0。",
-    "coverage": "WeaponOperation uncage gate / input overlap"
+    "normal": "UNCAGE=0與1時均有砲火，GUN隨實際射擊減少，放開Space後停止。機砲輸入維持獨立，UNCAGE保持選定值。",
+    "coverage": "Independent gun trigger and missile uncage qualification"
   },
   {
     "id": "G07",
