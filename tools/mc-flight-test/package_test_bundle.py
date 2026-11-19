@@ -43,19 +43,22 @@ def parameter_names(catalog):
     names = []
     for item in catalog['cockpit_params']:
         key = item['name']
-        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm'))
+        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm', 'Cm'))
                 or key in {'HmcsMasterMode', 'HmcsFireControlMode', 'HmcsAamSubmode', 'HmcsGunFiring',
                            'HmcsWeaponClass', 'HmcsWeaponQuantity', 'HmcsWeaponQuantityAvailable'}):
             names.append(item['value'])
     names.extend(item['value'] for item in catalog['raw_dcs_cockpit_params'])
     return list(dict.fromkeys(names + OBSERVATIONS))
 
-def assemble(module_zip, manifest_path, catalog_path, output, expected_source):
+def assemble(module_zip, manifest_path, catalog_path, output, expected_source, test_tools_source=None):
     manifest = json.loads(Path(manifest_path).read_text(encoding='utf-8-sig'))
     if manifest.get('validation') != 'passed' or manifest.get('source_commit') != expected_source:
         raise ValueError('Module validation/source revision does not match the requested source.')
     if not re.fullmatch('[0-9a-f]{40}', expected_source):
         raise ValueError('Expected source must be a full commit SHA.')
+    test_tools_source = test_tools_source or expected_source
+    if not re.fullmatch('[0-9a-f]{40}', test_tools_source):
+        raise ValueError('Test-tools source must be a full commit SHA.')
     original = read_module(module_zip)
     if digest(original[DLL]) != manifest.get('dll_sha256'):
         raise ValueError('Module DLL hash differs from the validated DLL manifest.')
@@ -108,6 +111,7 @@ end
     entries['RESULTS.csv'] = b'\xef\xbb\xbf' + guide.results_csv().encode('utf-8')
     entries['TEST-CASES.json'] = (ROOT / 'cases.json').read_bytes()
     build = dict(manifest, package_kind='mc-flight-test', dcs_runtime='not_run',
+        test_tools_source_commit=test_tools_source,
         base_module_sha256=digest(Path(module_zip).read_bytes()),
         human_cases=len(guide.cases()), test_device_id=10, recorded_parameters=len(names),
         native_countermeasure_probe=True, native_dispatch='C++ ed_fm_simulate',
@@ -144,5 +148,6 @@ if __name__ == '__main__':
     parser.add_argument('--catalog', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--expected-source', required=True)
+    parser.add_argument('--test-tools-source', help='Source revision of the test overlay; defaults to the validated module revision.')
     args = parser.parse_args()
-    assemble(args.module_zip, args.manifest, args.catalog, args.output, args.expected_source)
+    assemble(args.module_zip, args.manifest, args.catalog, args.output, args.expected_source, args.test_tools_source)

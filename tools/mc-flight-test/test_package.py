@@ -57,6 +57,23 @@ class TestFlightBundle(unittest.TestCase):
             self.assertEqual(build['human_cases'], 86)
             self.assertIn(self.source, archive.read(package.TEST_ROOT + 'Build.lua').decode())
         self.assertIn(package.digest(bundle.read_bytes()), Path(str(bundle)+'.sha256').read_text())
+    def test_records_cm_progress_and_separate_test_tools_revision(self):
+        data=json.loads(self.catalog.read_text())
+        data['cockpit_params'].extend([
+            dict(name='CmAcceptedSequence', value='CPP_CM_ACCEPTED_SEQUENCE'),
+            dict(name='CmFlareCount', value='CPP_CM_FLARE_COUNT'),
+            dict(name='CmChaffCount', value='CPP_CM_CHAFF_COUNT')])
+        self.catalog.write_text(json.dumps(data))
+        self.write_zip()
+        bundle=package.assemble(self.archive, self.manifest, self.catalog, self.root/'out', self.source, 'c'*40)
+        with zipfile.ZipFile(bundle) as archive:
+            schema=archive.read(package.TEST_ROOT+'Parameters.lua').decode()
+            for name in ['CPP_CM_ACCEPTED_SEQUENCE', 'CPP_CM_FLARE_COUNT', 'CPP_CM_CHAFF_COUNT']:
+                self.assertIn(name, schema)
+            build=json.loads(archive.read('BUILD.json'))
+            self.assertEqual(build['source_commit'], self.source)
+            self.assertEqual(build['test_tools_source_commit'], 'c'*40)
+            self.assertEqual(archive.read(package.DLL), self.entries[package.DLL])
     def test_rejects_wrong_dll(self):
         self.entries[package.DLL] = b'MZwrong-build'
         self.write_zip()
