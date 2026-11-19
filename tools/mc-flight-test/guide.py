@@ -43,7 +43,7 @@ def cases():
 def markdown():
     data = cases()
     lines = ['# MC 完整實機測試流程', '',
-        '本輪先做任務 A：按右 Ctrl＋J 後等 5 秒，CPP CHF 與 LUA CHF 均減 7、FLR 保持；按右 Ctrl＋I 後等 12 秒，兩類各減 10。CM REQ 增加代表程序已接受，EXEC 是已處理輪次；兩者與武器／雷達 ACK 分開。CM STATE：0待命、1運行、2呼叫完成、3呼叫失敗。再做 C04–C06 與 C08 核對保險獨立及按住後回中。', '',
+        '本輪先做任務 A：按右 Ctrl＋J 後等 5 秒，CPP CHF 與 LUA CHF 均減 7、FLR 保持；按右 Ctrl＋I 後等 12 秒，兩類各減 10。CM REQ 增加代表程序已接受，EXEC 是最後處理的施放序號，程序接替時可跳號，實際施放以庫存減量核對；兩者與武器／雷達 ACK 分開。CM STATE：0待命、1運行、2呼叫完成、3呼叫失敗。再做 C04–C06 與 C08 核對保險獨立及按住後回中。', '',
         '## 安裝與開始', '',
         'SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查看；本輪以真實 F-16 手冊為操作依據。沒有實際 MFD 畫面，功能空殼會顯示 RESERVED。', '',
         '1. 完全關閉 DCS，解壓縮測試包，在 F-CK-1C 資料夾執行 install.bat；預設安裝到 Saved Games\\DCS。使用 DCS.openbeta 或其他資料夾時，將該 Saved Games 路徑作為 install.bat 的第一個參數。',
