@@ -11,7 +11,18 @@ CountermeasureControl::CountermeasureControl(ExternalActionOutbox& actions)
 
 void CountermeasureControl::handle(const Command& command)
 {
-	if (command.id == CommandId::StartCmsForward && Common::command_value_is_pressed(command.value_normalized))
+	if (!Common::command_value_is_pressed(command.value_normalized))
+		return;
+	switch (command.id)
+	{
+	case CommandId::StartCmsForward:
 		actions_.append(MissionActionKind::StartCmsForward);
+		break;
+	case CommandId::StartCmsLeft:
+		actions_.append(MissionActionKind::StartCmsProgram6);
+		break;
+	default:
+		break;
+	}
 }
 }

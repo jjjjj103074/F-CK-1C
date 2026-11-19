@@ -16,11 +16,10 @@ local selected_station = get_param_handle(cockpit_params.WeaponObservationSelect
 
 local ICMD_PLANE_DROP_SNAR_ONCE = dcs_commands.iCommandPlaneDropSnarOnce
 local ICMD_PLANE_DROP_SNAR_ONCE_OFF = dcs_commands.iCommandPlaneDropSnarOnceOff
-local cms_program_active = false
+local ICMD_PLANE_DROP_CHAFF_ONCE = dcs_commands.iCommandPlaneDropChaffOnce
+local cms_program = nil
 local cms_program_steps_remaining = 0
 local cms_program_timer = 0.0
-local cms_forward_rounds = 10
-local cms_forward_interval = 1.0
 local cms_pair_release_pending = 0
 local cms_pair_release_latched = false
 local cms_pair_release_hold_timer = 0.0
@@ -60,8 +59,8 @@ local function clear_pair_release_queue(reason_tag)
 end
 
 local function stop_cms_program(reason_tag)
-    if cms_program_active then dlog("cms program stop -> " .. tostring(reason_tag)) end
-    cms_program_active = false
+    if cms_program then dlog("cms program stop -> " .. tostring(reason_tag)) end
+    cms_program = nil
     cms_program_steps_remaining = 0
     cms_program_timer = 0.0
 end
@@ -76,13 +75,21 @@ local function queue_pair_release()
     cms_pair_release_pending = cms_pair_release_pending + 1
 end
 
-local function start_cms_program()
+local function release_chaff_once()
+    dlog("dispatch chaff once")
+    dispatch_action(nil, ICMD_PLANE_DROP_CHAFF_ONCE)
+end
+
+local cms_forward_program = { name = "forward", rounds = 10, interval = 1.0, release = queue_pair_release }
+local cms_program6 = { name = "program6", rounds = 7, interval = 0.5, release = release_chaff_once }
+
+local function start_cms_program(program)
     abort_cms_program("restart")
-    cms_program_active = true
-    cms_program_steps_remaining = cms_forward_rounds - 1
+    cms_program = program
+    cms_program_steps_remaining = program.rounds - 1
     cms_program_timer = 0.0
-    queue_pair_release()
-    dlog("cms program start -> forward rounds=" .. tostring(cms_forward_rounds))
+    program.release()
+    dlog("cms program start -> " .. program.name .. " rounds=" .. tostring(program.rounds))
 end
 
 -- Stable semantic action values -> generated DCS IDs. No native IDs enter Core.
@@ -134,7 +141,9 @@ local function execute_action(action, sequence, generation)
         local ok, result = pcall(dispatch_action, nil, native)
         return ok and result ~= false
     elseif action == 17 then
-        start_cms_program()
+        start_cms_program(cms_forward_program)
+    elseif action == 19 then
+        start_cms_program(cms_program6)
     else
         return false
     end
@@ -173,7 +182,7 @@ function update()
         end
     end
 
-    if not cms_program_active then return end
+    if not cms_program then return end
 
     if cms_program_steps_remaining <= 0 then
         stop_cms_program("cms_done")
@@ -181,10 +190,10 @@ function update()
     end
 
     cms_program_timer = cms_program_timer + update_rate
-    if cms_program_timer >= cms_forward_interval then
-        cms_program_timer = cms_program_timer - cms_forward_interval
+    if cms_program_timer >= cms_program.interval then
+        cms_program_timer = cms_program_timer - cms_program.interval
         if cms_adapter_ready() then
-            queue_pair_release()
+            cms_program.release()
             cms_program_steps_remaining = cms_program_steps_remaining - 1
         else
             abort_cms_program("cms_prog_block")

@@ -46,7 +46,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 |---|---|
 | ModeManagement | 唯一寫入一般 NAV/A-A/A-G、DGFT/MSL 超控與主保險，發布具型別選擇事件 |
 | SensorOfInterest | 讀取 DisplaySnapshot 與任務模式，唯一寫入 SOI 來源及顯示位置，處理 DMS 上下 |
-| CountermeasureControl | 接收 CMS 四向指令，前向啟動固定十輪混合程序，其餘方向保留入口 |
+| CountermeasureControl | 接收 CMS 四向指令，前向啟動十輪混合程序，左向程序 6 施放七發干擾絲，後／右保留入口 |
 | StoresManagement | 全部固定掛點庫存、彈量、掛點選擇／循環、執行確認與掛載變化通知 |
 | FireControl | 目標操作、武器資格與使用程序 |
 | Executive | 四個週期工作的固定順序、頻率及時間推進 |
@@ -135,7 +135,7 @@ HMCS 依有效 lock、模式及操作意圖決定武器呈現；音效 Lua 依�
 原型的接觸、備便、尋標狀態及雷達／操作意圖鎖定推導已移除。
 完整移除清單、介面與驗證見[整理報告](../../../../../../docs/IR_OBSERVATION_REFACTOR_REPORT.zh-TW.md)。
 
-反制程序仍在 Lua，CountermeasureControl 將前向按下轉為施放要求。
+反制程序仍在 Lua，CountermeasureControl 將前向與左向按下轉為施放要求。
 
 ## 逐掛點庫存
 
@@ -157,7 +157,7 @@ MC 持有自己的 `ModeEvents`，由 ModeManagement 同步發布
 ModeManagement 透過 ModeData 及 ModeEvents 提供模式與通知。
 
 Master OFF/SIM 同步通知火控停止；目標指定與所選模式保持。
-CMS 接收共用 FIFO 中的獨立指令，前向啟動固定施放程序。
+CMS 接收共用 FIFO 中的獨立指令，前向與左向啟動各自的固定施放程序。
 同一 FIFO 命令的通知全部結束，才處理下一筆，保留同 tick OFF→ON 的停止效果。
 監聽者不得遞迴消費命令；訂閱在組裝時建立，不在週期計算中反覆建立。
 

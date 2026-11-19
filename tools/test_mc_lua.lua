@@ -184,6 +184,62 @@ values[cockpit_params.McAction02] = kinds.StartCmsForward
 for _ = 1, 600 do update() end
 expect(#native - count_before_restart == 20, "a forward restart replaces queued paired releases with ten rounds")
 expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + 6, "both forward requests retain transport order")
+-- 程序 6 在每種主保險下施放七發干擾絲，並核對半秒節奏。
+for arm = 0, 2 do
+    local first_native = #native + 1
+    local times, clock = {}, 0
+    local original_dispatch = dispatch_action
+    dispatch_action = function(device, command)
+        original_dispatch(device, command)
+        times[#times + 1] = clock
+    end
+    values[cockpit_params.HmcsMasterMode] = arm
+    values[cockpit_params.McGeneration] = 14 + arm * 2
+    values[cockpit_params.McActionFirstSequence] = #mapping + arm + 7
+    values[cockpit_params.McActionCount] = 1
+    values[cockpit_params.McAction01] = kinds.StartCmsProgram6
+    update()
+    for tick = 1, 200 do
+        clock = tick * 0.02
+        if tick == 50 then values[cockpit_params.HmcsMasterMode] = (arm + 1) % 3 end
+        update()
+    end
+    dispatch_action = original_dispatch
+    expect(#native - first_native + 1 == 7 and #times == 7, "program 6 releases seven rounds: " .. arm)
+    for i = 1, 7 do
+        expect(native[first_native + i - 1] == dcs_commands.iCommandPlaneDropChaffOnce,
+            "program 6 uses chaff-only native releases")
+        expect(math.abs(times[i] - (i - 1) * 0.5) <= 0.020001, "program 6 follows half-second intervals")
+    end
+    expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + arm + 7,
+        "program 6 action is acknowledged once: " .. arm)
+end
+-- 新程序接替既有程序，並完成自己的輪數。
+local function cms_request(sequence, generation, action)
+    values[cockpit_params.McGeneration] = generation
+    values[cockpit_params.McActionFirstSequence] = sequence
+    values[cockpit_params.McActionCount] = 1
+    values[cockpit_params.McAction01] = action
+    update()
+end
+cms_request(#mapping + 10, 20, kinds.StartCmsForward)
+local before_program6 = #native
+cms_request(#mapping + 11, 22, kinds.StartCmsProgram6)
+for _ = 1, 600 do update() end
+expect(#native - before_program6 == 8 and native[before_program6 + 1] == dcs_commands.iCommandPlaneDropSnarOnceOff,
+    "program 6 closes the active paired pulse before its seven chaff rounds")
+for i = before_program6 + 2, #native do
+    expect(native[i] == dcs_commands.iCommandPlaneDropChaffOnce, "program 6 replaces the previous paired schedule")
+end
+cms_request(#mapping + 12, 24, kinds.StartCmsProgram6)
+local before_forward = #native
+cms_request(#mapping + 13, 26, kinds.StartCmsForward)
+for _ = 1, 600 do update() end
+expect(#native - before_forward == 20, "forward replaces program 6 with ten paired pulses")
+for i = before_forward + 1, #native do
+    expect(native[i] == dcs_commands.iCommandPlaneDropSnarOnce or native[i] == dcs_commands.iCommandPlaneDropSnarOnceOff,
+        "the new forward schedule contains paired pulses")
+end
 -- CMS 執行 MC 動作；掛載數量由固定掛點觀測提供。
 expect(values[cockpit_params.McAdapterAvailable] == 1, "CMS publishes executable adapter availability")
 

@@ -920,11 +920,14 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 	fixture.send(CommandId::SetMasterArmOff);
 	fixture.send(CommandId::StartCmsForward);
 	fixture.send(CommandId::StartCmsAft);
+	fixture.send(CommandId::StartCmsLeft);
 	fixture.send(CommandId::SetMasterArmSim);
 	fixture.send(CommandId::StartCmsForward);
 	fixture.send(CommandId::StartCmsLeft);
 	fixture.send(CommandId::StartCmsRight);
 	fixture.send(CommandId::SetMasterArmOn);
+	fixture.send(CommandId::StartCmsLeft);
+	fixture.send(CommandId::StartCmsLeft, 0.0);
 	fixture.send(CommandId::StartCmsForward, 0.0);
 	fixture.send(CommandId::PressCms);
 	const auto output = fixture.step(kMissionPeriod);
@@ -939,7 +942,10 @@ void test_cms_commands_share_fifo_with_mode_commands(Tests::Context& context)
 		fixture.frame.cockpit.mission_adapter.acknowledged_sequence = window.first_sequence + window.count - 1;
 		window = fixture.step(kMissionPeriod * tick++).actions;
 	}
-	const std::vector<MissionActionKind> expected(3, MissionActionKind::StartCmsForward);
+	const std::vector<MissionActionKind> expected = {
+		MissionActionKind::StartCmsForward, MissionActionKind::StartCmsForward,  MissionActionKind::StartCmsProgram6,
+		MissionActionKind::StartCmsForward, MissionActionKind::StartCmsProgram6, MissionActionKind::StartCmsProgram6
+	};
 	TEST_EXPECT(context, actions == expected);
 	TEST_EXPECT(context, output.state.mode.master_arm_mode == MasterArmMode::On);
 	TEST_EXPECT(context, output.state.mode.operating_mode == OperatingMode::Navigation);

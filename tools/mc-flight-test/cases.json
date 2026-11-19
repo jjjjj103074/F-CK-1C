@@ -533,11 +533,11 @@
   {
     "id": "C01",
     "scenario": "A",
-    "title": "CMS Left 程序 6 入口",
-    "action": "按 CMS Left（右 Ctrl＋J）後放開，等待 2 秒。",
-    "look": "機尾反制與 FLR／CHF 存量。",
-    "normal": "程序 6 為預留入口，存量維持，沒有施放。",
-    "coverage": "Program 6 reserved input"
+    "title": "CMS Left 程序 6 七發干擾絲",
+    "action": "按 CMS Left（右 Ctrl＋J）後放開，等待 5 秒。",
+    "look": "CHF／FLR 存量及機尾反制。",
+    "normal": "CHF 減少 7，FLR 保持；每發間隔約 0.5 秒，完成後停止。",
+    "coverage": "Program 6 seven chaff rounds"
   },
   {
     "id": "C02",
@@ -579,9 +579,9 @@
     "id": "C06",
     "scenario": "A",
     "title": "SAFE／SIM 啟動反制",
-    "action": "按 OFF（右 Shift＋M），點按 CMS Forward（右 Ctrl＋I）後等 12 秒；再按 SIM（右 Alt＋M），點按 CMS Forward（右 Ctrl＋I）後等 12 秒。",
+    "action": "按 OFF（右 Shift＋M），點按 CMS Forward（右 Ctrl＋I）後等 12 秒，再點按 CMS Left（右 Ctrl＋J）後等 5 秒；按 SIM（右 Alt＋M）重做同一組操作。",
     "look": "主保險顯示與 FLR／CHF 存量。",
-    "normal": "OFF、SIM 各完成十輪混合施放；主保險保持選定狀態。",
+    "normal": "OFF、SIM 各完成十輪混合施放及七發干擾絲；每組 FLR 減 10、CHF 減 17，主保險保持選定狀態。",
     "coverage": "Countermeasures always enabled in each arm mode"
   },
   {
@@ -597,9 +597,9 @@
     "id": "C08",
     "scenario": "A",
     "title": "CMS 按住與回中",
-    "action": "按住 CMS Forward（右 Ctrl＋I）約 2 秒後放開，等待 12 秒；再按 CMS Press（右 Alt＋PgDn）後等 2 秒。",
+    "action": "按住 CMS Left（右 Ctrl＋J）約 2 秒後放開，再等待 5 秒；按 CMS Press（右 Alt＋PgDn）後等 2 秒。",
     "look": "機尾反制與 FLR／CHF 存量。",
-    "normal": "前向按住只啟動一次十輪程序；放開回中後完成原程序；預留按壓入口保持存量。",
+    "normal": "左向按住只啟動一次七發干擾絲程序；放開回中後完成原程序，FLR 保持；預留按壓入口保持存量。",
     "coverage": "Momentary CMS input and reserved press"
   },
   {
