@@ -3,7 +3,7 @@
 #include "CockpitParameterEndpoint.h"
 #include "../../Core/Contracts/DisplayContracts.h"
 
-#include <array>
+#include <vector>
 
 namespace DcsBridge::Internal
 {
@@ -17,6 +17,6 @@ public:
 
 private:
 	const cockpit_param_api api_;
-	std::array<CockpitParameterEndpoint, 149> slots_;
+	std::vector<CockpitParameterEndpoint> slots_;
 };
 }

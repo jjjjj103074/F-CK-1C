@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <vector>
 #include <cstddef>
 
 namespace Core
@@ -86,7 +86,7 @@ struct RadarDisplaySnapshot
 	bool target_visible = false;
 	double target_x_normalized = 0.0;
 	double target_y_normalized = 0.0;
-	std::array<RadarDisplayPlot, kRadarDisplayPlotCount> plots;
+	std::vector<RadarDisplayPlot> plots;
 };
 
 }

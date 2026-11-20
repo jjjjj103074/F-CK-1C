@@ -104,10 +104,10 @@ RadarDisplaySnapshot radar(const RadarSnapshot& source, OperatingMode mode, std:
 	                 {
 		                 return left.age_s < right.age_s;
 	                 });
-	std::size_t count = 0;
+	result.plots.reserve(std::min(returns.size(), kRadarDisplayPlotCount));
 	for (const auto& contact : returns)
 	{
-		if (count == result.plots.size())
+		if (result.plots.size() == kRadarDisplayPlotCount)
 			break;
 		if (!std::isfinite(contact.age_s) || contact.age_s < 0.0 || contact.age_s >= kReturnLifetimeS)
 			continue;
@@ -120,7 +120,7 @@ RadarDisplaySnapshot radar(const RadarSnapshot& source, OperatingMode mode, std:
 			continue;
 		// 畫面上重合的回波保留最新一點，讓其他方位的目標仍有顯示位置。
 		const bool overlaps = std::any_of(result.plots.begin(),
-		                                  result.plots.begin() + count,
+		                                  result.plots.end(),
 		                                  [&](const auto& drawn)
 		                                  {
 			                                  return std::abs(drawn.x_normalized - plot.x_normalized) < 0.01 &&
@@ -130,7 +130,7 @@ RadarDisplaySnapshot radar(const RadarSnapshot& source, OperatingMode mode, std:
 			continue;
 		plot.opacity_0_1 = 1.0 - contact.age_s / kReturnLifetimeS;
 		plot.source_slot = contact.source_slot;
-		result.plots[count++] = plot;
+		result.plots.push_back(plot);
 	}
 	return result;
 }
