@@ -13,7 +13,8 @@ Lua 負責 DCS 觀測／操作介面、HUD／HMCS 顯示規則、繪圖與播放
 | CMS | avLuaDevice / cms_system.lua | 50 Hz 觀測接收與時效更新、有序武器／選站／雷達 DCS action 執行與確認 |
 | WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始九站觀測、執行 MC 選站要求及確認 |
 | RADAR | avSimpleRadar / RADAR/FCK1C_Radar.lua | DCS 雷達設定與原始 DCS 觀測來源 |
-| RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原有雷達開啟參數介面 |
+| RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原生固定供電，讀取雷達實際 get_power() 狀態 |
+| ELECTRIC_SYSTEM（11） | avSimpleElectricSystem / electric_system.lua | 提供原生交流／直流匯流排及發電機、電池介面 |
 | HMCS | avLuaDevice / hmcs_system.lua | 64 Hz 原始飛行資料取樣、武器顯示規則、單位呈現、航向刻度與繪圖參數 |
 | AAM_AUDIO | avLuaDevice / aam_audio_system.lua | 20 Hz 依 SM 有效 IR 鎖定觀測選擇鎖定音，另提供 Sound Test |
 

@@ -373,12 +373,23 @@ for name, value in pairs(mission_values) do
     values[name] = value
 end
 make_default_activity = function(rate) expect(rate == 0.02, "radar adapter retains its update period") end
+dofile("Cockpit/Scripts/devices.lua")
+GetDevice = function(id)
+    if id == devices.RADAR then return { get_power = function() return true end } end
+    if id == devices.ELECTRIC_SYSTEM then
+        return {
+            AC_Generator_1_on = function() end,
+            AC_Generator_2_on = function() end,
+            DC_Battery_on = function() end,
+        }
+    end
+end
 dofile("Cockpit/Scripts/Systems/radar_state_system.lua")
 post_initialize()
 update()
 expect(
     values[cockpit_params.RadarState] == 1 and values[cockpit_params.RadarPowerState] == 1,
-    "preserve the constant-on DCS radar adapter"
+    "publish the native radar power observation"
 )
 local native_sensors = {
     getIndicatedAirSpeed = function() return 100 end,

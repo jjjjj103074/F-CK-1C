@@ -1,6 +1,7 @@
 # 雷達圖形顯示
 
 本輪提供前視捕獲／追蹤符號及右下角方位—距離圖，供 RWS、BORE、STT 實機操作。
+原生 avSimpleElectricSystem 提供固定啟用的電源，RADAR_STATE 讀取雷達 get_power() 回報實際供電。
 兩個指示器隨空對空模式顯示，NAV 隱藏。詳細步驟隨雷達飛測包的 START-HERE.zh-TW.html 發布。
 
 ## 圖形與操作

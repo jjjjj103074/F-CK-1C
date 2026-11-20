@@ -341,3 +341,27 @@ CountermeasureSystem、Bridge 共用原生介面及實際施放完整路徑。
 [Windows 完整驗證](https://github.com/jjjjj103074/F-CK-1C/actions/runs/44554521214) 的 16 個階段通過，
 原生測試 5,275 項、零失敗。2026-11-20 核對目前 412 個執行期／建置輸入及 DLL 與該版本一致。
 主保險獨立、程序接替、低 FPS、原生失敗及任務重入由自動回歸測試覆蓋。
+
+## 原生雷達供電與狀態觀測（2026-11-20）
+
+`avSimpleRadar` 需要原生 `avSimpleElectricSystem` 的 AC 電源。`device_init.lua` 以裝置 11
+建立該原生服務；`RADAR_STATE` 裝置維持兩組交流發電機與直流電池啟用，並從
+`GetDevice(devices.RADAR):get_power()` 取得雷達實際供電。
+`RADARSTATE`／`RADARPOWER_STATE` 發布此讀值，經 CockpitBridge 送入 RadarSystem。
+
+這是目前固定供電配置的 DCS 原生接線。電源服務的匯流排、開關與電壓由 DCS 原生類別維持，
+觀測轉接器維持既有 20 ms 週期。原有裝置編號 1、2、9 持續保留，飛測 Recorder 使用 10。
+
+實機紀錄 `FCK1C-MC-RESULTS-20261120-212819-296.zip` 的舊版 DLL 來源 `34dbddf0`：
+5,790 筆 `RADAR_MODE` 全為 0、搜尋回波與 STT 距離全為 0；當時兩個電源參數由 Lua 固定寫 1。
+缺少原生供電服務時，該旗標只反映程式設定。BORE 要求已送出，圖形資料也成功發布，
+但顯示端依原生 OFF 隱藏前視框並呈現紅叉。417 筆 IR 尋標器鎖定與雷達 OFF 同時出現，
+對應 AIM-9 自動音效的獨立資料來源。
+
+來源：
+[介面原稿的原生電源依賴說明](https://github.com/DCS-OpenSource/dcs-opensource-modding-guide/blob/31cba3ef2600084662750e0bd4c139cf0465069f/docs/Aircraft/Lua/Devices/avSimpleRadar.md)、
+[開源範例的電源裝置註冊](https://github.com/D4n2021/VSN_F4B_C_Standalone/blob/95696a499b12e128b584f48072e23dd064f2a997/Cockpit/Scripts/avRadar/radarexample_device_init.lua)、
+[原生供電呼叫](https://github.com/D4n2021/VSN_F4B_C_Standalone/blob/95696a499b12e128b584f48072e23dd064f2a997/Cockpit/Scripts/avRadar/miscSystems/simple_electric_system.lua)。
+使用者提供的同版 CockpitBase.dll 靜態查核亦確認：雷達 post_initialize 取得
+avSimpleElectricSystem 單例並接入 AC 匯流排；on_power_on 將內部模式設為 1。
+修正版的實際供電、回波與前視符號，透過下一輪 DCS 飛測記錄驗證。

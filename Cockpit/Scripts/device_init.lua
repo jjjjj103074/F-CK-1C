@@ -28,6 +28,11 @@ if aam_audio_device_id == nil then aam_audio_device_id = 6 end
 if radar_device_id == nil then radar_device_id = 7 end
 if radar_state_device_id == nil then radar_state_device_id = 8 end
 
+creators[devices.ELECTRIC_SYSTEM] = {
+    "avSimpleElectricSystem",
+    LockOn_Options.script_path .. "Systems/electric_system.lua",
+}
+
 creators[cms_device_id] = {
     "avLuaDevice",
     LockOn_Options.script_path .. "Systems/cms_system.lua",
