@@ -7,8 +7,8 @@ try {
     New-Item -ItemType Directory -Path $toolRoot -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'COLLECT-RESULTS.ps1') -Destination $toolRoot
     $files = @{
-        'Logs\FCK1C-MC-TEST\mc-first.csv' = 'first mission';
-        'Logs\FCK1C-MC-TEST\mc-second.csv' = 'second mission';
+        'Logs\FCK1C-MC-TEST\mc-first.csv' = '"sample","model_time_s"';
+        'Logs\FCK1C-MC-TEST\mc-second.csv' = '"sample","model_time_s"' + "`r`n" + '"1","1.0"';
         'Logs\dcs.log' = 'DCS fixture';
         'Mods\aircraft\F-CK-1C\log\fck1c_efm.log' = 'EFM fixture';
         'Mods\aircraft\F-CK-1C\bin\F-CK-1C_EFM.dll' = 'DLL fixture';
@@ -33,6 +33,9 @@ try {
     $expected = (Get-FileHash -LiteralPath (Join-Path $saved 'Mods\aircraft\F-CK-1C\bin\F-CK-1C_EFM.dll') -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($installed.dll_sha256 -ne $expected) { throw 'Installed DLL hash mismatch.' }
     if (@($installed.missing) -notcontains 'Config\Input\F-CK-1C\joystick') { throw 'Missing optional evidence was not reported.' }
+    $health = Get-Content -LiteralPath (Join-Path $result 'recording-health.json') -Raw | ConvertFrom-Json
+    if ($health.Count -ne 2 -or $health[0].status -ne 'header_only' -or $health[0].rows -ne 0) { throw 'Empty recorder was not diagnosed.' }
+    if ($health[1].status -ne 'samples_present' -or $health[1].rows -ne 1) { throw 'Recorder sample count is incorrect.' }
     Write-Output 'MC flight-test collection fixtures passed.'
 }
 finally {

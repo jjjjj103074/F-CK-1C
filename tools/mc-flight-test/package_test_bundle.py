@@ -7,6 +7,7 @@ import re
 import zipfile
 
 import guide
+import radar_guide
 
 ROOT = Path(__file__).resolve().parent
 MODULE = 'F-CK-1C/'
@@ -43,19 +44,30 @@ def parameter_names(catalog):
     names = []
     for item in catalog['cockpit_params']:
         key = item['name']
-        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm'))
+        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm', 'Cm'))
                 or key in {'HmcsMasterMode', 'HmcsFireControlMode', 'HmcsAamSubmode', 'HmcsGunFiring',
                            'HmcsWeaponClass', 'HmcsWeaponQuantity', 'HmcsWeaponQuantityAvailable'}):
             names.append(item['value'])
-    names.extend(item['value'] for item in catalog['raw_dcs_cockpit_params'])
+    for item in catalog['raw_dcs_cockpit_params']:
+        value = item['value']
+        if re.search(r'%02[du]', value):
+            names.extend(value % index for index in range(1, 33))
+        else:
+            names.append(value)
     return list(dict.fromkeys(names + OBSERVATIONS))
 
-def assemble(module_zip, manifest_path, catalog_path, output, expected_source):
+def assemble(module_zip, manifest_path, catalog_path, output, expected_source, test_tools_source=None, focus="mc"):
+    if focus not in {"mc", "radar"}:
+        raise ValueError("Unknown flight-test focus: " + focus)
+    selected_guide = radar_guide if focus == "radar" else guide
     manifest = json.loads(Path(manifest_path).read_text(encoding='utf-8-sig'))
     if manifest.get('validation') != 'passed' or manifest.get('source_commit') != expected_source:
         raise ValueError('Module validation/source revision does not match the requested source.')
     if not re.fullmatch('[0-9a-f]{40}', expected_source):
         raise ValueError('Expected source must be a full commit SHA.')
+    test_tools_source = test_tools_source or expected_source
+    if not re.fullmatch('[0-9a-f]{40}', test_tools_source):
+        raise ValueError('Test-tools source must be a full commit SHA.')
     original = read_module(module_zip)
     if digest(original[DLL]) != manifest.get('dll_sha256'):
         raise ValueError('Module DLL hash differs from the validated DLL manifest.')
@@ -72,6 +84,12 @@ def assemble(module_zip, manifest_path, catalog_path, output, expected_source):
 creators[10] = { "avLuaDevice", LockOn_Options.script_path .. "MCFlightTest/Recorder.lua" }
 indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "MCFlightTest/Indicator_init.lua" }
 '''
+    if focus == 'radar':
+        required = ('Forward_init.lua', 'Forward_page.lua', 'Scope_init.lua', 'Scope_page.lua', 'Drawing.lua')
+        for filename in required:
+            if MODULE + 'Cockpit/Scripts/RadarDisplay/' + filename not in original:
+                raise ValueError('Missing graphical radar runtime: ' + filename)
+        additions = '\ncreators[10] = { "avLuaDevice", LockOn_Options.script_path .. "MCFlightTest/Recorder.lua" }\n'
     entries = dict(original)
     entries[DEVICE] = original[DEVICE] + additions.replace('\n', '\r\n').encode('utf-8')
     keyboard = original[KEYBOARD]
@@ -89,30 +107,34 @@ function update()
     native_cm_observer.update()
 end
 '''
-    entries[WEAPONS] = original[WEAPONS] + observation.replace('\n', '\r\n').encode('utf-8')
-    entries[PROBE_FLAG] = b'Native C++ countermeasure flight probe enabled by this test bundle.\r\n'
-    for filename in ('Recorder.lua', 'Indicator_init.lua', 'Indicator_page.lua',
-                     'NativeCountermeasureKeys.lua', 'NativeCountermeasureObservation.lua'):
+    if focus == 'mc':
+        entries[WEAPONS] = original[WEAPONS] + observation.replace('\n', '\r\n').encode('utf-8')
+        entries[PROBE_FLAG] = b'Native C++ countermeasure flight probe enabled by this test bundle.\r\n'
+    files = ['Recorder.lua', 'NativeCountermeasureKeys.lua']
+    if focus == 'mc':
+        files += ['Indicator_init.lua', 'Indicator_page.lua', 'NativeCountermeasureObservation.lua']
+    for filename in files:
         entries[TEST_ROOT + filename] = (ROOT / filename).read_bytes()
     names = parameter_names(json.loads(Path(catalog_path).read_text(encoding='utf-8-sig')))
     entries[TEST_ROOT + 'Parameters.lua'] = ('return {\n' + ''.join('    ' + json.dumps(name) + ',\n' for name in names) + '}\n').encode()
     entries[TEST_ROOT + 'Build.lua'] = ('return { source_commit = ' + json.dumps(expected_source)
         + ', dll_sha256 = ' + json.dumps(manifest['dll_sha256']) + ' }\n').encode()
     changed = [name for name in original if original[name] != entries[name]]
-    assert set(changed) == {DEVICE, KEYBOARD, WEAPONS}
+    assert set(changed) == ({DEVICE, KEYBOARD, WEAPONS} if focus == 'mc' else {DEVICE, KEYBOARD})
     assert entries[DLL] == original[DLL]
     for filename in ('COLLECT-RESULTS.bat', 'COLLECT-RESULTS.ps1'):
         entries[filename] = (ROOT / filename).read_bytes()
-    entries['START-HERE.zh-TW.html'] = guide.html_document().encode('utf-8')
-    entries['TESTING.zh-TW.md'] = guide.markdown().encode('utf-8')
-    entries['RESULTS.csv'] = b'\xef\xbb\xbf' + guide.results_csv().encode('utf-8')
-    entries['TEST-CASES.json'] = (ROOT / 'cases.json').read_bytes()
-    build = dict(manifest, package_kind='mc-flight-test', dcs_runtime='not_run',
+    entries['START-HERE.zh-TW.html'] = selected_guide.html_document().encode('utf-8')
+    entries['TESTING.zh-TW.md'] = selected_guide.markdown().encode('utf-8')
+    entries['RESULTS.csv'] = b'\xef\xbb\xbf' + selected_guide.results_csv().encode('utf-8')
+    entries['TEST-CASES.json'] = (json.dumps(selected_guide.cases(), ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    build = dict(manifest, package_kind='radar-flight-test' if focus == 'radar' else 'mc-flight-test', focus=focus, dcs_runtime='not_run',
+        test_tools_source_commit=test_tools_source,
         base_module_sha256=digest(Path(module_zip).read_bytes()),
-        human_cases=len(guide.cases()), test_device_id=10, recorded_parameters=len(names),
-        native_countermeasure_probe=True, native_dispatch='C++ ed_fm_simulate',
+        human_cases=len(selected_guide.cases()), test_device_id=10, recorded_parameters=len(names),
+        native_countermeasure_probe=focus == "mc", native_dispatch='C++ ed_fm_simulate',
         native_test_keys='prebound; existing bindings preserved',
-        migration_goal='Countermeasure control and programs in a C++ System through SystemPipeline',
+        migration_goal='RWS/BORE/STT graphical radar displays' if focus == 'radar' else 'MC SOI, mode-driven display assignments and real-aircraft HOTAS interfaces',
         runtime_changed=changed,
         runtime_added=sorted(name for name in set(entries) - set(original) if name.startswith(MODULE)),
         bundle_added=sorted({name for name in set(entries) - set(original) if not name.startswith(MODULE)} | {'BUILD.json'}),
@@ -120,7 +142,7 @@ end
     entries['BUILD.json'] = (json.dumps(build, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
-    name = 'F-CK-1C-mc-flight-test-' + expected_source[:8] + '.zip'
+    name = 'F-CK-1C-' + focus + '-flight-test-' + expected_source[:8] + '.zip'
     archive_path = output / name
     with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for path, content in entries.items():
@@ -134,7 +156,7 @@ end
         assert archive.testzip() is None
         assert digest(archive.read(DLL)) == manifest['dll_sha256']
         assert all(archive.read(path) == value for path, value in entries.items())
-    print(f'MC flight test: {len(guide.cases())} cases; {len(names)} recorded parameters; {archive_path}')
+    print(f'MC flight test: {len(selected_guide.cases())} cases; {len(names)} recorded parameters; {archive_path}')
     return archive_path
 
 if __name__ == '__main__':
@@ -144,5 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('--catalog', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--expected-source', required=True)
+    parser.add_argument('--test-tools-source', help='Source revision of the test overlay; defaults to the validated module revision.')
+    parser.add_argument('--focus', choices=['mc', 'radar'], default='mc')
     args = parser.parse_args()
-    assemble(args.module_zip, args.manifest, args.catalog, args.output, args.expected_source)
+    assemble(args.module_zip, args.manifest, args.catalog, args.output, args.expected_source, args.test_tools_source, args.focus)

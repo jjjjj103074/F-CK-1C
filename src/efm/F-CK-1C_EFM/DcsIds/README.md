@@ -30,7 +30,7 @@ A null writer means no active writer; `target_owner` records the metadata's
 intended owner rather than an implemented System.
 Optional `cpp_reader` identifies the importing adapter.
 
-`raw_dcs_cockpit_params` separately lists DCS-owned radar/weapon observations,
+`raw_dcs_cockpit_params` separately lists DCS-owned radar/weapon observations and controls,
 including unit, axis convention, verification basis and reference.
 `native_dcs_*_unmodified` preserves the DCS sign.
 `community_documentation` cites a published contract;
@@ -60,3 +60,8 @@ generate and verify outputs. Lua uses `device_commands` for custom IDs and
 `Commands.h` names built-in DCS inputs used by EFM bindings.
 `DrawArgs.h`, `ParamIds.h` and `DamageIds.h` name the other DCS contracts.
 `FM/config.lua` defines flight-model, mass and suspension settings.
+
+Raw controls use `cpp_to_dcs`; shared native TDC fields use `bidirectional`.
+Both declare a `writer` in DcsBridge. The generator requires that owner and rejects
+writers on `dcs_to_cpp` fields; the architecture check includes raw controls in
+single-writer and observed-owner checks.

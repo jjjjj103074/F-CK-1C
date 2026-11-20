@@ -174,6 +174,7 @@ void test_typed_radar_and_ir_units(Tests::Context& context)
 void test_missing_radar_parameter_marks_only_radar_unavailable(Tests::Context& context)
 {
 	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::RawCockpitParams::RadarMode, 3.0);
 	cockpit.set_available(DcsIds::RawCockpitParams::RadarSttRange, false);
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
 	const DcsBridge::Internal::CockpitStepInput input = bridge.read_step_input();
@@ -187,6 +188,7 @@ void test_missing_radar_parameter_marks_only_radar_unavailable(Tests::Context& c
 void test_non_finite_radar_and_ir_values_are_rejected(Tests::Context& context)
 {
 	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::RawCockpitParams::RadarMode, 3.0);
 	cockpit.set(DcsIds::RawCockpitParams::RadarSttRange, std::numeric_limits<double>::quiet_NaN());
 	cockpit.set(DcsIds::RawCockpitParams::IrDesiredElevation, std::numeric_limits<double>::infinity());
 	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
@@ -355,10 +357,41 @@ void test_empty_clean_and_zero_quantity_configuration(Tests::Context& context)
 	TEST_EXPECT(context, !bridge.read_step_input().cockpit.weapon_stations.status.available);
 }
 
+void test_multi_return_import_uses_native_units_and_cadence(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	cockpit.set(DcsIds::RawCockpitParams::RadarMode, 1.0);
+	cockpit.add("RADAR_CONTACT_101_AZIMUTH", 0.2);
+	cockpit.add("RADAR_CONTACT_101_ELEVATION", 0.1);
+	cockpit.add("RADAR_CONTACT_101_RANGE", 5000.0);
+	cockpit.add("RADAR_CONTACT_101_TIME", 0.0);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	auto observation = bridge.read_step_input(0.01).cockpit.radar;
+	TEST_EXPECT(context, observation.status.available && observation.mode == Core::RadarMode::Search);
+	TEST_EXPECT(context, observation.search_returns.size() == 1);
+	if (observation.search_returns.size() != 1)
+		return;
+	TEST_EXPECT(context, observation.search_returns[0].source_slot == 101);
+	TEST_EXPECT_NEAR(context, observation.search_returns[0].azimuth_rad, 0.2, 1e-9);
+	TEST_EXPECT_NEAR(context, observation.search_returns[0].range_m, 5000.0, 1e-9);
+	cockpit.set("RADAR_CONTACT_101_RANGE", 6000.0);
+	observation = bridge.read_step_input(0.01).cockpit.radar;
+	TEST_EXPECT_NEAR(context, observation.search_returns[0].range_m, 5000.0, 1e-9);
+	bridge.read_step_input(0.01);
+	observation = bridge.read_step_input(0.01).cockpit.radar;
+	TEST_EXPECT_NEAR(context, observation.search_returns[0].range_m, 6000.0, 1e-9);
+	cockpit.set(DcsIds::RawCockpitParams::RadarMode, 3.0);
+	cockpit.set(DcsIds::RawCockpitParams::RadarSttRange, 7000.0);
+	observation = bridge.read_step_input().cockpit.radar;
+	TEST_EXPECT(context, observation.search_returns.empty() && observation.status.available);
+	TEST_EXPECT_NEAR(context, observation.stt_range_m, 7000.0, 1e-9);
+}
+
 }
 
 void run_cockpit_bridge_tests(Tests::Context& context)
 {
+	test_multi_return_import_uses_native_units_and_cadence(context);
 	test_empty_clean_and_zero_quantity_configuration(context);
 	test_atmosphere_temperature_is_exported_in_celsius(context);
 	test_non_finite_temperature_preserves_last_cockpit_value(context);

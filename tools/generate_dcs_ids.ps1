@@ -9,7 +9,7 @@ $customCommandMinimum = 3000
 $customCommandMaximum = 3999
 $validRoutes = @('efm', 'bridge', 'cockpit')
 $validDirections = @('cpp_to_lua', 'lua_to_cpp', 'lua_internal')
-$validRawDirections = @('dcs_to_cpp')
+$validRawDirections = @('dcs_to_cpp', 'cpp_to_dcs', 'bidirectional')
 $validVerificationBases = @(
     'community_documentation',
     'existing_module_contract'
@@ -27,6 +27,8 @@ $validUnits = @(
     'knots',
     'meters',
     'meters_per_second',
+    'milliradians',
+    'nautical_miles',
     'normalized',
     'radians',
     'revision',
@@ -214,6 +216,14 @@ function Test-RawParameterCatalog {
         Assert-OptionalText (
             Get-OptionalProperty $parameter 'cpp_reader') `
             "Empty raw DCS C++ reader: $name"
+        $writer = Get-OptionalProperty $parameter 'writer'
+        if ([string]$parameter.data_direction -ne 'dcs_to_cpp' -and
+            [string]::IsNullOrWhiteSpace([string]$writer)) {
+            throw "Missing raw DCS parameter writer: $name"
+        }
+        if ([string]$parameter.data_direction -eq 'dcs_to_cpp' -and $null -ne $writer) {
+            throw "Read-only raw DCS parameter declares writer: $name"
+        }
         $names[$name] = $value
         $values[$value] = $name
     }
@@ -315,7 +325,8 @@ function New-RawCppParameterEntries {
             "$(Convert-ToCppText $parameter.source), " +
             "$(Convert-ToCppText $parameter.verification_basis), " +
             "$(Convert-ToCppText $parameter.reference), " +
-            "$(Convert-ToCppText (Get-OptionalProperty $parameter 'cpp_reader')) },")
+            "$(Convert-ToCppText (Get-OptionalProperty $parameter 'cpp_reader')), " +
+            "$(Convert-ToCppText (Get-OptionalProperty $parameter 'writer')) },")
     }
 }
 
@@ -350,7 +361,7 @@ function New-CockpitCppLines {
         '    const char* data_direction;', '    const char* unit;',
         '    const char* axis_convention;', '    const char* source;',
         '    const char* verification_basis;', '    const char* reference;',
-        '    const char* cpp_reader;', '};', '',
+        '    const char* cpp_reader;', '    const char* writer;', '};', '',
         'static constexpr Entry Catalog[] = {'))
     $lines.AddRange([string[]](New-RawCppParameterEntries $RawParameters))
     $lines.AddRange([string[]]@('};', '}', '}', ''))

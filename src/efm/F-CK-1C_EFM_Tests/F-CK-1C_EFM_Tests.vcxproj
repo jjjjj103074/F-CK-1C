@@ -95,6 +95,10 @@
     <ClCompile Include="DigitalFlightControlExecutiveTests.cpp" />
     <ClCompile Include="MissionComputerTests.cpp" />
     <ClCompile Include="RadarSystemTests.cpp" />
+    <ClCompile Include="RadarDisplayTests.cpp" />
+    <ClCompile Include="CountermeasureSystemTests.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Countermeasures\CountermeasureExecutor.cpp" />
+    <ClCompile Include="SensorControlTests.cpp" />
     <ClCompile Include="ModeManagementTests.cpp" />
     <ClCompile Include="StoresManagementTests.cpp" />
     <ClCompile Include="ConfigurationOwnershipTests.cpp" />
@@ -129,6 +133,7 @@
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CarrierBridge.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\RadarDisplayExporter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\ExternalActionTransport.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\MissionComputerExporter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />

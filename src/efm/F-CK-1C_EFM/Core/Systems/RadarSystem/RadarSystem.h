@@ -18,13 +18,23 @@ public:
 	void step(const SystemStepContext& context, const AircraftDataView& aircraft, SystemResult& result) override;
 
 private:
+	void update_cursor(const SystemStepContext& context);
 	void execute(const RadarRequest& request);
-	void apply_mode(TargetAcquisitionMode mode, std::uint64_t parent);
+	bool apply_mode(TargetAcquisitionMode mode, std::uint64_t parent);
+	void set_scan(RadarSearchMode mode, std::uint64_t parent);
+	void begin_acquisition(std::uint64_t parent, AcquisitionInput input);
+	void cancel_acquisition(std::uint64_t parent);
 	void finish_acquisition(std::uint64_t parent);
 	RadarSnapshot output_;
 	ExternalActionOutbox actions_;
 	TimedAction acquisition_;
 	std::uint64_t last_request_ = 0;
 	bool radar_on_requested_ = false;
+	bool stt_cancel_requested_ = false;
+	std::array<bool, 4> cursor_held_{};
+	bool cursor_initialized_ = false;
+	double cursor_azimuth_rad_ = 0.0;
+	double cursor_range_m_ = 0.0;
+	std::chrono::nanoseconds cursor_updated_at_{};
 };
 }

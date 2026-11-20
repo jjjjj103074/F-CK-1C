@@ -106,7 +106,7 @@ bool NativeCountermeasureProbe::handle_command(int command, float value)
 		report("input");
 	return true;
 }
-void NativeCountermeasureProbe::step(double time_s, bool armed)
+void NativeCountermeasureProbe::step(double time_s, bool ready)
 {
 	std::optional<NativeCmCall> work;
 	bool rejected = false;
@@ -115,11 +115,11 @@ void NativeCountermeasureProbe::step(double time_s, bool armed)
 		if (!active_ || calling_ || failed_ || !std::isfinite(time_s))
 			return;
 		state_.time_s = time_s;
-		if (!armed && analog_)
+		if (!ready && analog_)
 			pending_.clear();
 		if (analog_)
 		{
-			if (armed && time_s < release_at_)
+			if (ready && time_s < release_at_)
 				return;
 			work = analog_;
 			work->value = 0;
@@ -134,10 +134,10 @@ void NativeCountermeasureProbe::step(double time_s, bool armed)
 			state_.kind = work->kind;
 			state_.request_thread = work->request_thread;
 			state_.api_mask = host_.availability ? host_.availability() : 0;
-			if (!armed || !(state_.api_mask & static_cast<unsigned>(work->method)))
+			if (!ready || !(state_.api_mask & static_cast<unsigned>(work->method)))
 			{
-				state_.status = armed ? NativeCmStatus::MissingExport : NativeCmStatus::NotArmed;
-				if (!armed)
+				state_.status = ready ? NativeCmStatus::MissingExport : NativeCmStatus::NotReady;
+				if (!ready)
 					pending_.clear();
 				work.reset();
 				rejected = true;

@@ -5,6 +5,7 @@
 #include "../../DcsIds/CockpitParams.g.h"
 
 #include <charconv>
+#include <stdexcept>
 #include <cmath>
 #include <string_view>
 #include <initializer_list>
@@ -188,13 +189,12 @@ CockpitBridge::ParameterSlots CockpitBridge::make_parameter_slots()
 		       cockpit_parameter_reader(RawCockpitParams::RadarSttAzimuth),
 		       cockpit_parameter_reader(RawCockpitParams::RadarSttElevation),
 		       cockpit_parameter_reader(RawCockpitParams::RadarSttRange),
-		       cockpit_parameter_reader(RawCockpitParams::RadarSttAzimuthStabilized),
-		       cockpit_parameter_reader(RawCockpitParams::RadarSttElevationStabilized),
 		       cockpit_parameter_reader(RawCockpitParams::RadarTdcAzimuth),
-		       cockpit_parameter_reader(RawCockpitParams::RadarTdcRangeScaled),
-		       cockpit_parameter_reader(RawCockpitParams::RadarGateRangeScaled),
-		       cockpit_parameter_reader(RawCockpitParams::RadarContact01Azimuth),
-		       cockpit_parameter_reader(RawCockpitParams::RadarContact01RangeScaled),
+		       cockpit_parameter_reader(RawCockpitParams::RadarTdcRange),
+		       cockpit_parameter_reader(RawCockpitParams::RadarScanOriginAzimuth),
+		       cockpit_parameter_reader(RawCockpitParams::RadarScanOriginElevation),
+		       cockpit_parameter_reader(RawCockpitParams::RadarScanVolumeAzimuth),
+		       cockpit_parameter_reader(RawCockpitParams::RadarScanVolumeElevation),
 		       cockpit_parameter_reader(RawCockpitParams::IrDesiredAzimuth),
 		       cockpit_parameter_reader(RawCockpitParams::IrDesiredElevation),
 		       cockpit_parameter_reader(RawCockpitParams::IrLock),
@@ -225,11 +225,31 @@ CockpitBridge::CockpitBridge(cockpit_param_api api)
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation08),
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation09) } })
 {
+	const std::array<const char*, 4> patterns = { DcsIds::RawCockpitParams::RadarReturnAzimuthPattern,
+		                                          DcsIds::RawCockpitParams::RadarReturnElevationPattern,
+		                                          DcsIds::RawCockpitParams::RadarReturnRangePattern,
+		                                          DcsIds::RawCockpitParams::RadarReturnAgePattern };
+	radar_return_slots_.resize(kRadarReturnReadSlotCount);
+	for (std::size_t slot = 0; slot < radar_return_slots_.size(); ++slot)
+		for (std::size_t field = 0; field < patterns.size(); ++field)
+		{
+			auto& entry = radar_return_slots_[slot];
+			entry.names[field] = patterns[field];
+			const auto marker = entry.names[field].find("%02u");
+			if (marker == std::string::npos)
+				throw std::logic_error("Radar return parameter template requires a slot.");
+			const std::string number = (slot < 9 ? "0" : "") + std::to_string(slot + 1);
+			entry.names[field].replace(marker, 4, number);
+			entry.endpoints[field] = cockpit_parameter_reader(entry.names[field].c_str());
+		}
 }
 
-CockpitStepInput CockpitBridge::read_step_input()
+CockpitStepInput CockpitBridge::read_step_input(double dt_s)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
+	force_radar_returns_ = dt_s == 0.0;
+	if (std::isfinite(dt_s) && dt_s > 0.0)
+		radar_returns_elapsed_s_ += dt_s;
 	CockpitStepInput result;
 	read_into(&CockpitBridge::read_pressure_altitude, result.cockpit.pressure_altitude, result.events);
 	read_into(&CockpitBridge::read_magnetic_heading, result.cockpit.magnetic_heading, result.events);
@@ -312,46 +332,101 @@ CockpitValueResult<Core::MagneticHeadingObservation> CockpitBridge::read_magneti
 	return { result, events_from(reads) };
 }
 
+void CockpitBridge::read_radar_returns()
+{
+	radar_returns_.clear();
+	for (std::size_t slot = 0; slot < radar_return_slots_.size(); ++slot)
+	{
+		auto& endpoints = radar_return_slots_[slot].endpoints;
+		const auto range = endpoints[2].read_number(api_);
+		// 已填入正距離的回波再讀取其餘欄位，保留未配置的slot供後續更新。
+		if (!range.success || range.value <= 0.0)
+			continue;
+		const auto azimuth = endpoints[0].read_number(api_);
+		const auto elevation = endpoints[1].read_number(api_);
+		const auto age = endpoints[3].read_number(api_);
+		if (!azimuth.success || !elevation.success || !age.success || age.value < 0.0)
+			continue;
+		radar_returns_.push_back(
+		    { static_cast<unsigned>(slot + 1), azimuth.value, elevation.value, range.value, age.value });
+	}
+}
+
 CockpitValueResult<Core::RadarObservation> CockpitBridge::read_radar()
 {
-	const auto mode = read_parameter(Parameter::RadarMode);
-	const auto stt_az = read_parameter(Parameter::RadarSttAzimuth);
-	const auto stt_el = read_parameter(Parameter::RadarSttElevation);
-	const auto stt_range = read_parameter(Parameter::RadarSttRange);
-	const auto stt_az_stab = read_parameter(Parameter::RadarSttAzimuthStabilized);
-	const auto stt_el_stab = read_parameter(Parameter::RadarSttElevationStabilized);
-	const auto tdc_az = read_parameter(Parameter::RadarTdcAzimuth);
-	const auto tdc_range = read_parameter(Parameter::RadarTdcRangeScaled);
-	const auto gate_range = read_parameter(Parameter::RadarGateRangeScaled);
-	const auto contact_az = read_parameter(Parameter::RadarContact01Azimuth);
-	const auto contact_range = read_parameter(Parameter::RadarContact01RangeScaled);
-	const auto reads = { mode,   stt_az,    stt_el,     stt_range,  stt_az_stab,  stt_el_stab,
-		                 tdc_az, tdc_range, gate_range, contact_az, contact_range };
-	const CockpitParameterEvents events = events_from(reads);
+	CockpitParameterEvents events;
 	Core::RadarObservation result;
 	result.status.revision = radar_revision_;
-	if (const auto failure = read_failure_reason(reads))
+	const auto mode = read_parameter(Parameter::RadarMode);
+	events = events_from({ mode });
+	if (!mode.success)
 	{
-		result.status.invalid_reason = *failure;
+		result.status.invalid_reason = mode.invalid_numeric ? Core::ObservationInvalidReason::InvalidNumeric
+		                                                    : Core::ObservationInvalidReason::ParameterUnavailable;
+		radar_returns_.clear();
 		return { result, events };
 	}
-	const std::optional<Core::RadarMode> parsed_mode = to_radar_mode(mode.value);
-	if (!parsed_mode.has_value())
+	const auto parsed_mode = to_radar_mode(mode.value);
+	if (!parsed_mode)
 	{
 		result.status.invalid_reason = Core::ObservationInvalidReason::InvalidNumeric;
+		radar_returns_.clear();
 		return { result, events };
 	}
 	result.mode = *parsed_mode;
-	result.stt_azimuth_rad = stt_az.value;
-	result.stt_elevation_rad = stt_el.value;
-	result.stt_range_m = stt_range.value;
-	result.stt_azimuth_stabilized_rad = stt_az_stab.value;
-	result.stt_elevation_stabilized_rad = stt_el_stab.value;
-	result.tdc_azimuth_rad = tdc_az.value;
-	result.tdc_range_normalized = tdc_range.value;
-	result.gate_range_normalized = gate_range.value;
-	result.contact_01_azimuth_rad = contact_az.value;
-	result.contact_01_range_normalized = contact_range.value;
+	if (result.mode == Core::RadarMode::SingleTargetTrack)
+	{
+		const auto azimuth = read_parameter(Parameter::RadarSttAzimuth);
+		const auto elevation = read_parameter(Parameter::RadarSttElevation);
+		const auto range = read_parameter(Parameter::RadarSttRange);
+		const auto reads = { azimuth, elevation, range };
+		events = events.merged(events_from(reads));
+		if (const auto failure = read_failure_reason(reads))
+		{
+			result.status.invalid_reason = *failure;
+			radar_returns_.clear();
+			return { result, events };
+		}
+		result.stt_azimuth_rad = azimuth.value;
+		result.stt_elevation_rad = elevation.value;
+		result.stt_range_m = range.value;
+	}
+	const auto tdc_azimuth = read_parameter(Parameter::RadarTdcAzimuth);
+	const auto tdc_range = read_parameter(Parameter::RadarTdcRange);
+	result.tdc_available = tdc_azimuth.success && tdc_range.success && tdc_range.value > 0.0;
+	if (result.tdc_available)
+	{
+		result.tdc_azimuth_rad = tdc_azimuth.value;
+		result.tdc_range_m = tdc_range.value;
+	}
+	const auto scan_azimuth = read_parameter(Parameter::RadarScanOriginAzimuth);
+	const auto scan_elevation = read_parameter(Parameter::RadarScanOriginElevation);
+	const auto scan_width = read_parameter(Parameter::RadarScanVolumeAzimuth);
+	const auto scan_height = read_parameter(Parameter::RadarScanVolumeElevation);
+	result.scan_available = all_success({ scan_azimuth, scan_elevation, scan_width, scan_height }) &&
+	                        scan_width.value > 0.0 && scan_height.value > 0.0;
+	if (result.scan_available)
+	{
+		result.scan_azimuth_center_rad = scan_azimuth.value;
+		result.scan_elevation_center_rad = scan_elevation.value;
+		result.scan_azimuth_width_rad = scan_width.value;
+		result.scan_elevation_height_rad = scan_height.value;
+	}
+	if (result.mode == Core::RadarMode::Search)
+	{
+		constexpr double period_s = 1.0 / 32.0;
+		if (force_radar_returns_ || previous_radar_mode_ != result.mode || radar_returns_elapsed_s_ >= period_s)
+		{
+			read_radar_returns();
+			radar_returns_elapsed_s_ = std::fmod(radar_returns_elapsed_s_, period_s);
+		}
+		result.search_returns = radar_returns_;
+		for (auto& contact : result.search_returns)
+			contact.age_s += radar_returns_elapsed_s_;
+	}
+	else
+		radar_returns_.clear();
+	previous_radar_mode_ = result.mode;
 	result.status = { true, ++radar_revision_, Core::ObservationInvalidReason::None };
 	return { result, events };
 }

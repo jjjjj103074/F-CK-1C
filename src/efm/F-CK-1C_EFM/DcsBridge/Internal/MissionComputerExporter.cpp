@@ -110,7 +110,7 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(OverrideMode, static_cast<double>(snapshot.mode.override_mode));
 	WRITE_MC(Submode, static_cast<double>(snapshot.fire_control.air_to_air_submode));
 	WRITE_MC(GunFiring, snapshot.fire_control.gun_firing_indication ? 1.0 : 0.0);
-	WRITE_MC(Uncage, snapshot.fire_control.missile_uncage_held ? 1.0 : 0.0);
+	WRITE_MC(Uncage, snapshot.fire_control.missile_uncage_selected ? 1.0 : 0.0);
 	const auto& ir = snapshot.stores.ir_seeker;
 	WRITE_MC(IrAvailable, ir.status.available ? 1.0 : 0.0);
 	WRITE_MC(IrRevision, static_cast<double>(ir.status.revision));

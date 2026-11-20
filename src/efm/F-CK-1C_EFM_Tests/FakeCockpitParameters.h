@@ -4,6 +4,7 @@
 #include "include/Cockpit/ccParametersAPI.h"
 
 #include <cstring>
+#include <deque>
 #include <functional>
 #include <stdexcept>
 #include <string>
@@ -48,6 +49,17 @@ public:
 
 	FakeCockpitParameters(const FakeCockpitParameters&) = delete;
 	FakeCockpitParameters& operator=(const FakeCockpitParameters&) = delete;
+
+	void add(const char* name, double value)
+	{
+		if (auto* existing = find(name))
+		{
+			existing->value = value;
+			return;
+		}
+		dynamic_names_.push_back(name);
+		dynamic_parameters_.push_back({ dynamic_names_.back().c_str(), value });
+	}
 
 	void set(const char* name, double value)
 	{
@@ -150,9 +162,14 @@ private:
 				return &parameter;
 			}
 		}
+		for (auto& parameter : dynamic_parameters_)
+			if (std::strcmp(parameter.name, name) == 0)
+				return &parameter;
 		return nullptr;
 	}
 
+	std::deque<std::string> dynamic_names_;
+	std::deque<FakeCockpitParameter> dynamic_parameters_;
 	std::vector<FakeCockpitParameter> parameters_;
 };
 }

@@ -51,6 +51,14 @@ static constexpr int AirToAirMode = 3053;
 static constexpr int AirToGroundMode = 3054;
 static constexpr int DogfightCenter = 3055;
 static constexpr int MissileStep = 3056;
+static constexpr int DMSUp = 3057;
+static constexpr int DMSDown = 3058;
+static constexpr int DMSLeft = 3059;
+static constexpr int DMSRight = 3060;
+static constexpr int RadarCursorUp = 3061;
+static constexpr int RadarCursorDown = 3062;
+static constexpr int RadarCursorLeft = 3063;
+static constexpr int RadarCursorRight = 3064;
 static constexpr int APMasterOn = 3101;
 static constexpr int APMasterOff = 3102;
 static constexpr int APBypass = 3103;
@@ -167,6 +175,14 @@ static constexpr Entry CustomCommands[] = {
     { Commands::AirToGroundMode, Route::Efm },
     { Commands::DogfightCenter, Route::Efm },
     { Commands::MissileStep, Route::Efm },
+    { Commands::DMSUp, Route::Efm },
+    { Commands::DMSDown, Route::Efm },
+    { Commands::DMSLeft, Route::Efm },
+    { Commands::DMSRight, Route::Efm },
+    { Commands::RadarCursorUp, Route::Efm },
+    { Commands::RadarCursorDown, Route::Efm },
+    { Commands::RadarCursorLeft, Route::Efm },
+    { Commands::RadarCursorRight, Route::Efm },
     { Commands::APMasterOn, Route::Efm },
     { Commands::APMasterOff, Route::Efm },
     { Commands::APBypass, Route::Efm },

@@ -13,9 +13,7 @@ bool handle_native_countermeasure_command(BridgeContext& context, int command, f
 void step_native_countermeasure_probe(BridgeContext& context, const Core::FrameOutput& output)
 {
 	const auto& mc = output.cockpit.combat_avionics;
-	context.native_countermeasure_probe().step(output.simulation_time_s,
-	                                           mc.status.available &&
-	                                               mc.mode.master_arm_mode == Core::MasterArmMode::On);
+	context.native_countermeasure_probe().step(output.simulation_time_s, mc.status.available);
 }
 void report_native_countermeasure_probe(EventLog& log,
                                         cockpit_param_api api,

@@ -70,7 +70,7 @@ function Get-CppWriterRows {
     $cppRoot = Join-Path $Root 'src\efm\F-CK-1C_EFM'
     $writerPattern = (
         'cockpit_parameter_writer\s*\(\s*' +
-        '(?:DcsIds::)?CockpitParams::([A-Za-z_][A-Za-z0-9_]*)\s*\)')
+        '(?:DcsIds::)?(CockpitParams|RawCockpitParams)::([A-Za-z_][A-Za-z0-9_]*)\s*\)')
     foreach ($file in Get-ChildItem $cppRoot -Recurse -File -Include '*.cpp','*.h') {
         $text = [IO.File]::ReadAllText($file.FullName)
         $relative = Get-RelativePath $Root $file.FullName
@@ -88,12 +88,19 @@ function Get-CppWriterRows {
         }
         $writerMatches = [regex]::Matches($text, $writerPattern)
         foreach ($match in $writerMatches) {
-            $name = $match.Groups[1].Value
-            if (-not $Maps.CustomByName.ContainsKey($name)) {
+            $name = $match.Groups[2].Value
+            $lookup = if ($match.Groups[1].Value -eq 'RawCockpitParams') {
+                $Maps.RawByName
+            } else { $Maps.CustomByName }
+            if (-not $lookup.ContainsKey($name)) {
                 throw "C++ registers unknown cockpit writer parameter: $name"
             }
+            if ($match.Groups[1].Value -eq 'RawCockpitParams' -and
+                $lookup[$name].data_direction -eq 'dcs_to_cpp') {
+                throw "C++ writes read-only raw DCS parameter: $name"
+            }
             [pscustomobject]@{
-                Parameter = $Maps.CustomByName[$name].value
+                Parameter = $lookup[$name].value
                 Access = 'Write'
                 Layer = 'C++'
                 Source = $relative
@@ -315,6 +322,9 @@ function Find-CatalogParameter {
     if ($Maps.CustomByValue.ContainsKey($Value)) {
         return $Maps.CustomByValue[$Value]
     }
+    if ($Maps.RawByValue.ContainsKey($Value)) {
+        return $Maps.RawByValue[$Value]
+    }
     foreach ($parameter in $Maps.CustomByValue.Values) {
         if ($Value.EndsWith('*') -and
             $Value.TrimEnd('*') -eq [string]$parameter.value) {
@@ -359,8 +369,8 @@ function Test-CatalogWritersObserved {
     )
 
     $writerRows = @($Rows | Where-Object { $_.Access -match 'Write' })
-    foreach ($parameter in $Catalog.cockpit_params) {
-        if ($null -eq $parameter.writer) { continue }
+    foreach ($parameter in @($Catalog.cockpit_params) + @($Catalog.raw_dcs_cockpit_params)) {
+        if ($null -eq $parameter.PSObject.Properties['writer'] -or $null -eq $parameter.writer) { continue }
         $value = [string]$parameter.value
         $observed = @($writerRows | Where-Object {
             $_.Parameter -eq $value -or $_.Parameter -eq ($value + '*')

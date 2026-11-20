@@ -11,6 +11,7 @@ fixed-rate scheduling and completed `AircraftData` snapshots.
 | `PilotControls` | 64 Hz | Pilot axes, trim inputs and independent throttle-lever signals |
 | `DigitalFlightControlComputer` | 64 Hz | Configurable three-axis direct mapping |
 | `MissionComputer` | 32 Hz | Modes, HOTAS, targeting policy, inventory/selection and weapon-use intent; HUD/HMCS presents the state |
+| `CountermeasureSystem` | 32 Hz | Countermeasure programs, round scheduling, native execution feedback and inventory through SystemPipeline |
 | `RadarSystem` | 32 Hz | Radar requests, device input lifecycle and radar observations through the existing DCS adapter |
 | `FlightControlActuationSystem` | 256 Hz | Primary-surface dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Flaps, slats and airbrake |

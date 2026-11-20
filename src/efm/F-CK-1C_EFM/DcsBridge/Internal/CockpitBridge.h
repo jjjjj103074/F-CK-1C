@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <mutex>
+#include <string>
 
 namespace DcsBridge
 {
@@ -32,7 +33,7 @@ public:
 	CockpitBridge(const CockpitBridge&) = delete;
 	CockpitBridge& operator=(const CockpitBridge&) = delete;
 
-	CockpitStepInput read_step_input();
+	CockpitStepInput read_step_input(double dt_s = 0.0);
 	CockpitParameterEvents export_temperature(double atmosphere_temperature_k);
 
 private:
@@ -47,13 +48,12 @@ private:
 		RadarSttAzimuth,
 		RadarSttElevation,
 		RadarSttRange,
-		RadarSttAzimuthStabilized,
-		RadarSttElevationStabilized,
 		RadarTdcAzimuth,
-		RadarTdcRangeScaled,
-		RadarGateRangeScaled,
-		RadarContact01Azimuth,
-		RadarContact01RangeScaled,
+		RadarTdcRange,
+		RadarScanOriginAzimuth,
+		RadarScanOriginElevation,
+		RadarScanVolumeAzimuth,
+		RadarScanVolumeElevation,
 		IrDesiredAzimuth,
 		IrDesiredElevation,
 		IrLock,
@@ -74,7 +74,14 @@ private:
 
 	using ParameterSlots = std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)>;
 
+	static constexpr std::size_t kRadarReturnReadSlotCount = 900;
+	struct RadarReturnParameters
+	{
+		std::array<std::string, 4> names;
+		std::array<CockpitParameterEndpoint, 4> endpoints;
+	};
 	static ParameterSlots make_parameter_slots();
+	void read_radar_returns();
 	// Keep one diagnostic buffer alive per read instead of retaining every observation's buffer on the stack.
 	template <typename TValue>
 	void read_into(CockpitValueResult<TValue> (CockpitBridge::*reader)(),
@@ -97,6 +104,11 @@ private:
 	ParameterSlots slots_;
 	std::array<CockpitParameterEndpoint, Core::kWeaponStationCount> station_slots_;
 	std::uint64_t radar_revision_ = 0;
+	std::vector<RadarReturnParameters> radar_return_slots_;
+	std::vector<Core::RadarSearchReturn> radar_returns_;
+	double radar_returns_elapsed_s_ = 1.0 / 32.0;
+	bool force_radar_returns_ = true;
+	Core::RadarMode previous_radar_mode_ = Core::RadarMode::Off;
 	std::uint64_t pressure_altitude_revision_ = 0;
 	std::uint64_t magnetic_heading_revision_ = 0;
 	std::uint64_t ir_seeker_revision_ = 0;

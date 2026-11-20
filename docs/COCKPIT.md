@@ -2,14 +2,15 @@
 
 座艙入口為 `Cockpit/Scripts/device_init.lua`。
 C++ MC 負責任務模式、掛載策略、武器資格、目標操作及武器觀測管理；
-Lua 負責 DCS 觀測／操作介面、反制程序、HUD／HMCS 顯示規則、繪圖與播放。
+CountermeasureSystem 經 SystemPipeline 排程反制程序，Bridge 執行原生施放並觀測庫存。
+Lua 負責 DCS 觀測／操作介面、HUD／HMCS 顯示規則、繪圖與播放。
 完整元件、資料庫及遷移範圍見 [MC 重構報告](MC_REFACTOR_REPORT.md)。
 
 ## Device 與狀態
 
 | Device | DCS class / 腳本 | 目前責任 |
 |---|---|---|
-| CMS | avLuaDevice / cms_system.lua | 50 Hz 觀測接收與時效更新、有序 DCS action 執行、反制程序及執行互鎖 |
+| CMS | avLuaDevice / cms_system.lua | 50 Hz 觀測接收與時效更新、有序武器／選站／雷達 DCS action 執行與確認 |
 | WEAPON_SYSTEM | avSimpleWeaponSystem / weapon_system.lua | 20 Hz 原始九站觀測、執行 MC 選站要求及確認 |
 | RADAR | avSimpleRadar / RADAR/FCK1C_Radar.lua | DCS 雷達設定與原始 DCS 觀測來源 |
 | RADAR_STATE | avLuaDevice / radar_state_system.lua | 50 Hz 維持原有雷達開啟參數介面 |
@@ -31,7 +32,7 @@ Gear、Actuators 與 Autopilot device ID 保留；目前未建立其 Lua device�
 - `cockpit`：送至指定 cockpit device。
 
 MC/HOTAS 指令走 `efm`，由 MC FIFO 在下一次 tick 依序處理。
-`mission_weapon_input.lua` 在載入鍵盤／搖桿設定後，將原生開火與投放別名
+`mission_input.lua` 在載入鍵盤／搖桿設定後，將原生開火與投放別名
 （含共用設定繼承項目）轉成 MC 的 TriggerSecondStage／WeaponRelease。
 原按鍵組合保留，重複指令合併；DCS 原生 actuation ID 留在 MC 核准後的 Lua 呼叫端。
 其他既有模式、感測器與反制測試入口保留，不能將其視為全部經過 MC。
@@ -68,7 +69,7 @@ StoresManagement 統一負責掛點庫存、武器掛點選擇、循環與執行
 原生四層類型由 Bridge 分類並保留為不透明識別；全部飛彈及其他掛載均保留在逐掛點庫存中。
 C++ 現在已可使用這份資料；目前附帶 EFM SDK 沒有對等完整查詢，因此仍需 Lua 入口。
 
-機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS 執行 DcsBridge 的共用有序動作及既有反制程序。
+機砲觀測由 DcsBridge 的 C++ 原生來源提供；CMS Lua device 執行 DcsBridge 的共用有序武器／選站／雷達動作；反制程序及施放由 C++ CountermeasureSystem／Bridge 處理。
 空對空總數由 SM 庫存投影，完整性經 `McStoresMissileCountAvailable` 發布；HMCS 顯示數字或 `AAM ---`。
 
 ## 驗證
@@ -102,7 +103,7 @@ SM 等待庫存時保留自身要求；雷達／目標控制與反制可繼續�
 
 SM 的全域 IR 觀測包含 lock、要求方向、目標方向與有效性。MissionComputerExporter 在 MC generation 內發布
 McStoresIrSeekerAvailable、Revision、InvalidReason、Lock 及各方向欄位。
-McMissileUncageHeld 表達駕駛操作意圖；McStoresAirToAirMissileCount 表達掛載數量。
+McMissileUncageHeld 沿用既有參數名稱，表達駕駛選取的解籠狀態（C 切換）；McStoresAirToAirMissileCount 表達掛載數量。
 
 HMCS 的武器類別採模式、解籠意圖、有效 lock 與既有操作偏好；數量由 SM 提供。
 aam_audio_system 接受同一份完整快照的有效 lock，播放並維持鎖定音；來源或 MC 不可用、奇數／變動 generation 時停止鎖定音。
@@ -114,3 +115,9 @@ aam_audio_system 接受同一份完整快照的有效 lock，播放並維持鎖�
 Targeting 規劃目標取得；RadarSystem 經 SystemPipeline 處理設備操作及雷達觀測。共用 DCS 傳送序號與 16 項視窗由 DcsBridge 持有，Lua 保留原參數及動作值。MC 與 RadarSystem 分別取得自己的要求完成前綴。
 
 職責、資料流與序號對應見 [架構說明](RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
+
+## 持續更新與VR頁面
+
+`RADAR/FCK1C_Radar.lua`在初始化時通電，並保留Lua狀態以持續呼叫既有更新。
+飛測Recorder同樣保留Lua狀態，持續寫入逐幀觀測；回收工具會統計資料列並標示僅有表頭的錄製檔。
+HMCS VR將遮罩與符號建立於同一子頁，先建立`hmcs_vr_tfov`，再掛接`hmcs_vr_root`及瞄準線。

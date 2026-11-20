@@ -34,8 +34,32 @@ CockpitSnapshotExporter::CockpitSnapshotExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApEngageRejectionReason),
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApDisengageReason),
                  cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleEngageRejectionReason),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleDisengageReason) } }),
-      mission_computer_(api)
+                 cockpit_parameter_writer(DcsIds::CockpitParams::ApAutoThrottleDisengageReason),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmInventoryAvailable),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmFlareCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmChaffCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmAcceptedSequence),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmProgram),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmProgramState),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmCompletedRounds),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmExecutedSequence),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmFlareReturned),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::CmChaffReturned),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarScanOriginAzimuth),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarScanOriginElevation),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarScanVolumeAzimuth),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarScanVolumeElevation),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarScanMaximumRange),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarScanMinimumRange),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarPitchStabilization),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarBankStabilization),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarPitchBankStabilization),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarAcquisitionAzimuth),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarAcquisitionRange),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarTdcRange),
+                 cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarTdcAzimuth) } }),
+      mission_computer_(api),
+      radar_display_(api)
 {
 }
 
@@ -43,6 +67,8 @@ void CockpitSnapshotExporter::reset()
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	mission_computer_.reset();
+	radar_display_.reset();
+	radar_scan_revision_ = 0;
 	for (CockpitParameterEndpoint& slot : slots_)
 	{
 		slot.reset();
@@ -60,7 +86,68 @@ CockpitParameterEvents CockpitSnapshotExporter::export_snapshot(const Core::Cock
 	events = events.merged(
 	    write_parameter(Parameter::MaxPowerSwitch, snapshot.propulsion_test_thrust_cut_requested ? 0.0 : 1.0));
 	events = events.merged(export_automatic_flight_control(snapshot.automatic_flight_control));
+	// 先寫入雷達掃描參數，再發布含捕獲命令的 MC 傳送視窗。
+	events = events.merged(export_radar(snapshot.radar));
 	events = events.merged(mission_computer_.export_snapshot(snapshot.combat_avionics, actions));
+	events = events.merged(export_countermeasures(snapshot.countermeasures));
+	events = events.merged(radar_display_.export_snapshot(snapshot.display.radar));
+	return events;
+}
+
+CockpitParameterEvents CockpitSnapshotExporter::export_radar(const Core::RadarSnapshot& snapshot)
+{
+	CockpitParameterEvents events;
+	const auto& scan = snapshot.scan;
+	if (!scan.enabled)
+		return events;
+	bool complete = true;
+	const auto write = [&](Parameter parameter, double value)
+	{
+		const auto result = slots_[static_cast<std::size_t>(parameter)].write_number(api_, value);
+		if (result.event)
+			events = events.with_event(*result.event);
+		complete = result.success && complete;
+	};
+	// RWS 的天線中心於切入模式時初始化，後續沿用原生天線俯仰操作。
+	if (!scan.attitude_stabilized || radar_scan_revision_ != scan.revision)
+	{
+		write(Parameter::RadarScanOriginAzimuth, scan.azimuth_center_rad);
+		write(Parameter::RadarScanOriginElevation, scan.elevation_center_rad);
+	}
+	write(Parameter::RadarScanVolumeAzimuth, scan.azimuth_width_rad);
+	write(Parameter::RadarScanVolumeElevation, scan.elevation_height_rad);
+	write(Parameter::RadarScanMaximumRange, scan.maximum_search_range_m);
+	write(Parameter::RadarScanMinimumRange, 0.0);
+	write(Parameter::RadarPitchStabilization, scan.attitude_stabilized ? 1.0 : 0.0);
+	write(Parameter::RadarBankStabilization, scan.attitude_stabilized ? 1.0 : 0.0);
+	write(Parameter::RadarPitchBankStabilization, scan.attitude_stabilized ? 1.0 : 0.0);
+	write(Parameter::RadarAcquisitionAzimuth, scan.acquisition_azimuth_width_rad);
+	write(Parameter::RadarAcquisitionRange, scan.acquisition_range_window_m);
+	if (scan.override_tdc)
+	{
+		write(Parameter::RadarTdcAzimuth, scan.tdc_azimuth_rad);
+		write(Parameter::RadarTdcRange, scan.tdc_range_m);
+	}
+	if (complete)
+		radar_scan_revision_ = scan.revision;
+	return events;
+}
+
+CockpitParameterEvents CockpitSnapshotExporter::export_countermeasures(const Core::CountermeasureSnapshot& s)
+{
+	CockpitParameterEvents events;
+#define WRITE_CM(parameter, value) events = events.merged(write_parameter(Parameter::parameter, value))
+	WRITE_CM(CmInventoryAvailable, s.observation.inventory.available ? 1.0 : 0.0);
+	WRITE_CM(CmFlareCount, static_cast<double>(s.observation.inventory.flare));
+	WRITE_CM(CmChaffCount, static_cast<double>(s.observation.inventory.chaff));
+	WRITE_CM(CmAcceptedSequence, static_cast<double>(s.accepted_sequence));
+	WRITE_CM(CmProgram, static_cast<double>(s.program));
+	WRITE_CM(CmProgramState, static_cast<double>(s.state));
+	WRITE_CM(CmCompletedRounds, static_cast<double>(s.completed_rounds));
+	WRITE_CM(CmExecutedSequence, static_cast<double>(s.observation.execution.sequence));
+	WRITE_CM(CmFlareReturned, s.observation.execution.flare_returned ? 1.0 : 0.0);
+	WRITE_CM(CmChaffReturned, s.observation.execution.chaff_returned ? 1.0 : 0.0);
+#undef WRITE_CM
 	return events;
 }
 

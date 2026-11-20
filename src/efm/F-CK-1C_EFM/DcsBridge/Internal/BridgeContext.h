@@ -2,6 +2,7 @@
 
 #include "CarrierBridge.h"
 #include "Aircraft/DcsAircraftInterface.h"
+#include "Countermeasures/CountermeasureExecutor.h"
 #include "CockpitBridge.h"
 #include "ExternalActionTransport.h"
 #include "GunAmmunition/GunAmmunitionSource.h"
@@ -60,7 +61,10 @@ public:
 	CockpitSnapshotExporter& cockpit_snapshot_exporter();
 	CockpitBridge& cockpit_bridge();
 	ExternalActionTransport& action_transport();
+	/// @brief 於原生 I/O 階段取得機砲彈量與反制庫存及執行回覆。
+	void observe_aircraft(Core::CockpitObservation& observation);
 	DcsAircraftInterface& aircraft_interface();
+	CountermeasureExecutor& countermeasure_executor();
 	GunAmmunitionSource& gun_ammunition_source();
 	NativeCountermeasureProbe& native_countermeasure_probe();
 	CarrierBridge& carrier_bridge();
@@ -125,6 +129,7 @@ private:
 	CockpitBridge cockpit_bridge_;
 	ExternalActionTransport action_transport_;
 	DcsAircraftInterface aircraft_interface_;
+	CountermeasureExecutor countermeasure_executor_;
 	GunAmmunitionSource gun_ammunition_source_;
 	NativeCountermeasureProbe native_countermeasure_probe_;
 	CarrierBridge carrier_bridge_;

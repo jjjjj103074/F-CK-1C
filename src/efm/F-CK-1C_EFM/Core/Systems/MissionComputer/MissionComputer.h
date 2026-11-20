@@ -7,6 +7,8 @@
 #include "Components/FireControl/FireControl.h"
 #include "Components/StoresManagement/StoresManagement.h"
 #include "Components/ModeManagement/ModeManagement.h"
+#include "Components/SensorOfInterest/SensorOfInterest.h"
+#include "Diagnostics/SensorControlTelemetry.h"
 #include "Components/StartupAndRestart/StartupAndRestart.h"
 #include "Components/SystemMonitor/SystemMonitor.h"
 #include "Database/ExecutiveTables.h"
@@ -19,7 +21,7 @@
 namespace Core::Systems
 {
 /// @brief 一台 MC 的組裝與 Pipeline 介面；直接持有功能元件與具型別資料庫。
-/// 模式、掛載與火控共用一個 Executive，DCS 操作由 Lua 介面執行。
+/// 模式、掛載與火控共用一個 Executive；設備要求透過 Pipeline 與 Bridge 傳送。
 class MissionComputer final : public System
 {
 public:
@@ -44,6 +46,7 @@ private:
 	/// @brief 依共用 FIFO 處理模式、反制及火控指令，每筆指令的同步通知完成後才前進。
 	void consume_commands();
 	void record_control_input(const Command& command);
+	void route_sensor_control(const Command& command);
 	void publish_outputs(SystemResult& result);
 
 	bool powered_ = true; ///< 控制 step 執行的供電狀態，預設為有電。
@@ -55,6 +58,7 @@ private:
 	Mc::ModeData mode_data_;
 	Mc::StoresData stores_data_;
 	Mc::FireControlData fire_control_data_;
+	SensorOfInterestSnapshot sensor_of_interest_data_;
 	ExternalActionOutbox external_actions_;
 	Mc::StoresCommandQueue stores_commands_;
 	Mc::RadarRequestQueue radar_requests_;
@@ -67,6 +71,15 @@ private:
 	Mc::StoresManagement stores_management_;
 	Mc::FireControl fire_control_;
 	Mc::ModeManagement mode_management_;
+	Mc::SensorOfInterest sensor_of_interest_;
+	Mc::SensorControlTelemetry sensor_control_telemetry_;
+	struct HeldSensorInput
+	{
+		bool held = false;
+		SensorControlSource source = SensorControlSource::None;
+	};
+	HeldSensorInput held_tms_up_;
+	HeldSensorInput held_tms_right_;
 	Mc::CountermeasureControl countermeasure_control_;
 	Mc::Executive executive_;
 	Mc::StartupAndRestart startup_and_restart_;
@@ -74,7 +87,6 @@ private:
 	// 成員依宣告反序銷毀；連線最後宣告，確保先解除訂閱，再銷毀接收者與通道。
 	sigslot::scoped_connection stores_commands_connection_;
 	sigslot::scoped_connection fire_control_arm_connection_;
-	sigslot::scoped_connection countermeasure_arm_connection_;
 	sigslot::scoped_connection fire_control_mode_connection_;
 	sigslot::scoped_connection stores_mode_connection_;
 };

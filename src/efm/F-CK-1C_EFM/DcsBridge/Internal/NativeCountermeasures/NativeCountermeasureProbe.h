@@ -26,7 +26,7 @@ enum class NativeCmStatus
 	Queued = 2,
 	Called = 3,
 	Released = 4,
-	NotArmed = 5,
+	NotReady = 5,
 	MissingExport = 6,
 	CallFailed = 7,
 	Canceled = 8,
@@ -85,7 +85,7 @@ public:
 	void end_flight();
 	bool handle_command(int command, float value);
 	/// @brief 執行至多一筆派送；類比輸入至少保持 40 ms 後送出放開。
-	void step(double time_s, bool armed);
+	void step(double time_s, bool ready);
 	NativeCmProbeSnapshot snapshot() const;
 
 private:

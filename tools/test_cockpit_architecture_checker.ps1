@@ -37,6 +37,7 @@ function Copy-CheckerFixture {
         'CockpitBridge.cpp',
         'CockpitSnapshotExporter.cpp',
         'MissionComputerExporter.cpp',
+        'RadarDisplayExporter.cpp',
         'DebugTelemetry\DebugIndicatorExporter.cpp',
         'NativeCountermeasures\NativeCountermeasureIntegration.cpp'
     )
@@ -117,6 +118,22 @@ try {
             'pfn_ed_cockpit_update_parameter_with_number(handle, value);',
             $utf8NoBom)
     } 'Direct cockpit numeric update API is forbidden' $temporaryRoot
+    Remove-Item -LiteralPath $badWriter -Force
+
+    Assert-Rejected {
+        [IO.File]::WriteAllText(
+            $badWriter,
+            'cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarMode);',
+            $utf8NoBom)
+    } 'C++ writes read-only raw DCS parameter' $temporaryRoot
+    Remove-Item -LiteralPath $badWriter -Force
+
+    Assert-Rejected {
+        [IO.File]::WriteAllText(
+            $badWriter,
+            'cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarScanVolumeAzimuth);',
+            $utf8NoBom)
+    } 'Parameter has multiple writers' $temporaryRoot
     Remove-Item -LiteralPath $badWriter -Force
 
     $weaponSystem = Join-Path (

@@ -25,6 +25,20 @@ Copy-Evidence 'Config\Input\F-CK-1C\keyboard' 'keyboard-bindings'
 Copy-Evidence 'Config\Input\F-CK-1C\joystick' 'joystick-bindings'
 $module = Join-Path $SavedGamesRoot 'Mods\aircraft\F-CK-1C'
 $installedDll = Join-Path $module 'bin\F-CK-1C_EFM.dll'
+# 統計每份紀錄的資料列，明確標示只有表頭的檔案。
+$recordings = @()
+$recordingRoot = Join-Path $target 'MC-recordings'
+if (Test-Path -LiteralPath $recordingRoot) {
+    foreach ($path in Get-ChildItem -LiteralPath $recordingRoot -Filter '*.csv' -File | Sort-Object Name) {
+        $rows = 0
+        $errorText = $null
+        try { Import-Csv -LiteralPath $path.FullName -Encoding UTF8 | ForEach-Object { $rows++ } }
+        catch { $errorText = $_.Exception.Message }
+        $status = if ($errorText) { 'read_error' } elseif ($rows) { 'samples_present' } else { 'header_only' }
+        $recordings += [ordered]@{ file = $path.Name; rows = $rows; status = $status; error = $errorText }
+    }
+}
+ConvertTo-Json -InputObject @($recordings) -Depth 4 | Set-Content -LiteralPath (Join-Path $target 'recording-health.json') -Encoding UTF8
 $installed = [ordered]@{ saved_games_root = $SavedGamesRoot; collected_at = (Get-Date).ToString('o'); missing = $missing.ToArray() }
 if (Test-Path -LiteralPath $installedDll) {
     $installed.dll_sha256 = (Get-FileHash -LiteralPath $installedDll -Algorithm SHA256).Hash.ToLowerInvariant()

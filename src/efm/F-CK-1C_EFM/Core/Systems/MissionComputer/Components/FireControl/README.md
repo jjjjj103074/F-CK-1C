@@ -1,6 +1,6 @@
 # FireControl 與 Targeting
 
-FireControl 組裝 Targeting 與 WeaponOperation，分派操作及程序結果。目標取得策略由 Targeting 擁有，雷達設備操作由 [RadarSystem](../../../RadarSystem/README.md) 經 SystemPipeline 執行。
+FireControl 組裝 Targeting 與 WeaponOperation，分派操作及程序結果。MC 依 SOI 將 FCR 的 TMS 操作送進火控。目標取得策略由 Targeting 擁有，雷達設備操作由 [RadarSystem](../../../RadarSystem/README.md) 經 SystemPipeline 執行。
 
 | 位置 | 職責與主要依賴 |
 |---|---|
@@ -28,11 +28,14 @@ flowchart LR
 ```
 
 主保險 OFF／SIM 由 WeaponOperation／SM 停止武器操作；Targeting 使用操作模式及雷達回報。
-模式切換保留保險，並由 WeaponOperation 結束先前配置的武器使用。MSL STEP 在空對空配置送出輪站要求，下一個可用掛點由 SM 決定。超控切換規則及座艙指令見[模式架構](../../../../../../../../docs/MC_MODE_EVENTS.md)。
+模式切換保留保險，並由 WeaponOperation 結束先前配置的武器使用。MSL STEP 的短按送出同型輪站意圖，按住達 0.5 秒送出一次換型意圖；SM 決定實際掛點。超控切換規則及座艙指令見[模式架構](../../../../../../../../docs/MC_MODE_EVENTS.md)。
 
 TargetingData 保存期望的捕獲方式與指定意圖。雷達設備來源的工作模式、幾何及有效性由 RadarSystem 發布，再由 Targeting 整理成目前的目標資料。指定意圖與 STT 觀測各自保存。
 
-解籠操作由 FC 分派給 WeaponOperation 及 Targeting。TMS Left 維持既有空操作；Hud 維持保存捕獲選擇；其餘按鍵、DGFT 進入捕獲、投放前重送模式及投放結束取消指定維持原有規則。
+解籠切換由 WeaponOperation 保存選擇狀態，FC 將更新後的選擇交給 Targeting 接續雷達要求。
+DCS 輸入按一次切換，放開後保存；明確設定介面使用相同狀態。TMS 依 1997 年手冊處理 CRM／ACM 操作與右向 1 秒長按；設備能力由 RadarSystem 回報。投放前重送模式與投放結束取消指定維持既有分工。
+
+操作表、來源與預留功能見 [感測器操作](../../../../../../../../docs/MC_SENSOR_CONTROLS.zh-TW.md)。
 
 ## 相關說明
 

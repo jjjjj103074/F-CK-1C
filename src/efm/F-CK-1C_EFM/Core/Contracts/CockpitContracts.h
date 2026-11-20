@@ -3,6 +3,8 @@
 #include "MissionActions.h"
 #include "ExternalActions.h"
 #include "RadarCommands.h"
+#include "CountermeasureContracts.h"
+#include "DisplayContracts.h"
 
 #include <array>
 #include <chrono>
@@ -184,6 +186,16 @@ struct PressureAltitudeObservation
 	double pressure_altitude_ft = 0.0;
 };
 
+/// @brief 一次原生雷達回波及其來源欄位編號。
+struct RadarSearchReturn
+{
+	unsigned source_slot = 0;
+	double azimuth_rad = 0.0;
+	double elevation_rad = 0.0;
+	double range_m = 0.0;
+	double age_s = 0.0;
+};
+
 struct RadarObservation
 {
 	ObservationStatus status;
@@ -191,13 +203,15 @@ struct RadarObservation
 	double stt_azimuth_rad = 0.0;
 	double stt_elevation_rad = 0.0;
 	double stt_range_m = 0.0;
-	double stt_azimuth_stabilized_rad = 0.0;
-	double stt_elevation_stabilized_rad = 0.0;
 	double tdc_azimuth_rad = 0.0;
-	double tdc_range_normalized = 0.0;
-	double gate_range_normalized = 0.0;
-	double contact_01_azimuth_rad = 0.0;
-	double contact_01_range_normalized = 0.0;
+	bool tdc_available = false;
+	double tdc_range_m = 0.0;
+	bool scan_available = false;
+	double scan_azimuth_center_rad = 0.0;
+	double scan_elevation_center_rad = 0.0;
+	double scan_azimuth_width_rad = 0.0;
+	double scan_elevation_height_rad = 0.0;
+	std::vector<RadarSearchReturn> search_returns;
 };
 
 /// @brief 全域武器介面回報的 IR 鎖定、要求方向與目標方向。
@@ -322,6 +336,7 @@ struct CockpitObservation
 	PressureAltitudeObservation pressure_altitude;
 	MissionAdapterObservation mission_adapter;
 	ExternalActionFeedback external_action_feedback;
+	CountermeasureObservation countermeasures;
 };
 
 struct SnapshotStatus
@@ -446,6 +461,18 @@ struct ModeSnapshot
 	bool dogfight_mode = false;
 };
 
+/// @brief 顯示系統依模式發布的功能對應，供 MC 選擇控制來源。
+struct DisplaySnapshot
+{
+	SnapshotStatus status;
+	OperatingMode operating_mode = OperatingMode::Navigation;
+	DisplayAssignment left;
+	DisplayAssignment right;
+	bool hud_designation_available = false;
+	DisplayLocation last_format_step = DisplayLocation::None;
+	RadarDisplaySnapshot radar;
+};
+
 /// @brief 機載目標指定意圖及雷達回報的追蹤結果。
 struct TargetDesignationSnapshot
 {
@@ -465,7 +492,7 @@ struct FireControlSnapshot
 	bool gun_fire_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
-	bool missile_uncage_held = false; ///< 駕駛的解籠操作意圖。
+	bool missile_uncage_selected = false; ///< 駕駛選取的解籠狀態。
 	TargetDesignationSnapshot target_designation;
 };
 
@@ -478,6 +505,11 @@ struct RadarSnapshot
 	bool adapter_available = false;
 	TargetAcquisitionMode requested_acquisition_mode = TargetAcquisitionMode::None;
 	RadarObservation observation;
+	RadarSearchMode requested_search_mode = RadarSearchMode::RangeWhileSearch;
+	bool spotlight_requested = false;
+	RadarSearchMode active_search_mode = RadarSearchMode::RangeWhileSearch;
+	RadarScanControl scan;
+	bool automatic_acquisition_requested = false;
 	std::vector<RadarCommandResult> command_results;
 	ExternalActionRequests action_requests;
 };
@@ -528,19 +560,22 @@ struct MissionControlInputsSnapshot
 struct CountermeasureSnapshot
 {
 	SnapshotStatus status;
-	std::uint64_t flare_release_count = 0;
-	std::uint64_t chaff_release_count = 0;
-	std::uint64_t combined_release_count = 0;
+	std::uint64_t accepted_sequence = 0;
+	CountermeasureProgram program = CountermeasureProgram::Forward;
+	CountermeasureProgramState state = CountermeasureProgramState::Idle;
+	int completed_rounds = 0, remaining_rounds = 0;
+	CountermeasureObservation observation;
+	std::optional<CountermeasureDispenseRequest> dispense;
 };
 
 struct CombatAvionicsSnapshot
 {
 	SnapshotStatus status;
 	ModeSnapshot mode;
+	SensorOfInterestSnapshot sensor_of_interest;
 	FireControlSnapshot fire_control;
 	StoresSnapshot stores;
 	MissionControlInputsSnapshot control_inputs;
-	CountermeasureSnapshot countermeasures;
 	ExternalActionRequests action_requests;
 };
 
@@ -563,6 +598,8 @@ struct CockpitSnapshot
 	bool propulsion_test_thrust_cut_requested = false;
 	CombatAvionicsSnapshot combat_avionics;
 	RadarSnapshot radar;
+	CountermeasureSnapshot countermeasures;
 	HmcsDisplaySnapshot hmcs;
+	DisplaySnapshot display;
 };
 }

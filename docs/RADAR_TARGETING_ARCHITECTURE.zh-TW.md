@@ -1,11 +1,13 @@
 # Targeting、RadarSystem 與 DCS 動作傳輸
 
-本輪基準：`f707d4a779f5a8818d19283470196ab76d967fbc`。本輪為職責重構，保留現有操縱與設備配合。
+此文件說明跨 System 傳輸。SOI／TMS 操作以 [感測器操作](MC_SENSOR_CONTROLS.zh-TW.md) 為準，依 1997 年真機手冊建立入口及設備實作程度。
 
 ## 職責
 
 | 擁有者 | 內容 |
 |---|---|
+| DisplaySystem | 模式固定的 MFD 功能與控制來源對應，經 Pipeline 發布 |
+| MC／SensorOfInterest | SOI 來源與顯示位置、DMS 上下 |
 | MC／FireControl | 組裝與分派；將武器正常結束結果通知 Targeting |
 | MC／Targeting | TMS 與目標操作策略、捕獲方式、指定／切換／取消意圖 |
 | RadarSystem | 設備操作、來源觀測、捕獲輸入確認及保持／放開 |
@@ -59,10 +61,10 @@ ExternalActionOutbox 保存功能要求及結果；ExternalActionTransport 擁�
 ## 保留的行為
 
 - 主保險與一般 NAV／A-A／A-G、DGFT／MSL 超控獨立；SAFE／SIM 保留目標指定。
-- DGFT 進入的一次捕獲、TMS 脈衝／按住、解籠配合及投放結束取消指定維持原規則。
-- Hud 保存捕獲選擇，TMS Left 維持空操作。
+- TMS 依 SOI 分派，CRM 上向在放開時提出捕獲；ACM 依手冊選 BORE、30×20、10×60。
+- TMS 左展開資料、右輪選優先目標／長按 TWS 與空地要求，經設備結果明確標示預留功能。
 - 武器使用資格、SM 選站／停止／取消、至少 80 ms 的保持及反制程序維持原分工。
-- DCS 動作值、按鍵與座艙參數名稱／數值維持既有對應。
+- 既有 DCS 動作與座艙參數維持對應；TMS／DMS 採新的預設鍵，新增 boresight 語意操作。
 
 ## 驗證與產物
 
@@ -98,3 +100,13 @@ Bridge 相容檢查只在暫存副本提供 Windows 模組查詢／路徑函式�
 - CI manifest 的 source commit、tree 與本機對應版本一致；下載 DLL、一般重建及分析重建的 SHA256 一致。
 - `bin/F-CK-1C_EFM.dll` 更新為該驗證產物；SHA256：`05ecc0b6a0f14af83802fbc3a03a654f3e53b92227316d8c01441bc88cef72af`。
 - DCS 遊戲驗證維持 `not_run`，由測試包的人工流程另行核對。
+
+## RWS／BORE 設備設定
+
+RadarSnapshot 的 RadarScanControl 隨 Pipeline 發布至既有 DcsBridge 匯出器。
+RWS 保留原生 TDC 與天線俯仰操作，BORE 固定近距離捕獲窗口。
+捕獲成功由原生 STT 回報確認；STT 時使用既有感測器距離校準與原生追蹤限制。
+
+本輪使用已查核的 509／510 進行捕獲與釋放，取代附帶的 100／1627 換鎖操作。
+其他外部動作仍沿用相同的來源編號、共用傳送視窗及確認規則。
+參數依據與操作見 [雷達模式](RADAR_MODES.zh-TW.md)。

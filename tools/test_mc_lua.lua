@@ -46,7 +46,7 @@ expect(#delivered == 4, "a sequence gap must not execute")
 batch(5, { 1 }, 3)
 transport.update()
 expect(#delivered == 4, "an unfinished odd generation must not execute")
-batch(5, { 22 })
+batch(5, { 23 })
 transport.update()
 expect(#delivered == 4, "unknown action values must not execute")
 batch(5, { 1 })
@@ -117,6 +117,7 @@ local mapping = {
     { "PickleOff", "iCommandPlanePickleOff" },
     { "EnsureRadarOn", "iCommandPlaneRadarOnOff" },
     { "ModeHelmet", "iCommandPlaneModeHelmet" },
+    { "ModeBoresight", "iCommandPlaneModeBore" },
     { "ModeVerticalScan", "iCommandPlaneModeVS" },
     { "ModeBeyondVisualRange", "iCommandPlaneModeBVR" },
     { "ModeFi0", "iCommandPlaneModeFI0" },
@@ -139,31 +140,26 @@ for i, entry in ipairs(mapping) do
 end
 update()
 expect(#native == #mapping, "the real CMS adapter must not replay an acknowledged window")
+-- 雷達已開啟時，有序轉接層完成要求並保持電源狀態。
+local count_before_radar = #native
 values[cockpit_params.McGeneration] = 4
 values[cockpit_params.McActionFirstSequence] = #mapping + 1
-values[cockpit_params.McActionCount] = 4
-for i, name in ipairs({ "StartCmsForward", "StartCmsAft", "StartCmsLeft", "AbortCms" }) do
-    values[cockpit_params[string.format("McAction%02d", i)]] = kinds[name]
-end
-update()
-expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + 4, "CM requests are handled by the Lua CM subsystem")
-expect(#native == #mapping + 1 and native[#mapping + 1] == dcs_commands.iCommandPlaneDropChaffOnce, "abort clears queued paired releases")
-for _ = 1, 100 do
-    update()
-end
-expect(#native == #mapping + 1, "an aborted CM program must not release later")
-values[cockpit_params.McGeneration] = 6
-values[cockpit_params.McActionFirstSequence] = #mapping + 5
 values[cockpit_params.McActionCount] = 1
 values[cockpit_params.McAction01] = kinds.EnsureRadarOn
 values[cockpit_params.RadarState] = 1
 update()
-expect(
-    values[cockpit_params.McAcknowledgedSequence] == #mapping + 5 and #native == #mapping + 1,
-    "an ON request must not toggle an already ON radar"
-)
--- CMS 執行 MC 動作；掛載數量由固定掛點觀測提供。
-expect(values[cockpit_params.McAdapterAvailable] == 1, "CMS publishes executable adapter availability")
+expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + 1 and #native == count_before_radar,
+    "an ON request preserves an already ON radar")
+-- 已退役的反制 wire 動作保持未確認，由 C++ Pipeline 接收實際 CMS 操作。
+for _, action in ipairs({17, 19}) do
+    values[cockpit_params.McGeneration] = 6
+    values[cockpit_params.McActionFirstSequence] = #mapping + 2
+    values[cockpit_params.McAction01] = action
+    update()
+    expect(values[cockpit_params.McAcknowledgedSequence] == #mapping + 1 and #native == count_before_radar,
+        "retired Lua CMS action remains unexecuted")
+end
+expect(values[cockpit_params.McAdapterAvailable] == 1, "ordered Lua adapter is available")
 
 -- 更新中的快照可撤回尚未開始的後續項目，已完成前綴保留確認。
 do
@@ -632,12 +628,12 @@ do
     create_sound_host = nil
 end
 
--- Execute both real DCS input profiles: every MC/HOTAS binding reaches EFM with both edges.
+-- Execute both real DCS input profiles and verify each control's input edges.
 for name, value in pairs(dcs_commands) do
     _G[name] = value
 end
 external_profile = function()
-    return {
+    local profile = {
         keyCommands = {
             {
                 down = iCommandPlaneFire,
@@ -665,9 +661,19 @@ external_profile = function()
                 cockpit_device_id = 777,
                 name = "Unrelated",
             },
+            {
+                down = 999003, name = "Inherited Sensor Keys",
+                combos = { { key = "C" }, { key = "I" }, { key = "I", reformers = { "RShift" } }, { key = "I", reformers = { "RCtrl" } }, { key = "K", reformers = { "RCtrl" } }, { key = "J", reformers = { "RCtrl" } }, { key = "L", reformers = { "RCtrl" } }, { key = "I", reformers = { "LShift" } }, { key = "X" } },
+            },
         },
         axisCommands = {},
     }
+    for _, name in ipairs({ "iCommandPlaneModeBVR", "iCommandPlaneModeBore", "iCommandPlaneModeHelmet", "iCommandPlaneModeFI0", "iCommandPlaneChangeWeapon", "iCommandPlaneLaunchPermissionOverride", "iCommandPlaneDropFlareOnce", "iCommandPlaneDropChaffOnce", "iCommandPlaneLockOnStart", "iCommandPlaneLockOnFinish" }) do
+        profile.keyCommands[#profile.keyCommands + 1] = { down = dcs_commands[name], name = "Inherited Direct " .. name }
+        profile.keyCommands[#profile.keyCommands + 1] = { up = dcs_commands[name], name = "Inherited Direct release " .. name }
+        profile.keyCommands[#profile.keyCommands + 1] = { pressed = dcs_commands[name], name = "Inherited Direct held " .. name }
+    end
+    return profile
 end
 defaultDeviceAssignmentFor = function(role)
     return role == "weapon_release_button" and { { key = "DeviceRelease" } } or {}
@@ -697,6 +703,10 @@ local mission_commands = {
     "TMSDown",
     "TMSLeft",
     "TMSRight",
+    "DMSUp",
+    "DMSDown",
+    "DMSLeft",
+    "DMSRight",
     "CMSForward",
     "CMSAft",
     "CMSLeft",
@@ -711,13 +721,19 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         for _, binding in ipairs(bindings.keyCommands) do
             if binding.down == device_commands[name] then
                 matches = matches + 1
-                expect(
-                    binding.cockpit_device_id == nil
-                        and binding.up == binding.down
-                        and binding.value_down == 1
-                        and binding.value_up == 0,
-                    profile .. ": MC command must reach EFM with press/release: " .. name
-                )
+                if name == "MissileUncage" then
+                    expect(binding.cockpit_device_id == nil and binding.value_down == 1
+                        and binding.up == nil and binding.pressed == nil,
+                        profile .. ": uncage toggle sends one press without held repeats or release")
+                else
+                    expect(
+                        binding.cockpit_device_id == nil
+                            and binding.up == binding.down
+                            and binding.value_down == 1
+                            and binding.value_up == 0,
+                        profile .. ": MC command must reach EFM with press/release: " .. name
+                    )
+                end
             end
         end
         expect(matches == 1, profile .. ": expected one MC command after merging aliases: " .. name)
@@ -728,6 +744,24 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         [dcs_commands.iCommandPlanePickleOn] = true,
         [dcs_commands.iCommandPlanePickleOff] = true,
     }
+    for _, name in ipairs({ "iCommandPlaneModeBVR", "iCommandPlaneModeVS", "iCommandPlaneModeBore", "iCommandPlaneModeHelmet", "iCommandPlaneModeFI0", "iCommandPlaneModeCannon", "iCommandPlaneChangeWeapon", "iCommandPlaneLaunchPermissionOverride", "iCommandPlaneDropSnarOnce", "iCommandPlaneDropSnarOnceOff", "iCommandPlaneDropFlareOnce", "iCommandPlaneDropChaffOnce", "iCommandPlaneLockOnStart", "iCommandPlaneLockOnFinish", "iCommandPlaneChangeLock", "iCommandPlaneChangeLockUp" }) do
+        if dcs_commands[name] then forbidden[dcs_commands[name]] = true end
+    end
+    if profile == "keyboard" then
+        local expected = { ["C"] = "MissileUncage", ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep", ["I"] = "TMSUp", ["K"] = "TMSDown", ["J"] = "TMSLeft", ["L"] = "TMSRight", ["RShift+I"] = "DMSUp", ["RShift+K"] = "DMSDown", ["RShift+J"] = "DMSLeft", ["RShift+L"] = "DMSRight", ["RCtrl+I"] = "CMSForward", ["RCtrl+K"] = "CMSAft", ["RCtrl+J"] = "CMSLeft", ["RCtrl+L"] = "CMSRight", ["RAlt+I"] = "RadarCursorUp", ["RAlt+K"] = "RadarCursorDown", ["RAlt+J"] = "RadarCursorLeft", ["RAlt+L"] = "RadarCursorRight" }
+        local found = {}
+        for _, binding in ipairs(bindings.keyCommands) do
+            for _, combo in ipairs(binding.combos or {}) do
+                local key = table.concat(combo.reformers or {}, "+")
+                key = (key ~= "" and key .. "+" or "") .. combo.key
+                if expected[key] then
+                    expect(binding.down == device_commands[expected[key]], "mode/step key routes to MC: " .. key)
+                    found[key] = (found[key] or 0) + 1
+                end
+            end
+        end
+        for key in pairs(expected) do expect(found[key] == 1, "exactly one mode/step binding: " .. key) end
+    end
     local inherited_release, held_gun, unrelated, space_gun = 0, 0, 0, 0
     local joystick_gun, joystick_release, keyboard_release, device_release = 0, 0, 0, 0
     for _, binding in ipairs(bindings.keyCommands) do
@@ -799,7 +833,7 @@ local release_only = {
     { down = dcs_commands.iCommandPlaneFireOff, cockpit_device_id = 999 },
     { down = dcs_commands.iCommandPlanePickleOff, cockpit_device_id = 999 },
 }
-dofile("Input/F-CK-1C/mission_weapon_input.lua")(release_only, device_commands, dcs_commands)
+dofile("Input/F-CK-1C/mission_input.lua")(release_only, device_commands, dcs_commands)
 expect(
     release_only[1].down == device_commands.TriggerSecondStage and release_only[1].value_down == 0,
     "a native gun stop must remain a release request"
@@ -812,4 +846,17 @@ expect(
     release_only[1].cockpit_device_id == nil and release_only[2].cockpit_device_id == nil,
     "release-only input must reach EFM"
 )
+-- 測試包替既有 debug 入口提供預設鍵，保留已指定的其他組合。
+local debug_defaults = { { down = device_commands.DebugIndicatorToggle }, { down = 999888, combos = { { key = "X" } } } }
+dofile("tools/mc-flight-test/NativeCountermeasureKeys.lua")(debug_defaults, device_commands)
+expect(debug_defaults[1].combos[1].key == "F12", "flight-test debug default key")
+expect(table.concat(debug_defaults[1].combos[1].reformers, "+") == "RCtrl+RShift", "flight-test debug modifiers")
+expect(debug_defaults[2].combos[1].key == "X", "flight-test overlay preserves other controls")
+local debug_custom = { { down = device_commands.DebugIndicatorToggle, combos = { { key = "CustomDebug" } } } }
+dofile("tools/mc-flight-test/NativeCountermeasureKeys.lua")(debug_custom, device_commands)
+expect(debug_custom[1].combos[1].key == "CustomDebug", "flight-test overlay preserves explicit debug keys")
+
+dofile("tools/test_mc_runtime.lua")(expect)
+dofile("tools/test_radar_display.lua")(expect)
+
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))

@@ -12,9 +12,10 @@ perfomance = {
     pitch_compensation_limits = { math.rad(-45.0), math.rad(45.0) },
     tracking_azimuth = { -math.rad(70.0), math.rad(70.0) },
     tracking_elevation = { -math.rad(45.0), math.rad(45.0) },
-    scan_volume_azimuth = math.rad(140.0),
-    scan_volume_elevation = math.rad(60.0),
-    scan_beam = math.rad(60.0),
+    -- 角度參考與原生條帶映射見 docs/RADAR_MODES.zh-TW.md。
+    scan_volume_azimuth = math.rad(120.0),
+    scan_volume_elevation = math.rad(18.4),
+    scan_beam = math.rad(4.6),
     scan_speed = math.rad(240.0),
     max_available_distance = 90000.0,
     {
@@ -30,4 +31,8 @@ function update()
     radar:set_power(true)
 end
 
-need_to_be_closed = true
+function post_initialize()
+    update()
+end
+
+need_to_be_closed = false

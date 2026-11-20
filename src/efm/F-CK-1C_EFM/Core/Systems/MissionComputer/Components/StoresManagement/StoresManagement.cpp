@@ -145,7 +145,8 @@ void StoresManagement::schedule_command(PendingCommand entry)
 		cancel_pending_commands();
 		pending_commands_.push_back({ std::nullopt, CancelStoresCommands{} });
 		pending_commands_.push_back(entry);
-		pending_commands_.push_back({ std::nullopt, SelectStoresForMode{ latest_mode_, false, true } });
+		pending_commands_.push_back(
+		    { std::nullopt, SelectStoresForMode{ latest_mode_, MissileSelectionStep::None, true } });
 	}
 	else
 		pending_commands_.push_back(entry);
@@ -171,7 +172,7 @@ void StoresManagement::drain_commands()
 				if (!is_air_to_air_mode(mode->mode))
 					cancel_dispatched_commands();
 				const auto previous_request = stores_.selection.request_revision;
-				selection_.select_mode(mode->mode, mode->cycle_weapon, mode->reassert_selection);
+				selection_.select_mode(mode->mode, mode->step, mode->reassert_selection);
 				selection_changed_ = selection_.update(input_.cockpit.weapon_stations) || selection_changed_;
 				if (stores_.selection.request_revision != previous_request)
 					action = selection_action();

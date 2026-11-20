@@ -116,7 +116,7 @@ void run_native_countermeasure_probe_tests(Tests::Context& context)
 		f.press(NativeCmFlareDigital);
 		f.press(NativeCmChaffDigital);
 		f.probe.step(1, false);
-		TEST_EXPECT(context, f.probe.snapshot().status == NativeCmStatus::NotArmed);
+		TEST_EXPECT(context, f.probe.snapshot().status == NativeCmStatus::NotReady);
 		f.probe.step(2, true);
 		TEST_EXPECT(context, f.calls.empty());
 		f.press(NativeCmFlareAnalog);

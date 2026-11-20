@@ -2,7 +2,7 @@ name: MC Windows build validation
 
 on:
   push:
-    branches: [mission-computer]
+    branches: [ci/radar-display-20261120]
   workflow_dispatch:
 
 permissions:
@@ -150,6 +150,7 @@ jobs:
         shell: powershell
         run: |
           Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/F-CK-1C_EFM.dll" -Destination 'bin/F-CK-1C_EFM.dll' -Force
+          Copy-Item -LiteralPath "$env:RUNNER_TEMP/mc-artifact/manifest.json" -Destination 'bin/F-CK-1C_EFM.validation.json' -Force
           $version = 'mc-' + $env:GITHUB_SHA.Substring(0, 8)
           ./tools/package_release.ps1 -Version $version -AllowDirty
       - name: Upload the validated module package
@@ -166,14 +167,14 @@ jobs:
         shell: powershell
         run: |
           $module = 'dist/F-CK-1C-mc-' + $env:GITHUB_SHA.Substring(0, 8) + '.zip'
-          python tools/mc-flight-test/package_test_bundle.py --module-zip $module --manifest "$env:RUNNER_TEMP/mc-artifact/manifest.json" --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json --expected-source $env:GITHUB_SHA --output dist/mc-flight-test
+          python tools/mc-flight-test/package_test_bundle.py --module-zip $module --manifest "$env:RUNNER_TEMP/mc-artifact/manifest.json" --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json --expected-source $env:GITHUB_SHA --output dist/mc-flight-test --focus radar
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload the MC flight-test bundle
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mc-flight-test-${{ github.sha }}
           path: |
-            dist/mc-flight-test/F-CK-1C-mc-flight-test-*.zip
-            dist/mc-flight-test/F-CK-1C-mc-flight-test-*.zip.sha256
+            dist/mc-flight-test/F-CK-1C-radar-flight-test-*.zip
+            dist/mc-flight-test/F-CK-1C-radar-flight-test-*.zip.sha256
           if-no-files-found: error
           retention-days: 7

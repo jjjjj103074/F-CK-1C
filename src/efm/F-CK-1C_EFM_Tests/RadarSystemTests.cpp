@@ -45,8 +45,8 @@ void test_radar_requests_survive_snapshots_and_execute_once(Tests::Context& c)
 {
 	RadarFixture f;
 	f.requests.items = {
-		{ 4, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::VerticalScan } },
-		{ 7, { RadarOperation::BeginAcquisition, TargetAcquisitionMode::VerticalScan, AcquisitionInput::Pulse } },
+		{ 4, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::BeyondVisualRange } },
+		{ 7, { RadarOperation::BeginAcquisition, TargetAcquisitionMode::BeyondVisualRange, AcquisitionInput::Pulse } },
 		{ 9, { RadarOperation::ReleaseAcquisition } }
 	};
 	auto output = f.step(period);
@@ -54,9 +54,9 @@ void test_radar_requests_survive_snapshots_and_execute_once(Tests::Context& c)
 	output = f.step(period * 2);
 	TEST_EXPECT(c, output.command_results.size() == 3);
 	TEST_EXPECT(c, output.action_requests.items.size() == 3);
-	TEST_EXPECT(c, output.action_requests.items[0].action.kind == MissionActionKind::ModeVerticalScan);
-	TEST_EXPECT(c, output.action_requests.items[1].action.kind == MissionActionKind::LockStart);
-	TEST_EXPECT(c, output.action_requests.items[2].action.kind == MissionActionKind::ChangeLock);
+	TEST_EXPECT(c, output.action_requests.items[0].action.kind == MissionActionKind::ModeBeyondVisualRange);
+	TEST_EXPECT(c, output.action_requests.items[1].action.kind == MissionActionKind::ModeFi0);
+	TEST_EXPECT(c, output.action_requests.items[2].action.kind == MissionActionKind::LockStart);
 	TEST_EXPECT(c, output.action_requests.items[2].parent_request == 7);
 	output = f.step(period * 3);
 	TEST_EXPECT(c, output.command_results.size() == 3 && output.action_requests.items.size() == 3);
@@ -66,7 +66,7 @@ void test_radar_requests_survive_snapshots_and_execute_once(Tests::Context& c)
 	output = f.step(period * 12);
 	TEST_EXPECT(c, output.action_requests.items.empty());
 	output = f.step(period * 13);
-	TEST_EXPECT(c, output.action_requests.items.size() == 2);
+	TEST_EXPECT(c, output.action_requests.items.size() == 1);
 	TEST_EXPECT(c, output.action_requests.items[0].action.kind == MissionActionKind::LockFinish);
 	TEST_EXPECT(c, output.action_requests.items[0].parent_request == 0);
 }
@@ -87,11 +87,12 @@ void test_radar_observations_and_unavailable_capture_remain_distinct(Tests::Cont
 	output = f.step(period * 3);
 	TEST_EXPECT(c, !output.observation.status.available && output.observation.status.revision == 12);
 	f.frame.cockpit.mission_adapter.available = true;
+	f.requests.items.push_back({ 2, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::BeyondVisualRange } });
 	f.requests.items.push_back(
-	    { 2, { RadarOperation::BeginAcquisition, TargetAcquisitionMode::None, AcquisitionInput::Hold } });
+	    { 3, { RadarOperation::BeginAcquisition, TargetAcquisitionMode::BeyondVisualRange, AcquisitionInput::Hold } });
 	f.step(period * 4);
 	output = f.step(period * 5);
-	TEST_EXPECT(c, output.command_results.back().accepted && output.action_requests.items.size() == 2);
+	TEST_EXPECT(c, output.command_results.back().accepted && output.action_requests.items.size() == 3);
 }
 void test_bridge_preserves_radar_dependency_and_maps_partial_ack(Tests::Context& c)
 {
@@ -195,15 +196,18 @@ void test_core_projects_radar_and_resets_flight_requests(Tests::Context& c)
 void test_targeting_ignores_old_rejections_after_cancel_and_new_request(Tests::Context& c)
 {
 	Core::Systems::Mc::ModeData mode;
+	mode.master_mode = MasterMode::AirToAir;
 	Core::Systems::Mc::TargetingData data;
 	RadarSnapshot radar;
 	ExternalActionOutbox actions;
 	Core::Systems::Mc::RadarRequestQueue requests(actions);
 	Core::Systems::Mc::Internal::Targeting targeting(mode, radar, data, requests);
 	targeting.handle({ CommandId::SetTmsUp, 1 });
+	targeting.handle({ CommandId::SetTmsUp, 0 });
 	const auto first = requests.pending().items.back().sequence;
 	targeting.handle({ CommandId::PressTmsDown, 1 });
 	targeting.handle({ CommandId::SetTmsUp, 1 });
+	targeting.handle({ CommandId::SetTmsUp, 0 });
 	const auto latest = requests.pending().items.back().sequence;
 	TEST_EXPECT(c, latest > first && data.designation.requested);
 	radar.command_results = { { first, false, 0, 0 } };
@@ -234,9 +238,175 @@ void test_bridge_completes_empty_radar_requests_without_device_ack(Tests::Contex
 	TEST_EXPECT(c, tx.feedback().mission_acknowledged_through == 2);
 }
 
+void test_rws_and_bore_publish_different_scan_geometry(Tests::Context& c)
+{
+	RadarFixture f;
+	f.frame.cockpit.radar.tdc_available = true;
+	f.frame.cockpit.radar.tdc_range_m = 10000.0;
+	f.requests.items = { { 1,
+		                   { RadarOperation::SetSearchMode,
+		                     TargetAcquisitionMode::None,
+		                     AcquisitionInput::Pulse,
+		                     RadarSearchMode::RangeWhileSearch } } };
+	f.step(period);
+	auto output = f.step(period * 2);
+	TEST_EXPECT(c, output.scan.enabled && output.scan.attitude_stabilized && !output.scan.override_tdc);
+	TEST_EXPECT_NEAR(c, output.scan.azimuth_width_rad, Common::rad(120.0), 1e-9);
+	TEST_EXPECT_NEAR(c, output.scan.maximum_search_range_m, 90000.0, 1e-9);
+	const auto revision = output.scan.revision;
+	f.requests.items.push_back({ 2, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::BeyondVisualRange } });
+	f.step(period * 3);
+	output = f.step(period * 4);
+	TEST_EXPECT(c, output.scan.revision == revision);
+	f.requests.items.push_back({ 3,
+	                             { RadarOperation::SetSearchMode,
+	                               TargetAcquisitionMode::None,
+	                               AcquisitionInput::Pulse,
+	                               RadarSearchMode::AirCombat } });
+	f.step(period * 5);
+	output = f.step(period * 6);
+	TEST_EXPECT(c, output.active_search_mode == RadarSearchMode::AirCombat);
+	TEST_EXPECT(c, !output.scan.attitude_stabilized && output.scan.override_tdc);
+	TEST_EXPECT_NEAR(c, output.scan.azimuth_width_rad, Common::rad(3.3), 1e-9);
+	TEST_EXPECT_NEAR(c, output.scan.elevation_height_rad, Common::rad(4.6), 1e-9);
+	TEST_EXPECT_NEAR(c, output.scan.maximum_search_range_m, 18520.0, 1e-9);
+	TEST_EXPECT(c, !output.automatic_acquisition_requested);
+}
+
+void test_bore_waits_for_a_target_without_repeating_lock_commands(Tests::Context& c)
+{
+	RadarFixture f;
+	f.frame.cockpit.radar.status = { true, 1, ObservationInvalidReason::None };
+	f.frame.cockpit.radar.mode = RadarMode::Search;
+	f.requests.items = { { 1, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::Boresight } },
+		                 { 2, { RadarOperation::BeginAcquisition } } };
+	f.step(period);
+	auto output = f.step(period * 2);
+	TEST_EXPECT(c, output.automatic_acquisition_requested && output.action_requests.items.size() == 2);
+	TEST_EXPECT(c, output.action_requests.items[1].action.kind == MissionActionKind::LockStart);
+	f.frame.cockpit.external_action_feedback.radar_acknowledged_through = 2;
+	f.frame.cockpit.radar.mode = RadarMode::LockAttempt;
+	output = f.step(period * 20);
+	TEST_EXPECT(c, output.action_requests.items.empty());
+	output = f.step(period * 40);
+	TEST_EXPECT(c, output.action_requests.items.empty() && output.automatic_acquisition_requested);
+	f.frame.cockpit.radar.mode = RadarMode::SingleTargetTrack;
+	f.frame.cockpit.radar.stt_range_m = 22000.0;
+	output = f.step(period * 41);
+	TEST_EXPECT(c, output.observation.mode == RadarMode::SingleTargetTrack);
+	TEST_EXPECT_NEAR(c, output.scan.maximum_search_range_m, 90000.0, 1e-9);
+	TEST_EXPECT(c, !output.scan.override_tdc);
+	TEST_EXPECT(c, output.action_requests.items.size() == 1);
+	TEST_EXPECT(c, output.action_requests.items[0].action.kind == MissionActionKind::LockFinish);
+	f.frame.cockpit.external_action_feedback.radar_acknowledged_through = 3;
+	f.frame.cockpit.radar.mode = RadarMode::Search;
+	output = f.step(period * 42);
+	TEST_EXPECT(c, output.action_requests.items.size() == 1);
+	TEST_EXPECT(c, output.action_requests.items[0].action.kind == MissionActionKind::LockStart);
+	f.requests.items.push_back({ 3, { RadarOperation::CancelAcquisition } });
+	f.step(period * 43);
+	output = f.step(period * 44);
+	TEST_EXPECT(c, !output.automatic_acquisition_requested);
+	TEST_EXPECT(c, output.action_requests.items.back().action.kind == MissionActionKind::LockFinish);
+}
+
+void test_rws_cursor_moves_only_while_its_direction_is_held(Tests::Context& c)
+{
+	RadarFixture f;
+	f.frame.cockpit.radar.tdc_available = true;
+	f.frame.cockpit.radar.tdc_range_m = 5000.0;
+	f.requests.items = { { 1, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::BeyondVisualRange } } };
+	f.step(period);
+	f.step(period * 2);
+	f.pipeline.send({ CommandId::SetRadarCursorRight, 1.0 });
+	auto output = f.step(period * 3);
+	TEST_EXPECT(c, output.scan.override_tdc && output.scan.tdc_azimuth_rad > 0.0);
+	const double previous = output.scan.tdc_azimuth_rad;
+	output = f.step(period * 4);
+	TEST_EXPECT(c, output.scan.tdc_azimuth_rad > previous);
+	f.frame.cockpit.radar.tdc_azimuth_rad = output.scan.tdc_azimuth_rad;
+	f.pipeline.send({ CommandId::SetRadarCursorRight, 0.0 });
+	output = f.step(period * 5);
+	TEST_EXPECT(c, !output.scan.override_tdc);
+	TEST_EXPECT_NEAR(c, output.scan.tdc_azimuth_rad, f.frame.cockpit.radar.tdc_azimuth_rad, 1e-9);
+	f.requests.items.push_back({ 2, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::Boresight } });
+	f.step(period * 6);
+	f.step(period * 7);
+	f.pipeline.send({ CommandId::SetRadarCursorRight, 1.0 });
+	output = f.step(period * 8);
+	TEST_EXPECT_NEAR(c, output.scan.tdc_azimuth_rad, 0.0, 1e-9);
+}
+
+void test_navigation_ends_held_bore_capture(Tests::Context& c)
+{
+	RadarFixture f;
+	f.frame.cockpit.radar.status = { true, 1, ObservationInvalidReason::None };
+	f.frame.cockpit.radar.mode = RadarMode::Search;
+	f.requests.items = { { 1, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::Boresight } },
+		                 { 2, { RadarOperation::BeginAcquisition } } };
+	f.step(period);
+	f.step(period * 2);
+	f.requests.items.push_back({ 3, { RadarOperation::SelectNavigation } });
+	f.step(period * 3);
+	const auto output = f.step(period * 4);
+	TEST_EXPECT(c, !output.scan.enabled && !output.automatic_acquisition_requested);
+	TEST_EXPECT(c,
+	            output.action_requests.items[output.action_requests.items.size() - 2].action.kind ==
+	                MissionActionKind::LockFinish);
+	TEST_EXPECT(c, output.action_requests.items.back().action.kind == MissionActionKind::ModeCannon);
+}
+
+void test_rejecting_stt_uses_one_native_toggle_and_preserves_observation(Tests::Context& c)
+{
+	RadarFixture f;
+	f.frame.cockpit.radar.status = { true, 1, ObservationInvalidReason::None };
+	f.frame.cockpit.radar.mode = RadarMode::SingleTargetTrack;
+	f.requests.items = { { 1, { RadarOperation::CancelAcquisition } }, { 2, { RadarOperation::CancelAcquisition } } };
+	f.step(period);
+	const auto output = f.step(period * 2);
+	const auto starts = std::count_if(output.action_requests.items.begin(),
+	                                  output.action_requests.items.end(),
+	                                  [](const auto& request)
+	                                  {
+		                                  return request.action.kind == MissionActionKind::LockStart;
+	                                  });
+	TEST_EXPECT(c, starts == 1);
+	TEST_EXPECT(c, output.observation.mode == RadarMode::SingleTargetTrack);
+	TEST_EXPECT(c, output.action_requests.items.back().action.kind == MissionActionKind::LockFinish);
+}
+
+void test_reserved_patterns_leave_the_supported_mode_running(Tests::Context& c)
+{
+	RadarFixture f;
+	f.requests.items = { { 1, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::BeyondVisualRange } },
+		                 { 2,
+		                   { RadarOperation::SetSearchMode,
+		                     TargetAcquisitionMode::None,
+		                     AcquisitionInput::Pulse,
+		                     RadarSearchMode::TrackWhileScan } },
+		                 { 3, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::VerticalScan } } };
+	f.step(period);
+	auto output = f.step(period * 2);
+	TEST_EXPECT(c, output.requested_search_mode == RadarSearchMode::TrackWhileScan);
+	TEST_EXPECT(c, output.active_search_mode == RadarSearchMode::RangeWhileSearch);
+	TEST_EXPECT(c, output.requested_acquisition_mode == TargetAcquisitionMode::BeyondVisualRange);
+	TEST_EXPECT(c, output.command_results[1].implementation == RadarImplementation::Reserved);
+	TEST_EXPECT(c, output.command_results[2].implementation == RadarImplementation::Reserved);
+	f.requests.items.push_back({ 4, { RadarOperation::SelectNavigation } });
+	f.step(period * 3);
+	output = f.step(period * 4);
+	TEST_EXPECT(c, !output.scan.enabled && !output.automatic_acquisition_requested);
+}
+
 }
 void run_radar_system_tests(Tests::Context& context)
 {
+	test_rws_cursor_moves_only_while_its_direction_is_held(context);
+	test_navigation_ends_held_bore_capture(context);
+	test_rws_and_bore_publish_different_scan_geometry(context);
+	test_bore_waits_for_a_target_without_repeating_lock_commands(context);
+	test_rejecting_stt_uses_one_native_toggle_and_preserves_observation(context);
+	test_reserved_patterns_leave_the_supported_mode_running(context);
 	test_targeting_ignores_old_rejections_after_cancel_and_new_request(context);
 	test_bridge_completes_empty_radar_requests_without_device_ack(context);
 	test_core_projects_radar_and_resets_flight_requests(context);

@@ -1,46 +1,41 @@
 #include "CountermeasureControl.h"
-
 #include "Common/CommandValue.h"
-
+#include "../../../../Contracts/MissionActions.h"
+#include <algorithm>
+#include <stdexcept>
 namespace Core::Systems::Mc
 {
-CountermeasureControl::CountermeasureControl(const ModeData& mode, ExternalActionOutbox& actions)
-    : mode_(mode),
-      actions_(actions)
-{
-}
-
-void CountermeasureControl::on_master_arm_selected(const MasterArmSelected& event)
-{
-	// 依本次事件的 OFF/SIM 狀態發出中止要求。
-	if (event.selected.master_arm != MasterArmMode::On)
-		actions_.append(MissionActionKind::AbortCms);
-}
-
 void CountermeasureControl::handle(const Command& command)
 {
 	if (!Common::command_value_is_pressed(command.value_normalized))
 		return;
+	CountermeasureProgram program;
 	switch (command.id)
 	{
 	case CommandId::StartCmsForward:
-	case CommandId::StartCmsAft:
-	case CommandId::StartCmsLeft:
-		if (mode_.master_arm == MasterArmMode::On)
-		{
-			const MissionActionKind action = command.id == CommandId::StartCmsForward
-			                                     ? MissionActionKind::StartCmsForward
-			                                 : command.id == CommandId::StartCmsAft ? MissionActionKind::StartCmsAft
-			                                                                        : MissionActionKind::StartCmsLeft;
-			actions_.append(action);
-		}
+		program = CountermeasureProgram::Forward;
 		break;
-	case CommandId::StartCmsRight:
-		// 右向操作發出中止要求。
-		actions_.append(MissionActionKind::AbortCms);
+	case CommandId::StartCmsLeft:
+		program = CountermeasureProgram::Program6;
 		break;
 	default:
-		break;
+		return;
 	}
+	if (last_sequence_ == kMaximumExactCockpitInteger)
+		throw std::overflow_error("Countermeasure program sequence exhausted.");
+	pending_.items.push_back({ ++last_sequence_, program });
+}
+void CountermeasureControl::acknowledge(std::uint64_t sequence)
+{
+	if (sequence > last_sequence_)
+		return;
+	auto& items = pending_.items;
+	items.erase(std::remove_if(items.begin(),
+	                           items.end(),
+	                           [sequence](const auto& request)
+	                           {
+		                           return request.sequence <= sequence;
+	                           }),
+	            items.end());
 }
 }

@@ -6,6 +6,155 @@ namespace DcsIds
 {
 namespace CockpitParams
 {
+static const char* const RadarDisplayAvailable = "CPP_RADAR_DISPLAY_AVAILABLE";
+static const char* const RadarDisplayVisible = "CPP_RADAR_DISPLAY_VISIBLE";
+static const char* const RadarDisplaySensorAvailable = "CPP_RADAR_DISPLAY_SENSOR_AVAILABLE";
+static const char* const RadarDisplayCueKind = "CPP_RADAR_DISPLAY_CUE_KIND";
+static const char* const RadarDisplayCueVisible = "CPP_RADAR_DISPLAY_CUE_VISIBLE";
+static const char* const RadarDisplayBoreHalfWidthMrad = "CPP_RADAR_DISPLAY_BORE_HALF_WIDTH_MRAD";
+static const char* const RadarDisplayBoreHalfHeightMrad = "CPP_RADAR_DISPLAY_BORE_HALF_HEIGHT_MRAD";
+static const char* const RadarDisplayTargetXMrad = "CPP_RADAR_DISPLAY_TARGET_X_MRAD";
+static const char* const RadarDisplayTargetYMrad = "CPP_RADAR_DISPLAY_TARGET_Y_MRAD";
+static const char* const RadarDisplayRangeScaleM = "CPP_RADAR_DISPLAY_RANGE_SCALE_M";
+static const char* const RadarDisplayRangeScaleNm = "CPP_RADAR_DISPLAY_RANGE_SCALE_NM";
+static const char* const RadarDisplayScanLeft = "CPP_RADAR_DISPLAY_SCAN_LEFT";
+static const char* const RadarDisplayScanRight = "CPP_RADAR_DISPLAY_SCAN_RIGHT";
+static const char* const RadarDisplaySweepVisible = "CPP_RADAR_DISPLAY_SWEEP_VISIBLE";
+static const char* const RadarDisplaySweepX = "CPP_RADAR_DISPLAY_SWEEP_X";
+static const char* const RadarDisplayCursorVisible = "CPP_RADAR_DISPLAY_CURSOR_VISIBLE";
+static const char* const RadarDisplayCursorX = "CPP_RADAR_DISPLAY_CURSOR_X";
+static const char* const RadarDisplayCursorY = "CPP_RADAR_DISPLAY_CURSOR_Y";
+static const char* const RadarDisplayTargetVisible = "CPP_RADAR_DISPLAY_TARGET_VISIBLE";
+static const char* const RadarDisplayTargetX = "CPP_RADAR_DISPLAY_TARGET_X";
+static const char* const RadarDisplayTargetY = "CPP_RADAR_DISPLAY_TARGET_Y";
+static const char* const RadarDisplayPlot01X = "CPP_RADAR_DISPLAY_PLOT01_X";
+static const char* const RadarDisplayPlot01Y = "CPP_RADAR_DISPLAY_PLOT01_Y";
+static const char* const RadarDisplayPlot01Opacity = "CPP_RADAR_DISPLAY_PLOT01_OPACITY";
+static const char* const RadarDisplayPlot01SourceSlot = "CPP_RADAR_DISPLAY_PLOT01_SOURCE_SLOT";
+static const char* const RadarDisplayPlot02X = "CPP_RADAR_DISPLAY_PLOT02_X";
+static const char* const RadarDisplayPlot02Y = "CPP_RADAR_DISPLAY_PLOT02_Y";
+static const char* const RadarDisplayPlot02Opacity = "CPP_RADAR_DISPLAY_PLOT02_OPACITY";
+static const char* const RadarDisplayPlot02SourceSlot = "CPP_RADAR_DISPLAY_PLOT02_SOURCE_SLOT";
+static const char* const RadarDisplayPlot03X = "CPP_RADAR_DISPLAY_PLOT03_X";
+static const char* const RadarDisplayPlot03Y = "CPP_RADAR_DISPLAY_PLOT03_Y";
+static const char* const RadarDisplayPlot03Opacity = "CPP_RADAR_DISPLAY_PLOT03_OPACITY";
+static const char* const RadarDisplayPlot03SourceSlot = "CPP_RADAR_DISPLAY_PLOT03_SOURCE_SLOT";
+static const char* const RadarDisplayPlot04X = "CPP_RADAR_DISPLAY_PLOT04_X";
+static const char* const RadarDisplayPlot04Y = "CPP_RADAR_DISPLAY_PLOT04_Y";
+static const char* const RadarDisplayPlot04Opacity = "CPP_RADAR_DISPLAY_PLOT04_OPACITY";
+static const char* const RadarDisplayPlot04SourceSlot = "CPP_RADAR_DISPLAY_PLOT04_SOURCE_SLOT";
+static const char* const RadarDisplayPlot05X = "CPP_RADAR_DISPLAY_PLOT05_X";
+static const char* const RadarDisplayPlot05Y = "CPP_RADAR_DISPLAY_PLOT05_Y";
+static const char* const RadarDisplayPlot05Opacity = "CPP_RADAR_DISPLAY_PLOT05_OPACITY";
+static const char* const RadarDisplayPlot05SourceSlot = "CPP_RADAR_DISPLAY_PLOT05_SOURCE_SLOT";
+static const char* const RadarDisplayPlot06X = "CPP_RADAR_DISPLAY_PLOT06_X";
+static const char* const RadarDisplayPlot06Y = "CPP_RADAR_DISPLAY_PLOT06_Y";
+static const char* const RadarDisplayPlot06Opacity = "CPP_RADAR_DISPLAY_PLOT06_OPACITY";
+static const char* const RadarDisplayPlot06SourceSlot = "CPP_RADAR_DISPLAY_PLOT06_SOURCE_SLOT";
+static const char* const RadarDisplayPlot07X = "CPP_RADAR_DISPLAY_PLOT07_X";
+static const char* const RadarDisplayPlot07Y = "CPP_RADAR_DISPLAY_PLOT07_Y";
+static const char* const RadarDisplayPlot07Opacity = "CPP_RADAR_DISPLAY_PLOT07_OPACITY";
+static const char* const RadarDisplayPlot07SourceSlot = "CPP_RADAR_DISPLAY_PLOT07_SOURCE_SLOT";
+static const char* const RadarDisplayPlot08X = "CPP_RADAR_DISPLAY_PLOT08_X";
+static const char* const RadarDisplayPlot08Y = "CPP_RADAR_DISPLAY_PLOT08_Y";
+static const char* const RadarDisplayPlot08Opacity = "CPP_RADAR_DISPLAY_PLOT08_OPACITY";
+static const char* const RadarDisplayPlot08SourceSlot = "CPP_RADAR_DISPLAY_PLOT08_SOURCE_SLOT";
+static const char* const RadarDisplayPlot09X = "CPP_RADAR_DISPLAY_PLOT09_X";
+static const char* const RadarDisplayPlot09Y = "CPP_RADAR_DISPLAY_PLOT09_Y";
+static const char* const RadarDisplayPlot09Opacity = "CPP_RADAR_DISPLAY_PLOT09_OPACITY";
+static const char* const RadarDisplayPlot09SourceSlot = "CPP_RADAR_DISPLAY_PLOT09_SOURCE_SLOT";
+static const char* const RadarDisplayPlot10X = "CPP_RADAR_DISPLAY_PLOT10_X";
+static const char* const RadarDisplayPlot10Y = "CPP_RADAR_DISPLAY_PLOT10_Y";
+static const char* const RadarDisplayPlot10Opacity = "CPP_RADAR_DISPLAY_PLOT10_OPACITY";
+static const char* const RadarDisplayPlot10SourceSlot = "CPP_RADAR_DISPLAY_PLOT10_SOURCE_SLOT";
+static const char* const RadarDisplayPlot11X = "CPP_RADAR_DISPLAY_PLOT11_X";
+static const char* const RadarDisplayPlot11Y = "CPP_RADAR_DISPLAY_PLOT11_Y";
+static const char* const RadarDisplayPlot11Opacity = "CPP_RADAR_DISPLAY_PLOT11_OPACITY";
+static const char* const RadarDisplayPlot11SourceSlot = "CPP_RADAR_DISPLAY_PLOT11_SOURCE_SLOT";
+static const char* const RadarDisplayPlot12X = "CPP_RADAR_DISPLAY_PLOT12_X";
+static const char* const RadarDisplayPlot12Y = "CPP_RADAR_DISPLAY_PLOT12_Y";
+static const char* const RadarDisplayPlot12Opacity = "CPP_RADAR_DISPLAY_PLOT12_OPACITY";
+static const char* const RadarDisplayPlot12SourceSlot = "CPP_RADAR_DISPLAY_PLOT12_SOURCE_SLOT";
+static const char* const RadarDisplayPlot13X = "CPP_RADAR_DISPLAY_PLOT13_X";
+static const char* const RadarDisplayPlot13Y = "CPP_RADAR_DISPLAY_PLOT13_Y";
+static const char* const RadarDisplayPlot13Opacity = "CPP_RADAR_DISPLAY_PLOT13_OPACITY";
+static const char* const RadarDisplayPlot13SourceSlot = "CPP_RADAR_DISPLAY_PLOT13_SOURCE_SLOT";
+static const char* const RadarDisplayPlot14X = "CPP_RADAR_DISPLAY_PLOT14_X";
+static const char* const RadarDisplayPlot14Y = "CPP_RADAR_DISPLAY_PLOT14_Y";
+static const char* const RadarDisplayPlot14Opacity = "CPP_RADAR_DISPLAY_PLOT14_OPACITY";
+static const char* const RadarDisplayPlot14SourceSlot = "CPP_RADAR_DISPLAY_PLOT14_SOURCE_SLOT";
+static const char* const RadarDisplayPlot15X = "CPP_RADAR_DISPLAY_PLOT15_X";
+static const char* const RadarDisplayPlot15Y = "CPP_RADAR_DISPLAY_PLOT15_Y";
+static const char* const RadarDisplayPlot15Opacity = "CPP_RADAR_DISPLAY_PLOT15_OPACITY";
+static const char* const RadarDisplayPlot15SourceSlot = "CPP_RADAR_DISPLAY_PLOT15_SOURCE_SLOT";
+static const char* const RadarDisplayPlot16X = "CPP_RADAR_DISPLAY_PLOT16_X";
+static const char* const RadarDisplayPlot16Y = "CPP_RADAR_DISPLAY_PLOT16_Y";
+static const char* const RadarDisplayPlot16Opacity = "CPP_RADAR_DISPLAY_PLOT16_OPACITY";
+static const char* const RadarDisplayPlot16SourceSlot = "CPP_RADAR_DISPLAY_PLOT16_SOURCE_SLOT";
+static const char* const RadarDisplayPlot17X = "CPP_RADAR_DISPLAY_PLOT17_X";
+static const char* const RadarDisplayPlot17Y = "CPP_RADAR_DISPLAY_PLOT17_Y";
+static const char* const RadarDisplayPlot17Opacity = "CPP_RADAR_DISPLAY_PLOT17_OPACITY";
+static const char* const RadarDisplayPlot17SourceSlot = "CPP_RADAR_DISPLAY_PLOT17_SOURCE_SLOT";
+static const char* const RadarDisplayPlot18X = "CPP_RADAR_DISPLAY_PLOT18_X";
+static const char* const RadarDisplayPlot18Y = "CPP_RADAR_DISPLAY_PLOT18_Y";
+static const char* const RadarDisplayPlot18Opacity = "CPP_RADAR_DISPLAY_PLOT18_OPACITY";
+static const char* const RadarDisplayPlot18SourceSlot = "CPP_RADAR_DISPLAY_PLOT18_SOURCE_SLOT";
+static const char* const RadarDisplayPlot19X = "CPP_RADAR_DISPLAY_PLOT19_X";
+static const char* const RadarDisplayPlot19Y = "CPP_RADAR_DISPLAY_PLOT19_Y";
+static const char* const RadarDisplayPlot19Opacity = "CPP_RADAR_DISPLAY_PLOT19_OPACITY";
+static const char* const RadarDisplayPlot19SourceSlot = "CPP_RADAR_DISPLAY_PLOT19_SOURCE_SLOT";
+static const char* const RadarDisplayPlot20X = "CPP_RADAR_DISPLAY_PLOT20_X";
+static const char* const RadarDisplayPlot20Y = "CPP_RADAR_DISPLAY_PLOT20_Y";
+static const char* const RadarDisplayPlot20Opacity = "CPP_RADAR_DISPLAY_PLOT20_OPACITY";
+static const char* const RadarDisplayPlot20SourceSlot = "CPP_RADAR_DISPLAY_PLOT20_SOURCE_SLOT";
+static const char* const RadarDisplayPlot21X = "CPP_RADAR_DISPLAY_PLOT21_X";
+static const char* const RadarDisplayPlot21Y = "CPP_RADAR_DISPLAY_PLOT21_Y";
+static const char* const RadarDisplayPlot21Opacity = "CPP_RADAR_DISPLAY_PLOT21_OPACITY";
+static const char* const RadarDisplayPlot21SourceSlot = "CPP_RADAR_DISPLAY_PLOT21_SOURCE_SLOT";
+static const char* const RadarDisplayPlot22X = "CPP_RADAR_DISPLAY_PLOT22_X";
+static const char* const RadarDisplayPlot22Y = "CPP_RADAR_DISPLAY_PLOT22_Y";
+static const char* const RadarDisplayPlot22Opacity = "CPP_RADAR_DISPLAY_PLOT22_OPACITY";
+static const char* const RadarDisplayPlot22SourceSlot = "CPP_RADAR_DISPLAY_PLOT22_SOURCE_SLOT";
+static const char* const RadarDisplayPlot23X = "CPP_RADAR_DISPLAY_PLOT23_X";
+static const char* const RadarDisplayPlot23Y = "CPP_RADAR_DISPLAY_PLOT23_Y";
+static const char* const RadarDisplayPlot23Opacity = "CPP_RADAR_DISPLAY_PLOT23_OPACITY";
+static const char* const RadarDisplayPlot23SourceSlot = "CPP_RADAR_DISPLAY_PLOT23_SOURCE_SLOT";
+static const char* const RadarDisplayPlot24X = "CPP_RADAR_DISPLAY_PLOT24_X";
+static const char* const RadarDisplayPlot24Y = "CPP_RADAR_DISPLAY_PLOT24_Y";
+static const char* const RadarDisplayPlot24Opacity = "CPP_RADAR_DISPLAY_PLOT24_OPACITY";
+static const char* const RadarDisplayPlot24SourceSlot = "CPP_RADAR_DISPLAY_PLOT24_SOURCE_SLOT";
+static const char* const RadarDisplayPlot25X = "CPP_RADAR_DISPLAY_PLOT25_X";
+static const char* const RadarDisplayPlot25Y = "CPP_RADAR_DISPLAY_PLOT25_Y";
+static const char* const RadarDisplayPlot25Opacity = "CPP_RADAR_DISPLAY_PLOT25_OPACITY";
+static const char* const RadarDisplayPlot25SourceSlot = "CPP_RADAR_DISPLAY_PLOT25_SOURCE_SLOT";
+static const char* const RadarDisplayPlot26X = "CPP_RADAR_DISPLAY_PLOT26_X";
+static const char* const RadarDisplayPlot26Y = "CPP_RADAR_DISPLAY_PLOT26_Y";
+static const char* const RadarDisplayPlot26Opacity = "CPP_RADAR_DISPLAY_PLOT26_OPACITY";
+static const char* const RadarDisplayPlot26SourceSlot = "CPP_RADAR_DISPLAY_PLOT26_SOURCE_SLOT";
+static const char* const RadarDisplayPlot27X = "CPP_RADAR_DISPLAY_PLOT27_X";
+static const char* const RadarDisplayPlot27Y = "CPP_RADAR_DISPLAY_PLOT27_Y";
+static const char* const RadarDisplayPlot27Opacity = "CPP_RADAR_DISPLAY_PLOT27_OPACITY";
+static const char* const RadarDisplayPlot27SourceSlot = "CPP_RADAR_DISPLAY_PLOT27_SOURCE_SLOT";
+static const char* const RadarDisplayPlot28X = "CPP_RADAR_DISPLAY_PLOT28_X";
+static const char* const RadarDisplayPlot28Y = "CPP_RADAR_DISPLAY_PLOT28_Y";
+static const char* const RadarDisplayPlot28Opacity = "CPP_RADAR_DISPLAY_PLOT28_OPACITY";
+static const char* const RadarDisplayPlot28SourceSlot = "CPP_RADAR_DISPLAY_PLOT28_SOURCE_SLOT";
+static const char* const RadarDisplayPlot29X = "CPP_RADAR_DISPLAY_PLOT29_X";
+static const char* const RadarDisplayPlot29Y = "CPP_RADAR_DISPLAY_PLOT29_Y";
+static const char* const RadarDisplayPlot29Opacity = "CPP_RADAR_DISPLAY_PLOT29_OPACITY";
+static const char* const RadarDisplayPlot29SourceSlot = "CPP_RADAR_DISPLAY_PLOT29_SOURCE_SLOT";
+static const char* const RadarDisplayPlot30X = "CPP_RADAR_DISPLAY_PLOT30_X";
+static const char* const RadarDisplayPlot30Y = "CPP_RADAR_DISPLAY_PLOT30_Y";
+static const char* const RadarDisplayPlot30Opacity = "CPP_RADAR_DISPLAY_PLOT30_OPACITY";
+static const char* const RadarDisplayPlot30SourceSlot = "CPP_RADAR_DISPLAY_PLOT30_SOURCE_SLOT";
+static const char* const RadarDisplayPlot31X = "CPP_RADAR_DISPLAY_PLOT31_X";
+static const char* const RadarDisplayPlot31Y = "CPP_RADAR_DISPLAY_PLOT31_Y";
+static const char* const RadarDisplayPlot31Opacity = "CPP_RADAR_DISPLAY_PLOT31_OPACITY";
+static const char* const RadarDisplayPlot31SourceSlot = "CPP_RADAR_DISPLAY_PLOT31_SOURCE_SLOT";
+static const char* const RadarDisplayPlot32X = "CPP_RADAR_DISPLAY_PLOT32_X";
+static const char* const RadarDisplayPlot32Y = "CPP_RADAR_DISPLAY_PLOT32_Y";
+static const char* const RadarDisplayPlot32Opacity = "CPP_RADAR_DISPLAY_PLOT32_OPACITY";
+static const char* const RadarDisplayPlot32SourceSlot = "CPP_RADAR_DISPLAY_PLOT32_SOURCE_SLOT";
 static const char* const HmcsWeaponQuantityAvailable = "HMCS_WEAPON_QTY_AVAILABLE";
 static const char* const McStoresGunCountAvailable = "CPP_MC_STORES_GUN_COUNT_AVAILABLE";
 static const char* const McStoresGunCount = "CPP_MC_STORES_GUN_COUNT";
@@ -131,6 +280,16 @@ static const char* const ActionWeaponChangeCount = "CPP_ACTION_WEAPON_CHANGE_COU
 static const char* const ActionFlareReleaseCount = "CPP_ACTION_FLARE_RELEASE_COUNT";
 static const char* const ActionChaffReleaseCount = "CPP_ACTION_CHAFF_RELEASE_COUNT";
 static const char* const ActionCombinedReleaseCount = "CPP_ACTION_COMBINED_RELEASE_COUNT";
+static const char* const CmInventoryAvailable = "CPP_CM_INVENTORY_AVAILABLE";
+static const char* const CmFlareCount = "CPP_CM_FLARE_COUNT";
+static const char* const CmChaffCount = "CPP_CM_CHAFF_COUNT";
+static const char* const CmAcceptedSequence = "CPP_CM_ACCEPTED_SEQUENCE";
+static const char* const CmProgram = "CPP_CM_PROGRAM";
+static const char* const CmProgramState = "CPP_CM_PROGRAM_STATE";
+static const char* const CmCompletedRounds = "CPP_CM_COMPLETED_ROUNDS";
+static const char* const CmExecutedSequence = "CPP_CM_EXECUTED_SEQUENCE";
+static const char* const CmFlareReturned = "CPP_CM_FLARE_RETURNED";
+static const char* const CmChaffReturned = "CPP_CM_CHAFF_RETURNED";
 static const char* const NativeCmEnabled = "CPP_NATIVE_CM_ENABLED";
 static const char* const NativeCmApiMask = "CPP_NATIVE_CM_API_MASK";
 static const char* const NativeCmStatus = "CPP_NATIVE_CM_STATUS";
@@ -152,6 +311,155 @@ struct Entry
 };
 
 static constexpr Entry Catalog[] = {
+    { RadarDisplayAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayVisible, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplaySensorAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayCueKind, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayCueVisible, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayBoreHalfWidthMrad, "cpp_to_lua", "milliradians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayBoreHalfHeightMrad, "cpp_to_lua", "milliradians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayTargetXMrad, "cpp_to_lua", "milliradians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayTargetYMrad, "cpp_to_lua", "milliradians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayRangeScaleM, "cpp_to_lua", "meters", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayRangeScaleNm, "cpp_to_lua", "nautical_miles", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayScanLeft, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayScanRight, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplaySweepVisible, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplaySweepX, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayCursorVisible, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayCursorX, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayCursorY, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayTargetVisible, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayTargetX, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayTargetY, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot01X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot01Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot01Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot01SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot02X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot02Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot02Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot02SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot03X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot03Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot03Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot03SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot04X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot04Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot04Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot04SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot05X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot05Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot05Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot05SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot06X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot06Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot06Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot06SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot07X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot07Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot07Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot07SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot08X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot08Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot08Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot08SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot09X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot09Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot09Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot09SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot10X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot10Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot10Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot10SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot11X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot11Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot11Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot11SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot12X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot12Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot12Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot12SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot13X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot13Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot13Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot13SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot14X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot14Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot14Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot14SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot15X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot15Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot15Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot15SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot16X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot16Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot16Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot16SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot17X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot17Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot17Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot17SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot18X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot18Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot18Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot18SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot19X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot19Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot19Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot19SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot20X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot20Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot20Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot20SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot21X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot21Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot21Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot21SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot22X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot22Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot22Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot22SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot23X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot23Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot23Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot23SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot24X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot24Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot24Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot24SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot25X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot25Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot25Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot25SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot26X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot26Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot26Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot26SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot27X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot27Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot27Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot27SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot28X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot28Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot28Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot28SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot29X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot29Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot29Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot29SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot30X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot30Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot30Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot30SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot31X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot31Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot31Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot31SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot32X, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot32Y, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot32Opacity, "cpp_to_lua", "normalized", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
+    { RadarDisplayPlot32SourceSlot, "cpp_to_lua", "counter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/RadarDisplayExporter.cpp", "DisplaySystem", nullptr },
     { HmcsWeaponQuantityAvailable, "lua_internal", "boolean", "Cockpit/Scripts/Systems/hmcs_system.lua", "HMCS", nullptr },
     { McStoresGunCountAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McStoresGunCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
@@ -277,6 +585,16 @@ static constexpr Entry Catalog[] = {
     { ActionFlareReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
     { ActionChaffReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
     { ActionCombinedReleaseCount, "cpp_to_lua", "counter", nullptr, "CombatAvionics", nullptr },
+    { CmInventoryAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmFlareCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmChaffCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmAcceptedSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmProgram, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmProgramState, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmCompletedRounds, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmExecutedSequence, "cpp_to_lua", "revision", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmFlareReturned, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
+    { CmChaffReturned, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp", "CountermeasureSystem", nullptr },
     { NativeCmEnabled, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
     { NativeCmApiMask, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
     { NativeCmStatus, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/NativeCountermeasures/NativeCountermeasureIntegration.cpp", "DcsBridgeNativeCmProbe", nullptr },
@@ -291,17 +609,28 @@ static constexpr Entry Catalog[] = {
 
 namespace RawCockpitParams
 {
+static const char* const RadarReturnAzimuthPattern = "RADAR_CONTACT_%02u_AZIMUTH";
+static const char* const RadarReturnElevationPattern = "RADAR_CONTACT_%02u_ELEVATION";
+static const char* const RadarReturnRangePattern = "RADAR_CONTACT_%02u_RANGE";
+static const char* const RadarReturnAgePattern = "RADAR_CONTACT_%02u_TIME";
+static const char* const RadarScanOriginAzimuth = "SCAN_ZONE_ORIGIN_AZIMUTH";
+static const char* const RadarScanOriginElevation = "SCAN_ZONE_ORIGIN_ELEVATION";
+static const char* const RadarScanVolumeAzimuth = "SCAN_ZONE_VOLUME_AZIMUTH";
+static const char* const RadarScanVolumeElevation = "SCAN_ZONE_VOLUME_ELEVATION";
+static const char* const RadarScanMaximumRange = "SCAN_VOLUME_CUT_OFF_DISTANCE_MAX";
+static const char* const RadarScanMinimumRange = "SCAN_VOLUME_CUT_OFF_DISTANCE_MIN";
+static const char* const RadarPitchStabilization = "RADAR_PITCH_STABILIZATION";
+static const char* const RadarBankStabilization = "RADAR_BANK_STABILIZATION";
+static const char* const RadarPitchBankStabilization = "RADAR_PITCH_BANK_STABILIZATION";
+static const char* const RadarAcquisitionAzimuth = "ACQUSITION_ZONE_VOLUME_AZIMUTH";
+static const char* const RadarAcquisitionRange = "RADAR_TDC_RANGE_CARRET_SIZE";
+static const char* const RadarTdcRange = "RADAR_TDC_RANGE";
 static const char* const RadarMode = "RADAR_MODE";
 static const char* const RadarSttAzimuth = "RADAR_STT_AZIMUTH";
 static const char* const RadarSttElevation = "RADAR_STT_ELEVATION";
 static const char* const RadarSttRange = "RADAR_STT_RANGE";
-static const char* const RadarSttAzimuthStabilized = "RADAR_STT_AZIMUTH_STAB";
-static const char* const RadarSttElevationStabilized = "RADAR_STT_ELEVATION_STAB";
 static const char* const RadarTdcAzimuth = "RADAR_TDC_AZIMUTH";
-static const char* const RadarTdcRangeScaled = "RADAR_TDC_RANGE_SCALED";
-static const char* const RadarGateRangeScaled = "RADAR_GATE_RANGE_SCALED";
 static const char* const RadarContact01Azimuth = "RADAR_CONTACT_01_AZIMUTH";
-static const char* const RadarContact01RangeScaled = "RADAR_CONTACT_01_RANGE_SCALED";
 static const char* const IrDesiredAzimuth = "WS_IR_MISSILE_SEEKER_DESIRED_AZIMUTH";
 static const char* const IrDesiredElevation = "WS_IR_MISSILE_SEEKER_DESIRED_ELEVATION";
 static const char* const IrLock = "WS_IR_MISSILE_LOCK";
@@ -318,25 +647,37 @@ struct Entry
     const char* verification_basis;
     const char* reference;
     const char* cpp_reader;
+    const char* writer;
 };
 
 static constexpr Entry Catalog[] = {
-    { RadarMode, "dcs_to_cpp", "enum", "not_applicable", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_mode", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarSttAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_azimuth", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarSttElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_elevation", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarSttRange, "dcs_to_cpp", "meters", "non_negative_range", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_range", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarSttAzimuthStabilized, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarSttElevationStabilized, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarTdcAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_tdc_azimuth", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarTdcRangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarGateRangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarContact01Azimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_contact_xx_", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { RadarContact01RangeScaled, "dcs_to_cpp", "normalized", "native_dcs_range_scale_unmodified", "avSimpleRadar", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { IrDesiredAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { IrDesiredElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { IrLock, "dcs_to_cpp", "boolean", "not_applicable", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { IrTargetAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
-    { IrTargetElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
+    { RadarReturnAzimuthPattern, "dcs_to_cpp", "radians", "native_dcs_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarReturnElevationPattern, "dcs_to_cpp", "radians", "native_dcs_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarReturnRangePattern, "dcs_to_cpp", "meters", "native_dcs_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarReturnAgePattern, "dcs_to_cpp", "seconds", "native_dcs_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarScanOriginAzimuth, "bidirectional", "radians", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarScanOriginElevation, "bidirectional", "radians", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarScanVolumeAzimuth, "bidirectional", "radians", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarScanVolumeElevation, "bidirectional", "radians", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarScanMaximumRange, "cpp_to_dcs", "meters", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", nullptr, "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarScanMinimumRange, "cpp_to_dcs", "meters", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", nullptr, "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarPitchStabilization, "cpp_to_dcs", "boolean", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", nullptr, "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarBankStabilization, "cpp_to_dcs", "boolean", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", nullptr, "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarPitchBankStabilization, "cpp_to_dcs", "boolean", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", nullptr, "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarAcquisitionAzimuth, "cpp_to_dcs", "radians", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", nullptr, "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarAcquisitionRange, "cpp_to_dcs", "meters", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", nullptr, "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarTdcRange, "bidirectional", "meters", "native_dcs_unmodified", "avSimpleRadar", "existing_module_contract", "docs/AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarMode, "dcs_to_cpp", "enum", "not_applicable", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_mode", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarSttAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_azimuth", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarSttElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_elevation", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarSttRange, "dcs_to_cpp", "meters", "non_negative_range", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_stt_range", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { RadarTdcAzimuth, "bidirectional", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_tdc_azimuth", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitSnapshotExporter.cpp" },
+    { RadarContact01Azimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleRadar", "community_documentation", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleRadar/#radar_contact_xx_", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { IrDesiredAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { IrDesiredElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { IrLock, "dcs_to_cpp", "boolean", "not_applicable", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { IrTargetAzimuth, "dcs_to_cpp", "radians", "native_dcs_azimuth_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
+    { IrTargetElevation, "dcs_to_cpp", "radians", "native_dcs_elevation_unmodified", "avSimpleWeaponSystem", "existing_module_contract", "https://modding.caffeinesimulations.com/Aircraft/Lua/Devices/avSimpleWeaponSystem/", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp", nullptr },
 };
 }
 }

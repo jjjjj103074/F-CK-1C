@@ -54,9 +54,51 @@ class TestFlightBundle(unittest.TestCase):
             self.assertTrue(archive.read(package.WEAPONS).startswith(self.entries[package.WEAPONS]))
             self.assertIn(package.PROBE_FLAG, archive.namelist())
             self.assertTrue(build['native_countermeasure_probe'])
-            self.assertEqual(build['human_cases'], 78)
+            self.assertEqual(build['human_cases'], 86)
             self.assertIn(self.source, archive.read(package.TEST_ROOT + 'Build.lua').decode())
         self.assertIn(package.digest(bundle.read_bytes()), Path(str(bundle)+'.sha256').read_text())
+    def test_radar_focus_keeps_graphical_runtime_without_legacy_panel(self):
+        for filename in ('Forward_init.lua', 'Forward_page.lua', 'Scope_init.lua', 'Scope_page.lua', 'Drawing.lua'):
+            self.entries[package.MODULE+'Cockpit/Scripts/RadarDisplay/'+filename] = b'graphical-runtime'
+        self.write_zip()
+        bundle = package.assemble(self.archive, self.manifest, self.catalog, self.root/'radar', self.source, focus='radar')
+        with zipfile.ZipFile(bundle) as archive:
+            build = json.loads(archive.read('BUILD.json'))
+            self.assertEqual(build['focus'], 'radar')
+            self.assertFalse(build['native_countermeasure_probe'])
+            self.assertNotIn(package.PROBE_FLAG, archive.namelist())
+            self.assertNotIn(package.TEST_ROOT+'Indicator_page.lua', archive.namelist())
+            self.assertEqual(archive.read(package.WEAPONS), self.entries[package.WEAPONS])
+            self.assertEqual(archive.read(package.DLL), self.entries[package.DLL])
+            self.assertNotIn(b'MCFlightTest/Indicator_init.lua', archive.read(package.DEVICE))
+            self.assertEqual(build['human_cases'], 10)
+            self.assertIn('右 Alt＋I', archive.read('TESTING.zh-TW.md').decode())
+            self.assertIn('四個角', archive.read('TESTING.zh-TW.md').decode())
+
+    def test_raw_return_patterns_expand_to_real_parameter_names(self):
+        values = package.parameter_names({'cockpit_params': [], 'raw_dcs_cockpit_params': [
+            {'value': 'RADAR_CONTACT_%02u_RANGE'}]})
+        self.assertIn('RADAR_CONTACT_01_RANGE', values)
+        self.assertIn('RADAR_CONTACT_32_RANGE', values)
+        self.assertNotIn('RADAR_CONTACT_%02u_RANGE', values)
+
+    def test_records_cm_progress_and_separate_test_tools_revision(self):
+        data=json.loads(self.catalog.read_text())
+        data['cockpit_params'].extend([
+            dict(name='CmAcceptedSequence', value='CPP_CM_ACCEPTED_SEQUENCE'),
+            dict(name='CmFlareCount', value='CPP_CM_FLARE_COUNT'),
+            dict(name='CmChaffCount', value='CPP_CM_CHAFF_COUNT')])
+        self.catalog.write_text(json.dumps(data))
+        self.write_zip()
+        bundle=package.assemble(self.archive, self.manifest, self.catalog, self.root/'out', self.source, 'c'*40)
+        with zipfile.ZipFile(bundle) as archive:
+            schema=archive.read(package.TEST_ROOT+'Parameters.lua').decode()
+            for name in ['CPP_CM_ACCEPTED_SEQUENCE', 'CPP_CM_FLARE_COUNT', 'CPP_CM_CHAFF_COUNT']:
+                self.assertIn(name, schema)
+            build=json.loads(archive.read('BUILD.json'))
+            self.assertEqual(build['source_commit'], self.source)
+            self.assertEqual(build['test_tools_source_commit'], 'c'*40)
+            self.assertEqual(archive.read(package.DLL), self.entries[package.DLL])
     def test_rejects_wrong_dll(self):
         self.entries[package.DLL] = b'MZwrong-build'
         self.write_zip()

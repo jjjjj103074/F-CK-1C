@@ -13,7 +13,8 @@ enum class MissionCommandTarget
 {
 	Mode,
 	Countermeasure,
-	FireControl
+	FireControl,
+	SensorControl
 };
 
 struct PendingMissionCommand
@@ -27,6 +28,7 @@ struct MissionInputs
 {
 	CockpitObservation cockpit;
 	RadarSnapshot radar;
+	DisplaySnapshot display;
 	std::chrono::nanoseconds observed_at = {};
 	std::deque<PendingMissionCommand> pending_commands;
 	std::uint64_t command_sequence = 0;

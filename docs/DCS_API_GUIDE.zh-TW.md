@@ -180,6 +180,22 @@ Lua 的 OBS_MC_ACKNOWLEDGED_SEQUENCE 保留既有參數名稱，現在表示 Dcs
 
 詳見 [Targeting／RadarSystem 架構](RADAR_TARGETING_ARCHITECTURE.zh-TW.md)。
 
+RWS／BORE 透過 C++ 原生參數橋寫入 `SCAN_ZONE_ORIGIN_*`、`SCAN_ZONE_VOLUME_*`、
+距離裁切、姿態穩定與 TDC 捕獲窗口。寫入者為 CockpitSnapshotExporter，控制值由 RadarSystem
+經 Pipeline 發布；目標追蹤仍以原生 `RADAR_MODE`／STT 資料回報。
+原生控制在 DCS ID 目錄宣告 `cpp_to_dcs`／`bidirectional` 與唯一寫入者。
+介面證據見 [API 調查](AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md)，參數來源與測試邊界見 [雷達模式](RADAR_MODES.zh-TW.md)。
+
+
+## 原生雷達回波與圖形輸出
+
+CockpitBridge 以 32 Hz 讀取 `RADAR_CONTACT_%02u_*` 的方位、仰角、距離與回波年齡；
+原生量綱維持弧度、公尺、秒。RWS 游標使用 `TDC_AZIMUTH`／`TDC_RANGE`，
+掃描範圍讀取 `SCAN_ZONE_ORIGIN_*`／`SCAN_ZONE_VOLUME_*`。
+DisplaySystem 經 Pipeline 讀取 RadarSnapshot，計算捕獲框、STT 投影及雷達圖，
+RadarDisplayExporter 將完整快照發布為座艙參數，Lua 指示器依參數繪圖。
+原生回波槽數的讀取預算、繪圖上限、估算掃描動畫與操作見 [雷達顯示](RADAR_DISPLAY.zh-TW.md)。
+
 ## 原生反制派送：候選入口與實測結果
 
 本輪目標是確認 C++ 能直接施放熱焰彈與干擾絲。測試成功後，反制的程序、
@@ -285,3 +301,43 @@ System 經由 `FrameInput`、`AircraftData`、`SystemPipeline` 與 `FrameOutput`
 交換觀測、狀態及動作需求。後續原生雷達、掛載等能力可建立各自 Adapter，
 共用這一層的環境存取。詳細分工見
 [DCS 飛機介面](../src/efm/F-CK-1C_EFM/DcsBridge/Internal/Aircraft/README.md)。
+
+## Lua裝置更新與指示器父節點
+
+使用`make_default_activity()`並由Lua執行`update()`的裝置，透過`need_to_be_closed = false`保留執行狀態。
+本專案的雷達通電更新與飛測Recorder採用這個設定。靜態裝置配置與指示器初始化腳本依各自生命週期載入。
+驗證裝置時應從初始化推進到實際更新，核對副作用：Recorder產生表頭後持續新增資料列，雷達呼叫`set_power(true)`。
+
+HMCS VR在同一子頁先建立裁切遮罩，再建立以遮罩為父節點的符號。
+子頁測試分別核對父節點可見性、元素唯一性與遮罩／瞄準線保留情況。
+
+安裝工具會備份並移除歷史`FCK1C_AMMO_PROBE`與`FCK1C_STORES_EXPORT`載入區塊，並封存已識別的彈量探針檔案。
+其他Export內容與自訂檔案按原始位元組保存。未識別原生命令2659維持原有診斷，另以[issue #37](https://github.com/jjjjj103074/F-CK-1C/issues/37)追蹤。
+
+## 反制程序的正式 C++ 路徑
+
+CMS 前向及左向由 MC 轉為程序要求，經 SystemPipeline 交由 `CountermeasureSystem`。
+Bridge 的 `CountermeasureExecutor` 使用共用 `DcsAircraftInterface::dispense_countermeasure()`，
+直接呼叫已驗證的 context / human 施放能力。程序計時及庫存回報透過 Pipeline 完成。
+詳見 [CountermeasureSystem](../src/efm/F-CK-1C_EFM/Core/Systems/CountermeasureSystem/README.md)。
+
+2026-11-19 飛測確認舊 Lua `dispatch_action(nil, 176/536/358)` 路徑可以增加傳送 ACK、
+卻未消耗反制存量。該 ACK 僅表示 Lua 接受語意動作。此版本將程序與施放改接上述 C++ 路徑，
+移除 Lua 的反制計時、配對脈衝與程序 wire 動作 17/19。
+Lua 有序轉接繼續處理現有武器、選站與雷達操作。
+
+`CPP_CM_ACCEPTED_SEQUENCE` 是反制系統接受程序的序號；`CPP_CM_EXECUTED_SEQUENCE` 是 Bridge 已處理的一輪序號。
+`CPP_CM_FLARE_RETURNED` / `CPP_CM_CHAFF_RETURNED` 表示最近一輪各種類的原生呼叫返回。
+實際庫存由 `CPP_CM_INVENTORY_AVAILABLE`、`CPP_CM_FLARE_COUNT`、`CPP_CM_CHAFF_COUNT` 回報，
+飛測包另保留 Lua 獨立庫存觀測交叉核對。`countermeasure_dispense` 日誌包含各呼叫前後庫存與錯誤狀態。
+
+### 2026-11-20 CMS 整合實機驗證
+
+使用者以新版測試包確認 CMS 正常施放，數量符合設定：前向十輪混合施放，每輪熱焰彈與干擾絲各一發；
+左向程序 6 施放七發干擾絲。本次回報確認正式 CMS 的 MC 要求、SystemPipeline、
+CountermeasureSystem、Bridge 共用原生介面及實際施放完整路徑。
+
+實機依據為使用者 2026-11-20 的操作回報。對應模組來源為 `dbc72e624373583c306c519d93584e64945dc5b8`，
+[Windows 完整驗證](https://github.com/jjjjj103074/F-CK-1C/actions/runs/44554521214) 的 16 個階段通過，
+原生測試 5,275 項、零失敗。2026-11-20 核對目前 412 個執行期／建置輸入及 DLL 與該版本一致。
+主保險獨立、程序接替、低 FPS、原生失敗及任務重入由自動回歸測試覆蓋。

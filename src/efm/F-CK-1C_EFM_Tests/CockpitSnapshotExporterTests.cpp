@@ -1,4 +1,5 @@
 #include "FakeCockpitParameters.h"
+#include "Core/Systems/RadarSystem/Internal/SearchProfiles.h"
 #include "TestHarness.h"
 
 #include "DcsBridge/Internal/CockpitSnapshotExporter.h"
@@ -81,7 +82,7 @@ void test_mc_window_commits_only_when_all_parameters_are_written(Tests::Context&
 	mc.mode.override_mode = Core::OverrideMode::Dogfight;
 	mc.mode.operating_mode = Core::OperatingMode::Dogfight;
 	mc.mode.dogfight_mode = true;
-	mc.fire_control.missile_uncage_held = true;
+	mc.fire_control.missile_uncage_selected = true;
 	mc.stores.ir_seeker.status = { true, 12, Core::ObservationInvalidReason::None };
 	mc.stores.ir_seeker.locked = true;
 	mc.stores.ir_seeker.desired_azimuth_rad = 0.1;
@@ -180,17 +181,47 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::MissionActionBatch actions;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 70);
+	TEST_EXPECT(context, events.count == 81);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context,
 	            exporter.export_snapshot(snapshot, actions).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 70);
+	TEST_EXPECT(context, events.count == 81);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
+}
+
+void test_countermeasure_execution_and_inventory_are_exported_separately(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	auto& cm = snapshot.countermeasures;
+	cm.status = { true, 1 };
+	cm.accepted_sequence = 3;
+	cm.program = Core::CountermeasureProgram::Program6;
+	cm.state = Core::CountermeasureProgramState::Running;
+	cm.completed_rounds = 2;
+	cm.observation = { { true, 90, 88 }, { 12, false, true, 1.0 } };
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmAcceptedSequence), 3, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmExecutedSequence), 12, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmProgram), 1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmProgramState), 1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmCompletedRounds), 2, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmInventoryAvailable), 1, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmFlareCount), 90, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmChaffCount), 88, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmFlareReturned), 0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmChaffReturned), 1, kTolerance);
+	cm = {};
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmExecutedSequence), 0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmInventoryAvailable), 0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::CmChaffCount), -1, kTolerance);
 }
 
 void test_gun_count_availability_is_exported_separately(Tests::Context& context)
@@ -310,15 +341,52 @@ void test_master_and_override_parameters_commit_together(Tests::Context& context
 	}
 }
 
+void test_radar_scan_export_preserves_rws_cursor_and_applies_bore(Tests::Context& c)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	snapshot.radar.scan = Core::Systems::RadarProfiles::range_while_search();
+	snapshot.radar.scan.revision = 1;
+	cockpit.set(DcsIds::RawCockpitParams::RadarTdcAzimuth, 0.2);
+	cockpit.set(DcsIds::RawCockpitParams::RadarTdcRange, 25000.0);
+	TEST_EXPECT(c, exporter.export_snapshot(snapshot).count == 0);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanVolumeAzimuth), Common::rad(120.0), 1e-9);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarTdcAzimuth), 0.2, 1e-9);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarTdcRange), 25000.0, 1e-9);
+	cockpit.set(DcsIds::RawCockpitParams::RadarScanOriginElevation, 0.15);
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanOriginElevation), 0.15, 1e-9);
+	snapshot.radar.scan = Core::Systems::RadarProfiles::boresight();
+	snapshot.radar.scan.revision = 2;
+	TEST_EXPECT(c, exporter.export_snapshot(snapshot).count == 0);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanOriginElevation), 0.0, 1e-9);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanVolumeAzimuth), Common::rad(3.3), 1e-9);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanMaximumRange), 18520.0, 1e-9);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarTdcAzimuth), 0.0, 1e-9);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarTdcRange), 9260.0, 1e-9);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarPitchStabilization), 0.0, 1e-9);
+	snapshot.radar.scan.override_tdc = false;
+	snapshot.radar.scan.maximum_search_range_m = 90000.0;
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanMaximumRange), 90000.0, 1e-9);
+	snapshot.radar.scan.enabled = false;
+	cockpit.set(DcsIds::RawCockpitParams::RadarScanVolumeAzimuth, 0.3);
+	exporter.export_snapshot(snapshot);
+	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanVolumeAzimuth), 0.3, 1e-9);
+}
+
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
+	test_radar_scan_export_preserves_rws_cursor_and_applies_bore(context);
 	test_master_and_override_parameters_commit_together(context);
 	test_targeting_submodes_preserve_cockpit_wire_values(context);
 	test_ir_observation_validity_clears_unavailable_cockpit_values(context);
 	test_selection_mailbox_uses_the_front_command_payload(context);
 	test_gun_count_availability_is_exported_separately(context);
+	test_countermeasure_execution_and_inventory_are_exported_separately(context);
 	test_snapshot_envelope_is_exported(context);
 	test_missing_parameter_reports_once_then_recovers(context);
 	test_reset_restarts_error_reporting(context);

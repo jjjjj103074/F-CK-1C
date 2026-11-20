@@ -26,11 +26,8 @@ enum class MissionActionKind
 	ChangeLock = 14,
 	LockFinish = 15,
 	ChangeLockUp = 16,
-	StartCmsForward = 17,
-	StartCmsAft = 18,
-	StartCmsLeft = 19,
-	AbortCms = 20,
-	SelectStation = 21
+	SelectStation = 21,
+	ModeBoresight = 22
 };
 
 /// @brief 判斷操作是否會啟動武器程序。

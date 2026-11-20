@@ -1,5 +1,4 @@
--- Route native firing/release input aliases through MC, including inherited profiles.
--- Native actuation IDs remain available to the downstream DCS adapter.
+-- Route firing/release aliases through MC and filter inherited direct mission controls.
 return function(bindings, commands, native_commands)
     local routes = {
         [native_commands.iCommandPlaneFire] = {
@@ -15,6 +14,27 @@ return function(bindings, commands, native_commands)
         },
         [native_commands.iCommandPlanePickleOff] = { command = commands.WeaponRelease, value = 0 },
     }
+    -- MC and RadarSystem own these mission operations; this profile exposes their semantic inputs.
+    local internal_actions = {
+        "iCommandPlaneChangeWeapon", "iCommandPlaneModeBVR", "iCommandPlaneModeVS",
+        "iCommandPlaneModeBore", "iCommandPlaneModeHelmet", "iCommandPlaneModeFI0",
+        "iCommandPlaneModeCannon", "iCommandPlaneLaunchPermissionOverride",
+        "iCommandPlaneDropSnarOnce", "iCommandPlaneDropSnarOnceOff",
+        "iCommandPlaneDropFlareOnce", "iCommandPlaneDropChaffOnce",
+        "iCommandPlaneLockOnStart", "iCommandPlaneLockOnFinish",
+        "iCommandPlaneChangeLock", "iCommandPlaneChangeLockUp",
+    }
+    local internal = {}
+    for _, name in ipairs(internal_actions) do
+        local command = native_commands[name]
+        if command then internal[command] = true end
+    end
+    for index = #bindings, 1, -1 do
+        local binding = bindings[index]
+        if internal[binding.down] or internal[binding.up] or internal[binding.pressed] then
+            table.remove(bindings, index)
+        end
+    end
     local canonical = {}
     for _, binding in ipairs(bindings) do
         if
@@ -81,6 +101,31 @@ return function(bindings, commands, native_commands)
                 if not duplicate then target.combos[#target.combos + 1] = combo end
             end
             table.remove(bindings, i)
+        end
+    end
+
+    -- 共用設定中相同的預設組合交給 HOTAS 與解籠控制，其他組合沿用原動作。
+    local owned_inputs = {}
+    for _, name in ipairs({ "TMSUp", "TMSDown", "TMSLeft", "TMSRight", "DMSUp", "DMSDown", "DMSLeft", "DMSRight", "RadarCursorUp", "RadarCursorDown", "RadarCursorLeft", "RadarCursorRight", "CMSForward", "CMSAft", "CMSLeft", "CMSRight", "MissileUncage" }) do
+        owned_inputs[commands[name]] = true
+    end
+    local function combo_key(combo)
+        local modifiers = {}
+        for _, modifier in ipairs(combo.reformers or {}) do modifiers[#modifiers + 1] = modifier end
+        table.sort(modifiers)
+        return table.concat(modifiers, "+") .. ":" .. combo.key
+    end
+    local owned_combos = {}
+    for _, binding in ipairs(bindings) do
+        if owned_inputs[binding.down] then
+            for _, combo in ipairs(binding.combos or {}) do owned_combos[combo_key(combo)] = true end
+        end
+    end
+    for _, binding in ipairs(bindings) do
+        if not owned_inputs[binding.down] then
+            for index = #(binding.combos or {}), 1, -1 do
+                if owned_combos[combo_key(binding.combos[index])] then table.remove(binding.combos, index) end
+            end
         end
     end
 end

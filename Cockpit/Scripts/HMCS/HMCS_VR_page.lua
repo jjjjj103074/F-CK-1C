@@ -1,4 +1,5 @@
-dofile(LockOn_Options.script_path .. "HMCS/HMCS_VR_definitions.lua")
+-- 先在同一子頁建立裁切遮罩，再將符號掛到遮罩父節點。
+dofile(LockOn_Options.script_path .. "HMCS/HMCS_VR_base_page.lua")
 
 local hmcs_color = MakeMaterial(nil, { 80, 255, 120, 220 })
 local line_width = 0.6
