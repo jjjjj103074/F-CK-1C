@@ -3,6 +3,7 @@
 #include "ExternalActionTestSupport.h"
 #include "Core/Systems/RadarSystem/RadarSystem.h"
 #include "Core/Systems/MissionComputer/Components/FireControl/Internal/Targeting.h"
+#include <algorithm>
 #include <chrono>
 namespace Core::Systems::Catalog::RadarSystem
 {
