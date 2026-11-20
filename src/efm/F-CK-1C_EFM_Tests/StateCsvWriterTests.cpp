@@ -198,7 +198,11 @@ void test_latest_only_mailbox(Tests::Context& context)
 		{
 			return;
 		}
-		const auto row = DcsBridge::Internal::format_state_csv_row(*latest);
+		// 將整列緩衝區直接建構於動態記憶體。
+		const std::unique_ptr<DcsBridge::Internal::FormattedStateCsvRow> row_buffer{
+			new DcsBridge::Internal::FormattedStateCsvRow(DcsBridge::Internal::format_state_csv_row(*latest))
+		};
+		const auto& row = *row_buffer;
 		TEST_EXPECT(context, row.valid && row.size > 0 && row.size <= row.data.size());
 		if (!row.valid || row.size == 0 || row.size > row.data.size())
 		{
