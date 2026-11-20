@@ -17,6 +17,7 @@ function Get-ExpectedDeviceIds {
         RADAR = 7
         RADAR_STATE = 8
         AUTOPILOT = 9
+        ELECTRIC_SYSTEM = 11
     }
 }
 
