@@ -71,7 +71,7 @@ class TestFlightBundle(unittest.TestCase):
             self.assertEqual(archive.read(package.WEAPONS), self.entries[package.WEAPONS])
             self.assertEqual(archive.read(package.DLL), self.entries[package.DLL])
             self.assertNotIn(b'MCFlightTest/Indicator_init.lua', archive.read(package.DEVICE))
-            self.assertEqual(build['human_cases'], 10)
+            self.assertEqual(build['human_cases'], 12)
             self.assertIn('右 Alt＋I', archive.read('TESTING.zh-TW.md').decode())
             self.assertIn('四個角', archive.read('TESTING.zh-TW.md').decode())
 

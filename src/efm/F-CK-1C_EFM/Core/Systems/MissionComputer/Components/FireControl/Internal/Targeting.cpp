@@ -214,11 +214,6 @@ void Targeting::before_weapon_release()
 	reapply_mode();
 }
 
-void Targeting::on_weapon_release_ended()
-{
-	cancel();
-}
-
 void Targeting::step(std::chrono::nanoseconds time)
 {
 	if (tms_right_held_ && !tms_right_long_ && time - tms_right_pressed_at_ > std::chrono::seconds(1))

@@ -1,12 +1,14 @@
 -- 檢查實際指示器圖元、參數控制器與狀態切換。
 return function(expect)
-    local function scene(path, aspect)
+    local function scene(path, aspect, native_scale)
         local elements, by_name = {}, {}
         local env = setmetatable({}, { __index = _G })
         env.LockOn_Options = { script_path = "Cockpit/Scripts/", common_script_path = "fixture/common/", screen = { aspect = aspect } }
         env.MILLYRADIANS = 1
+        env.h_clip_relations = { COMPARE = 1, REWRITE_LEVEL = 2 }
         env.ScreenType = { SCREENSPACE_TRUE = 1 }
         env.SetScale = function() end
+        env.GetScale = function() return native_scale or 1 end
         env.SetCustomScale = function() end
         env.MakeMaterial = function(_, color) return { color = color } end
         env.CreateElement = function(kind) return { kind = kind } end
@@ -32,11 +34,12 @@ return function(expect)
         env.dofile(path)
         return env, elements, by_name
     end
-    local function transform(name, elements, values)
+    local function transform(name, elements, values, scale)
+        scale = scale or 1
         local element = assert(elements[name], name)
         local x, y, visible, opacity = 0, 0, true, 1
-        if element.parent_element then x, y, visible, opacity = transform(element.parent_element, elements, values) end
-        x, y = x + ((element.init_pos or {})[1] or 0), y + ((element.init_pos or {})[2] or 0)
+        if element.parent_element then x, y, visible, opacity = transform(element.parent_element, elements, values, scale) end
+        x, y = x + ((element.init_pos or {})[1] or 0) * scale, y + ((element.init_pos or {})[2] or 0) * scale
         for _, controller in ipairs(element.controllers or {}) do
             local value = values[element.element_params[controller[2] + 1]] or 0
             if controller[1] == "parameter_in_range" then visible = visible and value >= controller[3] and value <= controller[4] end
@@ -69,6 +72,38 @@ return function(expect)
     expect(target_visible and x == 100 and y == -30, "solid STT box follows source projection")
     local _, _, bore_visible = transform("radar_bore_corner_-1_-1_horizontal", names, values)
     expect(not bore_visible, "STT replaces BORE corner geometry")
+
+    -- 原生控制器位移使用模型座標；圖元初始座標依指示器尺度換算。
+    for _, scale in ipairs({ 0.00015, 0.00073, 0.001 }) do
+        env, elements, names = scene("Cockpit/Scripts/RadarDisplay/Forward_page.lua", 16 / 9, scale)
+        p, values = env.cockpit_params, {}
+        values[p.RadarDisplayAvailable], values[p.RadarDisplayVisible], values[p.RadarDisplaySensorAvailable] = 1, 1, 1
+        values[p.RadarDisplayCueKind], values[p.RadarDisplayCueVisible] = 1, 1
+        values[p.RadarDisplayBoreHalfWidthMrad], values[p.RadarDisplayBoreHalfHeightMrad] = 28.797932657906, 40.14257279587
+        for _, element in ipairs(elements) do
+            if element.kind == "ceMeshPoly" then
+                for _, prior_level in ipairs({ 0, 8, 9 }) do
+                    local survives_mask = element.h_clip_relation == env.h_clip_relations.REWRITE_LEVEL
+                        or (element.h_clip_relation == env.h_clip_relations.COMPARE and element.level == prior_level)
+                    expect(survives_mask, "forward cue remains drawable over an existing cockpit stencil level")
+                end
+            end
+        end
+        local corner_x, corner_y, corner_visible = transform("radar_bore_corner_1_1_horizontal", names, values, scale)
+        expect(corner_visible and math.abs(corner_x / scale - 28.797932657906) < 0.00001,
+            "recorded BORE corner preserves horizontal capture angle at native scale")
+        expect(math.abs(corner_y / scale - 40.14257279587) < 0.00001,
+            "recorded BORE corner preserves vertical capture angle at native scale")
+        expect(math.abs(math.atan(corner_x / (1000 * scale))) < math.rad(5),
+            "recorded BORE frame remains inside the forward view")
+        values[p.RadarDisplayCueKind] = 3
+        values[p.RadarDisplayTargetXMrad], values[p.RadarDisplayTargetYMrad] = -33.621584662859, -15.727840218465
+        local target_x, target_y, tracked = transform("radar_stt_box_top", names, values, scale)
+        expect(tracked and math.abs(target_x / scale + 33.621584662859) < 0.00001,
+            "recorded STT horizontal position uses the same scale as its box geometry")
+        expect(math.abs(target_y / scale + 15.727840218465) < 0.00001,
+            "recorded STT vertical position uses the same scale as its box geometry")
+    end
 
     for _, aspect in ipairs({ 4 / 3, 16 / 9, 21 / 9 }) do
         env, elements, names = scene("Cockpit/Scripts/RadarDisplay/Scope_page.lua", aspect)

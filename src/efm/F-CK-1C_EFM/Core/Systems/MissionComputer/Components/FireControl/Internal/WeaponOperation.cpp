@@ -118,7 +118,7 @@ void WeaponOperation::handle_missile_step(bool pressed, std::chrono::nanoseconds
 	}
 }
 
-WeaponOperationEvent WeaponOperation::step(std::chrono::nanoseconds time)
+void WeaponOperation::step(std::chrono::nanoseconds time)
 {
 	if (missile_step_pressed_at_ && !missile_type_step_sent_ && time - *missile_step_pressed_at_ >= kMissileTypeHold)
 	{
@@ -129,12 +129,5 @@ WeaponOperationEvent WeaponOperation::step(std::chrono::nanoseconds time)
 	weapon_.pickle_requested = execution_.release.in_progress();
 	weapon_.gun_firing_indication =
 	    weapon_.gun_requested && mode_.master_arm == MasterArmMode::On && mode_.override_mode == OverrideMode::Dogfight;
-	const auto& release = execution_.release;
-	if (release.phase == WeaponUsePhase::StopScheduled && release.request_id != reported_release_end_)
-	{
-		reported_release_end_ = release.request_id;
-		return WeaponOperationEvent::ReleaseInputEnded;
-	}
-	return WeaponOperationEvent::None;
 }
 }

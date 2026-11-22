@@ -28,6 +28,11 @@ return function(options)
         element.element_params = parameters
         element.controllers = controllers
         element.collimated = options.collimated
+        -- 前視線段以自身描繪層發布，與座艙其他裁切遮罩共同顯示。
+        if options.clip_relation then
+            element.h_clip_relation = options.clip_relation
+            element.level = options.level
+        end
         element.use_mipfilter = true
         if options.screenspace then element.screenspace = ScreenType.SCREENSPACE_TRUE end
         Add(element)

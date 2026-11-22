@@ -6,13 +6,6 @@
 
 namespace Core::Systems::Mc::Internal
 {
-/// @brief 武器使用更新的程序結果，由 FC 安排目標接續。
-enum class WeaponOperationEvent
-{
-	None,
-	ReleaseInputEnded
-};
-
 /// @brief 判斷武器使用資格，提出開始／結束意圖並整理執行結果。
 class WeaponOperation final
 {
@@ -27,7 +20,7 @@ public:
 	void stop();
 	/// @brief 結束先前配置的武器使用與掛點切換輸入。
 	void on_mode_changed();
-	WeaponOperationEvent step(std::chrono::nanoseconds time);
+	void step(std::chrono::nanoseconds time);
 
 private:
 	void handle_missile_step(bool pressed, std::chrono::nanoseconds time);
@@ -42,6 +35,5 @@ private:
 	StoresCommandQueue& stores_commands_;
 	std::optional<std::chrono::nanoseconds> missile_step_pressed_at_;
 	bool missile_type_step_sent_ = false;
-	std::uint64_t reported_release_end_ = 0; ///< 最近已通知 FC 的正常投放結束要求。
 };
 }

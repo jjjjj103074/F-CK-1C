@@ -48,7 +48,7 @@ flowchart LR
 
 DisplaySystem 唯一寫入 RadarDisplaySnapshot；RadarSystem 持續負責雷達設定、捕獲及原生觀測。
 MC 的 Targeting 維持既有操作意圖。Lua 指示器載入靜態幾何及參數控制器，使用原生繪圖更新。
-前視使用 COLLIMATOR 與毫弧度平面，目標視線以正切投影定位；右下角使用屏幕座標，配合螢幕比例調整。
+前視使用 COLLIMATOR 與毫弧度平面，目標視線以正切投影定位。Lua 以 `GetScale()` 將毫弧度參數換成原生位移控制器的模型座標；線段初始幾何使用相同指示器尺度。前視線段使用自身的描繪層，配合既有頭盔指示器的裁切遮罩顯示。右下角使用屏幕座標，配合螢幕比例調整。
 
 ## 回波介面與邊界
 
@@ -68,5 +68,23 @@ CockpitBridge 讀取 `RADAR_CONTACT_%02u_AZIMUTH/ELEVATION/RANGE/TIME`。
 淡出、重疊回波、原子發布、來源失效，以及 4:3／16:9／21:9 圖形範圍。
 Windows CI 另執行完整 EFM 測試、DLL 重建及來源／產物比對。
 
-雷達飛測包包含十項人工檢查、原生／繪圖參數記錄與 COLLECT-RESULTS.bat。
+雷達飛測包包含十二項人工檢查、原生／繪圖參數記錄與 COLLECT-RESULTS.bat。
 紀錄可比對雷達狀態、回波、游標及繪圖值；前視對準與畫面顯示以實機畫面判定。
+
+## 投放與追蹤
+
+WeaponOperation 將投放開始／結束交給 SM；Targeting 持續整理原生雷達觀測。
+放開投放按鍵結束武器使用，持續保留雷達指定與 BORE 捕獲要求。
+TMS 下（K）明確取消指定與自動捕獲；模式切換沿用原有的目標流程。
+原生失鎖與目標消失仍由雷達觀測回報。
+
+## 前視尺度查核
+
+原生 `move_left_right_using_parameter`／`move_up_down_using_parameter` 的係數
+使用模型座標；以毫弧度設定初始圖元時，動態參數以 `GetScale()` 換算。
+回歸測試使用實機紀錄的 BORE 尺寸與 STT 位置，涵蓋三種準直尺度，以及既有裁切層。
+
+參考開源原作者的控制器用法：
+[A-29B HUD_GRID.lua](https://github.com/luizrenault/a-29b-community/blob/1f632f004e28ef13a5f3404528de4c3fc982a0e2/Cockpit/Scripts/HUD/Indicator/HUD_GRID.lua#L20)。
+另以使用者提供的同版 CockpitBase.dll 檢查控制器實作：參數乘係數後直接更新模型位移。
+此查核用於確認座標換算；執行期沿用座艙指示器公開介面。

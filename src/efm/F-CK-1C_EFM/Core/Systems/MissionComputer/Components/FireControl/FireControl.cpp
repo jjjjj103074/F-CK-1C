@@ -60,8 +60,7 @@ void FireControl::on_master_arm_selected(const MasterArmSelected& event)
 
 void FireControl::step(std::chrono::nanoseconds time, double)
 {
-	if (weapon_operation_.step(time) == Internal::WeaponOperationEvent::ReleaseInputEnded)
-		targeting_.on_weapon_release_ended();
+	weapon_operation_.step(time);
 	targeting_.step(time);
 }
 }

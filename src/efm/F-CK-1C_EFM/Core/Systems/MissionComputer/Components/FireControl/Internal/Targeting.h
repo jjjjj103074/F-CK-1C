@@ -20,7 +20,6 @@ public:
 	void on_missile_uncage_selected(bool selected);
 	void on_operating_mode_selected(const OperatingModeSelected& event);
 	void before_weapon_release();
-	void on_weapon_release_ended();
 	/// @brief 推進 TMS 長按、接收設備要求結果並整理追蹤觀測。
 	void step(std::chrono::nanoseconds time = {});
 

@@ -459,7 +459,6 @@ void test_pickle_and_targeting_modes(Tests::Context& context)
 	TEST_EXPECT(context, contains(output.actions, MissionActionKind::LaunchPermissionOverride));
 	bool started = false;
 	bool stopped = false;
-	bool target_input_finished = false;
 	int tick = 5;
 	for (; tick <= 40; ++tick)
 	{
@@ -467,16 +466,15 @@ void test_pickle_and_targeting_modes(Tests::Context& context)
 		if (started)
 		{
 			stopped = stopped || contains(output.actions, MissionActionKind::PickleOff);
-			target_input_finished = target_input_finished || contains(output.actions, MissionActionKind::LockFinish);
 		}
 		if (output.actions.count)
 			fixture.frame.cockpit.mission_adapter.acknowledged_sequence =
 			    output.actions.first_sequence + output.actions.count - 1;
 		output = fixture.step(kMissionPeriod * tick);
-		if (stopped && target_input_finished)
+		if (stopped)
 			break;
 	}
-	TEST_EXPECT(context, started && stopped && target_input_finished);
+	TEST_EXPECT(context, started && stopped);
 	TEST_EXPECT(context, !output.state.fire_control.pickle_requested);
 	TEST_EXPECT(context, output.state.stores.air_to_air_missile_count == 2);
 	inventory.stations[2].count = 1;
@@ -484,6 +482,75 @@ void test_pickle_and_targeting_modes(Tests::Context& context)
 	output = fixture.step(kMissionPeriod * (tick + 1));
 	TEST_EXPECT(context, output.state.stores.air_to_air_missile_count == 1);
 }
+void test_weapon_release_end_preserves_radar_designation(Tests::Context& context)
+{
+	for (auto mode : { CommandId::SelectAirToAirMode, CommandId::SelectDogfightMode, CommandId::SelectMissileOverride })
+	{
+		MissionFixture fixture;
+		auto& inventory = fixture.frame.cockpit.weapon_stations;
+		for (auto& station : inventory.stations)
+			station.configuration = StoreConfiguration::Empty;
+		inventory.stations[0] = { StoreConfiguration::Equipped,
+			                      2,
+			                      WeaponCategory::Missile,
+			                      WeaponRole::AirToAir,
+			                      "aim9" };
+		fixture.send(CommandId::SetMasterArmOn);
+		fixture.send(mode);
+		fixture.send(CommandId::SetMissileUncage);
+		auto advance = [&](int tick)
+		{
+			auto output = fixture.step(kMissionPeriod * tick);
+			if (output.actions.count)
+				fixture.frame.cockpit.mission_adapter.acknowledged_sequence =
+				    output.actions.first_sequence + output.actions.count - 1;
+			inventory.selected_station = output.state.stores.selection.requested_station;
+			inventory.selection_ack_revision = output.state.stores.selection.request_revision;
+			inventory.status.revision += 2;
+			return output;
+		};
+		for (int tick = 1; tick <= 8; ++tick)
+			advance(tick);
+		auto& radar = fixture.frame.cockpit.radar;
+		radar.status = { true, 1, ObservationInvalidReason::None };
+		radar.mode = RadarMode::SingleTargetTrack;
+		radar.stt_azimuth_rad = -0.03;
+		radar.stt_elevation_rad = -0.015;
+		radar.stt_range_m = 3700;
+		fixture.send(CommandId::SetTmsUp);
+		fixture.send(CommandId::SetTmsUp, 0.0);
+		for (int tick = 9; tick <= 14; ++tick)
+			advance(tick);
+		fixture.send(CommandId::SetWeaponRelease);
+		bool started = false;
+		for (int tick = 15; tick <= 20; ++tick)
+			started = contains(advance(tick).actions, MissionActionKind::PickleOn) || started;
+		TEST_EXPECT(context, started);
+		fixture.send(CommandId::SetWeaponRelease, 0.0);
+		bool stopped = false;
+		for (int tick = 21; tick <= 36; ++tick)
+		{
+			const auto output = advance(tick);
+			stopped = contains(output.actions, MissionActionKind::PickleOff) || stopped;
+			TEST_EXPECT(context, !contains(output.actions, MissionActionKind::LockStart));
+			TEST_EXPECT(context, !contains(output.actions, MissionActionKind::LockFinish));
+			TEST_EXPECT(context, output.state.fire_control.target_designation.requested);
+			TEST_EXPECT(context, output.state.fire_control.target_designation.radar_tracking);
+			TEST_EXPECT_NEAR(context, output.state.fire_control.target_designation.radar_range_m, 3700, 1e-12);
+		}
+		TEST_EXPECT(context, stopped);
+		fixture.send(CommandId::PressTmsDown);
+		bool cancelled = false;
+		for (int tick = 37; tick <= 42; ++tick)
+		{
+			const auto output = advance(tick);
+			cancelled = contains(output.actions, MissionActionKind::LockStart) || cancelled;
+			TEST_EXPECT(context, !output.state.fire_control.target_designation.requested);
+		}
+		TEST_EXPECT(context, cancelled);
+	}
+}
+
 void test_inventory_authority_selection_and_rearm(Tests::Context& context)
 {
 	MissionFixture fixture;
@@ -1390,6 +1457,7 @@ void run_mission_computer_tests(Tests::Context& context)
 	test_plain_gun_stop_survives_invalid_inventory_mode_wait(context);
 	test_radar_on_request_is_not_repeated_for_one_observation(context);
 	test_pickle_and_targeting_modes(context);
+	test_weapon_release_end_preserves_radar_designation(context);
 	test_inventory_authority_selection_and_rearm(context);
 	test_global_ir_observation_is_independent_from_fire_control_intent(context);
 	test_control_observations_preserve_fifo_pulses_and_rejected_requests(context);
