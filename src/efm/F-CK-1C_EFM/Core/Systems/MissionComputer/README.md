@@ -56,7 +56,7 @@ MC、FireControl、Executive 與 ExecutiveTables 禁止複製及搬移，維持�
 
 FireControl 分派操作；MC 依 SOI 分派 TMS，Targeting 解讀雷達 TMS 與操作模式，規劃捕獲策略並保存指定意圖與雷達追蹤結果。
 與 MC 並列的 [RadarSystem](../RadarSystem/README.md) 透過 Pipeline 接受要求、推進設備操作與發布觀測。
-WeaponOperation 保存解籠與扳機／投放資格，提交使用意圖並讀取 SM 執行結果，供 FC 安排目標接續。
+WeaponOperation 保存解籠與扳機／投放資格，提交使用意圖並讀取 SM 執行結果，整理為火控武器操作狀態。
 模式及武裝選擇透過 MC 持有的 sigslot 同步事件通知各訂閱者。
 StoresManagement 統一負責庫存、選站、武器輸入保持與執行確認，並保存全域武器介面的 IR 來源觀測。
 WeaponOperation 只讀 WeaponUseData；Targeting 讀取模式與 RadarSnapshot，透過 RadarRequestQueue 提出要求。
