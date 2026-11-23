@@ -319,9 +319,14 @@ void test_targeting_submodes_preserve_cockpit_wire_values(Tests::Context& contex
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::HmcsAamSubmode), 3.0, kTolerance);
 }
 
-void test_master_and_override_parameters_commit_together(Tests::Context& context)
+void test_mc_mode_and_store_parameters_commit_together(Tests::Context& context)
 {
-	for (const char* field : { DcsIds::CockpitParams::McMasterMode, DcsIds::CockpitParams::McOverrideMode })
+	for (const char* field : { DcsIds::CockpitParams::McMasterMode,
+	                           DcsIds::CockpitParams::McOverrideMode,
+	                           DcsIds::CockpitParams::McSelectedStoreState,
+	                           DcsIds::CockpitParams::McSelectedStoreCount,
+	                           DcsIds::CockpitParams::McSelectedStoreIdentifier,
+	                           DcsIds::CockpitParams::McSelectedStoreStation })
 	{
 		Tests::FakeCockpitParameters cockpit;
 		cockpit.set_available(field, false);
@@ -427,14 +432,6 @@ void test_selected_store_uses_confirmed_sm_selection(Tests::Context& context)
 	stores.inventory.observation.available = false;
 	exporter.export_snapshot(snapshot, actions);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 0.0, kTolerance);
-
-	cockpit.set_available(DcsIds::CockpitParams::McSelectedStoreStation, false);
-	DcsBridge::Internal::CockpitSnapshotExporter unavailable_exporter(cockpit.api());
-	unavailable_exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, static_cast<int>(cockpit.value(DcsIds::CockpitParams::McGeneration)) % 2 == 1);
-	cockpit.set_available(DcsIds::CockpitParams::McSelectedStoreStation, true);
-	unavailable_exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, static_cast<int>(cockpit.value(DcsIds::CockpitParams::McGeneration)) % 2 == 0);
 }
 
 }
@@ -443,7 +440,7 @@ void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
 	test_selected_store_uses_confirmed_sm_selection(context);
 	test_radar_scan_export_preserves_rws_cursor_and_applies_bore(context);
-	test_master_and_override_parameters_commit_together(context);
+	test_mc_mode_and_store_parameters_commit_together(context);
 	test_targeting_submodes_preserve_cockpit_wire_values(context);
 	test_ir_observation_validity_clears_unavailable_cockpit_values(context);
 	test_selection_mailbox_uses_the_front_command_payload(context);
