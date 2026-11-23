@@ -6,31 +6,32 @@ namespace DcsBridge::Internal
 RadarDisplayExporter::RadarDisplayExporter(cockpit_param_api api)
     : api_(api)
 {
-	const auto bind = [this](Parameter parameter, const char* name)
+	const auto bind = [this](Parameter parameter, CockpitParameterEndpoint endpoint)
 	{
-		slots_[static_cast<std::size_t>(parameter)] = cockpit_parameter_writer(name);
+		slots_[static_cast<std::size_t>(parameter)] = endpoint;
 	};
-	bind(Parameter::Available, DcsIds::CockpitParams::RadarDisplayAvailable);
-	bind(Parameter::Visible, DcsIds::CockpitParams::RadarDisplayVisible);
-	bind(Parameter::SensorAvailable, DcsIds::CockpitParams::RadarDisplaySensorAvailable);
-	bind(Parameter::CueKind, DcsIds::CockpitParams::RadarDisplayCueKind);
-	bind(Parameter::CueVisible, DcsIds::CockpitParams::RadarDisplayCueVisible);
-	bind(Parameter::BoreHalfWidthMrad, DcsIds::CockpitParams::RadarDisplayBoreHalfWidthMrad);
-	bind(Parameter::BoreHalfHeightMrad, DcsIds::CockpitParams::RadarDisplayBoreHalfHeightMrad);
-	bind(Parameter::TargetXMrad, DcsIds::CockpitParams::RadarDisplayTargetXMrad);
-	bind(Parameter::TargetYMrad, DcsIds::CockpitParams::RadarDisplayTargetYMrad);
-	bind(Parameter::RangeScaleM, DcsIds::CockpitParams::RadarDisplayRangeScaleM);
-	bind(Parameter::RangeScaleNm, DcsIds::CockpitParams::RadarDisplayRangeScaleNm);
-	bind(Parameter::ScanLeft, DcsIds::CockpitParams::RadarDisplayScanLeft);
-	bind(Parameter::ScanRight, DcsIds::CockpitParams::RadarDisplayScanRight);
-	bind(Parameter::SweepVisible, DcsIds::CockpitParams::RadarDisplaySweepVisible);
-	bind(Parameter::SweepX, DcsIds::CockpitParams::RadarDisplaySweepX);
-	bind(Parameter::CursorVisible, DcsIds::CockpitParams::RadarDisplayCursorVisible);
-	bind(Parameter::CursorX, DcsIds::CockpitParams::RadarDisplayCursorX);
-	bind(Parameter::CursorY, DcsIds::CockpitParams::RadarDisplayCursorY);
-	bind(Parameter::TargetVisible, DcsIds::CockpitParams::RadarDisplayTargetVisible);
-	bind(Parameter::TargetX, DcsIds::CockpitParams::RadarDisplayTargetX);
-	bind(Parameter::TargetY, DcsIds::CockpitParams::RadarDisplayTargetY);
+	bind(Parameter::Available, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayAvailable));
+	bind(Parameter::Visible, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayVisible));
+	bind(Parameter::SensorAvailable, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplaySensorAvailable));
+	bind(Parameter::CueKind, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayCueKind));
+	bind(Parameter::CueVisible, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayCueVisible));
+	bind(Parameter::BoreHalfWidthMrad, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayBoreHalfWidthMrad));
+	bind(Parameter::BoreHalfHeightMrad,
+	     cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayBoreHalfHeightMrad));
+	bind(Parameter::TargetXMrad, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayTargetXMrad));
+	bind(Parameter::TargetYMrad, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayTargetYMrad));
+	bind(Parameter::RangeScaleM, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayRangeScaleM));
+	bind(Parameter::RangeScaleNm, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayRangeScaleNm));
+	bind(Parameter::ScanLeft, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayScanLeft));
+	bind(Parameter::ScanRight, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayScanRight));
+	bind(Parameter::SweepVisible, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplaySweepVisible));
+	bind(Parameter::SweepX, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplaySweepX));
+	bind(Parameter::CursorVisible, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayCursorVisible));
+	bind(Parameter::CursorX, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayCursorX));
+	bind(Parameter::CursorY, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayCursorY));
+	bind(Parameter::TargetVisible, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayTargetVisible));
+	bind(Parameter::TargetX, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayTargetX));
+	bind(Parameter::TargetY, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayTargetY));
 	plots_ = { { { cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayPlot01X),
 		           cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayPlot01Y),
 		           cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayPlot01Opacity),
