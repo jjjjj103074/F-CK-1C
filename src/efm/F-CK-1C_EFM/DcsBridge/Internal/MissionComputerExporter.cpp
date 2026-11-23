@@ -168,7 +168,7 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(IrSelfTrackEnabled, snapshot.stores.ir_seeker.self_track_enabled);
 	WRITE_MC(IrNativeMode, snapshot.stores.ir_seeker.native_mode);
 	WRITE_MC(IrControlStatus, snapshot.stores.ir_seeker.control_status);
-	WRITE_MC(IrControlRevision, snapshot.stores.ir_seeker.control_revision);
+	WRITE_MC(IrControlRevision, static_cast<double>(snapshot.stores.ir_seeker.control_revision));
 	const auto& ir = snapshot.stores.ir_seeker;
 	WRITE_MC(IrAvailable, ir.status.available ? 1.0 : 0.0);
 	WRITE_MC(IrRevision, static_cast<double>(ir.status.revision));
