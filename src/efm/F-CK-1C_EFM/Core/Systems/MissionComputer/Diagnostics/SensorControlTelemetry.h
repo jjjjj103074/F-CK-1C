@@ -4,8 +4,6 @@
 #include "../../../Contracts/Commands.h"
 #include "../../../Contracts/Diagnostics/DebugTelemetry.h"
 
-#include <array>
-
 namespace Core::Systems
 {
 class SystemSetup;
@@ -27,8 +25,26 @@ public:
 	             const RadarSnapshot& radar);
 
 private:
-	static constexpr std::size_t kChannelCount = 16;
-	std::array<DebugTelemetryChannel<std::string>, kChannelCount> channels_;
+	struct Channels
+	{
+		DebugTelemetryChannel<std::string> display_mode;
+		DebugTelemetryChannel<std::string> mfd_left;
+		DebugTelemetryChannel<std::string> mfd_right;
+		DebugTelemetryChannel<std::string> soi_source;
+		DebugTelemetryChannel<std::string> soi_location;
+		DebugTelemetryChannel<std::string> display_context;
+		DebugTelemetryChannel<std::string> tms_input;
+		DebugTelemetryChannel<std::string> tms_receiver;
+		DebugTelemetryChannel<std::string> tms_request;
+		DebugTelemetryChannel<std::string> tms_result;
+		DebugTelemetryChannel<std::string> radar_requested;
+		DebugTelemetryChannel<std::string> radar_observed;
+		DebugTelemetryChannel<std::string> dms_format_step;
+		DebugTelemetryChannel<std::string> radar_active;
+		DebugTelemetryChannel<std::string> radar_scan;
+		DebugTelemetryChannel<std::string> radar_acquisition;
+	};
+	Channels channels_;
 	std::string last_input_ = "NONE";
 	SensorControlSource last_receiver_ = SensorControlSource::None;
 	std::string last_request_ = "NONE";
