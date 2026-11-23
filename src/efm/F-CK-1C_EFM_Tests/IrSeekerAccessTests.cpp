@@ -1,6 +1,7 @@
 #include "TestHarness.h"
 #include "DcsBridge/Internal/Aircraft/DcsAircraftBackend.h"
 #include "DcsBridge/Internal/Aircraft/DcsAircraftInterface.h"
+#include "DcsBridge/Internal/Weapons/IrSeekerExecutor.h"
 #include <cstring>
 #include <map>
 #include <string>
@@ -117,6 +118,21 @@ struct IrFixture
 }
 void run_ir_seeker_access_tests(Tests::Context& c)
 {
+	{
+		IrFixture f;
+		DcsAircraftInterface aircraft(f.backend());
+		IrSeekerExecutor executor(aircraft, {}, {});
+		Core::StoresSnapshot stores;
+		stores.status.available = true;
+		stores.seeker_control.active = true;
+		stores.seeker_control.azimuth_rad = .2;
+		stores.seeker_control.elevation_rad = .1;
+		executor.execute(stores, 0.0);
+		Core::IrSeekerObservation observation;
+		executor.observe(observation);
+		TEST_EXPECT(c, observation.control_available);
+		TEST_EXPECT_NEAR(c, f.direction[2], std::cos(.1) * std::sin(.2), 1e-12);
+	}
 	{
 		IrFixture f;
 		DcsAircraftInterface aircraft(f.backend());
