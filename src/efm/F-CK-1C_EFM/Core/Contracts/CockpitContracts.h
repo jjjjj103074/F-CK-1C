@@ -562,6 +562,14 @@ struct StationSelectionState
 	}
 };
 
+/// @brief 已確認飛彈選擇的群組總量與分類。
+struct SelectedMissileGroup
+{
+	int count = 0;
+	bool count_complete = false;
+	bool sidewinder = false;
+};
+
 struct StoresSnapshot
 {
 	SnapshotStatus status;
@@ -573,6 +581,7 @@ struct StoresSnapshot
 	GunAmmunitionState gun_ammunition;
 	IrSeekerObservation ir_seeker; ///< 全域武器介面回報的 IR 觀測。
 	IrSeekerControl seeker_control;
+	SelectedMissileGroup selected_missile_group;
 };
 
 /// @brief Raw cockpit control observations in MC FIFO order, including rejected operation requests.

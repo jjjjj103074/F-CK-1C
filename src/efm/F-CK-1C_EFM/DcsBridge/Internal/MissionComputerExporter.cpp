@@ -1,5 +1,4 @@
 #include "MissionComputerExporter.h"
-#include "../../Core/Systems/MissionComputer/Common/MissileSelection.h"
 
 #include "../../DcsIds/CockpitParams.g.h"
 
@@ -117,15 +116,10 @@ bool MissionComputerExporter::export_selected_store(const Core::StoresSnapshot& 
 		}
 	}
 	bool complete = write(Parameter::SelectedStoreState, static_cast<double>(state), events);
-	const auto count = station
-	                       ? Core::Systems::Mc::count_selected_missile_group(stores.inventory, station->station_index)
-	                       : Core::Systems::Mc::MissileCount{ 0, false };
-	complete = write(Parameter::SelectedStoreCount, count.count, events) && complete;
-	complete = write(Parameter::SelectedStoreCountAvailable, count.complete, events) && complete;
-	complete = write(Parameter::SelectedStoreFamily,
-	                 station && Core::Systems::Mc::is_sidewinder(station->model) ? 1.0 : 0.0,
-	                 events) &&
-	           complete;
+	const auto group = station ? stores.selected_missile_group : Core::SelectedMissileGroup{};
+	complete = write(Parameter::SelectedStoreCount, group.count, events) && complete;
+	complete = write(Parameter::SelectedStoreCountAvailable, group.count_complete, events) && complete;
+	complete = write(Parameter::SelectedStoreFamily, group.sidewinder ? 1.0 : 0.0, events) && complete;
 	const auto identifier = selected_store_identifier_.write_string(api_, station ? station->weapon_identifier : "");
 	if (identifier.event)
 		events = events.with_event(*identifier.event);

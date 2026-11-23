@@ -4,6 +4,7 @@
 #include "../SystemUpdateRates.h"
 #include "Common/CommandValue.h"
 #include "Common/StoresQueries.h"
+#include "Common/MissileSelection.h"
 
 #include <stdexcept>
 
@@ -218,6 +219,19 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.stores.gun_ammunition = stores_data_.gun_ammunition;
 	output.stores.gun_count = stores_data_.gun_ammunition.count.value_or(0);
 	output.stores.selection = stores_data_.selection;
+	auto& group = output.stores.selected_missile_group;
+	group = {};
+	const auto selected = stores_data_.selection.acknowledged_station;
+	if (stores_data_.inventory.observation.available && !stores_data_.selection.pending() && selected &&
+	    *selected >= 0 && static_cast<std::size_t>(*selected) < stores_data_.inventory.stations.size())
+	{
+		const auto& station = stores_data_.inventory.stations[*selected];
+		if (station.observation.available && station.configuration == StoreConfiguration::Equipped)
+		{
+			const auto count = Mc::count_selected_missile_group(stores_data_.inventory, *selected);
+			group = { count.count, count.complete, Mc::is_sidewinder(station.model) };
+		}
+	}
 	output.stores.ir_seeker = stores_data_.ir_seeker;
 	output.stores.seeker_control = stores_data_.seeker_control;
 	output.control_inputs = input_output_data_.input.control_inputs;

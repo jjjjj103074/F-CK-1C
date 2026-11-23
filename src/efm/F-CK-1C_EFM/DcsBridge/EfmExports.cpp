@@ -302,9 +302,7 @@ try
 	if (DcsBridge::Internal::handle_debug_indicator_command(bridge(), command, value) ||
 	    DcsBridge::Internal::handle_native_countermeasure_command(bridge(), command, value) ||
 	    DcsBridge::Internal::service_ir_seeker(bridge(), command, value))
-	{
 		return;
-	}
 	(void)bridge().perform_core_action(
 	    { "ed_fm_set_command", "command", command },
 	    [command, value](Core::Fck1cEfm& core)

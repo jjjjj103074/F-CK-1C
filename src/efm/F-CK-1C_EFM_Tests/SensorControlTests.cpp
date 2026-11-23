@@ -320,6 +320,9 @@ void test_ir_picture_with_radar_off(Tests::Context& c)
 	f.frame.cockpit.radar.mode = RadarMode::Off;
 	f.advance(8);
 	TEST_EXPECT(c, f.display.infrared.desired_visible && f.display.infrared.target_visible);
+	TEST_EXPECT(c, f.mission.stores.selected_missile_group.count == 1);
+	TEST_EXPECT(c, f.mission.stores.selected_missile_group.count_complete);
+	TEST_EXPECT(c, f.mission.stores.selected_missile_group.sidewinder);
 	TEST_EXPECT(c, !f.display.radar.sensor_available);
 	TEST_EXPECT_NEAR(c, f.display.infrared.desired_x_mrad, -std::tan(.1) * 1000, 1e-9);
 	TEST_EXPECT_NEAR(c, f.display.infrared.target_y_mrad, std::tan(.1) / std::cos(.2) * 1000, 1e-9);

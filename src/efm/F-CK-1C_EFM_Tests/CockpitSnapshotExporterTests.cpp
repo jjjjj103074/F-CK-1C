@@ -400,11 +400,13 @@ void test_selected_store_uses_confirmed_sm_selection(Tests::Context& context)
 	station.category = Core::WeaponCategory::Missile;
 	station.role = Core::WeaponRole::AirToAir;
 	station.count = 1;
+	stores.selected_missile_group = { 4, true, true };
 	stores.selection.acknowledged_station = 8;
 	stores.selection.acknowledged_revision = stores.selection.request_revision = 2;
 	exporter.export_snapshot(snapshot, actions);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 3.0, kTolerance);
-	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreCount), 1.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreCount), 4.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreFamily), 1.0, kTolerance);
 	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreIdentifier) == "{test-selected-weapon}");
 	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreStation) == "LT");
 
@@ -428,6 +430,7 @@ void test_selected_store_uses_confirmed_sm_selection(Tests::Context& context)
 	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreIdentifier).empty());
 	station.observation.available = true;
 	station.count = 0;
+	stores.selected_missile_group = {};
 	exporter.export_snapshot(snapshot, actions);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 3.0, kTolerance);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreCount), 0.0, kTolerance);
