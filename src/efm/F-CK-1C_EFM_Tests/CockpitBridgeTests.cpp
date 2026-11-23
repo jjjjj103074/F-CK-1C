@@ -255,6 +255,38 @@ void test_weapon_station_observation_contract(Tests::Context& context)
 	TEST_EXPECT(context, observation.rearm_revision == 4);
 }
 
+void test_weapon_models_are_translated_at_the_bridge(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	set_station_inventory(cockpit);
+	DcsBridge::Internal::CockpitBridge bridge(cockpit.api());
+	struct ModelCase
+	{
+		const char* identifier;
+		Core::WeaponModel expected;
+	};
+	const ModelCase cases[] = { { "{AIM-9L}", Core::WeaponModel::Aim9L },
+		                        { "{AIM-9M}", Core::WeaponModel::Aim9M },
+		                        { "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}", Core::WeaponModel::Aim9M },
+		                        { "{AIM-9L-ON-ADAPTER}", Core::WeaponModel::Aim9L },
+		                        { "{AIM-9M-ON-ADAPTER}", Core::WeaponModel::Aim9M },
+		                        { "LAU-127_AIM-9L", Core::WeaponModel::Aim9L },
+		                        { "LAU-127_AIM-9M", Core::WeaponModel::Aim9M },
+		                        { "new-air-to-air-missile", Core::WeaponModel::Unknown } };
+	for (const auto& sample : cases)
+	{
+		cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, std::string("1;1;4;4;7;42;MM;") + sample.identifier);
+		const auto observation = bridge.read_step_input().cockpit.weapon_stations;
+		TEST_EXPECT(context, observation.status.available);
+		TEST_EXPECT(context, observation.stations[3].model == sample.expected);
+		TEST_EXPECT(context, observation.stations[3].weapon_identifier == sample.identifier);
+		TEST_EXPECT(context, observation.stations[3].weapon_type_identifier == "4.4.7.42");
+	}
+	cockpit.set_text(DcsIds::CockpitParams::WeaponStation04, "1;1;4;5;7;42;MM;{AIM-9L}");
+	const auto other = bridge.read_step_input().cockpit.weapon_stations.stations[3];
+	TEST_EXPECT(context, other.category == Core::WeaponCategory::Other && other.model == Core::WeaponModel::Unknown);
+}
+
 void test_station_payload_rejection_and_torn_scan(Tests::Context& context)
 {
 	Tests::FakeCockpitParameters cockpit;
@@ -408,6 +440,7 @@ void run_cockpit_bridge_tests(Tests::Context& context)
 	test_non_finite_radar_and_ir_values_are_rejected(context);
 	test_unknown_radar_mode_is_invalid(context);
 	test_weapon_station_observation_contract(context);
+	test_weapon_models_are_translated_at_the_bridge(context);
 	test_station_payload_rejection_and_torn_scan(context);
 	test_weapon_station_invalid_revision_is_explicit(context);
 	test_weapon_station_unavailable_reason_is_preserved(context);

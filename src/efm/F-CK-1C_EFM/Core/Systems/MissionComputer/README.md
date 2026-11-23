@@ -112,7 +112,7 @@ HMCS_WEAPON_CLASS／HMCS_WEAPON_QTY 由 hmcs_system.lua 單獨寫入，數量只
 
 週期順序為 StoresManagement → FireControl → SystemMonitor → FailureManager。
 MC 在操縱命令前準備 SM 觀測；SM 先推進武器執行與保持，再由火控讀取結果，最後派送後續指令；指令入口以 SM 編號追蹤各筆要求及其外部動作確認，掛載等待保留在 SM 內。
-FireControl 內依武器執行結果通知 Targeting，再整理 RadarSnapshot 的目標觀測。
+FireControl 分別推進 WeaponOperation 的武器操作狀態與 Targeting 的雷達目標觀測。
 捕獲輸入計時由 RadarSystem 執行；新要求在後續 Pipeline tick 由雷達處理。
 ModeManagement 是事件入口。外層保持命令 FIFO、32 Hz 及 80 ms 最短保持；每秒自動重送捕獲已移除。
 SM 與 RadarSystem 的保持從首次觀測到生產端執行確認的 input_time 起算，補跑沿用當前觀測時間。

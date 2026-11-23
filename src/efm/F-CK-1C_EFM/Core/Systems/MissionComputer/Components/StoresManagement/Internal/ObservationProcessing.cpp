@@ -32,10 +32,10 @@ bool update_station(StoreStationState& station,
 	if (!observation.available || !new_batch)
 		return changed;
 
-	const bool identity_changed = station.configuration != sample.configuration ||
-	                              station.weapon_identifier != sample.weapon_identifier ||
-	                              station.weapon_type_identifier != sample.weapon_type_identifier ||
-	                              station.category != sample.category || station.role != sample.role;
+	const bool identity_changed =
+	    station.configuration != sample.configuration || station.weapon_identifier != sample.weapon_identifier ||
+	    station.weapon_type_identifier != sample.weapon_type_identifier || station.category != sample.category ||
+	    station.role != sample.role || station.model != sample.model;
 	const bool load_changed = (sample.configuration == StoreConfiguration::Equipped && !station.last_observed_at) ||
 	                          (station.last_observed_at && identity_changed) ||
 	                          (rearmed && (station.configuration == StoreConfiguration::Equipped ||
@@ -55,6 +55,7 @@ bool update_station(StoreStationState& station,
 	station.role = sample.role;
 	station.weapon_identifier = sample.weapon_identifier;
 	station.weapon_type_identifier = sample.weapon_type_identifier;
+	station.model = sample.model;
 	station.last_observed_at = time;
 	return changed;
 }

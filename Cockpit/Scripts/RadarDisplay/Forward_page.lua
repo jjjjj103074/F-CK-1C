@@ -6,7 +6,8 @@ SetScale(MILLYRADIANS)
 local parameter_scale = GetScale()
 
 local draw = dofile(LockOn_Options.script_path .. "RadarDisplay/Drawing.lua")({ collimated = true, clip_relation = h_clip_relations.REWRITE_LEVEL, level = 0 })
-local color = MakeMaterial(nil, { 80, 255, 120, 255 })
+local color = MakeMaterial(nil, { 0, 255, 0, 255 })
+local line_width_mrad = 2.0
 local p = cockpit_params
 local root = draw.node("radar_forward_root", nil, nil,
     { p.RadarDisplayAvailable, p.RadarDisplayVisible, p.RadarDisplaySensorAvailable },
@@ -23,8 +24,8 @@ for _, x in ipairs({ -1, 1 }) do
         local corner = draw.node(name, bore, nil,
             { p.RadarDisplayBoreHalfWidthMrad, p.RadarDisplayBoreHalfHeightMrad },
             { { "move_left_right_using_parameter", 0, x * parameter_scale }, { "move_up_down_using_parameter", 1, y * parameter_scale } })
-        draw.line(name .. "_horizontal", corner, 0, 0, -x * 9, 0, 0.9, color)
-        draw.line(name .. "_vertical", corner, 0, 0, 0, -y * 9, 0.9, color)
+        draw.line(name .. "_horizontal", corner, 0, 0, -x * 9, 0, line_width_mrad, color)
+        draw.line(name .. "_vertical", corner, 0, 0, 0, -y * 9, line_width_mrad, color)
     end
 end
 
@@ -33,5 +34,5 @@ local target = draw.node("radar_stt", root, nil,
     { p.RadarDisplayCueKind, p.RadarDisplayCueVisible, p.RadarDisplayTargetXMrad, p.RadarDisplayTargetYMrad },
     { { "parameter_in_range", 0, 2.9, 3.1 }, { "parameter_in_range", 1, 0.9, 1.1 },
       { "move_left_right_using_parameter", 2, parameter_scale }, { "move_up_down_using_parameter", 3, parameter_scale } })
-draw.box("radar_stt_box", target, 14, 14, 0.9, color)
+draw.box("radar_stt_box", target, 14, 14, line_width_mrad, color)
 need_to_be_closed = true

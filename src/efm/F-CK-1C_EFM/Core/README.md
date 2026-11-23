@@ -59,7 +59,9 @@ Simulation models run once per host frame using the completed System snapshot.
 Debug producers use an injected `DebugTelemetrySink`. Channels are declared
 during setup and published with simulation timestamps. Debug data is
 observational and does not participate in AircraftData commits or feed control
-state. Core does not know cockpit parameters, display formatting, files or threads.
+state. Core does not know cockpit parameter names, native drawing APIs, files or
+threads. DisplaySystem owns typed assignments and graphical presentation snapshots;
+cockpit code renders those snapshots.
 
 See the [System guide](Systems/README.md),
 [unit contract](../../../../docs/EFM_UNIT_CONVENTIONS.md) and

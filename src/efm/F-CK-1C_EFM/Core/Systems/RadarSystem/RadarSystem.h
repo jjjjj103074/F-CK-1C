@@ -35,6 +35,5 @@ private:
 	bool cursor_initialized_ = false;
 	double cursor_azimuth_rad_ = 0.0;
 	double cursor_range_m_ = 0.0;
-	std::chrono::nanoseconds cursor_updated_at_{};
 };
 }

@@ -3,7 +3,8 @@
 #include "CockpitParameterEndpoint.h"
 #include "../../Core/Contracts/DisplayContracts.h"
 
-#include <vector>
+#include <array>
+#include <cstddef>
 
 namespace DcsBridge::Internal
 {
@@ -16,7 +17,39 @@ public:
 	CockpitParameterEvents export_snapshot(const Core::RadarDisplaySnapshot& snapshot);
 
 private:
+	enum class Parameter : std::size_t
+	{
+		Available,
+		Visible,
+		SensorAvailable,
+		CueKind,
+		CueVisible,
+		BoreHalfWidthMrad,
+		BoreHalfHeightMrad,
+		TargetXMrad,
+		TargetYMrad,
+		RangeScaleM,
+		RangeScaleNm,
+		ScanLeft,
+		ScanRight,
+		SweepVisible,
+		SweepX,
+		CursorVisible,
+		CursorX,
+		CursorY,
+		TargetVisible,
+		TargetX,
+		TargetY,
+		Count
+	};
+
+	struct PlotParameters
+	{
+		CockpitParameterEndpoint x, y, opacity, source_slot;
+	};
+
 	const cockpit_param_api api_;
-	std::vector<CockpitParameterEndpoint> slots_;
+	std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)> slots_;
+	std::array<PlotParameters, Core::kRadarDisplayPlotCount> plots_;
 };
 }

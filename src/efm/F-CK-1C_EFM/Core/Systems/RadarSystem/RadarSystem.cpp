@@ -185,9 +185,8 @@ void RadarSystem::execute(const RadarRequest& request)
 
 void RadarSystem::update_cursor(const SystemStepContext& context)
 {
-	const double elapsed_s =
-	    std::clamp(std::chrono::duration<double>(context.input_time - cursor_updated_at_).count(), 0.0, 0.1);
-	cursor_updated_at_ = context.input_time;
+	// 每個設備 tick 積分固定時間，補算時沿用相同游標速度。
+	const double elapsed_s = context.dt_s;
 	if (!output_.scan.enabled || output_.active_search_mode != RadarSearchMode::RangeWhileSearch ||
 	    (output_.observation.status.available && output_.observation.mode == RadarMode::SingleTargetTrack))
 		return;

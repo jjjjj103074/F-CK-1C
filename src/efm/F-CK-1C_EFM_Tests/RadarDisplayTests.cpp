@@ -100,6 +100,81 @@ void test_scope_caps_the_number_of_drawn_returns(Tests::Context& c)
 	TEST_EXPECT(c, display.plots.front().source_slot == 1 && display.plots.back().source_slot == 32);
 }
 
+void test_graphical_export_preserves_named_fields_and_plot_boundaries(Tests::Context& c)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::RadarDisplayExporter exporter(cockpit.api());
+	RadarDisplaySnapshot display;
+	display.visible = true;
+	display.sensor_available = true;
+	display.cue = RadarCueKind::SingleTargetTrack;
+	display.cue_visible = true;
+	display.bore_half_width_mrad = 28.8;
+	display.bore_half_height_mrad = 40.1;
+	display.target_x_mrad = 12.0;
+	display.target_y_mrad = -9.0;
+	display.range_scale_m = 40.0 * 1852.0;
+	display.scan_left_normalized = -0.7;
+	display.scan_right_normalized = 0.6;
+	display.estimated_sweep_visible = true;
+	display.estimated_sweep_x_normalized = -0.4;
+	display.cursor_visible = true;
+	display.cursor_x_normalized = 0.3;
+	display.cursor_y_normalized = 0.8;
+	display.target_visible = true;
+	display.target_x_normalized = -0.2;
+	display.target_y_normalized = 0.9;
+	for (std::size_t i = 0; i < kRadarDisplayPlotCount; ++i)
+		display.plots.push_back({ static_cast<double>(i) / 32.0, 0.25, 0.75, static_cast<unsigned>(101 + i) });
+	TEST_EXPECT(c, exporter.export_snapshot(display).count == 0);
+	const auto expect = [&](const char* name, double value)
+	{
+		TEST_EXPECT_NEAR(c, cockpit.value(name), value, 1e-9);
+	};
+	using namespace DcsIds::CockpitParams;
+	expect(RadarDisplayAvailable, 1.0);
+	expect(RadarDisplayVisible, 1.0);
+	expect(RadarDisplaySensorAvailable, 1.0);
+	expect(RadarDisplayCueKind, 3.0);
+	expect(RadarDisplayCueVisible, 1.0);
+	expect(RadarDisplayBoreHalfWidthMrad, 28.8);
+	expect(RadarDisplayBoreHalfHeightMrad, 40.1);
+	expect(RadarDisplayTargetXMrad, 12.0);
+	expect(RadarDisplayTargetYMrad, -9.0);
+	expect(RadarDisplayRangeScaleM, 40.0 * 1852.0);
+	expect(RadarDisplayRangeScaleNm, 40.0);
+	expect(RadarDisplayScanLeft, -0.7);
+	expect(RadarDisplayScanRight, 0.6);
+	expect(RadarDisplaySweepVisible, 1.0);
+	expect(RadarDisplaySweepX, -0.4);
+	expect(RadarDisplayCursorVisible, 1.0);
+	expect(RadarDisplayCursorX, 0.3);
+	expect(RadarDisplayCursorY, 0.8);
+	expect(RadarDisplayTargetVisible, 1.0);
+	expect(RadarDisplayTargetX, -0.2);
+	expect(RadarDisplayTargetY, 0.9);
+	expect(RadarDisplayPlot01X, 0.0);
+	expect(RadarDisplayPlot01Y, 0.25);
+	expect(RadarDisplayPlot01Opacity, 0.75);
+	expect(RadarDisplayPlot01SourceSlot, 101.0);
+	expect(RadarDisplayPlot16X, 15.0 / 32.0);
+	expect(RadarDisplayPlot16Y, 0.25);
+	expect(RadarDisplayPlot16Opacity, 0.75);
+	expect(RadarDisplayPlot16SourceSlot, 116.0);
+	expect(RadarDisplayPlot32X, 31.0 / 32.0);
+	expect(RadarDisplayPlot32Y, 0.25);
+	expect(RadarDisplayPlot32Opacity, 0.75);
+	expect(RadarDisplayPlot32SourceSlot, 132.0);
+	display.plots.resize(1);
+	exporter.reset();
+	TEST_EXPECT(c, exporter.export_snapshot(display).count == 0);
+	expect(RadarDisplayPlot01SourceSlot, 101.0);
+	expect(RadarDisplayPlot32X, 0.0);
+	expect(RadarDisplayPlot32Y, 0.0);
+	expect(RadarDisplayPlot32Opacity, 0.0);
+	expect(RadarDisplayPlot32SourceSlot, 0.0);
+}
+
 void test_graphical_export_commits_complete_snapshots_and_recovers(Tests::Context& c)
 {
 	Tests::FakeCockpitParameters cockpit;
@@ -130,4 +205,5 @@ void run_radar_display_tests(Tests::Context& context)
 	test_scope_uses_fresh_returns_and_actual_scan_geometry(context);
 	test_scope_caps_the_number_of_drawn_returns(context);
 	test_graphical_export_commits_complete_snapshots_and_recovers(context);
+	test_graphical_export_preserves_named_fields_and_plot_boundaries(context);
 }

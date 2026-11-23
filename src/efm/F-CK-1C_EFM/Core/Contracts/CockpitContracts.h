@@ -239,6 +239,13 @@ enum class WeaponRole
 	AirToAir,
 	Unknown
 };
+/// @brief 轉接器辨識的武器型號，供掛載系統套用選擇政策。
+enum class WeaponModel
+{
+	Unknown,
+	Aim9L,
+	Aim9M
+};
 /// @brief 固定掛點的掛載配置；數量及觀測有效性分別保存。
 enum class StoreConfiguration
 {
@@ -257,6 +264,7 @@ struct WeaponStationSample
 	std::string weapon_identifier;
 	std::string weapon_type_identifier; ///< 來源類型的完整不透明識別，供掛載比對。
 	std::string station_name; ///< 機型定義提供的固定掛點名稱。
+	WeaponModel model = WeaponModel::Unknown;
 };
 
 struct WeaponStationObservation
@@ -283,6 +291,7 @@ struct StoreStationState
 	std::uint64_t load_revision = 0; ///< 掛載更換或重新掛彈時遞增。
 	ObservationStatus observation;
 	std::optional<std::chrono::nanoseconds> last_observed_at;
+	WeaponModel model = WeaponModel::Unknown;
 };
 
 /// @brief 全部固定掛點、觀測批次及內容變更版本。

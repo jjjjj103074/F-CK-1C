@@ -8,30 +8,22 @@ namespace
 using namespace Core;
 using namespace Core::Systems::Mc;
 
-bool sidewinder_lm(std::string_view identifier)
+bool sidewinder_lm(WeaponModel model)
 {
-	// SMS 的 A-9LM 選項合併 L／M；其他型別保留來源識別。
-	constexpr std::string_view identifiers[] = { "{AIM-9L}",
-		                                         "{AIM-9M}",
-		                                         "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
-		                                         "{AIM-9L-ON-ADAPTER}",
-		                                         "{AIM-9M-ON-ADAPTER}",
-		                                         "LAU-127_AIM-9L",
-		                                         "LAU-127_AIM-9M" };
-	return std::find(std::begin(identifiers), std::end(identifiers), identifier) != std::end(identifiers);
+	// SMS 的 A-9LM 選項合併 L／M，型號由轉接器提供。
+	return model == WeaponModel::Aim9L || model == WeaponModel::Aim9M;
 }
 
 std::string selection_type(const StoresInventorySnapshot& inventory, const StoreStationState& station)
 {
-	if (sidewinder_lm(station.weapon_identifier))
+	if (sidewinder_lm(station.model))
 		return "A-9LM";
 	if (!station.weapon_type_identifier.empty())
 	{
 		for (const auto& other : inventory.stations)
 			if (other.observation.available && other.configuration == StoreConfiguration::Equipped &&
 			    other.category == WeaponCategory::Missile && other.role == WeaponRole::AirToAir &&
-			    other.weapon_type_identifier == station.weapon_type_identifier &&
-			    sidewinder_lm(other.weapon_identifier))
+			    other.weapon_type_identifier == station.weapon_type_identifier && sidewinder_lm(other.model))
 				return "A-9LM";
 		return station.weapon_type_identifier;
 	}

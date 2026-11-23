@@ -311,6 +311,27 @@ void test_bore_waits_for_a_target_without_repeating_lock_commands(Tests::Context
 	TEST_EXPECT(c, output.action_requests.items.back().action.kind == MissionActionKind::LockFinish);
 }
 
+void test_rws_cursor_distance_is_independent_of_host_frame_size(Tests::Context& c)
+{
+	for (int ticks_per_frame : { 1, 2, 8 })
+	{
+		RadarFixture f;
+		f.frame.cockpit.radar.tdc_available = true;
+		f.frame.cockpit.radar.tdc_range_m = 5000.0;
+		f.requests.items = { { 1, { RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::BeyondVisualRange } } };
+		f.step(period);
+		f.step(period * 2);
+		f.pipeline.send({ CommandId::SetRadarCursorRight, 1.0 });
+		f.pipeline.send({ CommandId::SetRadarCursorUp, 1.0 });
+		RadarSnapshot output;
+		for (int tick = ticks_per_frame; tick <= 8; tick += ticks_per_frame)
+			output = f.step(period * (2 + tick));
+		TEST_EXPECT_NEAR(c, output.scan.tdc_azimuth_rad, Common::rad(7.5), 1e-9);
+		TEST_EXPECT_NEAR(c, output.scan.tdc_range_m, 5000.0 + output.scan.display_range_m * 0.25 * 0.25, 1e-9);
+		TEST_EXPECT(c, output.scan.override_tdc);
+	}
+}
+
 void test_rws_cursor_moves_only_while_its_direction_is_held(Tests::Context& c)
 {
 	RadarFixture f;
@@ -403,6 +424,7 @@ void test_reserved_patterns_leave_the_supported_mode_running(Tests::Context& c)
 void run_radar_system_tests(Tests::Context& context)
 {
 	test_rws_cursor_moves_only_while_its_direction_is_held(context);
+	test_rws_cursor_distance_is_independent_of_host_frame_size(context);
 	test_navigation_ends_held_bore_capture(context);
 	test_rws_and_bore_publish_different_scan_geometry(context);
 	test_bore_waits_for_a_target_without_repeating_lock_commands(context);

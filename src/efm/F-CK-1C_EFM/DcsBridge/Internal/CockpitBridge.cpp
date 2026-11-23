@@ -65,6 +65,26 @@ Core::ObservationInvalidReason to_invalid_reason(double value)
 	return static_cast<Core::ObservationInvalidReason>(*reason);
 }
 
+Core::WeaponModel to_weapon_model(std::string_view identifier)
+{
+	struct ModelAlias
+	{
+		std::string_view identifier;
+		Core::WeaponModel model;
+	};
+	constexpr ModelAlias aliases[] = { { "{AIM-9L}", Core::WeaponModel::Aim9L },
+		                               { "{AIM-9M}", Core::WeaponModel::Aim9M },
+		                               { "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}", Core::WeaponModel::Aim9M },
+		                               { "{AIM-9L-ON-ADAPTER}", Core::WeaponModel::Aim9L },
+		                               { "{AIM-9M-ON-ADAPTER}", Core::WeaponModel::Aim9M },
+		                               { "LAU-127_AIM-9L", Core::WeaponModel::Aim9L },
+		                               { "LAU-127_AIM-9M", Core::WeaponModel::Aim9M } };
+	for (const auto& alias : aliases)
+		if (alias.identifier == identifier)
+			return alias.model;
+	return Core::WeaponModel::Unknown;
+}
+
 std::optional<Core::WeaponStationSample> parse_station_record(std::string_view text)
 {
 	std::array<int, 6> fields{};
@@ -108,6 +128,9 @@ std::optional<Core::WeaponStationSample> parse_station_record(std::string_view t
 	              : fields[4] == 0 ? Core::WeaponRole::Unknown
 	                               : Core::WeaponRole::Other;
 	sample.weapon_identifier = std::string(text);
+	if (sample.configuration == Core::StoreConfiguration::Equipped &&
+	    sample.category == Core::WeaponCategory::Missile && sample.role == Core::WeaponRole::AirToAir)
+		sample.model = to_weapon_model(text);
 	// 完整原生類型以不透明識別送入 Core；分類數值在 Bridge 轉譯。
 	if (sample.configuration == Core::StoreConfiguration::Equipped)
 		sample.weapon_type_identifier = std::to_string(fields[2]) + "." + std::to_string(fields[3]) + "." +

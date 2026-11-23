@@ -93,7 +93,8 @@ DCS 原生機砲存量 (10 Hz) → GunAmmunitionSource → MissionInputs
 九掛點定義共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`，座艙索引 0–8 依序為
 RT、RO、RI、MM、MF、MB、LI、LO、LT。
 
-Bridge 轉譯 DCS 類型、完整 CLSID、數量與配置。SM 保存所有固定掛點；
+Bridge 轉譯 DCS 類型、武器型號、完整 CLSID、數量與配置；型號以 `WeaponModel` 提供。
+SM 依型號合併 AIM-9L／M 的選擇類型，並保存所有固定掛點；
 飛彈查詢使用分類、用途或識別碼條件，掛載識別以來源內容為準。
 空對地飛彈、炸彈、油箱與其他掛載也保留在逐掛點庫存。
 

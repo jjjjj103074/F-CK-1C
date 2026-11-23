@@ -13,6 +13,7 @@ fixed-rate scheduling and completed `AircraftData` snapshots.
 | `MissionComputer` | 32 Hz | Modes, HOTAS, targeting policy, inventory/selection and weapon-use intent; HUD/HMCS presents the state |
 | `CountermeasureSystem` | 32 Hz | Countermeasure programs, round scheduling, native execution feedback and inventory through SystemPipeline |
 | `RadarSystem` | 32 Hz | Radar requests, device input lifecycle and radar observations through the existing DCS adapter |
+| `DisplaySystem` | 32 Hz | Display assignments and graphical presentation snapshots through SystemPipeline |
 | `FlightControlActuationSystem` | 256 Hz | Primary-surface dynamics and feedback |
 | `SecondaryFlightControls` | 64 Hz | Flaps, slats and airbrake |
 | `LandingGear` | 64 Hz | Gear, brakes, NWS, wheels and suspension |
