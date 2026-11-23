@@ -8,7 +8,7 @@ CASES = [
          look='左上角。', normal='白色文字固定在畫面左上角，所有冒號對齊；IAS 以 kt、高度 ALT 以 ft 顯示並隨飛行更新。頭盔原本的 WPN／SYS／MODE／SUB 文字移到此面板。'),
     dict(id='S02', title='模式與主保險', action='按 2 選 A-A，按右 Ctrl＋D 選 DGFT，再按右 Shift＋D 回 CENTER。依序按右 Shift＋M、右 Alt＋M、右 Ctrl＋M。',
          look='MODE、OVRD、ARM。', normal='MODE 維持 A-A；OVRD 依序為 CENTER、DGFT、CENTER。ARM 依序顯示 SAFE、SIM、ON，模式不跟著保險改變。'),
-    dict(id='S03', title='武器與選站', action='掛載至少兩種空對空飛彈、且同型掛在兩站。按 2 選 A-A；短按 Q 輪站，再按住 Q 超過 0.5 秒後放開以換型。',
+    dict(id='S03', title='武器與選站', action='接續 S02 的 A-A／CENTER。短按 Q 輪站，再按住 Q 超過 0.5 秒後放開以換型。',
          look='MISSILE、STATION、GUN。', normal='MISSILE 顯示已確認選站的型號與該站數量，例如 AIM-9M x1；STATION 顯示 RT／LT 等掛點。短按 Q 輪換同型掛點，長按 Q 換型；機砲彈量獨立顯示。切換期間可能短暫出現 SELECTING。'),
     dict(id='S04', title='發射後數量', action='按右 Ctrl＋D 選 DGFT、右 Ctrl＋M 設 ON。若 UNCAGE 為 OFF，按 C。將目標放到機鼻前方，按住右 Alt＋Space，飛彈離架後放開。',
          look='MISSILE、STATION；以 F2 外觀確認離架掛點，再按 F1 回座艙。', normal='顯示跟著 SM 更新數量及後續選站，與實際離架掛點一致；不把全部空對空飛彈總數當成單站數量。命中不是本項顯示測試的通過條件。'),
@@ -26,9 +26,9 @@ def cases():
 def markdown():
     lines = ['# 左上角狀態顯示測試', '',
              '關閉 DCS，解壓縮測試包。將舊模組移出 Saved Games\\DCS\\Mods\\aircraft，再放入本包 F-CK-1C 資料夾。保留預設按鍵。', '',
-             '使用空中開始的任務，關閉無限彈藥；掛載至少兩種空對空飛彈，同型放在兩個掛點。', '',
+             '以下依 S01→S06 順序測試。使用空中開始的任務，關閉無限彈藥；掛載至少兩種空對空飛彈，同型放在兩個掛點，安排至少兩架非交戰空中目標。', '',
              'MODE＝保存的主模式；OVRD＝超控開關位置；ARM＝主保險。MISSILE 的 xN 是所選掛點數量。', '',
-             'NONE＝未選擇；SELECTING＝正在選站；---＝來源不可用。IR 是原生全域紅外線觀測；UNCAGE 是駕駛所選的解籠命令狀態。', '']
+             '右 Ctrl＋右 Shift＋F12 可開啟詳細 debug；再按一次關閉，左上角面板恢復。NONE＝未選擇；SELECTING＝正在選站；---＝來源不可用。IR 是原生全域紅外線觀測；UNCAGE 是駕駛所選的解籠命令狀態。', '']
     for case in CASES:
         lines += [f"## {case['id']}　{case['title']}", '', f"操作：{case['action']}", '',
                   f"看哪裡：{case['look']}", '', f"正常：{case['normal']}", '']

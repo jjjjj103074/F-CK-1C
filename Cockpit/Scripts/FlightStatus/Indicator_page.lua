@@ -21,8 +21,16 @@ local rows = {
 local left, top = -LockOn_Options.screen.aspect + 0.04, 0.94
 local colon_x, row_height = left + 0.20, 0.044
 
+local root = CreateElement("ceSimple")
+root.name = "flight_status_root"
+root.element_params = { cockpit_params.DebugIndicatorVisible }
+root.controllers = { { "parameter_in_range", 0, -0.1, 0.1 } }
+root.screenspace = ScreenType.SCREENSPACE_TRUE
+Add(root)
+
 local background = CreateElement("ceMeshPoly")
 background.name = "flight_status_background"
+background.parent_element = root.name
 background.primitivetype = "triangles"
 background.material = MakeMaterial(nil, { 0, 0, 0, 145 })
 background.vertices = { { left - 0.015, top - #rows * row_height }, { left - 0.015, top + 0.015 },
@@ -34,6 +42,7 @@ Add(background)
 local function text(name, value, x, y, alignment, parameter)
     local item = CreateElement("ceStringPoly")
     item.name = "flight_status_" .. name
+    item.parent_element = root.name
     item.material = "font_flight_status"
     item.alignment = alignment
     item.stringdefs = { 0.0030, 0.0030, 0, 0 }

@@ -81,9 +81,16 @@ return function(expect)
         local elements = {}
         env.Add = function(element) expect(not elements[element.name], "status element names are unique"); elements[element.name] = element end
         execute("Cockpit/Scripts/FlightStatus/Indicator_page.lua")
+        local visibility = elements.flight_status_root
+        expect(visibility.element_params[1] == p.DebugIndicatorVisible
+            and visibility.controllers[1][1] == "parameter_in_range"
+            and visibility.controllers[1][4] < 1, "full debug view hides the status panel")
         local colon_x, rows = nil, 0
         for name, element in pairs(elements) do
             expect(element.screenspace == 1, "status remains fixed to the screen")
+            if name ~= "flight_status_root" then
+                expect(element.parent_element == "flight_status_root", "all status drawing follows debug visibility")
+            end
             if name:match("_colon$") then
                 rows = rows + 1
                 colon_x = colon_x or element.init_pos[1]

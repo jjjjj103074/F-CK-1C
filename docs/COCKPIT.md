@@ -127,7 +127,7 @@ HMCS VR將遮罩與符號建立於同一子頁，先建立`hmcs_vr_tfov`，再�
 
 `FlightStatus/Status.lua` 由既有 HMCS 觀測裝置每四次更新一次（16 Hz），
 將 MC、飛行觀測與反制庫存轉成文字。`FlightStatus/Indicator_page.lua` 固定在畫面左上角，
-名稱靠右、冒號共用 X 座標、數值靠左。HMCS 2D 的 WPN／SYS／MODE／SUB 文字移至此面板。
+名稱靠右、冒號共用 X 座標、數值靠左；開啟詳細 Debug Indicator 時讓出畫面。HMCS 2D 的 WPN／SYS／MODE／SUB 文字移至此面板。
 
 `MissionComputerExporter` 在同一 MC generation 發布 SM 已確認掛點的識別碼、名稱與數量。
 `McSelectedStoreState`：0 資料不可用、1 未選站、2 選站中、3 已選定。
