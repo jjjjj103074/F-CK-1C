@@ -365,3 +365,20 @@ CountermeasureSystem、Bridge 共用原生介面及實際施放完整路徑。
 使用者提供的同版 CockpitBase.dll 靜態查核亦確認：雷達 post_initialize 取得
 avSimpleElectricSystem 單例並接入 AC 匯流排；on_power_on 將內部模式設為 1。
 修正版的實際供電、回波與前視符號，透過下一輪 DCS 飛測記錄驗證。
+
+## 文字參數與原生指示器格式
+
+DCS 的 Lua `param:set("240")` 會將可轉成數字的字串保存為數字。
+`text_using_parameter` 先讀取數字，成功時把 `double` 傳入 `ceStringPoly` 的格式化函式；
+字串則以字元指標傳入。因此使用 `%s` 的文字元件須配合穩定的字串來源。
+
+FlightStatus 在裝置建立時初始化所有顯示文字，並以 `: ` 作為內容前綴，例如 `: 240`。
+這個前綴同時呈現欄位冒號，讓彈量為零或有效數量時都保留字串型別。
+`tools/test_indicator_text.lua` 重播此轉型行為，檢查文字格式及頭盔航向字級。
+
+實機依據：2026-11-23、DCS 2.9.31.29434 的紀錄在首次原生機砲彈量有效後，
+於 `text_using_parameter → set_strcat_by_predefined_format → __stdio_common_vsprintf`
+發生 C0000005。提供的 CockpitBase.dll 中，該控制器 RVA `0x47f7d0` 的數字分支
+在 `0x47f911` 傳入 double，字串分支在 `0x47f973` 傳入字元指標。
+
+參考：[DCS-OpenSource 的參數原始調查](https://github.com/DCS-OpenSource/dcs-opensource-modding-guide/blob/main/docs/Aircraft/Lua/BasicPrinciples.md)。

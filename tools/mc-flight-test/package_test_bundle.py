@@ -57,7 +57,7 @@ def parameter_names(catalog):
             names.append(value)
     return list(dict.fromkeys(names + OBSERVATIONS))
 
-def assemble(module_zip, manifest_path, catalog_path, output, expected_source, test_tools_source=None, focus="mc"):
+def assemble(module_zip, manifest_path, catalog_path, output, expected_source, test_tools_source=None, focus="mc", runtime_source=None):
     if focus not in {"mc", "radar", "status"}:
         raise ValueError("Unknown flight-test focus: " + focus)
     selected_guide = {"mc": guide, "radar": radar_guide, "status": status_guide}[focus]
@@ -66,7 +66,10 @@ def assemble(module_zip, manifest_path, catalog_path, output, expected_source, t
         raise ValueError('Module validation/source revision does not match the requested source.')
     if not re.fullmatch('[0-9a-f]{40}', expected_source):
         raise ValueError('Expected source must be a full commit SHA.')
-    test_tools_source = test_tools_source or expected_source
+    runtime_source = runtime_source or expected_source
+    if not re.fullmatch("[0-9a-f]{40}", runtime_source):
+        raise ValueError("Runtime source must be a full commit SHA.")
+    test_tools_source = test_tools_source or runtime_source
     if not re.fullmatch('[0-9a-f]{40}', test_tools_source):
         raise ValueError('Test-tools source must be a full commit SHA.')
     original = read_module(module_zip)
@@ -123,6 +126,7 @@ end
     names = parameter_names(json.loads(Path(catalog_path).read_text(encoding='utf-8-sig')))
     entries[TEST_ROOT + 'Parameters.lua'] = ('return {\n' + ''.join('    ' + json.dumps(name) + ',\n' for name in names) + '}\n').encode()
     entries[TEST_ROOT + 'Build.lua'] = ('return { source_commit = ' + json.dumps(expected_source)
+        + ', runtime_source_commit = ' + json.dumps(runtime_source)
         + ', dll_sha256 = ' + json.dumps(manifest['dll_sha256']) + ' }\n').encode()
     changed = [name for name in original if original[name] != entries[name]]
     assert set(changed) == ({DEVICE, KEYBOARD, WEAPONS} if focus == 'mc' else {DEVICE, KEYBOARD})
@@ -134,7 +138,8 @@ end
     entries['RESULTS.csv'] = b'\xef\xbb\xbf' + selected_guide.results_csv().encode('utf-8')
     entries['TEST-CASES.json'] = (json.dumps(selected_guide.cases(), ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     build = dict(manifest, package_kind=focus + '-flight-test', focus=focus, dcs_runtime='not_run',
-        test_tools_source_commit=test_tools_source,
+        test_tools_source_commit=test_tools_source, runtime_source_commit=runtime_source,
+        validation_scope="native DLL at source_commit; runtime Lua checked separately",
         base_module_sha256=digest(Path(module_zip).read_bytes()),
         human_cases=len(selected_guide.cases()), test_device_id=10, recorded_parameters=len(names),
         native_countermeasure_probe=focus == "mc", native_dispatch='C++ ed_fm_simulate',
@@ -147,7 +152,7 @@ end
     entries['BUILD.json'] = (json.dumps(build, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
-    name = 'F-CK-1C-' + focus + '-flight-test-' + expected_source[:8] + '.zip'
+    name = 'F-CK-1C-' + focus + '-flight-test-' + runtime_source[:8] + '.zip'
     archive_path = output / name
     with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for path, content in entries.items():
@@ -172,6 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--expected-source', required=True)
     parser.add_argument('--test-tools-source', help='Source revision of the test overlay; defaults to the validated module revision.')
+    parser.add_argument('--runtime-source', help='Source revision of the packaged runtime; defaults to the validated DLL revision.')
     parser.add_argument('--focus', choices=['mc', 'radar', 'status'], default='mc')
     args = parser.parse_args()
-    assemble(args.module_zip, args.manifest, args.catalog, args.output, args.expected_source, args.test_tools_source, args.focus)
+    assemble(args.module_zip, args.manifest, args.catalog, args.output, args.expected_source, args.test_tools_source, args.focus, args.runtime_source)

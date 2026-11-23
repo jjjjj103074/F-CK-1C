@@ -9,6 +9,7 @@ local thin_box_line_width = 0.0028
 local text_size_numeric = { 0.0033, 0.0033, 0.0, 0.0 }
 local text_size_numeric_box = { 0.0031, 0.0031, 0.0, 0.0 }
 local text_size_title = { 0.0032, 0.0032, 0.0, 0.0 }
+local text_size_value = { 0.0026, 0.0026, 0.0, 0.0 }
 local heading_slot_spacing = 0.048
 local heading_slot_count = 13
 local hmcs_root_name = "hmcs_2d_root"

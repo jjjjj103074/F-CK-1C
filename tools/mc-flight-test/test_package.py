@@ -130,6 +130,19 @@ class TestFlightBundle(unittest.TestCase):
             self.assertEqual(build['source_commit'], self.source)
             self.assertEqual(build['test_tools_source_commit'], 'c'*40)
             self.assertEqual(archive.read(package.DLL), self.entries[package.DLL])
+    def test_runtime_source_is_distinct_from_validated_dll_source(self):
+        self.write_zip()
+        runtime = 'd' * 40
+        bundle = package.assemble(self.archive, self.manifest, self.catalog, self.root/'lua', self.source, runtime_source=runtime)
+        self.assertIn(runtime[:8], bundle.name)
+        with zipfile.ZipFile(bundle) as archive:
+            build = json.loads(archive.read('BUILD.json'))
+            self.assertEqual(build['source_commit'], self.source)
+            self.assertEqual(build['runtime_source_commit'], runtime)
+            self.assertEqual(build['test_tools_source_commit'], runtime)
+            self.assertEqual(archive.read(package.DLL), self.entries[package.DLL])
+            self.assertIn(runtime, archive.read(package.TEST_ROOT+'Build.lua').decode())
+
     def test_rejects_wrong_dll(self):
         self.entries[package.DLL] = b'MZwrong-build'
         self.write_zip()

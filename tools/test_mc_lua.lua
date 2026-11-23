@@ -870,5 +870,6 @@ expect(debug_custom[1].combos[1].key == "CustomDebug", "flight-test overlay pres
 dofile("tools/test_mc_runtime.lua")(expect)
 dofile("tools/test_radar_display.lua")(expect)
 dofile("tools/test_flight_status.lua")(expect)
+dofile("tools/test_indicator_text.lua")(expect)
 
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))

@@ -4,8 +4,8 @@ import html
 import io
 
 CASES = [
-    dict(id='S01', title='畫面與飛行數據', action='進入空中開始的任務，按 F1 回座艙，使用原本的視角控制轉頭。',
-         look='左上角。', normal='白色文字固定在畫面左上角，所有冒號對齊；IAS 以 kt、高度 ALT 以 ft 顯示並隨飛行更新。頭盔原本的 WPN／SYS／MODE／SUB 文字移到此面板。'),
+    dict(id='S01', title='畫面與飛行數據', action='進入空中開始的任務，按 F1 回座艙，維持 NAV 飛行 30 秒，再使用原本的視角控制轉頭。',
+         look='左上角。', normal='小型綠字固定在畫面左上角，背景透明、所有冒號對齊，頭盔航向文字維持正常大小；IAS 以 kt、高度 ALT 以 ft 顯示並隨飛行更新。頭盔原本的 WPN／SYS／MODE／SUB 文字移到此面板。'),
     dict(id='S02', title='模式與主保險', action='按 2 選 A-A，按右 Ctrl＋D 選 DGFT，再按右 Shift＋D 回 CENTER。依序按右 Shift＋M、右 Alt＋M、右 Ctrl＋M。',
          look='MODE、OVRD、ARM。', normal='MODE 維持 A-A；OVRD 依序為 CENTER、DGFT、CENTER。ARM 依序顯示 SAFE、SIM、ON，模式不跟著保險改變。'),
     dict(id='S03', title='武器與選站', action='接續 S02 的 A-A／CENTER。短按 Q 輪站，再按住 Q 超過 0.5 秒後放開以換型。',

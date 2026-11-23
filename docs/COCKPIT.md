@@ -127,7 +127,7 @@ HMCS VR將遮罩與符號建立於同一子頁，先建立`hmcs_vr_tfov`，再�
 
 `FlightStatus/Status.lua` 由既有 HMCS 觀測裝置每四次更新一次（16 Hz），
 將 MC、飛行觀測與反制庫存轉成文字。`FlightStatus/Indicator_page.lua` 固定在畫面左上角，
-名稱靠右、冒號共用 X 座標、數值靠左；開啟詳細 Debug Indicator 時讓出畫面。HMCS 2D 的 WPN／SYS／MODE／SUB 文字移至此面板。
+使用小型綠字與透明背景，名稱靠右、帶冒號的內容共用 X 座標；開啟詳細 Debug Indicator 時讓出畫面。HMCS 2D 的 WPN／SYS／MODE／SUB 文字移至此面板。
 
 `MissionComputerExporter` 在同一 MC generation 發布 SM 已確認掛點的識別碼、名稱與數量。
 `McSelectedStoreState`：0 資料不可用、1 未選站、2 選站中、3 已選定。
@@ -137,3 +137,8 @@ HMCS VR將遮罩與符號建立於同一子頁，先建立`hmcs_vr_tfov`，再�
 `IR` 使用 SM 的有效全域紅外線觀測；`UNCAGE` 顯示駕駛選取的命令狀態。
 兩者與雷達 `STT` 分別呈現。`---` 表示來源不可用，`NONE` 表示有效快照中未選站，
 `SELECTING` 表示 SM 仍等待選站完成。飛測包的 `--focus status` 包含預設鍵操作、正常結果與紀錄回收工具。
+
+FlightStatus 在 Lua 裝置建立時先發布全部文字，再以 16 Hz 更新。文字參數以 `: ` 開頭，
+讓彈量等純數字內容維持字串型別，並在固定欄位顯示冒號。
+DCS `text_using_parameter` 的數字與字串分支使用對應的原生 printf 引數型別；
+回歸測試會模擬 Lua 數字字串的自動轉型，核對啟動、有效彈量及零彈量的格式契約。

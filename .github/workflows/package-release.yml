@@ -9,18 +9,47 @@ on:
         description: "Release package version, for example v0.1.0"
         required: true
         type: string
+      flight_test:
+        description: "Include a flight-test guide and recorder"
+        required: false
+        default: none
+        type: choice
+        options: [none, mc, radar, status]
 
 permissions:
   contents: read
 
 jobs:
+  lua-tests:
+    if: inputs.flight_test != 'none'
+    name: Check cockpit Lua and flight-test tools
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Run the pinned Lua 5.1 regression suite
+        shell: bash
+        run: |
+          lua_root="$RUNNER_TEMP/package-lua"
+          mkdir -p "$lua_root"
+          curl --fail --silent --show-error --location --retry 2 https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$lua_root/lua.tar.gz"
+          printf '%s  %s\n' 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333 "$lua_root/lua.tar.gz" | sha256sum --check
+          tar -xzf "$lua_root/lua.tar.gz" -C "$lua_root"
+          make -C "$lua_root/lua-5.1.5" generic
+          "$lua_root/lua-5.1.5/src/lua" tools/test_mc_lua.lua
+          mkdir -p "$RUNNER_TEMP/package-recorder/Logs/FCK1C-MC-TEST"
+          "$lua_root/lua-5.1.5/src/lua" tools/mc-flight-test/test_recorder.lua tools/mc-flight-test "$RUNNER_TEMP/package-recorder"
+          python3 -m unittest discover -s tools/mc-flight-test -p test_package.py
   package:
+    needs: lua-tests
+    if: always() && (needs.lua-tests.result == 'success' || needs.lua-tests.result == 'skipped')
     name: Create release package
     runs-on: windows-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Validate version
         shell: pwsh
@@ -30,6 +59,21 @@ jobs:
           if ($env:PACKAGE_VERSION -notmatch '^[A-Za-z0-9._-]+$') {
               throw "Version can only contain letters, numbers, dots, underscores, and hyphens."
           }
+
+      - name: Verify the existing native DLL for a Lua flight test
+        if: inputs.flight_test != 'none'
+        shell: powershell
+        run: |
+          $manifest = Get-Content bin/F-CK-1C_EFM.validation.json -Raw | ConvertFrom-Json
+          if ($manifest.validation -ne 'passed' -or $manifest.source_commit -notmatch '^[0-9a-f]{40}$') {
+            throw 'A validated native DLL is required.'
+          }
+          $hash = (Get-FileHash bin/F-CK-1C_EFM.dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $manifest.dll_sha256) { throw 'Native DLL hash mismatch.' }
+          git diff --quiet $manifest.source_commit HEAD -- src/efm .vsconfig tools/build_dll.ps1 tools/build_efm.ps1 tools/efm-build-common.ps1 tools/generate_dcs_ids.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Native sources changed; run the Windows build validation first.' }
+          ./tools/test_dcs_id_generator.ps1
+          ./tools/check_cockpit_architecture.ps1
 
       - name: Create package
         shell: pwsh
@@ -44,4 +88,24 @@ jobs:
           path: |
             dist/F-CK-1C-${{ inputs.version }}.zip
             dist/F-CK-1C-${{ inputs.version }}.zip.sha256
+          if-no-files-found: error
+
+      - name: Assemble the flight-test package
+        if: inputs.flight_test != 'none'
+        shell: powershell
+        env:
+          FLIGHT_TEST_FOCUS: ${{ inputs.flight_test }}
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: |
+          $manifest = Get-Content bin/F-CK-1C_EFM.validation.json -Raw | ConvertFrom-Json
+          $module = 'dist/F-CK-1C-' + $env:PACKAGE_VERSION + '.zip'
+          python tools/mc-flight-test/package_test_bundle.py --module-zip $module --manifest bin/F-CK-1C_EFM.validation.json --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json --expected-source $manifest.source_commit --runtime-source $env:GITHUB_SHA --test-tools-source $env:GITHUB_SHA --output dist/flight-test --focus $env:FLIGHT_TEST_FOCUS
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload the flight-test package
+        if: inputs.flight_test != 'none'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: F-CK-1C-${{ inputs.version }}-test
+          path: dist/flight-test/*
           if-no-files-found: error

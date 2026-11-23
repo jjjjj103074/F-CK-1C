@@ -45,10 +45,10 @@ return function()
     end
 
     local function update()
-        ias_text:set(number(ias:get(), " kt"))
-        altitude_text:set(altitude_available:get() == 1 and number(altitude:get(), " ft") or "---")
-        flare_text:set(cm_available:get() == 1 and number(flare_count:get()) or "---")
-        chaff_text:set(cm_available:get() == 1 and number(chaff_count:get()) or "---")
+        ias_text:set(": " .. (number(ias:get(), " kt")))
+        altitude_text:set(": " .. (altitude_available:get() == 1 and number(altitude:get(), " ft") or "---"))
+        flare_text:set(": " .. (cm_available:get() == 1 and number(flare_count:get()) or "---"))
+        chaff_text:set(": " .. (cm_available:get() == 1 and number(chaff_count:get()) or "---"))
 
         -- 在同一 MC generation 內讀取模式、已確認選站與武器觀測。
         local before = generation:get()
@@ -74,18 +74,19 @@ return function()
         local track = ({ [0] = "OFF", "SEARCH", "ACQUIRING", "STT" })[radar_mode:get()] or "---"
         local radar = radar_available:get() == 1 and (scan .. " " .. track) or "---"
         coherent = coherent and generation:get() == before and available:get() == 1
-        master_mode_text:set(coherent and mode or "---")
-        override_text:set(coherent and ovrd or "---")
-        arm_text:set(coherent and safety or "---")
-        missile_text:set(coherent and missile or "---")
-        station_text:set(coherent and station or "---")
-        gun_text:set(coherent and gun or "---")
-        radar_text:set(coherent and radar or "---")
-        ir_text:set(coherent and ir or "---")
-        uncage_text:set(coherent and uncaged or "---")
+        master_mode_text:set(": " .. (coherent and mode or "---"))
+        override_text:set(": " .. (coherent and ovrd or "---"))
+        arm_text:set(": " .. (coherent and safety or "---"))
+        missile_text:set(": " .. (coherent and missile or "---"))
+        station_text:set(": " .. (coherent and station or "---"))
+        gun_text:set(": " .. (coherent and gun or "---"))
+        radar_text:set(": " .. (coherent and radar or "---"))
+        ir_text:set(": " .. (coherent and ir or "---"))
+        uncage_text:set(": " .. (coherent and uncaged or "---"))
     end
 
-    -- 隨既有 64 Hz 觀測每四次更新畫面文字，啟動時先發布一份。
+    -- 建立時先發布文字，再隨既有 64 Hz 觀測每四次更新一次。
+    update()
     local ticks = 3
     return { update = function()
         ticks = ticks + 1

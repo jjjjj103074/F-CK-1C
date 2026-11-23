@@ -2,7 +2,7 @@ name: MC Windows build validation
 
 on:
   push:
-    branches: [ci/radar-forward-20261123]
+    branches: [mission-computer]
   workflow_dispatch:
 
 permissions:
