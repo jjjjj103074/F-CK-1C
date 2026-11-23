@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <vector>
 
 namespace DcsBridge::Internal
 {
@@ -50,6 +51,6 @@ private:
 
 	const cockpit_param_api api_;
 	std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)> slots_;
-	std::array<PlotParameters, Core::kRadarDisplayPlotCount> plots_;
+	std::vector<PlotParameters> plots_;
 };
 }
