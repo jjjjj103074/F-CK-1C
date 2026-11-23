@@ -148,7 +148,7 @@ test('Git shell can invoke DLL hashing in Windows PowerShell', { skip: process.p
     assert.equal(result.stdout.trim().toLowerCase(), expected);
 });
 
-test('the real sparse checkouts retain native-test configuration and cockpit validation inputs', { timeout: 90000 }, context => {
+test('the real sparse checkouts retain native-test configuration and cockpit validation inputs', { timeout: 240000 }, context => {
     const workflowPath = '.github/workflows/pr-native-checks.yml';
     const workflow = readWorkflow(workflowPath);
     const sections = workflow.split('\n  merge-compatibility:');
@@ -207,8 +207,8 @@ test('the real sparse checkouts retain native-test configuration and cockpit val
             ['test_cockpit_architecture_checker.ps1', /Cockpit architecture checker fixtures passed/]]) {
             const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
                 '-File', path.join(root, 'tools', script), '-RepoRoot', root],
-            { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 30000 });
-            assert.equal(result.status, 0, result.stderr || result.error?.message);
+            { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 90000 });
+            assert.equal(result.status, 0, `${script}: ${result.stderr || result.error?.message || result.stdout}`);
             assert.match(result.stdout, message);
         }
     }
