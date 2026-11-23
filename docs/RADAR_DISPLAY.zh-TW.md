@@ -1,6 +1,6 @@
 # 雷達圖形顯示
 
-本輪提供前視捕獲／追蹤符號及右下角方位—距離圖，供 RWS、BORE、STT 實機操作。
+本輪提供前視捕獲／追蹤符號及右下角方位—距離圖，供 RWS、三種 ACM 與 STT 實機操作。
 原生 avSimpleElectricSystem 提供固定啟用的電源，RADAR_STATE 讀取雷達 get_power() 回報實際供電。
 兩個指示器隨空對空模式顯示，NAV 隱藏。詳細步驟隨雷達飛測包的 START-HERE.zh-TW.html 發布。
 
@@ -89,3 +89,11 @@ TMS 下（K）明確取消指定與自動捕獲；模式切換沿用原有的目
 [A-29B HUD_GRID.lua](https://github.com/luizrenault/a-29b-community/blob/1f632f004e28ef13a5f3404528de4c3fc982a0e2/Cockpit/Scripts/HUD/Indicator/HUD_GRID.lua#L20)。
 另以使用者提供的同版 CockpitBase.dll 檢查控制器實作：參數乘係數後直接更新模型位移。
 此查核用於確認座標換算；執行期沿用座艙指示器公開介面。
+
+## IR 尋標器圖形
+
+前視指示器另繪製綠色空心圓與菱形。空心圓使用原生 IR 要求角度，菱形使用有效 IR 捕獲目標角度。
+DisplaySystem 從 MC 的 SM 快照取得觀測並投影為毫弧度，InfraredDisplayExporter 發布繪圖參數。
+兩者各自使用來源有效性，IR 圖形可在雷達關閉時顯示。選站切換、離開空戰模式及來源失效會更新其可見性。
+左上角 MISSILE 顯示選擇群組的全機總數，STATION 顯示掛點與實際型號。
+UNCAGE 顯示原生自主追蹤許可的讀回；原生介面尚未就緒時顯示 WAIT。

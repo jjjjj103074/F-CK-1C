@@ -18,6 +18,8 @@ RadarDisplayExporter::RadarDisplayExporter(cockpit_param_api api)
 	bind(Parameter::BoreHalfWidthMrad, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayBoreHalfWidthMrad));
 	bind(Parameter::BoreHalfHeightMrad,
 	     cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayBoreHalfHeightMrad));
+	bind(Parameter::CaptureCenterYMrad,
+	     cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayCaptureCenterYMrad));
 	bind(Parameter::TargetXMrad, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayTargetXMrad));
 	bind(Parameter::TargetYMrad, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayTargetYMrad));
 	bind(Parameter::RangeScaleM, cockpit_parameter_writer(DcsIds::CockpitParams::RadarDisplayRangeScaleM));
@@ -202,6 +204,7 @@ CockpitParameterEvents RadarDisplayExporter::export_snapshot(const Core::RadarDi
 	write(Parameter::CueVisible, s.cue_visible);
 	write(Parameter::BoreHalfWidthMrad, s.bore_half_width_mrad);
 	write(Parameter::BoreHalfHeightMrad, s.bore_half_height_mrad);
+	write(Parameter::CaptureCenterYMrad, s.capture_center_y_mrad);
 	write(Parameter::TargetXMrad, s.target_x_mrad);
 	write(Parameter::TargetYMrad, s.target_y_mrad);
 	write(Parameter::RangeScaleM, s.range_scale_m);

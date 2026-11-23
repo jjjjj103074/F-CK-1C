@@ -433,7 +433,7 @@ function Test-ExclusiveLuaApi {
         $text = [IO.File]::ReadAllText($file.FullName)
         if ($text -notmatch $Rule.Pattern) { continue }
         $relative = Get-RelativePath $Root $file.FullName
-        if ($relative -cne $Rule.AllowedPath) {
+        if ($relative -cnotin @($Rule.AllowedPath)) {
             Write-Output "$($Rule.Label) is used outside its adapter: $relative"
         }
     }
@@ -460,7 +460,7 @@ function Test-AdapterOwnership {
         },
         [pscustomobject]@{
             Pattern = '\bdispatch_action\s*\('
-            AllowedPath = 'Cockpit/Scripts/Systems/cms_system.lua'
+            AllowedPath = @('Cockpit/Scripts/Systems/cms_system.lua', 'Cockpit/Scripts/Systems/weapon_system.lua')
             Label = 'dispatch_action'
         }
     )
@@ -474,6 +474,12 @@ function Test-WeaponStationFailureContract {
 
     $path = Join-Path $Root 'Cockpit\Scripts\Systems\weapon_system.lua'
     $text = [IO.File]::ReadAllText($path)
+    foreach ($call in [regex]::Matches($text, '\bdispatch_action\s*\([^)]*\)')) {
+        if ($call.Value -notmatch '^dispatch_action\(nil, device_commands\.WeaponInterfaceUpdate, selected_station \+ 1\)$') {
+            Write-Output 'Weapon adapter dispatch must service only its native weapon interface callback.'
+        }
+    }
+
     $requirements = @(
         'if\s+not\s+ok\s+then',
         'publish_station_observation\s*\(\s*\{\s*\}\s*,\s*OBS_INVALID_STATION_API_ERROR\s*\)'

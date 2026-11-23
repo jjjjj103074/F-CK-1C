@@ -140,6 +140,11 @@ try {
         $temporaryRoot) 'Cockpit\Scripts\Systems\weapon_system.lua'
     $originalWeaponSystem = [IO.File]::ReadAllText($weaponSystem)
     Assert-Rejected {
+        [IO.File]::AppendAllText($weaponSystem, "dispatch_action(nil, 350, 1)`r`n", $utf8NoBom)
+    } 'Weapon adapter dispatch must service only' $temporaryRoot
+    [IO.File]::WriteAllText($weaponSystem, $originalWeaponSystem, $utf8NoBom)
+
+    Assert-Rejected {
         $withoutFailurePublish = $originalWeaponSystem.Replace(
             'publish_station_observation({}, OBS_INVALID_STATION_API_ERROR)',
             '-- unavailable observation removed')

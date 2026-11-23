@@ -77,6 +77,12 @@ void Targeting::handle_tms_up(bool pressed)
 
 void Targeting::handle_tms_down()
 {
+	if (data_.search_mode == RadarSearchMode::AirCombat && !tracking())
+	{
+		select_mode(TargetAcquisitionMode::VerticalScan);
+		acquire(AcquisitionInput::Pulse);
+		return;
+	}
 	data_.designation.requested = false;
 	tms_up_held_ = false;
 	requests_.submit({ RadarOperation::EndSpotlight });
@@ -98,7 +104,8 @@ void Targeting::handle_tms_right(bool pressed, std::chrono::nanoseconds time)
 	{
 		if (pressed && !tracking())
 		{
-			submit_tms({ RadarOperation::SetAcquisitionMode, TargetAcquisitionMode::WideScan });
+			select_mode(TargetAcquisitionMode::WideScan);
+			acquire(AcquisitionInput::Pulse);
 		}
 		return;
 	}
@@ -124,11 +131,6 @@ void Targeting::handle_tms_right(bool pressed, std::chrono::nanoseconds time)
 void Targeting::handle(const Command& command, std::chrono::nanoseconds input_time)
 {
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
-	if (command.id == CommandId::SetMissileUncage)
-	{
-		on_missile_uncage_selected(pressed);
-		return;
-	}
 	if (mode_.operating_mode() == OperatingMode::AirToGround)
 	{
 		if (pressed)
@@ -171,17 +173,6 @@ void Targeting::handle(const Command& command, std::chrono::nanoseconds input_ti
 	default:
 		break;
 	}
-}
-
-void Targeting::on_missile_uncage_selected(bool selected)
-{
-	if (selected && mode_.air_to_air())
-	{
-		requests_.submit({ RadarOperation::EnsureOn });
-		reapply_mode();
-	}
-	else if (!selected && mode_.override_mode == OverrideMode::Dogfight)
-		cancel();
 }
 
 void Targeting::on_operating_mode_selected(const OperatingModeSelected& event)

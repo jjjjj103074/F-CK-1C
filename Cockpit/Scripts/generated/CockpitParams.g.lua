@@ -311,6 +311,21 @@ cockpit_params = {
     NativeCmMethod = "CPP_NATIVE_CM_METHOD",
     NativeCmKind = "CPP_NATIVE_CM_KIND",
     NativeCmException = "CPP_NATIVE_CM_EXCEPTION",
+    McSelectedStoreCountAvailable = "CPP_MC_SELECTED_STORE_COUNT_AVAILABLE",
+    McSelectedStoreFamily = "CPP_MC_SELECTED_STORE_FAMILY",
+    McIrControlAvailable = "CPP_MC_IR_CONTROL_AVAILABLE",
+    McIrSelfTrackEnabled = "CPP_MC_IR_SELF_TRACK_ENABLED",
+    McIrNativeMode = "CPP_MC_IR_NATIVE_MODE",
+    McIrControlStatus = "CPP_MC_IR_CONTROL_STATUS",
+    McIrControlRevision = "CPP_MC_IR_CONTROL_REVISION",
+    InfraredDisplayAvailable = "CPP_INFRARED_DISPLAY_AVAILABLE",
+    InfraredDisplayDesiredVisible = "CPP_INFRARED_DISPLAY_DESIRED_VISIBLE",
+    InfraredDisplayDesiredX = "CPP_INFRARED_DISPLAY_DESIRED_X",
+    InfraredDisplayDesiredY = "CPP_INFRARED_DISPLAY_DESIRED_Y",
+    InfraredDisplayTargetVisible = "CPP_INFRARED_DISPLAY_TARGET_VISIBLE",
+    InfraredDisplayTargetX = "CPP_INFRARED_DISPLAY_TARGET_X",
+    InfraredDisplayTargetY = "CPP_INFRARED_DISPLAY_TARGET_Y",
+    RadarDisplayCaptureCenterYMrad = "CPP_RADAR_DISPLAY_CAPTURE_CENTER_Y_MRAD",
 }
 
 dcs_cockpit_params = {

@@ -59,7 +59,8 @@ CockpitSnapshotExporter::CockpitSnapshotExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarTdcRange),
                  cockpit_parameter_writer(DcsIds::RawCockpitParams::RadarTdcAzimuth) } }),
       mission_computer_(api),
-      radar_display_(api)
+      radar_display_(api),
+      infrared_display_(api)
 {
 }
 
@@ -68,6 +69,7 @@ void CockpitSnapshotExporter::reset()
 	std::lock_guard<std::mutex> lock(mutex_);
 	mission_computer_.reset();
 	radar_display_.reset();
+	infrared_display_.reset();
 	radar_scan_revision_ = 0;
 	for (CockpitParameterEndpoint& slot : slots_)
 	{
@@ -91,6 +93,7 @@ CockpitParameterEvents CockpitSnapshotExporter::export_snapshot(const Core::Cock
 	events = events.merged(mission_computer_.export_snapshot(snapshot.combat_avionics, actions));
 	events = events.merged(export_countermeasures(snapshot.countermeasures));
 	events = events.merged(radar_display_.export_snapshot(snapshot.display.radar));
+	events = events.merged(infrared_display_.export_snapshot(snapshot.display.infrared));
 	return events;
 }
 

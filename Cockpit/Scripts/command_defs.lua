@@ -72,6 +72,7 @@ device_commands = {
     EngineThrustCutTestEnable = 3136,
     EngineThrustCutTestDisable = 3137,
     DebugIndicatorToggle = 3140,
+    WeaponInterfaceUpdate = 3160,
     NativeCmFlareDigital = 3150,
     NativeCmChaffDigital = 3151,
     NativeCmFlareAnalog = 3152,

@@ -61,7 +61,21 @@ struct AbortWeaponUse
 {
 };
 
+/// @brief 切換或指定選中飛彈的尋標器自主追蹤要求。
+struct SetSeekerUncaged
+{
+	std::optional<bool> selected; ///< 空值代表切換；有值代表指定。
+};
+/// @brief 火控提供的雷達視線；SM 依選中武器能力轉為指向要求。
+struct AimIrSeeker
+{
+	bool radar_target_available = false;
+	double azimuth_rad = 0.0, elevation_rad = 0.0;
+};
+
 using StoresCommand = std::variant<SelectStoresForMode,
+                                   SetSeekerUncaged,
+                                   AimIrSeeker,
                                    StoresWeaponAction,
                                    CancelStoresCommands,
                                    CancelWeaponStarts,

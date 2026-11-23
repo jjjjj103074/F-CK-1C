@@ -300,7 +300,8 @@ try
 {
 	ensure_module_initialized();
 	if (DcsBridge::Internal::handle_debug_indicator_command(bridge(), command, value) ||
-	    DcsBridge::Internal::handle_native_countermeasure_command(bridge(), command, value))
+	    DcsBridge::Internal::handle_native_countermeasure_command(bridge(), command, value) ||
+	    DcsBridge::Internal::service_ir_seeker(bridge(), command, value))
 	{
 		return;
 	}

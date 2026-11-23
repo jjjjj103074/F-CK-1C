@@ -96,6 +96,68 @@ bool dispense(std::uintptr_t function, std::uintptr_t human, std::uint32_t& exce
 		return false;
 	}
 }
+bool device(std::uintptr_t function,
+            std::uintptr_t object,
+            unsigned id,
+            std::uintptr_t& result,
+            std::uint32_t& exception)
+{
+	__try
+	{
+		using Function = void*(__fastcall*)(void*, unsigned);
+		result =
+		    reinterpret_cast<std::uintptr_t>(reinterpret_cast<Function>(function)(reinterpret_cast<void*>(object), id));
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		exception = GetExceptionCode();
+		return false;
+	}
+}
+bool object_action(std::uintptr_t function, std::uintptr_t object, std::uint32_t& exception)
+{
+	__try
+	{
+		reinterpret_cast<void(__fastcall*)(void*)>(function)(reinterpret_cast<void*>(object));
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		exception = GetExceptionCode();
+		return false;
+	}
+}
+bool set_float(std::uintptr_t function, std::uintptr_t object, float value, std::uint32_t& exception)
+{
+	__try
+	{
+		reinterpret_cast<void(__fastcall*)(void*, float)>(function)(reinterpret_cast<void*>(object), value);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		exception = GetExceptionCode();
+		return false;
+	}
+}
+bool direction(std::uintptr_t function,
+               std::uintptr_t object,
+               const std::array<double, 3>& value,
+               std::uint32_t& exception)
+{
+	__try
+	{
+		reinterpret_cast<void(__fastcall*)(void*, const std::array<double, 3>&)>(
+		    function)(reinterpret_cast<void*>(object), value);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		exception = GetExceptionCode();
+		return false;
+	}
+}
 bool gun_mount(std::uintptr_t function,
                std::uintptr_t object,
                unsigned char index,
@@ -146,6 +208,10 @@ DcsAircraftBackend make_dcs_aircraft_backend()
 {
 #ifdef _WIN32
 	DcsAircraftBackend result;
+	result.device = device;
+	result.object_action = object_action;
+	result.set_float = set_float;
+	result.direction = direction;
 	result.module = module;
 	result.symbol = [](std::uintptr_t base, const char* name)
 	{

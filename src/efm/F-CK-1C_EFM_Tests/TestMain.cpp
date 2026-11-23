@@ -65,10 +65,15 @@ void run_native_gun_access_tests(Tests::Context& context);
 void run_native_countermeasure_probe_tests(Tests::Context& context);
 void run_gun_ammunition_source_tests(Tests::Context& context);
 
+void run_air_to_air_integration_tests(Tests::Context&);
+void run_ir_seeker_access_tests(Tests::Context&);
+
 int main()
 {
 	initialize_configuration();
 	Tests::Context context;
+	run_air_to_air_integration_tests(context);
+	run_ir_seeker_access_tests(context);
 	run_dcs_aircraft_interface_tests(context);
 	run_native_gun_access_tests(context);
 	run_native_countermeasure_probe_tests(context);

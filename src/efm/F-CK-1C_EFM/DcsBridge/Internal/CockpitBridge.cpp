@@ -72,7 +72,15 @@ Core::WeaponModel to_weapon_model(std::string_view identifier)
 		std::string_view identifier;
 		Core::WeaponModel model;
 	};
-	constexpr ModelAlias aliases[] = { { "{AIM-9L}", Core::WeaponModel::Aim9L },
+	constexpr ModelAlias aliases[] = { { "{AIM-9P}", Core::WeaponModel::Aim9P },
+		                               { "{9BFD8C90-F7AE-4e90-833B-BFD0CED0E536}", Core::WeaponModel::Aim9P },
+		                               { "{AIM-9X}", Core::WeaponModel::Aim9X },
+		                               { "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", Core::WeaponModel::Aim9X },
+		                               { "{AIM-9B}", Core::WeaponModel::Aim9Legacy },
+		                               { "{AIM-9E}", Core::WeaponModel::Aim9Legacy },
+		                               { "{AIM-9J}", Core::WeaponModel::Aim9Legacy },
+		                               { "{AIM-9JULI}", Core::WeaponModel::Aim9Legacy },
+		                               { "{AIM-9L}", Core::WeaponModel::Aim9L },
 		                               { "{AIM-9M}", Core::WeaponModel::Aim9M },
 		                               { "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}", Core::WeaponModel::Aim9M },
 		                               { "{AIM-9L-ON-ADAPTER}", Core::WeaponModel::Aim9L },

@@ -223,6 +223,23 @@ struct IrSeekerObservation
 	double desired_elevation_rad = 0.0;
 	double target_azimuth_rad = 0.0;
 	double target_elevation_rad = 0.0;
+	bool control_available = false;
+	bool self_track_enabled = false;
+	int native_mode = -1;
+	int control_status = 0;
+	std::uint64_t control_revision = 0;
+};
+
+/// @brief 選中武器的尋標器要求；SM 以掛點及掛載版本維持控制對象。
+struct IrSeekerControl
+{
+	std::uint64_t revision = 0;
+	bool active = false;
+	bool uncaged = false;
+	bool radar_slaved = false;
+	int station = -1;
+	std::uint64_t load_revision = 0;
+	double azimuth_rad = 0.0, elevation_rad = 0.0;
 };
 
 inline constexpr std::size_t kWeaponStationCount = 9;
@@ -244,7 +261,10 @@ enum class WeaponModel
 {
 	Unknown,
 	Aim9L,
-	Aim9M
+	Aim9M,
+	Aim9P,
+	Aim9X,
+	Aim9Legacy
 };
 /// @brief 固定掛點的掛載配置；數量及觀測有效性分別保存。
 enum class StoreConfiguration
@@ -480,6 +500,7 @@ struct DisplaySnapshot
 	bool hud_designation_available = false;
 	DisplayLocation last_format_step = DisplayLocation::None;
 	RadarDisplaySnapshot radar;
+	InfraredDisplaySnapshot infrared;
 };
 
 /// @brief 機載目標指定意圖及雷達回報的追蹤結果。
@@ -551,6 +572,7 @@ struct StoresSnapshot
 	double gun_count = 0.0; ///< 最近有效彈量的既有數值介面。
 	GunAmmunitionState gun_ammunition;
 	IrSeekerObservation ir_seeker; ///< 全域武器介面回報的 IR 觀測。
+	IrSeekerControl seeker_control;
 };
 
 /// @brief Raw cockpit control observations in MC FIFO order, including rejected operation requests.

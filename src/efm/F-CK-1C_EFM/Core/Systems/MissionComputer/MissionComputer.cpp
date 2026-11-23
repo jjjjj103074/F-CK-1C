@@ -209,7 +209,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.gun_fire_requested = fire_control_data_.weapon.gun_requested;
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
-	output.fire_control.missile_uncage_selected = fire_control_data_.weapon.uncage_selected;
+	output.fire_control.missile_uncage_selected = stores_data_.seeker_control.uncaged;
 	output.stores.status = output.status;
 	output.stores.inventory = stores_data_.inventory;
 	const auto missiles = Mc::count_missiles(stores_data_.inventory, { WeaponRole::AirToAir, {} });
@@ -219,6 +219,7 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.stores.gun_count = stores_data_.gun_ammunition.count.value_or(0);
 	output.stores.selection = stores_data_.selection;
 	output.stores.ir_seeker = stores_data_.ir_seeker;
+	output.stores.seeker_control = stores_data_.seeker_control;
 	output.control_inputs = input_output_data_.input.control_inputs;
 	output.action_requests = external_actions_.pending();
 	result.publish(AircraftDataKeys::kRadarRequests, radar_requests_.pending());

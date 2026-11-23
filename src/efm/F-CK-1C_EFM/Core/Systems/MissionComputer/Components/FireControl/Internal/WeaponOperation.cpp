@@ -10,10 +10,12 @@ constexpr auto kMissileTypeHold = std::chrono::milliseconds(500);
 namespace Core::Systems::Mc::Internal
 {
 WeaponOperation::WeaponOperation(const ModeData& mode,
+                                 const RadarSnapshot& radar,
                                  const WeaponUseData& execution,
                                  WeaponOperationData& weapon,
                                  StoresCommandQueue& stores_commands)
     : mode_(mode),
+      radar_(radar),
       execution_(execution),
       weapon_(weapon),
       stores_commands_(stores_commands)
@@ -27,7 +29,7 @@ bool WeaponOperation::can_use_gun() const
 
 bool WeaponOperation::can_release_weapon() const
 {
-	return mode_.master_arm == MasterArmMode::On && mode_.air_to_air() && weapon_.uncage_selected;
+	return mode_.master_arm == MasterArmMode::On && mode_.air_to_air();
 }
 
 void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds input_time)
@@ -35,8 +37,13 @@ void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds in
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
 	switch (command.id)
 	{
+	case CommandId::ToggleMissileUncage:
+		if (pressed && mode_.air_to_air() && mode_.master_arm != MasterArmMode::Off)
+			stores_commands_.submit(SetSeekerUncaged{});
+		break;
 	case CommandId::SetMissileUncage:
-		weapon_.uncage_selected = pressed;
+		if (mode_.air_to_air() && (mode_.master_arm != MasterArmMode::Off || !pressed))
+			stores_commands_.submit(SetSeekerUncaged{ pressed });
 		break;
 	case CommandId::SetTriggerSecondStage:
 		handle_gun(pressed);
@@ -50,12 +57,6 @@ void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds in
 	default:
 		break;
 	}
-}
-
-bool WeaponOperation::toggle_missile_uncage()
-{
-	weapon_.uncage_selected = !weapon_.uncage_selected;
-	return weapon_.uncage_selected;
 }
 
 void WeaponOperation::handle_gun(bool pressed)
@@ -74,7 +75,7 @@ void WeaponOperation::handle_release(bool pressed)
 	if (pressed)
 	{
 		if (can_release_weapon())
-			stores_commands_.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Override });
+			stores_commands_.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Normal });
 	}
 	else if (execution_.release.request_id != 0)
 		stores_commands_.submit(EndWeaponUse{ { WeaponUseKind::Release, execution_.release.request_id } });
@@ -125,6 +126,11 @@ void WeaponOperation::step(std::chrono::nanoseconds time)
 		submit_missile_step(MissileSelectionStep::WeaponType);
 		missile_type_step_sent_ = true;
 	}
+	const auto& target = radar_.observation;
+	stores_commands_.submit(
+	    AimIrSeeker{ mode_.air_to_air() && target.status.available && target.mode == RadarMode::SingleTargetTrack,
+	                 target.stt_azimuth_rad,
+	                 target.stt_elevation_rad });
 	weapon_.gun_requested = execution_.gun.in_progress();
 	weapon_.pickle_requested = execution_.release.in_progress();
 	weapon_.gun_firing_indication =

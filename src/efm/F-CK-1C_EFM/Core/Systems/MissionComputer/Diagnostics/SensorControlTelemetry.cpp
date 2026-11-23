@@ -94,9 +94,9 @@ const char* pattern_name(TargetAcquisitionMode mode)
 	case TargetAcquisitionMode::Boresight:
 		return "BORE";
 	case TargetAcquisitionMode::WideScan:
-		return "30X20 (RESERVED)";
+		return "30X20";
 	case TargetAcquisitionMode::VerticalScan:
-		return "10X60 (RESERVED)";
+		return "10X60";
 	case TargetAcquisitionMode::BeyondVisualRange:
 		return "CRM";
 	default:
@@ -262,10 +262,14 @@ void SensorControlTelemetry::publish(DebugSimulationTime time,
 	                                      pattern_name(targeting.acquisition_mode));
 	channels_.radar_observed.publish(time, observed_mode_name(radar.observation));
 	channels_.dms_format_step.publish(time, location_name(display.last_format_step));
-	channels_.radar_active.publish(time,
-	                               !radar.scan.enabled                                      ? "IDLE"
-	                               : radar.active_search_mode == RadarSearchMode::AirCombat ? "ACM BORE"
-	                                                                                        : "CRM RWS");
+	channels_.radar_active.publish(
+	    time,
+	    !radar.scan.enabled ? "IDLE"
+	    : radar.active_search_mode == RadarSearchMode::AirCombat
+	        ? (radar.requested_acquisition_mode == TargetAcquisitionMode::WideScan       ? "ACM 30x20"
+	           : radar.requested_acquisition_mode == TargetAcquisitionMode::VerticalScan ? "ACM 10x60"
+	                                                                                     : "ACM BORE")
+	        : "CRM RWS");
 	channels_.radar_scan.publish(time, scan.str());
 	channels_.radar_acquisition.publish(time, radar.automatic_acquisition_requested ? "ENABLED" : "IDLE");
 }

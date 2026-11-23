@@ -44,6 +44,8 @@ private:
 	};
 	/// @brief 接受入口要求，安排停止、取消與模式接續。
 	void accept_commands();
+	/// @brief 依確認選站與最新火控視線更新尋標器要求。
+	void update_seeker_control();
 	/// @brief 將一筆操作排入停止優先與選站接續流程。
 	void schedule_command(PendingCommand entry);
 	/// @brief 接受開始、正常結束及立即中止的使用要求。
@@ -69,6 +71,7 @@ private:
 	StoresEvents& events_;
 	StoresCommandQueue& commands_;
 	ExternalActionOutbox& actions_;
+	AimIrSeeker seeker_aim_;
 	OperatingMode latest_mode_ = OperatingMode::Navigation;
 	std::deque<PendingCommand> pending_commands_;
 	Internal::StationSelection selection_;

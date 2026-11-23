@@ -316,6 +316,21 @@ static const char* const NativeCmLastRequest = "CPP_NATIVE_CM_LAST_REQUEST";
 static const char* const NativeCmMethod = "CPP_NATIVE_CM_METHOD";
 static const char* const NativeCmKind = "CPP_NATIVE_CM_KIND";
 static const char* const NativeCmException = "CPP_NATIVE_CM_EXCEPTION";
+static const char* const McSelectedStoreCountAvailable = "CPP_MC_SELECTED_STORE_COUNT_AVAILABLE";
+static const char* const McSelectedStoreFamily = "CPP_MC_SELECTED_STORE_FAMILY";
+static const char* const McIrControlAvailable = "CPP_MC_IR_CONTROL_AVAILABLE";
+static const char* const McIrSelfTrackEnabled = "CPP_MC_IR_SELF_TRACK_ENABLED";
+static const char* const McIrNativeMode = "CPP_MC_IR_NATIVE_MODE";
+static const char* const McIrControlStatus = "CPP_MC_IR_CONTROL_STATUS";
+static const char* const McIrControlRevision = "CPP_MC_IR_CONTROL_REVISION";
+static const char* const InfraredDisplayAvailable = "CPP_INFRARED_DISPLAY_AVAILABLE";
+static const char* const InfraredDisplayDesiredVisible = "CPP_INFRARED_DISPLAY_DESIRED_VISIBLE";
+static const char* const InfraredDisplayDesiredX = "CPP_INFRARED_DISPLAY_DESIRED_X";
+static const char* const InfraredDisplayDesiredY = "CPP_INFRARED_DISPLAY_DESIRED_Y";
+static const char* const InfraredDisplayTargetVisible = "CPP_INFRARED_DISPLAY_TARGET_VISIBLE";
+static const char* const InfraredDisplayTargetX = "CPP_INFRARED_DISPLAY_TARGET_X";
+static const char* const InfraredDisplayTargetY = "CPP_INFRARED_DISPLAY_TARGET_Y";
+static const char* const RadarDisplayCaptureCenterYMrad = "CPP_RADAR_DISPLAY_CAPTURE_CENTER_Y_MRAD";
 }
 
 namespace RawCockpitParams

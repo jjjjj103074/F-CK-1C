@@ -73,6 +73,7 @@ struct RadarDisplaySnapshot
 	bool cue_visible = false;
 	double bore_half_width_mrad = 0.0;
 	double bore_half_height_mrad = 0.0;
+	double capture_center_y_mrad = 0.0;
 	double target_x_mrad = 0.0;
 	double target_y_mrad = 0.0;
 	double range_scale_m = 0.0;
@@ -87,6 +88,14 @@ struct RadarDisplaySnapshot
 	double target_x_normalized = 0.0;
 	double target_y_normalized = 0.0;
 	std::vector<RadarDisplayPlot> plots;
+};
+
+/// @brief 原生 IR 要求方向與捕獲目標在前視準直平面的圖形資料。
+struct InfraredDisplaySnapshot
+{
+	bool desired_visible = false, target_visible = false;
+	double desired_x_mrad = 0.0, desired_y_mrad = 0.0;
+	double target_x_mrad = 0.0, target_y_mrad = 0.0;
 };
 
 }

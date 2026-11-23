@@ -27,6 +27,7 @@ private:
 		CueVisible,
 		BoreHalfWidthMrad,
 		BoreHalfHeightMrad,
+		CaptureCenterYMrad,
 		TargetXMrad,
 		TargetYMrad,
 		RangeScaleM,

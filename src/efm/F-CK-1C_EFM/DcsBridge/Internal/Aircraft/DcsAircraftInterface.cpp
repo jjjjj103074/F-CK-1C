@@ -1,5 +1,6 @@
 #include "DcsAircraftInterface.h"
 #include "DcsAircraftBackend.h"
+#include "IrSeekerAccess.h"
 #include "../GunAmmunition/NativeGunAccess.h"
 #include <limits>
 #include <mutex>
@@ -23,6 +24,7 @@ struct DcsAircraftInterface::Implementation
 	std::mutex mutex;
 	AircraftModule module;
 	NativeGunHost gun;
+	IrSeekerAccess seeker;
 	bool gun_resolved = false, cm_resolved = false;
 	AircraftAccessStatus cm_status = AircraftAccessStatus::WaitingForModule;
 	std::uintptr_t contexts = 0, payload_function = 0;
@@ -35,6 +37,7 @@ struct DcsAircraftInterface::Implementation
 	{
 		module = {};
 		gun = {};
+		seeker.reset();
 		gun_resolved = cm_resolved = false;
 		contexts = payload_function = 0;
 		exception = 0;
@@ -303,4 +306,16 @@ AircraftCountermeasureResult DcsAircraftInterface::dispense_countermeasure(Aircr
 	const std::lock_guard<std::mutex> lock(implementation_->mutex);
 	return implementation_->dispense(kind);
 }
+AircraftIrReading DcsAircraftInterface::control_ir_seeker(bool uncaged,
+                                                          double azimuth_rad,
+                                                          double elevation_rad,
+                                                          bool reset)
+{
+	const std::lock_guard<std::mutex> lock(implementation_->mutex);
+	if (!implementation_->refresh())
+		return {};
+	return implementation_->seeker
+	    .apply(implementation_->backend, implementation_->module, uncaged, azimuth_rad, elevation_rad, reset);
+}
+
 }

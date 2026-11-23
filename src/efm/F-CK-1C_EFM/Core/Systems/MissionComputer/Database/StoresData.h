@@ -9,6 +9,7 @@ namespace Core::Systems::Mc
 struct StoresData
 {
 	StoresInventorySnapshot inventory;
+	IrSeekerControl seeker_control;
 	IrSeekerObservation ir_seeker; ///< 目前全域武器介面的 IR 來源觀測。
 	GunAmmunitionState gun_ammunition;
 	StationSelectionState selection;

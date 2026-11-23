@@ -45,7 +45,7 @@ def parameter_names(catalog):
     names = []
     for item in catalog['cockpit_params']:
         key = item['name']
-        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm', 'Cm', 'FlightStatus'))
+        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm', 'Cm', 'FlightStatus', 'Infrared'))
                 or key in {'HmcsMasterMode', 'HmcsFireControlMode', 'HmcsAamSubmode', 'HmcsGunFiring',
                            'HmcsWeaponClass', 'HmcsWeaponQuantity', 'HmcsWeaponQuantityAvailable'}):
             names.append(item['value'])

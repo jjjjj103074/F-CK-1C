@@ -36,7 +36,10 @@ RadarDisplaySnapshot radar(const RadarSnapshot& source, OperatingMode mode, std:
 	const auto& scan = source.scan;
 	result.sensor_available = observation.status.available && observation.mode != RadarMode::Off;
 	result.bore_half_width_mrad = scan.azimuth_width_rad * 500.0;
-	result.bore_half_height_mrad = scan.elevation_height_rad * 500.0;
+	const auto lower = scan.elevation_center_rad - scan.elevation_height_rad / 2.0;
+	const auto upper = scan.elevation_center_rad + scan.elevation_height_rad / 2.0;
+	result.capture_center_y_mrad = (std::tan(upper) + std::tan(lower)) * 500.0;
+	result.bore_half_height_mrad = (std::tan(upper) - std::tan(lower)) * 500.0;
 	result.range_scale_m = std::max(scan.display_range_m, 1.0);
 	if (!result.sensor_available)
 		return result;

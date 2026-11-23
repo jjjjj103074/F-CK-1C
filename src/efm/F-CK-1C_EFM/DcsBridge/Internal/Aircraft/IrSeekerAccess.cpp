@@ -1,0 +1,159 @@
+#include "IrSeekerAccess.h"
+#include "../../../DcsIds/CockpitDevices.h"
+#include <cmath>
+#include <limits>
+namespace DcsBridge::Internal
+{
+void IrSeekerAccess::reset()
+{
+	*this = {};
+}
+bool IrSeekerAccess::resolve(const DcsAircraftBackend& backend, const AircraftModule& module)
+{
+	if (resolved_)
+		return status_ == AircraftAccessStatus::Available;
+	resolved_ = true;
+	status_ = AircraftAccessStatus::UnsupportedBuild;
+	if (!module.valid || module.timestamp != 0x6adbad09 || module.image_size != 0x68e000 || !backend.symbol ||
+	    !backend.fingerprint || !backend.executable)
+		return false;
+	struct Check
+	{
+		const char* name;
+		std::size_t size;
+		std::uint64_t hash;
+	};
+	// 函式指紋對應目前驗證的 CockpitBase.dll 物件布局與控制方式。
+	constexpr Check checks[] = {
+		{ "?get_wide_device@ccCockpitContext@cockpit@@QEAAPEAVavDevice@2@I@Z", 32, 0x81cc11171e1ba916ULL },
+		{ "?update_ir_seeker@avSimpleWeaponSystem@cockpit@@AEAAXXZ", 32, 0x98f33ac9cf396e65ULL },
+		{ "??0avSidewinderSeeker@cockpit@@QEAA@XZ", 64, 0x5d5008a754d68227ULL },
+		{ "?setConsentToTrack@avSidewinderSeeker@cockpit@@QEAAXM@Z", 26, 0x0df74a7ec2826fc8ULL },
+		{ "?getStatusID@avIRSensor@cockpit@@QEBAIXZ", 7, 0xec4c08ae667a8ea4ULL },
+		{ "?cage@avSidewinderSeeker@cockpit@@MEAAXXZ", 5, 0x7503bb3a0ff66589ULL },
+		{ "?uncage@avIRSensor@cockpit@@IEAAXXZ", 34, 0xc117d6212af01575ULL },
+		{ "?slaveToDirection@avSidewinderSeeker@cockpit@@UEAAXAEBVVec3d@osg@@@Z", 48, 0x447f2c8a1a851472ULL },
+		{ "?toSlave@avSidewinderSeeker@cockpit@@IEAAXXZ", 32, 0x5a587ffbf47695b9ULL }
+	};
+	for (const auto& check : checks)
+	{
+		const auto function = backend.symbol(module.base, check.name);
+		if (!function || !backend.executable(function) || backend.fingerprint(function, check.size) != check.hash)
+			return false;
+	}
+	const auto symbol = [&](const char* name)
+	{
+		return backend.symbol(module.base, name);
+	};
+	contexts_ = symbol("?contexts_ptr@ccCockpitContext@cockpit@@0PAPEAV12@A");
+	device_ = symbol("?get_wide_device@ccCockpitContext@cockpit@@QEAAPEAVavDevice@2@I@Z");
+	weapon_table_ = symbol("??_7avSimpleWeaponSystem@cockpit@@6BavLuaDevice@1@@");
+	sensor_table_ = symbol("??_7avSidewinderSeeker@cockpit@@6BavPlatform@1@@");
+	cage_ = symbol("?cage@avSidewinderSeeker@cockpit@@MEAAXXZ");
+	uncage_ = symbol("?uncage@avIRSensor@cockpit@@IEAAXXZ");
+	consent_ = symbol("?setConsentToTrack@avSidewinderSeeker@cockpit@@QEAAXM@Z");
+	slave_ = symbol("?toSlave@avSidewinderSeeker@cockpit@@IEAAXXZ");
+	direction_ = symbol("?slaveToDirection@avSidewinderSeeker@cockpit@@UEAAXAEBVVec3d@osg@@@Z");
+	status_ =
+	    contexts_ && device_ && weapon_table_ && sensor_table_ && cage_ && uncage_ && consent_ && slave_ && direction_
+	        ? AircraftAccessStatus::Available
+	        : AircraftAccessStatus::MissingInterface;
+	return status_ == AircraftAccessStatus::Available;
+}
+AircraftIrReading IrSeekerAccess::apply(const DcsAircraftBackend& b,
+                                        const AircraftModule& module,
+                                        bool uncaged,
+                                        double azimuth,
+                                        double elevation,
+                                        bool reset_selection)
+{
+	AircraftIrReading result;
+	if (!std::isfinite(azimuth) || !std::isfinite(elevation) || std::abs(azimuth) >= 1.5534 ||
+	    std::abs(elevation) >= 1.5534)
+	{
+		result.status = AircraftAccessStatus::InvalidRequest;
+		return result;
+	}
+	if (!resolve(b, module))
+	{
+		result.status = status_;
+		return result;
+	}
+	const auto read = [&](std::uintptr_t object, std::size_t offset, void* destination, std::size_t size)
+	{
+		return object && offset <= (std::numeric_limits<std::uintptr_t>::max)() - object && b.read &&
+		       b.read(object + offset, destination, size);
+	};
+	std::uintptr_t context = 0, weapon = 0, table = 0, sensor = 0;
+	result.status = AircraftAccessStatus::WaitingForContext;
+	if (!read(contexts_, 0, &context, sizeof(context)) || !context)
+		return result;
+	result.status = AircraftAccessStatus::CallFailed;
+	// 設備 4 對應 devices.lua 的穩定 WEAPON_SYSTEM 位置。
+	if (!b.device || !b.device(device_, context, DcsIds::Devices::WeaponSystem, weapon, result.exception))
+		return result;
+	result.status = AircraftAccessStatus::WaitingForPayload;
+	if (!weapon)
+		return result;
+	result.status = AircraftAccessStatus::UnreadableObject;
+	if (!read(weapon, 0, &table, sizeof(table)) || table != weapon_table_ ||
+	    !read(weapon, 0x158, &sensor, sizeof(sensor)))
+		return result;
+	if (!sensor)
+	{
+		result.status = AircraftAccessStatus::WaitingForPayload;
+		return result;
+	}
+	if (!read(sensor, 0, &table, sizeof(table)) || table != sensor_table_ ||
+	    !read(sensor, 0x284, &result.native_mode, sizeof(result.native_mode)))
+		return result;
+	if (result.native_mode < 0 || result.native_mode > 5)
+		return result;
+	std::uintptr_t current = 0;
+	if (!read(contexts_, 0, &current, sizeof(current)) || current != context)
+	{
+		result.status = AircraftAccessStatus::ContextChanged;
+		return result;
+	}
+	result.status = AircraftAccessStatus::CallFailed;
+	const bool transition = reset_selection || sensor != last_sensor_ || uncaged != last_uncaged_;
+	if (!b.set_float || !b.object_action || !b.direction)
+		return result;
+	// 原生 consent 許可持續作用於 update_angles，保存自行追蹤與飛機指向的區別。
+	if (!b.set_float(consent_, sensor, uncaged ? 1.0F : 0.0F, result.exception))
+		return result;
+	if (transition && !uncaged)
+	{
+		if (!b.object_action(cage_, sensor, result.exception) || !b.object_action(slave_, sensor, result.exception))
+			return result;
+	}
+	if (transition && uncaged)
+	{
+		unsigned target = 0;
+		if (!read(sensor, 0x2c8, &target, sizeof(target)))
+			return result;
+		// 已捕獲時保留原生目標；空視線時啟動尋標器搜尋。
+		if (!target && !b.object_action(uncage_, sensor, result.exception))
+			return result;
+	}
+	if (!uncaged)
+	{
+		const std::array<double, 3> los{ std::cos(elevation) * std::cos(azimuth),
+			                             std::sin(elevation),
+			                             std::cos(elevation) * std::sin(azimuth) };
+		if (!b.direction(direction_, sensor, los, result.exception))
+			return result;
+	}
+	unsigned char consent = 0;
+	if (!read(sensor, 0x42d, &consent, sizeof(consent)) ||
+	    !read(sensor, 0x284, &result.native_mode, sizeof(result.native_mode)))
+		return result;
+	result.self_track_enabled = consent != 0;
+	if (result.self_track_enabled != uncaged)
+		return result;
+	last_sensor_ = sensor;
+	last_uncaged_ = uncaged;
+	result.status = AircraftAccessStatus::Available;
+	return result;
+}
+}

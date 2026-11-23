@@ -142,3 +142,7 @@ FlightStatus 在 Lua 裝置建立時先發布全部文字，再以 16 Hz 更新�
 讓彈量等純數字內容維持字串型別，並在固定欄位顯示冒號。
 DCS `text_using_parameter` 的數字與字串分支使用對應的原生 printf 引數型別；
 回歸測試會模擬 Lua 數字字串的自動轉型，核對啟動、有效彈量及零彈量的格式契約。
+
+武器裝置 update 另外發送 `WeaponInterfaceUpdate` Bridge 回呼，攜帶已執行選站的索引加一。
+C++ 在該回呼核對 SM 控制對象並操作原生 IR 尋標器；該 Lua 入口只通知原生 I/O 時機。
+架構檢查允許 weapon_system 的這一個具名回呼，DCS 作戰動作仍由 CMS 的有序傳送路徑執行。

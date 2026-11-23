@@ -31,6 +31,8 @@ return function(expect)
     values[p.McGeneration], values[p.McAvailable] = 2, 1
     values[p.McMasterMode], values[p.McOverrideMode], values[p.HmcsMasterMode] = 0, 1, 2
     values[p.McSelectedStoreState], values[p.McSelectedStoreCount] = 3, 1
+    values[p.McSelectedStoreCountAvailable], values[p.McSelectedStoreFamily] = 1, 1
+    values[p.McIrControlAvailable], values[p.McIrSelfTrackEnabled] = 1, 1
     values[p.McSelectedStoreIdentifier] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}"
     values[p.McSelectedStoreStation] = "LT"
     values[p.McStoresGunCountAvailable], values[p.McStoresGunCount] = 1, 240
@@ -42,18 +44,21 @@ return function(expect)
     expect(display(p.FlightStatusIas) == "420 kt" and display(p.FlightStatusAltitude) == "12000 ft", "flight rows state their units")
     expect(display(p.FlightStatusMasterMode) == "NAV" and display(p.FlightStatusOverride) == "DGFT", "master mode remains distinct from override")
     expect(display(p.FlightStatusArm) == "ON", "master arm has a readable label")
-    expect(display(p.FlightStatusMissile) == "AIM-9M x1" and display(p.FlightStatusStation) == "LT", "selected weapon identity and station come from the SM publication")
+    expect(display(p.FlightStatusMissile) == "AIM-9 x1" and display(p.FlightStatusStation) == "LT / AIM-9M", "selected weapon identity and station come from the SM publication")
     expect(display(p.FlightStatusGun) == "240", "gun quantity is independent of selected missile")
     expect(display(p.FlightStatusFlare) == "70" and display(p.FlightStatusChaff) == "83", "countermeasure counts retain their separate identities")
     expect(display(p.FlightStatusRadar) == "ACM/BORE STT" and display(p.FlightStatusIr) == "LOCK", "radar tracking and IR lock have distinct rows")
     expect(display(p.FlightStatusUncage) == "ON", "uncage command state is readable")
     values[p.McSelectedStoreState] = 2
+    values[p.McSelectedStoreCountAvailable], values[p.McSelectedStoreFamily] = 1, 1
+    values[p.McIrControlAvailable], values[p.McIrSelfTrackEnabled] = 1, 1
     values[p.McSelectedStoreIdentifier] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}"
     update()
     expect(display(p.FlightStatusMissile) == "SELECTING" and display(p.FlightStatusStation) == "SELECTING", "pending selection never presents a weapon as confirmed")
     values[p.McSelectedStoreState], values[p.McSelectedStoreStation], values[p.McMasterMode], values[p.McOverrideMode] = 3, "MF", 1, 0
+    values[p.McSelectedStoreFamily] = 0
     update()
-    expect(display(p.FlightStatusMissile) == "AIM-120C x1" and display(p.FlightStatusStation) == "MF", "confirmation switches model and station together")
+    expect(display(p.FlightStatusMissile) == "AIM-120C x1" and display(p.FlightStatusStation) == "MF / AIM-120C", "confirmation switches model and station together")
     expect(display(p.FlightStatusMasterMode) == "A-A" and display(p.FlightStatusOverride) == "CENTER", "normal air-to-air mode is readable")
     values[p.McSelectedStoreState] = 1
     values[p.McStoresGunCount], values[p.McStoresIrSeekerLock] = 0, 0

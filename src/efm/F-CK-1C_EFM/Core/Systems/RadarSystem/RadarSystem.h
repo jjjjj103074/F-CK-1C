@@ -21,7 +21,9 @@ private:
 	void update_cursor(const SystemStepContext& context);
 	void execute(const RadarRequest& request);
 	bool apply_mode(TargetAcquisitionMode mode, std::uint64_t parent);
-	void set_scan(RadarSearchMode mode, std::uint64_t parent);
+	void set_scan(RadarSearchMode mode,
+	              std::uint64_t parent,
+	              TargetAcquisitionMode pattern = TargetAcquisitionMode::None);
 	void begin_acquisition(std::uint64_t parent, AcquisitionInput input);
 	void cancel_acquisition(std::uint64_t parent);
 	void finish_acquisition(std::uint64_t parent);

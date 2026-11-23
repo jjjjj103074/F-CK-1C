@@ -62,6 +62,13 @@ private:
 		WeaponReleasePressSequence,
 		SelectedStoreState,
 		SelectedStoreCount,
+		SelectedStoreCountAvailable,
+		SelectedStoreFamily,
+		IrControlAvailable,
+		IrSelfTrackEnabled,
+		IrNativeMode,
+		IrControlStatus,
+		IrControlRevision,
 		Count
 	};
 	bool write(Parameter parameter, double value, CockpitParameterEvents& events);

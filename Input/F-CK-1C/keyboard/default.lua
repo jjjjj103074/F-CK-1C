@@ -61,7 +61,7 @@ join(res.keyCommands, {
     { combos = { { key = "3" } }, down = device_commands.AirToGroundMode, up = device_commands.AirToGroundMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode Button - A-G (Toggle to NAV)"), category = { _("Modes") } },
     { combos = { { key = "D", reformers = { "RShift" } } }, down = device_commands.DogfightCenter, up = device_commands.DogfightCenter, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - CENTER (Restore Master Mode)"), category = { _("Modes") } },
     { combos = { { key = "Q" } }, down = device_commands.MissileStep, up = device_commands.MissileStep, value_down = 1.0, value_up = 0.0, name = _("MSL STEP - Station (Short) / Missile Type (Hold)"), category = { _("Weapons") } },
-    { down = device_commands.WeaponRelease, up = device_commands.WeaponRelease, value_down = 1.0, value_up = 0.0, name = _("Weapon Release (AAM, Uncage-Gated)"), category = { _("Weapons") } },
+    { down = device_commands.WeaponRelease, up = device_commands.WeaponRelease, value_down = 1.0, value_up = 0.0, name = _("Weapon Release (AAM)"), category = { _("Weapons") } },
     { combos = { { key = "O" } }, down = iCommandPlaneEOSOnOff, name = _("[Developer] IRST Test - Toggle"), category = { _("Developer Tools") } },
     { combos = { { key = "I" } }, down = device_commands.TMSUp, up = device_commands.TMSUp, value_down = 1.0, value_up = 0.0, name = _("HOTAS TMS - Up"), category = { _("Sensors") } },
     { combos = { { key = "K" } }, down = device_commands.TMSDown, up = device_commands.TMSDown, value_down = 1.0, value_up = 0.0, name = _("HOTAS TMS - Down"), category = { _("Sensors") } },

@@ -16,8 +16,9 @@ local root = draw.node("radar_forward_root", nil, nil,
 
 -- 四角框以機體準直參考視線定位，捕獲閃爍由顯示快照提供。
 local bore = draw.node("radar_bore", root, nil,
-    { p.RadarDisplayCueKind, p.RadarDisplayCueVisible },
-    { { "parameter_in_range", 0, 0.9, 2.1 }, { "parameter_in_range", 1, 0.9, 1.1 } })
+    { p.RadarDisplayCueKind, p.RadarDisplayCueVisible, p.RadarDisplayCaptureCenterYMrad },
+    { { "parameter_in_range", 0, 0.9, 2.1 }, { "parameter_in_range", 1, 0.9, 1.1 },
+      { "move_up_down_using_parameter", 2, parameter_scale } })
 for _, x in ipairs({ -1, 1 }) do
     for _, y in ipairs({ -1, 1 }) do
         local name = "radar_bore_corner_" .. x .. "_" .. y
@@ -35,4 +36,25 @@ local target = draw.node("radar_stt", root, nil,
     { { "parameter_in_range", 0, 2.9, 3.1 }, { "parameter_in_range", 1, 0.9, 1.1 },
       { "move_left_right_using_parameter", 2, parameter_scale }, { "move_up_down_using_parameter", 3, parameter_scale } })
 draw.box("radar_stt_box", target, 14, 14, line_width_mrad, color)
+-- 圓圈顯示原生要求方向，菱形顯示原生 IR 捕獲目標。
+local ir = draw.node("infrared_forward", nil, nil,
+    { p.InfraredDisplayAvailable }, { { "parameter_in_range", 0, 0.9, 1.1 } })
+local desired = draw.node("infrared_desired", ir, nil,
+    { p.InfraredDisplayDesiredVisible, p.InfraredDisplayDesiredX, p.InfraredDisplayDesiredY },
+    { { "parameter_in_range", 0, 0.9, 1.1 }, { "move_left_right_using_parameter", 1, parameter_scale },
+      { "move_up_down_using_parameter", 2, parameter_scale } })
+for i = 0, 23 do
+    local a, b = i * math.pi / 12, (i + 1) * math.pi / 12
+    draw.line("infrared_circle_" .. i, desired, math.cos(a) * 12, math.sin(a) * 12,
+        math.cos(b) * 12, math.sin(b) * 12, 1.5, color)
+end
+local acquired = draw.node("infrared_acquired", ir, nil,
+    { p.InfraredDisplayTargetVisible, p.InfraredDisplayTargetX, p.InfraredDisplayTargetY },
+    { { "parameter_in_range", 0, 0.9, 1.1 }, { "move_left_right_using_parameter", 1, parameter_scale },
+      { "move_up_down_using_parameter", 2, parameter_scale } })
+local points = { {0, 16}, {12, 0}, {0, -16}, {-12, 0}, {0, 16} }
+for i = 1, 4 do
+    draw.line("infrared_diamond_" .. i, acquired, points[i][1], points[i][2],
+        points[i + 1][1], points[i + 1][2], 1.8, color)
+end
 need_to_be_closed = true

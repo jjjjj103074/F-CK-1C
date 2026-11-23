@@ -273,13 +273,13 @@ void test_acm_inputs_and_mode_change_clear_held_operations(Tests::Context& c)
 	f.tap(CommandId::SetTmsUp);
 	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::Boresight);
 	f.tap(CommandId::PressTmsDown);
-	TEST_EXPECT(c, f.text("mc_tms_request").find("REJECT TARGET #") == 0);
-	TEST_EXPECT(c, !f.radar.automatic_acquisition_requested);
-	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::Boresight);
+	TEST_EXPECT(c, f.text("mc_tms_request").find("DESIGNATE #") == 0);
+	TEST_EXPECT(c, f.radar.automatic_acquisition_requested);
+	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::VerticalScan);
 	f.tap(CommandId::PressTmsDown);
-	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::Boresight);
+	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::VerticalScan);
 	f.tap(CommandId::PressTmsRight);
-	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::Boresight);
+	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::WideScan);
 	f.send(CommandId::SetTmsUp);
 	f.advance();
 	f.select(CommandId::SelectOverrideCenter);
@@ -292,10 +292,54 @@ void test_acm_inputs_and_mode_change_clear_held_operations(Tests::Context& c)
 	TEST_EXPECT(c, f.text("mc_mfd_right") == "SMS / NONE");
 	TEST_EXPECT(c, f.text("mc_soi_location") == "HUD");
 }
+void test_ir_picture_with_radar_off(Tests::Context& c)
+{
+	Fixture f;
+	auto& stations = f.frame.cockpit.weapon_stations;
+	for (auto& station : stations.stations)
+		station.configuration = StoreConfiguration::Empty;
+	stations.stations[0] = { StoreConfiguration::Equipped,
+		                     1,
+		                     WeaponCategory::Missile,
+		                     WeaponRole::AirToAir,
+		                     "aim9m",
+		                     "aim9m",
+		                     "RT",
+		                     WeaponModel::Aim9M };
+	f.select(CommandId::SelectAirToAirMode);
+	stations.selected_station = f.mission.stores.selection.requested_station;
+	stations.selection_ack_revision = f.mission.stores.selection.request_revision;
+	stations.status.revision += 2;
+	auto& ir = f.frame.cockpit.ir_seeker;
+	ir.status = { true, 2, ObservationInvalidReason::None };
+	ir.desired_azimuth_rad = .1;
+	ir.desired_elevation_rad = .05;
+	ir.locked = true;
+	ir.target_azimuth_rad = .2;
+	ir.target_elevation_rad = .1;
+	f.frame.cockpit.radar.mode = RadarMode::Off;
+	f.advance(8);
+	TEST_EXPECT(c, f.display.infrared.desired_visible && f.display.infrared.target_visible);
+	TEST_EXPECT(c, !f.display.radar.sensor_available);
+	TEST_EXPECT_NEAR(c, f.display.infrared.desired_x_mrad, std::tan(.1) * 1000, 1e-9);
+	TEST_EXPECT_NEAR(c, f.display.infrared.target_y_mrad, std::tan(.1) / std::cos(.2) * 1000, 1e-9);
+	ir.locked = false;
+	ir.status.revision += 2;
+	f.advance(8);
+	TEST_EXPECT(c, f.display.infrared.desired_visible && !f.display.infrared.target_visible);
+	ir.status.available = false;
+	f.advance(8);
+	TEST_EXPECT(c, !f.display.infrared.desired_visible && !f.display.infrared.target_visible);
+	ir.status.available = true;
+	f.select(CommandId::SelectNavigationMode);
+	TEST_EXPECT(c, !f.display.infrared.desired_visible && !f.display.infrared.target_visible);
+}
+
 }
 
 void run_sensor_control_tests(Tests::Context& context)
 {
+	test_ir_picture_with_radar_off(context);
 	test_soi_uses_display_sources_and_follows_the_sensor(context);
 	test_navigation_and_ground_shells_are_explicit(context);
 	test_mode_and_display_snapshots_settle_through_pipeline(context);

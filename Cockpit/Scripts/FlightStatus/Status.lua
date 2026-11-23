@@ -10,6 +10,10 @@ return function()
     local arm = get_param_handle(cockpit_params.HmcsMasterMode)
     local submode = get_param_handle(cockpit_params.HmcsAamSubmode)
     local store_state = get_param_handle(cockpit_params.McSelectedStoreState)
+    local group_count_available = get_param_handle(cockpit_params.McSelectedStoreCountAvailable)
+    local store_family = get_param_handle(cockpit_params.McSelectedStoreFamily)
+    local ir_control = get_param_handle(cockpit_params.McIrControlAvailable)
+    local ir_consent = get_param_handle(cockpit_params.McIrSelfTrackEnabled)
     local store_count = get_param_handle(cockpit_params.McSelectedStoreCount)
     local store_identifier = get_param_handle(cockpit_params.McSelectedStoreIdentifier)
     local store_station = get_param_handle(cockpit_params.McSelectedStoreStation)
@@ -17,7 +21,6 @@ return function()
     local gun_count = get_param_handle(cockpit_params.McStoresGunCount)
     local ir_available = get_param_handle(cockpit_params.McStoresIrSeekerAvailable)
     local ir_locked = get_param_handle(cockpit_params.McStoresIrSeekerLock)
-    local uncage = get_param_handle(cockpit_params.McMissileUncageHeld)
     local cm_available = get_param_handle(cockpit_params.CmInventoryAvailable)
     local flare_count = get_param_handle(cockpit_params.CmFlareCount)
     local chaff_count = get_param_handle(cockpit_params.CmChaffCount)
@@ -63,14 +66,20 @@ return function()
         elseif store_state:get() == 2 then
             missile, station = "SELECTING", "SELECTING"
         elseif store_state:get() == 3 then
-            missile = store_name(store_identifier:get()) .. " x" .. number(store_count:get())
+            local model = store_name(store_identifier:get())
+            local family = store_family:get() == 1 and "AIM-9" or model
+            missile = family .. " x" .. (group_count_available:get() == 1 and number(store_count:get()) or "---")
             station = store_station:get()
             if type(station) ~= "string" or station == "" then station = "---" end
+            station = station .. " / " .. model
         end
         local gun = gun_available:get() == 1 and number(gun_count:get()) or "---"
         local ir = ir_available:get() == 1 and (ir_locked:get() == 1 and "LOCK" or "NO LOCK") or "---"
-        local uncaged = uncage:get() == 1 and "ON" or "OFF"
-        local scan = submode:get() == 5 and "ACM/BORE" or (submode:get() == 4 and "CRM/RWS" or "---")
+        local uncaged = "---"
+        if store_family:get() == 1 and store_state:get() == 3 then
+            uncaged = ir_control:get() == 1 and (ir_consent:get() == 1 and "ON" or "OFF") or "WAIT"
+        end
+        local scan = submode:get() == 5 and (({ [2] = "ACM/10x60", [6] = "ACM/30x20" })[submode:get()] or "ACM/BORE") or (submode:get() == 4 and "CRM/RWS" or "---")
         local track = ({ [0] = "OFF", "SEARCH", "ACQUIRING", "STT" })[radar_mode:get()] or "---"
         local radar = radar_available:get() == 1 and (scan .. " " .. track) or "---"
         coherent = coherent and generation:get() == before and available:get() == 1

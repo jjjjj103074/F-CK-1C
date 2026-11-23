@@ -3,6 +3,7 @@
 #include "CarrierBridge.h"
 #include "Aircraft/DcsAircraftInterface.h"
 #include "Countermeasures/CountermeasureExecutor.h"
+#include "Weapons/IrSeekerExecutor.h"
 #include "CockpitBridge.h"
 #include "ExternalActionTransport.h"
 #include "GunAmmunition/GunAmmunitionSource.h"
@@ -65,6 +66,7 @@ public:
 	void observe_aircraft(Core::CockpitObservation& observation);
 	DcsAircraftInterface& aircraft_interface();
 	CountermeasureExecutor& countermeasure_executor();
+	IrSeekerExecutor& ir_seeker_executor();
 	GunAmmunitionSource& gun_ammunition_source();
 	NativeCountermeasureProbe& native_countermeasure_probe();
 	CarrierBridge& carrier_bridge();
@@ -130,6 +132,7 @@ private:
 	ExternalActionTransport action_transport_;
 	DcsAircraftInterface aircraft_interface_;
 	CountermeasureExecutor countermeasure_executor_;
+	IrSeekerExecutor ir_seeker_executor_;
 	GunAmmunitionSource gun_ammunition_source_;
 	NativeCountermeasureProbe native_countermeasure_probe_;
 	CarrierBridge carrier_bridge_;

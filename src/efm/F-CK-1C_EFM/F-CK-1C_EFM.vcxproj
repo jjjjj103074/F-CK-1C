@@ -63,6 +63,8 @@
     <ClCompile Include="DcsBridge\Internal\Countermeasures\CountermeasureExecutor.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="DcsBridge\Internal\Aircraft\DcsAircraftInterface.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="DcsBridge\Internal\Aircraft\DcsAircraftBackend.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="DcsBridge\Internal\Aircraft\IrSeekerAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="DcsBridge\Internal\Weapons\IrSeekerExecutor.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="DcsBridge\Internal\GunAmmunition\NativeGunAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="DcsBridge\Internal\GunAmmunition\GunAmmunitionSource.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <None Include="ReadMe.txt" />
@@ -195,6 +197,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DcsBridge\Internal\RadarDisplayExporter.cpp">
+    <ClCompile Include="DcsBridge\Internal\InfraredDisplayExporter.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DcsBridge\Internal\MissionComputerExporter.cpp">

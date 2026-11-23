@@ -53,6 +53,19 @@ struct AircraftCountermeasureReading
 		return status == AircraftAccessStatus::Available;
 	}
 };
+/// @brief 尋標器呼叫及讀回的原生模式與自主追蹤許可。
+struct AircraftIrReading
+{
+	AircraftAccessStatus status = AircraftAccessStatus::WaitingForModule;
+	bool self_track_enabled = false;
+	int native_mode = -1;
+	std::uint32_t exception = 0;
+	bool available() const noexcept
+	{
+		return status == AircraftAccessStatus::Available;
+	}
+};
+
 struct AircraftCountermeasureResult
 {
 	bool returned = false; ///< 原生施放呼叫已返回；after 保存呼叫後的庫存觀測。
@@ -72,6 +85,8 @@ public:
 	void reset_flight();
 	AircraftGunReading read_gun_ammunition();
 	AircraftCountermeasureReading read_countermeasures();
+	/// @brief 取得目前武器尋標器，套用指向及自主追蹤要求並讀回結果。
+	AircraftIrReading control_ir_seeker(bool uncaged, double azimuth_rad, double elevation_rad, bool reset);
 	/// @brief 取得即時庫存後施放一發，並保存前後觀測。
 	AircraftCountermeasureResult dispense_countermeasure(AircraftCountermeasure kind);
 

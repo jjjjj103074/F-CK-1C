@@ -45,4 +45,23 @@ inline RadarScanControl boresight()
 	result.acquisition_range_window_m = kBoresightAcquisitionRangeM * 2.0;
 	return result;
 }
+/// @brief 建立 F-16 參考的 HUD 寬區與向上垂直 ACM 掃描窗口。
+inline RadarScanControl air_combat(TargetAcquisitionMode mode)
+{
+	auto result = boresight();
+	if (mode == TargetAcquisitionMode::WideScan)
+	{
+		result.azimuth_width_rad = Common::rad(30.0);
+		result.elevation_height_rad = Common::rad(20.0);
+	}
+	else if (mode == TargetAcquisitionMode::VerticalScan)
+	{
+		result.azimuth_width_rad = Common::rad(10.0);
+		result.elevation_height_rad = Common::rad(60.0);
+		result.elevation_center_rad = Common::rad(30.0);
+	}
+	result.acquisition_azimuth_width_rad = result.azimuth_width_rad;
+	return result;
+}
+
 }

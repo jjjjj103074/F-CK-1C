@@ -1,4 +1,5 @@
 #include "MissionComputerExporter.h"
+#include "../../Core/Systems/MissionComputer/Common/MissileSelection.h"
 
 #include "../../DcsIds/CockpitParams.g.h"
 
@@ -43,7 +44,14 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::McMissileUncagePressSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McWeaponReleasePressSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreState),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreCount) } }),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreCount),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreCountAvailable),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreFamily),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McIrControlAvailable),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McIrSelfTrackEnabled),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McIrNativeMode),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McIrControlStatus),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McIrControlRevision) } }),
       action_slots_({ { cockpit_parameter_writer(DcsIds::CockpitParams::McAction01),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction02),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction03),
@@ -109,7 +117,15 @@ bool MissionComputerExporter::export_selected_store(const Core::StoresSnapshot& 
 		}
 	}
 	bool complete = write(Parameter::SelectedStoreState, static_cast<double>(state), events);
-	complete = write(Parameter::SelectedStoreCount, station ? station->count : 0, events) && complete;
+	const auto count = station
+	                       ? Core::Systems::Mc::count_selected_missile_group(stores.inventory, station->station_index)
+	                       : Core::Systems::Mc::MissileCount{ 0, false };
+	complete = write(Parameter::SelectedStoreCount, count.count, events) && complete;
+	complete = write(Parameter::SelectedStoreCountAvailable, count.complete, events) && complete;
+	complete = write(Parameter::SelectedStoreFamily,
+	                 station && Core::Systems::Mc::is_sidewinder(station->model) ? 1.0 : 0.0,
+	                 events) &&
+	           complete;
 	const auto identifier = selected_store_identifier_.write_string(api_, station ? station->weapon_identifier : "");
 	if (identifier.event)
 		events = events.with_event(*identifier.event);
@@ -154,6 +170,11 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Submode, static_cast<double>(snapshot.fire_control.air_to_air_submode));
 	WRITE_MC(GunFiring, snapshot.fire_control.gun_firing_indication ? 1.0 : 0.0);
 	WRITE_MC(Uncage, snapshot.fire_control.missile_uncage_selected ? 1.0 : 0.0);
+	WRITE_MC(IrControlAvailable, snapshot.stores.ir_seeker.control_available);
+	WRITE_MC(IrSelfTrackEnabled, snapshot.stores.ir_seeker.self_track_enabled);
+	WRITE_MC(IrNativeMode, snapshot.stores.ir_seeker.native_mode);
+	WRITE_MC(IrControlStatus, snapshot.stores.ir_seeker.control_status);
+	WRITE_MC(IrControlRevision, snapshot.stores.ir_seeker.control_revision);
 	const auto& ir = snapshot.stores.ir_seeker;
 	WRITE_MC(IrAvailable, ir.status.available ? 1.0 : 0.0);
 	WRITE_MC(IrRevision, static_cast<double>(ir.status.revision));

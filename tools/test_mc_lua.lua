@@ -298,7 +298,12 @@ do
     values = fixture(function() return true end)
     local operations = {}
     local fail_selection = false
-    dispatch_action = function(_, command)
+    local interface_updates = {}
+    dispatch_action = function(_, command, value)
+        if command == device_commands.WeaponInterfaceUpdate then
+            interface_updates[#interface_updates + 1] = value
+            return
+        end
         operations[#operations + 1] = command == dcs_commands.iCommandPlanePickleOn and "fire"
             or command == dcs_commands.iCommandPlanePickleOff and "stop" or "mode"
     end
@@ -332,6 +337,7 @@ do
     publish(2, 1, { kinds.ModeHelmet, kinds.SelectStation, kinds.PickleOn }, 0, -1, 0)
     run_station()
     expect(#operations == 0, "selection waits until preceding native commands complete")
+    expect(interface_updates[1] == 0, "native weapon callback carries the adapter's actual unselected station")
     run_cms()
     expect(#operations == 1 and operations[1] == "mode", "the prefix before a selection barrier executes first")
     expect(values[cockpit_params.McAcknowledgedSequence] == 1, "selection barrier retains its global sequence")

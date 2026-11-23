@@ -3,6 +3,7 @@
 #include "CockpitParameterEndpoint.h"
 #include "MissionComputerExporter.h"
 #include "RadarDisplayExporter.h"
+#include "InfraredDisplayExporter.h"
 #include "../../Core/Contracts/CockpitContracts.h"
 #include "../../include/Cockpit/ccParametersAPI.h"
 
@@ -84,6 +85,7 @@ private:
 	std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)> slots_;
 	MissionComputerExporter mission_computer_;
 	RadarDisplayExporter radar_display_;
+	InfraredDisplayExporter infrared_display_;
 	std::uint64_t radar_scan_revision_ = 0;
 	std::mutex mutex_;
 };

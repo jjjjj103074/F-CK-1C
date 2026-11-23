@@ -1,4 +1,6 @@
 #include "BridgeContext.h"
+#include "../../DcsIds/CustomCommands.g.h"
+#include <cmath>
 #include "NativeCountermeasures/NativeCountermeasureIntegration.h"
 #include "../../Common/Configuration/Configuration.h"
 
@@ -49,6 +51,27 @@ namespace DcsBridge
 {
 namespace Internal
 {
+bool service_ir_seeker(BridgeContext& context, int command, float value)
+{
+	if (command != DcsIds::Commands::WeaponInterfaceUpdate)
+		return false;
+	if (!std::isfinite(value) || value < 0 || value > Core::kWeaponStationCount || std::trunc(value) != value)
+		return true;
+	(void)context.perform_flight_action({ "ed_fm_set_command", "weapon_interface", command },
+	                                    [&]
+	                                    {
+		                                    const auto snapshot = context.output_store().read();
+		                                    if (!snapshot)
+			                                    return;
+		                                    auto stores = snapshot->cockpit.combat_avionics.stores;
+		                                    // 裝置本輪完成選站後核對控制對象，再套用下一筆 SM 快照。
+		                                    if (static_cast<int>(value) - 1 != stores.seeker_control.station)
+			                                    stores.seeker_control.active = false;
+		                                    context.ir_seeker_executor().execute(stores, snapshot->simulation_time_s);
+	                                    });
+	return true;
+}
+
 BridgeContext::BridgeContext(const BridgeContextConfig& config)
     : module_paths_(make_module_paths(config.path_source)),
       event_log_(module_paths_.mod_root_path.c_str()),
@@ -66,6 +89,12 @@ BridgeContext::BridgeContext(const BridgeContextConfig& config)
                                {
 	                               (void)event_log_.write(event);
                                }),
+      ir_seeker_executor_(aircraft_interface_,
+                          cockpit_api_,
+                          [this](const EventRecord& event)
+                          {
+	                          (void)event_log_.write(event);
+                          }),
       gun_ammunition_source_(event_log_, aircraft_interface_),
       native_countermeasure_probe_(make_native_countermeasure_host(),
                                    [this](const NativeCmProbeSnapshot& snapshot, const char* reason)
@@ -158,8 +187,14 @@ CockpitBridge& BridgeContext::cockpit_bridge()
 
 void BridgeContext::observe_aircraft(Core::CockpitObservation& observation)
 {
+	ir_seeker_executor_.observe(observation.ir_seeker);
 	observation.countermeasures = countermeasure_executor_.observe();
 	observation.gun_ammunition = gun_ammunition_source_.observe(output_store_.read()->simulation_time_s);
+}
+
+IrSeekerExecutor& BridgeContext::ir_seeker_executor()
+{
+	return ir_seeker_executor_;
 }
 
 CountermeasureExecutor& BridgeContext::countermeasure_executor()
@@ -207,6 +242,7 @@ Core::FrameOutput BridgeContext::start_flight(Core::StartMode mode)
 	// 初始化前釋放目前飛行狀態，將輸出儲存區設為 released。
 	aircraft_interface_.reset_flight();
 	countermeasure_executor_.reset_flight();
+	ir_seeker_executor_.reset_flight();
 	gun_ammunition_source_.reset_flight();
 	core_->release();
 	output_store_.mark_released();

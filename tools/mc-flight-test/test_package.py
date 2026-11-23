@@ -92,7 +92,7 @@ class TestFlightBundle(unittest.TestCase):
         with zipfile.ZipFile(bundle) as archive:
             build = json.loads(archive.read('BUILD.json'))
             self.assertEqual(build['focus'], 'status')
-            self.assertEqual(build['human_cases'], 6)
+            self.assertEqual(build['human_cases'], 12)
             self.assertFalse(build['native_countermeasure_probe'])
             self.assertNotIn(package.PROBE_FLAG, archive.namelist())
             self.assertNotIn(package.TEST_ROOT+'Indicator_page.lua', archive.namelist())

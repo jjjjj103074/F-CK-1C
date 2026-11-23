@@ -10,6 +10,7 @@ underlying cockpit context, human-plane interface, payload and gun objects.
 | `read_gun_ammunition()` | Combined native gun rounds, source status, host identity and native exception |
 | `read_countermeasures()` | Flare/chaff counts and source status |
 | `dispense_countermeasure(kind)` | One-round native call with before/after observations |
+| `control_ir_seeker(...)` | Selected Sidewinder pointing, self-track consent and native readback |
 | `reset_flight()` | Clears the per-flight library resolution state |
 
 The implementation shares library discovery, symbol resolution, executable-memory
@@ -35,3 +36,7 @@ FrameInput and SystemPipeline; program scheduling belongs to CountermeasureSyste
 Core Systems consume typed FrameInput/AircraftData and publish typed actions to
 FrameOutput through SystemPipeline. Further aircraft capabilities can add their
 own focused adapter and contracts while reusing this module's environment access.
+
+IrSeekerAccess validates its own code profile and reacquires the weapon device and seeker.
+The weapon-device Lua update schedules this operation through the bridge command;
+SM owns selected-station policy and the request, while DisplaySystem owns IR projection.

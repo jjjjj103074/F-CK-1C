@@ -410,10 +410,10 @@ void test_reserved_patterns_leave_the_supported_mode_running(Tests::Context& c)
 	f.step(period);
 	auto output = f.step(period * 2);
 	TEST_EXPECT(c, output.requested_search_mode == RadarSearchMode::TrackWhileScan);
-	TEST_EXPECT(c, output.active_search_mode == RadarSearchMode::RangeWhileSearch);
-	TEST_EXPECT(c, output.requested_acquisition_mode == TargetAcquisitionMode::BeyondVisualRange);
+	TEST_EXPECT(c, output.active_search_mode == RadarSearchMode::AirCombat);
+	TEST_EXPECT(c, output.requested_acquisition_mode == TargetAcquisitionMode::VerticalScan);
 	TEST_EXPECT(c, output.command_results[1].implementation == RadarImplementation::Reserved);
-	TEST_EXPECT(c, output.command_results[2].implementation == RadarImplementation::Reserved);
+	TEST_EXPECT(c, output.command_results[2].implementation == RadarImplementation::Simplified);
 	f.requests.items.push_back({ 4, { RadarOperation::SelectNavigation } });
 	f.step(period * 3);
 	output = f.step(period * 4);

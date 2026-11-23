@@ -163,7 +163,7 @@ Export 的 `Cannon.shells` 已有可核對實作，但屬於 Export 執行環境
 ## 全域 IR 武器觀測（2026-11-11）
 
 CockpitBridge 以來源目錄中的 IrLock、IrDesiredAzimuth／Elevation、IrTargetAzimuth／Elevation 讀取原始欄位，
-驗證有限數值後形成 IrSeekerObservation。此型別只表達來源回報，SM 保存並隨 MC 快照發布。
+驗證有限數值後形成 IrSeekerObservation。SM 保存原生 IR 觀測及原生控制讀回，隨 MC 快照發布。
 所有角度維持來源契約的弧度；要求方向與目標方向分別保存。
 來源欄位、方向、單位與讀取者由 CommandIds.json 及其產生器維護。
 
@@ -382,3 +382,28 @@ FlightStatus 在裝置建立時初始化所有顯示文字，並以 `: ` 作為�
 在 `0x47f911` 傳入 double，字串分支在 `0x47f973` 傳入字元指標。
 
 參考：[DCS-OpenSource 的參數原始調查](https://github.com/DCS-OpenSource/dcs-opensource-modding-guide/blob/main/docs/Aircraft/Lua/BasicPrinciples.md)。
+
+## 選中 AIM-9 的原生尋標器控制（2026-11-23）
+
+`DcsAircraftInterface::control_ir_seeker()` 共用玩家飛機原生介面，IrSeekerAccess 以
+CockpitBase.dll 時間戳、映像大小與函式指紋核對目前布局。操作路徑為 context 的
+`get_wide_device(WEAPON_SYSTEM)` → `avSimpleWeaponSystem` → `avSidewinderSeeker`，
+各次操作核對物件 vtable。部署包的 DCS 實際效果須由本輪飛測確認。
+
+通用 `update_ir_seeker` 持續切換搜尋／追蹤模式。原生 `setConsentToTrack(float)` 控制
+`update_angles` 是否依已取得目標自主追蹤：false 使用指定視線，true 允許追蹤。
+回籠呼叫 `cage`／`toSlave` 並提供方向；有既有目標時以 consent 進入自主追蹤，保留原生目標；
+空視線時可呼叫 `uncage` 啟動搜尋。介面讀回 native mode 與 consent，並記錄呼叫錯誤。
+
+要求由 FC 經 SM FIFO 送入 StoresSnapshot。武器 Lua 的 update 以生成的
+`WeaponInterfaceUpdate` 通知 Bridge；value 攜帶已執行選站的索引加一，0 代表未選站。
+Bridge 在該武器裝置回呼核對快照與實際掛點後呼叫原生介面。Lua 供應更新時機與裝置觀測，
+C++ 保存政策、控制與回覆。下一個 FrameInput 將控制讀回交給 SM。
+
+`WS_IR_MISSILE_SEEKER_DESIRED_AZIMUTH/ELEVATION` 的目錄方向為 bidirectional，
+IrSeekerExecutor 發布飛機要求視線，CockpitBridge 保存原生介面回讀。`IR_LOCK` 與 target 角度持續使用原生來源。
+這些觀測分別表示要求、捕獲及追蹤許可；模型的冷卻、備便狀態仍各依其實際資料來源處理。
+
+操作依據：Lockheed Martin 16PR14341，1998 MLU M1，印刷頁 137–139（AIM-9L/M）與
+16PR15269，2000 MLU M2，印刷頁 52–53（選站與視線）。本機將所有 AIM-9 合為同一選擇群組；
+型號及指向能力仍分開保存。MC 使用正常投放要求，最終離架遵循原生條件。

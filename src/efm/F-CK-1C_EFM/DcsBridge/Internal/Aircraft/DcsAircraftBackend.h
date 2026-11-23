@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <array>
 
 namespace DcsBridge::Internal
 {
@@ -15,6 +16,10 @@ struct AircraftModule
 /// @brief 提供原生環境與各種已驗證呼叫的執行介面，供平台實作與測試替換。
 struct DcsAircraftBackend
 {
+	std::function<bool(std::uintptr_t, std::uintptr_t, unsigned, std::uintptr_t&, std::uint32_t&)> device;
+	std::function<bool(std::uintptr_t, std::uintptr_t, std::uint32_t&)> object_action;
+	std::function<bool(std::uintptr_t, std::uintptr_t, float, std::uint32_t&)> set_float;
+	std::function<bool(std::uintptr_t, std::uintptr_t, const std::array<double, 3>&, std::uint32_t&)> direction;
 	std::function<AircraftModule()> module;
 	std::function<std::uintptr_t(std::uintptr_t, const char*)> symbol;
 	std::function<bool(std::uintptr_t, void*, std::size_t)> read;

@@ -11,7 +11,7 @@ FireControl::FireControl(const ModeData& mode,
                          RadarRequestQueue& radar_requests,
                          StoresCommandQueue& stores_commands)
     : targeting_(mode, radar, data.targeting, radar_requests),
-      weapon_operation_(mode, execution, data.weapon, stores_commands)
+      weapon_operation_(mode, radar, execution, data.weapon, stores_commands)
 {
 }
 
@@ -20,12 +20,8 @@ void FireControl::handle(const Command& command, std::chrono::nanoseconds input_
 	switch (command.id)
 	{
 	case CommandId::ToggleMissileUncage:
-		if (Common::command_value_is_pressed(command.value_normalized))
-			targeting_.on_missile_uncage_selected(weapon_operation_.toggle_missile_uncage());
-		break;
 	case CommandId::SetMissileUncage:
 		weapon_operation_.handle(command, input_time);
-		targeting_.handle(command, input_time);
 		break;
 	case CommandId::SetTmsUp:
 	case CommandId::PressTmsDown:
@@ -56,6 +52,8 @@ void FireControl::on_master_arm_selected(const MasterArmSelected& event)
 {
 	if (event.selected.master_arm != MasterArmMode::On)
 		weapon_operation_.stop();
+	if (event.selected.master_arm == MasterArmMode::Off)
+		weapon_operation_.handle({ CommandId::SetMissileUncage, 0.0 }, {});
 }
 
 void FireControl::step(std::chrono::nanoseconds time, double)

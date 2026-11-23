@@ -1,6 +1,6 @@
 # 空對空雷達模式與參數依據
 
-更新：2026-11-20。本輪選擇 CRM／RWS 與 ACM／BORE，捕獲後使用 avSimpleRadar 原生 STT。
+更新：2026-11-20。目前提供 CRM／RWS 與 ACM／BORE／30×20／10×60，捕獲後使用 avSimpleRadar 原生 STT。
 參考方向為 F-16C Block 25。使用者已同意：公開數值不足時，保留專案既有探測性能，
 掃描參數採有明確來源與適用差異的 F-16 原廠參考資料。
 
@@ -19,8 +19,8 @@ DGFT／MSL OVRD 期間，先按右 Shift＋D 退出超控，再選擇 NAV／A-A�
 直到找到目標或飛行員取消；成功後結束捕獲輸入，持續使用原生 STT 回報。
 失鎖且仍啟用自動捕獲時，在原生回到 SEARCH 後重新捕獲。
 
-CRM 的 Spotlight、TWS、目標資料展開／優先序，以及 ACM 的 30×20／10×60 等入口回報 Reserved。
-它們保留現有的已支援掃描配置。DGFT 的 TMS 下停止捕獲並保留 BORE；TMS 右保留 WideScan 要求入口。
+CRM 的 Spotlight、TWS、目標資料展開／優先序等入口回報 Reserved。
+它們保留現有的已支援掃描配置。DGFT 的 TMS 下在 STT 時脫鎖，搜尋時選 10×60；TMS 右選 30×20。
 TWS 要求與真正執行的 RWS 分別顯示。SAM 與多目標航跡保留入口。前視捕獲框與右下角雷達圖見 [雷達顯示](RADAR_DISPLAY.zh-TW.md)。
 
 ## 參數與來源
@@ -73,7 +73,7 @@ RWS／BORE 操作回報 Simplified，表示採原生通用雷達配合軟體掃�
 
 正常 debug 通道新增：
 
-- `mc_radar_active`：真正執行的 CRM RWS／ACM BORE／IDLE。
+- `mc_radar_active`：真正執行的 CRM RWS／ACM BORE／ACM 30x20／ACM 10x60／IDLE。
 - `mc_radar_scan`：要求的掃描全寬／全高與搜尋距離門。
 - `mc_radar_acquisition`：自動捕獲啟用／待操作。
 
@@ -98,3 +98,11 @@ RWS 在原生調整天線後的實際掃描中心，與要求配置的初始中�
 - [Kuchinski／Patton（Westinghouse），1984，AIAA 84-2609](https://doi.org/10.2514/6.1984-2609)：*The APG-66 radar and its derivative applications*；表 1 是 APG-66 參數。[NASA 書目](https://ntrs.nasa.gov/api/citations/19850015371/downloads/19850015371.pdf)可核對作者與題名；本輪參數借用依公開原稿轉錄，未取得出版 PDF 圖表校驗。
 - [Lockheed Martin 16PR14341，1998 MLU Pilot's Guide](https://www.airwar.ru/other/manuals/%5Baviation%5D%20-%20%5Bmanuals%5D%20-%20F-16A-B%20MLU%20Pilot%20Guide%20Part%201.pdf)：印刷頁 125–126、133–135，模式與 BORE 參考值。
 - [avSimpleRadar 介面調查](AVSIMPLE_RADAR_API_RESEARCH.zh-TW.md)：原生參數、509／510 分支、來源與 DLL 版本。
+
+## ACM 掃描圖樣
+
+30×20 採水平 30°、垂直 20°，以機體參考線為中心。10×60 採水平 10°、垂直 60°，
+由機體參考線向上延伸至 60°。尺寸與向上掃描方向參考 16PR14341 印刷頁 134–135；
+窗口與 HUD／機體參考線的對齊屬本機工程設定。三種 ACM 模式共用 10 NM 捕獲距離門，
+探測性能沿用原生設定；取得目標後由原生 STT 接手。
+此實作以 avSimpleRadar 的掃描窗口及持續捕獲介面近似圖樣，回波與成功鎖定使用原生觀測。

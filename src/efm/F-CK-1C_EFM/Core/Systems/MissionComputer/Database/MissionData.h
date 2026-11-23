@@ -47,7 +47,6 @@ struct TargetingData
 
 struct WeaponOperationData
 {
-	bool uncage_selected = false; ///< 駕駛選取的解籠狀態，放開切換按鍵後持續保存。
 	bool gun_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;

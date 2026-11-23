@@ -1,6 +1,8 @@
 #include "StoresManagement.h"
 
 #include "Internal/ObservationProcessing.h"
+#include "../../Common/MissileSelection.h"
+#include <cmath>
 
 #include <algorithm>
 
@@ -46,6 +48,7 @@ void StoresManagement::prepare(std::chrono::nanoseconds time)
 	selection_changed_ = changed || selection_changed_;
 	if (stores_.selection.request_revision != previous_request)
 		actions_.append(selection_action());
+	update_seeker_control();
 }
 
 void StoresManagement::dispatch()
@@ -72,7 +75,8 @@ void StoresManagement::cancel_pending_commands()
 {
 	cancel_pending_weapon_starts();
 	for (auto& entry : pending_commands_)
-		if (std::holds_alternative<SelectStoresForMode>(entry.command))
+		if (std::holds_alternative<SelectStoresForMode>(entry.command) ||
+		    std::holds_alternative<SetSeekerUncaged>(entry.command))
 			entry.canceled = true;
 }
 
@@ -177,6 +181,23 @@ void StoresManagement::drain_commands()
 				if (stores_.selection.request_revision != previous_request)
 					action = selection_action();
 			}
+			else if (const auto* seeker = std::get_if<SetSeekerUncaged>(&entry.command))
+			{
+				if (stores_.selection.pending() && stores_.selection.requested_station && seeker->selected != false)
+					break;
+				update_seeker_control();
+				auto& control = stores_.seeker_control;
+				if (control.active)
+				{
+					control.uncaged = seeker->selected.value_or(!control.uncaged);
+					++control.revision;
+				}
+			}
+			else if (const auto* aim = std::get_if<AimIrSeeker>(&entry.command))
+			{
+				seeker_aim_ = *aim;
+				update_seeker_control();
+			}
 			else if (const auto* weapon = std::get_if<StoresWeaponAction>(&entry.command))
 				action.kind = weapon->action;
 			else
@@ -188,7 +209,42 @@ void StoresManagement::drain_commands()
 			commands_.resolve(*entry.ticket, sequence);
 		pending_commands_.pop_front();
 	}
+	update_seeker_control();
 	selection_changed_ = selection_changed_ || previously_awaiting != stores_.selection.awaiting_inventory;
+}
+
+void StoresManagement::update_seeker_control()
+{
+	auto& control = stores_.seeker_control;
+	IrSeekerControl next = control;
+	next.active = false;
+	const auto station = stores_.selection.acknowledged_station;
+	if (is_air_to_air_mode(latest_mode_) && stores_.inventory.observation.available && !stores_.selection.pending() &&
+	    station && *station >= 0 && static_cast<std::size_t>(*station) < stores_.inventory.stations.size())
+	{
+		const auto& selected = stores_.inventory.stations[*station];
+		next.active = selected.observation.available && selected.configuration == StoreConfiguration::Equipped &&
+		              selected.count > 0 && is_sidewinder(selected.model);
+		if (next.station != *station || next.load_revision != selected.load_revision)
+			next.uncaged = false;
+		next.station = *station;
+		next.load_revision = selected.load_revision;
+		next.radar_slaved = next.active && supports_radar_cue(selected.model) && seeker_aim_.radar_target_available &&
+		                    std::isfinite(seeker_aim_.azimuth_rad) && std::isfinite(seeker_aim_.elevation_rad);
+	}
+	else
+		next.radar_slaved = false;
+	if (!next.active)
+		next.uncaged = false;
+	next.azimuth_rad = next.radar_slaved ? seeker_aim_.azimuth_rad : 0.0;
+	next.elevation_rad = next.radar_slaved ? seeker_aim_.elevation_rad : 0.0;
+	if (next.active != control.active || next.uncaged != control.uncaged || next.station != control.station ||
+	    next.load_revision != control.load_revision || next.radar_slaved != control.radar_slaved ||
+	    next.azimuth_rad != control.azimuth_rad || next.elevation_rad != control.elevation_rad)
+	{
+		next.revision = control.revision + 1;
+		control = next;
+	}
 }
 
 void StoresManagement::step(std::chrono::nanoseconds time, double)

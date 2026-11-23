@@ -8,23 +8,23 @@ namespace
 using namespace Core;
 using namespace Core::Systems::Mc;
 
-bool sidewinder_lm(WeaponModel model)
+bool sidewinder_family(WeaponModel model)
 {
-	// SMS 的 A-9LM 選項合併 L／M，型號由轉接器提供。
-	return model == WeaponModel::Aim9L || model == WeaponModel::Aim9M;
+	return model == WeaponModel::Aim9L || model == WeaponModel::Aim9M || model == WeaponModel::Aim9P ||
+	       model == WeaponModel::Aim9X || model == WeaponModel::Aim9Legacy;
 }
 
 std::string selection_type(const StoresInventorySnapshot& inventory, const StoreStationState& station)
 {
-	if (sidewinder_lm(station.model))
-		return "A-9LM";
+	if (sidewinder_family(station.model))
+		return "AIM-9";
 	if (!station.weapon_type_identifier.empty())
 	{
 		for (const auto& other : inventory.stations)
 			if (other.observation.available && other.configuration == StoreConfiguration::Equipped &&
 			    other.category == WeaponCategory::Missile && other.role == WeaponRole::AirToAir &&
-			    other.weapon_type_identifier == station.weapon_type_identifier && sidewinder_lm(other.model))
-				return "A-9LM";
+			    other.weapon_type_identifier == station.weapon_type_identifier && sidewinder_family(other.model))
+				return "AIM-9";
 		return station.weapon_type_identifier;
 	}
 	return station.weapon_identifier.empty() ? "station:" + std::to_string(station.station_index)
@@ -34,6 +34,35 @@ std::string selection_type(const StoresInventorySnapshot& inventory, const Store
 
 namespace Core::Systems::Mc
 {
+bool is_sidewinder(WeaponModel model) noexcept
+{
+	return sidewinder_family(model);
+}
+
+bool supports_radar_cue(WeaponModel model) noexcept
+{
+	return model == WeaponModel::Aim9L || model == WeaponModel::Aim9M || model == WeaponModel::Aim9X;
+}
+
+MissileCount count_selected_missile_group(const StoresInventorySnapshot& inventory, int station)
+{
+	MissileCount result;
+	if (station < 0 || static_cast<std::size_t>(station) >= inventory.stations.size())
+		return { 0, false };
+	const auto group = selection_type(inventory, inventory.stations[station]);
+	for (const auto& item : inventory.stations)
+	{
+		if (!item.observation.available || item.configuration == StoreConfiguration::Unknown ||
+		    (item.count > 0 && (item.category == WeaponCategory::Unknown || item.role == WeaponRole::Unknown)))
+			result.complete = false;
+		if (item.observation.available && item.configuration == StoreConfiguration::Equipped && item.count > 0 &&
+		    item.category == WeaponCategory::Missile && item.role == WeaponRole::AirToAir &&
+		    selection_type(inventory, item) == group)
+			result.count += item.count;
+	}
+	return result;
+}
+
 MissileSelection select_air_to_air_station(const StoresInventorySnapshot& inventory,
                                            std::optional<int> current_station,
                                            std::string_view current_type,

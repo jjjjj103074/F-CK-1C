@@ -28,9 +28,12 @@ void RadarSystem::setup(SystemSetup& setup)
 		    });
 }
 
-void RadarSystem::set_scan(RadarSearchMode mode, std::uint64_t parent)
+void RadarSystem::set_scan(RadarSearchMode mode, std::uint64_t parent, TargetAcquisitionMode pattern)
 {
-	if (output_.scan.enabled && output_.active_search_mode == mode)
+	if (pattern == TargetAcquisitionMode::None)
+		pattern = mode == RadarSearchMode::AirCombat ? TargetAcquisitionMode::Boresight
+		                                             : TargetAcquisitionMode::BeyondVisualRange;
+	if (output_.scan.enabled && output_.active_search_mode == mode && output_.requested_acquisition_mode == pattern)
 		return;
 	output_.automatic_acquisition_requested = false;
 	if (acquisition_.active())
@@ -39,11 +42,10 @@ void RadarSystem::set_scan(RadarSearchMode mode, std::uint64_t parent)
 	cursor_initialized_ = false;
 	const auto revision = output_.scan.revision + 1;
 	const bool acm = mode == RadarSearchMode::AirCombat;
-	output_.scan = acm ? RadarProfiles::boresight() : RadarProfiles::range_while_search();
+	output_.scan = acm ? RadarProfiles::air_combat(pattern) : RadarProfiles::range_while_search();
 	output_.scan.revision = revision;
 	output_.active_search_mode = mode;
-	output_.requested_acquisition_mode =
-	    acm ? TargetAcquisitionMode::Boresight : TargetAcquisitionMode::BeyondVisualRange;
+	output_.requested_acquisition_mode = pattern;
 	if (acm)
 		actions_.append(MissionActionKind::ModeBoresight, parent);
 	else
@@ -58,7 +60,9 @@ bool RadarSystem::apply_mode(TargetAcquisitionMode mode, std::uint64_t parent)
 	switch (mode)
 	{
 	case TargetAcquisitionMode::Boresight:
-		set_scan(RadarSearchMode::AirCombat, parent);
+	case TargetAcquisitionMode::WideScan:
+	case TargetAcquisitionMode::VerticalScan:
+		set_scan(RadarSearchMode::AirCombat, parent, mode);
 		return true;
 	case TargetAcquisitionMode::BeyondVisualRange:
 		set_scan(RadarSearchMode::RangeWhileSearch, parent);

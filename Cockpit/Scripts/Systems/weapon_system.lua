@@ -2,6 +2,7 @@
 local WeaponSystem = GetSelf()
 make_default_activity(0.05)
 dofile(LockOn_Options.script_path .. "generated/CockpitParams.g.lua")
+dofile(LockOn_Options.script_path .. "command_defs.lua")
 
 local station_definitions = dofile(LockOn_Options.script_path .. "Stores/StationDefinitions.lua")
 local NUM_STATIONS = #station_definitions
@@ -146,5 +147,7 @@ end
 function update()
     apply_selection_request()
     scan_stations()
+    -- 在武器裝置回呼中通知原生介面處理已確認掛點的尋標器要求。
+    dispatch_action(nil, device_commands.WeaponInterfaceUpdate, selected_station + 1)
 end
 need_to_be_closed = false

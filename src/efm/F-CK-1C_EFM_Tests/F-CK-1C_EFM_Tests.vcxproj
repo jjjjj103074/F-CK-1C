@@ -54,6 +54,8 @@
   <ItemGroup>
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Aircraft\DcsAircraftInterface.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Aircraft\DcsAircraftBackend.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Aircraft\IrSeekerAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Weapons\IrSeekerExecutor.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\GunAmmunition\NativeGunAccess.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\GunAmmunition\GunAmmunitionSource.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="NativeGunAccessTests.cpp" />
@@ -96,6 +98,8 @@
     <ClCompile Include="MissionComputerTests.cpp" />
     <ClCompile Include="RadarSystemTests.cpp" />
     <ClCompile Include="RadarDisplayTests.cpp" />
+    <ClCompile Include="AirToAirIntegrationTests.cpp" />
+    <ClCompile Include="IrSeekerAccessTests.cpp" />
     <ClCompile Include="CountermeasureSystemTests.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Countermeasures\CountermeasureExecutor.cpp" />
     <ClCompile Include="SensorControlTests.cpp" />
@@ -134,6 +138,7 @@
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitBridge.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\CockpitSnapshotExporter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\RadarDisplayExporter.cpp" />
+    <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\InfraredDisplayExporter.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\ExternalActionTransport.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\MissionComputerExporter.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\FrameInputCollector.cpp" />
