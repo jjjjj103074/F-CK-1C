@@ -23,5 +23,6 @@ private:
 	std::uintptr_t cage_ = 0, uncage_ = 0, consent_ = 0, slave_ = 0, direction_ = 0;
 	std::uintptr_t last_sensor_ = 0;
 	bool last_uncaged_ = false;
+	std::uint32_t fault_ = 0;
 };
 }

@@ -68,16 +68,26 @@ AircraftIrReading IrSeekerAccess::apply(const DcsAircraftBackend& b,
                                         bool reset_selection)
 {
 	AircraftIrReading result;
-	if (!std::isfinite(azimuth) || !std::isfinite(elevation) || std::abs(azimuth) >= 1.5534 ||
-	    std::abs(elevation) >= 1.5534)
+	const auto complete = [&]()
+	{
+		if (result.exception)
+		{
+			status_ = AircraftAccessStatus::CallFailed;
+			fault_ = result.exception;
+		}
+		return result;
+	};
+	if (!std::isfinite(azimuth) || !std::isfinite(elevation) || std::abs(azimuth) > 3.141592653589793 ||
+	    std::abs(elevation) > 1.570796326794897)
 	{
 		result.status = AircraftAccessStatus::InvalidRequest;
-		return result;
+		return complete();
 	}
 	if (!resolve(b, module))
 	{
 		result.status = status_;
-		return result;
+		result.exception = fault_;
+		return complete();
 	}
 	const auto read = [&](std::uintptr_t object, std::size_t offset, void* destination, std::size_t size)
 	{
@@ -87,54 +97,54 @@ AircraftIrReading IrSeekerAccess::apply(const DcsAircraftBackend& b,
 	std::uintptr_t context = 0, weapon = 0, table = 0, sensor = 0;
 	result.status = AircraftAccessStatus::WaitingForContext;
 	if (!read(contexts_, 0, &context, sizeof(context)) || !context)
-		return result;
+		return complete();
 	result.status = AircraftAccessStatus::CallFailed;
 	// 設備 4 對應 devices.lua 的穩定 WEAPON_SYSTEM 位置。
 	if (!b.device || !b.device(device_, context, DcsIds::Devices::WeaponSystem, weapon, result.exception))
-		return result;
+		return complete();
 	result.status = AircraftAccessStatus::WaitingForPayload;
 	if (!weapon)
-		return result;
+		return complete();
 	result.status = AircraftAccessStatus::UnreadableObject;
 	if (!read(weapon, 0, &table, sizeof(table)) || table != weapon_table_ ||
 	    !read(weapon, 0x158, &sensor, sizeof(sensor)))
-		return result;
+		return complete();
 	if (!sensor)
 	{
 		result.status = AircraftAccessStatus::WaitingForPayload;
-		return result;
+		return complete();
 	}
 	if (!read(sensor, 0, &table, sizeof(table)) || table != sensor_table_ ||
 	    !read(sensor, 0x284, &result.native_mode, sizeof(result.native_mode)))
-		return result;
+		return complete();
 	if (result.native_mode < 0 || result.native_mode > 5)
-		return result;
+		return complete();
 	std::uintptr_t current = 0;
 	if (!read(contexts_, 0, &current, sizeof(current)) || current != context)
 	{
 		result.status = AircraftAccessStatus::ContextChanged;
-		return result;
+		return complete();
 	}
 	result.status = AircraftAccessStatus::CallFailed;
 	const bool transition = reset_selection || sensor != last_sensor_ || uncaged != last_uncaged_;
 	if (!b.set_float || !b.object_action || !b.direction)
-		return result;
+		return complete();
 	// 原生 consent 許可持續作用於 update_angles，保存自行追蹤與飛機指向的區別。
 	if (!b.set_float(consent_, sensor, uncaged ? 1.0F : 0.0F, result.exception))
-		return result;
+		return complete();
 	if (transition && !uncaged)
 	{
 		if (!b.object_action(cage_, sensor, result.exception) || !b.object_action(slave_, sensor, result.exception))
-			return result;
+			return complete();
 	}
 	if (transition && uncaged)
 	{
 		unsigned target = 0;
 		if (!read(sensor, 0x2c8, &target, sizeof(target)))
-			return result;
+			return complete();
 		// 已捕獲時保留原生目標；空視線時啟動尋標器搜尋。
 		if (!target && !b.object_action(uncage_, sensor, result.exception))
-			return result;
+			return complete();
 	}
 	if (!uncaged)
 	{
@@ -142,18 +152,18 @@ AircraftIrReading IrSeekerAccess::apply(const DcsAircraftBackend& b,
 			                             std::sin(elevation),
 			                             std::cos(elevation) * std::sin(azimuth) };
 		if (!b.direction(direction_, sensor, los, result.exception))
-			return result;
+			return complete();
 	}
 	unsigned char consent = 0;
 	if (!read(sensor, 0x42d, &consent, sizeof(consent)) ||
 	    !read(sensor, 0x284, &result.native_mode, sizeof(result.native_mode)))
-		return result;
+		return complete();
 	result.self_track_enabled = consent != 0;
 	if (result.self_track_enabled != uncaged)
-		return result;
+		return complete();
 	last_sensor_ = sensor;
 	last_uncaged_ = uncaged;
 	result.status = AircraftAccessStatus::Available;
-	return result;
+	return complete();
 }
 }

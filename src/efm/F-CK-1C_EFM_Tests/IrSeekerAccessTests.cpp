@@ -154,11 +154,17 @@ void run_ir_seeker_access_tests(Tests::Context& c)
 		DcsAircraftInterface aircraft(f.backend());
 		const auto r = aircraft.control_ir_seeker(true, 0, 0, false);
 		TEST_EXPECT(c, !r.available() && r.exception == 0xc0000005);
+		const auto calls = f.calls;
+		f.succeed = true;
+		TEST_EXPECT(c, !aircraft.control_ir_seeker(true, 0, 0, false).available());
+		TEST_EXPECT(c, f.calls == calls);
+		aircraft.reset_flight();
+		TEST_EXPECT(c, aircraft.control_ir_seeker(true, 0, 0, false).available());
 	}
 	{
 		IrFixture f;
 		DcsAircraftInterface aircraft(f.backend());
-		TEST_EXPECT(c, aircraft.control_ir_seeker(false, 2, 0, false).status == AircraftAccessStatus::InvalidRequest);
+		TEST_EXPECT(c, aircraft.control_ir_seeker(false, 4, 0, false).status == AircraftAccessStatus::InvalidRequest);
 		TEST_EXPECT(c, f.calls == 0);
 	}
 }

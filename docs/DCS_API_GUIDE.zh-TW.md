@@ -397,7 +397,7 @@ CockpitBase.dll 時間戳、映像大小與函式指紋核對目前布局。操�
 
 要求由 FC 經 SM FIFO 送入 StoresSnapshot。武器 Lua 的 update 以生成的
 `WeaponInterfaceUpdate` 通知 Bridge；value 攜帶已執行選站的索引加一，0 代表未選站。
-Bridge 在該武器裝置回呼核對快照與實際掛點後呼叫原生介面。Lua 供應更新時機與裝置觀測，
+Bridge 在該命令回呼核對快照與裝置回報掛點後呼叫原生介面。Lua 供應更新時機與裝置觀測，
 C++ 保存政策、控制與回覆。下一個 FrameInput 將控制讀回交給 SM。
 
 `WS_IR_MISSILE_SEEKER_DESIRED_AZIMUTH/ELEVATION` 的目錄方向為 bidirectional，
