@@ -3,6 +3,15 @@ name: Package Release
 run-name: Package ${{ inputs.version }}
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      flight_test:
+        required: false
+        default: none
+        type: string
   workflow_dispatch:
     inputs:
       version:
