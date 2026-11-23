@@ -181,14 +181,14 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::MissionActionBatch actions;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 81);
+	TEST_EXPECT(context, events.count == 85);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context,
 	            exporter.export_snapshot(snapshot, actions).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 81);
+	TEST_EXPECT(context, events.count == 85);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);
@@ -376,10 +376,72 @@ void test_radar_scan_export_preserves_rws_cursor_and_applies_bore(Tests::Context
 	TEST_EXPECT_NEAR(c, cockpit.value(DcsIds::RawCockpitParams::RadarScanVolumeAzimuth), 0.3, 1e-9);
 }
 
+void test_selected_store_uses_confirmed_sm_selection(Tests::Context& context)
+{
+	Tests::FakeCockpitParameters cockpit;
+	DcsBridge::Internal::CockpitSnapshotExporter exporter(cockpit.api());
+	Core::CockpitSnapshot snapshot;
+	Core::MissionActionBatch actions;
+	auto& mc = snapshot.combat_avionics;
+	mc.status = { true, 1 };
+	auto& stores = mc.stores;
+	stores.status = { true, 1 };
+	stores.inventory.observation = { true, 1, Core::ObservationInvalidReason::None };
+	auto& station = stores.inventory.stations[8];
+	station.observation = { true, 1, Core::ObservationInvalidReason::None };
+	station.configuration = Core::StoreConfiguration::Equipped;
+	station.station_name = "LT";
+	station.weapon_identifier = "{test-selected-weapon}";
+	station.count = 1;
+	stores.selection.acknowledged_station = 8;
+	stores.selection.acknowledged_revision = stores.selection.request_revision = 2;
+	exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreCount), 1.0, kTolerance);
+	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreIdentifier) == "{test-selected-weapon}");
+	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreStation) == "LT");
+
+	stores.selection.requested_station = 0;
+	++stores.selection.request_revision;
+	exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 2.0, kTolerance);
+	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreIdentifier).empty());
+	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreStation).empty());
+	stores.selection.acknowledged_revision = stores.selection.request_revision;
+	stores.selection.acknowledged_station.reset();
+	exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 1.0, kTolerance);
+	stores.selection.acknowledged_station = 99;
+	exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 0.0, kTolerance);
+	stores.selection.acknowledged_station = 8;
+	station.observation.available = false;
+	exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 0.0, kTolerance);
+	TEST_EXPECT(context, cockpit.text(DcsIds::CockpitParams::McSelectedStoreIdentifier).empty());
+	station.observation.available = true;
+	station.count = 0;
+	exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 3.0, kTolerance);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreCount), 0.0, kTolerance);
+	stores.inventory.observation.available = false;
+	exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McSelectedStoreState), 0.0, kTolerance);
+
+	cockpit.set_available(DcsIds::CockpitParams::McSelectedStoreStation, false);
+	DcsBridge::Internal::CockpitSnapshotExporter unavailable_exporter(cockpit.api());
+	unavailable_exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT(context, static_cast<int>(cockpit.value(DcsIds::CockpitParams::McGeneration)) % 2 == 1);
+	cockpit.set_available(DcsIds::CockpitParams::McSelectedStoreStation, true);
+	unavailable_exporter.export_snapshot(snapshot, actions);
+	TEST_EXPECT(context, static_cast<int>(cockpit.value(DcsIds::CockpitParams::McGeneration)) % 2 == 0);
+}
+
 }
 
 void run_cockpit_snapshot_exporter_tests(Tests::Context& context)
 {
+	test_selected_store_uses_confirmed_sm_selection(context);
 	test_radar_scan_export_preserves_rws_cursor_and_applies_bore(context);
 	test_master_and_override_parameters_commit_together(context);
 	test_targeting_submodes_preserve_cockpit_wire_values(context);

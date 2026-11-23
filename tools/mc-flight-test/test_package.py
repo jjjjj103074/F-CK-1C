@@ -75,6 +75,37 @@ class TestFlightBundle(unittest.TestCase):
             self.assertIn('右 Alt＋I', archive.read('TESTING.zh-TW.md').decode())
             self.assertIn('四個角', archive.read('TESTING.zh-TW.md').decode())
 
+    def test_status_focus_records_confirmed_selection_and_display_text(self):
+        for folder, filenames in {
+            'RadarDisplay': ('Forward_init.lua', 'Forward_page.lua', 'Scope_init.lua', 'Scope_page.lua', 'Drawing.lua'),
+            'FlightStatus': ('Indicator_init.lua', 'Indicator_page.lua', 'Status.lua', 'StoreNames.lua'),
+        }.items():
+            for filename in filenames:
+                self.entries[package.MODULE+'Cockpit/Scripts/'+folder+'/'+filename] = b'graphical-runtime'
+        data = json.loads(self.catalog.read_text())
+        data['cockpit_params'].extend([
+            dict(name='McSelectedStoreIdentifier', value='CPP_MC_SELECTED_STORE_IDENTIFIER'),
+            dict(name='FlightStatusMissile', value='FLIGHT_STATUS_MISSILE')])
+        self.catalog.write_text(json.dumps(data))
+        self.write_zip()
+        bundle = package.assemble(self.archive, self.manifest, self.catalog, self.root/'status', self.source, focus='status')
+        with zipfile.ZipFile(bundle) as archive:
+            build = json.loads(archive.read('BUILD.json'))
+            self.assertEqual(build['focus'], 'status')
+            self.assertEqual(build['human_cases'], 6)
+            self.assertFalse(build['native_countermeasure_probe'])
+            self.assertNotIn(package.PROBE_FLAG, archive.namelist())
+            self.assertNotIn(package.TEST_ROOT+'Indicator_page.lua', archive.namelist())
+            self.assertEqual(archive.read(package.WEAPONS), self.entries[package.WEAPONS])
+            self.assertEqual(archive.read(package.DLL), self.entries[package.DLL])
+            schema = archive.read(package.TEST_ROOT+'Parameters.lua').decode()
+            self.assertIn('CPP_MC_SELECTED_STORE_IDENTIFIER', schema)
+            self.assertIn('FLIGHT_STATUS_MISSILE', schema)
+            guide = archive.read('TESTING.zh-TW.md').decode()
+            self.assertIn('短按 Q', guide)
+            self.assertIn('右 Ctrl＋D', guide)
+            self.assertIn('所有冒號對齊', guide)
+
     def test_raw_return_patterns_expand_to_real_parameter_names(self):
         values = package.parameter_names({'cockpit_params': [], 'raw_dcs_cockpit_params': [
             {'value': 'RADAR_CONTACT_%02u_RANGE'}]})

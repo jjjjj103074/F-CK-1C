@@ -83,6 +83,8 @@ local function update_weapon_presentation()
     hmcs_weapon_quantity_available:set(quantity_available and 1 or 0)
 end
 
+local flight_status = dofile(LockOn_Options.script_path .. "FlightStatus/Status.lua")()
+
 local hmcs_slot_count = 13
 local hmcs_slot_spacing = 0.048
 local hmcs_heading_bias_deg = 0.0
@@ -219,6 +221,7 @@ local function push_params()
     if baro_alt_m ~= nil then hmcs_alt_ft:set(math.max(0.0, baro_alt_m * 3.28084)) end
     if heading_rad ~= nil then hmcs_hdg_deg:set(math.deg(heading_rad)) end
     if heading_rad ~= nil then update_heading_slots(math.deg(heading_rad)) end
+    flight_status.update()
 end
 
 function post_initialize()

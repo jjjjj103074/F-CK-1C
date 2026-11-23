@@ -72,4 +72,6 @@ indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script
 indicators[#indicators + 1] = { "ccIndicator", LockOn_Options.script_path .. "RadarDisplay/Forward_init.lua" }
 indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "RadarDisplay/Scope_init.lua" }
 
+indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "FlightStatus/Indicator_init.lua" }
+
 need_to_be_closed = true

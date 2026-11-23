@@ -7,7 +7,7 @@
 
 namespace DcsBridge::Internal
 {
-/// @brief Commits MC state and the shared DCS action window using an odd/even generation around numeric cockpit parameters.
+/// @brief 以奇／偶 generation 一併發布 MC 狀態、已確認選站與共用 DCS 動作視窗。
 class MissionComputerExporter final
 {
 public:
@@ -17,6 +17,13 @@ public:
 	                                       const Core::MissionActionBatch& actions);
 
 private:
+	enum class SelectedStoreState
+	{
+		Unavailable,
+		None,
+		Selecting,
+		Selected
+	};
 	enum class Parameter : std::size_t
 	{
 		Generation,
@@ -53,12 +60,17 @@ private:
 		MissileOverridePressSequence,
 		MissileUncagePressSequence,
 		WeaponReleasePressSequence,
+		SelectedStoreState,
+		SelectedStoreCount,
 		Count
 	};
 	bool write(Parameter parameter, double value, CockpitParameterEvents& events);
+	bool export_selected_store(const Core::StoresSnapshot& stores, CockpitParameterEvents& events);
 	const cockpit_param_api api_;
 	std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)> slots_;
 	std::array<CockpitParameterEndpoint, Core::kMissionActionWindowSize> action_slots_;
+	CockpitParameterEndpoint selected_store_identifier_;
+	CockpitParameterEndpoint selected_store_station_;
 	std::uint64_t generation_ = 0;
 };
 }

@@ -8,6 +8,7 @@ import zipfile
 
 import guide
 import radar_guide
+import status_guide
 
 ROOT = Path(__file__).resolve().parent
 MODULE = 'F-CK-1C/'
@@ -44,7 +45,7 @@ def parameter_names(catalog):
     names = []
     for item in catalog['cockpit_params']:
         key = item['name']
-        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm', 'Cm'))
+        if (key.startswith(('Mc', 'Weapon', 'Radar', 'NativeCm', 'Cm', 'FlightStatus'))
                 or key in {'HmcsMasterMode', 'HmcsFireControlMode', 'HmcsAamSubmode', 'HmcsGunFiring',
                            'HmcsWeaponClass', 'HmcsWeaponQuantity', 'HmcsWeaponQuantityAvailable'}):
             names.append(item['value'])
@@ -57,9 +58,9 @@ def parameter_names(catalog):
     return list(dict.fromkeys(names + OBSERVATIONS))
 
 def assemble(module_zip, manifest_path, catalog_path, output, expected_source, test_tools_source=None, focus="mc"):
-    if focus not in {"mc", "radar"}:
+    if focus not in {"mc", "radar", "status"}:
         raise ValueError("Unknown flight-test focus: " + focus)
-    selected_guide = radar_guide if focus == "radar" else guide
+    selected_guide = {"mc": guide, "radar": radar_guide, "status": status_guide}[focus]
     manifest = json.loads(Path(manifest_path).read_text(encoding='utf-8-sig'))
     if manifest.get('validation') != 'passed' or manifest.get('source_commit') != expected_source:
         raise ValueError('Module validation/source revision does not match the requested source.')
@@ -84,12 +85,16 @@ def assemble(module_zip, manifest_path, catalog_path, output, expected_source, t
 creators[10] = { "avLuaDevice", LockOn_Options.script_path .. "MCFlightTest/Recorder.lua" }
 indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script_path .. "MCFlightTest/Indicator_init.lua" }
 '''
-    if focus == 'radar':
+    if focus in {'radar', 'status'}:
         required = ('Forward_init.lua', 'Forward_page.lua', 'Scope_init.lua', 'Scope_page.lua', 'Drawing.lua')
         for filename in required:
             if MODULE + 'Cockpit/Scripts/RadarDisplay/' + filename not in original:
                 raise ValueError('Missing graphical radar runtime: ' + filename)
         additions = '\ncreators[10] = { "avLuaDevice", LockOn_Options.script_path .. "MCFlightTest/Recorder.lua" }\n'
+    if focus == 'status':
+        for filename in ('Indicator_init.lua', 'Indicator_page.lua', 'Status.lua', 'StoreNames.lua'):
+            if MODULE + 'Cockpit/Scripts/FlightStatus/' + filename not in original:
+                raise ValueError('Missing flight status runtime: ' + filename)
     entries = dict(original)
     entries[DEVICE] = original[DEVICE] + additions.replace('\n', '\r\n').encode('utf-8')
     keyboard = original[KEYBOARD]
@@ -128,13 +133,13 @@ end
     entries['TESTING.zh-TW.md'] = selected_guide.markdown().encode('utf-8')
     entries['RESULTS.csv'] = b'\xef\xbb\xbf' + selected_guide.results_csv().encode('utf-8')
     entries['TEST-CASES.json'] = (json.dumps(selected_guide.cases(), ensure_ascii=False, indent=2) + '\n').encode('utf-8')
-    build = dict(manifest, package_kind='radar-flight-test' if focus == 'radar' else 'mc-flight-test', focus=focus, dcs_runtime='not_run',
+    build = dict(manifest, package_kind=focus + '-flight-test', focus=focus, dcs_runtime='not_run',
         test_tools_source_commit=test_tools_source,
         base_module_sha256=digest(Path(module_zip).read_bytes()),
         human_cases=len(selected_guide.cases()), test_device_id=10, recorded_parameters=len(names),
         native_countermeasure_probe=focus == "mc", native_dispatch='C++ ed_fm_simulate',
         native_test_keys='prebound; existing bindings preserved',
-        migration_goal='RWS/BORE/STT graphical radar displays' if focus == 'radar' else 'MC SOI, mode-driven display assignments and real-aircraft HOTAS interfaces',
+        migration_goal={'status': 'screen-fixed flight and confirmed SM weapon status', 'radar': 'RWS/BORE/STT graphical radar displays', 'mc': 'MC SOI, mode-driven display assignments and real-aircraft HOTAS interfaces'}[focus],
         runtime_changed=changed,
         runtime_added=sorted(name for name in set(entries) - set(original) if name.startswith(MODULE)),
         bundle_added=sorted({name for name in set(entries) - set(original) if not name.startswith(MODULE)} | {'BUILD.json'}),
@@ -167,6 +172,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--expected-source', required=True)
     parser.add_argument('--test-tools-source', help='Source revision of the test overlay; defaults to the validated module revision.')
-    parser.add_argument('--focus', choices=['mc', 'radar'], default='mc')
+    parser.add_argument('--focus', choices=['mc', 'radar', 'status'], default='mc')
     args = parser.parse_args()
     assemble(args.module_zip, args.manifest, args.catalog, args.output, args.expected_source, args.test_tools_source, args.focus)

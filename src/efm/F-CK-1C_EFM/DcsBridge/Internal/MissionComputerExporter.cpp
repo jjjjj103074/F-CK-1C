@@ -41,7 +41,9 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::McDogfightPressSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McMissileOverridePressSequence),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McMissileUncagePressSequence),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::McWeaponReleasePressSequence) } }),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McWeaponReleasePressSequence),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreState),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreCount) } }),
       action_slots_({ { cockpit_parameter_writer(DcsIds::CockpitParams::McAction01),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction02),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction03),
@@ -57,7 +59,9 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction13),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction14),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction15),
-                        cockpit_parameter_writer(DcsIds::CockpitParams::McAction16) } })
+                        cockpit_parameter_writer(DcsIds::CockpitParams::McAction16) } }),
+      selected_store_identifier_(cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreIdentifier)),
+      selected_store_station_(cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreStation))
 {
 }
 
@@ -67,6 +71,8 @@ void MissionComputerExporter::reset()
 		slot.reset();
 	for (auto& slot : action_slots_)
 		slot.reset();
+	selected_store_identifier_.reset();
+	selected_store_station_.reset();
 }
 
 bool MissionComputerExporter::write(Parameter parameter, double value, CockpitParameterEvents& events)
@@ -75,6 +81,43 @@ bool MissionComputerExporter::write(Parameter parameter, double value, CockpitPa
 	if (result.event)
 		events = events.with_event(*result.event);
 	return result.success;
+}
+
+// 以 SM 已確認掛點發布顯示資料；狀態依序為不可用、未選站、切換中、已選定。
+bool MissionComputerExporter::export_selected_store(const Core::StoresSnapshot& stores, CockpitParameterEvents& events)
+{
+	auto state = SelectedStoreState::Unavailable;
+	const Core::StoreStationState* station = nullptr;
+	if (stores.status.available)
+	{
+		if (stores.selection.pending())
+			state = SelectedStoreState::Selecting;
+		else if (stores.inventory.observation.available)
+		{
+			const auto selected = stores.selection.acknowledged_station;
+			if (!selected)
+				state = SelectedStoreState::None;
+			else if (*selected >= 0 && static_cast<std::size_t>(*selected) < stores.inventory.stations.size())
+			{
+				const auto& candidate = stores.inventory.stations[*selected];
+				if (candidate.observation.available && candidate.configuration == Core::StoreConfiguration::Equipped)
+				{
+					state = SelectedStoreState::Selected;
+					station = &candidate;
+				}
+			}
+		}
+	}
+	bool complete = write(Parameter::SelectedStoreState, static_cast<double>(state), events);
+	complete = write(Parameter::SelectedStoreCount, station ? station->count : 0, events) && complete;
+	const auto identifier = selected_store_identifier_.write_string(api_, station ? station->weapon_identifier : "");
+	if (identifier.event)
+		events = events.with_event(*identifier.event);
+	complete = identifier.success && complete;
+	const auto name = selected_store_station_.write_string(api_, station ? station->station_name : "");
+	if (name.event)
+		events = events.with_event(*name.event);
+	return name.success && complete;
 }
 
 CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::CombatAvionicsSnapshot& snapshot,
@@ -138,6 +181,7 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(MissileUncagePressSequence, static_cast<double>(snapshot.control_inputs.missile_uncage_press_sequence));
 	WRITE_MC(WeaponReleasePressSequence, static_cast<double>(snapshot.control_inputs.weapon_release_press_sequence));
 #undef WRITE_MC
+	complete = export_selected_store(snapshot.stores, events) && complete;
 	for (std::size_t i = 0; i < action_slots_.size(); ++i)
 	{
 		const auto result =

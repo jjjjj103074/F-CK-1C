@@ -19,7 +19,7 @@ Lua 負責 DCS 觀測／操作介面、HUD／HMCS 顯示規則、繪圖與播放
 | AAM_AUDIO | avLuaDevice / aam_audio_system.lua | 20 Hz 依 SM 有效 IR 鎖定觀測選擇鎖定音，另提供 Sound Test |
 
 MC 與並列的 RadarSystem 均為 32 Hz；介面的取樣／播放頻率各自保留。
-Controls Indicator、HMCS 2D／VR 與 EFM Debug Indicator 由各自的指示器腳本呈現。
+Controls Indicator、HMCS 2D／VR、左上角 FlightStatus 與 EFM Debug Indicator 由各自的指示器腳本呈現。
 Gear、Actuators 與 Autopilot device ID 保留；目前未建立其 Lua device。
 起落架與致動器由 Core Systems 執行，DFLCC 的 AP／A/T 狀態快照不可用。
 
@@ -122,3 +122,18 @@ Targeting 規劃目標取得；RadarSystem 經 SystemPipeline 處理設備操作
 `RADAR/FCK1C_Radar.lua`在初始化時通電，並保留Lua狀態以持續呼叫既有更新。
 飛測Recorder同樣保留Lua狀態，持續寫入逐幀觀測；回收工具會統計資料列並標示僅有表頭的錄製檔。
 HMCS VR將遮罩與符號建立於同一子頁，先建立`hmcs_vr_tfov`，再掛接`hmcs_vr_root`及瞄準線。
+
+## 左上角飛行狀態
+
+`FlightStatus/Status.lua` 由既有 HMCS 觀測裝置每四次更新一次（16 Hz），
+將 MC、飛行觀測與反制庫存轉成文字。`FlightStatus/Indicator_page.lua` 固定在畫面左上角，
+名稱靠右、冒號共用 X 座標、數值靠左。HMCS 2D 的 WPN／SYS／MODE／SUB 文字移至此面板。
+
+`MissionComputerExporter` 在同一 MC generation 發布 SM 已確認掛點的識別碼、名稱與數量。
+`McSelectedStoreState`：0 資料不可用、1 未選站、2 選站中、3 已選定。
+面板的 `MISSILE` 數量是該掛點數量；`GUN` 獨立呈現原生觀測彈量。
+`FlightStatus/StoreNames.lua` 將已知 DCS 識別碼轉成顯示標籤，未知掛載使用識別碼摘要。
+
+`IR` 使用 SM 的有效全域紅外線觀測；`UNCAGE` 顯示駕駛選取的命令狀態。
+兩者與雷達 `STT` 分別呈現。`---` 表示來源不可用，`NONE` 表示有效快照中未選站，
+`SELECTING` 表示 SM 仍等待選站完成。飛測包的 `--focus status` 包含預設鍵操作、正常結果與紀錄回收工具。

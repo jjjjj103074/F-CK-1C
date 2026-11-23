@@ -238,6 +238,23 @@ static const char* const McStoresIrDesiredElevation = "CPP_MC_STORES_IR_DESIRED_
 static const char* const McStoresIrTargetAzimuth = "CPP_MC_STORES_IR_TARGET_AZIMUTH";
 static const char* const McStoresIrTargetElevation = "CPP_MC_STORES_IR_TARGET_ELEVATION";
 static const char* const McStoresMissileCountAvailable = "CPP_MC_STORES_MISSILE_COUNT_AVAILABLE";
+static const char* const McSelectedStoreState = "CPP_MC_SELECTED_STORE_STATE";
+static const char* const McSelectedStoreCount = "CPP_MC_SELECTED_STORE_COUNT";
+static const char* const McSelectedStoreIdentifier = "CPP_MC_SELECTED_STORE_IDENTIFIER";
+static const char* const McSelectedStoreStation = "CPP_MC_SELECTED_STORE_STATION";
+static const char* const FlightStatusIas = "FLIGHT_STATUS_IAS";
+static const char* const FlightStatusAltitude = "FLIGHT_STATUS_ALTITUDE";
+static const char* const FlightStatusMasterMode = "FLIGHT_STATUS_MASTERMODE";
+static const char* const FlightStatusOverride = "FLIGHT_STATUS_OVERRIDE";
+static const char* const FlightStatusArm = "FLIGHT_STATUS_ARM";
+static const char* const FlightStatusMissile = "FLIGHT_STATUS_MISSILE";
+static const char* const FlightStatusStation = "FLIGHT_STATUS_STATION";
+static const char* const FlightStatusGun = "FLIGHT_STATUS_GUN";
+static const char* const FlightStatusFlare = "FLIGHT_STATUS_FLARE";
+static const char* const FlightStatusChaff = "FLIGHT_STATUS_CHAFF";
+static const char* const FlightStatusRadar = "FLIGHT_STATUS_RADAR";
+static const char* const FlightStatusIr = "FLIGHT_STATUS_IR";
+static const char* const FlightStatusUncage = "FLIGHT_STATUS_UNCAGE";
 static const char* const RadarState = "RADARSTATE";
 static const char* const RadarPowerState = "RADARPOWER_STATE";
 static const char* const WeaponObservationAvailable = "OBS_WEAPON_STATIONS_AVAILABLE";
@@ -543,6 +560,23 @@ static constexpr Entry Catalog[] = {
     { McStoresIrTargetAzimuth, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McStoresIrTargetElevation, "cpp_to_lua", "radians", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
     { McStoresMissileCountAvailable, "cpp_to_lua", "boolean", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McSelectedStoreState, "cpp_to_lua", "enum", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McSelectedStoreCount, "cpp_to_lua", "count", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McSelectedStoreIdentifier, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { McSelectedStoreStation, "cpp_to_lua", "text", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/MissionComputerExporter.cpp", "MissionComputer", nullptr },
+    { FlightStatusIas, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusAltitude, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusMasterMode, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusOverride, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusArm, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusMissile, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusStation, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusGun, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusFlare, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusChaff, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusRadar, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusIr, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
+    { FlightStatusUncage, "lua_internal", "text", "Cockpit/Scripts/FlightStatus/Status.lua", "Cockpit", nullptr },
     { RadarState, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },
     { RadarPowerState, "lua_internal", "boolean", "Cockpit/Scripts/Systems/radar_state_system.lua", "RadarAdapter", nullptr },
     { WeaponObservationAvailable, "lua_to_cpp", "boolean", "Cockpit/Scripts/Systems/weapon_system.lua", "WeaponStationAdapter", "src/efm/F-CK-1C_EFM/DcsBridge/Internal/CockpitBridge.cpp" },

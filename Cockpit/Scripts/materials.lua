@@ -22,3 +22,4 @@ fonts = {}
 fonts["font_kneeboard"] = { fontdescription_cmn["font_general_loc"], 10, { 0, 0, 0, 255 } }
 fonts["font_hmcs"] = { fontdescription_cmn["font_general_loc"], 6, { 80, 255, 120, 255 } }
 fonts["font_hmcs_small"] = { fontdescription_cmn["font_general_loc"], 5, { 80, 255, 120, 255 } }
+fonts["font_flight_status"] = { fontdescription_cmn["font_general_loc"], 5, { 240, 255, 240, 255 } }
