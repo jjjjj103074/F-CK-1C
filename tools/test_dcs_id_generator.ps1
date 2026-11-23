@@ -20,6 +20,7 @@ function Get-GeneratedPaths {
         (Join-Path $Root 'src\efm\F-CK-1C_EFM\DcsIds\CustomCommands.g.h'),
         (Join-Path $Root 'Cockpit\Scripts\command_defs.lua'),
         (Join-Path $Root 'src\efm\F-CK-1C_EFM\DcsIds\CockpitParams.g.h'),
+        (Join-Path $Root 'src\efm\F-CK-1C_EFM\DcsIds\CockpitParamNames.g.h'),
         (Join-Path $Root 'Cockpit\Scripts\generated\CockpitParams.g.lua')
     )
 }
@@ -61,6 +62,13 @@ function Test-FixtureGeneration {
     & $generator -RepoRoot $Root | Out-Null
     $cpp = [IO.File]::ReadAllText(
         (Join-Path $Root 'src\efm\F-CK-1C_EFM\DcsIds\CockpitParams.g.h'))
+    $names = [IO.File]::ReadAllText(
+        (Join-Path $Root 'src\efm\F-CK-1C_EFM\DcsIds\CockpitParamNames.g.h'))
+    if ($cpp -notmatch '#include "CockpitParamNames.g.h"' -or
+        $names -notmatch 'namespace RawCockpitParams' -or
+        $names -notmatch 'static const char\* const McGeneration') {
+        throw 'C++ parameter names were not generated or included.'
+    }
     $lua = [IO.File]::ReadAllText(
         (Join-Path $Root 'Cockpit\Scripts\generated\CockpitParams.g.lua'))
     if ($cpp -notmatch 'namespace RawCockpitParams' -or

@@ -122,6 +122,7 @@
 	<ClInclude Include="DcsBridge\Internal\ProcessBridgeContext.h" />
 	<ClInclude Include="DcsBridge\Internal\RuntimeDiagnostics.h" />
     <ClInclude Include="DcsIds\CockpitParams.g.h" />
+    <ClInclude Include="DcsIds\CockpitParamNames.g.h" />
     <ClInclude Include="DcsIds\Commands.h" />
     <ClInclude Include="DcsIds\CustomCommands.g.h" />
     <ClInclude Include="DcsIds\DamageIds.h" />

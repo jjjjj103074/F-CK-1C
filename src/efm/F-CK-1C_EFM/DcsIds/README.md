@@ -49,7 +49,8 @@ npm run test:cockpit-architecture
 The generator owns:
 
 - `DcsIds/CustomCommands.g.h`
-- `DcsIds/CockpitParams.g.h`
+- `DcsIds/CockpitParamNames.g.h` (parameter names)
+- `DcsIds/CockpitParams.g.h` (catalog metadata; includes the names header)
 - `Cockpit/Scripts/command_defs.lua`
 - `Cockpit/Scripts/generated/CockpitParams.g.lua`
 
