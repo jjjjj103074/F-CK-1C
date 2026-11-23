@@ -38,6 +38,8 @@ function Copy-CheckerFixture {
         'CockpitSnapshotExporter.cpp',
         'MissionComputerExporter.cpp',
         'RadarDisplayExporter.cpp',
+        'InfraredDisplayExporter.cpp',
+        'Weapons\IrSeekerExecutor.cpp',
         'DebugTelemetry\DebugIndicatorExporter.cpp',
         'NativeCountermeasures\NativeCountermeasureIntegration.cpp'
     )

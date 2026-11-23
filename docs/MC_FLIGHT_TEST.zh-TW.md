@@ -30,7 +30,7 @@ SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查�
 - SUB：0=---、1=HMD、2=VS、3=HUD、4=BVR。UNCAGE 是 MC 保存的解籠選擇，按 C 在 0／1 間切換；TRIG 是第二段扳機的按住狀態。
 - GUN OK／AAM OK=1 時，旁邊的 GUN／AAM 是有效存量；GUN 是原生實際存量。DGF 的 WPN 顯示 AAM 並不阻擋機砲。
 - SEL 是 Lua 最近完成選站呼叫的紀錄：0 RT、1 RO、2 RI、3 MM、4 MF、5 MB、6 LI、7 LO、8 LT；-1 表示邏輯選擇為空。實際選站以離架掛點再核對。
-- RDR 是 DCS 原始雷達模式；RDR=3 且 STT 為正距離表示來源回報單目標追蹤。這版 HMCS 中央圈是固定瞄準圖形，用右上數值確認追蹤。
+- RDR 是 DCS 原始雷達模式；RDR=3 且 STT 為正距離表示來源回報單目標追蹤。前視實線方框與右下角雷達圖顯示 STT 追蹤，可與原始數值交叉核對。
 - IR OK=1、LOCK=1 表示 MC 已接受有效 IR 鎖定回報；鎖定音跟這個值。RDR=3 與 IR LOCK 分開看。
 - TX 是目前 DCS 動作視窗數量，ACK 是已執行前綴。停止操作後通常 1–2 秒回 TX=0；停超過 5 秒仍卡住請回報畫面與前一個操作。
 
@@ -286,11 +286,11 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### G06　DGFT機砲與解籠選擇獨立
 
-操作：按主保險 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，點按機砲（Space）；點按 C 使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。
+操作：按主保險 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按機砲（Space）；點按 C，再點按機砲（Space）。
 
 看哪裡：右上 UNCAGE、TRIG、GUN，實際砲火。
 
-正常：UNCAGE=0與1時均有砲火，GUN隨實際射擊減少，放開Space後停止。機砲輸入維持獨立，UNCAGE保持選定值。
+正常：兩次都有砲火，GUN 隨實際射擊減少，放開 Space 後停止。空載時沒有可控制的飛彈尋標器；C 不改變機砲資格。
 
 ### G07　射擊中切 SAFE
 
@@ -398,7 +398,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### P01　NAV 的武器顯示偏好
 
-操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再按 C 回 0；按住機砲（Space）1 秒後放開；最後再按 NAV（1）。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；點按 C 兩次；按住機砲（Space）1 秒後放開；最後再按 NAV（1）。
 
 看哪裡：HMCS WPN；右上 GUN、AAM。
 
@@ -528,11 +528,11 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### T08　解籠切換、長按與放開
 
-操作：按 DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按住 C 約 4 秒後放開，等 1 秒；再點按 C。按 MSL（右 Alt＋D）後重做一次。
+操作：按 DGFT（右 Ctrl＋D），選 AIM-9；按住 C 約 4 秒後放開，等 1 秒；再點按 C。
 
 看哪裡：右上 UNCAGE、RDR、STT、TX。
 
-正常：第一次按下時 UNCAGE 由 0 變 1，長按與放開後維持 1；第二次按下變 0。操作本身不發射，沒有每秒重新捕獲，TX 最終回 0。
+正常：C 每次按下切換一次選中尋標器的控制要求；原生讀回對應 ON／OFF。長按與放開維持該次要求；雷達模式與原生追蹤保持原設定。
 
 ### T09　鎖定後切保險
 
@@ -552,11 +552,11 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### K01　單鍵解籠後發射一枚AIM-9
 
-操作：重新載入 B；按主保險 ON（右 Ctrl＋M），按 A-A（2），等 2 秒。確認 SEL=0、UNCAGE=0；點按 C 並放開，確認 UNCAGE=1；點按右 Alt＋Space 並放開。等 3 秒，再按 C 使 UNCAGE=0。
+操作：重新載入 B；按主保險 ON（右 Ctrl＋M）、A-A（2），等選站確認。點按 C 解籠並觀察 IR 追蹤；點按右 Alt＋Space 並放開，等 3 秒。
 
 看哪裡：右上 UNCAGE、AAM、SEL；實際離架；CSV 的投放按下序號。
 
-正常：放開 C 後 UNCAGE 仍為 1；投放輸入可獨立送到 MC。預期 RT 的 AIM-9X 離架一枚，AAM 從 8 變 7；投放放開後停止，TX 最終回 0。記下實際離架數量；本項只確認離架，不驗收導引或命中。
+正常：選中 RT 的 AIM-9X 依原生條件離架；總 AAM 由 8 減 7。下一枚選站確認後，尋標器恢復指定視線，UNCAGE 回 OFF。投放放開後停止。
 
 ### W01　沒有 Uncage 的投放
 
@@ -568,7 +568,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W02　SAFE／SIM 投放資格
 
-操作：按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；按 SIM（右 Alt＋M），再點按投放（右 Alt＋Space）。最後按 C 使 UNCAGE=0。
+操作：按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；點按投放（右 Alt＋Space）；按 SIM（右 Alt＋M），再點按投放（右 Alt＋Space）。最後按 C 使 UNCAGE=0。
 
 看哪裡：SYS、實際離架、AAM；CSV。
 
@@ -576,7 +576,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W03　NAV 投放資格
 
-操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
+操作：按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；點按投放（右 Alt＋Space）。
 
 看哪裡：MODE、實際離架、AAM；CSV。
 
@@ -584,7 +584,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W04　MSL 短按發射與自動換站
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0；等 3 秒。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按並放開投放（右 Alt＋Space）；等 3 秒。
 
 看哪裡：實際離架位置、右上 AAM／SEL／TX。
 
@@ -592,7 +592,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W05　指定掛點的發射
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；按住 Q 至少 0.5 秒再放開一次，等 SEL=2。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；按住 Q 至少 0.5 秒再放開一次，等 SEL=2。點按並放開投放（右 Alt＋Space）。
 
 看哪裡：右上 SEL=2；外部 RI 的 AIM-7P；AAM。
 
@@ -600,7 +600,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W06　另一種空對空飛彈
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；連續兩次各按住 Q 至少 0.5 秒後放開，等 SEL=4。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；連續兩次各按住 Q 至少 0.5 秒後放開，等 SEL=4。點按並放開投放（右 Alt＋Space）。
 
 看哪裡：MF 的 AIM-120C 離架、右上 AAM／SEL。
 
@@ -608,7 +608,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W07　DGFT 飛彈發射
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按並放開投放（右 Alt＋Space）。
 
 看哪裡：實際 RT 離架、右上 AAM／SEL／TX。
 
@@ -616,7 +616,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W08　長按投放後放開
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再按住投放（右 Alt＋Space）1 秒後放開，等 3 秒；最後按 C 使 UNCAGE=0。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住投放（右 Alt＋Space）1 秒後放開，等 3 秒。
 
 看哪裡：每枚實際離架、右上 AAM／SEL／TX。
 
@@ -624,7 +624,7 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W09　快速選站後投放
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即短按並放開 Q 一次；接著點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即短按並放開 Q 一次；接著點按並放開投放（右 Alt＋Space）。
 
 看哪裡：實際離架掛點、右上 SEL／AAM／TX；CSV。
 
@@ -632,23 +632,23 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 ### W10　飛彈耗盡
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1。重複「點按並放開投放（右 Alt＋Space）→等 2 秒」，直到全部離架；最後再投放一次，再按 C 使 UNCAGE=0。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；重複「點按並放開投放（右 Alt＋Space）→等 2 秒」，直到全部離架；最後再投放一次。
 
 看哪裡：每次實際離架、右上 AAM／SEL、HMCS。
 
 正常：AAM 跟隨實際剩餘量降至 0，SEL=-1；再次投放沒有新離架，已用完彈量保持 0。
 
-### W11　關閉解籠選擇後投放
+### W11　尋標器控制與投放資格分開
 
-操作：重新載入 B；按 ON（右 Ctrl＋M）、A-A（2）；點按 C，確認 UNCAGE=1，再點按 C，確認 UNCAGE=0；點按投放（右 Alt＋Space）。
+操作：重新載入 B；按 ON（右 Ctrl＋M）、A-A（2）；選 AIM-9，若 UNCAGE 顯示 ON，按 C 回 OFF；點按投放（右 Alt＋Space）。
 
 看哪裡：UNCAGE、實際離架、AAM。
 
-正常：第二次按 C 後 UNCAGE=0，新的投放要求被拒絕，沒有離架，AAM 保持 8。
+正常：MC 接受正常投放要求，最終離架遵循原生條件；UNCAGE=OFF 不再是全機飛彈的共同投放阻擋。記錄是否離架及實際數量。
 
 ### W12　投放中切 SAFE／SIM（已有獨立控制時）
 
-操作：有搖桿時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），點按 C 使 UNCAGE=1，再按住預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開 JOY_BTN2。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。
+操作：有搖桿時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），按住預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開 JOY_BTN2。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。
 
 看哪裡：實際離架、SYS、AAM；CSV。
 
@@ -780,8 +780,8 @@ C 是按一下切換的輸入。放開 C 後 UNCAGE 保持選定值，可再獨�
 
 逐站分類／時效、缺失觀測、錯誤／部分 ACK、80 ms 保持及跨 tick 順序，另由 CI 的原生／Lua 回歸測試注入並核對；人工只核對可操作的結果。原生測試的 C++ 派送使用獨立測試佇列，Lua 僅取樣實際反制存量。正式 CMS 使用 SystemPipeline 的 C++ CountermeasureSystem 排程，Bridge 直接透過 context / human 施放；庫存由 C++ 與 Lua 獨立讀取交叉核對。座艙記錄是取樣，MC 與掛點的 coherent 欄位各自表達同一份完整來源版本；原始雷達與呈現值各自取樣。
 
-目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、HUD 掃描實作及自動 Seek／Acquire 音效留在後續功能範圍。
+目前 SystemMonitor／FailureManager 是預留入口；冷啟動、供電、故障備援、A-G 發射規劃、完整 HUD／MFD 與自動 Seek／Acquire 音效留在後續功能範圍。
 
-本輪刻意保留的行為：保險與主模式獨立；機砲在 ON＋DGF 時接受新開始，與UNCAGE選擇獨立；AAM 投放在 ON＋空戰模式＋UNCAGE=1 時接受新開始；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。CMS 在各主保險狀態下啟用；前向固定十輪混合施放，左向程序 6 固定七發干擾絲、間隔 0.5 秒；後／右為預留入口。
+本輪刻意保留的行為：保險與主模式獨立；機砲在 ON＋DGF 時接受新開始，與UNCAGE選擇獨立；AAM 投放在 ON＋空戰模式時提出正常要求，原生武器系統判定離架條件；已開始操作的主模式切換採原規則，OFF／SIM 才主動中止；鎖定音由有效 IR 來源回報決定。CMS 在各主保險狀態下啟用；前向固定十輪混合施放，左向程序 6 固定七發干擾絲、間隔 0.5 秒；後／右為預留入口。
 
 安裝時會備份並移除舊F-CK-1C掛載匯出與彈量探針入口。回收包包含recording-health.json，可核對每份錄製CSV的資料列。來源commit、DLL SHA256與Windows CI位於測試包根目錄BUILD.json。

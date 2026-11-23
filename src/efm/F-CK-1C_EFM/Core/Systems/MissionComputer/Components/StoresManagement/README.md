@@ -176,3 +176,9 @@ SM 選站狀態保存 requested、acknowledged、取消版本及 pending，供�
 ## 共用 DCS 傳輸
 
 SM 透過 MC 持有的 ExternalActionOutbox 提出操作，並以來源要求編號追蹤執行結果。DcsBridge 配置共用傳送序號，將 Lua ACK 對應回來源完成前綴；StoresCommandQueue 繼續管理 SM 指令編號與完成回覆。停止、撤回、重新選站與保持規則由 SM 擁有。
+
+## 選中尋標器
+
+`SetSeekerUncaged` 與 `AimIrSeeker` 通過同一個指令入口。SM 保存 `seeker_control`，
+依確認掛點、掛載版本及型號決定控制對象與雷達指向支援；換站／重新掛彈後恢復指定視線。
+原生執行及讀回由 DcsBridge 提供。AIM-9 家族共用選擇群組，群組總數與選中掛點的實際型號分別發布。

@@ -246,9 +246,9 @@
     "id": "G06",
     "scenario": "A",
     "title": "DGFT機砲與解籠選擇獨立",
-    "action": "按主保險 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；確認 UNCAGE=0，點按機砲（Space）；點按 C 使 UNCAGE=1，再點按機砲（Space）；最後按 C 使 UNCAGE=0。",
+    "action": "按主保險 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按機砲（Space）；點按 C，再點按機砲（Space）。",
     "look": "右上 UNCAGE、TRIG、GUN，實際砲火。",
-    "normal": "UNCAGE=0與1時均有砲火，GUN隨實際射擊減少，放開Space後停止。機砲輸入維持獨立，UNCAGE保持選定值。",
+    "normal": "兩次都有砲火，GUN 隨實際射擊減少，放開 Space 後停止。空載時沒有可控制的飛彈尋標器；C 不改變機砲資格。",
     "coverage": "Independent gun trigger and missile uncage qualification"
   },
   {
@@ -390,9 +390,9 @@
     "id": "T08",
     "scenario": "B",
     "title": "解籠切換、長按與放開",
-    "action": "按 DGFT（右 Ctrl＋D）；確認 UNCAGE=0，按住 C 約 4 秒後放開，等 1 秒；再點按 C。按 MSL（右 Alt＋D）後重做一次。",
+    "action": "按 DGFT（右 Ctrl＋D），選 AIM-9；按住 C 約 4 秒後放開，等 1 秒；再點按 C。",
     "look": "右上 UNCAGE、RDR、STT、TX。",
-    "normal": "第一次按下時 UNCAGE 由 0 變 1，長按與放開後維持 1；第二次按下變 0。操作本身不發射，沒有每秒重新捕獲，TX 最終回 0。",
+    "normal": "C 每次按下切換一次選中尋標器的控制要求；原生讀回對應 ON／OFF。長按與放開維持該次要求；雷達模式與原生追蹤保持原設定。",
     "coverage": "Targeting uncage coordination / removed retry loop"
   },
   {
@@ -417,9 +417,9 @@
     "id": "K01",
     "scenario": "B",
     "title": "單鍵解籠後發射一枚AIM-9",
-    "action": "重新載入 B；按主保險 ON（右 Ctrl＋M），按 A-A（2），等 2 秒。確認 SEL=0、UNCAGE=0；點按 C 並放開，確認 UNCAGE=1；點按右 Alt＋Space 並放開。等 3 秒，再按 C 使 UNCAGE=0。",
+    "action": "重新載入 B；按主保險 ON（右 Ctrl＋M）、A-A（2），等選站確認。點按 C 解籠並觀察 IR 追蹤；點按右 Alt＋Space 並放開，等 3 秒。",
     "look": "右上 UNCAGE、AAM、SEL；實際離架；CSV 的投放按下序號。",
-    "normal": "放開 C 後 UNCAGE 仍為 1；投放輸入可獨立送到 MC。預期 RT 的 AIM-9X 離架一枚，AAM 從 8 變 7；投放放開後停止，TX 最終回 0。記下實際離架數量；本項只確認離架，不驗收導引或命中。",
+    "normal": "選中 RT 的 AIM-9X 依原生條件離架；總 AAM 由 8 減 7。下一枚選站確認後，尋標器恢復指定視線，UNCAGE 回 OFF。投放放開後停止。",
     "coverage": "Default binding overlap / MC input routing"
   },
   {
@@ -435,7 +435,7 @@
     "id": "W02",
     "scenario": "B",
     "title": "SAFE／SIM 投放資格",
-    "action": "按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；按 SIM（右 Alt＋M），再點按投放（右 Alt＋Space）。最後按 C 使 UNCAGE=0。",
+    "action": "按 MSL（右 Alt＋D）、OFF（右 Shift＋M）；點按投放（右 Alt＋Space）；按 SIM（右 Alt＋M），再點按投放（右 Alt＋Space）。最後按 C 使 UNCAGE=0。",
     "look": "SYS、實際離架、AAM；CSV。",
     "normal": "SAFE、SIM 均不離架，AAM 不減。",
     "coverage": "WeaponOperation master arm gate"
@@ -444,7 +444,7 @@
     "id": "W03",
     "scenario": "B",
     "title": "NAV 投放資格",
-    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再點按投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
+    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；點按投放（右 Alt＋Space）。",
     "look": "MODE、實際離架、AAM；CSV。",
     "normal": "NAV 不離架，AAM 不減；WPN 可以因操作偏好改成 AAM。",
     "coverage": "WeaponOperation NAV gate / presentation separation"
@@ -453,7 +453,7 @@
     "id": "W04",
     "scenario": "B",
     "title": "MSL 短按發射與自動換站",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0；等 3 秒。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按並放開投放（右 Alt＋Space）；等 3 秒。",
     "look": "實際離架位置、右上 AAM／SEL／TX。",
     "normal": "原 RT 離架後 AAM 從 8 變 7，SEL 接續第一個仍有彈候選（RO=1），TX 最終回 0；放開後沒有持續投放。若一次實際離架超過一枚，記下數量與按住時間。",
     "coverage": "SM release / depletion / selection acknowledgment"
@@ -462,7 +462,7 @@
     "id": "W05",
     "scenario": "B",
     "title": "指定掛點的發射",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；按住 Q 至少 0.5 秒再放開一次，等 SEL=2。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；按住 Q 至少 0.5 秒再放開一次，等 SEL=2。點按並放開投放（右 Alt＋Space）。",
     "look": "右上 SEL=2；外部 RI 的 AIM-7P；AAM。",
     "normal": "發射使用 RI；實際離架與 AAM 減量相符。此項確認選站／投放，飛彈導引效果另外記錄。",
     "coverage": "SM selected station / Fox-1 native release"
@@ -471,7 +471,7 @@
     "id": "W06",
     "scenario": "B",
     "title": "另一種空對空飛彈",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；連續兩次各按住 Q 至少 0.5 秒後放開，等 SEL=4。點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）、MSL（右 Alt＋D）；連續兩次各按住 Q 至少 0.5 秒後放開，等 SEL=4。點按並放開投放（右 Alt＋Space）。",
     "look": "MF 的 AIM-120C 離架、右上 AAM／SEL。",
     "normal": "發射使用 MF；數量與實際離架相符。命中率與完整導引不作這輪 MC 驗收依據。",
     "coverage": "SM type-independent selection / Fox-3 native release"
@@ -480,7 +480,7 @@
     "id": "W07",
     "scenario": "B",
     "title": "DGFT 飛彈發射",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、DGFT（右 Ctrl＋D）；點按並放開投放（右 Alt＋Space）。",
     "look": "實際 RT 離架、右上 AAM／SEL／TX。",
     "normal": "DGFT 可經同一投放入口發射；數量與實際離架相符，放開後停止。",
     "coverage": "WeaponOperation Dogfight release"
@@ -489,7 +489,7 @@
     "id": "W08",
     "scenario": "B",
     "title": "長按投放後放開",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1，再按住投放（右 Alt＋Space）1 秒後放開，等 3 秒；最後按 C 使 UNCAGE=0。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；按住投放（右 Alt＋Space）1 秒後放開，等 3 秒。",
     "look": "每枚實際離架、右上 AAM／SEL／TX。",
     "normal": "數量跟隨實際離架；放開後完成收尾、TX 最終回 0，沒有持續新增離架。長按實際發射幾枚照實記錄。",
     "coverage": "SM release hold / release-end targeting continuation"
@@ -498,7 +498,7 @@
     "id": "W09",
     "scenario": "B",
     "title": "快速選站後投放",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即短按並放開 Q 一次；接著點按 C 使 UNCAGE=1，再點按並放開投放（右 Alt＋Space）；最後按 C 使 UNCAGE=0。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），立即短按並放開 Q 一次；接著點按並放開投放（右 Alt＋Space）。",
     "look": "實際離架掛點、右上 SEL／AAM／TX；CSV。",
     "normal": "最後選擇 RO=1；投放先等選站執行，再使用 RO，放開後沒有卡住。",
     "coverage": "DcsBridge merge ordering / station barrier"
@@ -507,7 +507,7 @@
     "id": "W10",
     "scenario": "B",
     "title": "飛彈耗盡",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；點按 C 使 UNCAGE=1。重複「點按並放開投放（右 Alt＋Space）→等 2 秒」，直到全部離架；最後再投放一次，再按 C 使 UNCAGE=0。",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、MSL（右 Alt＋D）；重複「點按並放開投放（右 Alt＋Space）→等 2 秒」，直到全部離架；最後再投放一次。",
     "look": "每次實際離架、右上 AAM／SEL、HMCS。",
     "normal": "AAM 跟隨實際剩餘量降至 0，SEL=-1；再次投放沒有新離架，已用完彈量保持 0。",
     "coverage": "SM inventory zero / automatic reselection"
@@ -515,17 +515,17 @@
   {
     "id": "W11",
     "scenario": "B",
-    "title": "關閉解籠選擇後投放",
-    "action": "重新載入 B；按 ON（右 Ctrl＋M）、A-A（2）；點按 C，確認 UNCAGE=1，再點按 C，確認 UNCAGE=0；點按投放（右 Alt＋Space）。",
+    "title": "尋標器控制與投放資格分開",
+    "action": "重新載入 B；按 ON（右 Ctrl＋M）、A-A（2）；選 AIM-9，若 UNCAGE 顯示 ON，按 C 回 OFF；點按投放（右 Alt＋Space）。",
     "look": "UNCAGE、實際離架、AAM。",
-    "normal": "第二次按 C 後 UNCAGE=0，新的投放要求被拒絕，沒有離架，AAM 保持 8。",
-    "coverage": "WeaponOperation input state"
+    "normal": "MC 接受正常投放要求，最終離架遵循原生條件；UNCAGE=OFF 不再是全機飛彈的共同投放阻擋。記錄是否離架及實際數量。",
+    "coverage": "Normal native release independent of seeker control"
   },
   {
     "id": "W12",
     "scenario": "B",
     "title": "投放中切 SAFE／SIM（已有獨立控制時）",
-    "action": "有搖桿時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），點按 C 使 UNCAGE=1，再按住預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開 JOY_BTN2。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。",
+    "action": "有搖桿時：按 ON（右 Ctrl＋M）、MSL（右 Alt＋D），按住預設投放 JOY_BTN2；投放時按 OFF（右 Shift＋M），再按 ON（右 Ctrl＋M），最後放開 JOY_BTN2。重新載入後將中途 OFF（右 Shift＋M）改成 SIM（右 Alt＋M）再做一次。",
     "look": "實際離架、SYS、AAM；CSV。",
     "normal": "OFF／SIM 後停止後續投放，恢復 ON 不自行續發。沒有獨立投放按鈕時填「無此設備」；工程回歸另覆蓋這條停止路徑。",
     "coverage": "SM immediate abort during release"
@@ -633,7 +633,7 @@
     "id": "P01",
     "scenario": "A",
     "title": "NAV 的武器顯示偏好",
-    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；確認 UNCAGE=0，點按 C 使 UNCAGE=1，再按 C 回 0；按住機砲（Space）1 秒後放開；最後再按 NAV（1）。",
+    "action": "按 ON（右 Ctrl＋M）、超控中央（右 Shift＋D）後按 NAV（1）；點按 C 兩次；按住機砲（Space）1 秒後放開；最後再按 NAV（1）。",
     "look": "HMCS WPN；右上 GUN、AAM。",
     "normal": "起始 GUN；Uncage 後偏好 AAM，機砲按住時 GUN、放開後回 AAM，再按 NAV 回 GUN。整段不射擊。",
     "coverage": "HMCS input observation / rejected input preference"
