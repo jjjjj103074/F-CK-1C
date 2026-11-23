@@ -248,23 +248,27 @@ CockpitBridge::CockpitBridge(cockpit_param_api api)
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation08),
                          cockpit_parameter_reader(DcsIds::CockpitParams::WeaponStation09) } })
 {
-	const std::array<const char*, 4> patterns = { DcsIds::RawCockpitParams::RadarReturnAzimuthPattern,
-		                                          DcsIds::RawCockpitParams::RadarReturnElevationPattern,
-		                                          DcsIds::RawCockpitParams::RadarReturnRangePattern,
-		                                          DcsIds::RawCockpitParams::RadarReturnAgePattern };
+	// 先配置固定槽，再綁定各欄位所持有的參數名稱。
 	radar_return_slots_.resize(kRadarReturnReadSlotCount);
 	for (std::size_t slot = 0; slot < radar_return_slots_.size(); ++slot)
-		for (std::size_t field = 0; field < patterns.size(); ++field)
-		{
-			auto& entry = radar_return_slots_[slot];
-			entry.names[field] = patterns[field];
-			const auto marker = entry.names[field].find("%02u");
-			if (marker == std::string::npos)
-				throw std::logic_error("Radar return parameter template requires a slot.");
-			const std::string number = (slot < 9 ? "0" : "") + std::to_string(slot + 1);
-			entry.names[field].replace(marker, 4, number);
-			entry.endpoints[field] = cockpit_parameter_reader(entry.names[field].c_str());
-		}
+	{
+		auto& entry = radar_return_slots_[slot];
+		entry.azimuth.bind(DcsIds::RawCockpitParams::RadarReturnAzimuthPattern, slot + 1);
+		entry.elevation.bind(DcsIds::RawCockpitParams::RadarReturnElevationPattern, slot + 1);
+		entry.range.bind(DcsIds::RawCockpitParams::RadarReturnRangePattern, slot + 1);
+		entry.age.bind(DcsIds::RawCockpitParams::RadarReturnAgePattern, slot + 1);
+	}
+}
+
+void CockpitBridge::RadarReturnParameter::bind(const char* pattern, std::size_t slot_number)
+{
+	name = pattern;
+	const auto marker = name.find("%02u");
+	if (marker == std::string::npos)
+		throw std::logic_error("Radar return parameter template requires a slot.");
+	const std::string number = (slot_number < 10 ? "0" : "") + std::to_string(slot_number);
+	name.replace(marker, 4, number);
+	endpoint = cockpit_parameter_reader(name.c_str());
 }
 
 CockpitStepInput CockpitBridge::read_step_input(double dt_s)
@@ -360,14 +364,14 @@ void CockpitBridge::read_radar_returns()
 	radar_returns_.clear();
 	for (std::size_t slot = 0; slot < radar_return_slots_.size(); ++slot)
 	{
-		auto& endpoints = radar_return_slots_[slot].endpoints;
-		const auto range = endpoints[2].read_number(api_);
+		auto& fields = radar_return_slots_[slot];
+		const auto range = fields.range.endpoint.read_number(api_);
 		// 已填入正距離的回波再讀取其餘欄位，保留未配置的slot供後續更新。
 		if (!range.success || range.value <= 0.0)
 			continue;
-		const auto azimuth = endpoints[0].read_number(api_);
-		const auto elevation = endpoints[1].read_number(api_);
-		const auto age = endpoints[3].read_number(api_);
+		const auto azimuth = fields.azimuth.endpoint.read_number(api_);
+		const auto elevation = fields.elevation.endpoint.read_number(api_);
+		const auto age = fields.age.endpoint.read_number(api_);
 		if (!azimuth.success || !elevation.success || !age.success || age.value < 0.0)
 			continue;
 		radar_returns_.push_back(

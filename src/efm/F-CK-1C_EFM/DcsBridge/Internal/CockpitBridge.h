@@ -75,10 +75,15 @@ private:
 	using ParameterSlots = std::array<CockpitParameterEndpoint, static_cast<std::size_t>(Parameter::Count)>;
 
 	static constexpr std::size_t kRadarReturnReadSlotCount = 900;
+	struct RadarReturnParameter
+	{
+		std::string name;
+		CockpitParameterEndpoint endpoint;
+		void bind(const char* pattern, std::size_t slot_number);
+	};
 	struct RadarReturnParameters
 	{
-		std::array<std::string, 4> names;
-		std::array<CockpitParameterEndpoint, 4> endpoints;
+		RadarReturnParameter azimuth, elevation, range, age;
 	};
 	static ParameterSlots make_parameter_slots();
 	void read_radar_returns();
