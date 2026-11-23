@@ -128,8 +128,9 @@ void run_ir_seeker_access_tests(Tests::Context& c)
 		TEST_EXPECT(c, f.clears == 2);
 		TEST_EXPECT_NEAR(c, f.direction[0], std::cos(.1) * std::cos(.2), 1e-12);
 		TEST_EXPECT_NEAR(c, f.direction[1], std::sin(.1), 1e-12);
-		TEST_EXPECT_NEAR(c, f.direction[2], std::cos(.1) * std::sin(.2), 1e-12);
-		(void)aircraft.control_ir_seeker(false, .3, .1, false);
+		TEST_EXPECT_NEAR(c, f.direction[2], -std::cos(.1) * std::sin(.2), 1e-12);
+		(void)aircraft.control_ir_seeker(false, -.3, .1, false);
+		TEST_EXPECT_NEAR(c, f.direction[2], std::cos(.1) * std::sin(.3), 1e-12);
 		TEST_EXPECT(c, f.clears == 2);
 		(void)aircraft.control_ir_seeker(false, 0, 0, true);
 		TEST_EXPECT(c, f.clears == 4);

@@ -61,7 +61,7 @@ void DisplaySystem::step(const SystemStepContext& context, const AircraftDataVie
 		};
 		auto& display = output_.infrared;
 		display.desired_visible =
-		    project(ir.desired_azimuth_rad, ir.desired_elevation_rad, display.desired_x_mrad, display.desired_y_mrad);
+		    project(-ir.desired_azimuth_rad, ir.desired_elevation_rad, display.desired_x_mrad, display.desired_y_mrad);
 		display.target_visible =
 		    ir.locked &&
 		    project(ir.target_azimuth_rad, ir.target_elevation_rad, display.target_x_mrad, display.target_y_mrad);

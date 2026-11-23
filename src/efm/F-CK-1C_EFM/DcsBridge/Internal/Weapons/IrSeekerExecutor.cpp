@@ -46,12 +46,14 @@ void IrSeekerExecutor::execute(const Core::StoresSnapshot& stores, double time_s
 	const bool reset =
 	    !previous_.active || control.station != previous_.station || control.load_revision != previous_.load_revision;
 	const auto old_status = reading_.status;
-	reading_ = aircraft_.control_ir_seeker(control.uncaged, control.azimuth_rad, control.elevation_rad, reset);
+	// 原生 IR 要求角以 -Z 為正，雷達與 MC 視線以 +Z 為正。
+	const double native_azimuth = -control.azimuth_rad;
+	reading_ = aircraft_.control_ir_seeker(control.uncaged, native_azimuth, control.elevation_rad, reset);
 	if (reading_.available())
 	{
 		auto az = cockpit_parameter_writer(DcsIds::RawCockpitParams::IrDesiredAzimuth);
 		auto el = cockpit_parameter_writer(DcsIds::RawCockpitParams::IrDesiredElevation);
-		(void)az.write_number(api_, control.azimuth_rad);
+		(void)az.write_number(api_, native_azimuth);
 		(void)el.write_number(api_, control.elevation_rad);
 	}
 	if ((reset || control.uncaged != previous_.uncaged || control.radar_slaved != previous_.radar_slaved ||

@@ -404,6 +404,12 @@ C++ 保存政策、控制與回覆。下一個 FrameInput 將控制讀回交給 
 IrSeekerExecutor 發布飛機要求視線，CockpitBridge 保存原生介面回讀。`IR_LOCK` 與 target 角度持續使用原生來源。
 這些觀測分別表示要求、捕獲及追蹤許可；模型的冷卻、備便狀態仍各依其實際資料來源處理。
 
+此版原生 IR 要求角與雷達角的方位正負號相反。雷達 STT 與 IR target 以 `atan2(Z, X)`
+發布方位；IR desired 則轉為 `(cos(el) cos(az), sin(el), -cos(el) sin(az))`。
+MC 沿用雷達視線；IrSeekerExecutor 在寫入原生 IR 要求時反轉 az，前視圓圈亦轉回顯示方向。
+依據為提供之 CockpitBase.dll：`update_STT_data` RVA `0x433550`、
+其局部座標轉換 RVA `0x41ff60`，以及 `update_ir_seeker` RVA `0x363210` 的要求與目標角轉換。
+
 操作依據：Lockheed Martin 16PR14341，1998 MLU M1，印刷頁 137–139（AIM-9L/M）與
 16PR15269，2000 MLU M2，印刷頁 52–53（選站與視線）。本機將所有 AIM-9 合為同一選擇群組；
 型號及指向能力仍分開保存。MC 使用正常投放要求，最終離架遵循原生條件。

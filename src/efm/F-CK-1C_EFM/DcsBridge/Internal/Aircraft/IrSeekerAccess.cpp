@@ -150,7 +150,7 @@ AircraftIrReading IrSeekerAccess::apply(const DcsAircraftBackend& b,
 	{
 		const std::array<double, 3> los{ std::cos(elevation) * std::cos(azimuth),
 			                             std::sin(elevation),
-			                             std::cos(elevation) * std::sin(azimuth) };
+			                             -std::cos(elevation) * std::sin(azimuth) };
 		if (!b.direction(direction_, sensor, los, result.exception))
 			return complete();
 	}

@@ -321,8 +321,14 @@ void test_ir_picture_with_radar_off(Tests::Context& c)
 	f.advance(8);
 	TEST_EXPECT(c, f.display.infrared.desired_visible && f.display.infrared.target_visible);
 	TEST_EXPECT(c, !f.display.radar.sensor_available);
-	TEST_EXPECT_NEAR(c, f.display.infrared.desired_x_mrad, std::tan(.1) * 1000, 1e-9);
+	TEST_EXPECT_NEAR(c, f.display.infrared.desired_x_mrad, -std::tan(.1) * 1000, 1e-9);
 	TEST_EXPECT_NEAR(c, f.display.infrared.target_y_mrad, std::tan(.1) / std::cos(.2) * 1000, 1e-9);
+	ir.desired_azimuth_rad = -.2;
+	ir.desired_elevation_rad = .1;
+	ir.status.revision += 2;
+	f.advance(8);
+	TEST_EXPECT_NEAR(c, f.display.infrared.desired_x_mrad, f.display.infrared.target_x_mrad, 1e-9);
+	TEST_EXPECT_NEAR(c, f.display.infrared.desired_y_mrad, f.display.infrared.target_y_mrad, 1e-9);
 	ir.locked = false;
 	ir.status.revision += 2;
 	f.advance(8);
