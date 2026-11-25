@@ -244,7 +244,7 @@ void StoresManagement::update_seeker_control()
 	{
 		const auto& selected = stores_.inventory.stations[*station];
 		next.active = selected.observation.available && selected.configuration == StoreConfiguration::Equipped &&
-		              selected.count > 0 && selected.weapon.native_ir;
+		              selected.count > 0 && selected.weapon && selected.weapon->native_ir;
 		if (next.station != *station || next.load_revision != selected.load_revision)
 			next.uncaged = false;
 		next.station = *station;

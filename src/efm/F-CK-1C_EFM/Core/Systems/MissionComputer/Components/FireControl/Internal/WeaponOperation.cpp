@@ -30,19 +30,14 @@ bool WeaponOperation::can_use_gun() const
 	return mode_.master_arm == MasterArmMode::On && mode_.override_mode == OverrideMode::Dogfight;
 }
 
-bool WeaponOperation::can_release_weapon() const
-{
-	return permits_release(evaluate_weapon_release(mode_, selected_, radar_, weapon_.uncage_button_held));
-}
-
 void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds input_time)
 {
 	const bool pressed = Common::command_value_is_pressed(command.value_normalized);
 	switch (command.id)
 	{
 	case CommandId::ToggleMissileUncage:
-		if (pressed && mode_.air_to_air() && mode_.master_arm != MasterArmMode::Off &&
-		    selected_.weapon.procedure == WeaponProcedure::Sidewinder)
+		if (pressed && mode_.air_to_air() && mode_.master_arm != MasterArmMode::Off && selected_.weapon &&
+		    selected_.weapon->procedure == WeaponProcedure::Sidewinder)
 			stores_commands_.submit(SetSeekerUncaged{});
 		break;
 	case CommandId::SetMissileUncage:
@@ -54,7 +49,7 @@ void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds in
 			weapon_.uncage_button_held = false;
 			stores_commands_.submit(SetSeekerUncaged{ false });
 		}
-		else if (rising && selected_.weapon.procedure == WeaponProcedure::Sidewinder)
+		else if (rising && selected_.weapon && selected_.weapon->procedure == WeaponProcedure::Sidewinder)
 			stores_commands_.submit(SetSeekerUncaged{});
 		break;
 	}
@@ -88,7 +83,7 @@ void WeaponOperation::handle_release(bool pressed)
 	if (pressed)
 	{
 		weapon_.release_state = evaluate_weapon_release(mode_, selected_, radar_, weapon_.uncage_button_held);
-		if (can_release_weapon())
+		if (permits_release(weapon_.release_state))
 			stores_commands_.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Normal });
 	}
 	else if (execution_.release.request_id != 0)

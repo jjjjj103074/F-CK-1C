@@ -48,7 +48,7 @@ function Get-EfmSourceFingerprint {
         Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'src\efm') -File
         foreach ($directory in @('Cockpit', 'Input', 'FM')) {
             $path = Join-Path $RepoRoot $directory
-            if (Test-Path -LiteralPath $path) { Get-ChildItem -LiteralPath $path -File -Recurse | Where-Object { $_.Extension -in @('.lua', '.jsonc') } }
+            if (Test-Path -LiteralPath $path) { Get-ChildItem -LiteralPath $path -File -Recurse | Where-Object { $_.Extension -in @('.lua', '.json', '.jsonc') } }
         }
     ) | Where-Object { $_.Extension -in @('.cpp', '.c', '.cc', '.cxx', '.h', '.hh', '.hpp', '.hxx', '.inc', '.inl', '.ipp', '.tpp', '.ps1', '.mjs', '.props', '.targets', '.vcxproj', '.json', '.jsonc', '.txt', '.lua') } | Sort-Object FullName
     $lines = foreach ($file in $files) {

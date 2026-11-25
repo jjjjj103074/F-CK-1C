@@ -10,7 +10,7 @@ namespace Core::Systems::Mc
 {
 struct WeaponCatalogEntry
 {
-	WeaponDescriptor weapon;
+	WeaponDefinitionRef weapon;
 	std::vector<std::string> identifiers;
 };
 struct WeaponCatalogConfiguration
@@ -25,7 +25,7 @@ class WeaponCatalogData final
 public:
 	WeaponCatalogData();
 	explicit WeaponCatalogData(WeaponCatalogConfiguration configuration);
-	const WeaponDescriptor* find(std::string_view identifier) const;
+	WeaponDefinitionRef find(std::string_view identifier) const;
 
 private:
 	WeaponCatalogConfiguration configuration_;

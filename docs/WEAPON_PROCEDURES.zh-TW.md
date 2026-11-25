@@ -86,3 +86,7 @@ ACM 中 I／K／L 分別為 BORE／10×60／30×20；同一次操作拒絕舊鎖
 
 左上角 `RELEASE` 顯示 `IR / NATIVE`、`RADAR TARGET`、`NEED STT`、`HOLD C FOR VISUAL`、`VISUAL` 或狀態原因，
 只表示 MC 的程序判定。實際離架、IR 狀態與雷達觀測各自記錄。
+
+
+武器定義於載入時建立為共用唯讀物件；逐站庫存、選中武器及發布快照保存 `WeaponDefinitionRef`。
+快照保有定義的生命週期，原始 Catalog 銷毀後仍可讀取該次觀測的型號與程序。

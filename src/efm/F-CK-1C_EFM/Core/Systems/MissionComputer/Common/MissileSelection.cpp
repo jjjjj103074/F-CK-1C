@@ -10,8 +10,8 @@ using namespace Core::Systems::Mc;
 
 std::string selection_type(const StoreStationState& station)
 {
-	if (station.weapon.registered)
-		return station.weapon.selection_group;
+	if (station.weapon)
+		return station.weapon->selection_group;
 	if (!station.weapon_type_identifier.empty())
 		return station.weapon_type_identifier;
 	return station.weapon_identifier.empty() ? "station:" + std::to_string(station.station_index)
@@ -21,14 +21,14 @@ std::string selection_type(const StoreStationState& station)
 
 namespace Core::Systems::Mc
 {
-bool is_sidewinder(const WeaponDescriptor& weapon) noexcept
+bool is_sidewinder(const WeaponDefinitionRef& weapon) noexcept
 {
-	return weapon.family == "aim-9";
+	return weapon && weapon->family == "aim-9";
 }
 
-bool supports_radar_cue(const WeaponDescriptor& weapon) noexcept
+bool supports_radar_cue(const WeaponDefinitionRef& weapon) noexcept
 {
-	return weapon.radar_cue;
+	return weapon && weapon->radar_cue;
 }
 
 MissileCount count_selected_missile_group(const StoresInventorySnapshot& inventory, int station)

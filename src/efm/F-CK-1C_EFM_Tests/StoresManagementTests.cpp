@@ -66,8 +66,10 @@ void test_sms_type_selection_and_unknown_missiles(Tests::Context& context)
 	f.select(OperatingMode::MissileOverride);
 	f.step(milliseconds(30));
 	TEST_EXPECT(context, f.stores.selection.requested_station == 0);
-	TEST_EXPECT(context, f.stores.inventory.stations[0].weapon.id == "aim-9l");
-	TEST_EXPECT(context, f.stores.inventory.stations[1].weapon.id == "aim-9m");
+	TEST_EXPECT(context,
+	            f.stores.inventory.stations[0].weapon && f.stores.inventory.stations[0].weapon->id == "aim-9l");
+	TEST_EXPECT(context,
+	            f.stores.inventory.stations[1].weapon && f.stores.inventory.stations[1].weapon->id == "aim-9m");
 	f.commands.submit(SelectStoresForMode{ OperatingMode::MissileOverride, MissileSelectionStep::Station });
 	f.manager.dispatch();
 	TEST_EXPECT(context, f.stores.selection.requested_station == 1);

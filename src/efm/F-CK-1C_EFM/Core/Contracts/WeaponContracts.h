@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 namespace Core
@@ -41,9 +42,8 @@ enum class WeaponProcedure
 };
 
 /// @brief 共用武器清單解析後的身分、分類及本機操作支援。
-struct WeaponDescriptor
+struct WeaponDefinition
 {
-	bool registered = false;
 	std::string id, name, family, selection_group;
 	WeaponCategory category = WeaponCategory::Unknown;
 	WeaponRole role = WeaponRole::Unknown;
@@ -53,13 +53,16 @@ struct WeaponDescriptor
 	bool radar_cue = false;
 };
 
+/// @brief 快照共同持有的唯讀武器定義。
+using WeaponDefinitionRef = std::shared_ptr<const WeaponDefinition>;
+
 /// @brief SM 依有效觀測與選站意圖發布的使用對象；pending 保存執行確認狀態。
 struct SelectedWeaponState
 {
 	bool available = false;
 	bool pending = false;
 	int station = -1;
-	WeaponDescriptor weapon;
+	WeaponDefinitionRef weapon;
 };
 
 /// @brief FC 的使用程序判定，供操作及顯示共用。

@@ -21,9 +21,9 @@ struct MissileSelection
 };
 
 /// @brief 判斷 AIM-9 家族，供選擇與顯示共用群組定義。
-bool is_sidewinder(const WeaponDescriptor& weapon) noexcept;
+bool is_sidewinder(const WeaponDefinitionRef& weapon) noexcept;
 /// @brief 判斷目前型號的雷達視線指向支援。
-bool supports_radar_cue(const WeaponDescriptor& weapon) noexcept;
+bool supports_radar_cue(const WeaponDefinitionRef& weapon) noexcept;
 /// @brief 統計目前所選 SMS 群組的全機剩餘數量。
 MissileCount count_selected_missile_group(const StoresInventorySnapshot& inventory, int station);
 

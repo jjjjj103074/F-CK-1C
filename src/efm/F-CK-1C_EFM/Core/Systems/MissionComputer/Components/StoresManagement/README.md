@@ -187,3 +187,7 @@ SM 透過 MC 持有的 ExternalActionOutbox 提出操作，並以來源要求編
 
 `StoresSnapshot.selected_missile_group` 保存 MC 依 SM 庫存與確認選站計算的群組總量、完整性及分類。
 DcsBridge 讀取此契約並發布座艙參數。
+
+
+武器定義於載入時建立為共用唯讀物件；逐站庫存、選中武器及發布快照保存 `WeaponDefinitionRef`。
+快照保有定義的生命週期，原始 Catalog 銷毀後仍可讀取該次觀測的型號與程序。

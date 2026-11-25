@@ -27,7 +27,6 @@ private:
 	void handle_missile_step(bool pressed, std::chrono::nanoseconds time);
 	void submit_missile_step(MissileSelectionStep step);
 	bool can_use_gun() const;
-	bool can_release_weapon() const;
 	void handle_gun(bool pressed);
 	void handle_release(bool pressed);
 	const ModeData& mode_;

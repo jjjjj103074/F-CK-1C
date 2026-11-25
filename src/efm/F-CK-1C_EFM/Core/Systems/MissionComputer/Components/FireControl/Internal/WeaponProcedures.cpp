@@ -13,12 +13,12 @@ WeaponReleaseState evaluate_weapon_release(const ModeData& mode,
 	if (!selected.available)
 		return selected.pending ? WeaponReleaseState::SelectionPending : WeaponReleaseState::NoWeapon;
 	const auto& weapon = selected.weapon;
-	if (!weapon.registered || weapon.role != WeaponRole::AirToAir)
+	if (!weapon || weapon->role != WeaponRole::AirToAir)
 		return WeaponReleaseState::Unsupported;
 	const auto& observation = radar.observation;
 	const bool tracking = observation.status.available && observation.mode == RadarMode::SingleTargetTrack &&
 	                      std::isfinite(observation.stt_range_m) && observation.stt_range_m > 0.0;
-	switch (weapon.procedure)
+	switch (weapon->procedure)
 	{
 	case WeaponProcedure::Sidewinder:
 		// AIM-9 沿用原生投放條件，IR 捕獲與自主追蹤各自回報。

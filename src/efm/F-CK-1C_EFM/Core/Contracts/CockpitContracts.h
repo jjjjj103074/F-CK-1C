@@ -287,7 +287,7 @@ struct StoreStationState
 	std::string weapon_identifier;
 	std::string weapon_type_identifier;
 	std::uint64_t load_revision = 0; ///< 掛載更換或重新掛彈時遞增。
-	WeaponDescriptor weapon;
+	WeaponDefinitionRef weapon;
 	ObservationStatus observation;
 	std::optional<std::chrono::nanoseconds> last_observed_at;
 };

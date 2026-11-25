@@ -33,19 +33,29 @@ void run_weapon_catalog_tests(Tests::Context& c)
 	for (const auto& entry : loaded.value().entries)
 		for (const auto& identifier : entry.identifiers)
 		{
-			const auto* found = catalog.find(identifier);
-			TEST_EXPECT(c, found && found->id == entry.weapon.id && found->registered);
+			const auto found = catalog.find(identifier);
+			TEST_EXPECT(c, found && found->id == entry.weapon->id);
 		}
 	for (const char* identifier : { "{AIM-9P}", "{AIM-9P3}", "{AIM-9P5}", "{AIM-9M}", "{AIM-9X}" })
 	{
-		const auto* weapon = catalog.find(identifier);
+		const auto weapon = catalog.find(identifier);
 		TEST_EXPECT(c,
 		            weapon && weapon->native_ir && weapon->family == "aim-9" && weapon->selection_group == "aim-9" &&
 		                weapon->procedure == WeaponProcedure::Sidewinder);
 	}
-	TEST_EXPECT(c, catalog.find("{AIM-7P}")->procedure == WeaponProcedure::Sparrow);
-	TEST_EXPECT(c, catalog.find("{40EF17B7-F508-45de-8566-6FFECC0C1AB8}")->procedure == WeaponProcedure::Amraam);
+	const auto sparrow = catalog.find("{AIM-7P}");
+	TEST_EXPECT(c, sparrow && sparrow->procedure == WeaponProcedure::Sparrow);
+	const auto amraam = catalog.find("{40EF17B7-F508-45de-8566-6FFECC0C1AB8}");
+	TEST_EXPECT(c, amraam && amraam->procedure == WeaponProcedure::Amraam);
 	TEST_EXPECT(c, catalog.find("new-air-to-air-missile") == nullptr);
+	WeaponDefinitionRef retained;
+	{
+		WeaponCatalogData temporary;
+		retained = temporary.find("{AIM-9P5}");
+	}
+	TEST_EXPECT(c, retained && retained->name == "AIM-9P5");
+	TEST_EXPECT(c, retained.use_count() == 1);
+	TEST_EXPECT(c, sizeof(WeaponDefinitionRef) <= 2 * sizeof(void*));
 	const auto source = Configuration::Tools::read_file("FM/Weapons/WeaponCatalog.json");
 	const auto invalid = [&](const std::string& from, const std::string& to)
 	{

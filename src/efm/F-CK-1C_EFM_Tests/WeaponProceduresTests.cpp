@@ -14,18 +14,19 @@ void run_weapon_procedures_tests(Tests::Context& c)
 	mode.master_arm = MasterArmMode::On;
 	SelectedWeaponState selected;
 	selected.available = true;
-	selected.weapon.registered = true;
-	selected.weapon.role = WeaponRole::AirToAir;
+	auto definition = std::make_shared<WeaponDefinition>();
+	selected.weapon = definition;
+	definition->role = WeaponRole::AirToAir;
 	RadarSnapshot radar;
 	const auto evaluate = [&](bool held = false)
 	{
 		return evaluate_weapon_release(mode, selected, radar, held);
 	};
-	selected.weapon.procedure = WeaponProcedure::Sidewinder;
+	definition->procedure = WeaponProcedure::Sidewinder;
 	TEST_EXPECT(c, evaluate() == WeaponReleaseState::Infrared && permits_release(evaluate()));
-	selected.weapon.procedure = WeaponProcedure::Sparrow;
+	definition->procedure = WeaponProcedure::Sparrow;
 	TEST_EXPECT(c, evaluate() == WeaponReleaseState::SparrowTrackRequired && !permits_release(evaluate(true)));
-	selected.weapon.procedure = WeaponProcedure::Amraam;
+	definition->procedure = WeaponProcedure::Amraam;
 	TEST_EXPECT(c, evaluate() == WeaponReleaseState::VisualConsentRequired && !permits_release(evaluate()));
 	TEST_EXPECT(c, evaluate(true) == WeaponReleaseState::Visual && permits_release(evaluate(true)));
 	radar.observation.status.available = true;
@@ -33,17 +34,17 @@ void run_weapon_procedures_tests(Tests::Context& c)
 	radar.observation.stt_range_m = 5000;
 	for (const auto procedure : { WeaponProcedure::Sparrow, WeaponProcedure::Amraam })
 	{
-		selected.weapon.procedure = procedure;
+		definition->procedure = procedure;
 		TEST_EXPECT(c, evaluate() == WeaponReleaseState::Targeted && permits_release(evaluate()));
 	}
 	radar.observation.stt_range_m = std::numeric_limits<double>::quiet_NaN();
 	TEST_EXPECT(c, evaluate() == WeaponReleaseState::VisualConsentRequired);
-	selected.weapon.procedure = WeaponProcedure::Unsupported;
+	definition->procedure = WeaponProcedure::Unsupported;
 	TEST_EXPECT(c, evaluate(true) == WeaponReleaseState::Unsupported);
-	selected.weapon.procedure = WeaponProcedure::Sidewinder;
-	selected.weapon.registered = false;
+	definition->procedure = WeaponProcedure::Sidewinder;
+	selected.weapon.reset();
 	TEST_EXPECT(c, evaluate() == WeaponReleaseState::Unsupported);
-	selected.weapon.registered = true;
+	selected.weapon = definition;
 	selected.available = false;
 	TEST_EXPECT(c, evaluate() == WeaponReleaseState::NoWeapon);
 	selected.pending = true;
@@ -64,7 +65,7 @@ void run_weapon_procedures_tests(Tests::Context& c)
 	ExternalActionOutbox actions;
 	StoresCommandQueue commands(actions);
 	WeaponOperation operation(mode, radar, selected, execution, data, commands);
-	selected.weapon.procedure = WeaponProcedure::Amraam;
+	definition->procedure = WeaponProcedure::Amraam;
 	operation.handle({ CommandId::SetMissileUncage, 1 }, {});
 	TEST_EXPECT(c, data.uncage_button_held);
 	operation.handle({ CommandId::SetMissileUncage, 0 }, {});

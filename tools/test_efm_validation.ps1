@@ -19,6 +19,18 @@ function Expect-Failure {
     throw "$Name unexpectedly passed."
 }
 try {
+    $fingerprintRoot = Join-Path $fixtureRoot 'fingerprint-repo'
+    foreach ($directory in @('src\efm\F-CK-1C_EFM', 'src\efm\F-CK-1C_EFM_Tests', 'tools', 'FM\Weapons')) {
+        [IO.Directory]::CreateDirectory((Join-Path $fingerprintRoot $directory)) | Out-Null
+    }
+    $weaponCatalog = Join-Path $fingerprintRoot 'FM\Weapons\WeaponCatalog.json'
+    [IO.File]::WriteAllText($weaponCatalog, '{"schema_version":1}')
+    $before = Get-EfmSourceFingerprint $fingerprintRoot
+    [IO.File]::WriteAllText($weaponCatalog, '{"schema_version":2}')
+    if ($before -notmatch 'FM/Weapons/WeaponCatalog.json=' -or $before -eq (Get-EfmSourceFingerprint $fingerprintRoot)) {
+        throw 'JSON weapon catalog changes must update the source fingerprint.'
+    }
+    $checks++
     Expect-Failure 'Wrong submitted hash' { & (Join-Path $PSScriptRoot 'check_efm_dll.ps1') -DllPath $DllPath -ExpectedSha256 ('0' * 64) } '載入前 DLL 雜湊不符'
     $invalid = Join-Path $fixtureRoot 'invalid.dll'
     [IO.File]::WriteAllBytes($invalid, [Text.Encoding]::ASCII.GetBytes('not a Windows DLL'))

@@ -133,9 +133,9 @@ bool MissionComputerExporter::export_selected_store(const Core::StoresSnapshot& 
 	if (name.event)
 		events = events.with_event(*name.event);
 	complete = name.success && complete;
-	const auto model = selected_store_name_.write_string(
-	    api_,
-	    station ? (station->weapon.registered ? station->weapon.name : "UNREGISTERED") : "");
+	const auto model =
+	    selected_store_name_.write_string(api_,
+	                                      station ? (station->weapon ? station->weapon->name : "UNREGISTERED") : "");
 	if (model.event)
 		events = events.with_event(*model.event);
 	return model.success && complete;
@@ -177,7 +177,10 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Uncage, snapshot.fire_control.missile_uncage_selected ? 1.0 : 0.0);
 	WRITE_MC(UncageButtonHeld, snapshot.fire_control.uncage_button_held);
 	WRITE_MC(WeaponReleaseState, static_cast<double>(snapshot.fire_control.release_state));
-	WRITE_MC(WeaponProcedure, static_cast<double>(snapshot.stores.selected_weapon.weapon.procedure));
+	WRITE_MC(WeaponProcedure,
+	         static_cast<double>(snapshot.stores.selected_weapon.weapon
+	                                 ? snapshot.stores.selected_weapon.weapon->procedure
+	                                 : Core::WeaponProcedure::Unsupported));
 	WRITE_MC(IrControlAvailable, snapshot.stores.ir_seeker.control_available);
 	WRITE_MC(IrSelfTrackEnabled, snapshot.stores.ir_seeker.self_track_enabled);
 	WRITE_MC(IrNativeMode, snapshot.stores.ir_seeker.native_mode);

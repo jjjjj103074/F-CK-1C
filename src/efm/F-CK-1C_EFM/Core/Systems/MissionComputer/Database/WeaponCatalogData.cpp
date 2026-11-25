@@ -70,8 +70,8 @@ void read_configuration(const Configuration::Value& value, WeaponCatalogConfigur
 		              "aliases",
 		              "loadouts" });
 		WeaponCatalogEntry entry;
-		auto& weapon = entry.weapon;
-		weapon.registered = true;
+		auto definition = std::make_shared<WeaponDefinition>();
+		auto& weapon = *definition;
 		weapon.id = identity(item.member("id"));
 		item.require(std::find(ids.begin(), ids.end(), weapon.id) == ids.end(), "Duplicate weapon model");
 		ids.push_back(weapon.id);
@@ -139,6 +139,7 @@ void read_configuration(const Configuration::Value& value, WeaponCatalogConfigur
 			loadout.require(std::find(group_ids.begin(), group_ids.end(), group) != group_ids.end(),
 			                "Unknown loadout group");
 		}
+		entry.weapon = std::move(definition);
 		result.entries.push_back(std::move(entry));
 	}
 }
@@ -155,9 +156,9 @@ WeaponCatalogData::WeaponCatalogData(WeaponCatalogConfiguration configuration)
 			if (!identifiers_.emplace(identifier, i).second)
 				throw std::invalid_argument("Duplicate DCS weapon identifier");
 }
-const WeaponDescriptor* WeaponCatalogData::find(std::string_view identifier) const
+WeaponDefinitionRef WeaponCatalogData::find(std::string_view identifier) const
 {
 	const auto found = identifiers_.find(std::string(identifier));
-	return found == identifiers_.end() ? nullptr : &configuration_.entries[found->second].weapon;
+	return found == identifiers_.end() ? nullptr : configuration_.entries[found->second].weapon;
 }
 }
