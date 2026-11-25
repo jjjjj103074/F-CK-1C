@@ -88,6 +88,7 @@ constexpr ExpectedSemanticCommand kExpectedSemanticCommands[] = {
 	EXPECT_COMMAND(MasterArmSim, SetMasterArmSim),
 	EXPECT_COMMAND(DogfightSwitch, SelectDogfightMode),
 	EXPECT_COMMAND(MissileUncage, ToggleMissileUncage),
+	EXPECT_COMMAND(MissileUncageButton, SetMissileUncage),
 	EXPECT_COMMAND(WeaponRelease, SetWeaponRelease),
 	EXPECT_COMMAND(TMSUp, SetTmsUp),
 	EXPECT_COMMAND(TMSDown, PressTmsDown),

@@ -1,4 +1,5 @@
 #include "WeaponOperation.h"
+#include "WeaponProcedures.h"
 
 #include "Common/CommandValue.h"
 
@@ -11,11 +12,13 @@ namespace Core::Systems::Mc::Internal
 {
 WeaponOperation::WeaponOperation(const ModeData& mode,
                                  const RadarSnapshot& radar,
+                                 const SelectedWeaponState& selected,
                                  const WeaponUseData& execution,
                                  WeaponOperationData& weapon,
                                  StoresCommandQueue& stores_commands)
     : mode_(mode),
       radar_(radar),
+      selected_(selected),
       execution_(execution),
       weapon_(weapon),
       stores_commands_(stores_commands)
@@ -29,7 +32,7 @@ bool WeaponOperation::can_use_gun() const
 
 bool WeaponOperation::can_release_weapon() const
 {
-	return mode_.master_arm == MasterArmMode::On && mode_.air_to_air();
+	return permits_release(evaluate_weapon_release(mode_, selected_, radar_, weapon_.uncage_button_held));
 }
 
 void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds input_time)
@@ -38,13 +41,23 @@ void WeaponOperation::handle(const Command& command, std::chrono::nanoseconds in
 	switch (command.id)
 	{
 	case CommandId::ToggleMissileUncage:
-		if (pressed && mode_.air_to_air() && mode_.master_arm != MasterArmMode::Off)
+		if (pressed && mode_.air_to_air() && mode_.master_arm != MasterArmMode::Off &&
+		    selected_.weapon.procedure == WeaponProcedure::Sidewinder)
 			stores_commands_.submit(SetSeekerUncaged{});
 		break;
 	case CommandId::SetMissileUncage:
-		if (mode_.air_to_air() && (mode_.master_arm != MasterArmMode::Off || !pressed))
-			stores_commands_.submit(SetSeekerUncaged{ pressed });
+	{
+		const bool rising = pressed && !weapon_.uncage_button_held;
+		weapon_.uncage_button_held = pressed;
+		if (mode_.master_arm == MasterArmMode::Off || !mode_.air_to_air())
+		{
+			weapon_.uncage_button_held = false;
+			stores_commands_.submit(SetSeekerUncaged{ false });
+		}
+		else if (rising && selected_.weapon.procedure == WeaponProcedure::Sidewinder)
+			stores_commands_.submit(SetSeekerUncaged{});
 		break;
+	}
 	case CommandId::SetTriggerSecondStage:
 		handle_gun(pressed);
 		break;
@@ -74,6 +87,7 @@ void WeaponOperation::handle_release(bool pressed)
 {
 	if (pressed)
 	{
+		weapon_.release_state = evaluate_weapon_release(mode_, selected_, radar_, weapon_.uncage_button_held);
 		if (can_release_weapon())
 			stores_commands_.submit(BeginWeaponUse{ WeaponUseKind::Release, LaunchPermission::Normal });
 	}
@@ -89,6 +103,7 @@ void WeaponOperation::stop()
 void WeaponOperation::on_mode_changed()
 {
 	stop();
+	weapon_.uncage_button_held = false;
 	missile_step_pressed_at_.reset();
 	missile_type_step_sent_ = false;
 }
@@ -126,6 +141,7 @@ void WeaponOperation::step(std::chrono::nanoseconds time)
 		submit_missile_step(MissileSelectionStep::WeaponType);
 		missile_type_step_sent_ = true;
 	}
+	weapon_.release_state = evaluate_weapon_release(mode_, selected_, radar_, weapon_.uncage_button_held);
 	const auto& target = radar_.observation;
 	stores_commands_.submit(
 	    AimIrSeeker{ mode_.air_to_air() && target.status.available && target.mode == RadarMode::SingleTargetTrack,

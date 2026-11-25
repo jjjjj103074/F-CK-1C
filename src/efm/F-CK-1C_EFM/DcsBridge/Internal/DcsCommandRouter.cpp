@@ -120,6 +120,7 @@ constexpr CommandBinding kBindings[] = { BIND_INPUT(JoystickPitch, SetPitchAxis)
 	                                     BIND_PRESS(MasterArmSim, SetMasterArmSim),
 	                                     BIND_PRESS(DogfightSwitch, SelectDogfightMode),
 	                                     BIND_PRESS(MissileUncage, ToggleMissileUncage),
+	                                     BIND_INPUT(MissileUncageButton, SetMissileUncage),
 	                                     BIND_INPUT(WeaponRelease, SetWeaponRelease),
 	                                     BIND_INPUT(TMSUp, SetTmsUp),
 	                                     BIND_INPUT(RadarCursorUp, SetRadarCursorUp),

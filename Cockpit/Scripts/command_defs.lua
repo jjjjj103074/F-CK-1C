@@ -34,6 +34,7 @@ device_commands = {
     MasterArmSim = 3042,
     DogfightSwitch = 3043,
     MissileUncage = 3044,
+    MissileUncageButton = 3161,
     WeaponRelease = 3045,
     TMSUp = 3046,
     TMSDown = 3047,

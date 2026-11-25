@@ -10,6 +10,7 @@ class FireControl final
 public:
 	FireControl(const ModeData& mode,
 	            const RadarSnapshot& radar,
+	            const SelectedWeaponState& selected,
 	            const WeaponUseData& execution,
 	            FireControlData& data,
 	            RadarRequestQueue& radar_requests,

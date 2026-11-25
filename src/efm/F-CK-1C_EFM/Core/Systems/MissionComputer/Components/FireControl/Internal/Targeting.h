@@ -14,9 +14,9 @@ class Targeting final
 {
 public:
 	Targeting(const ModeData& mode, const RadarSnapshot& radar, TargetingData& data, RadarRequestQueue& requests);
-	/// @brief 接收已分派的 TMS 與解籠操作，依觀測時間處理按住及放開。
+	/// @brief 接收已分派的 TMS，依觀測時間處理按下與放開。
 	void handle(const Command& command, std::chrono::nanoseconds input_time = {});
-	/// @brief 依解籠選擇接續既有的雷達設定與狗鬥取消要求。
+	/// @brief 依新操作模式規劃搜尋配置，保留空戰模式之間的有效追蹤。
 	void on_operating_mode_selected(const OperatingModeSelected& event);
 	void before_weapon_release();
 	/// @brief 推進 TMS 長按、接收設備要求結果並整理追蹤觀測。
@@ -28,6 +28,7 @@ private:
 	void acquire(AcquisitionInput input);
 	void cancel();
 	void submit_tms(const RadarCommand& command);
+	void acquire_air_combat(TargetAcquisitionMode mode);
 	void handle_tms_up(bool pressed);
 	void handle_tms_down();
 	void handle_tms_right(bool pressed, std::chrono::nanoseconds time);

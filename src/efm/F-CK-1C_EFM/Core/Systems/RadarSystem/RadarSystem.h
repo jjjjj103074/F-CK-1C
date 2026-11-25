@@ -24,6 +24,7 @@ private:
 	void set_scan(RadarSearchMode mode,
 	              std::uint64_t parent,
 	              TargetAcquisitionMode pattern = TargetAcquisitionMode::None);
+	void apply_scan_mode();
 	void begin_acquisition(std::uint64_t parent, AcquisitionInput input);
 	void cancel_acquisition(std::uint64_t parent);
 	void finish_acquisition(std::uint64_t parent);
@@ -33,6 +34,8 @@ private:
 	std::uint64_t last_request_ = 0;
 	bool radar_on_requested_ = false;
 	bool stt_cancel_requested_ = false;
+	bool scan_mode_pending_ = false;
+	std::uint64_t scan_mode_parent_ = 0;
 	std::array<bool, 4> cursor_held_{};
 	bool cursor_initialized_ = false;
 	double cursor_azimuth_rad_ = 0.0;

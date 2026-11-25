@@ -12,6 +12,7 @@ class WeaponOperation final
 public:
 	WeaponOperation(const ModeData& mode,
 	                const RadarSnapshot& radar,
+	                const SelectedWeaponState& selected,
 	                const WeaponUseData& execution,
 	                WeaponOperationData& weapon,
 	                StoresCommandQueue& stores_commands);
@@ -31,6 +32,7 @@ private:
 	void handle_release(bool pressed);
 	const ModeData& mode_;
 	const RadarSnapshot& radar_;
+	const SelectedWeaponState& selected_;
 	const WeaponUseData& execution_;
 	WeaponOperationData& weapon_;
 	StoresCommandQueue& stores_commands_;

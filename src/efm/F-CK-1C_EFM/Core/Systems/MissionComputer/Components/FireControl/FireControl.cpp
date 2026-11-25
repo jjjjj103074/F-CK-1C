@@ -6,12 +6,13 @@ namespace Core::Systems::Mc
 {
 FireControl::FireControl(const ModeData& mode,
                          const RadarSnapshot& radar,
+                         const SelectedWeaponState& selected,
                          const WeaponUseData& execution,
                          FireControlData& data,
                          RadarRequestQueue& radar_requests,
                          StoresCommandQueue& stores_commands)
     : targeting_(mode, radar, data.targeting, radar_requests),
-      weapon_operation_(mode, radar, execution, data.weapon, stores_commands)
+      weapon_operation_(mode, radar, selected, execution, data.weapon, stores_commands)
 {
 }
 

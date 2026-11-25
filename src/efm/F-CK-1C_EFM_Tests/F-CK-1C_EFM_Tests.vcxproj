@@ -99,6 +99,8 @@
     <ClCompile Include="RadarSystemTests.cpp" />
     <ClCompile Include="RadarDisplayTests.cpp" />
     <ClCompile Include="AirToAirIntegrationTests.cpp" />
+    <ClCompile Include="WeaponCatalogTests.cpp" />
+    <ClCompile Include="WeaponProceduresTests.cpp" />
     <ClCompile Include="IrSeekerAccessTests.cpp" />
     <ClCompile Include="CountermeasureSystemTests.cpp" />
     <ClCompile Include="..\F-CK-1C_EFM\DcsBridge\Internal\Countermeasures\CountermeasureExecutor.cpp" />

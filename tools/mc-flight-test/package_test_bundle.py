@@ -95,9 +95,13 @@ indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script
                 raise ValueError('Missing graphical radar runtime: ' + filename)
         additions = '\ncreators[10] = { "avLuaDevice", LockOn_Options.script_path .. "MCFlightTest/Recorder.lua" }\n'
     if focus == 'status':
-        for filename in ('Indicator_init.lua', 'Indicator_page.lua', 'Status.lua', 'StoreNames.lua'):
+        for filename in ('Indicator_init.lua', 'Indicator_page.lua', 'Status.lua'):
             if MODULE + 'Cockpit/Scripts/FlightStatus/' + filename not in original:
                 raise ValueError('Missing flight status runtime: ' + filename)
+    for required in ('FM/Weapons/WeaponCatalog.json', 'Cockpit/Scripts/Stores/WeaponCatalog.lua',
+                     'Cockpit/Scripts/ThirdParty/json/json.lua'):
+        if MODULE + required not in original:
+            raise ValueError('Missing shared weapon catalog runtime: ' + required)
     entries = dict(original)
     entries[DEVICE] = original[DEVICE] + additions.replace('\n', '\r\n').encode('utf-8')
     keyboard = original[KEYBOARD]

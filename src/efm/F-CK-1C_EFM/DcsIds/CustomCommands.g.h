@@ -39,6 +39,7 @@ static constexpr int MasterArmOff = 3041;
 static constexpr int MasterArmSim = 3042;
 static constexpr int DogfightSwitch = 3043;
 static constexpr int MissileUncage = 3044;
+static constexpr int MissileUncageButton = 3161;
 static constexpr int WeaponRelease = 3045;
 static constexpr int TMSUp = 3046;
 static constexpr int TMSDown = 3047;
@@ -164,6 +165,7 @@ static constexpr Entry CustomCommands[] = {
     { Commands::MasterArmSim, Route::Efm },
     { Commands::DogfightSwitch, Route::Efm },
     { Commands::MissileUncage, Route::Efm },
+    { Commands::MissileUncageButton, Route::Efm },
     { Commands::WeaponRelease, Route::Efm },
     { Commands::TMSUp, Route::Efm },
     { Commands::TMSDown, Route::Efm },

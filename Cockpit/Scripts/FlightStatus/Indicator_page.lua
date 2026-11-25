@@ -17,6 +17,7 @@ local rows = {
     { "RADAR", cockpit_params.FlightStatusRadar },
     { "IR", cockpit_params.FlightStatusIr },
     { "UNCAGE", cockpit_params.FlightStatusUncage },
+    { "RELEASE", cockpit_params.FlightStatusRelease },
 }
 local left, top = -LockOn_Options.screen.aspect + 0.04, 0.94
 local colon_x, row_height = left + 0.125, 0.026

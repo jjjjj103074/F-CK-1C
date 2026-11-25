@@ -26,6 +26,7 @@ MissionComputer::MissionComputer()
       stores_management_(input_output_data_.input, stores_data_, stores_events_, stores_commands_, external_actions_),
       fire_control_(mode_data_,
                     input_output_data_.input.radar,
+                    stores_data_.selected_weapon,
                     stores_data_.weapon_use,
                     fire_control_data_,
                     radar_requests_,
@@ -211,6 +212,8 @@ void MissionComputer::publish_outputs(SystemResult& result)
 	output.fire_control.gun_firing_indication = fire_control_data_.weapon.gun_firing_indication;
 	output.fire_control.pickle_requested = fire_control_data_.weapon.pickle_requested;
 	output.fire_control.missile_uncage_selected = stores_data_.seeker_control.uncaged;
+	output.fire_control.uncage_button_held = fire_control_data_.weapon.uncage_button_held;
+	output.fire_control.release_state = fire_control_data_.weapon.release_state;
 	output.stores.status = output.status;
 	output.stores.inventory = stores_data_.inventory;
 	const auto missiles = Mc::count_missiles(stores_data_.inventory, { WeaponRole::AirToAir, {} });
@@ -229,11 +232,12 @@ void MissionComputer::publish_outputs(SystemResult& result)
 		if (station.observation.available && station.configuration == StoreConfiguration::Equipped)
 		{
 			const auto count = Mc::count_selected_missile_group(stores_data_.inventory, *selected);
-			group = { count.count, count.complete, Mc::is_sidewinder(station.model) };
+			group = { count.count, count.complete, Mc::is_sidewinder(station.weapon) };
 		}
 	}
 	output.stores.ir_seeker = stores_data_.ir_seeker;
 	output.stores.seeker_control = stores_data_.seeker_control;
+	output.stores.selected_weapon = stores_data_.selected_weapon;
 	output.control_inputs = input_output_data_.input.control_inputs;
 	output.action_requests = external_actions_.pending();
 	result.publish(AircraftDataKeys::kRadarRequests, radar_requests_.pending());

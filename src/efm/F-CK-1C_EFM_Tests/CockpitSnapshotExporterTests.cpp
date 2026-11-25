@@ -181,14 +181,14 @@ void test_exporter_reports_all_missing_fields_and_recoveries(Tests::Context& con
 	Core::MissionActionBatch actions;
 	snapshot.combat_avionics.status = { true, 1 };
 	auto events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 99);
+	TEST_EXPECT(context, events.count == 103);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 1.0, kTolerance);
 	TEST_EXPECT(context,
 	            exporter.export_snapshot(snapshot, actions).count == 0); // Repeated failures remain suppressed.
 	for (const auto& entry : DcsIds::CockpitParams::Catalog)
 		cockpit.set_available(entry.name, true);
 	events = exporter.export_snapshot(snapshot, actions);
-	TEST_EXPECT(context, events.count == 99);
+	TEST_EXPECT(context, events.count == 103);
 	TEST_EXPECT_NEAR(context, cockpit.value(DcsIds::CockpitParams::McGeneration), 6.0, kTolerance);
 	for (std::size_t i = 0; i < events.count; ++i)
 		TEST_EXPECT(context, events.items[i].type == DcsBridge::Internal::CockpitParameterEventType::Recovery);

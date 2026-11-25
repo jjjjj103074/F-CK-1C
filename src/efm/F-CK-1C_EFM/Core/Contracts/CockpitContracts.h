@@ -1,4 +1,5 @@
 #pragma once
+#include "WeaponContracts.h"
 
 #include "MissionActions.h"
 #include "ExternalActions.h"
@@ -244,28 +245,6 @@ struct IrSeekerControl
 
 inline constexpr std::size_t kWeaponStationCount = 9;
 
-enum class WeaponCategory
-{
-	Other,
-	Missile,
-	Unknown
-};
-enum class WeaponRole
-{
-	Other,
-	AirToAir,
-	Unknown
-};
-/// @brief 轉接器辨識的武器型號，供掛載系統套用選擇政策。
-enum class WeaponModel
-{
-	Unknown,
-	Aim9L,
-	Aim9M,
-	Aim9P,
-	Aim9X,
-	Aim9Legacy
-};
 /// @brief 固定掛點的掛載配置；數量及觀測有效性分別保存。
 enum class StoreConfiguration
 {
@@ -284,7 +263,6 @@ struct WeaponStationSample
 	std::string weapon_identifier;
 	std::string weapon_type_identifier; ///< 來源類型的完整不透明識別，供掛載比對。
 	std::string station_name; ///< 機型定義提供的固定掛點名稱。
-	WeaponModel model = WeaponModel::Unknown;
 };
 
 struct WeaponStationObservation
@@ -309,9 +287,9 @@ struct StoreStationState
 	std::string weapon_identifier;
 	std::string weapon_type_identifier;
 	std::uint64_t load_revision = 0; ///< 掛載更換或重新掛彈時遞增。
+	WeaponDescriptor weapon;
 	ObservationStatus observation;
 	std::optional<std::chrono::nanoseconds> last_observed_at;
-	WeaponModel model = WeaponModel::Unknown;
 };
 
 /// @brief 全部固定掛點、觀測批次及內容變更版本。
@@ -522,7 +500,9 @@ struct FireControlSnapshot
 	bool gun_fire_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
-	bool missile_uncage_selected = false; ///< 駕駛選取的解籠狀態。
+	bool missile_uncage_selected = false;
+	bool uncage_button_held = false;
+	WeaponReleaseState release_state = WeaponReleaseState::NoWeapon; ///< 駕駛選取的解籠狀態。
 	TargetDesignationSnapshot target_designation;
 };
 
@@ -582,6 +562,7 @@ struct StoresSnapshot
 	IrSeekerObservation ir_seeker; ///< 全域武器介面回報的 IR 觀測。
 	IrSeekerControl seeker_control;
 	SelectedMissileGroup selected_missile_group;
+	SelectedWeaponState selected_weapon;
 };
 
 /// @brief Raw cockpit control observations in MC FIFO order, including rejected operation requests.

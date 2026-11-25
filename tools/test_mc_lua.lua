@@ -714,7 +714,7 @@ local mission_commands = {
     "AirToGroundMode",
     "DogfightCenter",
     "MissileStep",
-    "MissileUncage",
+    "MissileUncageButton",
     "WeaponRelease",
     "TMSUp",
     "TMSDown",
@@ -738,19 +738,9 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         for _, binding in ipairs(bindings.keyCommands) do
             if binding.down == device_commands[name] then
                 matches = matches + 1
-                if name == "MissileUncage" then
-                    expect(binding.cockpit_device_id == nil and binding.value_down == 1
-                        and binding.up == nil and binding.pressed == nil,
-                        profile .. ": uncage toggle sends one press without held repeats or release")
-                else
-                    expect(
-                        binding.cockpit_device_id == nil
-                            and binding.up == binding.down
-                            and binding.value_down == 1
-                            and binding.value_up == 0,
-                        profile .. ": MC command must reach EFM with press/release: " .. name
-                    )
-                end
+                expect(binding.cockpit_device_id == nil and binding.up == binding.down
+                    and binding.value_down == 1 and binding.value_up == 0,
+                    profile .. ": MC command reaches EFM with press/release: " .. name)
             end
         end
         expect(matches == 1, profile .. ": expected one MC command after merging aliases: " .. name)
@@ -765,7 +755,7 @@ for _, profile in ipairs({ "keyboard", "joystick" }) do
         if dcs_commands[name] then forbidden[dcs_commands[name]] = true end
     end
     if profile == "keyboard" then
-        local expected = { ["C"] = "MissileUncage", ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep", ["I"] = "TMSUp", ["K"] = "TMSDown", ["J"] = "TMSLeft", ["L"] = "TMSRight", ["RShift+I"] = "DMSUp", ["RShift+K"] = "DMSDown", ["RShift+J"] = "DMSLeft", ["RShift+L"] = "DMSRight", ["RCtrl+I"] = "CMSForward", ["RCtrl+K"] = "CMSAft", ["RCtrl+J"] = "CMSLeft", ["RCtrl+L"] = "CMSRight", ["RAlt+I"] = "RadarCursorUp", ["RAlt+K"] = "RadarCursorDown", ["RAlt+J"] = "RadarCursorLeft", ["RAlt+L"] = "RadarCursorRight" }
+        local expected = { ["C"] = "MissileUncageButton", ["2"] = "AirToAirMode", ["3"] = "AirToGroundMode", ["RCtrl+D"] = "DogfightSwitch", ["RShift+D"] = "DogfightCenter", ["RAlt+D"] = "MissileOverride", ["Q"] = "MissileStep", ["I"] = "TMSUp", ["K"] = "TMSDown", ["J"] = "TMSLeft", ["L"] = "TMSRight", ["RShift+I"] = "DMSUp", ["RShift+K"] = "DMSDown", ["RShift+J"] = "DMSLeft", ["RShift+L"] = "DMSRight", ["RCtrl+I"] = "CMSForward", ["RCtrl+K"] = "CMSAft", ["RCtrl+J"] = "CMSLeft", ["RCtrl+L"] = "CMSRight", ["RAlt+I"] = "RadarCursorUp", ["RAlt+K"] = "RadarCursorDown", ["RAlt+J"] = "RadarCursorLeft", ["RAlt+L"] = "RadarCursorRight" }
         local found = {}
         for _, binding in ipairs(bindings.keyCommands) do
             for _, combo in ipairs(binding.combos or {}) do
@@ -876,6 +866,7 @@ expect(debug_custom[1].combos[1].key == "CustomDebug", "flight-test overlay pres
 dofile("tools/test_mc_runtime.lua")(expect)
 dofile("tools/test_radar_display.lua")(expect)
 dofile("tools/test_flight_status.lua")(expect)
+dofile("tools/test_weapon_catalog.lua")(expect)
 dofile("tools/test_indicator_text.lua")(expect)
 
 print(string.format("MC Lua adapter: %d checks, 0 failures", checks))

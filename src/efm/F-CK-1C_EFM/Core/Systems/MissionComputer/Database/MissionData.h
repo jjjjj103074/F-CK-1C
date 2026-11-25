@@ -50,6 +50,8 @@ struct WeaponOperationData
 	bool gun_requested = false;
 	bool gun_firing_indication = false;
 	bool pickle_requested = false;
+	bool uncage_button_held = false;
+	WeaponReleaseState release_state = WeaponReleaseState::NoWeapon;
 };
 
 /// @brief FireControl 及其內部模組唯一寫入；外部功能只讀指定分區。

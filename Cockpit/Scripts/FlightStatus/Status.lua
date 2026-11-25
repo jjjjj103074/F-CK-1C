@@ -15,7 +15,10 @@ return function()
     local ir_control = get_param_handle(cockpit_params.McIrControlAvailable)
     local ir_consent = get_param_handle(cockpit_params.McIrSelfTrackEnabled)
     local store_count = get_param_handle(cockpit_params.McSelectedStoreCount)
-    local store_identifier = get_param_handle(cockpit_params.McSelectedStoreIdentifier)
+    local store_name = get_param_handle(cockpit_params.McSelectedStoreName)
+    local procedure = get_param_handle(cockpit_params.McWeaponProcedure)
+    local release_state = get_param_handle(cockpit_params.McWeaponReleaseState)
+    local uncage_held = get_param_handle(cockpit_params.McUncageButtonHeld)
     local store_station = get_param_handle(cockpit_params.McSelectedStoreStation)
     local gun_available = get_param_handle(cockpit_params.McStoresGunCountAvailable)
     local gun_count = get_param_handle(cockpit_params.McStoresGunCount)
@@ -40,7 +43,7 @@ return function()
     local radar_text = get_param_handle(cockpit_params.FlightStatusRadar)
     local ir_text = get_param_handle(cockpit_params.FlightStatusIr)
     local uncage_text = get_param_handle(cockpit_params.FlightStatusUncage)
-    local store_name = dofile(LockOn_Options.script_path .. "FlightStatus/StoreNames.lua")
+    local release_text = get_param_handle(cockpit_params.FlightStatusRelease)
 
     local function number(value, suffix)
         if type(value) ~= "number" or value ~= value or value < 0 or value == math.huge then return "---" end
@@ -66,7 +69,8 @@ return function()
         elseif store_state:get() == 2 then
             missile, station = "SELECTING", "SELECTING"
         elseif store_state:get() == 3 then
-            local model = store_name(store_identifier:get())
+            local model = store_name:get()
+            if type(model) ~= "string" or model == "" then model = "UNREGISTERED" end
             local family = store_family:get() == 1 and "AIM-9" or model
             missile = family .. " x" .. (group_count_available:get() == 1 and number(store_count:get()) or "---")
             station = store_station:get()
@@ -79,7 +83,12 @@ return function()
         if store_family:get() == 1 and store_state:get() == 3 then
             uncaged = ir_control:get() == 1 and (ir_consent:get() == 1 and "ON" or "OFF") or "WAIT"
         end
-        local scan = submode:get() == 5 and (({ [2] = "ACM/10x60", [6] = "ACM/30x20" })[submode:get()] or "ACM/BORE") or (submode:get() == 4 and "CRM/RWS" or "---")
+        if procedure:get() == 3 and store_state:get() == 3 then
+            uncaged = uncage_held:get() == 1 and "HELD" or "RELEASED"
+        end
+        local release = ({ [0] = "NO WEAPON", "INHIBITED", "UNSUPPORTED", "IR / NATIVE", "RADAR TARGET",
+            "HOLD C FOR VISUAL", "VISUAL", "NEED STT", "SELECTING", "NO DATA" })[release_state:get()] or "---"
+        local scan = ({ [2] = "ACM/10x60", [4] = "CRM/RWS", [5] = "ACM/BORE", [6] = "ACM/30x20" })[submode:get()] or "---"
         local track = ({ [0] = "OFF", "SEARCH", "ACQUIRING", "STT" })[radar_mode:get()] or "---"
         local radar = radar_available:get() == 1 and (scan .. " " .. track) or "---"
         coherent = coherent and generation:get() == before and available:get() == 1
@@ -92,6 +101,7 @@ return function()
         radar_text:set(": " .. (coherent and radar or "---"))
         ir_text:set(": " .. (coherent and ir or "---"))
         uncage_text:set(": " .. (coherent and uncaged or "---"))
+        release_text:set(": " .. (coherent and release or "---"))
     end
 
     -- 建立時先發布文字，再隨既有 64 Hz 觀測每四次更新一次。

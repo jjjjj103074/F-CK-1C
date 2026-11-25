@@ -69,6 +69,9 @@ private:
 		IrNativeMode,
 		IrControlStatus,
 		IrControlRevision,
+		WeaponProcedure,
+		WeaponReleaseState,
+		UncageButtonHeld,
 		Count
 	};
 	bool write(Parameter parameter, double value, CockpitParameterEvents& events);
@@ -78,6 +81,7 @@ private:
 	std::array<CockpitParameterEndpoint, Core::kMissionActionWindowSize> action_slots_;
 	CockpitParameterEndpoint selected_store_identifier_;
 	CockpitParameterEndpoint selected_store_station_;
+	CockpitParameterEndpoint selected_store_name_;
 	std::uint64_t generation_ = 0;
 };
 }

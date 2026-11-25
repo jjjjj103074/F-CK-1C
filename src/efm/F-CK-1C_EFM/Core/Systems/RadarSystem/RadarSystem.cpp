@@ -46,13 +46,28 @@ void RadarSystem::set_scan(RadarSearchMode mode, std::uint64_t parent, TargetAcq
 	output_.scan.revision = revision;
 	output_.active_search_mode = mode;
 	output_.requested_acquisition_mode = pattern;
-	if (acm)
-		actions_.append(MissionActionKind::ModeBoresight, parent);
+	scan_mode_pending_ = true;
+	scan_mode_parent_ = parent;
+	apply_scan_mode();
+	// 延後套用的搜尋配置由設備後續 tick 發布為背景動作。
+	if (scan_mode_pending_)
+		scan_mode_parent_ = 0;
+}
+
+void RadarSystem::apply_scan_mode()
+{
+	// STT 持續使用原生追蹤；回到搜尋時才套用下一個搜尋配置。
+	if (!scan_mode_pending_ ||
+	    (output_.observation.status.available && output_.observation.mode == RadarMode::SingleTargetTrack))
+		return;
+	if (output_.active_search_mode == RadarSearchMode::AirCombat)
+		actions_.append(MissionActionKind::ModeBoresight, scan_mode_parent_);
 	else
 	{
-		actions_.append(MissionActionKind::ModeBeyondVisualRange, parent);
-		actions_.append(MissionActionKind::ModeFi0, parent);
+		actions_.append(MissionActionKind::ModeBeyondVisualRange, scan_mode_parent_);
+		actions_.append(MissionActionKind::ModeFi0, scan_mode_parent_);
 	}
+	scan_mode_pending_ = false;
 }
 
 bool RadarSystem::apply_mode(TargetAcquisitionMode mode, std::uint64_t parent)
@@ -124,14 +139,15 @@ void RadarSystem::execute(const RadarRequest& request)
 		                                                                             : RadarImplementation::Reserved;
 		break;
 	case RadarOperation::BeginAcquisition:
-		if (!output_.adapter_available || !output_.scan.enabled || stt_cancel_requested_)
+		if (!output_.adapter_available || !output_.scan.enabled)
 		{
 			response.accepted = false;
 			break;
 		}
 		output_.automatic_acquisition_requested = output_.active_search_mode == RadarSearchMode::AirCombat;
-		begin_acquisition(request.sequence,
-		                  output_.automatic_acquisition_requested ? AcquisitionInput::Hold : request.command.input);
+		if (!stt_cancel_requested_)
+			begin_acquisition(request.sequence,
+			                  output_.automatic_acquisition_requested ? AcquisitionInput::Hold : request.command.input);
 		break;
 	case RadarOperation::ReleaseAcquisition:
 		if (acquisition_.active() && !output_.automatic_acquisition_requested)
@@ -173,6 +189,7 @@ void RadarSystem::execute(const RadarRequest& request)
 			cancel_acquisition(request.sequence);
 		output_.automatic_acquisition_requested = false;
 		output_.scan.enabled = false;
+		scan_mode_pending_ = false;
 		cursor_held_.fill(false);
 		output_.requested_acquisition_mode = TargetAcquisitionMode::None;
 		actions_.append(MissionActionKind::ModeCannon, request.sequence);
@@ -247,6 +264,7 @@ void RadarSystem::step(const SystemStepContext& context, const AircraftDataView&
 		                                             return response.request_sequence <= requests.acknowledged_through;
 	                                             }),
 	                              output_.command_results.end());
+	apply_scan_mode();
 	for (const auto& request : requests.items)
 	{
 		if (request.sequence <= last_request_)

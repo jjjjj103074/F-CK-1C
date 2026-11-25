@@ -1,4 +1,5 @@
 #include "ObservationProcessing.h"
+#include "../../../Database/WeaponCatalogData.h"
 
 #include <limits>
 #include <stdexcept>
@@ -24,7 +25,8 @@ bool update_station(StoreStationState& station,
                     const ObservationStatus& observation,
                     std::chrono::nanoseconds time,
                     bool rearmed,
-                    bool new_batch)
+                    bool new_batch,
+                    const WeaponDescriptor* definition)
 {
 	bool changed = station.observation.available != observation.available ||
 	               station.observation.invalid_reason != observation.invalid_reason;
@@ -32,10 +34,13 @@ bool update_station(StoreStationState& station,
 	if (!observation.available || !new_batch)
 		return changed;
 
+	const auto category = definition ? definition->category : sample.category;
+	const auto role = definition ? definition->role : sample.role;
+	const auto weapon_id = definition ? definition->id : std::string{};
 	const bool identity_changed =
 	    station.configuration != sample.configuration || station.weapon_identifier != sample.weapon_identifier ||
-	    station.weapon_type_identifier != sample.weapon_type_identifier || station.category != sample.category ||
-	    station.role != sample.role || station.model != sample.model;
+	    station.weapon_type_identifier != sample.weapon_type_identifier || station.category != category ||
+	    station.role != role || station.weapon.id != weapon_id;
 	const bool load_changed = (sample.configuration == StoreConfiguration::Equipped && !station.last_observed_at) ||
 	                          (station.last_observed_at && identity_changed) ||
 	                          (rearmed && (station.configuration == StoreConfiguration::Equipped ||
@@ -51,11 +56,11 @@ bool update_station(StoreStationState& station,
 	station.station_name = sample.station_name;
 	station.configuration = sample.configuration;
 	station.count = sample.count;
-	station.category = sample.category;
-	station.role = sample.role;
+	station.category = category;
+	station.role = role;
 	station.weapon_identifier = sample.weapon_identifier;
 	station.weapon_type_identifier = sample.weapon_type_identifier;
-	station.model = sample.model;
+	station.weapon = definition ? *definition : WeaponDescriptor{};
 	station.last_observed_at = time;
 	return changed;
 }
@@ -65,7 +70,8 @@ namespace Core::Systems::Mc::Internal
 {
 InventoryChanged update_inventory(StoresInventorySnapshot& inventory,
                                   const WeaponStationObservation& observation,
-                                  std::chrono::nanoseconds time)
+                                  std::chrono::nanoseconds time,
+                                  const WeaponCatalogData& catalog)
 {
 	const bool new_batch =
 	    observation.status.available && observation.status.revision != 0 &&
@@ -86,7 +92,8 @@ InventoryChanged update_inventory(StoresInventorySnapshot& inventory,
 		                                             inventory.observation,
 		                                             time,
 		                                             rearmed,
-		                                             new_batch);
+		                                             new_batch,
+		                                             catalog.find(observation.stations[i].weapon_identifier));
 	if (changes.changed_stations.any() || rearmed)
 	{
 		if (inventory.revision == (std::numeric_limits<std::uint64_t>::max)())

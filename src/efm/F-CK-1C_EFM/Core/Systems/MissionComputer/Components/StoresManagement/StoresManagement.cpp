@@ -36,7 +36,8 @@ void StoresManagement::prepare(std::chrono::nanoseconds time)
 	accept_commands();
 	time = (std::max)(time, input_.observed_at);
 	stores_.ir_seeker = input_.cockpit.ir_seeker;
-	const auto change = Internal::update_inventory(stores_.inventory, input_.cockpit.weapon_stations, time);
+	const auto change =
+	    Internal::update_inventory(stores_.inventory, input_.cockpit.weapon_stations, time, stores_.catalog);
 	inventory_change_.revision = change.revision;
 	inventory_change_.changed_stations |= change.changed_stations;
 	inventory_change_.rearmed = inventory_change_.rearmed || change.rearmed;
@@ -213,8 +214,27 @@ void StoresManagement::drain_commands()
 	selection_changed_ = selection_changed_ || previously_awaiting != stores_.selection.awaiting_inventory;
 }
 
+void StoresManagement::update_selected_weapon()
+{
+	auto& selected_weapon = stores_.selected_weapon;
+	selected_weapon = {};
+	selected_weapon.pending = stores_.selection.pending();
+	const auto acknowledged =
+	    selected_weapon.pending ? stores_.selection.requested_station : stores_.selection.acknowledged_station;
+	if (stores_.inventory.observation.available && acknowledged && *acknowledged >= 0 &&
+	    static_cast<std::size_t>(*acknowledged) < stores_.inventory.stations.size())
+	{
+		const auto& selected = stores_.inventory.stations[*acknowledged];
+		selected_weapon.available = selected.observation.available &&
+		                            selected.configuration == StoreConfiguration::Equipped && selected.count > 0;
+		selected_weapon.station = *acknowledged;
+		selected_weapon.weapon = selected.weapon;
+	}
+}
+
 void StoresManagement::update_seeker_control()
 {
+	update_selected_weapon();
 	auto& control = stores_.seeker_control;
 	IrSeekerControl next = control;
 	next.active = false;
@@ -224,12 +244,12 @@ void StoresManagement::update_seeker_control()
 	{
 		const auto& selected = stores_.inventory.stations[*station];
 		next.active = selected.observation.available && selected.configuration == StoreConfiguration::Equipped &&
-		              selected.count > 0 && is_sidewinder(selected.model);
+		              selected.count > 0 && selected.weapon.native_ir;
 		if (next.station != *station || next.load_revision != selected.load_revision)
 			next.uncaged = false;
 		next.station = *station;
 		next.load_revision = selected.load_revision;
-		next.radar_slaved = next.active && supports_radar_cue(selected.model) && seeker_aim_.radar_target_available &&
+		next.radar_slaved = next.active && supports_radar_cue(selected.weapon) && seeker_aim_.radar_target_available &&
 		                    std::isfinite(seeker_aim_.azimuth_rad) && std::isfinite(seeker_aim_.elevation_rad);
 	}
 	else

@@ -35,6 +35,8 @@ return function(expect)
     values[p.McIrControlAvailable], values[p.McIrSelfTrackEnabled] = 1, 1
     values[p.McSelectedStoreIdentifier] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}"
     values[p.McSelectedStoreStation] = "LT"
+    values[p.McSelectedStoreName] = "AIM-9P5"
+    values[p.McWeaponProcedure], values[p.McWeaponReleaseState] = 1, 3
     values[p.McStoresGunCountAvailable], values[p.McStoresGunCount] = 1, 240
     values[p.McStoresIrSeekerAvailable], values[p.McStoresIrSeekerLock] = 1, 1
     values[p.McMissileUncageHeld], values[p.HmcsAamSubmode] = 1, 5
@@ -44,7 +46,7 @@ return function(expect)
     expect(display(p.FlightStatusIas) == "420 kt" and display(p.FlightStatusAltitude) == "12000 ft", "flight rows state their units")
     expect(display(p.FlightStatusMasterMode) == "NAV" and display(p.FlightStatusOverride) == "DGFT", "master mode remains distinct from override")
     expect(display(p.FlightStatusArm) == "ON", "master arm has a readable label")
-    expect(display(p.FlightStatusMissile) == "AIM-9 x1" and display(p.FlightStatusStation) == "LT / AIM-9M", "selected weapon identity and station come from the SM publication")
+    expect(display(p.FlightStatusMissile) == "AIM-9 x1" and display(p.FlightStatusStation) == "LT / AIM-9P5", "selected weapon identity and station come from the SM publication")
     expect(display(p.FlightStatusGun) == "240", "gun quantity is independent of selected missile")
     expect(display(p.FlightStatusFlare) == "70" and display(p.FlightStatusChaff) == "83", "countermeasure counts retain their separate identities")
     expect(display(p.FlightStatusRadar) == "ACM/BORE STT" and display(p.FlightStatusIr) == "LOCK", "radar tracking and IR lock have distinct rows")
@@ -57,9 +59,23 @@ return function(expect)
     expect(display(p.FlightStatusMissile) == "SELECTING" and display(p.FlightStatusStation) == "SELECTING", "pending selection never presents a weapon as confirmed")
     values[p.McSelectedStoreState], values[p.McSelectedStoreStation], values[p.McMasterMode], values[p.McOverrideMode] = 3, "MF", 1, 0
     values[p.McSelectedStoreFamily] = 0
+    values[p.McSelectedStoreName] = "AIM-120C"
+    values[p.McWeaponProcedure], values[p.McWeaponReleaseState] = 3, 5
     update()
     expect(display(p.FlightStatusMissile) == "AIM-120C x1" and display(p.FlightStatusStation) == "MF / AIM-120C", "confirmation switches model and station together")
     expect(display(p.FlightStatusMasterMode) == "A-A" and display(p.FlightStatusOverride) == "CENTER", "normal air-to-air mode is readable")
+    expect(display(p.FlightStatusRelease) == "HOLD C FOR VISUAL", "ARH without a radar target shows physical visual consent")
+    values[p.McUncageButtonHeld], values[p.McWeaponReleaseState] = 1, 6
+    update()
+    expect(display(p.FlightStatusUncage) == "HELD" and display(p.FlightStatusRelease) == "VISUAL", "held UNCAGE and IR toggle are distinct")
+    for scan, label in pairs({ [2] = "ACM/10x60", [6] = "ACM/30x20", [4] = "CRM/RWS" }) do
+        values[p.HmcsAamSubmode] = scan
+        update()
+        expect(display(p.FlightStatusRadar) == label .. " STT", "every implemented scan has a readable label")
+    end
+    values[p.McSelectedStoreName], values[p.McWeaponReleaseState] = "UNREGISTERED", 2
+    update()
+    expect(display(p.FlightStatusStation) == "MF / UNREGISTERED" and display(p.FlightStatusRelease) == "UNSUPPORTED", "unknown catalog identity is explicit")
     values[p.McSelectedStoreState] = 1
     values[p.McStoresGunCount], values[p.McStoresIrSeekerLock] = 0, 0
     update()
@@ -110,7 +126,7 @@ return function(expect)
                 expect(label.init_pos[1] < colon_x and label.init_pos[2] == element.init_pos[2], "name precedes its aligned colon and value")
             end
         end
-        expect(rows == 13, "status panel includes every intended row")
+        expect(rows == 14, "status panel includes every intended row")
         expect(not elements.flight_status_background, "status panel leaves the outside view transparent")
         for name, item in pairs(elements) do
             if name:match("_value$") then

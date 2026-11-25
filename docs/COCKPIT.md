@@ -131,10 +131,10 @@ HMCS VR將遮罩與符號建立於同一子頁，先建立`hmcs_vr_tfov`，再�
 
 `MissionComputerExporter` 在同一 MC generation 發布 SM 已確認掛點的識別碼、名稱與數量。
 `McSelectedStoreState`：0 資料不可用、1 未選站、2 選站中、3 已選定。
-面板的 `MISSILE` 數量是該掛點數量；`GUN` 獨立呈現原生觀測彈量。
-`FlightStatus/StoreNames.lua` 將已知 DCS 識別碼轉成顯示標籤，未知掛載使用識別碼摘要。
+面板的 `MISSILE` 數量是目前選擇群組的全機總數；`GUN` 獨立呈現原生觀測彈量。
+型號名稱由 SM 共用武器清單解析後發布；未知掛載顯示 `UNREGISTERED`，程序顯示 `UNSUPPORTED`。
 
-`IR` 使用 SM 的有效全域紅外線觀測；`UNCAGE` 顯示駕駛選取的命令狀態。
+`IR` 使用 SM 的有效全域紅外線觀測；`UNCAGE` 在 AIM-9 顯示原生自主追蹤讀回，在 AIM-120 顯示實體按鈕狀態。`RELEASE` 呈現 FC 的共用程序判定。
 兩者與雷達 `STT` 分別呈現。`---` 表示來源不可用，`NONE` 表示有效快照中未選站，
 `SELECTING` 表示 SM 仍等待選站完成。飛測包的 `--focus status` 包含預設鍵操作、正常結果與紀錄回收工具。
 

@@ -22,22 +22,12 @@ struct StoresFixture
 		for (auto& s : input.cockpit.weapon_stations.stations)
 			s.configuration = StoreConfiguration::Empty;
 		auto& a = input.cockpit.weapon_stations.stations;
-		a[0] = { StoreConfiguration::Equipped,
-			     1,
-			     WeaponCategory::Missile,
-			     WeaponRole::AirToAir,
-			     "aim9m",
-			     "m",
-			     "RT",
-			     WeaponModel::Aim9M };
-		a[8] = { StoreConfiguration::Equipped,
-			     1,
-			     WeaponCategory::Missile,
-			     WeaponRole::AirToAir,
-			     "aim9x",
-			     "x",
-			     "LT",
-			     WeaponModel::Aim9X };
+		a[0] = {
+			StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9M}", "m", "RT"
+		};
+		a[8] = {
+			StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9X}", "x", "LT"
+		};
 		commands.submit(SelectStoresForMode{ OperatingMode::AirToAir });
 		step();
 		acknowledge();
@@ -84,7 +74,7 @@ void run_air_to_air_integration_tests(Tests::Context& c)
 	}
 	{
 		StoresFixture f;
-		f.input.cockpit.weapon_stations.stations[0].model = WeaponModel::Aim9P;
+		f.input.cockpit.weapon_stations.stations[0].weapon_identifier = "{AIM-9P}";
 		f.input.cockpit.weapon_stations.status.revision += 2;
 		f.step();
 		f.commands.submit(AimIrSeeker{ true, .3, .1 });

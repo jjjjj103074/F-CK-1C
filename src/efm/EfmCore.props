@@ -20,6 +20,7 @@
     <ClInclude Include="$(EfmModuleRoot)Common\Configuration\LoadResult.h" />
     <ClInclude Include="$(EfmModuleRoot)Common\Configuration\ConfigurationTools.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\CockpitContracts.h" />
+    <ClInclude Include="$(EfmCoreRoot)Contracts\WeaponContracts.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\Commands.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\ExternalActions.h" />
     <ClInclude Include="$(EfmCoreRoot)Contracts\RadarCommands.h" />

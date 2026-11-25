@@ -13,7 +13,8 @@ SM 統整固定掛點、原生機砲及全域 IR 觀測，管理武器掛點選�
 | `Internal/WeaponExecution` | 每條機砲／投放程序的開始確認、80 ms 保持、取消與正常結束 |
 | `StoresManagementWeaponUse.cpp` | 同一 SM 類別的使用要求解讀、操作安排與結果寫回 |
 | `Internal/StationSelection` | 依模式意圖與有效庫存決定掛點、保存要求與執行確認 |
-| `Database/StoresData` | 保存逐掛點庫存、機砲彈量及選站狀態 |
+| `Database/StoresData` | 保存共用武器定義、逐掛點庫存、選中武器、機砲彈量及選站狀態 |
+| `Database/WeaponCatalogData` | 載入 FM 共用清單，以 CLSID／別名查詢固定武器定義 |
 | `Common/MissileSelection` | 依有效庫存計算 SMS 同型輪站與武器型別輪換候選 |
 | `Common/StoresQueries` | 提供唯讀飛彈候選查詢與數量加總 |
 | `StoresEvents` | 發布庫存、機砲彈量及選站變化 |
@@ -93,8 +94,8 @@ DCS 原生機砲存量 (10 Hz) → GunAmmunitionSource → MissionInputs
 九掛點定義共用 `Cockpit/Scripts/Stores/StationDefinitions.lua`，座艙索引 0–8 依序為
 RT、RO、RI、MM、MF、MB、LI、LO、LT。
 
-Bridge 轉譯 DCS 類型、武器型號、完整 CLSID、數量與配置；型號以 `WeaponModel` 提供。
-SM 依型號合併 AIM-9L／M 的選擇類型，並保存所有固定掛點；
+Bridge 保存原生四層類型、CLSID、數量與配置。SM 使用 `WeaponCatalogData` 解析共用 JSON 的型號、分類與程序。
+SM 依 `selection_group` 合併 AIM-9 家族的選擇群組，並保存所有固定掛點；
 飛彈查詢使用分類、用途或識別碼條件，掛載識別以來源內容為準。
 空對地飛彈、炸彈、油箱與其他掛載也保留在逐掛點庫存。
 
@@ -181,7 +182,8 @@ SM 透過 MC 持有的 ExternalActionOutbox 提出操作，並以來源要求編
 
 `SetSeekerUncaged` 與 `AimIrSeeker` 通過同一個指令入口。SM 保存 `seeker_control`，
 依確認掛點、掛載版本及型號決定控制對象與雷達指向支援；換站／重新掛彈後恢復指定視線。
-原生執行及讀回由 DcsBridge 提供。AIM-9 家族共用選擇群組，群組總數與選中掛點的實際型號分別發布。
+原生執行及讀回由 DcsBridge 提供。`SelectedWeaponState` 同時保存預定使用型號及等待選站確認狀態，讓 FC 規劃時使用同一權威。
+實際控制仍依 SM 確認選站與佇列順序執行。AIM-9 家族共用選擇群組，群組總數與選中掛點的實際型號分別發布。
 
 `StoresSnapshot.selected_missile_group` 保存 MC 依 SM 庫存與確認選站計算的群組總量、完整性及分類。
 DcsBridge 讀取此契約並發布座艙參數。

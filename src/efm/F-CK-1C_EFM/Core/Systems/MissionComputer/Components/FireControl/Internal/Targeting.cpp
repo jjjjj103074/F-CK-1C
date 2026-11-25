@@ -49,22 +49,30 @@ bool Targeting::tracking() const
 	return radar_.observation.status.available && radar_.observation.mode == RadarMode::SingleTargetTrack;
 }
 
+void Targeting::acquire_air_combat(TargetAcquisitionMode mode)
+{
+	// 同一次操作先拒絕舊目標，再提出指定掃描型式的捕獲意圖。
+	if (tracking())
+		cancel();
+	select_mode(mode);
+	acquire(AcquisitionInput::Pulse);
+}
+
 void Targeting::handle_tms_up(bool pressed)
 {
+	if (data_.search_mode == RadarSearchMode::AirCombat)
+	{
+		if (pressed && !tms_up_held_)
+			acquire_air_combat(TargetAcquisitionMode::Boresight);
+		tms_up_held_ = pressed;
+		return;
+	}
 	if (pressed)
 	{
 		if (tms_up_held_)
 			return;
 		tms_up_held_ = true;
-		if (data_.search_mode == RadarSearchMode::AirCombat)
-		{
-			if (!tracking())
-			{
-				select_mode(TargetAcquisitionMode::Boresight);
-			}
-		}
-		else
-			submit_tms({ RadarOperation::BeginSpotlight });
+		submit_tms({ RadarOperation::BeginSpotlight });
 	}
 	else if (tms_up_held_)
 	{
@@ -77,10 +85,9 @@ void Targeting::handle_tms_up(bool pressed)
 
 void Targeting::handle_tms_down()
 {
-	if (data_.search_mode == RadarSearchMode::AirCombat && !tracking())
+	if (data_.search_mode == RadarSearchMode::AirCombat)
 	{
-		select_mode(TargetAcquisitionMode::VerticalScan);
-		acquire(AcquisitionInput::Pulse);
+		acquire_air_combat(TargetAcquisitionMode::VerticalScan);
 		return;
 	}
 	data_.designation.requested = false;
@@ -102,11 +109,9 @@ void Targeting::handle_tms_right(bool pressed, std::chrono::nanoseconds time)
 {
 	if (data_.search_mode == RadarSearchMode::AirCombat)
 	{
-		if (pressed && !tracking())
-		{
-			select_mode(TargetAcquisitionMode::WideScan);
-			acquire(AcquisitionInput::Pulse);
-		}
+		if (pressed && !tms_right_held_)
+			acquire_air_combat(TargetAcquisitionMode::WideScan);
+		tms_right_held_ = pressed;
 		return;
 	}
 	if (pressed && !tms_right_held_)
@@ -183,7 +188,9 @@ void Targeting::on_operating_mode_selected(const OperatingModeSelected& event)
 	tms_right_held_ = false;
 	tms_right_long_ = false;
 	requests_.submit({ RadarOperation::EndSpotlight });
-	cancel();
+	const bool retain_track = event.previous.air_to_air() && event.selected.air_to_air() && tracking();
+	if (!retain_track)
+		cancel();
 	if (!mode_.air_to_air())
 	{
 		data_.acquisition_mode = TargetAcquisitionMode::None;
@@ -207,7 +214,8 @@ void Targeting::before_weapon_release()
 
 void Targeting::step(std::chrono::nanoseconds time)
 {
-	if (tms_right_held_ && !tms_right_long_ && time - tms_right_pressed_at_ > std::chrono::seconds(1))
+	if (data_.search_mode != RadarSearchMode::AirCombat && tms_right_held_ && !tms_right_long_ &&
+	    time - tms_right_pressed_at_ > std::chrono::seconds(1))
 		apply_search_toggle();
 	for (const auto& result : radar_.command_results)
 		if (result.request_sequence == latest_designation_request_ && !result.accepted)

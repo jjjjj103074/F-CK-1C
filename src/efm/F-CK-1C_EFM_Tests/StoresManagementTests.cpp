@@ -53,22 +53,12 @@ void test_sms_type_selection_and_unknown_missiles(Tests::Context& context)
 	Fixture f;
 	f.observe(2);
 	auto& samples = f.input.cockpit.weapon_stations.stations;
-	samples[0] = { StoreConfiguration::Equipped,
-		           1,
-		           WeaponCategory::Missile,
-		           WeaponRole::AirToAir,
-		           "opaque-l",
-		           "type-l",
-		           "LT",
-		           WeaponModel::Aim9L };
-	samples[1] = { StoreConfiguration::Equipped,
-		           1,
-		           WeaponCategory::Missile,
-		           WeaponRole::AirToAir,
-		           "opaque-m",
-		           "type-m",
-		           "RT",
-		           WeaponModel::Aim9M };
+	samples[0] = {
+		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9L}", "type-l", "LT"
+	};
+	samples[1] = {
+		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9M}", "type-m", "RT"
+	};
 	samples[2] = {
 		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "new-missile", "type-x"
 	};
@@ -76,8 +66,8 @@ void test_sms_type_selection_and_unknown_missiles(Tests::Context& context)
 	f.select(OperatingMode::MissileOverride);
 	f.step(milliseconds(30));
 	TEST_EXPECT(context, f.stores.selection.requested_station == 0);
-	TEST_EXPECT(context, f.stores.inventory.stations[0].model == WeaponModel::Aim9L);
-	TEST_EXPECT(context, f.stores.inventory.stations[1].model == WeaponModel::Aim9M);
+	TEST_EXPECT(context, f.stores.inventory.stations[0].weapon.id == "aim-9l");
+	TEST_EXPECT(context, f.stores.inventory.stations[1].weapon.id == "aim-9m");
 	f.commands.submit(SelectStoresForMode{ OperatingMode::MissileOverride, MissileSelectionStep::Station });
 	f.manager.dispatch();
 	TEST_EXPECT(context, f.stores.selection.requested_station == 1);

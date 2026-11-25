@@ -441,7 +441,11 @@ void test_pickle_and_targeting_modes(Tests::Context& context)
 {
 	MissionFixture f;
 	auto& observation = f.frame.cockpit.weapon_stations;
-	observation.stations[2] = { StoreConfiguration::Equipped, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+	observation.stations[2] = { StoreConfiguration::Equipped,
+		                        2,
+		                        WeaponCategory::Missile,
+		                        WeaponRole::AirToAir,
+		                        "{AIM-9M}" };
 	f.send(CommandId::SelectMissileOverride);
 	auto advance = [&](int tick)
 	{
@@ -488,7 +492,7 @@ void test_weapon_release_end_preserves_radar_designation(Tests::Context& context
 			                      2,
 			                      WeaponCategory::Missile,
 			                      WeaponRole::AirToAir,
-			                      "aim9" };
+			                      "{AIM-9M}" };
 		fixture.send(CommandId::SetMasterArmOn);
 		fixture.send(mode);
 		fixture.send(CommandId::SetMissileUncage);
@@ -539,7 +543,9 @@ void test_weapon_release_end_preserves_radar_designation(Tests::Context& context
 		{
 			const auto output = advance(tick);
 			cancelled = contains(output.actions, MissionActionKind::LockStart) || cancelled;
-			TEST_EXPECT(context, !output.state.fire_control.target_designation.requested);
+			TEST_EXPECT(context,
+			            output.state.fire_control.target_designation.requested ==
+			                (mode == CommandId::SelectDogfightMode));
 		}
 		TEST_EXPECT(context, cancelled);
 	}
@@ -688,7 +694,11 @@ void test_master_arm_changes_preserve_designation_and_selected_station(Tests::Co
 {
 	MissionFixture fixture;
 	auto& stations = fixture.frame.cockpit.weapon_stations;
-	stations.stations[2] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+	stations.stations[2] = { StoreConfiguration::Equipped,
+		                     1,
+		                     WeaponCategory::Missile,
+		                     WeaponRole::AirToAir,
+		                     "{AIM-9M}" };
 	auto& radar = fixture.frame.cockpit.radar;
 	radar.status = { true, 2, ObservationInvalidReason::None };
 	radar.mode = RadarMode::Search;
@@ -741,7 +751,11 @@ void test_safe_stops_a_queued_start_and_completes_selection(Tests::Context& cont
 {
 	MissionFixture fixture;
 	auto& stations = fixture.frame.cockpit.weapon_stations;
-	stations.stations[2] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+	stations.stations[2] = { StoreConfiguration::Equipped,
+		                     1,
+		                     WeaponCategory::Missile,
+		                     WeaponRole::AirToAir,
+		                     "{AIM-9M}" };
 	fixture.send(CommandId::SelectDogfightMode);
 	fixture.send(CommandId::SetTriggerSecondStage);
 	auto output = fixture.step(kMissionPeriod);
@@ -775,14 +789,9 @@ void test_uncage_hold_waits_for_an_explicit_target_request(Tests::Context& conte
 {
 	MissionFixture fixture;
 	auto& stations = fixture.frame.cockpit.weapon_stations;
-	stations.stations[2] = { StoreConfiguration::Equipped,
-		                     1,
-		                     WeaponCategory::Missile,
-		                     WeaponRole::AirToAir,
-		                     "aa",
-		                     "aim9",
-		                     "RI",
-		                     WeaponModel::Aim9M };
+	stations.stations[2] = {
+		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9M}", "{AIM-9M}", "RI"
+	};
 	fixture.send(CommandId::SelectDogfightMode);
 	fixture.send(CommandId::SetMissileUncage);
 	int captures = 0;
@@ -1041,7 +1050,7 @@ void test_missile_step_cycles_without_reselecting_override(Tests::Context& conte
 			                      1,
 			                      WeaponCategory::Missile,
 			                      WeaponRole::AirToAir,
-			                      "aa" };
+			                      "{AIM-9M}" };
 	fixture.send(CommandId::SelectMissileOverride);
 	fixture.send(CommandId::SetMissileStep);
 	fixture.send(CommandId::SetMissileStep, 0.0);
@@ -1099,6 +1108,11 @@ void test_canceled_release_does_not_create_designation_after_late_ack(Tests::Con
 	for (CommandId master : { CommandId::SetMasterArmOff, CommandId::SetMasterArmSim })
 	{
 		MissionFixture f;
+		f.frame.cockpit.weapon_stations.stations[0] = { StoreConfiguration::Equipped,
+			                                            1,
+			                                            WeaponCategory::Missile,
+			                                            WeaponRole::AirToAir,
+			                                            "{AIM-9M}" };
 		f.send(CommandId::SelectDogfightMode);
 		f.send(CommandId::SetMissileUncage);
 		f.send(CommandId::SetWeaponRelease);
@@ -1187,7 +1201,11 @@ void test_override_reselection_preserves_targeting_and_station(Tests::Context& c
 	MissionFixture f;
 	auto& stations = f.frame.cockpit.weapon_stations.stations;
 	for (std::size_t index : { 2u, 5u })
-		stations[index] = { StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "aa" };
+		stations[index] = { StoreConfiguration::Equipped,
+			                1,
+			                WeaponCategory::Missile,
+			                WeaponRole::AirToAir,
+			                "{AIM-9M}" };
 	f.send(CommandId::SelectDogfightMode);
 	f.send(CommandId::PressTmsRight);
 	auto output = f.step(kMissionPeriod);
@@ -1338,14 +1356,9 @@ void test_uncage_toggle_persists_and_keeps_weapon_qualification(Tests::Context& 
 {
 	MissionFixture f;
 	auto& stations = f.frame.cockpit.weapon_stations;
-	stations.stations[0] = { StoreConfiguration::Equipped,
-		                     2,
-		                     WeaponCategory::Missile,
-		                     WeaponRole::AirToAir,
-		                     "aim9",
-		                     "aim9",
-		                     "RT",
-		                     WeaponModel::Aim9M };
+	stations.stations[0] = {
+		StoreConfiguration::Equipped, 2, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9M}", "{AIM-9M}", "RT"
+	};
 	f.send(CommandId::SetMasterArmOn);
 	f.send(CommandId::SelectAirToAirMode);
 	auto advance = [&](int tick)

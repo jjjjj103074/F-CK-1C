@@ -50,7 +50,10 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                  cockpit_parameter_writer(DcsIds::CockpitParams::McIrSelfTrackEnabled),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McIrNativeMode),
                  cockpit_parameter_writer(DcsIds::CockpitParams::McIrControlStatus),
-                 cockpit_parameter_writer(DcsIds::CockpitParams::McIrControlRevision) } }),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McIrControlRevision),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McWeaponProcedure),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McWeaponReleaseState),
+                 cockpit_parameter_writer(DcsIds::CockpitParams::McUncageButtonHeld) } }),
       action_slots_({ { cockpit_parameter_writer(DcsIds::CockpitParams::McAction01),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction02),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction03),
@@ -68,7 +71,8 @@ MissionComputerExporter::MissionComputerExporter(cockpit_param_api api)
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction15),
                         cockpit_parameter_writer(DcsIds::CockpitParams::McAction16) } }),
       selected_store_identifier_(cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreIdentifier)),
-      selected_store_station_(cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreStation))
+      selected_store_station_(cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreStation)),
+      selected_store_name_(cockpit_parameter_writer(DcsIds::CockpitParams::McSelectedStoreName))
 {
 }
 
@@ -80,6 +84,7 @@ void MissionComputerExporter::reset()
 		slot.reset();
 	selected_store_identifier_.reset();
 	selected_store_station_.reset();
+	selected_store_name_.reset();
 }
 
 bool MissionComputerExporter::write(Parameter parameter, double value, CockpitParameterEvents& events)
@@ -127,7 +132,13 @@ bool MissionComputerExporter::export_selected_store(const Core::StoresSnapshot& 
 	const auto name = selected_store_station_.write_string(api_, station ? station->station_name : "");
 	if (name.event)
 		events = events.with_event(*name.event);
-	return name.success && complete;
+	complete = name.success && complete;
+	const auto model = selected_store_name_.write_string(
+	    api_,
+	    station ? (station->weapon.registered ? station->weapon.name : "UNREGISTERED") : "");
+	if (model.event)
+		events = events.with_event(*model.event);
+	return model.success && complete;
 }
 
 CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::CombatAvionicsSnapshot& snapshot,
@@ -164,6 +175,9 @@ CockpitParameterEvents MissionComputerExporter::export_snapshot(const Core::Comb
 	WRITE_MC(Submode, static_cast<double>(snapshot.fire_control.air_to_air_submode));
 	WRITE_MC(GunFiring, snapshot.fire_control.gun_firing_indication ? 1.0 : 0.0);
 	WRITE_MC(Uncage, snapshot.fire_control.missile_uncage_selected ? 1.0 : 0.0);
+	WRITE_MC(UncageButtonHeld, snapshot.fire_control.uncage_button_held);
+	WRITE_MC(WeaponReleaseState, static_cast<double>(snapshot.fire_control.release_state));
+	WRITE_MC(WeaponProcedure, static_cast<double>(snapshot.stores.selected_weapon.weapon.procedure));
 	WRITE_MC(IrControlAvailable, snapshot.stores.ir_seeker.control_available);
 	WRITE_MC(IrSelfTrackEnabled, snapshot.stores.ir_seeker.self_track_enabled);
 	WRITE_MC(IrNativeMode, snapshot.stores.ir_seeker.native_mode);

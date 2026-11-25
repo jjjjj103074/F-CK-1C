@@ -20,6 +20,9 @@ class TestFlightBundle(unittest.TestCase):
             package.KEYBOARD: b'local res = { keyCommands = {} }\n-- existing bindings\nreturn res\n',
             package.WEAPONS: b'function update() end\n',
             package.MODULE + 'entry.lua': b'unchanged runtime registration',
+            package.MODULE + 'FM/Weapons/WeaponCatalog.json': b'{}',
+            package.MODULE + 'Cockpit/Scripts/Stores/WeaponCatalog.lua': b'catalog registration',
+            package.MODULE + 'Cockpit/Scripts/ThirdParty/json/json.lua': b'json parser',
         }
         self.archive = self.root / 'module.zip'
         self.manifest = self.root / 'manifest.json'
@@ -78,7 +81,7 @@ class TestFlightBundle(unittest.TestCase):
     def test_status_focus_records_confirmed_selection_and_display_text(self):
         for folder, filenames in {
             'RadarDisplay': ('Forward_init.lua', 'Forward_page.lua', 'Scope_init.lua', 'Scope_page.lua', 'Drawing.lua'),
-            'FlightStatus': ('Indicator_init.lua', 'Indicator_page.lua', 'Status.lua', 'StoreNames.lua'),
+            'FlightStatus': ('Indicator_init.lua', 'Indicator_page.lua', 'Status.lua'),
         }.items():
             for filename in filenames:
                 self.entries[package.MODULE+'Cockpit/Scripts/'+folder+'/'+filename] = b'graphical-runtime'
@@ -92,7 +95,7 @@ class TestFlightBundle(unittest.TestCase):
         with zipfile.ZipFile(bundle) as archive:
             build = json.loads(archive.read('BUILD.json'))
             self.assertEqual(build['focus'], 'status')
-            self.assertEqual(build['human_cases'], 12)
+            self.assertEqual(build['human_cases'], 16)
             self.assertFalse(build['native_countermeasure_probe'])
             self.assertNotIn(package.PROBE_FLAG, archive.namelist())
             self.assertNotIn(package.TEST_ROOT+'Indicator_page.lua', archive.namelist())
@@ -105,6 +108,15 @@ class TestFlightBundle(unittest.TestCase):
             self.assertIn('短按 Q', guide)
             self.assertIn('右 Ctrl＋D', guide)
             self.assertIn('所有冒號對齊', guide)
+
+    def test_missing_shared_catalog_runtime_is_rejected(self):
+        for name in ('FM/Weapons/WeaponCatalog.json', 'Cockpit/Scripts/Stores/WeaponCatalog.lua',
+                     'Cockpit/Scripts/ThirdParty/json/json.lua'):
+            entries = dict(self.entries)
+            del entries[package.MODULE + name]
+            self.write_zip(entries)
+            with self.assertRaisesRegex(ValueError, 'Missing shared weapon catalog runtime'):
+                self.assemble()
 
     def test_raw_return_patterns_expand_to_real_parameter_names(self):
         values = package.parameter_names({'cockpit_params': [], 'raw_dcs_cockpit_params': [

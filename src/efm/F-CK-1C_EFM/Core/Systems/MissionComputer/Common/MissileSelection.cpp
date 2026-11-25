@@ -8,25 +8,12 @@ namespace
 using namespace Core;
 using namespace Core::Systems::Mc;
 
-bool sidewinder_family(WeaponModel model)
+std::string selection_type(const StoreStationState& station)
 {
-	return model == WeaponModel::Aim9L || model == WeaponModel::Aim9M || model == WeaponModel::Aim9P ||
-	       model == WeaponModel::Aim9X || model == WeaponModel::Aim9Legacy;
-}
-
-std::string selection_type(const StoresInventorySnapshot& inventory, const StoreStationState& station)
-{
-	if (sidewinder_family(station.model))
-		return "AIM-9";
+	if (station.weapon.registered)
+		return station.weapon.selection_group;
 	if (!station.weapon_type_identifier.empty())
-	{
-		for (const auto& other : inventory.stations)
-			if (other.observation.available && other.configuration == StoreConfiguration::Equipped &&
-			    other.category == WeaponCategory::Missile && other.role == WeaponRole::AirToAir &&
-			    other.weapon_type_identifier == station.weapon_type_identifier && sidewinder_family(other.model))
-				return "AIM-9";
 		return station.weapon_type_identifier;
-	}
 	return station.weapon_identifier.empty() ? "station:" + std::to_string(station.station_index)
 	                                         : station.weapon_identifier;
 }
@@ -34,14 +21,14 @@ std::string selection_type(const StoresInventorySnapshot& inventory, const Store
 
 namespace Core::Systems::Mc
 {
-bool is_sidewinder(WeaponModel model) noexcept
+bool is_sidewinder(const WeaponDescriptor& weapon) noexcept
 {
-	return sidewinder_family(model);
+	return weapon.family == "aim-9";
 }
 
-bool supports_radar_cue(WeaponModel model) noexcept
+bool supports_radar_cue(const WeaponDescriptor& weapon) noexcept
 {
-	return model == WeaponModel::Aim9L || model == WeaponModel::Aim9M || model == WeaponModel::Aim9X;
+	return weapon.radar_cue;
 }
 
 MissileCount count_selected_missile_group(const StoresInventorySnapshot& inventory, int station)
@@ -49,7 +36,7 @@ MissileCount count_selected_missile_group(const StoresInventorySnapshot& invento
 	MissileCount result;
 	if (station < 0 || static_cast<std::size_t>(station) >= inventory.stations.size())
 		return { 0, false };
-	const auto group = selection_type(inventory, inventory.stations[station]);
+	const auto group = selection_type(inventory.stations[station]);
 	for (const auto& item : inventory.stations)
 	{
 		if (!item.observation.available || item.configuration == StoreConfiguration::Unknown ||
@@ -57,7 +44,7 @@ MissileCount count_selected_missile_group(const StoresInventorySnapshot& invento
 			result.complete = false;
 		if (item.observation.available && item.configuration == StoreConfiguration::Equipped && item.count > 0 &&
 		    item.category == WeaponCategory::Missile && item.role == WeaponRole::AirToAir &&
-		    selection_type(inventory, item) == group)
+		    selection_type(item) == group)
 			result.count += item.count;
 	}
 	return result;
@@ -75,7 +62,7 @@ MissileSelection select_air_to_air_station(const StoresInventorySnapshot& invent
 	std::vector<std::string> rotary;
 	for (int station : candidates)
 	{
-		types[station] = selection_type(inventory, inventory.stations[station]);
+		types[station] = selection_type(inventory.stations[station]);
 		if (std::find(rotary.begin(), rotary.end(), types[station]) == rotary.end())
 			rotary.push_back(types[station]);
 	}

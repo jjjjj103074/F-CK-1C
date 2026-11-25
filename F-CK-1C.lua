@@ -146,80 +146,15 @@ end
 
 -- ---------- 可用掛載設定 ----------
 
--- 輕型空對空
-WPN_AAM_Light = wpnGroup({
-    _isAAM = true,
-    { CLSID = "{AIM-9L}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9L
-    { CLSID = "{AIM-9P3}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P3
-    { CLSID = "{AIM-9P5}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P5
-    { CLSID = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9X
-    { CLSID = "{AIM-9B}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9B
-    { CLSID = "{AIM-9E}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9E
-    { CLSID = "{AIM-9J}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9J
-    { CLSID = "{9BFD8C90-F7AE-4e90-833B-BFD0CED0E536}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9P
-    { CLSID = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9
-    { CLSID = "{AIM-9JULI}", Cx_gain = 0.796, diameter = 127 }, -- AIM-9JULI
-    { CLSID = "{Rb_24}", Cx_gain = 0.796, diameter = 127 }, -- Rb_24
-    { CLSID = "{Rb_24J}", Cx_gain = 0.796, diameter = 127 }, -- Rb_24J
-    { CLSID = "{Rb_74}", Cx_gain = 0.796, diameter = 127 }, -- Rb_74
-    { CLSID = "CATM-9M", Cx_gain = 0.796, diameter = 127 }, -- CATM-9M
-    { CLSID = "TC-1", Cx_gain = 0.796, diameter = 127 }, -- TC-1
-})
-
--- 中型空對空
-WPN_AAM_Med = wpnGroup({
-    _isAAM = true,
-    { CLSID = "{AIM-7E}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7E
-    { CLSID = "{AIM-7E-2}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7E-2
-    { CLSID = "{AIM-7F}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7F
-    { CLSID = "{8D399DDA-FF81-4F14-904D-099B34FE7918}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7M
-    { CLSID = "{AIM-7H}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7H
-    { CLSID = "{AIM-7P}", Cx_gain = 0.49, diameter = 200 }, -- AIM-7P
-    { CLSID = "{C8E06185-7CD6-4C90-959F-044679E90751}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120B (額外允許翼尖)
-    { CLSID = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", Cx_gain = 0.328, diameter = 178, extra = { STATION_RT, STATION_LT } }, -- AIM-120C (額外允許翼尖)
-    { CLSID = "TC-2", Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2
-    { CLSID = "TC-2C", Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2C
-    { CLSID = "TC-2A", Cx_gain = 0.328, diameter = 190, extra = { STATION_RT, STATION_LT } }, -- TC-2A
-})
-
--- 輕型對地（外側以內均可，炸彈、導引均收錄）
-WPN_AG_LIGHT = wpnGroup({
-    { CLSID = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}", Cx_gain = 1.563 }, -- Mk-82
-    { CLSID = "{Mk82SNAKEYE}", Cx_gain = 1.882 }, -- Mk-82 SNAKEYE
-    { CLSID = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}", Cx_gain = 1.871 }, -- MK-20 Rockeye
-    { CLSID = "{BDU-50LD}", Cx_gain = 1.388 }, -- BDU-50LD
-    { CLSID = "{BDU_45}", Cx_gain = 0.944 }, -- BDU-45
-    { CLSID = "{BDU_45B}", Cx_gain = 0.566 }, -- BDU-45B
-})
-
--- 重型對地（僅內側及機腹，炸彈、導引、反艦均收錄）
-WPN_AG_HEAVY = wpnGroup({
-    { CLSID = "{BRU33_2X_MK-82}", Cx_gain_empty = 0.335, Cx_gain_item = 1.653 }, -- BRU-33 2*Mk-82
-    { CLSID = "{BRU33_2X_MK-82_Snakeye}", Cx_gain_empty = 0.328, Cx_gain_item = 2.128 }, -- BRU-33 2*Mk-82SE
-    { CLSID = "{BRU33_2X_ROCKEYE}", Cx_gain_empty = 0.341, Cx_gain_item = 1.496 }, -- BRU-33 2*Mk-20
-    { CLSID = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}", Cx_gain = 1.260 }, -- Mk-84
-    { CLSID = "HF-3" }, -- 雄风三型反艦導彈
-})
-
--- 標定莢艙
-WPN_POD_Targeting = wpnGroup({})
-
--- 訓練／展示莢艙
-WPN_POD_Misc = wpnGroup({
-    { CLSID = "{AIS_ASQ_T50}", arg_value = 1, attach_point_position = { 0.25, 0.0, 0.0 }, diameter = 127, deny = { STATION_MM } }, -- ACMI pod
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder blue
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder green
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder orange
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder red
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder white
-    { CLSID = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}", arg_value = 1, diameter = 66, deny = { STATION_MM } }, -- Smokewinder yellow
-})
-
--- 標準副油箱
-WPN_TANK_Standard = wpnGroup({
-    { CLSID = "{EFEC8201-B922-11d7-9897-000476191836}" }, -- F18 800加侖副油箱
-    { CLSID = "{0395076D-2F77-4420-9D33-087A4398130B}" }, -- 275 gal drop tank
-})
+-- 共用 JSON 定義掛載識別、分類與 DCS 參數；此處配置機型群組。
+local catalog = dofile(current_mod_path .. "/Cockpit/Scripts/Stores/WeaponCatalog.lua").load(current_mod_path)
+WPN_AAM_Light = wpnGroup(catalog.groups.aam_light)
+WPN_AAM_Med = wpnGroup(catalog.groups.aam_medium)
+WPN_AG_LIGHT = wpnGroup(catalog.groups.ground_light)
+WPN_AG_HEAVY = wpnGroup(catalog.groups.ground_heavy)
+WPN_POD_Targeting = wpnGroup(catalog.groups.targeting_pod)
+WPN_POD_Misc = wpnGroup(catalog.groups.misc_pod)
+WPN_TANK_Standard = wpnGroup(catalog.groups.tank)
 
 -- ---------- 掛載點配置 ----------
 

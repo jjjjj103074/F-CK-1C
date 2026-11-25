@@ -43,6 +43,8 @@ struct Fixture
 	DcsBridge::Internal::ExternalActionTransport transport;
 	std::vector<RadarRequest> requests;
 	std::set<std::uint64_t> recorded;
+	std::set<std::uint64_t> recorded_radar_actions;
+	std::vector<MissionActionKind> radar_actions;
 	CombatAvionicsSnapshot mission;
 	DisplaySnapshot display;
 	RadarSnapshot radar;
@@ -69,6 +71,9 @@ struct Fixture
 			for (const auto& request : snapshot->read(AircraftDataKeys::kRadarRequests).items)
 				if (recorded.insert(request.sequence).second)
 					requests.push_back(request);
+			for (const auto& action : radar.action_requests.items)
+				if (recorded_radar_actions.insert(action.sequence).second)
+					radar_actions.push_back(action.action.kind);
 			transport.collect(mission.action_requests, radar);
 			const auto batch = transport.batch();
 			if (batch.count)
@@ -292,20 +297,63 @@ void test_acm_inputs_and_mode_change_clear_held_operations(Tests::Context& c)
 	TEST_EXPECT(c, f.text("mc_mfd_right") == "SMS / NONE");
 	TEST_EXPECT(c, f.text("mc_soi_location") == "HUD");
 }
+void test_air_combat_preserves_track_and_rejects_with_one_scan_selection(Tests::Context& c)
+{
+	Fixture f;
+	f.select(CommandId::SelectAirToAirMode);
+	f.frame.cockpit.radar.mode = RadarMode::SingleTargetTrack;
+	f.frame.cockpit.radar.stt_range_m = 3000;
+	f.advance(4);
+	const auto cancels = f.count(RadarOperation::CancelAcquisition);
+	for (const auto mode :
+	     { CommandId::SelectDogfightMode, CommandId::SelectMissileOverride, CommandId::SelectOverrideCenter })
+	{
+		const auto native_before = f.radar_actions.size();
+		f.select(mode);
+		TEST_EXPECT(c, f.radar_actions.size() == native_before);
+		TEST_EXPECT(c, f.mission.fire_control.target_designation.radar_tracking);
+		TEST_EXPECT(c, f.count(RadarOperation::CancelAcquisition) == cancels);
+		for (const auto& action : f.radar.action_requests.items)
+			TEST_EXPECT(c,
+			            action.action.kind != MissionActionKind::ModeBoresight &&
+			                action.action.kind != MissionActionKind::ModeBeyondVisualRange);
+	}
+	f.select(CommandId::SelectDogfightMode);
+	f.send(CommandId::PressTmsRight);
+	f.advance(40);
+	f.send(CommandId::PressTmsRight, 0);
+	f.advance(6);
+	TEST_EXPECT(c, f.radar.requested_search_mode == RadarSearchMode::AirCombat);
+	TEST_EXPECT(c, f.radar.requested_acquisition_mode == TargetAcquisitionMode::WideScan);
+	for (const auto input : { CommandId::SetTmsUp, CommandId::PressTmsRight, CommandId::PressTmsDown })
+	{
+		const auto before = f.count(RadarOperation::CancelAcquisition);
+		f.tap(input);
+		TEST_EXPECT(c, f.count(RadarOperation::CancelAcquisition) == before + 1);
+		TEST_EXPECT(c, f.radar.automatic_acquisition_requested);
+		TEST_EXPECT(c, f.mission.fire_control.target_designation.requested);
+		const auto starts_before =
+		    std::count(f.radar_actions.begin(), f.radar_actions.end(), MissionActionKind::LockStart);
+		f.frame.cockpit.radar.mode = RadarMode::Search;
+		f.advance(5);
+		TEST_EXPECT(c, f.radar.automatic_acquisition_requested);
+		TEST_EXPECT(c,
+		            std::count(f.radar_actions.begin(), f.radar_actions.end(), MissionActionKind::LockStart) ==
+		                starts_before + 1);
+		f.frame.cockpit.radar.mode = RadarMode::SingleTargetTrack;
+		f.advance(5);
+	}
+}
+
 void test_ir_picture_with_radar_off(Tests::Context& c)
 {
 	Fixture f;
 	auto& stations = f.frame.cockpit.weapon_stations;
 	for (auto& station : stations.stations)
 		station.configuration = StoreConfiguration::Empty;
-	stations.stations[0] = { StoreConfiguration::Equipped,
-		                     1,
-		                     WeaponCategory::Missile,
-		                     WeaponRole::AirToAir,
-		                     "aim9m",
-		                     "aim9m",
-		                     "RT",
-		                     WeaponModel::Aim9M };
+	stations.stations[0] = {
+		StoreConfiguration::Equipped, 1, WeaponCategory::Missile, WeaponRole::AirToAir, "{AIM-9P5}", "{AIM-9P5}", "RT"
+	};
 	f.select(CommandId::SelectAirToAirMode);
 	stations.selected_station = f.mission.stores.selection.requested_station;
 	stations.selection_ack_revision = f.mission.stores.selection.request_revision;
@@ -351,6 +399,7 @@ void test_ir_picture_with_radar_off(Tests::Context& c)
 void run_sensor_control_tests(Tests::Context& context)
 {
 	test_ir_picture_with_radar_off(context);
+	test_air_combat_preserves_track_and_rejects_with_one_scan_selection(context);
 	test_soi_uses_display_sources_and_follows_the_sensor(context);
 	test_navigation_and_ground_shells_are_explicit(context);
 	test_mode_and_display_snapshots_settle_through_pipeline(context);

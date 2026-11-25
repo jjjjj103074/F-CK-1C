@@ -45,7 +45,7 @@ join(res.keyCommands, {
     { down = device_commands.NavMode, up = device_commands.NavMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode - NAV"), category = { _("Modes") } },
     { down = device_commands.DogfightSwitch, up = device_commands.DogfightSwitch, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - DGFT"), category = { _("Modes") } },
     { down = device_commands.MissileOverride, up = device_commands.MissileOverride, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - MSL OVRD"), category = { _("Modes") } },
-    { down = device_commands.MissileUncage, value_down = 1.0, name = _("Missile Cage / Uncage - Toggle"), category = { _("Weapons") } },
+    { down = device_commands.MissileUncageButton, up = device_commands.MissileUncageButton, value_down = 1.0, value_up = 0.0, name = _("HOTAS UNCAGE - AIM-9 Toggle / AIM-120 Hold"), category = { _("Weapons") } },
     { down = device_commands.AirToAirMode, up = device_commands.AirToAirMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode Button - A-A (Toggle to NAV)"), category = { _("Modes") } },
     { down = device_commands.AirToGroundMode, up = device_commands.AirToGroundMode, value_down = 1.0, value_up = 0.0, name = _("Master Mode Button - A-G (Toggle to NAV)"), category = { _("Modes") } },
     { down = device_commands.DogfightCenter, up = device_commands.DogfightCenter, value_down = 1.0, value_up = 0.0, name = _("Dogfight Switch - CENTER (Restore Master Mode)"), category = { _("Modes") } },

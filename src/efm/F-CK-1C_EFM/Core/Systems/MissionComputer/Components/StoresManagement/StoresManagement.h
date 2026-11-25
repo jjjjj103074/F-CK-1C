@@ -45,6 +45,7 @@ private:
 	/// @brief 接受入口要求，安排停止、取消與模式接續。
 	void accept_commands();
 	/// @brief 依確認選站與最新火控視線更新尋標器要求。
+	void update_selected_weapon();
 	void update_seeker_control();
 	/// @brief 將一筆操作排入停止優先與選站接續流程。
 	void schedule_command(PendingCommand entry);
