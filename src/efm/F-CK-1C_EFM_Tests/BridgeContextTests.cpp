@@ -85,11 +85,10 @@ std::string create_config_path(const std::filesystem::path& module_root)
 {
 	const std::filesystem::path fm_directory = module_root / "FM";
 	std::filesystem::create_directories(fm_directory);
-	// 在暫存模組的 FM 目錄放入控制律設定，供飛行初始化使用。
-	std::filesystem::create_directories(fm_directory / "DFLCC");
-	std::filesystem::copy_file("FM/DFLCC/ControlLaws.jsonc",
-	                           fm_directory / "DFLCC" / "ControlLaws.jsonc",
-	                           std::filesystem::copy_options::overwrite_existing);
+	// 在暫存模組的 FM 目錄複製共用設定，供飛行初始化使用。
+	std::filesystem::copy("FM",
+	                      fm_directory,
+	                      std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
 	const std::filesystem::path config_path = fm_directory / "config.lua";
 	TestFiles::write_text(config_path, "-- bridge context test\n");
 	return config_path.string();

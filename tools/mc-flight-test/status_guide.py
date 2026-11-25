@@ -10,11 +10,11 @@ CASES = [
          look='MISSILE、STATION。', normal='AIM-9 顯示全機該群組總數；短按 Q 可在不同 AIM-9 型號的掛點間輪換，總數保持。STATION 顯示實際掛點與該枚型號。長按 Q 才離開 AIM-9 群組。'),
     dict(id='S03', title='原生解籠控制', action='長按 Q 超過 0.5 秒後放開，循環回 AIM-9 群組，再短按 Q 選 AIM-9P5（也可重做 AIM-9P3／M）。按右 Ctrl＋M 設 ON。面向前方敵機，觀察 UNCAGE；按 C，等待一秒，再按 C。',
          look='前視空心圓、菱形、左上角 IR 與 UNCAGE。', normal='空心圓代表原生要求方向；原生捕獲到 IR 目標才有菱形及 IR LOCK。UNCAGE 依原生控制讀回 OFF→ON→OFF；WAIT 表示原生控制尚未取得有效讀回，請回傳紀錄。C 操作保持原雷達模式與鎖定。'),
-    dict(id='S04', title='雷達指向與自主追蹤', action='長按 Q 超過 0.5 秒後放開直到選中 AIM-9 群組，再短按 Q 選 AIM-9M。按右 Ctrl＋D 進 DGFT，按下再放開 I 啟動 BORE 捕獲，將機鼻對準前方敵機。UNCAGE ON 時按 C 回 OFF；取得 IR LOCK 後再按 C 解籠，緩慢移動機鼻。',
+    dict(id='S04', title='雷達指向與自主追蹤', action='按右 Ctrl＋D 進 DGFT，再長按 Q 超過 0.5 秒後放開直到選中 AIM-9 群組，短按 Q 選 AIM-9M。按下再放開 I 啟動 BORE 捕獲，將機鼻對準前方敵機。UNCAGE ON 時按 C 回 OFF；取得 IR LOCK 後再按 C 解籠，緩慢移動機鼻。',
          look='雷達方框、IR 空心圓與菱形。', normal='STT 方框跟隨雷達目標。AIM-9M／X 在 caged 時接收雷達指向；解籠後使用原生 IR 自主追蹤，菱形是否保持跟隨以原生尋標器實際捕獲結果為準。'),
     dict(id='S05', title='投放與下一枚', action='在 ON、A-A 或 DGFT 下，取得可靠 IR 訊號；若 UNCAGE OFF，按 C 解籠，ON 則保持，觀察追蹤；按住右 Alt＋Space，離架後放開。按 F2 確認離架，再按 F1。',
          look='MISSILE、STATION、UNCAGE、雷達方框。', normal='離架後群組總數減一；SM 選到下一枚時，掛點更新、UNCAGE 回 OFF。放開投放鍵保留原生雷達 STT。'),
-    dict(id='S06', title='解籠與投放資格分開', action='在 ON 的 A-A 模式下選 AIM-9；若 UNCAGE ON，按 C 回 OFF。按住右 Alt＋Space 一次，離架或等待一秒後放開。',
+    dict(id='S06', title='解籠與投放資格分開', action='留在 ON 與空對空模式（A-A 或 DGFT），選 AIM-9；若 UNCAGE ON，按 C 回 OFF。按住右 Alt＋Space 一次，離架或等待一秒後放開。',
          look='外部掛載、MISSILE、回傳紀錄。', normal='MC 送出正常投放要求，C 的開關狀態不再作為所有飛彈共同的發射保險；最終是否離架由原生條件決定。本項不以命中判定。'),
     dict(id='S07', title='BORE 窄區捕獲', action='按右 Ctrl＋D 進 DGFT。按下再放開 I，讓前方敵機進入窄框。',
          look='前視捕獲框、RADAR、右下角雷達圖。', normal='RADAR 顯示 ACM/BORE；捕獲框閃爍，捕獲成功後變成跟隨敵機的完整方框，雷達回報 STT。'),
@@ -48,7 +48,7 @@ def cases():
 def markdown():
     lines = ['# 空對空武器、尋標器與 ACM 測試', '',
              '關閉 DCS，解壓縮測試包。將舊模組移出 Saved Games\\DCS\\Mods\\aircraft，再放入本包 F-CK-1C 資料夾。保留預設按鍵。', '',
-             '以下依 S01→S16 順序測試。使用空中開始的任務，關閉無限彈藥；混掛 AIM-9P3／P5／M 各至少一枚、AIM-7P 至少一枚、AIM-120C 至少兩枚，前方約 3–5 NM 配置一架非交戰敵機。', '',
+             '以下依 S01→S16 順序測試。使用空中開始的任務，關閉無限彈藥；混掛 AIM-9P3／P5／M 各至少一枚、AIM-7P 至少一枚、AIM-120C 至少兩枚，前方約 3–5 NM 配置非交戰靶機。靶機需持續存活供後續捕獲測試；可使用無敵靶機，或在目標被擊落後換用其他靶機。', '',
              'MODE＝保存的主模式；OVRD＝超控開關位置；ARM＝主保險。MISSILE 的 xN 是目前選擇群組的全機總數；STATION 顯示掛點與實際型號。', '',
              '右 Ctrl＋右 Shift＋F12 可開啟詳細 debug；再按一次關閉，左上角面板恢復。NONE＝未選擇；SELECTING＝正在選站；---＝來源不可用。IR 是原生全域紅外線觀測；選 AIM-9 時 UNCAGE 是原生自主追蹤讀回；選 AIM-120 時是 C 是否按住。RELEASE 表示 MC 程序判定。WAIT 表示控制來源尚未確認。', '']
     for case in CASES:
