@@ -122,8 +122,8 @@ Validation includes MSVC analysis, whole-DLL hash, exports/loading, native tests
 and source integrity. Keep FM settings available.
 Reports are under tmp/pr-validation; DCS tests are separate.
 
-## 安裝支援腳本
+## 安裝範圍
 
-正式套件包含 `InstallSupport/RemoveLegacyStoresExport.ps1`，供 install.bat
-備份並移除舊版 F-CK-1C Export 載入區塊。套件的開發檔案檢查僅對此明確檔名
-提供安裝用途例外；其他 PowerShell 開發腳本仍保留在原始碼工具目錄。
+`install.bat` 將模組執行檔案安裝到 Saved Games 的 `Mods/aircraft/F-CK-1C`。
+模組紀錄保存於此目錄內的 `log`，測試回收工具安裝於 `FlightTest`。
+CI 以實際執行安裝器的檔案快照測試，核對模組外的遊戲檔案、Export 與其他模組保持原樣。

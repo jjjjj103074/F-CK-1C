@@ -15,6 +15,7 @@ MODULE = 'F-CK-1C/'
 DLL = MODULE + 'bin/F-CK-1C_EFM.dll'
 DEVICE = MODULE + 'Cockpit/Scripts/device_init.lua'
 TEST_ROOT = MODULE + 'Cockpit/Scripts/MCFlightTest/'
+TOOLS_ROOT = MODULE + 'FlightTest/'
 KEYBOARD = MODULE + 'Input/F-CK-1C/keyboard/default.lua'
 WEAPONS = MODULE + 'Cockpit/Scripts/Systems/weapon_system.lua'
 PROBE_FLAG = MODULE + 'FM/native-countermeasure-probe.enabled'
@@ -98,8 +99,7 @@ indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script
         for filename in ('Indicator_init.lua', 'Indicator_page.lua', 'Status.lua'):
             if MODULE + 'Cockpit/Scripts/FlightStatus/' + filename not in original:
                 raise ValueError('Missing flight status runtime: ' + filename)
-    for required in ('FM/Weapons/WeaponCatalog.json', 'Cockpit/Scripts/Stores/WeaponCatalog.lua',
-                     'Cockpit/Scripts/generated/WeaponCatalog.g.lua'):
+    for required in ('FM/Weapons/WeaponCatalog.json', 'F-CK-1C.lua'):
         if MODULE + required not in original:
             raise ValueError('Missing shared weapon catalog runtime: ' + required)
     entries = dict(original)
@@ -136,11 +136,12 @@ end
     assert set(changed) == ({DEVICE, KEYBOARD, WEAPONS} if focus == 'mc' else {DEVICE, KEYBOARD})
     assert entries[DLL] == original[DLL]
     for filename in ('COLLECT-RESULTS.bat', 'COLLECT-RESULTS.ps1'):
-        entries[filename] = (ROOT / filename).read_bytes()
+        entries[TOOLS_ROOT + filename] = (ROOT / filename).read_bytes()
     entries['START-HERE.zh-TW.html'] = selected_guide.html_document().encode('utf-8')
     entries['TESTING.zh-TW.md'] = selected_guide.markdown().encode('utf-8')
     entries['RESULTS.csv'] = b'\xef\xbb\xbf' + selected_guide.results_csv().encode('utf-8')
     entries['TEST-CASES.json'] = (json.dumps(selected_guide.cases(), ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    entries[TOOLS_ROOT + 'RESULTS.csv'] = entries['RESULTS.csv']
     build = dict(manifest, package_kind=focus + '-flight-test', focus=focus, dcs_runtime='not_run',
         test_tools_source_commit=test_tools_source, runtime_source_commit=runtime_source,
         validation_scope="native DLL at source_commit; runtime Lua checked separately",
@@ -150,10 +151,11 @@ end
         native_test_keys='prebound; existing bindings preserved',
         migration_goal={'status': 'screen-fixed flight and confirmed SM weapon status', 'radar': 'RWS/BORE/STT graphical radar displays', 'mc': 'MC SOI, mode-driven display assignments and real-aircraft HOTAS interfaces'}[focus],
         runtime_changed=changed,
-        runtime_added=sorted(name for name in set(entries) - set(original) if name.startswith(MODULE)),
+        runtime_added=sorted({name for name in set(entries) - set(original) if name.startswith(MODULE)} | {TOOLS_ROOT + 'BUILD.json'}),
         bundle_added=sorted({name for name in set(entries) - set(original) if not name.startswith(MODULE)} | {'BUILD.json'}),
         runtime_preserved_files=len(original) - len(changed))
     entries['BUILD.json'] = (json.dumps(build, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    entries[TOOLS_ROOT + 'BUILD.json'] = entries['BUILD.json']
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     name = 'F-CK-1C-' + focus + '-flight-test-' + runtime_source[:8] + '.zip'

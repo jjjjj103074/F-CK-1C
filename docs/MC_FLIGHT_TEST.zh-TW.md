@@ -10,7 +10,7 @@ SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查�
 
 1. 完全關閉 DCS，解壓縮測試包，在 F-CK-1C 資料夾執行 install.bat；預設安裝到 Saved Games\DCS。使用 DCS.openbeta 或其他資料夾時，將該 Saved Games 路徑作為 install.bat 的第一個參數。
 2. 在任務編輯器依下表存好各任務；使用空中或熱機出生、關閉無限彈藥，選 JHMCS＋2D Overlay。全部保持專案預設按鍵。
-3. 進任務後看 HMCS 與右上 MC TEST 面板。記錄器會自動將每次任務另存到 Saved Games\DCS\Logs\FCK1C-MC-TEST；視窗／按鍵設定採用現有配置。
+3. 進任務後看 HMCS 與右上 MC TEST 面板。記錄器會自動將每次任務另存到 模組 F-CK-1C/log/flight-tests；視窗／按鍵設定採用現有配置。
 
 ## 任務配置
 

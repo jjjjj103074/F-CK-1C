@@ -7,10 +7,10 @@ try {
     New-Item -ItemType Directory -Path $toolRoot -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'COLLECT-RESULTS.ps1') -Destination $toolRoot
     $files = @{
-        'Logs\FCK1C-MC-TEST\mc-aaaaaaaaaaaa-first.csv' = '"sample","model_time_s"';
-        'Logs\FCK1C-MC-TEST\mc-aaaaaaaaaaaa-second.csv' = '"sample","model_time_s"' + "`r`n" + '"1","1.0"';
-        'Logs\FCK1C-MC-TEST\mc-old.csv' = 'history fixture';
-        'Logs\FCK1C-MC-TEST\mc-bbbbbbbbbbbb-old.csv' = 'other bundle fixture';
+        'Mods\aircraft\F-CK-1C\log\flight-tests\mc-aaaaaaaaaaaa-first.csv' = '"sample","model_time_s"';
+        'Mods\aircraft\F-CK-1C\log\flight-tests\mc-aaaaaaaaaaaa-second.csv' = '"sample","model_time_s"' + "`r`n" + '"1","1.0"';
+        'Mods\aircraft\F-CK-1C\log\flight-tests\mc-old.csv' = 'history fixture';
+        'Mods\aircraft\F-CK-1C\log\flight-tests\mc-bbbbbbbbbbbb-old.csv' = 'other bundle fixture';
         'Logs\dcs.log' = 'DCS fixture';
         'Mods\aircraft\F-CK-1C\log\fck1c_efm.log' = 'EFM fixture';
         'Mods\aircraft\F-CK-1C\bin\F-CK-1C_EFM.dll' = 'DLL fixture';
@@ -21,9 +21,11 @@ try {
         New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
         Set-Content -LiteralPath $path -Value $files[$relative] -Encoding ASCII
     }
+    $sourceLogHash = (Get-FileHash -LiteralPath (Join-Path $saved 'Logs\dcs.log') -Algorithm SHA256).Hash
     Set-Content -LiteralPath (Join-Path $toolRoot 'BUILD.json') -Value '{"runtime_source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' -Encoding UTF8
     & (Join-Path $toolRoot 'COLLECT-RESULTS.ps1') -SavedGamesRoot $saved
-    $zips = @(Get-ChildItem -LiteralPath $toolRoot -Filter 'FCK1C-MC-RESULTS-*.zip')
+    $outputRoot = Join-Path $saved 'Mods\aircraft\F-CK-1C\log\collections'
+    $zips = @(Get-ChildItem -LiteralPath $outputRoot -Filter 'FCK1C-MC-RESULTS-*.zip')
     if ($zips.Count -ne 1) { throw 'Expected one collection archive.' }
     $unpacked = Join-Path $fixture 'unpacked'
     Expand-Archive -LiteralPath $zips[0].FullName -DestinationPath $unpacked
@@ -42,14 +44,16 @@ try {
     if ($health[1].status -ne 'samples_present' -or -not $health[1].sample_present) { throw 'Recorder sample count is incorrect.' }
     if ($installed.recording_scope -ne 'current_bundle' -or $installed.recording_files -ne 2) { throw 'Collection scope was not reported.' }
     & (Join-Path $toolRoot 'COLLECT-RESULTS.ps1') -SavedGamesRoot $saved -AllRecordings
-    $all = @(Get-ChildItem -LiteralPath $toolRoot -Directory -Filter 'FCK1C-MC-RESULTS-*' | Sort-Object Name)[-1].FullName
+    $all = @(Get-ChildItem -LiteralPath $outputRoot -Directory -Filter 'FCK1C-MC-RESULTS-*' | Sort-Object Name)[-1].FullName
     if (@(Get-ChildItem -LiteralPath (Join-Path $all 'MC-recordings') -Filter '*.csv').Count -ne 4) { throw 'Explicit history collection omitted records.' }
     Set-Content -LiteralPath (Join-Path $toolRoot 'BUILD.json') -Value '{"runtime_source_commit":"cccccccccccccccccccccccccccccccccccccccc"}' -Encoding UTF8
     & (Join-Path $toolRoot 'COLLECT-RESULTS.ps1') -SavedGamesRoot $saved
-    $empty = @(Get-ChildItem -LiteralPath $toolRoot -Directory -Filter 'FCK1C-MC-RESULTS-*' | Sort-Object Name)[-1].FullName
+    $empty = @(Get-ChildItem -LiteralPath $outputRoot -Directory -Filter 'FCK1C-MC-RESULTS-*' | Sort-Object Name)[-1].FullName
     $emptyInfo = Get-Content -LiteralPath (Join-Path $empty 'installed.json') -Raw | ConvertFrom-Json
     if ($emptyInfo.recording_files -ne 0 -or @($emptyInfo.missing) -notcontains 'Current bundle flight recordings') { throw 'Missing current recordings were not diagnosed.' }
     if (-not (Test-Path -LiteralPath (Join-Path $empty 'dcs.log'))) { throw 'A registration failure must still return DCS logs.' }
+    if ((Get-FileHash -LiteralPath (Join-Path $saved 'Logs\dcs.log') -Algorithm SHA256).Hash -ne $sourceLogHash) { throw 'Collection modified the DCS log.' }
+    if (@(Get-ChildItem -LiteralPath $toolRoot -Filter 'FCK1C-MC-RESULTS-*').Count) { throw 'Collection output was written outside the module.' }
     Write-Output 'MC flight-test collection fixtures passed.'
 }
 finally {

@@ -155,7 +155,7 @@ Export 的 `Cannon.shells` 已有可核對實作，但屬於 Export 執行環境
 2. 在 DcsBridge 進行原生值檢查與單位轉換；Core 接收型別化資料。
 3. 新增／修改 ID 透過資料來源及產生器更新；原生機砲私有 ABI 配置維護於 GunAmmunition 目錄。
 4. 執行 Lua、介面／生命週期及完整 Windows 驗證，再依 [DCS 測試](DCS_TESTING.md) 記錄實機結果。
-5. 安裝器的 `InstallSupport/RemoveLegacyStoresExport.ps1` 備份並移除舊版 F-CK-1C Export 載入區塊；其餘 Export 內容按原位元組保留。
+5. 安裝器將執行檔案複製到 `Mods/aircraft/F-CK-1C`。模組紀錄與測試結果保存於此目錄的 `log` 子目錄，測試回收工具位於 `FlightTest`。
 
 相關文件：[座艙](COCKPIT.md)、[DcsBridge](../src/efm/F-CK-1C_EFM/DcsBridge/README.md)、
 [單位契約](EFM_UNIT_CONVENTIONS.md)、[SDK／DLL 建置](BUILD_DLL.md)。
@@ -420,8 +420,7 @@ MC 沿用雷達視線；IrSeekerExecutor 在寫入原生 IR 要求時反轉 az�
 機型註冊與座艙裝置各有自己的 Lua 環境，應分別驗證可用介面。
 
 共用武器資料以 `FM/Weapons/WeaponCatalog.json` 維護，執行
-`python tools/generate_weapon_catalog.py` 產生 `Cockpit/Scripts/generated/WeaponCatalog.g.lua`，
-再由機型註冊使用 `dofile` 載入 Lua 資料表。C++ 直接讀取原始 JSON。
+`python tools/generate_weapon_catalog.py` 更新 `F-CK-1C.lua` 的產生區段，以本機型既有的 `wpnGroup` 建立掛載表。C++ 直接讀取原始 JSON。
 `python tools/generate_weapon_catalog.py --check` 用於核對資料同步；
 `tools/test_weapon_catalog.lua` 會重放上述註冊環境並建立實際掛載清單。
 

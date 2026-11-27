@@ -45,7 +45,7 @@ def markdown():
         lines += [f"### {case['id']}　{case['title']}", '', f"操作：{case['action']}", '',
                   f"看哪裡：{case['look']}", '', f"正常：{case['normal']}", '']
     lines += ['## 回傳', '',
-        '測完關閉 DCS，在解壓縮的測試包執行 COLLECT-RESULTS.bat，回傳產生的 FCK1C-MC-RESULTS-日期.zip。',
+        '測完關閉 DCS，在安裝後的 F-CK-1C/FlightTest 執行 COLLECT-RESULTS.bat，回傳產生的 FCK1C-MC-RESULTS-日期.zip。',
         '有異常時附上項目代號、實際看到的情況與畫面截圖；任務 .miz 也可一起回傳，方便核對目標位置。',
         '來源版本與 DLL 雜湊在 BUILD.json；紀錄會保存原生雷達、繪圖參數、回波來源編號及原有 debug.csv。', '']
     return '\n'.join(lines)

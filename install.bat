@@ -15,10 +15,22 @@ if not "%~1"=="" (
 
 set DST=%TARGET_ROOT%\Mods\aircraft\%MOD_NAME%
 
+rem 核對來源及目的地，將更新範圍限定於本模組。
+if /I "%SRC%"=="%DST%" (
+  echo This module is already installed at "%DST%".
+  exit /b 0
+)
+if exist "%TARGET_ROOT%\bin\DCS.exe" (
+  echo Choose the DCS Saved Games folder as the installation target.
+  exit /b 1
+)
+for %%F in (entry.lua F-CK-1C.lua comm.lua Views.lua) do (
+  if not exist "%SRC%\%%F" goto copy_failed
+)
+for %%D in (bin Cockpit FM Input Liveries Shapes Sounds Textures) do (
+  if not exist "%SRC%\%%D" goto copy_failed
+)
 if not exist "%TARGET_ROOT%\Mods\aircraft" mkdir "%TARGET_ROOT%\Mods\aircraft"
-
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SRC%\InstallSupport\RemoveLegacyStoresExport.ps1" -SavedGamesRoot "%TARGET_ROOT%"
-if errorlevel 1 goto copy_failed
 
 rem 以選定套件更新模組安裝。
 if exist "%DST%" (
@@ -47,6 +59,7 @@ call :CopyRequiredDir "Textures" || goto copy_failed
 
 call :CopyOptionalDir "Missions" || goto copy_failed
 call :CopyOptionalDir "Options" || goto copy_failed
+call :CopyOptionalDir "FlightTest" || goto copy_failed
 
 echo Installed to "%DST%"
 pause

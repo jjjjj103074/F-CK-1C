@@ -32,7 +32,7 @@ Its validity mask (flare=1, chaff=2) distinguishes zero stock from missing gette
 The test includes nine native cases plus the existing 69 MC cases.
 
 The recorder runs at 50 Hz. Each mission creates a separate CSV under
-`Saved Games/DCS/Logs/FCK1C-MC-TEST/`. MC and station generations have separate
+`Saved Games/DCS/Mods/aircraft/F-CK-1C/log/flight-tests/`. MC and station generations have separate
 coherence flags; raw DCS sensor and presentation fields remain individually sampled.
 The file records the source commit and DLL SHA256 on each row. `release` closes the
 file; I/O errors are reported in `dcs.log`.
@@ -49,7 +49,7 @@ lua tools/mc-flight-test/test_recorder.lua tools/mc-flight-test <fixture-root>
 powershell.exe -NoProfile -File tools/mc-flight-test/test_collection.ps1
 ```
 
-Create `<fixture-root>/Logs/FCK1C-MC-TEST` before running the Lua fixtures.
+Create `<fixture-root>/Mods/aircraft/F-CK-1C/log/flight-tests` before running the Lua fixtures.
 The Windows CI executes the collector fixtures, package fixtures and actual
 adapter/recorder Lua fixtures, then uploads `mc-flight-test-<source-commit>`.
 In-game results remain pending until the pilot returns the evidence.

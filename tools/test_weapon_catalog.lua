@@ -1,58 +1,52 @@
--- 共用清單與實際機型註冊共用同一組 CLSID 及掛載參數。
+-- 執行機型完整註冊流程，核對掛點資料與模組初始化結果。
 return function(expect)
-    local data = dofile("Cockpit/Scripts/generated/WeaponCatalog.g.lua")
-    local function equal(left, right)
-        if type(left) ~= type(right) then return false end
-        if type(left) ~= "table" then return left == right end
-        for key, value in pairs(left) do if not equal(value, right[key]) then return false end end
-        for key in pairs(right) do if left[key] == nil then return false end end
-        return true
+    local env = {}
+    for key, value in pairs(_G) do env[key] = value end
+    env.io, env.select = nil, nil
+    env.current_mod_path = "."
+    local aircraft, flyable, done, messages = nil, nil, 0, {}
+    env.log = { INFO = 3, ERROR = 1, write = function(_, level, message)
+        expect(level == 3, "aircraft entry logs initialization without errors")
+        messages[#messages + 1] = message
+    end }
+    local function descriptor(...) return {...} end
+    for _, name in ipairs({ "gun_mount", "gatling_effect", "fire_effect", "smoke_effect", "pylon", "aircraft_task" }) do
+        env[name] = descriptor
     end
-    local identities, models, registered = {}, {}, {}
-    -- 重放機型註冊環境，載入群組時只提供 DCS 的標準表格與載入介面。
-    local sandbox = {}
-    for key, value in pairs(_G) do sandbox[key] = value end
-    sandbox.io, sandbox.select = nil, nil
+    env.verbose_to_dmg_properties = function(value) return value end
+    env._ = function(value) return value end
+    env.WSTYPE_PLACEHOLDER, env.wsType_Air, env.wsType_Airplane, env.wsType_Fighter = 0, 1, 1, 1
+    for _, name in ipairs({ "mount_vfs_model_path", "mount_vfs_liveries_path", "mount_vfs_sound_path", "mount_vfs_texture_path", "declare_plugin" }) do
+        env[name] = function() end
+    end
+    env.add_aircraft = function(value) aircraft = value end
+    env.make_flyable = function(name, cockpit, fm) flyable = { name = name, cockpit = cockpit, fm = fm } end
+    env.plugin_done = function() done = done + 1 end
     local host_loadfile = loadfile
-    sandbox.dofile = function(path)
+    env.dofile = function(path)
         local chunk = assert(host_loadfile(path))
-        setfenv(chunk, sandbox)
+        setfenv(chunk, env)
         return chunk()
     end
-    local groups = sandbox.dofile("Cockpit/Scripts/Stores/WeaponCatalog.lua").load(".").groups
-    for _, store in ipairs(data.stores) do
-        expect(not models[store.id], "canonical weapon models are unique")
-        models[store.id] = true
-        for _, alias in ipairs(store.aliases) do
-            expect(not identities[alias], "DCS aliases resolve to one model"); identities[alias] = store.id
-        end
-        for _, loadout in ipairs(store.loadouts) do
-            expect(not identities[loadout.clsid], "registered CLSID resolves to one model")
-            identities[loadout.clsid], registered[loadout.clsid] = store.id, loadout
-            local match
-            for _, entry in ipairs(groups[loadout.group]) do
-                if entry.CLSID == loadout.clsid then match = entry end
-            end
-            expect(match ~= nil, "Lua registration includes each catalog loadout")
-            for key, value in pairs(loadout.parameters) do
-                expect(equal(match[key], value), "native loadout parameters retain their catalog values")
-            end
-        end
-    end
-    local aircraft_file = assert(io.open("F-CK-1C.lua", "rb"))
-    local source = aircraft_file:read("*a"); aircraft_file:close()
-    local prefix = source:sub(1, assert(source:find("    %-%- Identification%.")) - 1)
-    local env = setmetatable({ current_mod_path = "." }, { __index = sandbox })
-    local chunk = assert(loadstring(prefix)); setfenv(chunk, env); chunk()
-    for _, station in ipairs({ env.Tip, env.Outer, env.Inner, env.CenterlineM, env.CenterlineFB }) do
+    env.dofile("entry.lua")
+    expect(aircraft and aircraft.Name == "F-CK-1C", "complete aircraft definition reaches add_aircraft")
+    expect(flyable and flyable.name == aircraft.Name, "the registered aircraft receives its cockpit")
+    expect(flyable.fm[2] == "F-CK-1C_EFM.dll", "flyable registration retains the validated native DLL")
+    expect(done == 1 and #messages >= 3, "entry completes and reports initialization using DCS log.write")
+    expect(#aircraft.Pylons == 9, "all nine pylons reach aircraft registration")
+    local registered = {}
+    for index, pylon in ipairs(aircraft.Pylons) do
+        expect(pylon[1] == index, "pylon numbers follow station definitions")
+        local launchers = pylon[7]
+        expect(launchers[1].CLSID == "<CLEAN>", "each station retains CLEAN")
         local seen = {}
-        expect(station[1].CLSID == "<CLEAN>", "each station retains CLEAN")
-        for _, entry in ipairs(station) do
-            expect(not seen[entry.CLSID], "station loadouts are unique"); seen[entry.CLSID] = true
-            expect(entry.CLSID == "<CLEAN>" or registered[entry.CLSID], "station admits catalog registrations")
+        for _, entry in ipairs(launchers) do
+            expect(type(entry.CLSID) == "string" and not seen[entry.CLSID], "station loadout identities are unique")
+            seen[entry.CLSID], registered[entry.CLSID] = true, true
+            expect(entry.stations == nil and entry.deny == nil and entry.extra == nil, "native station entries contain resolved pylon parameters")
         end
     end
     for _, clsid in ipairs({ "{AIM-9P3}", "{AIM-9P5}", "{AIM-7P}", "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}" }) do
-        expect(identities[clsid] ~= nil and registered[clsid], "existing tested missile is registered")
+        expect(registered[clsid], "existing tested missile reaches native registration")
     end
 end

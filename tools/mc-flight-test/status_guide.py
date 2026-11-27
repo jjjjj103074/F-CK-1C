@@ -34,7 +34,7 @@ CASES = [
          look='STATION、RELEASE、外部掛載。', normal='無 STT 時 RELEASE＝NEED STT，MC 不提出發射；有 STT 時＝RADAR TARGET，正常送出投放。未實作 FLOOD。本項觀察離架及持續追蹤，不以命中代替程序判定。'),
     dict(id='S15', title='AIM-120 目視發射同意', action='留在 ON、A-A。長按 Q 超過 0.5 秒後放開直到選中 AIM-120C。若有 STT，按 K 脫鎖。先按右 Alt＋Space 後放開。再按住 C，同時按右 Alt＋Space，離架後放開兩鍵。',
          look='RELEASE、UNCAGE、外部掛載。', normal='無指定目標且未按 C：HOLD C FOR VISUAL，不提出發射。按住 C：VISUAL／HELD，可送出正常投放；放開 C 後同意結束。此路徑不保證命中。'),
-    dict(id='S16', title='AIM-120 有指定目標', action='保留至少一枚 AIM-120C，留在 ON、A-A。使用右 Alt＋I／K／J／L 移動游標，按下再放開 I 捕獲，等待 STT；放開 C，按右 Alt＋Space 發射，離架後放開。關閉 DCS 後執行 COLLECT-RESULTS.bat。',
+    dict(id='S16', title='AIM-120 有指定目標', action='保留至少一枚 AIM-120C，留在 ON、A-A。使用右 Alt＋I／K／J／L 移動游標，按下再放開 I 捕獲，等待 STT；放開 C，按右 Alt＋Space 發射，離架後放開。關閉 DCS 後執行模組內 FlightTest/COLLECT-RESULTS.bat。',
          look='RELEASE、STT 方框、MISSILE、回收 ZIP。', normal='有 STT 時 RELEASE＝RADAR TARGET，不需要按住 C；放開投放後仍保留 STT，群組數量隨原生庫存減少。回傳完整 ZIP。'),
 
 ]
@@ -48,13 +48,13 @@ def cases():
 def markdown():
     lines = ['# 空對空武器、尋標器與 ACM 測試', '',
              '關閉 DCS，解壓縮測試包。將舊模組移出 Saved Games\\DCS\\Mods\\aircraft，再放入本包 F-CK-1C 資料夾。保留預設按鍵。', '',
-             '以下依 S01→S16 順序測試。使用空中開始的任務，關閉無限彈藥；混掛 AIM-9P3／P5／M 各至少一枚、AIM-7P 至少一枚、AIM-120C 至少兩枚，前方約 3–5 NM 配置非交戰靶機。靶機需持續存活供後續捕獲測試；可使用無敵靶機，或在目標被擊落後換用其他靶機。', '',
+             '先確認任務編輯器可選到 F-CK-1C，再依 S01→S16 順序測試。使用空中開始的任務，關閉無限彈藥；混掛 AIM-9P3／P5／M 各至少一枚、AIM-7P 至少一枚、AIM-120C 至少兩枚，前方約 3–5 NM 配置非交戰靶機。靶機需持續存活供後續捕獲測試；可使用無敵靶機，或在目標被擊落後換用其他靶機。', '',
              'MODE＝保存的主模式；OVRD＝超控開關位置；ARM＝主保險。MISSILE 的 xN 是目前選擇群組的全機總數；STATION 顯示掛點與實際型號。', '',
              '右 Ctrl＋右 Shift＋F12 可開啟詳細 debug；再按一次關閉，左上角面板恢復。NONE＝未選擇；SELECTING＝正在選站；---＝來源不可用。IR 是原生全域紅外線觀測；選 AIM-9 時 UNCAGE 是原生自主追蹤讀回；選 AIM-120 時是 C 是否按住。RELEASE 表示 MC 程序判定。WAIT 表示控制來源尚未確認。', '']
     for case in CASES:
         lines += [f"## {case['id']}　{case['title']}", '', f"操作：{case['action']}", '',
                   f"看哪裡：{case['look']}", '', f"正常：{case['normal']}", '']
-    lines += ['## 回傳', '', '關閉 DCS，執行本包 COLLECT-RESULTS.bat，回傳產生的 FCK1C-MC-RESULTS-日期.zip。異常請附項目代號、實際情況與截圖。', '']
+    lines += ['## 回傳', '', '關閉 DCS，執行安裝後 F-CK-1C/FlightTest/COLLECT-RESULTS.bat，回傳產生的 FCK1C-MC-RESULTS-日期.zip。異常請附項目代號、實際情況與截圖。', '']
     return '\n'.join(lines)
 
 

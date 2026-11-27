@@ -12,8 +12,12 @@ if (-not (Test-Path -LiteralPath $SavedGamesRoot -PathType Container)) {
 $build = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'BUILD.json') -Raw | ConvertFrom-Json
 $revision = [string]$build.runtime_source_commit
 if ($revision -notmatch '^[0-9a-f]{40}$') { throw 'BUILD.json must identify the runtime source revision.' }
+$module = Join-Path $SavedGamesRoot 'Mods\aircraft\F-CK-1C'
+if (-not (Test-Path -LiteralPath $module -PathType Container)) { throw 'Install F-CK-1C before collecting diagnostics.' }
+$outputRoot = Join-Path $module 'log\collections'
+New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
-$target = Join-Path $PSScriptRoot "FCK1C-MC-RESULTS-$stamp"
+$target = Join-Path $outputRoot "FCK1C-MC-RESULTS-$stamp"
 New-Item -ItemType Directory -Path $target | Out-Null
 $missing = [System.Collections.Generic.List[string]]::new()
 function Copy-Evidence([string]$Relative, [string]$Name) {
@@ -25,7 +29,7 @@ function Copy-Evidence([string]$Relative, [string]$Name) {
     }
 }
 # 依測試包版本選取飛行紀錄，明確回報收集範圍與資料量。
-$recordingRoot = Join-Path $SavedGamesRoot 'Logs\FCK1C-MC-TEST'
+$recordingRoot = Join-Path $module 'log\flight-tests'
 $pattern = if ($AllRecordings) { '*.csv' } else { 'mc-' + $revision.Substring(0, 12) + '-*.csv' }
 $selected = @()
 if (Test-Path -LiteralPath $recordingRoot) {
@@ -60,11 +64,16 @@ if ($selected.Count) {
 }
 Copy-Evidence 'Logs\dcs.log' 'dcs.log'
 Copy-Evidence 'Logs\dcs.log.old' 'dcs.log.old'
-Copy-Evidence 'Mods\aircraft\F-CK-1C\log' 'EFM-log'
+# 複製模組 log 頂層檔案，飛行取樣與收集結果各自使用專用子目錄。
+$efmLog = Join-Path $module 'log'
+$efmDestination = Join-Path $target 'EFM-log'
+New-Item -ItemType Directory -Path $efmDestination -Force | Out-Null
+Get-ChildItem -LiteralPath $efmLog -File | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $efmDestination
+}
 Copy-Evidence 'Config\Input\F-CK-1C\keyboard' 'keyboard-bindings'
 Copy-Evidence 'Config\Input\F-CK-1C\joystick' 'joystick-bindings'
 ConvertTo-Json -InputObject @($recordings) -Depth 4 | Set-Content -LiteralPath (Join-Path $target 'recording-health.json') -Encoding UTF8
-$module = Join-Path $SavedGamesRoot 'Mods\aircraft\F-CK-1C'
 $installedDll = Join-Path $module 'bin\F-CK-1C_EFM.dll'
 $installed = [ordered]@{
     saved_games_root = $SavedGamesRoot; collected_at = (Get-Date).ToString('o'); missing = $missing.ToArray()

@@ -1,10 +1,12 @@
 local self_ID = "F-CK-1C_Mod"
 local logger = log
 local function log_info(msg)
-    if logger and logger.info then logger.info(msg) end
+    if logger and logger.write and logger.INFO then logger.write(self_ID, logger.INFO, msg)
+    elseif logger and logger.info then logger.info(msg) end
 end
 local function log_error(msg)
-    if logger and logger.error then logger.error(msg) end
+    if logger and logger.write and logger.ERROR then logger.write(self_ID, logger.ERROR, msg)
+    elseif logger and logger.error then logger.error(msg) end
 end
 
 local FCK1C_VERSION = "v0.2.1-dev"
@@ -74,6 +76,7 @@ mount_vfs_liveries_path(current_mod_path .. "/Cockpit/Liveries")
 if mount_vfs_sound_path ~= nil then mount_vfs_sound_path(current_mod_path .. "/Sounds") end
 mount_vfs_texture_path(current_mod_path .. "/Textures")
 mount_vfs_texture_path(current_mod_path .. "/Textures/F-CK-1C.zip")
+log_info("FCK1C: registering aircraft F-CK-1C")
 dofile(current_mod_path .. "/F-CK-1C.lua")
 
 -- EFM mode selector:
@@ -123,6 +126,7 @@ else
 end
 
 plugin_done()
+log_info("FCK1C: aircraft and flyable registration complete")
 
 if EFM_MODE == "efm_full" then
     if io and io.open then

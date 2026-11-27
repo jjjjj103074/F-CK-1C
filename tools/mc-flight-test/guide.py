@@ -48,7 +48,7 @@ def markdown():
         'SOI 與左右功能對應使用標準 debug（右 Ctrl＋右 Shift＋F12）查看；本輪以真實 F-16 手冊為操作依據。沒有實際 MFD 畫面，功能空殼會顯示 RESERVED。', '',
         '1. 完全關閉 DCS，解壓縮測試包，在 F-CK-1C 資料夾執行 install.bat；預設安裝到 Saved Games\\DCS。使用 DCS.openbeta 或其他資料夾時，將該 Saved Games 路徑作為 install.bat 的第一個參數。',
         '2. 在任務編輯器依下表存好各任務；使用空中或熱機出生、關閉無限彈藥，選 JHMCS＋2D Overlay。全部保持專案預設按鍵。',
-        '3. 進任務後看 HMCS 與右上 MC TEST 面板。記錄器會自動將每次任務另存到 Saved Games\\DCS\\Logs\\FCK1C-MC-TEST；視窗／按鍵設定採用現有配置。', '',
+        '3. 進任務後看 HMCS 與右上 MC TEST 面板。記錄器會自動將每次任務另存到 模組 F-CK-1C/log/flight-tests；視窗／按鍵設定採用現有配置。', '',
         '## 任務配置', '', '| 任務 | 配置 |', '|---|---|']
     lines += [f'| {code}：{title} | {detail} |' for code, title, detail in SCENARIOS]
     lines += ['', '可將同一份任務另存並改掛載。A 的機砲耗盡後，機砲相關項目需重新載入有彈任務；B 中標示「重新載入」的項目要補回原八枚配置。', '',
@@ -72,7 +72,7 @@ def markdown():
         for c in [c for c in data if c['scenario'] == code]:
             lines += [f"### {c['id']}　{c['title']}", '', f"操作：{c['action']}", '', f"看哪裡：{c['look']}", '', f"正常：{c['normal']}", '']
     lines += ['## 測完回傳', '',
-        '1. 完成後關閉 DCS，在解壓縮的測試包執行 COLLECT-RESULTS.bat。若 Saved Games 路徑不同，將該資料夾路徑作為第一個參數。',
+        '1. 完成後關閉 DCS，在安裝後的 F-CK-1C/FlightTest 執行 COLLECT-RESULTS.bat。若 Saved Games 路徑不同，將該資料夾路徑作為第一個參數。',
         '2. 回傳產生的 FCK1C-MC-RESULTS-日期.zip，並寫「異常代號＋實際情況」及未測／阻擋代號；可選填 RESULTS.csv。將自己建立的 .miz 任務一併附上，供核對掛載、目標與彈量設定。',
         '3. 記錄器會保存各次任務的座艙參數、原始掛點字串、MC 快照、DCS 視窗／ACK、雷達與 IR 來源。收集包另含安裝 DLL 雜湊、DCS 日誌及既有輸入設定。', '',
         '## 驗證範圍', '',

@@ -21,8 +21,7 @@ class TestFlightBundle(unittest.TestCase):
             package.WEAPONS: b'function update() end\n',
             package.MODULE + 'entry.lua': b'unchanged runtime registration',
             package.MODULE + 'FM/Weapons/WeaponCatalog.json': b'{}',
-            package.MODULE + 'Cockpit/Scripts/Stores/WeaponCatalog.lua': b'catalog registration',
-            package.MODULE + 'Cockpit/Scripts/generated/WeaponCatalog.g.lua': b'generated weapon data',
+            package.MODULE + 'F-CK-1C.lua': b'aircraft registration',
         }
         self.archive = self.root / 'module.zip'
         self.manifest = self.root / 'manifest.json'
@@ -56,6 +55,9 @@ class TestFlightBundle(unittest.TestCase):
             self.assertEqual(archive.read(package.KEYBOARD).replace(addition, b''), self.entries[package.KEYBOARD])
             self.assertTrue(archive.read(package.WEAPONS).startswith(self.entries[package.WEAPONS]))
             self.assertIn(package.PROBE_FLAG, archive.namelist())
+            self.assertIn(package.TOOLS_ROOT + 'COLLECT-RESULTS.ps1', archive.namelist())
+            self.assertNotIn('COLLECT-RESULTS.ps1', archive.namelist())
+            self.assertEqual(json.loads(archive.read(package.TOOLS_ROOT + 'BUILD.json')), build)
             self.assertTrue(build['native_countermeasure_probe'])
             self.assertEqual(build['human_cases'], 86)
             self.assertIn(self.source, archive.read(package.TEST_ROOT + 'Build.lua').decode())
@@ -110,8 +112,7 @@ class TestFlightBundle(unittest.TestCase):
             self.assertIn('所有冒號對齊', guide)
 
     def test_missing_shared_catalog_runtime_is_rejected(self):
-        for name in ('FM/Weapons/WeaponCatalog.json', 'Cockpit/Scripts/Stores/WeaponCatalog.lua',
-                     'Cockpit/Scripts/generated/WeaponCatalog.g.lua'):
+        for name in ('FM/Weapons/WeaponCatalog.json', 'F-CK-1C.lua'):
             entries = dict(self.entries)
             del entries[package.MODULE + name]
             self.write_zip(entries)

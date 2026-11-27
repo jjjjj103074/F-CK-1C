@@ -7,6 +7,12 @@ local values = {
     CPP_MC_AVAILABLE = 1,
     OBS_WEAPON_STATION_01 = '1;1;4;4;7;1;RT;{quoted,"weapon"}',
 }
+local host_io = io
+local module_prefix = output .. '/Mods/aircraft/F-CK-1C/log/'
+io = setmetatable({ open = function(path, access)
+    if access == 'wb' then assert(path:sub(1, #module_prefix) == module_prefix, 'Recorder write must remain inside the module') end
+    return host_io.open(path, access)
+end }, { __index = host_io })
 local original_dofile, original_io = dofile, io
 local time = 1
 local reads = 0

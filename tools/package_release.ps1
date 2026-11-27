@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Create a clean F-CK-1C release package.
 
@@ -56,7 +56,6 @@ $requiredRuntimeFiles = @(
 
 $requiredDirs = @(
     'bin',
-    'InstallSupport',
     'Cockpit',
     'FM',
     'Input',
@@ -202,8 +201,7 @@ function Assert-CleanPackage {
 
     $forbiddenFiles = Get-ChildItem -LiteralPath $packageRoot -Recurse -File |
         Where-Object {
-            $_.Name -match $forbiddenFilePattern -and
-            $_.FullName -ne (Join-Path $packageRoot 'InstallSupport\RemoveLegacyStoresExport.ps1')
+            $_.Name -match $forbiddenFilePattern
         }
     if ($forbiddenFiles) {
         $names = ($forbiddenFiles | ForEach-Object { $_.FullName.Replace($packageRoot, $ModuleName) }) -join "`n"

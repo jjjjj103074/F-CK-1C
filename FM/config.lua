@@ -41,9 +41,10 @@ local SUSP_FINAL_WHEEL_POS = {
 local function fck_susp_log(message)
     if not io or not io.open then return end
 
-    local userprofile = os and os.getenv and os.getenv("USERPROFILE") or nil
-    local path = "fck_susp_debug.log"
-    if userprofile and userprofile ~= "" then path = userprofile .. "\\Saved Games\\DCS\\Logs\\fck_susp_debug.log" end
+    if type(current_mod_path) ~= "string" or current_mod_path == "" then return end
+    local directory = current_mod_path .. "/log"
+    if lfs and lfs.mkdir then lfs.mkdir(directory) end
+    local path = directory .. "/fck_susp_debug.log"
 
     local f = io.open(path, "a")
     if not f then return end

@@ -146,15 +146,295 @@ end
 
 -- ---------- 可用掛載設定 ----------
 
--- 共用 JSON 定義掛載識別、分類與 DCS 參數；此處配置機型群組。
-local catalog = dofile(current_mod_path .. "/Cockpit/Scripts/Stores/WeaponCatalog.lua").load(current_mod_path)
-WPN_AAM_Light = wpnGroup(catalog.groups.aam_light)
-WPN_AAM_Med = wpnGroup(catalog.groups.aam_medium)
-WPN_AG_LIGHT = wpnGroup(catalog.groups.ground_light)
-WPN_AG_HEAVY = wpnGroup(catalog.groups.ground_heavy)
-WPN_POD_Targeting = wpnGroup(catalog.groups.targeting_pod)
-WPN_POD_Misc = wpnGroup(catalog.groups.misc_pod)
-WPN_TANK_Standard = wpnGroup(catalog.groups.tank)
+-- BEGIN GENERATED WEAPON GROUPS
+-- 由共用 JSON 產生機型註冊的武器群組。
+WPN_AAM_Light = wpnGroup({
+    _isAAM = true,
+    {
+        ["CLSID"] = "{AIM-9L}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{AIM-9P3}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{AIM-9P5}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{AIM-9B}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{AIM-9E}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{AIM-9J}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{9BFD8C90-F7AE-4e90-833B-BFD0CED0E536}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{AIM-9JULI}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{Rb_24}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{Rb_24J}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "{Rb_74}",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "CATM-9M",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+    {
+        ["CLSID"] = "TC-1",
+        ["diameter"] = 127,
+        ["Cx_gain"] = 0.796,
+    },
+})
+
+WPN_AAM_Med = wpnGroup({
+    _isAAM = true,
+    {
+        ["CLSID"] = "{AIM-7E}",
+        ["diameter"] = 200,
+        ["Cx_gain"] = 0.49,
+    },
+    {
+        ["CLSID"] = "{AIM-7E-2}",
+        ["diameter"] = 200,
+        ["Cx_gain"] = 0.49,
+    },
+    {
+        ["CLSID"] = "{AIM-7F}",
+        ["diameter"] = 200,
+        ["Cx_gain"] = 0.49,
+    },
+    {
+        ["CLSID"] = "{8D399DDA-FF81-4F14-904D-099B34FE7918}",
+        ["diameter"] = 200,
+        ["Cx_gain"] = 0.49,
+    },
+    {
+        ["CLSID"] = "{AIM-7H}",
+        ["diameter"] = 200,
+        ["Cx_gain"] = 0.49,
+    },
+    {
+        ["CLSID"] = "{AIM-7P}",
+        ["diameter"] = 200,
+        ["Cx_gain"] = 0.49,
+    },
+    {
+        ["CLSID"] = "{C8E06185-7CD6-4C90-959F-044679E90751}",
+        ["diameter"] = 178,
+        ["extra"] = {
+            1,
+            9,
+        },
+        ["Cx_gain"] = 0.328,
+    },
+    {
+        ["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+        ["diameter"] = 178,
+        ["extra"] = {
+            1,
+            9,
+        },
+        ["Cx_gain"] = 0.328,
+    },
+    {
+        ["CLSID"] = "TC-2",
+        ["diameter"] = 190,
+        ["extra"] = {
+            1,
+            9,
+        },
+        ["Cx_gain"] = 0.328,
+    },
+    {
+        ["CLSID"] = "TC-2C",
+        ["diameter"] = 190,
+        ["extra"] = {
+            1,
+            9,
+        },
+        ["Cx_gain"] = 0.328,
+    },
+    {
+        ["CLSID"] = "TC-2A",
+        ["diameter"] = 190,
+        ["extra"] = {
+            1,
+            9,
+        },
+        ["Cx_gain"] = 0.328,
+    },
+})
+
+WPN_AG_LIGHT = wpnGroup({
+    {
+        ["CLSID"] = "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}",
+        ["Cx_gain"] = 1.563,
+    },
+    {
+        ["CLSID"] = "{Mk82SNAKEYE}",
+        ["Cx_gain"] = 1.882,
+    },
+    {
+        ["CLSID"] = "{ADD3FAE1-EBF6-4EF9-8EFC-B36B5DDF1E6B}",
+        ["Cx_gain"] = 1.871,
+    },
+    {
+        ["CLSID"] = "{BDU-50LD}",
+        ["Cx_gain"] = 1.388,
+    },
+    {
+        ["CLSID"] = "{BDU_45}",
+        ["Cx_gain"] = 0.944,
+    },
+    {
+        ["CLSID"] = "{BDU_45B}",
+        ["Cx_gain"] = 0.566,
+    },
+})
+
+WPN_AG_HEAVY = wpnGroup({
+    {
+        ["CLSID"] = "{BRU33_2X_MK-82}",
+        ["Cx_gain_empty"] = 0.335,
+        ["Cx_gain_item"] = 1.653,
+    },
+    {
+        ["CLSID"] = "{BRU33_2X_MK-82_Snakeye}",
+        ["Cx_gain_empty"] = 0.328,
+        ["Cx_gain_item"] = 2.128,
+    },
+    {
+        ["CLSID"] = "{BRU33_2X_ROCKEYE}",
+        ["Cx_gain_empty"] = 0.341,
+        ["Cx_gain_item"] = 1.496,
+    },
+    {
+        ["CLSID"] = "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}",
+        ["Cx_gain"] = 1.26,
+    },
+    {
+        ["CLSID"] = "HF-3",
+    },
+})
+
+WPN_POD_Targeting = wpnGroup({
+})
+
+WPN_POD_Misc = wpnGroup({
+    {
+        ["CLSID"] = "{AIS_ASQ_T50}",
+        ["deny"] = {
+            4,
+        },
+        ["attach_point_position"] = {
+            0.25,
+            0,
+            0,
+        },
+        ["arg_value"] = 1,
+        ["diameter"] = 127,
+    },
+    {
+        ["CLSID"] = "{A4BCC903-06C8-47bb-9937-A30FEDB4E743}",
+        ["diameter"] = 66,
+        ["arg_value"] = 1,
+        ["deny"] = {
+            4,
+        },
+    },
+    {
+        ["CLSID"] = "{A4BCC903-06C8-47bb-9937-A30FEDB4E742}",
+        ["diameter"] = 66,
+        ["arg_value"] = 1,
+        ["deny"] = {
+            4,
+        },
+    },
+    {
+        ["CLSID"] = "{A4BCC903-06C8-47bb-9937-A30FEDB4E746}",
+        ["diameter"] = 66,
+        ["arg_value"] = 1,
+        ["deny"] = {
+            4,
+        },
+    },
+    {
+        ["CLSID"] = "{A4BCC903-06C8-47bb-9937-A30FEDB4E741}",
+        ["diameter"] = 66,
+        ["arg_value"] = 1,
+        ["deny"] = {
+            4,
+        },
+    },
+    {
+        ["CLSID"] = "{A4BCC903-06C8-47bb-9937-A30FEDB4E744}",
+        ["diameter"] = 66,
+        ["arg_value"] = 1,
+        ["deny"] = {
+            4,
+        },
+    },
+    {
+        ["CLSID"] = "{A4BCC903-06C8-47bb-9937-A30FEDB4E745}",
+        ["diameter"] = 66,
+        ["arg_value"] = 1,
+        ["deny"] = {
+            4,
+        },
+    },
+})
+
+WPN_TANK_Standard = wpnGroup({
+    {
+        ["CLSID"] = "{EFEC8201-B922-11d7-9897-000476191836}",
+    },
+    {
+        ["CLSID"] = "{0395076D-2F77-4420-9D33-087A4398130B}",
+    },
+})
+
+-- END GENERATED WEAPON GROUPS
 
 -- ---------- 掛載點配置 ----------
 

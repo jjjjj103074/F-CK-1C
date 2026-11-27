@@ -25,7 +25,9 @@ local function close_file()
 end
 local function open_file()
     assert(io and io.open and lfs and lfs.writedir and lfs.mkdir, "Cockpit file APIs unavailable")
-    local directory = lfs.writedir() .. "Logs/FCK1C-MC-TEST"
+    local module_log = lfs.writedir() .. "Mods/aircraft/F-CK-1C/log"
+    lfs.mkdir(module_log)
+    local directory = module_log .. "/flight-tests"
     lfs.mkdir(directory)
     local version = (build.runtime_source_commit or build.source_commit):sub(1, 12)
     local stamp = os.date("%Y%m%d-%H%M%S")
