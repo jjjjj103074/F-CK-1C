@@ -79,6 +79,7 @@
     <ClInclude Include="DcsBridge\Internal\Aircraft\DcsAircraftInterface.h" />
     <ClInclude Include="DcsBridge\Internal\Countermeasures\CountermeasureExecutor.h" />
     <ClInclude Include="DcsBridge\Internal\Aircraft\DcsAircraftBackend.h" />
+    <ClInclude Include="DcsBridge\Internal\Aircraft\AircraftBuildProfiles.h" />
     <ClInclude Include="DcsBridge\Internal\GunAmmunition\GunAmmunitionTypes.h" />
     <ClInclude Include="Common\Actuator.h" />
     <ClInclude Include="Common\Clamp.h" />

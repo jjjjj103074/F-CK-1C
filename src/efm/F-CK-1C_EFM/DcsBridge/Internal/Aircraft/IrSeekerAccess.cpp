@@ -1,4 +1,5 @@
 #include "IrSeekerAccess.h"
+#include "AircraftBuildProfiles.h"
 #include "../../../DcsIds/CockpitDevices.h"
 #include <cmath>
 #include <limits>
@@ -14,31 +15,15 @@ bool IrSeekerAccess::resolve(const DcsAircraftBackend& backend, const AircraftMo
 		return status_ == AircraftAccessStatus::Available;
 	resolved_ = true;
 	status_ = AircraftAccessStatus::UnsupportedBuild;
-	if (!module.valid || module.timestamp != 0x6adbad09 || module.image_size != 0x68e000 || !backend.symbol ||
-	    !backend.fingerprint || !backend.executable)
+	const auto* profile = aircraft_build_profile(module.timestamp, module.image_size);
+	if (!module.valid || !profile || !backend.symbol || !backend.fingerprint || !backend.executable)
 		return false;
-	struct Check
+	for (std::size_t index = 0; index < kIrSeekerFunctions.size(); ++index)
 	{
-		const char* name;
-		std::size_t size;
-		std::uint64_t hash;
-	};
-	// 函式指紋對應目前驗證的 CockpitBase.dll 物件布局與控制方式。
-	constexpr Check checks[] = {
-		{ "?get_wide_device@ccCockpitContext@cockpit@@QEAAPEAVavDevice@2@I@Z", 32, 0x81cc11171e1ba916ULL },
-		{ "?update_ir_seeker@avSimpleWeaponSystem@cockpit@@AEAAXXZ", 32, 0x98f33ac9cf396e65ULL },
-		{ "??0avSidewinderSeeker@cockpit@@QEAA@XZ", 64, 0x5d5008a754d68227ULL },
-		{ "?setConsentToTrack@avSidewinderSeeker@cockpit@@QEAAXM@Z", 26, 0x0df74a7ec2826fc8ULL },
-		{ "?getStatusID@avIRSensor@cockpit@@QEBAIXZ", 7, 0xec4c08ae667a8ea4ULL },
-		{ "?cage@avSidewinderSeeker@cockpit@@MEAAXXZ", 5, 0x7503bb3a0ff66589ULL },
-		{ "?uncage@avIRSensor@cockpit@@IEAAXXZ", 34, 0xc117d6212af01575ULL },
-		{ "?slaveToDirection@avSidewinderSeeker@cockpit@@UEAAXAEBVVec3d@osg@@@Z", 48, 0x447f2c8a1a851472ULL },
-		{ "?toSlave@avSidewinderSeeker@cockpit@@IEAAXXZ", 32, 0x5a587ffbf47695b9ULL }
-	};
-	for (const auto& check : checks)
-	{
-		const auto function = backend.symbol(module.base, check.name);
-		if (!function || !backend.executable(function) || backend.fingerprint(function, check.size) != check.hash)
+		const auto& check = kIrSeekerFunctions[index];
+		const auto function = backend.symbol(module.base, check.symbol);
+		if (!function || !backend.executable(function) ||
+		    backend.fingerprint(function, check.byte_count) != profile->infrared_hashes[index])
 			return false;
 	}
 	const auto symbol = [&](const char* name)

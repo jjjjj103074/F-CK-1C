@@ -286,6 +286,7 @@ Analog 的按下／放開間隔為 42 ms。Digital 熱焰彈要求落在模型�
 | `read_gun_ammunition()` | 機砲總彈量、來源狀態、版本資訊與例外代碼 |
 | `read_countermeasures()` | 熱焰彈、干擾絲庫存及來源狀態 |
 | `dispense_countermeasure(kind)` | 單發施放與前後庫存；`returned` 表示原生呼叫返回 |
+| `control_ir_seeker(uncaged, azimuth, elevation, reset_selection)` | 設定原生 AIM-9 自主追蹤許可及指向，讀回原生模式與許可狀態 |
 | `reset_flight()` | 清除本次飛行的解析狀態 |
 
 目前機砲資料來源已接入。反制介面採用 2026-11-15 的 DCS 直接施放實測路徑：
@@ -294,7 +295,8 @@ Analog 的按下／放開間隔為 42 ms。Digital 熱焰彈要求落在模型�
 16 次要求／16 次呼叫：熱焰彈 90→80、干擾絲 90→84，每次只扣對應的一發，例外碼為零。
 共用介面的重構行為以替代執行環境的原生測試及 Windows CI 驗證。
 
-機砲與反制各自核對其功能所需的版本／程式指紋。模組識別改變時重新解析，
+機砲、反制與 IR 尋標器共用 `AircraftBuildProfiles.h` 的建置資料，各自核對其功能所需的程式指紋。
+新版核對方法、識別資料及物件布局見 [原生介面相容性核對](DCS_NATIVE_COMPATIBILITY.zh-TW.md)。模組識別改變時重新解析，
 施放前再次比對玩家物件及方法。`DcsAircraftBackend` 提供平台與測試替換的接點。
 
 System 經由 `FrameInput`、`AircraftData`、`SystemPipeline` 與 `FrameOutput`
@@ -311,8 +313,8 @@ System 經由 `FrameInput`、`AircraftData`、`SystemPipeline` 與 `FrameOutput`
 HMCS VR在同一子頁先建立裁切遮罩，再建立以遮罩為父節點的符號。
 子頁測試分別核對父節點可見性、元素唯一性與遮罩／瞄準線保留情況。
 
-安裝工具會備份並移除歷史`FCK1C_AMMO_PROBE`與`FCK1C_STORES_EXPORT`載入區塊，並封存已識別的彈量探針檔案。
-其他Export內容與自訂檔案按原始位元組保存。未識別原生命令2659維持原有診斷，另以[issue #37](https://github.com/jjjjj103074/F-CK-1C/issues/37)追蹤。
+安裝工具只將模組內容安裝至 `Mods/aircraft/F-CK-1C`；飛測紀錄與回收工具分別放在模組內的 `log` 與 `FlightTest`。
+既有遊戲檔案、`Export.lua`、`Hooks` 與歷史探針按原樣保留。未識別原生命令 2659 另以 [issue #37](https://github.com/jjjjj103074/F-CK-1C/issues/37) 追蹤。
 
 ## 反制程序的正式 C++ 路徑
 

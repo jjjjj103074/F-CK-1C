@@ -30,7 +30,7 @@ struct IrFixture
 		symbols[name] = address;
 		hashes[address] = hash;
 	}
-	IrFixture()
+	explicit IrFixture(bool current_build = false)
 	{
 		add("?get_wide_device@ccCockpitContext@cockpit@@QEAAPEAVavDevice@2@I@Z", 0x81cc11171e1ba916ULL);
 		add("?update_ir_seeker@avSimpleWeaponSystem@cockpit@@AEAAXXZ", 0x98f33ac9cf396e65ULL);
@@ -45,6 +45,16 @@ struct IrFixture
 		                          "??_7avSimpleWeaponSystem@cockpit@@6BavLuaDevice@1@@",
 		                          "??_7avSidewinderSeeker@cockpit@@6BavPlatform@1@@" })
 			add(name);
+		if (current_build)
+		{
+			module.timestamp = 0x6afec04f;
+			hashes[symbols["?get_wide_device@ccCockpitContext@cockpit@@QEAAPEAVavDevice@2@I@Z"]] =
+			    0x41d2d25f18107729ULL;
+			hashes[symbols["??0avSidewinderSeeker@cockpit@@QEAA@XZ"]] = 0x1a2079ded3a1ce88ULL;
+			hashes[symbols["?slaveToDirection@avSidewinderSeeker@cockpit@@UEAAXAEBVVec3d@osg@@@Z"]] =
+			    0x181082bbc1acedb8ULL;
+			hashes[symbols["?toSlave@avSidewinderSeeker@cockpit@@IEAAXXZ"]] = 0x6b730569969a099eULL;
+		}
 		put(symbols["?contexts_ptr@ccCockpitContext@cockpit@@0PAPEAV12@A"], std::uintptr_t{ 0x2000 });
 		put(0x3000, symbols["??_7avSimpleWeaponSystem@cockpit@@6BavLuaDevice@1@@"]);
 		put(0x3158, std::uintptr_t{ 0x4000 });
@@ -118,6 +128,23 @@ struct IrFixture
 }
 void run_ir_seeker_access_tests(Tests::Context& c)
 {
+	{
+		IrFixture f(true);
+		DcsAircraftInterface aircraft(f.backend());
+		const auto caged = aircraft.control_ir_seeker(false, 0.2, 0.1, true);
+		TEST_EXPECT(c, caged.available() && !caged.self_track_enabled && caged.native_mode == 5);
+		const auto self_track = aircraft.control_ir_seeker(true, 0.2, 0.1, false);
+		TEST_EXPECT(c, self_track.available() && self_track.self_track_enabled);
+		TEST_EXPECT_NEAR(c, f.direction[2], -std::cos(0.1) * std::sin(0.2), 1e-12);
+	}
+	{
+		IrFixture f(true);
+		f.hashes[f.symbols["?get_wide_device@ccCockpitContext@cockpit@@QEAAPEAVavDevice@2@I@Z"]] ^= 1;
+		DcsAircraftInterface aircraft(f.backend());
+		TEST_EXPECT(c, aircraft.control_ir_seeker(false, 0, 0, false).status == AircraftAccessStatus::UnsupportedBuild);
+		TEST_EXPECT(c, f.calls == 0);
+	}
+
 	{
 		IrFixture f;
 		DcsAircraftInterface aircraft(f.backend());

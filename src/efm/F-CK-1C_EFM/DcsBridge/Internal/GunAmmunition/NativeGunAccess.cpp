@@ -13,10 +13,8 @@ namespace DcsBridge::Internal
 {
 const NativeGunProfile* native_gun_profile(std::uint32_t timestamp, std::uint32_t image_size) noexcept
 {
-	for (const auto& profile : kNativeGunProfiles)
-		if (profile.timestamp == timestamp && profile.image_size == image_size)
-			return &profile;
-	return nullptr;
+	const auto* profile = aircraft_build_profile(timestamp, image_size);
+	return profile ? &profile->gun : nullptr;
 }
 
 const char* native_gun_status_name(NativeGunStatus status) noexcept

@@ -1,4 +1,5 @@
 #include "DcsAircraftInterface.h"
+#include "AircraftBuildProfiles.h"
 #include "DcsAircraftBackend.h"
 #include "IrSeekerAccess.h"
 #include "../GunAmmunition/NativeGunAccess.h"
@@ -103,31 +104,20 @@ struct DcsAircraftInterface::Implementation
 			return cm_status == AircraftAccessStatus::Available;
 		cm_resolved = true;
 		cm_status = AircraftAccessStatus::UnsupportedBuild;
-		if (!module.valid || module.timestamp != 0x6adbad09 || module.image_size != 0x68e000)
+		const auto* profile = aircraft_build_profile(module.timestamp, module.image_size);
+		if (!module.valid || !profile)
 			return false;
-		struct Expected
+		for (std::size_t index = 0; index < kCountermeasureFunctions.size(); ++index)
 		{
-			const char* name;
-			std::size_t size;
-			std::uint64_t hash;
-		};
-		constexpr Expected expected[] = {
-			{ kPayloadSymbol, 29, 0xe4153ccf2d04e7d6ULL },
-			{ "?l_drop_chaff@avSimpleWeaponSystem@cockpit@@CAHPEAUlua_State@@@Z", 202, 0x46228e87c2536c9fULL },
-			{ "?l_drop_flare@avSimpleWeaponSystem@cockpit@@CAHPEAUlua_State@@@Z", 202, 0x18198bf9ab4a388aULL },
-			{ "?l_get_chaff_count@avSimpleWeaponSystem@cockpit@@CAHPEAUlua_State@@@Z", 199, 0x872314f529cfb306ULL },
-			{ "?l_get_flare_count@avSimpleWeaponSystem@cockpit@@CAHPEAUlua_State@@@Z", 199, 0x0f4663cb30bfdfa3ULL }
-		};
-		for (const auto& entry : expected)
-		{
-			const auto function = symbol(entry.name);
+			const auto& entry = kCountermeasureFunctions[index];
+			const auto function = symbol(entry.symbol);
 			if (!function)
 			{
 				cm_status = AircraftAccessStatus::MissingInterface;
 				return false;
 			}
 			if (!executable(function) || !backend.fingerprint ||
-			    backend.fingerprint(function, entry.size) != entry.hash)
+			    backend.fingerprint(function, entry.byte_count) != profile->countermeasure_hashes[index])
 				return false;
 		}
 		contexts = symbol(kContextsSymbol);

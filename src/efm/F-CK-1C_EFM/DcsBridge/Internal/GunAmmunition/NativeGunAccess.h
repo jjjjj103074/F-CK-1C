@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GunAmmunitionTypes.h"
+#include "../Aircraft/AircraftBuildProfiles.h"
 #include <cstddef>
 #include <cstdint>
 
@@ -14,18 +15,6 @@ struct NativeGunHost
 	std::uint64_t fingerprint = 0;
 	std::uintptr_t payload_function = 0;
 };
-
-struct NativeGunProfile
-{
-	std::uint32_t timestamp;
-	std::uint32_t image_size;
-	std::uint32_t fingerprint_rva;
-	std::uint64_t fingerprint;
-};
-
-/// @brief 以公開互通研究記錄的 PE 與程式指紋選擇物件配置。
-inline constexpr NativeGunProfile kNativeGunProfiles[] = { { 0x6adbad09, 0x68e000, 0x2fe650, 0xdbd7d715791c239fULL } };
-inline constexpr std::size_t kNativeGunFingerprintSize = 49;
 
 const NativeGunProfile* native_gun_profile(std::uint32_t timestamp, std::uint32_t image_size) noexcept;
 

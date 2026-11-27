@@ -10,9 +10,9 @@ using namespace DcsBridge::Internal;
 
 struct Fixture
 {
-	NativeGunHost host{ kNativeGunProfiles[0].timestamp,
-		                kNativeGunProfiles[0].image_size,
-		                kNativeGunProfiles[0].fingerprint,
+	NativeGunHost host{ kAircraftBuildProfiles[0].gun.timestamp,
+		                kAircraftBuildProfiles[0].gun.image_size,
+		                kAircraftBuildProfiles[0].gun.fingerprint,
 		                501 };
 	std::map<std::uintptr_t, std::uintptr_t> memory{ { 0x1000, 0x4000 }, { 0x4000 + 560, 502 }, { 0x2000 + 8, 0x3000 },
 		                                             { 0x3000, 0x5000 }, { 0x5000 + 88, 503 },  { 0x2100 + 8, 0x3100 },

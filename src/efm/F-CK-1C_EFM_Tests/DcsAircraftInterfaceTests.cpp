@@ -33,6 +33,36 @@ void test_shared_access(Tests::Context& t)
 	TEST_EXPECT(t, stock.available() && stock.flare == 0 && stock.chaff == 89);
 	TEST_EXPECT(t, f.fingerprints == 11);
 }
+void test_current_build_access(Tests::Context& t)
+{
+	Fixture f;
+	f.use_current_build();
+	DcsAircraftInterface aircraft(f.backend());
+	const auto gun = aircraft.read_gun_ammunition();
+	TEST_EXPECT(t, gun.ammunition.status == NativeGunStatus::Available && gun.ammunition.count == 523);
+	TEST_EXPECT(t, gun.build.gun_profile_matched);
+	const auto stock = aircraft.read_countermeasures();
+	TEST_EXPECT(t, stock.available() && stock.flare == 90 && stock.chaff == 90);
+	const auto flare = aircraft.dispense_countermeasure(AircraftCountermeasure::Flare);
+	TEST_EXPECT(t, flare.returned && flare.after.flare == 89 && flare.after.chaff == 90);
+	const auto chaff = aircraft.dispense_countermeasure(AircraftCountermeasure::Chaff);
+	TEST_EXPECT(t, chaff.returned && chaff.after.flare == 89 && chaff.after.chaff == 89);
+
+	Fixture wrong;
+	wrong.use_current_build();
+	wrong.hashes[0x5200] ^= 1;
+	DcsAircraftInterface invalid(wrong.backend());
+	TEST_EXPECT(t, invalid.read_countermeasures().status == AircraftAccessStatus::UnsupportedBuild);
+	TEST_EXPECT(t, wrong.calls == 0);
+	TEST_EXPECT(t, invalid.read_gun_ammunition().ammunition.status == NativeGunStatus::Available);
+
+	Fixture changed;
+	DcsAircraftInterface reloaded(changed.backend());
+	TEST_EXPECT(t, reloaded.read_countermeasures().available());
+	changed.use_current_build();
+	TEST_EXPECT(t, reloaded.read_countermeasures().available());
+	TEST_EXPECT(t, reloaded.read_gun_ammunition().build.gun_profile_matched);
+}
 void test_capability_checks(Tests::Context& t)
 {
 	Fixture f;
@@ -138,6 +168,7 @@ void test_call_results(Tests::Context& t)
 void run_dcs_aircraft_interface_tests(Tests::Context& context)
 {
 	test_shared_access(context);
+	test_current_build_access(context);
 	test_capability_checks(context);
 	test_aircraft_lifecycle(context);
 	test_call_results(context);

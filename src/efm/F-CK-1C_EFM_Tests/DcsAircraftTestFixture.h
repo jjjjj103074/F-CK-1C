@@ -30,6 +30,16 @@ struct Fixture
 	int flare = 90, chaff = 90;
 	unsigned gun = 523, calls = 0, drops = 0, fingerprints = 0, human_reads = 0;
 	bool mismatch = false, fail_count = false, fail_drop = false, change_human = false, non_executable = false;
+	void use_current_build()
+	{
+		module.timestamp = 0x6afec04f;
+		hashes[0x5000] = 0x46c1a7daa0c3383fULL;
+		hashes[0x5100] = 0x5166f4e210af3452ULL;
+		hashes[0x5200] = 0x83981d0b957ef8abULL;
+		hashes[0x5300] = 0x2e3707e3ac6b86c4ULL;
+		hashes[0x5400] = 0x45d000871e765ccdULL;
+		hashes[0x102fe400] = 0x51418c51962d3af8ULL;
+	}
 	DcsAircraftBackend backend()
 	{
 		DcsAircraftBackend b;

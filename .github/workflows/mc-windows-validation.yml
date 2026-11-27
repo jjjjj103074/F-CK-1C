@@ -192,6 +192,20 @@ jobs:
           $module = 'dist/F-CK-1C-mc-' + $env:GITHUB_SHA.Substring(0, 8) + '.zip'
           python tools/mc-flight-test/package_test_bundle.py --module-zip $module --manifest "$env:RUNNER_TEMP/mc-artifact/manifest.json" --catalog src/efm/F-CK-1C_EFM/DcsIds/CommandIds.json --expected-source $env:GITHUB_SHA --output dist/flight-status-test --focus status
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Scan the flight status test download
+        shell: powershell
+        timeout-minutes: 6
+        run: |
+          $archive = Get-ChildItem dist/flight-status-test/F-CK-1C-*-flight-test-*.zip | Select-Object -First 1
+          ./tools/scan_release.ps1 -Path $archive.FullName -ReportDirectory dist/download-scan
+      - name: Upload download scan evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: mc-download-scan-${{ github.sha }}
+          path: dist/download-scan/*
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload the flight status test bundle
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
