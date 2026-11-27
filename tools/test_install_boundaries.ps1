@@ -52,6 +52,7 @@ try {
     $beforeModule = Get-Manifest $module
     if ((Run-Installer $source $saved) -eq 0) { throw 'Incomplete source package was installed.' }
     if ((Get-Manifest $module) -ne $beforeModule) { throw 'Incomplete package removed an existing installation.' }
+    $global:LASTEXITCODE = 0
     Write-Output 'Installer boundary fixtures passed: module-only writes, game directory preserved, incomplete source preserved.'
 }
 finally {
