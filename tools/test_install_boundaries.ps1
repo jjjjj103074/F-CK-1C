@@ -14,8 +14,8 @@ function Run-Installer([string]$Source, [string]$Target) {
     return $LASTEXITCODE
 }
 try {
-    $source = Join-Path $fixture 'source package'
-    $saved = Join-Path $fixture 'Saved Games with spaces'
+    $source = Join-Path $fixture 'source package & spaces'
+    $saved = Join-Path $fixture 'Saved Games & spaces'
     $module = Join-Path $saved 'Mods\aircraft\F-CK-1C'
     New-Item -ItemType Directory -Path $source -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../install.bat') -Destination $source

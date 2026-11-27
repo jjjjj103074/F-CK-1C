@@ -3,14 +3,14 @@ rem Simple installer: copies current mod folder to Saved Games\DCS\Mods\aircraft
 rem Usage: install.bat [SavedGamesRoot]
 setlocal
 
-set MOD_NAME=F-CK-1C
-set SRC=%~dp0
-if "%SRC:~-1%"=="\" set SRC=%SRC:~0,-1%
+set "MOD_NAME=F-CK-1C"
+set "SRC=%~dp0"
+if "%SRC:~-1%"=="\" set "SRC=%SRC:~0,-1%"
 
 if not "%~1"=="" (
-  set TARGET_ROOT=%~1
+  set "TARGET_ROOT=%~1"
 ) else (
-  set TARGET_ROOT=%USERPROFILE%\Saved Games\DCS
+  set "TARGET_ROOT=%USERPROFILE%\Saved Games\DCS"
 )
 
 for %%I in ("%SRC%") do set "SRC=%%~fI"
