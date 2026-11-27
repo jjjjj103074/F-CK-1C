@@ -22,7 +22,7 @@ class TestFlightBundle(unittest.TestCase):
             package.MODULE + 'entry.lua': b'unchanged runtime registration',
             package.MODULE + 'FM/Weapons/WeaponCatalog.json': b'{}',
             package.MODULE + 'Cockpit/Scripts/Stores/WeaponCatalog.lua': b'catalog registration',
-            package.MODULE + 'Cockpit/Scripts/ThirdParty/json/json.lua': b'json parser',
+            package.MODULE + 'Cockpit/Scripts/generated/WeaponCatalog.g.lua': b'generated weapon data',
         }
         self.archive = self.root / 'module.zip'
         self.manifest = self.root / 'manifest.json'
@@ -111,7 +111,7 @@ class TestFlightBundle(unittest.TestCase):
 
     def test_missing_shared_catalog_runtime_is_rejected(self):
         for name in ('FM/Weapons/WeaponCatalog.json', 'Cockpit/Scripts/Stores/WeaponCatalog.lua',
-                     'Cockpit/Scripts/ThirdParty/json/json.lua'):
+                     'Cockpit/Scripts/generated/WeaponCatalog.g.lua'):
             entries = dict(self.entries)
             del entries[package.MODULE + name]
             self.write_zip(entries)

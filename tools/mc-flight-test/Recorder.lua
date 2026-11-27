@@ -27,11 +27,12 @@ local function open_file()
     assert(io and io.open and lfs and lfs.writedir and lfs.mkdir, "Cockpit file APIs unavailable")
     local directory = lfs.writedir() .. "Logs/FCK1C-MC-TEST"
     lfs.mkdir(directory)
+    local version = (build.runtime_source_commit or build.source_commit):sub(1, 12)
     local stamp = os.date("%Y%m%d-%H%M%S")
     local index = 1
     local path
     repeat
-        path = string.format("%s/mc-%s-%03d.csv", directory, stamp, index)
+        path = string.format("%s/mc-%s-%s-%03d.csv", directory, version, stamp, index)
         local previous = io.open(path, "rb")
         if not previous then break end
         previous:close()

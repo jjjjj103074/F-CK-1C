@@ -27,7 +27,7 @@ function get_model_time() return time end
 log = { info = function(message) messages[#messages + 1] = message end }
 lfs = { writedir = function() return output .. '/' end, mkdir = function() return true end }
 function dofile(path)
-    if path:match('Build.lua$') then return { source_commit = string.rep('a',40), dll_sha256 = string.rep('b',64) } end
+    if path:match('Build.lua$') then return { source_commit = string.rep('a',40), runtime_source_commit = string.rep('c',40), dll_sha256 = string.rep('b',64) } end
     if path:match('Parameters.lua$') then return { 'CPP_MC_GENERATION', 'CPP_MC_AVAILABLE', 'OBS_WEAPON_STATION_01', 'UNAVAILABLE_HANDLE' } end
     return original_dofile(path)
 end
@@ -35,6 +35,7 @@ original_dofile(root .. '/Recorder.lua')
 post_initialize()
 assert(#messages == 1 and messages[1]:match('recording'))
 local first = assert(messages[1]:match('recording (.+)$'))
+assert(first:match('/mc%-cccccccccccc%-'), 'Recorder filename must identify the runtime bundle')
 -- 依裝置生命週期排程取樣，關閉狀態只留下初始化表頭。
 if need_to_be_closed == false then
     update(); time = 2; update(); mutate_generation = true; time = 3; update(); mutate_generation = false

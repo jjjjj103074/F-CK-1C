@@ -61,7 +61,9 @@ AIM-9 B/E/J/JULI/L/M/P/P3/P5/X 暫共用此操作程序；原廠 L/M 文件是�
 ### 共用清單與責任
 
 `FM/Weapons/WeaponCatalog.json` 保存 46 種既有掛載的身分、分類、選擇群組、程序與 DCS 掛載參數。
-Lua 在機型註冊時使用 `loadouts` 產生可掛清單；C++ 的 `WeaponCatalogData` 使用相同檔案解析 CLSID／別名。
+`python tools/generate_weapon_catalog.py` 從 JSON 產生 `Cockpit/Scripts/generated/WeaponCatalog.g.lua`。
+Lua 在機型註冊時載入此資料表，以 `loadouts` 產生可掛清單；C++ 的 `WeaponCatalogData` 直接讀取 JSON 解析 CLSID／別名。
+CI 以 `--check` 核對產生檔與 JSON 同步，並在 `io`、`select` 缺省的註冊環境執行回歸測試。
 `<CLEAN>` 是掛點配置指令，另由掛點建構器加入。
 
 - `category`／`role`／`guidance`：掛載種類、任務用途與導引分類。

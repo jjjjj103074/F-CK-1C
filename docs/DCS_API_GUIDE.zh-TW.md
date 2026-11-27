@@ -413,3 +413,18 @@ MC 沿用雷達視線；IrSeekerExecutor 在寫入原生 IR 要求時反轉 az�
 操作依據：Lockheed Martin 16PR14341，1998 MLU M1，印刷頁 137–139（AIM-9L/M）與
 16PR15269，2000 MLU M2，印刷頁 52–53（選站與視線）。本機將所有 AIM-9 合為同一選擇群組；
 型號及指向能力仍分開保存。MC 使用正常投放要求，最終離架遵循原生條件。
+
+## 機型註冊的 Lua 環境
+
+2026-11-27，DCS 2.9.32.30490 的本模組註冊日誌顯示：`io` 與 `select` 皆為 `nil`。
+機型註冊與座艙裝置各有自己的 Lua 環境，應分別驗證可用介面。
+
+共用武器資料以 `FM/Weapons/WeaponCatalog.json` 維護，執行
+`python tools/generate_weapon_catalog.py` 產生 `Cockpit/Scripts/generated/WeaponCatalog.g.lua`，
+再由機型註冊使用 `dofile` 載入 Lua 資料表。C++ 直接讀取原始 JSON。
+`python tools/generate_weapon_catalog.py --check` 用於核對資料同步；
+`tools/test_weapon_catalog.lua` 會重放上述註冊環境並建立實際掛載清單。
+
+飛行測試紀錄檔名包含測試包的 runtime commit 前綴；收集工具預設收集該版本的全部任務紀錄，
+保留原處的歷史檔案。需要歷史紀錄時可使用 `COLLECT-RESULTS.bat -AllRecordings`。
+`recording-health.json` 以 `sample_present` 表示檔案是否已有資料列，並記錄檔案大小與讀取狀態。

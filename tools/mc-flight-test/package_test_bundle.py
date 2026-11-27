@@ -99,7 +99,7 @@ indicators[#indicators + 1] = { "ccControlsIndicatorBase", LockOn_Options.script
             if MODULE + 'Cockpit/Scripts/FlightStatus/' + filename not in original:
                 raise ValueError('Missing flight status runtime: ' + filename)
     for required in ('FM/Weapons/WeaponCatalog.json', 'Cockpit/Scripts/Stores/WeaponCatalog.lua',
-                     'Cockpit/Scripts/ThirdParty/json/json.lua'):
+                     'Cockpit/Scripts/generated/WeaponCatalog.g.lua'):
         if MODULE + required not in original:
             raise ValueError('Missing shared weapon catalog runtime: ' + required)
     entries = dict(original)

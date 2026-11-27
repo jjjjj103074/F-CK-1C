@@ -1,10 +1,25 @@
 -- 共用清單與實際機型註冊共用同一組 CLSID 及掛載參數。
 return function(expect)
-    local json = dofile("Cockpit/Scripts/ThirdParty/json/json.lua")
-    local file = assert(io.open("FM/Weapons/WeaponCatalog.json", "rb"))
-    local data = json.decode(file:read("*a")); file:close()
+    local data = dofile("Cockpit/Scripts/generated/WeaponCatalog.g.lua")
+    local function equal(left, right)
+        if type(left) ~= type(right) then return false end
+        if type(left) ~= "table" then return left == right end
+        for key, value in pairs(left) do if not equal(value, right[key]) then return false end end
+        for key in pairs(right) do if left[key] == nil then return false end end
+        return true
+    end
     local identities, models, registered = {}, {}, {}
-    local groups = dofile("Cockpit/Scripts/Stores/WeaponCatalog.lua").load(".").groups
+    -- 重放機型註冊環境，載入群組時只提供 DCS 的標準表格與載入介面。
+    local sandbox = {}
+    for key, value in pairs(_G) do sandbox[key] = value end
+    sandbox.io, sandbox.select = nil, nil
+    local host_loadfile = loadfile
+    sandbox.dofile = function(path)
+        local chunk = assert(host_loadfile(path))
+        setfenv(chunk, sandbox)
+        return chunk()
+    end
+    local groups = sandbox.dofile("Cockpit/Scripts/Stores/WeaponCatalog.lua").load(".").groups
     for _, store in ipairs(data.stores) do
         expect(not models[store.id], "canonical weapon models are unique")
         models[store.id] = true
@@ -20,14 +35,14 @@ return function(expect)
             end
             expect(match ~= nil, "Lua registration includes each catalog loadout")
             for key, value in pairs(loadout.parameters) do
-                expect(json.encode(match[key]) == json.encode(value), "native loadout parameters retain their catalog values")
+                expect(equal(match[key], value), "native loadout parameters retain their catalog values")
             end
         end
     end
     local aircraft_file = assert(io.open("F-CK-1C.lua", "rb"))
     local source = aircraft_file:read("*a"); aircraft_file:close()
     local prefix = source:sub(1, assert(source:find("    %-%- Identification%.")) - 1)
-    local env = setmetatable({ current_mod_path = "." }, { __index = _G })
+    local env = setmetatable({ current_mod_path = "." }, { __index = sandbox })
     local chunk = assert(loadstring(prefix)); setfenv(chunk, env); chunk()
     for _, station in ipairs({ env.Tip, env.Outer, env.Inner, env.CenterlineM, env.CenterlineFB }) do
         local seen = {}

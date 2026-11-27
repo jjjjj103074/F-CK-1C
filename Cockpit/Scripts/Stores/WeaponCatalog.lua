@@ -2,12 +2,7 @@
 local Catalog = {}
 
 function Catalog.load(module_root)
-    local json = dofile(module_root .. "/Cockpit/Scripts/ThirdParty/json/json.lua")
-    local filename = module_root .. "/FM/Weapons/WeaponCatalog.json"
-    local file = assert(io.open(filename, "rb"), "Weapon catalog cannot be opened: " .. filename)
-    local source = file:read("*a")
-    file:close()
-    local data = json.decode(source)
+    local data = dofile(module_root .. "/Cockpit/Scripts/generated/WeaponCatalog.g.lua")
     assert(data.schema_version == 1, "Unsupported weapon catalog schema")
     local groups, identities, models = {}, {}, {}
     for _, group in ipairs(data.groups) do
