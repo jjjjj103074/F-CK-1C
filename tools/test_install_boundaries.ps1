@@ -38,6 +38,10 @@ try {
     foreach ($name in @('entry.lua', 'F-CK-1C.lua', 'bin\fixture.txt', 'FlightTest\fixture.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $module $name))) { throw "Missing installed runtime: $name" }
     }
+    Copy-Item -LiteralPath (Join-Path $source 'install.bat') -Destination $module
+    $beforeSelf = Get-Manifest $module
+    if ((Run-Installer $module ($saved + '\.')) -ne 0) { throw 'Already installed module was not recognized.' }
+    if ((Get-Manifest $module) -ne $beforeSelf) { throw 'Running from the installed module changed its files.' }
     $game = Join-Path $fixture 'DCS game directory'
     New-Item -ItemType Directory -Path (Join-Path $game 'bin') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $game 'bin\DCS.exe') -Value 'game sentinel'

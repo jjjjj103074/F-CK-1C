@@ -13,7 +13,9 @@ if not "%~1"=="" (
   set TARGET_ROOT=%USERPROFILE%\Saved Games\DCS
 )
 
-set DST=%TARGET_ROOT%\Mods\aircraft\%MOD_NAME%
+for %%I in ("%SRC%") do set "SRC=%%~fI"
+for %%I in ("%TARGET_ROOT%") do set "TARGET_ROOT=%%~fI"
+set "DST=%TARGET_ROOT%\Mods\aircraft\%MOD_NAME%"
 
 rem 核對來源及目的地，將更新範圍限定於本模組。
 if /I "%SRC%"=="%DST%" (
