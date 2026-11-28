@@ -1,6 +1,7 @@
 #include "IrSeekerExecutor.h"
 #include "../../../DcsIds/CockpitParams.g.h"
 #include <cstdio>
+#include <cstring>
 #include <utility>
 namespace DcsBridge::Internal
 {
@@ -46,6 +47,7 @@ void IrSeekerExecutor::execute(const Core::StoresSnapshot& stores, double time_s
 	const bool reset =
 	    !previous_.active || control.station != previous_.station || control.load_revision != previous_.load_revision;
 	const auto old_status = reading_.status;
+	const auto old_stage = reading_.stage;
 	// 原生 IR 要求角以 -Z 為正，雷達與 MC 視線以 +Z 為正。
 	const double native_azimuth = -control.azimuth_rad;
 	reading_ = aircraft_.control_ir_seeker(control.uncaged, native_azimuth, control.elevation_rad, reset);
@@ -57,19 +59,20 @@ void IrSeekerExecutor::execute(const Core::StoresSnapshot& stores, double time_s
 		(void)el.write_number(api_, control.elevation_rad);
 	}
 	if ((reset || control.uncaged != previous_.uncaged || control.radar_slaved != previous_.radar_slaved ||
-	     old_status != reading_.status) &&
+	     old_status != reading_.status || std::strcmp(old_stage, reading_.stage) != 0) &&
 	    report_)
 	{
 		char message[384]{};
 		std::snprintf(
 		    message,
 		    sizeof(message),
-		    "ir_seeker_control revision=%llu station=%d requested_uncaged=%u radar_slaved=%u status=%d native_mode=%d consent=%u exception=0x%08x",
+		    "ir_seeker_control revision=%llu station=%d requested_uncaged=%u radar_slaved=%u status=%d stage=%s native_mode=%d consent=%u exception=0x%08x",
 		    static_cast<unsigned long long>(control.revision),
 		    control.station,
 		    control.uncaged ? 1U : 0U,
 		    control.radar_slaved ? 1U : 0U,
 		    static_cast<int>(reading_.status),
+		    reading_.stage,
 		    reading_.native_mode,
 		    reading_.self_track_enabled ? 1U : 0U,
 		    reading_.exception);

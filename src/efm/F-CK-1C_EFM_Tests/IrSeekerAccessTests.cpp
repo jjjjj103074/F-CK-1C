@@ -24,6 +24,12 @@ struct IrFixture
 		bytes.resize(sizeof(T));
 		std::memcpy(bytes.data(), &value, sizeof(T));
 	}
+	unsigned target() const
+	{
+		unsigned value = 0;
+		std::memcpy(&value, memory.at(0x42c8).data(), sizeof(value));
+		return value;
+	}
 	void add(const char* name, std::uint64_t hash = 0)
 	{
 		const auto address = 0x100000 + symbols.size() * 256;
@@ -42,6 +48,7 @@ struct IrFixture
 		add("?slaveToDirection@avSidewinderSeeker@cockpit@@UEAAXAEBVVec3d@osg@@@Z", 0x447f2c8a1a851472ULL);
 		add("?toSlave@avSidewinderSeeker@cockpit@@IEAAXXZ", 0x5a587ffbf47695b9ULL);
 		for (const auto* name : { "?contexts_ptr@ccCockpitContext@cockpit@@0PAPEAV12@A",
+		                          "??_7avSimpleWeaponSystem@cockpit@@6BccContextRelatedObject@1@@",
 		                          "??_7avSimpleWeaponSystem@cockpit@@6BavLuaDevice@1@@",
 		                          "??_7avSidewinderSeeker@cockpit@@6BavPlatform@1@@" })
 			add(name);
@@ -56,7 +63,9 @@ struct IrFixture
 			hashes[symbols["?toSlave@avSidewinderSeeker@cockpit@@IEAAXXZ"]] = 0x6b730569969a099eULL;
 		}
 		put(symbols["?contexts_ptr@ccCockpitContext@cockpit@@0PAPEAV12@A"], std::uintptr_t{ 0x2000 });
-		put(0x3000, symbols["??_7avSimpleWeaponSystem@cockpit@@6BavLuaDevice@1@@"]);
+		// get_wide_device 回傳裝置主物件；Lua 子物件位於 +0x98。
+		put(0x3000, symbols["??_7avSimpleWeaponSystem@cockpit@@6BccContextRelatedObject@1@@"]);
+		put(0x3098, symbols["??_7avSimpleWeaponSystem@cockpit@@6BavLuaDevice@1@@"]);
 		put(0x3158, std::uintptr_t{ 0x4000 });
 		put(0x4000, symbols["??_7avSidewinderSeeker@cockpit@@6BavPlatform@1@@"]);
 		put(0x4284, int{ 5 });
@@ -128,6 +137,68 @@ struct IrFixture
 }
 void run_ir_seeker_access_tests(Tests::Context& c)
 {
+	for (const bool current_build : { false, true })
+	{
+		IrFixture f(current_build);
+		DcsAircraftInterface aircraft(f.backend());
+		const auto caged = aircraft.control_ir_seeker(false, .2, .1, true);
+		TEST_EXPECT(c, caged.available() && !caged.self_track_enabled && caged.native_mode == 5);
+		// 原生捕獲回報後，連續解籠要求保留目標與原生模式。
+		f.put(0x42c8, unsigned{ 123 });
+		f.put(0x4284, int{ 3 });
+		const auto clears = f.clears;
+		for (unsigned tick = 0; tick != 32; ++tick)
+		{
+			const auto tracking = aircraft.control_ir_seeker(true, .3, .2, false);
+			TEST_EXPECT(c, tracking.available() && tracking.self_track_enabled && tracking.native_mode == 3);
+			TEST_EXPECT(c, f.target() == 123 && f.clears == clears);
+		}
+		const auto recaged = aircraft.control_ir_seeker(false, 0, 0, false);
+		TEST_EXPECT(c, recaged.available() && !recaged.self_track_enabled && recaged.native_mode == 5);
+		TEST_EXPECT(c, f.target() == 0 && f.clears == clears + 2);
+	}
+	{
+		IrFixture f(true);
+		f.put(0x3000, f.symbols["??_7avSimpleWeaponSystem@cockpit@@6BavLuaDevice@1@@"]);
+		DcsAircraftInterface aircraft(f.backend());
+		const auto rejected = aircraft.control_ir_seeker(false, 0, 0, false);
+		TEST_EXPECT(c, rejected.status == AircraftAccessStatus::UnreadableObject && f.calls == 0);
+		TEST_EXPECT(c, std::strcmp(rejected.stage, "weapon_identity") == 0);
+	}
+	{
+		IrFixture f(true);
+		DcsAircraftInterface aircraft(f.backend());
+		IrSeekerExecutor executor(aircraft, {}, {});
+		Core::StoresSnapshot stores;
+		stores.status.available = true;
+		stores.seeker_control.active = true;
+		stores.seeker_control.revision = 1;
+		executor.execute(stores, 0);
+		Core::IrSeekerObservation observation;
+		executor.observe(observation);
+		TEST_EXPECT(c, observation.control_available && !observation.self_track_enabled);
+		f.put(0x42c8, unsigned{ 123 });
+		f.put(0x4284, int{ 3 });
+		stores.seeker_control.uncaged = true;
+		stores.seeker_control.revision = 2;
+		const auto clears = f.clears;
+		for (unsigned tick = 1; tick <= 32; ++tick)
+		{
+			executor.execute(stores, tick * .04);
+			executor.observe(observation);
+			TEST_EXPECT(c,
+			            observation.control_available && observation.self_track_enabled &&
+			                observation.native_mode == 3);
+			TEST_EXPECT(c, f.target() == 123 && f.clears == clears);
+		}
+		stores.seeker_control.uncaged = false;
+		stores.seeker_control.revision = 3;
+		executor.execute(stores, 1.4);
+		executor.observe(observation);
+		TEST_EXPECT(c,
+		            observation.control_available && !observation.self_track_enabled && observation.native_mode == 5);
+	}
+
 	{
 		IrFixture f(true);
 		DcsAircraftInterface aircraft(f.backend());

@@ -56,6 +56,7 @@ struct AircraftCountermeasureReading
 /// @brief 尋標器呼叫及讀回的原生模式與自主追蹤許可。
 struct AircraftIrReading
 {
+	const char* stage = "resolve"; ///< 原生存取目前完成或停留的階段。
 	AircraftAccessStatus status = AircraftAccessStatus::WaitingForModule;
 	bool self_track_enabled = false;
 	int native_mode = -1;

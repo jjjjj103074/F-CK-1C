@@ -86,3 +86,32 @@ S12 檢查熱焰彈與干擾絲的庫存、實際投放及扣量。每一步的�
 
 所有執行時紀錄在 `F-CK-1C/log`，回收工具在 `F-CK-1C/FlightTest`。
 安裝與測試工具只在模組目錄寫入；提供的 DCS DLL 僅作為唯讀核對來源。
+
+## 2026-11-28：武器裝置主物件辨識
+
+飛測版本 `8f65c733` 已通過新版建置指紋，但三次飛行的 IR 原生控制皆停在
+`UnreadableObject`，解籠讀回顯示 `WAIT`。紀錄中的 IR LOCK 是原生觀測旗標，
+與主機端成功套用解籠要求分別驗證。
+
+`get_wide_device()` 回傳 `avDevice` 主物件。兩版 DLL 的建構式與 RTTI 顯示：
+
+| 虛擬表 | 主物件內偏移 | 原版 RVA | 新版 RVA |
+|---|---|---|---|
+| `avSimpleWeaponSystem`／`ccContextRelatedObject` | `+0x0` | `0x54b8d8` | `0x54b8a8` |
+| `avSimpleWeaponSystem`／`avLuaDevice` | `+0x98` | `0x54b968` | `0x54b938` |
+| `avSidewinderSeeker`／`avPlatform` | `+0x0` | `0x54bce0` | `0x54bcb0` |
+
+先前以主物件的首指標比對 Lua 子物件虛擬表，因此在原生方法呼叫前拒絕了正確裝置。
+修正後使用主虛擬表核對裝置，再以 `+0x158` 取得尋標器。既有建置、指紋、
+尋標器型別、欄位範圍與 context 一致性核對繼續保護存取。
+
+回歸替身依實際多重繼承布局建立主物件及 `+0x98` 子物件；同一份布局在修正前重現
+`status=7 available=0 native_calls=0`，修正後為 `status=0 available=1 native_calls=4`。
+測試再經 `IrSeekerExecutor` 驗證解籠讀回、32 次連續要求保留已捕獲的目標，
+以及重新入籠。這驗證主機端對原生方法的選用及狀態傳遞；原生引擎的實際捕獲與持續追蹤由測試包 S03 確認。
+
+`ir_seeker_control` 日誌增加 `stage`，記錄原生存取停留的階段；成功為 `ready`。
+例如 `weapon_identity` 與 `seeker_identity` 可區分裝置、尋標器的核對結果。
+此診斷使用既有模組日誌及狀態變更通知。
+
+本輪修正限於原生存取及其診斷，飛彈發射放行規則維持既有設定。
